@@ -21,19 +21,21 @@ export default function Installations({
   pageMeta,
   installations = [],
   featured = null,
-  modelHighlightsRaw = null,
+  modelHighlights: highlightsFromCms = null,
   modelDescription = null,
   gallery = [],
   level = "model",
   modelMeta = null,
   models = [],
   activeSort = "admin",
+  standaloneGroup = false,
   indexHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   installations?: InstallationItem[]
   featured?: InstallationItem | null
-  modelHighlightsRaw?: Array<{ label: string }> | null
+  /** Pill keunggulan dari CMS (Kata kunci pill di menu Model Produk). */
+  modelHighlights?: Array<{ icon?: string; label: string }> | null
   modelDescription?: string | null
   gallery?: { id: number; url: string; thumb?: string | null; is_video?: boolean; caption?: string | null }[]
   level?: "model" | "product"
@@ -41,20 +43,24 @@ export default function Installations({
   indexHref?: string
   models?: ModelCardData[]
   activeSort?: string
+  /** Halaman grup mandiri (tanpa model produk): statistik hero disesuaikan. */
+  standaloneGroup?: boolean
   reviewsHref?: string
 }) {
   const isModelLevel = level !== "product"
 
   // Kontrak owner: label pill maksimal 2 kata (ikut model produk).
   // Fallback lama 3-4 kata membuat pill terpotong di mobile.
-  const modelHighlights =
-    modelHighlightsRaw?.length === 3
-      ? modelHighlightsRaw
-      : [
-          { label: "Bersih & Modern" },
-          { label: "Cahaya Optimal" },
-          { label: "Serbaguna" },
-        ]
+  const resolvedHighlights =
+    standaloneGroup
+      ? []
+      : highlightsFromCms?.length === 3
+        ? highlightsFromCms
+        : [
+            { label: "Bersih & Modern" },
+            { label: "Cahaya Optimal" },
+            { label: "Serbaguna" },
+          ]
   const heading = pageMeta?.heading?.trim() || "Hasil Pemasangan Kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
@@ -136,13 +142,26 @@ export default function Installations({
                 title={heading}
                 description={modelDescription ?? subtitle}
                 slogan={modelDescription ?? subtitle}
-                highlights={modelHighlights}
+                highlights={resolvedHighlights}
                 thumbs={[{ id: "featured", src: featured.image_url, alt: heading }]}
-                stats={[
-                  { value: installations.length, label: "Produk" },
-                  { value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0), label: "Hasil pemasangan" },
-                  { value: "100%", label: "Garansi" },
-                ]}
+                stats={
+                  standaloneGroup
+                    ? [
+                        {
+                          value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0),
+                          label: "Hasil pemasangan",
+                        },
+                        { value: "100%", label: "Garansi" },
+                      ]
+                    : [
+                        { value: installations.length, label: "Produk" },
+                        {
+                          value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0),
+                          label: "Hasil pemasangan",
+                        },
+                        { value: "100%", label: "Garansi" },
+                      ]
+                }
               />
             ) : null}
 
@@ -158,7 +177,7 @@ export default function Installations({
               ) : (
                 <EmptyState
                   icon="images"
-                  title="Belum ada dokumentasi untuk model ini"
+                  title={standaloneGroup ? "Belum ada dokumentasi di grup ini" : "Belum ada dokumentasi untuk model ini"}
                   description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
                 />
               )}

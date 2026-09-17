@@ -371,4 +371,63 @@ class InstallationMediaImportTest extends TestCase
         // productCardsForModel() tidak boleh error saat memfilter media tanpa produk.
         $this->assertIsArray(InstallationGallery::productCardsForModel('JENDELA', 'KACA_MATI'));
     }
+
+    /**
+     * Grup mandiri (judul diisi admin, tanpa model & tanpa SKU) harus tampil
+     * sebagai kartu tersendiri di /hasil-pemasangan, selevel kartu model
+     * produk, dan punya halaman galeri sendiri.
+     */
+    public function test_standalone_group_appears_as_level_one_card(): void
+    {
+        $group = \App\Models\InstallationGroup::create(['title' => 'Kanopi Cafe Semarang']);
+
+        \App\Models\ProductMedia::create([
+            'product_id' => null,
+            'model_product_id' => null,
+            'installation_group_id' => $group->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/grup-1.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
+        ]);
+        \App\Models\ProductMedia::create([
+            'product_id' => null,
+            'model_product_id' => null,
+            'installation_group_id' => $group->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/grup-2.jpg',
+            'visibility' => 'visible',
+            'status' => 'downloaded',
+        ]);
+
+        // Kartu grup tersedia sebagai kartu level 1.
+        $cards = InstallationGallery::standaloneGroupCards(48);
+        $this->assertCount(1, $cards);
+        $this->assertSame('Kanopi Cafe Semarang', $cards[0]['label']);
+        $this->assertSame('standalone', $cards[0]['source']);
+        $this->assertSame(2, $cards[0]['photo_count']);
+
+        // Muncul di halaman /hasil-pemasangan bersama kartu model.
+        $this->get(route('installation.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Installations')
+                ->where('installations', fn ($items) => collect($items)
+                    ->contains(fn ($i) => ($i['label'] ?? null) === 'Kanopi Cafe Semarang')));
+
+        // Halaman galeri grup bisa dibuka lewat slug judul.
+        $this->get(route('installation.model', [
+            'category' => 'lainnya',
+            'model' => InstallationGallery::groupSlug('Kanopi Cafe Semarang'),
+        ]))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Installations')
+                ->where('pageMeta.heading', 'Kanopi Cafe Semarang')
+                ->where('standaloneGroup', true)
+                ->has('gallery', 2));
+
+        // Grup tidak ikut lagi ke bucket "Lainnya" (tidak duplikat).
+        $manual = InstallationGallery::manualProductCards(48);
+        $this->assertFalse(collect($manual)->contains(fn ($i) => ($i['label'] ?? null) === 'Kanopi Cafe Semarang'));
+    }
 }

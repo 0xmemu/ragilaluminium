@@ -63,10 +63,19 @@ class PageController extends Controller
             'page' => [
                 'title' => $about['hero_title'],
                 'heading' => $about['hero_title'],
+                'subtitle' => $about['hero_subtitle'],
                 'tagline' => $about['hero_tagline'],
+                'headline' => $about['hero_headline'],
+                'description' => $about['hero_description'],
+                'main_image_url' => $about['main_image_url'],
+                'gallery_items' => $about['gallery_items'],
+                'stats_items' => $about['stats_items'],
                 'why_points' => $about['why_points'],
+                'production_processes' => $about['production_processes'],
                 'work_steps' => $about['work_steps'],
                 'trust_rows' => $about['trust_rows'],
+                'google_maps_url' => $about['google_maps_url'],
+                'google_maps_embed_url' => $about['google_maps_embed_url'],
             ],
             'stats' => [
                 // Angka nyata dari database (bukan klaim marketing) utk trust strip halaman Tentang Kami.
@@ -243,7 +252,11 @@ class PageController extends Controller
 
         $modelCards = collect(InstallationGallery::modelCards(48));
         $hasModelMedia = $modelCards->contains(fn (array $item) => filled($item['image_url'] ?? null));
+
+        // Level 1 = kartu model produk + kartu grup mandiri (selevel, sesuai
+        // kontrak admin: grup tanpa model produk hirarkinya sama dengan model).
         $installations = ($hasModelMedia ? $modelCards : collect(InstallationGallery::productCards(48)))
+            ->concat(collect(InstallationGallery::standaloneGroupCards(48)))
             ->map(fn (array $item) => $this->installationCardPayload($item))
             ->all();
         $installations = $sort === "newest" ? array_values($installations) : $this->sortInstallationProducts($installations, $sort);
@@ -276,7 +289,20 @@ class PageController extends Controller
             $sort = 'newest';
         }
 
-        if ($categoryCode === 'LAINNYA') {
+        $standaloneGroup = $categoryCode === 'LAINNYA'
+            ? InstallationGallery::standaloneGroupBySlug($model)
+            : null;
+
+        if ($standaloneGroup !== null) {
+            // Halaman galeri satu grup mandiri: daftar media grup tersebut.
+            $gallery = InstallationGallery::mediaForGroup($standaloneGroup);
+            $installations = [];
+            $title = (string) $standaloneGroup->title;
+            $cover = $gallery[0]['url'] ?? null;
+            $photoCount = count(array_filter($gallery, fn (array $i) => ! $i['is_video']));
+            $videoCount = count(array_filter($gallery, fn (array $i) => $i['is_video']));
+            $productCount = 0;
+        } elseif ($categoryCode === 'LAINNYA') {
             $installations = collect(InstallationGallery::manualProductCards(48))
                 ->map(fn (array $item) => $this->installationCardPayload($item))
                 ->all();
@@ -304,7 +330,9 @@ class PageController extends Controller
         }
 
         $installations = $this->sortInstallationProducts($installations, $sort);
-        $gallery = $categoryCode === 'LAINNYA' ? [] : InstallationGallery::mediaForModel($categoryCode, $modelCode);
+        if (! isset($gallery)) {
+            $gallery = InstallationGallery::mediaForModel($categoryCode, $modelCode);
+        }
 
         $featured = ($photoCount + $videoCount) > 0
             ? $this->installationCardPayload([
@@ -326,12 +354,17 @@ class PageController extends Controller
             'pageMeta' => [
                 'title' => $title.' · Hasil Pemasangan',
                 'heading' => $title,
-                'subtitle' => 'Produk dalam model ini yang memiliki dokumentasi hasil pemasangan.',
+                'subtitle' => $standaloneGroup !== null
+                    ? 'Dokumentasi pemasangan pada grup ini.'
+                    : 'Produk dalam model ini yang memiliki dokumentasi hasil pemasangan.',
             ],
             'installations' => $installations,
             'gallery' => $gallery,
             'featured' => $featured,
             'level' => 'product',
+            // Penanda halaman grup mandiri (bukan model katalog): dipakai
+            // frontend untuk menyesuaikan statistik hero.
+            'standaloneGroup' => $standaloneGroup !== null,
             'activeSort' => $sort,
             'modelMeta' => [
                 'category' => $categoryCode,

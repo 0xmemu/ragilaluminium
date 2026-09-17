@@ -611,6 +611,120 @@ class InstallationGallery
     }
 
     /**
+     * Kartu satu per GRUP MANDIRI (judul diisi admin di menu Hasil Pemasangan),
+     * selevel dengan kartu model produk di halaman /hasil-pemasangan.
+     *
+     * Hirarki storefront: model produk dan grup mandiri sama-sama jadi kartu
+     * level 1; isi grup dibuka di /hasil-pemasangan/lainnya/{slug-grup}.
+     *
+     * @return list<array{id: string, image_url: string|null, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
+     */
+    public static function standaloneGroupCards(int $limit = 48): array
+    {
+        $groups = \App\Models\InstallationGroup::query()
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get();
+
+        if ($groups->isEmpty()) {
+            return [];
+        }
+
+        $standalone = self::installationMediaWithProduct()
+            ->filter(fn (ProductMedia $item) => $item->product_id === null
+                && ! filled($item->model_product_id)
+                && filled($item->installation_group_id));
+
+        $cards = [];
+        foreach ($groups as $group) {
+            $rows = $standalone->where('installation_group_id', $group->id)->values();
+            if ($rows->isEmpty()) {
+                continue;
+            }
+
+            $stats = self::countMedia($rows);
+
+            $cards[] = [
+                'id' => 'group-'.$group->id,
+                'image_url' => $stats['cover'],
+                'label' => (string) $group->title,
+                'product_count' => 0,
+                'photo_count' => (int) $stats['photo_count'],
+                'video_count' => (int) $stats['video_count'],
+                'category' => 'LAINNYA',
+                'model' => self::groupSlug((string) $group->title),
+                'source' => 'standalone',
+                'product_sku' => null,
+                'href' => route('installation.model', [
+                    'category' => self::categoryToSlug('LAINNYA'),
+                    'model' => self::groupSlug((string) $group->title),
+                ], absolute: false),
+            ];
+
+            if ($limit > 0 && count($cards) >= $limit) {
+                break;
+            }
+        }
+
+        return $cards;
+    }
+
+    /** Slug URL sebuah grup mandiri. */
+    public static function groupSlug(string $title): string
+    {
+        $slug = \Illuminate\Support\Str::slug($title);
+
+        return $slug !== '' ? $slug : 'grup';
+    }
+
+    /** Cari grup mandiri dari slug URL (null bila tidak ada). */
+    public static function standaloneGroupBySlug(string $slug): ?\App\Models\InstallationGroup
+    {
+        $needle = strtolower(trim($slug));
+        if ($needle === '') {
+            return null;
+        }
+
+        foreach (\App\Models\InstallationGroup::query()->orderBy('sort_order')->orderBy('title')->get() as $group) {
+            if (self::groupSlug((string) $group->title) === $needle) {
+                return $group;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Media satu grup mandiri (dipakai halaman galeri grup).
+     *
+     * @return list<array{id: int, url: string, thumb: string, is_video: bool, product_sku: string, product_name: string, caption: string}>
+     */
+    public static function mediaForGroup(\App\Models\InstallationGroup $group, int $limit = 120): array
+    {
+        return self::installationMediaWithProduct()
+            ->filter(fn (ProductMedia $item) => $item->product_id === null
+                && ! filled($item->model_product_id)
+                && (int) $item->installation_group_id === (int) $group->id)
+            ->take($limit)
+            ->map(function (ProductMedia $m) use ($group) {
+                $url = $m->urlFor('card') ?? $m->urlFor('thumb') ?? '';
+
+                return [
+                    'id' => $m->id,
+                    'url' => $url,
+                    'thumb' => $m->urlFor('thumb') ?? $url,
+                    'is_video' => self::isVideoMedia($m),
+                    'product_sku' => '',
+                    'product_name' => (string) $group->title,
+                    'caption' => (string) ($m->installation_caption ?: $group->title),
+                ];
+            })
+            ->filter(fn (array $i) => filled($i['url']))
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return list<array{id: string, image_url: string, label: string, product_count: int, photo_count: int, video_count: int, category: string, model: string, source: string, product_sku: null, href: string}>
      */
     public static function manualProductCards(int $limit = 48): array
@@ -638,10 +752,14 @@ class InstallationGallery
             ])
             ->all();
 
-        // Tambahkan media grup mandiri (tanpa model & tanpa SKU) dari sumber
-        // tunggal product_media.
+        // Media mandiri TANPA grup (sisa data lama) tetap tampil di bucket
+        // Lainnya agar tidak hilang. Media yang sudah punya installation_group_id
+        // tampil sebagai kartu grup tersendiri di level 1 (standaloneGroupCards),
+        // jadi di sini dikecualikan supaya tidak duplikat.
         $standaloneMedia = self::installationMediaWithProduct()
-            ->filter(fn (ProductMedia $item) => $item->product_id === null && ! filled($item->model_product_id))
+            ->filter(fn (ProductMedia $item) => $item->product_id === null
+                && ! filled($item->model_product_id)
+                && ! filled($item->installation_group_id))
             ->take($limit)
             ->map(fn (ProductMedia $item) => [
                 'id' => 'media-'.$item->id,
