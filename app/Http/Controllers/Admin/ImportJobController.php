@@ -294,6 +294,10 @@ class ImportJobController extends Controller
                 ?? 0);
 
         return Inertia::render('Admin/ImportShow', [
+            // Tautan kembali ke daftar import. Layout admin merender tombol
+            // Kembali secara otomatis begitu prop ini ada, sama seperti halaman
+            // admin lain, sehingga polanya seragam.
+            'backUrl' => route('admin.imports.index'),
             'importJob' => [
                 'id' => $import_job->id,
                 'type' => static::typeLabel($import_job->type),

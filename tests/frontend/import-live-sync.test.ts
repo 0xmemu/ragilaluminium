@@ -57,4 +57,12 @@ describe("ImportCreate indikator periksa berkas", () => {
     expect(createSource).toMatch(/animate-spin/)
     expect(createSource).toMatch(/Memeriksa berkas/)
   })
+
+  it("meneruskan backUrl ke layout supaya tombol Kembali dirender", () => {
+    // backUrl dikirim controller, tetapi layout hanya merender tombol Kembali
+    // bila halaman meneruskan prop itu. Tanpa ini halaman detail tidak punya
+    // jalan kembali ke daftar import.
+    expect(showSource).toMatch(/backUrl/)
+    expect(showSource).toMatch(/backUrl=\{backUrl\}/)
+  })
 })

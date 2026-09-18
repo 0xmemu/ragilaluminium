@@ -58,7 +58,15 @@ const STATUS_STYLE: Record<ImportJobView["status"], string> = {
   failed: "bg-destructive/15 text-destructive",
 }
 
-export default function ImportShow({ importJob }: { importJob: ImportJobView }) {
+export default function ImportShow({
+  importJob,
+  backUrl,
+}: {
+  importJob: ImportJobView
+  // URL kembali ke daftar import. Dikirim controller supaya pola tombol
+  // Kembali sama dengan halaman admin lain (layout yang merender).
+  backUrl?: string | null
+}) {
   const [job, setJob] = useState(importJob)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -94,6 +102,7 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
     <AdminLayout
       title={`Import #${job.id}`}
       description={job.file}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button
