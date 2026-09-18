@@ -135,6 +135,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Daftar seluruh produk katalog beserta status dan aksi cepatnya.",
     steps: [
       "Cari produk lewat kolom pencarian atau filter kategori.",
+      "Urutkan daftar lewat pemilih urutan: Baru saja diubah, Terlaris, atau waktu ditambahkan, tiap opsi punya arah naik dan turun.",
       "Klik nama produk untuk membuka detail dan media.",
       "Tambah produk baru lewat tombol di kanan atas.",
     ],

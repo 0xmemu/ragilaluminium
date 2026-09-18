@@ -65,6 +65,7 @@ interface ProductsIndexProps {
   title: string
   description: string
   searchQuery: string
+  activeSort: string
   filters: {
     product_category: string
     product_model: string
@@ -74,6 +75,7 @@ interface ProductsIndexProps {
     categories: FilterOption[]
     models: FilterOption[]
     statuses: FilterOption[]
+    sorts: FilterOption[]
   }
   products: ProductCard[]
   pagination: PaginationData
@@ -239,10 +241,14 @@ function ProductListRow({
 }
 
 
+/** Harus sama dengan ProductController::DEFAULT_SORT di sisi server. */
+const DEFAULT_SORT = "updated_desc"
+
 export default function ProductsIndex({
   title,
   description,
   searchQuery,
+  activeSort,
   filters,
   filterOptions,
   products,
@@ -292,11 +298,14 @@ export default function ProductsIndex({
       product_category: filters.product_category,
       product_model: filters.product_model,
       status: filters.status,
+      sort: activeSort,
       ...params,
     }
     Object.entries(merged).forEach(([key, value]) => {
       if (!value || value === "all") return
       if (key === "q" && !value.trim()) return
+      // Urutan default tidak ditulis ke URL supaya tautan tetap bersih.
+      if (key === "sort" && value === DEFAULT_SORT) return
       next[key] = value
     })
     router.get("/admin/kelola/produk", next, { preserveState: true, replace: true })
@@ -345,6 +354,20 @@ export default function ProductsIndex({
           onSubmit: () => visit({ q }),
           placeholder: "Cari nama produk atau parent SKU…",
         }}
+        sort={
+          <Select
+            value={activeSort}
+            onChange={(event) => visit({ sort: event.target.value })}
+            className="w-auto"
+            aria-label="Urutan daftar produk"
+          >
+            {filterOptions.sorts.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
         summary={
           <span>
             <span className="tabular-nums font-semibold text-foreground">

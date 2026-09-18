@@ -34,6 +34,7 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
 - **Produk** (Tipe: `Operational` & `Content`) — `/admin/kelola/produk`
   - Daftar SKU Induk, status aktif/arsip.
   - Sub-view: Product Detail (Overview, Variants, Attributes, Media per produk).
+  - Urutan daftar: Baru saja diubah (default, memakai updated_at sehingga hasil import dan hasil edit sama-sama terangkat), Paling lama tidak diubah, Terlaris, Paling sedikit terjual, Terbaru ditambahkan, Terlama ditambahkan. Tiap opsi punya pasangan arah naik/turun lewat parameter `sort`, dan urutan yang sama dipakai file Export CSV.
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
 - **Kategori** (Tipe: Operational) — `/admin/kelola/kategori`
   - CRUD kategori katalog (aktif/nonaktif).

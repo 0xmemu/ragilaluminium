@@ -28,6 +28,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
+    /**
+     * Urutan daftar produk: satu sumber kebenaran untuk label UI, query layar,
+     * dan file export. Kunci updated_* dipakai untuk baru saja diubah supaya
+     * hasil import dan hasil edit sama-sama terangkat, bukan hanya produk baru.
+     */
+    private const SORT_OPTIONS = [
+        'updated_desc' => ['label' => 'Baru saja diubah', 'column' => 'updated_at', 'direction' => 'desc'],
+        'updated_asc' => ['label' => 'Paling lama tidak diubah', 'column' => 'updated_at', 'direction' => 'asc'],
+        'sold_desc' => ['label' => 'Terlaris', 'column' => 'sold_count', 'direction' => 'desc'],
+        'sold_asc' => ['label' => 'Paling sedikit terjual', 'column' => 'sold_count', 'direction' => 'asc'],
+        'created_desc' => ['label' => 'Terbaru ditambahkan', 'column' => 'created_at', 'direction' => 'desc'],
+        'created_asc' => ['label' => 'Terlama ditambahkan', 'column' => 'created_at', 'direction' => 'asc'],
+    ];
+
+    private const DEFAULT_SORT = 'updated_desc';
     public function index(Request $request): Response
     {
         $view = 'list';
@@ -36,6 +51,7 @@ class ProductController extends Controller
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
         $size = $q !== '' ? $this->parseSizeQuery($q) : null;
+        $sort = $this->resolveListSort($request->input('sort'));
 
 
         $products = Product::query()
@@ -80,15 +96,17 @@ class ProductController extends Controller
             ->when(
                 $status !== '' && $status !== 'all',
                 fn ($query) => $query->where('status', $status)
-            )
-            ->latest()
-            ->paginate(14)
-            ->withQueryString();
+            );
+
+        $this->applyListSort($products, $sort);
+
+        $products = $products->paginate(14)->withQueryString();
 
         return Inertia::render('Admin/Products/Index', [
             'title' => 'Daftar Produk',
             'description' => 'Kelola katalog produk, status, serta Import & Media dari menu Produk.',
             'searchQuery' => $q,
+            'activeSort' => $sort,
             'filters' => [
                 'product_category' => $category === '' ? 'all' : $category,
                 'product_model' => $model === '' ? 'all' : $model,
@@ -111,6 +129,7 @@ class ProductController extends Controller
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
+        $sort = $this->resolveListSort($request->input('sort'));
 
         $query = Product::query()
             ->withCount('variants as variants_count')
@@ -131,9 +150,9 @@ class ProductController extends Controller
                 $model !== '' && $model !== 'all',
                 fn ($builder) => $builder->where('product_model', CatalogLabels::normalizeModel($model) ?? $model)
             )
-            ->when($status !== '' && $status !== 'all', fn ($builder) => $builder->where('status', $status))
-            ->latest();
+            ->when($status !== '' && $status !== 'all', fn ($builder) => $builder->where('status', $status));
 
+        $this->applyListSort($query, $sort);
 
         ExportSafety::assertQueryWithinLimit($query);
 
@@ -1119,6 +1138,28 @@ class ProductController extends Controller
     }
 
     /** @return array<string, mixed> */
+    /** Kunci urutan yang dikenal; nilai asing jatuh ke urutan default. */
+    private function resolveListSort(mixed $sort): string
+    {
+        $key = (string) $sort;
+
+        return array_key_exists($key, self::SORT_OPTIONS) ? $key : self::DEFAULT_SORT;
+    }
+
+    /**
+     * Terapkan urutan daftar produk. sold_count adalah alias agregat dari
+     * withSum validOrderItems, jadi produk tanpa penjualan bernilai NULL dan
+     * muncul lebih dulu pada urutan menaik.
+     */
+    private function applyListSort($query, string $sort): void
+    {
+        $option = self::SORT_OPTIONS[$sort];
+
+        // id sebagai tie-break searah supaya urutan stabil antar halaman.
+        $query->orderBy($option['column'], $option['direction'])
+            ->orderBy('id', $option['direction']);
+    }
+
     private function listFilterOptions(): array
     {
         return [
@@ -1138,6 +1179,10 @@ class ProductController extends Controller
                 ['value' => 'active', 'label' => 'Aktif'],
                 ['value' => 'archived', 'label' => 'Diarsipkan'],
             ],
+            'sorts' => collect(self::SORT_OPTIONS)
+                ->map(fn (array $option, string $value) => ['value' => $value, 'label' => $option['label']])
+                ->values()
+                ->all(),
         ];
     }
 
