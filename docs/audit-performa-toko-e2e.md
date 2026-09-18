@@ -340,3 +340,24 @@ Rejected:
 - Role non-admin belum diuji end-to-end di browser.
 - Beban produksi maksimum tidak diuji.
 - Audit dilakukan pada satu hari kalender (19 Sep 2026); transisi bulan dan tahun tidak diuji langsung, hanya ditelusuri dari kode.
+
+---
+
+## 20. ADDENDUM 19 SEPTEMBER 2026 - TINDAK LANJUT TEMUAN STATE MACHINE
+
+Temuan negative space (pesanan ditolak kurir sebelum lunas) dieksekusi pada
+commit 8b9473d:
+
+- Transisi shipped ke return_in_process kini legal (admin dan carrier);
+  cascade returned dari kurir otomatis memindahkan pesanan dan membuat kasus
+  retur (open, fault_party other, tanpa restore stok).
+- Penutupan retur (return_completed) pada pesanan belum lunas menandai
+  payment pending menjadi cancelled di dalam transaksi state machine.
+- Performa Toko: KPI Pesanan Ditolak di blok Retur, dan baris Nilai Barang
+  Pesanan Ditolak di Rekonsiliasi yang mengeluarkan nilai barang dari
+  Penjualan Bersih saat retur selesai; Export XLSX menambah baris yang sama
+  di seksi beban supaya rumus Penjualan Bersih tetap sinkron dengan UI.
+- ADR-006 diperbarui.
+
+Status temuan: TUTUP (dengan keputusan owner 19 Sep 2026: tanpa restore stok,
+biaya lewat jalur retur). Sisanya sesuai daftar temuan di atas.
