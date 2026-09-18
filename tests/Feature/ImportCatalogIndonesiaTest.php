@@ -104,33 +104,44 @@ class ImportCatalogIndonesiaTest extends TestCase
         $this->assertStringContainsString('SKU tidak ditemukan', $row->error_reason);
     }
 
-    public function test_template_katalog_xlsx_memiliki_tiga_sheet(): void
+    public function test_template_import_produk_v2_tiga_sheet(): void
     {
-        $raw = Excel::raw(new CatalogTemplateExport(), \Maatwebsite\Excel\Excel::XLSX);
-        $path = tempnam(sys_get_temp_dir(), 'tpl_c').'.xlsx';
+        $raw = Excel::raw(
+            new \App\Exports\ProductImportTemplateExport(),
+            \Maatwebsite\Excel\Excel::XLSX
+        );
+        $path = tempnam(sys_get_temp_dir(), "tpl_c").".xlsx";
         file_put_contents($path, $raw);
         $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
-        $names = [];
-        foreach ($ss->getSheetNames() as $name) {
-            $names[] = $name;
-        }
-        $this->assertCount(3, $names);
+
+        // Kontrak v2: sheet Data, Contoh, Panduan dengan header Bahasa Indonesia.
+        $this->assertSame(["Data", "Contoh", "Panduan"], $ss->getSheetNames());
+
         $first = $ss->getSheet(0)->toArray()[0];
-        $this->assertContains('name', $first);
-        // Format owner 09-05: harga per kombinasi varian.
-        $this->assertContains('price_variantion_combination', $first);
-        $this->assertContains('variantion_combination', $first);
+        $this->assertContains("Nama Produk", $first);
+        $this->assertContains("Opsi Variasi 1", $first);
+        $this->assertContains("Lebar (cm)", $first);
+        // Kolom format lama tidak boleh ada lagi.
+        $this->assertNotContains("id_key", $first);
+        $this->assertNotContains("price_variantion_combination", $first);
     }
 
-    public function test_template_stock_price_xlsx(): void
+    public function test_template_update_produk_v2(): void
     {
-        $raw2 = Excel::raw(new StockPriceTemplateExport(), \Maatwebsite\Excel\Excel::XLSX);
-        $path2 = tempnam(sys_get_temp_dir(), 'tpl_s').'.xlsx';
-        file_put_contents($path2, $raw2);
-        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path2);
-        $this->assertCount(2, $ss->getSheetNames());
-        $this->assertSame(['Data', 'Panduan'], $ss->getSheetNames());
+        $raw = Excel::raw(
+            new \App\Exports\ProductUpdateTemplateExport(\App\Support\CatalogDownloadFilter::fromRequest([])),
+            \Maatwebsite\Excel\Excel::XLSX
+        );
+        $path = tempnam(sys_get_temp_dir(), "tpl_s").".xlsx";
+        file_put_contents($path, $raw);
+        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
+
+        $this->assertSame(["Update Produk", "Panduan"], $ss->getSheetNames());
+
         $first = $ss->getSheet(0)->toArray()[0];
-        $this->assertSame(['parent_sku', 'variant_sku', 'variant_combination', 'price', 'stock'], $first);
+        $this->assertSame(
+            ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok", "Deskripsi Produk", "Spesifikasi"],
+            $first
+        );
     }
 }

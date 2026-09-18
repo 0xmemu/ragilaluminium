@@ -21,9 +21,13 @@ class ImportPageLabelsTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/ImportCreate')
                 ->has('types', 3)
-                ->where('types.0.label', 'Import Katalog (produk & varian baru, lengkap)')
-                ->where('types.1.label', 'Update Harga & Stok (hanya harga/stok; media tidak disentuh)')
-                ->where('types.2.label', 'Update Media (hanya foto/video; harga & stok tidak disentuh)')
+                // Label mengikuti nama template v2 supaya admin melihat
+                // sebutan yang sama di tombol unduh dan di pilihan tipe.
+                ->where('types.0.label', 'Import Produk (produk dan varian baru)')
+                ->where('types.1.label', 'Update Produk (harga, stok, deskripsi, spesifikasi)')
+                ->where('types.2.label', 'Update Media (foto produk dan varian)')
+                // Pilihan "Sumber stok" sudah dihapus; stok selalu dari berkas.
+                ->missing('stockMode')
             );
     }
 }

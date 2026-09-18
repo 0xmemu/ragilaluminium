@@ -128,4 +128,56 @@ class ImportStoreUploadTest extends TestCase
         // Tidak ada baris yang ditulis
         $this->assertSame(0, ImportJob::count());
     }
+
+    /**
+     * Upload TANPA kolom stock_mode wajib berhasil.
+     *
+     * Pilihan "Sumber stok" dihapus dari form karena stok selalu dibaca dari
+     * berkas. Backend tidak boleh lagi menuntut kolom itu, kalau tidak form
+     * yang sudah bersih akan gagal validasi.
+     */
+    public function test_store_works_without_stock_mode_field(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $rows = collect([
+            ['no_id' => 1, 'nama_produk' => 'Produk Tanpa Mode Stok', 'kategori_produk' => 'JENDELA', 'model_produk' => 'KACA_MATI', 'harga' => 100000, 'stok' => 7, 'gambar_1_utama' => 'https://example.com/a.jpg'],
+        ]);
+        $export = new class($rows) implements FromCollection, WithHeadings
+        {
+            public function __construct(public $rows) {}
+
+            public function collection()
+            {
+                return $this->rows;
+            }
+
+            public function headings(): array
+            {
+                return array_keys($this->rows->first());
+            }
+        };
+        Excel::store($export, 'tanpa_mode_stok.xlsx', 'imports');
+        $path = \Illuminate\Support\Facades\Storage::disk('imports')->path('tanpa_mode_stok.xlsx');
+
+        $upload = new UploadedFile(
+            $path,
+            'katalog.xlsx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            null,
+            true
+        );
+
+        // Tanpa stock_mode sama sekali.
+        $response = $this->actingAs($admin)->post(route('admin.imports.store'), [
+            'type' => 'catalog_import',
+            'file' => $upload,
+        ]);
+
+        $job = ImportJob::query()->latest('id')->first();
+        $this->assertNotNull($job, 'Upload tanpa stock_mode wajib membuat ImportJob');
+        $response->assertSessionHasNoErrors();
+        $this->assertSame('file', $job->stock_mode, 'stok selalu dari berkas');
+    }
 }

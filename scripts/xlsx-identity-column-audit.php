@@ -49,8 +49,8 @@ $jobs = [
     'produk' => fn () => new \App\Exports\ProductExport(Product::query()),
     'produk_lengkap' => fn () => new \App\Exports\ProductExportFullUpdateSheet(Product::query()),
     'produk_harga' => fn () => new \App\Exports\ProductExportUpdatePriceStockSheet(Product::query()),
-    'template_katalog' => fn () => new \App\Exports\CatalogTemplateExport(),
-    'template_harga' => fn () => new \App\Exports\StockPriceTemplateExport(),
+    'template_import_produk' => fn () => new \App\Exports\ProductImportTemplateExport(),
+    'template_update_produk' => fn () => new \App\Exports\ProductUpdateTemplateExport(),
     'template_media' => fn () => new \App\Exports\MediaUpdateTemplateExport(),
     'log_aktivitas' => fn () => new \App\Exports\ActivityLogExport(EventLog::query()->limit(200)->get()),
 ];

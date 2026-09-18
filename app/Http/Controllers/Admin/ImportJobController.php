@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Exports\CatalogTemplateExport;
 use App\Exports\MediaUpdateTemplateExport;
 use App\Exports\ProductImportTemplateExport;
 use App\Exports\ProductUpdateTemplateExport;
-use App\Exports\StockPriceTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
 use App\Support\MediaNamer;
@@ -27,8 +25,8 @@ class ImportJobController extends Controller
     public static function typeLabel(string $type): string
     {
         return match ($type) {
-            'catalog_import' => 'Import Katalog',
-            'stock_price_update' => 'Update Harga & Stok',
+            'catalog_import' => 'Import Produk',
+            'stock_price_update' => 'Update Produk',
             'media_update' => 'Update Media',
             'shopee_mass_upload' => 'Shopee Mass Upload (historis)',
             'shopee_mass_update' => 'Shopee Mass Update (historis)',
@@ -163,10 +161,12 @@ class ImportJobController extends Controller
                 'model' => self::distinctProductValues('product_model'),
                 'sub_model' => self::distinctProductValues('design_variant'),
             ],
+            // Label mengikuti nama template v2 supaya admin melihat sebutan yang
+            // sama di tombol unduh dan di pilihan tipe.
             'types' => [
-                ['value' => 'catalog_import', 'label' => 'Import Katalog (produk & varian baru, lengkap)'],
-                ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok (hanya harga/stok; media tidak disentuh)'],
-                ['value' => 'media_update', 'label' => 'Update Media (hanya foto/video; harga & stok tidak disentuh)'],
+                ['value' => 'catalog_import', 'label' => 'Import Produk (produk dan varian baru)'],
+                ['value' => 'stock_price_update', 'label' => 'Update Produk (harga, stok, deskripsi, spesifikasi)'],
+                ['value' => 'media_update', 'label' => 'Update Media (foto produk dan varian)'],
             ],
         ]);
     }
@@ -197,8 +197,6 @@ class ImportJobController extends Controller
         $validated = $request->validate([
             'type' => ['required', 'in:catalog_import,stock_price_update,media_update'],
             'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
-            'stock_mode' => ['required', 'in:file,manual'],
-            'manual_stock' => ['nullable', 'required_if:stock_mode,manual', 'integer', 'min:0'],
         ]);
 
         $file = $request->file('file');
@@ -228,10 +226,11 @@ class ImportJobController extends Controller
             'source_file_name' => $fileName,
             'source_file_path' => $storedPath,
             'total_rows' => $rowCount,
-            'stock_mode' => $validated['stock_mode'],
-            'manual_stock' => $validated['stock_mode'] === 'manual'
-                ? (int) $validated['manual_stock']
-                : null,
+            // Stok SELALU dari berkas. Pilihan mode manual dihapus dari UI
+            // karena template sudah menyediakan kolom stok, dan dua jalur stok
+            // hanya menambah kebingungan tanpa manfaat.
+            'stock_mode' => 'file',
+            'manual_stock' => null,
             'status' => 'pending',
             'triggered_by_user_id' => $request->user()->id,
         ]);
@@ -274,9 +273,13 @@ class ImportJobController extends Controller
                 'type' => static::typeLabel($import_job->type),
                 'file' => $import_job->source_file_name,
                 'status' => $import_job->status,
+                // Import BARU selalu membaca stok dari berkas karena pilihan
+                // mode manual sudah dihapus dari UI. Job LAMA yang terlanjur
+                // memakai mode manual tetap ditampilkan apa adanya supaya
+                // riwayat tidak berbohong.
                 'stock_source' => $import_job->stock_mode === 'manual'
                     ? 'Manual ('.$import_job->manual_stock.')'
-                    : 'Dari file',
+                    : 'Dari berkas',
                 'total_products' => $totalProducts,
                 'processed_products' => $processedProducts,
                 'success_products' => $successProducts,
@@ -705,8 +708,6 @@ class ImportJobController extends Controller
         $validated = $request->validate([
             'type' => ['required', 'in:stock_price_update,media_update'],
             'file' => ['required', 'file', 'mimes:xls,xlsx,xlsm,csv', 'max:51200'],
-            'stock_mode' => ['nullable', 'in:file,manual'],
-            'manual_stock' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
@@ -715,14 +716,12 @@ class ImportJobController extends Controller
         )[0] ?? [];
         $rows = array_slice($rows, 0, 2000);
 
-        $manualStock = ($validated['stock_mode'] ?? 'file') === 'manual'
-            ? (int) ($validated['manual_stock'] ?? 0)
-            : null;
-
+        // Stok selalu dari berkas, sehingga tidak ada stok manual yang perlu
+        // dioper ke verifier.
         $result = \App\Support\UpdateImportVerifier::verify(
             $rows,
             $validated['type'],
-            $manualStock
+            null
         );
 
         // Diff nyata per baris (owner 09-06): tampilkan apa yang AKAN berubah

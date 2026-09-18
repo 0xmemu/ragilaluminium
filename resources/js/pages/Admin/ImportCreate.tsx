@@ -5,7 +5,6 @@ import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
@@ -93,16 +92,15 @@ export default function ImportCreate({
     return query ? `${baseUrl}?${query}` : baseUrl
   }
 
+  // Sumber stok tidak lagi jadi pilihan: stok SELALU dibaca dari berkas.
+  // Pilihan mode manual dihapus karena menimbulkan dua jalur yang harus
+  // dirawat padahal template sudah menyediakan kolom stok.
   const form = useForm<{
     type: string
     file: File | null
-    stock_mode: "file" | "manual"
-    manual_stock: number | string
   }>({
     type: "catalog_import",
     file: null,
-    stock_mode: "file",
-    manual_stock: 0,
   })
   const [preview, setPreview] = useState<PreviewPayload | null>(null)
   const [previewing, setPreviewing] = useState(false)
@@ -117,8 +115,8 @@ export default function ImportCreate({
     setPreviewError(null)
   }
 
-  // Ganti jenis import / mode stok = periksa ulang wajib (file sama bisa
-  // lolos di satu konfigurasi, gagal di yang lain).
+  // Ganti jenis import = periksa ulang wajib, karena aturan tiap jenis berbeda
+  // (berkas yang lolos sebagai update bisa gagal sebagai import katalog).
   function invalidatePreview() {
     setPreview(null)
     setPreviewError(null)
@@ -138,10 +136,6 @@ export default function ImportCreate({
       body.append("file", form.data.file)
       if (form.data.type === "stock_price_update" || form.data.type === "media_update") {
         body.append("type", form.data.type)
-        body.append("stock_mode", form.data.stock_mode)
-        if (form.data.stock_mode === "manual") {
-          body.append("manual_stock", String(form.data.manual_stock ?? 0))
-        }
       }
       const res = await fetch(previewEndpoint, {
         method: "POST",
@@ -294,44 +288,6 @@ export default function ImportCreate({
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Filter ini menyaring isi template update. Unduh tanpa filter berarti seluruh katalog.
-                  </p>
-                </td>
-              </tr>
-              ) : null}
-              {form.data.type !== "media_update" ? (
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Sumber stok <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Select
-                      value={form.data.stock_mode}
-                      onChange={(event) => { form.setData("stock_mode", event.target.value as "file" | "manual"); invalidatePreview() }}
-                      className="h-8 w-56 text-xs"
-                    >
-                      <option value="file">Gunakan stok dari file</option>
-                      <option value="manual">Gunakan stok manual</option>
-                    </Select>
-                    {form.data.stock_mode === "manual" ? (
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={form.data.manual_stock}
-                        onChange={(event) => { form.setData("manual_stock", event.target.value); invalidatePreview() }}
-                        className="h-8 w-32 text-xs"
-                      />
-                    ) : null}
-                  </div>
-                  {form.errors.stock_mode ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.stock_mode}</p>
-                  ) : null}
-                  {form.errors.manual_stock ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.manual_stock}</p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Gunakan angka dari file, atau timpa seluruh stok varian dengan satu nilai manual.
                   </p>
                 </td>
               </tr>

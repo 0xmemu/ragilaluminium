@@ -177,11 +177,11 @@ final class UpdateImportVerifier
                         $errors[] = 'Baris '.$rowNo.': stok "'.$stockRaw.'" tidak valid. Isi angka, rentang a-b, atau random a-b.';
                     }
                 }
-                // Kontrak stok baru: stock kosong + mode manual = manual_stock dipakai.
-                // stock kosong + mode file (tanpa manual_stock) = error supaya tidak
-                // ada stok yang tak sengaja tak tersentuh.
-                if ($stockRaw === '' && $priceRaw !== '' && $manualStock === null) {
-                    $errors[] = 'Baris '.$rowNo.': stok kosong. Isi kolom stock, atau pilih mode stok manual di form agar baris ini memakai stok manual.';
+                // Kontrak stok: kolom stok WAJIB diisi. Mode stok manual sudah
+                // dihapus dari UI, sehingga satu-satunya sumber stok adalah
+                // kolom Stok di berkas.
+                if ($stockRaw === '' && $priceRaw !== '') {
+                    $errors[] = 'Baris '.$rowNo.': stok kosong. Isi kolom Stok di berkas.';
                 }
             }
         }
