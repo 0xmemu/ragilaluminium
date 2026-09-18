@@ -25,6 +25,15 @@ type ImportJobView = {
   completed_at: string | null
   error_message: string | null
   rows: Array<{ row_number: number; status: string; reason: string }>
+  imported_products: Array<{
+    product_id: number
+    name: string
+    sku: string
+    status: string
+    variants: number
+    url: string
+    edit_url: string | null
+  }>
   incomplete_products: Array<{
     product_id: number
     name: string
@@ -144,11 +153,20 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
               </span>
               <span className="tabular-nums font-semibold">{percent}%</span>
             </div>
-            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+            <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${job.status === "failed" ? "bg-destructive" : "bg-primary"}`}
                 style={{ width: `${percent}%` }}
               />
+              {/* Selama import berjalan, lapisan bergerak menandakan proses
+                  masih hidup walau persentase kebetulan belum berubah. Tanpa
+                  ini bar terlihat statis dan admin menduga import menggantung. */}
+              {active ? (
+                <div
+                  className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
+                  aria-hidden="true"
+                />
+              ) : null}
             </div>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
               <span className="text-success font-semibold">
@@ -159,13 +177,13 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
               <span className={job.failed_rows > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
                 {job.failed_rows} baris gagal
               </span>
-              <span className="text-muted-foreground">Sumber stok: {job.stock_source}</span>
               {job.started_at ? <span className="text-muted-foreground">Mulai: {job.started_at}</span> : null}
               {job.completed_at ? <span className="text-muted-foreground">Selesai: {job.completed_at}</span> : null}
             </div>
             {active ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Halaman menyegarkan otomatis setiap beberapa detik sampai import selesai.
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon name="spinner" className="size-3.5 animate-spin" aria-hidden="true" />
+                Angka di halaman ini diperbarui otomatis setiap 1 detik sampai import selesai.
               </p>
             ) : null}
           </div>
@@ -224,6 +242,65 @@ export default function ImportShow({ importJob }: { importJob: ImportJobView }) 
                     </tbody>
                   </table>
                 </div>
+              </div>
+            ) : null}
+            {job.imported_products.length > 0 ? (
+              <div className="mt-4 overflow-hidden rounded-lg border border-border">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
+                  <span className="text-xs font-semibold">
+                    Produk yang berhasil diimpor ({job.imported_products.length})
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Klik nama produk untuk membuka halamannya di toko
+                  </span>
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="px-4 py-2 font-medium">Nama Produk</th>
+                      <th className="px-4 py-2 font-medium">SKU</th>
+                      <th className="px-4 py-2 text-right font-medium">Varian</th>
+                      <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 text-right font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {job.imported_products.map((item) => (
+                      <tr key={item.product_id}>
+                        <td className="max-w-80 px-4 py-2">
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                          >
+                            {item.name}
+                          </a>
+                        </td>
+                        <td className="px-4 py-2 font-mono tabular-nums text-muted-foreground">{item.sku}</td>
+                        <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{item.variants}</td>
+                        <td className="px-4 py-2">
+                          <span
+                            className={
+                              item.status === "active"
+                                ? "text-success font-semibold"
+                                : "text-warning font-semibold"
+                            }
+                          >
+                            {item.status === "active" ? "Aktif" : "Arsip"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {item.edit_url ? (
+                            <Button asChild variant="secondary" size="sm">
+                              <a href={item.edit_url}>Edit</a>
+                            </Button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">

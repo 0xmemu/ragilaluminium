@@ -55,6 +55,18 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
 
     protected int $processedCount = 0;
 
+    /**
+     * Penghitung lokal sukses dan gagal.
+     *
+     * WAJIB disimpan lokal lalu dipublikasikan ke cache: selama import berjalan
+     * di dalam satu transaksi, penulisan ke tabel import_jobs BELUM terlihat
+     * oleh request HTTP lain (isolasi MVCC MySQL), sehingga tanpa cache angka
+     * di halaman detail job diam di nol sampai import selesai.
+     */
+    protected int $successCount = 0;
+
+    protected int $failedCount = 0;
+
     /** @var array<int, bool> */
     protected array $processedProductIds = [];
 
@@ -104,12 +116,37 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
                 'processed_at' => now(),
             ]);
             $job->increment('failed_rows');
+            $this->failedCount++;
         }
 
         $this->processedCount++;
-        if ($this->processedCount % 5 === 0) {
-            \Illuminate\Support\Facades\Cache::put("import_progress_{$this->jobId}", $this->processedCount, 600);
-        }
+        $this->publishProgress();
+    }
+
+    /**
+     * Publikasikan penghitung berjalan ke cache supaya halaman detail job bisa
+     * menampilkan progres secara live selama transaksi belum selesai.
+     *
+     * Cache Redis, bukan tabel, karena alasan isolasi transaksi di atas.
+     * TTL 600 detik: cukup untuk import besar, dan otomatis hilang setelahnya.
+     */
+    protected function publishProgress(): void
+    {
+        \Illuminate\Support\Facades\Cache::put(
+            "import_counters_{$this->jobId}",
+            [
+                // Status ikut dipublikasikan: perubahan status job juga
+                // tertahan di dalam transaksi, sehingga tanpa ini halaman
+                // menampilkan Menunggu padahal import sedang berjalan.
+                "status" => "running",
+                "processed_rows" => $this->processedCount,
+                "success_rows" => $this->successCount,
+                "failed_rows" => $this->failedCount,
+                "processed_products" => count($this->processedProductIds),
+            ],
+            600
+        );
+        \Illuminate\Support\Facades\Cache::put("import_progress_{$this->jobId}", $this->processedCount, 600);
     }
 
     /**
@@ -210,15 +247,16 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             "processed_at" => now(),
         ]);
         $job->increment("success_rows");
+        $this->successCount++;
 
-        if (! isset($this->processedProductIds[$product->id])) {
-            $this->processedProductIds[$product->id] = true;
-            \Illuminate\Support\Facades\Cache::put(
-                "import_processed_products_{$this->jobId}",
-                count($this->processedProductIds),
-                600
-            );
-        }
+        // Produk unik dihitung di sini supaya penghitung produk bertambah
+        // bersamaan dengan barisnya, bukan menunggu akhir import.
+        $this->processedProductIds[$product->id] = true;
+        \Illuminate\Support\Facades\Cache::put(
+            "import_processed_products_{$this->jobId}",
+            count($this->processedProductIds),
+            600
+        );
     }
 
     /**

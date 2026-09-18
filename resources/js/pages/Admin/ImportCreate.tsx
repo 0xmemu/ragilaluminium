@@ -3,6 +3,7 @@ import { useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
+import { Icon } from "@/components/shared/icon"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Select } from "@/components/admin/ui/select"
@@ -212,7 +213,14 @@ export default function ImportCreate({
             disabled={!form.data.file || previewing}
             onClick={() => void runPreview()}
           >
-            {previewing ? "Memeriksa..." : "Periksa file"}
+            {previewing ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="spinner" className="size-3.5 animate-spin" aria-hidden="true" />
+                Memeriksa berkas...
+              </span>
+            ) : (
+              "Periksa file"
+            )}
           </Button>
           <Button type="submit" form="import-form" disabled={!form.data.file || !checked || form.processing}>
             {form.processing ? "Mengunggah..." : "Mulai Import"}

@@ -272,20 +272,35 @@ class ImportJobController extends Controller
         $totalProducts = (int) (\Illuminate\Support\Facades\Cache::get("import_total_products_{$import_job->id}")
             ?? $import_job->rows()->whereNotNull('linked_product_id')->distinct('linked_product_id')->count('linked_product_id'));
 
+        // Penghitung berjalan dibaca dari CACHE, bukan dari tabel.
+        //
+        // Alasan: importer bekerja di dalam satu transaksi database, sehingga
+        // penulisan ke tabel import_jobs belum terlihat oleh request HTTP lain
+        // (isolasi MVCC MySQL). Tanpa cache, angka di halaman detail job diam
+        // sampai import selesai, lalu melompat ke nilai akhir.
+        $running = (array) (\Illuminate\Support\Facades\Cache::get("import_counters_{$import_job->id}") ?? []);
+        $berjalan = $import_job->status === 'completed' ? [] : $running;
+
         $processedProducts = $import_job->status === 'completed'
             ? $totalProducts
-            : (int) (\Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}") ?? 0);
+            : (int) ($berjalan['processed_products']
+                ?? \Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}")
+                ?? 0);
 
         $successProducts = $import_job->status === 'completed'
             ? ($totalProducts ?: $import_job->rows()->whereNotNull('linked_product_id')->distinct('linked_product_id')->count('linked_product_id'))
-            : (int) (\Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}") ?? 0);
+            : (int) ($berjalan['processed_products']
+                ?? \Illuminate\Support\Facades\Cache::get("import_processed_products_{$import_job->id}")
+                ?? 0);
 
         return Inertia::render('Admin/ImportShow', [
             'importJob' => [
                 'id' => $import_job->id,
                 'type' => static::typeLabel($import_job->type),
                 'file' => $import_job->source_file_name,
-                'status' => $import_job->status,
+                // Saat import berjalan, status dari tabel masih tertahan di
+                // transaksi; nilai cache dipakai supaya label status ikut hidup.
+                'status' => (string) ($berjalan['status'] ?? $import_job->status),
                 // Import BARU selalu membaca stok dari berkas karena pilihan
                 // mode manual sudah dihapus dari UI. Job LAMA yang terlanjur
                 // memakai mode manual tetap ditampilkan apa adanya supaya
@@ -297,14 +312,23 @@ class ImportJobController extends Controller
                 'processed_products' => $processedProducts,
                 'success_products' => $successProducts,
                 'total_rows' => (int) $import_job->total_rows,
-                'processed_rows' => (static function () use ($import_job): int {
+                'processed_rows' => (static function () use ($import_job, $berjalan): int {
+                    if ($import_job->status === 'completed') {
+                        return (int) $import_job->processed_rows;
+                    }
+                    if (isset($berjalan['processed_rows'])) {
+                        return (int) $berjalan['processed_rows'];
+                    }
                     $cached = \Illuminate\Support\Facades\Cache::get("import_progress_{$import_job->id}");
-                    return ($import_job->status === 'completed' || $cached === null)
-                        ? (int) $import_job->processed_rows
-                        : (int) $cached;
+
+                    return $cached === null ? (int) $import_job->processed_rows : (int) $cached;
                 })(),
-                'success_rows' => (int) $import_job->success_rows,
-                'failed_rows' => (int) $import_job->failed_rows,
+                // Selama import berjalan, tabel belum memperlihatkan angka apa
+                // pun karena transaksi belum commit. Nilai cache dipakai dulu
+                // supaya penghitung sukses dan gagal ikut bergerak bersama
+                // progress bar, bukan baru muncul di akhir.
+                'success_rows' => (int) ($berjalan['success_rows'] ?? $import_job->success_rows),
+                'failed_rows' => (int) ($berjalan['failed_rows'] ?? $import_job->failed_rows),
                 'started_at' => optional($import_job->started_at)?->toDateTimeString(),
                 'completed_at' => optional($import_job->completed_at)?->toDateTimeString(),
                 'error_message' => $import_job->global_error_message,
@@ -316,6 +340,39 @@ class ImportJobController extends Controller
                             ? 'Diarsipkan: '.implode(', ', (array) ($r->raw_data['_activation_reasons'] ?? []))
                             : '-')),
                 ])->values()->all(),
+
+                // Daftar produk yang BERHASIL diimpor, supaya admin bisa
+                // memeriksa hasilnya langsung dari halaman ini tanpa harus
+                // mencari satu per satu di daftar produk.
+                'imported_products' => (static function () use ($import_job): array {
+                    $ids = $import_job->rows()
+                        ->whereNotNull('linked_product_id')
+                        ->distinct()
+                        ->pluck('linked_product_id')
+                        ->unique()
+                        ->values();
+
+                    if ($ids->isEmpty()) {
+                        return [];
+                    }
+
+                    return \App\Models\Product::query()
+                        ->whereIn('id', $ids)
+                        ->withCount('variants')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(static fn ($p): array => [
+                            'product_id' => $p->id,
+                            'name' => (string) $p->name,
+                            'sku' => (string) $p->parent_sku,
+                            'status' => (string) $p->status,
+                            'variants' => (int) ($p->variants_count ?? 0),
+                            'url' => route('product.show', $p->parent_sku, absolute: false),
+                            'edit_url' => route('admin.products.edit', $p),
+                        ])
+                        ->values()
+                        ->all();
+                })(),
 
                 // Produk yang tersimpan sebagai arsip beserta alasan spesifiknya
                 // (kelengkapan bisnis): nama, SKU, baris, dan daftar kekurangan.

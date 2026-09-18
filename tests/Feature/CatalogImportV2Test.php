@@ -341,4 +341,87 @@ class CatalogImportV2Test extends TestCase
         $job = \App\Models\ImportJob::query()->latest("id")->first();
         $this->assertSame(2, (int) $job->total_rows, "total_rows wajib 2, bukan 0");
     }
+
+    /**
+     * Penghitung berjalan WAJIB dipublikasikan ke cache supaya halaman detail
+     * job bisa menampilkan progres live.
+     *
+     * Regresi yang pernah terjadi: importer hanya mengandalkan tabel
+     * import_jobs. Karena import berjalan di dalam satu transaksi database,
+     * penulisan itu belum terlihat oleh request HTTP lain (isolasi MVCC
+     * MySQL), sehingga angka di halaman diam di nol lalu melompat ke nilai
+     * akhir saat import selesai.
+     */
+    public function test_penghitung_berjalan_dipublikasikan_ke_cache(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_1" => "Hitam", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+
+        \Illuminate\Support\Facades\Cache::forget("import_counters_{$job->id}");
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $cache = \Illuminate\Support\Facades\Cache::get("import_counters_{$job->id}");
+        $this->assertIsArray($cache, "penghitung berjalan wajib ada di cache");
+        $this->assertSame(2, (int) $cache["processed_rows"]);
+        $this->assertSame(2, (int) $cache["success_rows"]);
+        $this->assertSame(0, (int) $cache["failed_rows"]);
+        $this->assertSame(1, (int) $cache["processed_products"], "satu produk dari dua baris varian");
+        $this->assertSame("running", $cache["status"], "status ikut dipublikasikan supaya label ikut hidup");
+    }
+
+    /**
+     * Halaman detail job memakai angka cache saat status masih berjalan,
+     * sehingga penghitung sukses ikut bergerak bersama progress bar.
+     */
+    public function test_halaman_detail_memakai_angka_berjalan(): void
+    {
+        $job = $this->job();
+        $job->update(["status" => "running", "total_rows" => 3, "processed_rows" => 0, "success_rows" => 0]);
+
+        \Illuminate\Support\Facades\Cache::put("import_counters_{$job->id}", [
+            "status" => "running",
+            "processed_rows" => 2,
+            "success_rows" => 2,
+            "failed_rows" => 0,
+            "processed_products" => 1,
+        ], 600);
+
+        $res = $this->actingAs($job->triggeredBy)
+            ->get(route("admin.imports.show", $job));
+
+        $res->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component("Admin/ImportShow")
+            ->where("importJob.processed_rows", 2)
+            ->where("importJob.success_rows", 2)
+            ->where("importJob.processed_products", 1)
+        );
+    }
+
+    /**
+     * Halaman detail job memuat daftar produk yang berhasil diimpor.
+     */
+    public function test_halaman_detail_memuat_daftar_produk_berhasil(): void
+    {
+        $rows = [$this->baris([])];
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $job->refresh();
+        $job->update(["status" => "completed"]);
+
+        $res = $this->actingAs($job->triggeredBy)
+            ->get(route("admin.imports.show", $job));
+
+        $res->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component("Admin/ImportShow")
+            ->has("importJob.imported_products", 1)
+            ->where("importJob.imported_products.0.sku", fn ($sku) => is_string($sku) && $sku !== "")
+        );
+    }
 }
