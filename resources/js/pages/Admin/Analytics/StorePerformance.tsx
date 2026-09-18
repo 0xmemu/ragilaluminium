@@ -692,9 +692,6 @@ export default function StorePerformance({
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(report.financial.gross_revenue)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Bersih: {formatCurrency(report.financial.net_revenue)}
-            </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
             <span className="text-xs text-muted-foreground">{compareLabel}</span>
@@ -721,9 +718,6 @@ export default function StorePerformance({
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {formatNumber(kpiMap["units"]?.value ?? 0)} unit terjual
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -805,11 +799,6 @@ export default function StorePerformance({
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground truncate" title={kpiMap["conversion"]?.detail ?? undefined}>
-              {/* Angka pembeli diambil dari detail backend (pembeli unik), bukan jumlah
-                pesanan: satu pelanggan dengan beberapa pesanan tetap dihitung satu orang. */}
-              {kpiMap["conversion"]?.detail ?? ""}
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
