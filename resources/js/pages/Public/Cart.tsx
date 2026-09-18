@@ -301,7 +301,7 @@ export default function Cart({
 
       {showUndoToast && initialUndoCount > 0 ? (
         <div
-          className="pointer-events-none fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast flex flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:top-20 lg:-translate-x-1/2"
+          className="pointer-events-none fixed inset-x-3 top-[var(--toast-top)] z-toast flex flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2"
           role="status"
           aria-live="polite"
           aria-atomic="true"

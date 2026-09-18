@@ -2180,3 +2180,40 @@ Catatan: untuk memicu notifikasi langsung admin saya menyisipkan notifikasi uji 
 duanya sudah dihapus. Jumlah notifikasi kembali 30 dengan id tertinggi 52, nol sisa baris uji.
 
 tsc bersih, eslint berkas yang diubah tanpa error (2 warning lama di Cart), build Vite PASS.
+
+### 2026-09-19 - Toast: posisi diturunkan ke bawah chrome halaman (bukan menimpa navbar)
+Keluhan owner: "sebenarnya penempatannya benar benar kurang pas, dia ada diatas/ tengah tengah antara
+halaman dan navbar".
+
+Diukur di browser sebelum perbaikan, halaman keranjang desktop: header sticky 0 sampai 48px, menu
+navigasi 48 sampai 92px, breadcrumb 100 sampai 144px, sedangkan toast berada di 80 sampai 134px.
+Jadi toast MEMANG menimpa menu navigasi dan breadcrumb, terlihat mengambang di antaranya. Sebelumnya
+posisinya `top-[calc(3rem+0.75rem)]` (60px) dengan `lg:top-20` (80px), hanya mengasumsikan header
+48px dan mengabaikan menu navigasi serta breadcrumb.
+
+Keputusan owner: opsi "tetap atas, turun di bawah breadcrumb".
+
+Perubahan:
+- `resources/css/app.css`: token baru `--toast-top` = 120px (storefront bawah md), 156px sejak
+  min-width 768px, dan 96px di `html.admin-shell`. Nilainya ditulis PIXEL, bukan rem, karena root
+  font-size admin 14px sedangkan storefront 16px; versi rem sempat menghasilkan 84px di admin
+  (seharusnya 96px) dan ketahuan saat verifikasi.
+- Empat pemakai toast memakai `top-[var(--toast-top)]`: flash storefront, toast undo keranjang,
+  flash admin, dan notifikasi langsung admin.
+- Notifikasi langsung admin sebelumnya `top-4` (16px) sehingga menimpa header admin 49px; sekarang
+  ikut variabel dan duduk di 96px.
+- Panduan di frontend/docs/UI-CONSISTENCY-CONTRACT.md diperbarui dengan nilai per konteks dan
+  alasan pemakaian pixel.
+
+Verifikasi terukur (elemen uji dengan kelas `top-[var(--toast-top)]`, dan toast asli pada uji undo):
+- Storefront mobile 390px: header bawah 48px, breadcrumb TIDAK ditampilkan, toast 120px (di bawah
+  header, tidak menimpa apa pun).
+- Storefront desktop 1280px: breadcrumb bawah 144px, toast 156px, jarak 12px, tidak menimpa
+  breadcrumb maupun menu.
+- Admin desktop 1280px: header bawah 49px, breadcrumb bawah 84px, toast 96px, jarak 12px.
+- Toast undo asli terpotret di 156px dengan breadcrumb berakhir 144px, terlihat utuh di bawahnya.
+- tsc bersih, build Vite PASS.
+
+Catatan alat uji: toast yang durasinya 4 detik sering lolos dari penangkapan karena tab browser
+tidak aktif di depan sehingga promise di halaman menggantung. Pengukuran akhir memakai elemen uji
+berkelas sama untuk mendapat nilai pasti, lalu dikonfirmasi sekali dengan toast undo asli.

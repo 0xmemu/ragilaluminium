@@ -43,7 +43,7 @@ function FlashMessagesInner({
 
   return (
     <div
-      className="fixed inset-x-0 top-16 z-toast mx-auto flex w-full max-w-lg flex-col gap-2 px-4"
+      className="fixed inset-x-0 top-[var(--toast-top)] z-toast mx-auto flex w-full max-w-lg flex-col gap-2 px-4"
       aria-live="polite"
       aria-atomic="true"
     >

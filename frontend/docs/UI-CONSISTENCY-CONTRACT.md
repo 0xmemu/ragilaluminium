@@ -97,8 +97,18 @@ Acuan tampilannya notifikasi langsung admin (`live-notification-manager.tsx`).
   `aria-live="polite"` (dan `aria-atomic="true"` bila isinya diganti utuh).
   Toast yang punya tombol aksi seperti "Urungkan" tidak boleh mengandalkan
   penglihatan saja, karena jendelanya pendek.
-- Posisi kanonik: tengah atas, `z-toast` (60). Skala lapisan resmi hanya header
-  30, overlay 40, modal 50, toast 60. Nilai seperti `z-[9999]` dilarang.
+- **Posisi: tengah atas, TURUN SAMPAI DI BAWAH CHROME halaman**, memakai variabel
+  `--toast-top` (didefinisikan di `resources/css/app.css`). Toast tidak boleh
+  menimpa header sticky, menu navigasi, atau breadcrumb. Nilai variabel berbeda
+  per konteks karena tinggi chrome berbeda:
+  - Storefront di bawah 768px (breadcrumb disembunyikan): 120px.
+  - Storefront sejak 768px (header 48 + menu 44 + breadcrumb 44 + jarak 12): 156px.
+  - Panel admin (header 49 + breadcrumb 35 + jarak 12): 96px.
+- Nilai ditulis dalam **PIXEL, bukan rem**: root `font-size` panel admin 14px
+  sedangkan storefront 16px, sehingga `rem` menghasilkan piksel berbeda dan
+  posisi toast meleset 12px di admin.
+- Skala lapisan resmi hanya header 30, overlay 40, modal 50, toast 60. Nilai
+  seperti `z-[9999]` dilarang.
 - Durasi tampil 4 detik untuk pesan hasil aksi. Durasi lain hanya bila ada
   alasan kuat, misalnya jendela undo yang butuh waktu memutuskan.
 - Bentuk: kartu notifikasi boleh punya slot ikon, judul, isi, tautan tindakan,
