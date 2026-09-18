@@ -415,6 +415,14 @@ export function useCheckout({
         const subsidy = number(source.subsidy ?? source.discount) ?? Math.max(0, gross - net)
         const insuranceAmount = number(source.insurance) ?? 0
         const insuranceAvailable = Boolean(source.insurance_available) || insuranceAmount > 0
+        // insurance_selected/insured_value ikut dipetakan: tanpa ini ringkasan
+        // tidak tahu apakah biaya asuransi benar-benar ditagihkan, sehingga
+        // "net" (yang sudah memuat asuransi) tampil tanpa penjelasannya.
+        const insuredValue = number(source.insured_value) ?? 0
+        const insuranceSelected =
+          source.insurance_selected === undefined
+            ? insuranceAmount > 0
+            : Boolean(source.insurance_selected)
         setShippingQuote({
           gross,
           subsidy,
@@ -422,9 +430,11 @@ export function useCheckout({
           applied: Boolean(source.applied),
           status,
           provisional: false,
-          freight: number(source.freight) ?? Math.max(0, gross - insuranceAmount),
+          freight: number(source.freight) ?? undefined,
           insurance: insuranceAmount,
+          insurance_selected: insuranceSelected,
           insurance_available: insuranceAvailable,
+          insured_value: insuredValue,
           message: typeof source.message === "string" ? source.message : null,
           carrier_eta: typeof source.carrier_eta === "string" ? source.carrier_eta : null,
         })

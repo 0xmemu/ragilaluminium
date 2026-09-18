@@ -124,6 +124,7 @@ class CheckoutController extends Controller
                 'gross' => $breakdown['gross'],
                 'subsidy' => $breakdown['subsidy'],
                 'net' => $breakdown['net'],
+                'freight' => (float) ($breakdown['freight'] ?? 0),
                 'applied' => $breakdown['applied'],
                 'state' => $breakdown['state'],
                 'is_final' => $breakdown['is_final'],

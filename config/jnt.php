@@ -93,9 +93,9 @@ return [
     |    (bahan bangunan) / bm000006 (furnitur). Sesuaikan dgn akun.
     */
     'defaults' => [
-        // expressType/goodsType/paymentType/offerFee disamakan dengan contoh
-        // resmi doc agingCost/get (2026-08-21): FTAIR mengembalikan freight 0
-        // untuk akun ini — FT (produk darat) yang valid.
+        // expressType/goodsType/paymentType disamakan dengan contoh resmi doc
+        // agingCost/get (2026-08-21): FTAIR mengembalikan freight 0 untuk akun
+        // ini — FT (produk darat) yang valid.
         'express_type' => env('JNT_EXPRESS_TYPE', 'FT'),
         'order_type' => env('JNT_ORDER_TYPE', '2'),
         'service_type' => env('JNT_SERVICE_TYPE', '01'),
@@ -106,13 +106,20 @@ return [
         // paymentType utk agingCost/get: 1 cash by post, 2 monthly, 3 cod
         'payment_type' => (int) env('JNT_PAYMENT_TYPE', 1),
         'price_currency' => env('JNT_PRICE_CURRENCY', 'IDR'),
-        // Asuransi pengiriman (opsional, pilihan pembeli). `offerFee` yang
-        // dikirim ke J&T = NILAI BARANG yang diasuransikan (dokumen J&T:
-        // 保价金额, satuan IDR), BUKAN angka tetap. BIAYA asuransinya
-        // dihitung J&T dan dibaca apa adanya dari estimateInsuranceCost;
-        // sistem tidak menghitungnya sendiri supaya tidak ada dua rumus
-        // yang bisa berbeda. Angka tetap lama ('200') membuat pertanggungan
-        // hanya Rp 200 sementara pembeli tetap ditagih minimum J&T.
+        // Asuransi pengiriman (opsional, pilihan pembeli). Ada DUA angka
+        // yang berbeda dan tidak boleh dicampur:
+        //
+        //   offerFee              = NILAI BARANG yang diasuransikan
+        //                           (dokumen J&T: 保价金额, IDR). Ini angka
+        //                           milik kami (subtotal keranjang).
+        //   estimateInsuranceCost = BIAYA asuransi. 100% angka J&T, dibaca
+        //                           apa adanya; TIDAK ADA rumus tarif
+        //                           asuransi di sistem ini (tanpa persen,
+        //                           tanpa floor, tanpa nilai tetap).
+        //
+        // Karena itu TIDAK boleh ada config 'insurance_rate', 'insurance_fee',
+        // 'offer_fee', atau sejenisnya. Bila J&T tidak mengirim biayanya,
+        // asuransi cukup tidak ditawarkan (biaya 0) — dilarang dihitung sendiri.
         'insurance_enabled' => (bool) env('JNT_INSURANCE_ENABLED', true),
     ],
 

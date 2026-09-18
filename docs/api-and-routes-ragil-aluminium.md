@@ -59,7 +59,7 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /product/{parent_sku}` -> `ProductController@show`  (name: `product.show`)
 - `POST /product/{product}/engage` -> `ProductEngagementController@store`  (name: `product.engage`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
 - `GET /products` -> `CatalogController@index`  (name: `catalog.index`)  — hub "Semua Model Produk" (kartu kategori x model). Query `sort=latest|oldest` mengubah urutan kartu (default: urutan manual admin `sort_order` CMS); nilai sort lain dialihkan ke `catalog.all`.
-- `GET /products/all` -> `CatalogController@all`  (name: `catalog.all`)
+- `GET /products/all` -> `CatalogController@all`  (name: `catalog.all`)  `sort=popular` mengikuti urutan kurasi admin bila `from=paling-banyak-dipesan` (halaman Lihat Semua carousel Paling Banyak Dipesan); tanpa penanda tetap murni skor penjualan.
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
 - `GET /products/{category}/{model}/{design}` -> `CatalogController@designShow`  (name: `catalog.design`)
@@ -114,6 +114,8 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `PUT /admin/beranda` -> `Admin\BerandaController@update`  (name: `admin.beranda.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/beranda/how-to-order` -> `Admin\BerandaController@editHowToOrder`  (name: `admin.beranda.how-to-order.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/beranda/how-to-order` -> `Admin\BerandaController@updateHowToOrder`  (name: `admin.beranda.how-to-order.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/beranda/paling-banyak-dipesan` -> `Admin\BerandaPopularController@index`  (name: `admin.beranda.popular.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/beranda/paling-banyak-dipesan` -> `Admin\BerandaPopularController@update`  (name: `admin.beranda.popular.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Payload `product_ids[]` = urutan prioritas carousel; 10 produk aktif teratas memperoleh `homepage_popular=true`.
 - `GET /admin/beranda/service-highlights` -> `Admin\BerandaController@editServiceHighlights`  (name: `admin.beranda.service-highlights.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/beranda/service-highlights` -> `Admin\BerandaController@updateServiceHighlights`  (name: `admin.beranda.service-highlights.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/branding` -> `Admin\PageController@updateBranding`  (name: `admin.pages.branding`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -209,12 +211,18 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `GET /admin/pages/create` -> `Admin\PageController@create`  (name: `admin.pages.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/pages/{page}` -> `Admin\PageController@update`  (name: `admin.pages.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/pages/{page}/edit` -> `Admin\PageController@edit`  (name: `admin.pages.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `GET /admin/payments` -> `Admin\PaymentController@index`  (name: `admin.payments.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/payments` -> `Admin\PaymentController@index`  (name: `admin.payments.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Filter: `status`, `method`, `q`, `date_preset` (`today`|`3d`|`7d`|`30d`|`range`), `date_from`, `date_to` (rentang berbasis `created_at`); ringkasan KPI & hitungan tab mengikuti periode terpilih.
 - `PUT /admin/payments/{payment}` -> `Admin\PaymentController@update`  (name: `admin.payments.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kelola/produk` -> `Admin\ProductController@index`  (name: `admin.products.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `POST /admin/kelola/produk` -> `Admin\ProductController@store`  (name: `admin.products.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/kelola/produk` -> `Admin\ProductController@store`  (name: `admin.products.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Payload create menerima `media_asset_ids` (foto katalog) dan `installation_media_asset_ids` (hasil pemasangan, ditempel sebagai media `is_installation`).
 - `GET /admin/kelola/produk/create` -> `Admin\ProductController@create`  (name: `admin.products.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kelola/produk/export` -> `Admin\ProductController@export`  (name: `admin.products.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/kelola/produk/popularity-boosts` -> `Admin\ProductPopularityBoostController@index`  (name: `admin.products.popularity-boosts.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/kelola/produk/popularity-boosts` -> `Admin\ProductPopularityBoostController@store`  (name: `admin.products.popularity-boosts.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/kelola/produk/popularity-boosts/{boost}/disable` -> `Admin\ProductPopularityBoostController@disable`  (name: `admin.products.popularity-boosts.disable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/kelola/produk/popularity-boosts/{boost}/enable` -> `Admin\ProductPopularityBoostController@enable`  (name: `admin.products.popularity-boosts.enable`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/kelola/produk/popularity-boosts/{boost}` -> `Admin\ProductPopularityBoostController@update`  (name: `admin.products.popularity-boosts.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `DELETE /admin/kelola/produk/popularity-boosts/{boost}` -> `Admin\ProductPopularityBoostController@destroy`  (name: `admin.products.popularity-boosts.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kelola/produk/{product}` -> `Admin\ProductController@show`  (name: `admin.products.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/kelola/produk/{product}` -> `Admin\ProductController@update`  (name: `admin.products.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/produk/{product}/archive` -> `Admin\ProductController@archive`  (name: `admin.products.archive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -222,11 +230,11 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `POST /admin/kelola/produk/{product}/attributes` -> `Admin\ProductAttributeController@store`  (name: `admin.products.attributes.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/produk/{product}/duplicate` -> `Admin\ProductController@duplicate`  (name: `admin.products.duplicate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kelola/produk/{product}/edit` -> `Admin\ProductController@edit`  (name: `admin.products.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `GET /admin/kelola/produk/{product}/media` -> `Admin\ProductMediaController@byProduct`  (name: `admin.products.media.byProduct`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/kelola/produk/{product}/media` -> `Admin\ProductMediaController@byProduct`  (name: `admin.products.media.byProduct`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Redirect permanen ke `admin.products.edit` tab `media` (halaman media khusus dihapus, redundan).
 - `POST /admin/kelola/produk/{product}/media` -> `Admin\ProductMediaController@store`  (name: `admin.products.media.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/produk/{product}/publish` -> `Admin\ProductController@publish`  (name: `admin.products.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/produk/{product}/unarchive` -> `Admin\ProductController@unarchive`  (name: `admin.products.unarchive`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `GET /admin/kelola/produk/{product}/variants` -> `Admin\ProductVariantController@index`  (name: `admin.products.variants.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/kelola/produk/{product}/variants` -> `Admin\ProductVariantController@index`  (name: `admin.products.variants.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Redirect permanen ke `admin.products.edit` tab `varian` (halaman varian khusus dihapus, redundan).
 - `POST /admin/kelola/produk/{product}/variants` -> `Admin\ProductVariantController@store`  (name: `admin.products.variants.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/produk/{product}/variants/bulk` -> `Admin\ProductVariantController@bulkStore`  (name: `admin.products.variants.bulk`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/profile` -> `Admin\ProfileController@edit`  (name: `admin.profile.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -236,6 +244,8 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `GET /admin/promotions/create` -> `Admin\PromotionController@create`  (name: `admin.promotions.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/promotions/{promotion}` -> `Admin\PromotionController@update`  (name: `admin.promotions.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/activate` -> `Admin\PromotionController@activate`  (name: `admin.promotions.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/promotions/{promotion}` -> `Admin\PromotionController@show`  (name: `admin.promotions.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+  Query `range` = `campaign` (default, periode kampanye) | `all` (semua waktu). Payload `report` memuat totalling penjualan + baris produk terjual.
 - `GET /admin/promotions/{promotion}/edit` -> `Admin\PromotionController@edit`  (name: `admin.promotions.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/end` -> `Admin\PromotionController@end`  (name: `admin.promotions.end`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/promotions/{promotion}/impact` -> `Admin\PromotionController@impact`  (name: `admin.promotions.impact`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -245,6 +255,8 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 
 - `GET /admin/shipping` -> `Admin\ShippingRecordController@index`  (name: `admin.shipping.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@edit`  (name: `admin.shipping-subsidy.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/cta-storefront` -> `Admin\CtaSettingsController@edit`  (name: `admin.cta-settings.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `PUT /admin/cta-storefront` -> `Admin\CtaSettingsController@update`  (name: `admin.cta-settings.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Payload `enabled` + `blocks[]{key,eyebrow,heading}`; teks CTA penutup storefront (dibagikan ke publik sebagai shared prop `ctaSettings`).
 - `PUT /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@update`  (name: `admin.shipping-subsidy.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/shipping/{shipping_record}/refresh` -> `Admin\ShippingRecordController@refreshStatus`  (name: `admin.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/shipping/{shipping}` -> `Admin\ShippingRecordController@show`  (name: `admin.shipping.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -356,3 +368,18 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 
 > Shipping package contract: checkout and order creation use `ShipmentPackageCalculator` with divisor 5000. Orders snapshot `shipping_chargeable_weight_kg` and `shipping_package_snapshot`; `agingCost/get` receives the snapshot chargeable weight because direct dimensional quote remains permission-gated.
+
+### Insurance contract (keputusan owner 2026-09-18)
+
+Dua angka asuransi yang berbeda dan tidak boleh dicampur:
+
+- `offerFee` yang dikirim ke `agingCost/get` = NILAI BARANG yang diasuransikan (dokumen J&T: 保价金额, IDR), diambil dari subtotal keranjang. Ini angka milik kami.
+- `estimateInsuranceCost` yang dibaca dari respons J&T = BIAYA asuransi. 100 persen angka J&T, dibaca apa adanya.
+
+DILARANG ada rumus tarif asuransi di sistem ini: tanpa persen, tanpa floor, tanpa nilai tetap, dan tanpa config `insurance_rate` / `insurance_fee` / `offer_fee`. Bila J&T tidak mengirim biayanya, asuransi cukup tidak ditawarkan (biaya 0), bukan dihitung sendiri.
+
+Payload quote memisahkan ongkir dan asuransi: `freight` = tarif J&T tanpa asuransi, `insurance` = biaya asuransi, `insurance_charged` = yang benar-benar ditagihkan (0 bila pembeli tidak memilih), `net_ongkir` = ongkir setelah subsidi tanpa asuransi, `net` = `net_ongkir` + `insurance_charged`.
+
+Tampilan checkout memakai keputusan owner 2026-09-18: label "Tarif J&T" menampilkan total J&T, yaitu tarif SUDAH TERMASUK asuransi bila pembeli memilihnya, sehingga `tarif - subsidi = ongkir dibayar pelanggan` bisa dijumlahkan pembeli tanpa angka dobel. Biaya asuransi karena itu tidak ditampilkan sebagai baris terpisah.
+
+Asuransi saling meniadakan di laba bersih: ditambahkan ke total pembeli, lalu dikurangi lagi sebagai potongan J&T. Perbaikan yang menyentuh hanya satu sisi membuat laba bersih salah.
