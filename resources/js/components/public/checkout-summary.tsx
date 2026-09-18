@@ -190,7 +190,7 @@ export function CheckoutSummary({
   }, [eta, effectiveShipping])
 
   return (
-    <aside className="surface-panel min-w-0 p-4 sm:p-5 lg:sticky lg:top-28">
+    <aside className="surface-panel min-w-0 p-4 sm:p-5 lg:sticky lg:top-28 lg:max-h-[calc(100vh_-_8rem)] lg:overflow-y-auto lg:overscroll-contain">
       <h2 className="text-sm sm:text-base font-bold text-foreground">Ringkasan Pesanan</h2>
       <ul className="mt-3 divide-y divide-border border-y border-border">
         {items.map((item) => {
