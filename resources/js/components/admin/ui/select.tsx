@@ -29,6 +29,9 @@ interface OptionItem {
 
 const SEARCH_THRESHOLD = 7
 
+/** Ruang teks di dalam tombol trigger: pl-3 (12px) + pr-8 (32px). */
+const BUTTON_TEXT_INSET = 44
+
 function collectOptions(children: React.ReactNode): OptionItem[] {
   const options: OptionItem[] = []
   React.Children.forEach(children, (child) => {
@@ -48,8 +51,17 @@ function collectOptions(children: React.ReactNode): OptionItem[] {
   return options
 }
 
-const Select = React.forwardRef<HTMLButtonElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, children, value, onChange, name, id, disabled, ...props }, ref) => {
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  /**
+   * Lebarkan kontrol mengikuti label terpanjang supaya lebarnya tidak berubah
+   * saat pilihan berganti dan label di popup tidak terpotong.
+   * Opt-in karena select yang memakai flex-1 justru harus mengisi ruang induk.
+   */
+  matchOptionWidth?: boolean
+}
+
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
+  ({ className, children, value, onChange, name, id, disabled, matchOptionWidth = false, ...props }, ref) => {
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement>(null)
     const triggerRef = React.useRef<HTMLButtonElement | null>(null)
@@ -68,6 +80,33 @@ const Select = React.forwardRef<HTMLButtonElement, React.SelectHTMLAttributes<HT
     })
     const options = collectOptions(children)
     const showSearch = options.length > SEARCH_THRESHOLD
+
+    // Lebar teks label diukur lewat elemen tak terlihat dengan font yang sama,
+    // lalu dipakai sebagai min-width. min-width dipilih (bukan width) supaya
+    // kontrol tetap boleh lebih lebar bila induknya memaksa, namun tidak pernah
+    // menyusut di bawah label terpanjang.
+    const sizerRef = React.useRef<HTMLDivElement>(null)
+    const [longestLabelWidth, setLongestLabelWidth] = React.useState<number | null>(null)
+    // Kunci stabil: children baru setiap render, teks label tidak.
+    const labelKey = options.map((option) => option.label).join("|")
+
+    React.useLayoutEffect(() => {
+      if (!matchOptionWidth) return
+      const measure = () => {
+        const sizer = sizerRef.current
+        if (!sizer) return
+        const widest = Array.from(sizer.children).reduce<number>(
+          (max, child) => Math.max(max, child.getBoundingClientRect().width),
+          0,
+        )
+        setLongestLabelWidth(widest > 0 ? Math.ceil(widest) : null)
+      }
+
+      measure()
+      // Web font bisa mengubah metrik teks setelah render pertama, jadi ukur
+      // ulang saat font selesai dimuat supaya lebar tidak terkunci terlalu kecil.
+      document.fonts?.ready.then(measure).catch(() => {})
+    }, [matchOptionWidth, labelKey])
 
     const selected = options.find((option) => option.value === String(value ?? ""))
     const selectedLabel = selected?.label ?? options.find((option) => option.value === "")?.label ?? "Pilih..."
@@ -166,6 +205,8 @@ const Select = React.forwardRef<HTMLButtonElement, React.SelectHTMLAttributes<HT
             "flex h-9 min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-surface py-2 pl-3 pr-8 text-left text-sm text-foreground transition duration-150 ease-standard hover:border-foreground/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70",
             className,
           )}
+          // pl-3 + pr-8 = 44px ruang teks di dalam tombol.
+          style={longestLabelWidth !== null ? { minWidth: longestLabelWidth + BUTTON_TEXT_INSET } : undefined}
         >
           <span className={cn("min-w-0 truncate", !selected && !options.some((option) => option.value === "") && "text-muted-foreground")}>
             {selectedLabel}
@@ -180,6 +221,20 @@ const Select = React.forwardRef<HTMLButtonElement, React.SelectHTMLAttributes<HT
           weight="bold"
           aria-hidden="true"
         />
+
+        {matchOptionWidth ? (
+          <div
+            ref={sizerRef}
+            aria-hidden="true"
+            className="pointer-events-none invisible absolute left-0 top-0 h-0 w-0 overflow-hidden whitespace-nowrap text-sm"
+          >
+            {options.map((option) => (
+              <span key={option.value || "__empty__"} className="inline-block">
+                {option.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         {open ? createPortal(
           <div ref={popoverRef} style={popoverStyle}

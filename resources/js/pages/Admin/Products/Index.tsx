@@ -359,6 +359,7 @@ export default function ProductsIndex({
             value={activeSort}
             onChange={(event) => visit({ sort: event.target.value })}
             className="w-auto"
+            matchOptionWidth
             aria-label="Urutan daftar produk"
           >
             {filterOptions.sorts.map((option) => (
