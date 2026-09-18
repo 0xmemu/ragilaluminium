@@ -200,36 +200,41 @@ export function CheckoutSummary({
 
           return (
             <li key={item.line_id} className="py-2.5 text-xs">
-              {/* Nama produk membentang penuh selebar panel: harga tidak lagi
-                  berebut lebar di sisi kanan, sehingga nama panjang tidak
-                  terpotong menjadi banyak baris. */}
-              <p className="font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
-                {item.name}
-              </p>
-              {/* Jumlah dan varian dalam SATU baris. */}
-              <p className="tabular-nums mt-1 truncate text-[11px] text-muted-foreground">
-                <span>{item.quantity} unit</span>
-                {variantText ? <span> · {variantText}</span> : null}
-              </p>
-              {/* Harga di bawah nama produk, rata kanan mengikuti tepi angka
-                  pada rincian biaya di bawahnya: harga jual di atas, harga
-                  sebelum diskon dicoret di bawahnya bersama persen diskon. */}
-              <div className="mt-1 space-y-0.5 text-right">
-                <span className="tabular-nums block font-bold text-foreground">
-                  {formatCurrency(lineTotal)}
-                </span>
-                {hasLineDiscount && lineCompare != null ? (
-                  <span className="flex items-baseline justify-end gap-1.5">
-                    {discountPercent ? (
-                      <span className="text-[11px] font-semibold text-sale">
-                        {discountPercent}%
-                      </span>
-                    ) : null}
-                    <span className="tabular-nums text-[11px] text-muted-foreground line-through">
-                      {formatCurrency(lineCompare)}
-                    </span>
+              {/* Dua blok: kiri identitas produk, kanan rincian harga.
+                  Di layar sempit keduanya bertumpuk dan rata KIRI, sesuai
+                  perilaku baca mobile. Dari breakpoint sm ke atas keduanya
+                  berdampingan dengan harga rata kanan, mengikuti tepi angka
+                  pada rincian biaya di bawahnya. */}
+              <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[13px] font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
+                    {item.name}
+                  </p>
+                  {/* Tanpa truncate: panel ringkasan hanya selebar 247px,
+                      sehingga memotong teks akan menyembunyikan nama varian
+                      yang justru dipilih pembeli. */}
+                  <p className="tabular-nums text-[11px] text-muted-foreground">
+                    <span>{item.quantity} unit</span>
+                    {variantText ? <span> · {variantText}</span> : null}
+                  </p>
+                </div>
+                <div className="shrink-0 space-y-0.5 sm:text-right">
+                  <span className="tabular-nums block font-bold text-foreground">
+                    {formatCurrency(lineTotal)}
                   </span>
-                ) : null}
+                  {hasLineDiscount && lineCompare != null ? (
+                    <span className="flex items-baseline gap-1.5 sm:justify-end">
+                      {discountPercent ? (
+                        <span className="text-[11px] font-semibold text-sale">
+                          {discountPercent}%
+                        </span>
+                      ) : null}
+                      <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                        {formatCurrency(lineCompare)}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </li>
           )

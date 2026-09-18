@@ -151,8 +151,18 @@ function CheckoutItemNoteRow({
             </p>
           </div>
 
-          <div className="shrink-0 space-y-0.5 text-right">
-            <span className="flex items-center justify-end gap-1.5">
+          {/* Rincian harga: rata KIRI di layar sempit, rata kanan dari
+              breakpoint sm ke atas. Urutannya harga yang dibayar lebih dulu,
+              lalu persen diskon dan harga normal yang dicoret, sama seperti
+              blok harga pada ringkasan pesanan. */}
+          <div className="shrink-0 space-y-0.5 sm:text-right">
+            {/* Harga produk memakai warna teks utama, bukan merah: merah
+                disisakan untuk penanda potongan, selaras dengan Total
+                Pembayaran. */}
+            <span className="tabular-nums block text-xs font-bold text-foreground sm:text-sm">
+              {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
+            </span>
+            <span className="flex items-center gap-1.5 sm:justify-end">
               {discountPercent ? (
                 <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
                   {discountPercent}%
@@ -163,12 +173,6 @@ function CheckoutItemNoteRow({
                   {formatCurrency(compareTotal)}
                 </span>
               ) : null}
-            </span>
-            {/* Harga produk memakai warna teks utama, bukan merah: merah
-                disisakan untuk penanda potongan, selaras dengan Total
-                Pembayaran. */}
-            <span className="tabular-nums block text-xs font-bold text-foreground sm:text-sm">
-              {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
             </span>
             {lineDiscount > 0 ? (
               <span className="tabular-nums block text-[11px] text-sale">
