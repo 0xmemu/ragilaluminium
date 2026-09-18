@@ -981,21 +981,32 @@ export default function StorePerformance({
                 </div>
               </div>
 
-              {/* Box 2: Transfer Menunggu Bukti / Verifikasi */}
-              <div className="rounded-md border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
+              {/* Dua yang masih tertahan: transfer menunggu verifikasi admin,
+                  COD menunggu barang sampai. Keduanya kondisi saat ini, bukan
+                  tren periode, jadi tanpa badge pembanding. */}
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="rounded-md border border-border bg-card p-2.5">
                   <HoverHint
-                    label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Pending"}
-                    hint="Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin."
-                    className="text-xs font-semibold text-foreground"
+                    label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Transfer Pending"}
+                    hint="Pesanan metode transfer yang belum lunas dan masih menunggu verifikasi admin."
+                    className="text-xs text-muted-foreground"
                   />
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Pending</span>
+                  <p className="mt-1 font-bold tabular-nums text-foreground">
+                    {formatNumber(report.financial.payment_pending_count ?? 0)}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+                  </p>
                 </div>
-                <p className="mt-1 text-base font-bold tabular-nums text-foreground">
-                  {formatNumber(report.financial.payment_pending_count ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
-                </p>
-                <div className="mt-1">
-                  <DeltaBadge percent={kpiMap["payment_pending_count"]?.change_percent} upIsBad />
+
+                <div className="rounded-md border border-border bg-card p-2.5">
+                  <HoverHint
+                    label="COD Belum Selesai"
+                    hint="Pesanan COD yang masih berjalan dan uangnya belum masuk, karena baru cair setelah barang diterima pembeli."
+                    className="text-xs text-muted-foreground"
+                  />
+                  <p className="mt-1 font-bold tabular-nums text-foreground">
+                    {formatNumber(report.financial.cod_pending_count ?? 0)}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+                  </p>
                 </div>
               </div>
             </div>
