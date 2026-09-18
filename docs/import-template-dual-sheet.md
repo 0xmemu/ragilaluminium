@@ -35,7 +35,11 @@ Sheet 1 "Data" (diproses importer) - 1 baris = 1 KOMBINASI varian jadi:
 
 - Identitas produk: name, description, product_category, product_model,
   design_variant, specifications. Cukup di baris pertama produk; baris
-  lanjutan diwarisi.
+  lanjutan diwarisi. Format specifications: "Nama: Nilai" dipisah koma,
+  contoh "Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch". Titik koma dan
+  baris baru juga diterima. Koma di dalam nilai aman (koma hanya memulai
+  spesifikasi baru bila diikuti "Nama: Nilai"), mis. "Finishing: Powder
+  coating (pilihan: hitam, putih, cokelat)".
 - Definisi varian (sekali di baris pertama produk): variation_1_name +
   variation_1_option_1..4, variation_2_name + variation_2_option_1..4.
   Tambah pilihan = copy kolom (option_5, option_6, dst). Maks 5 varian name.

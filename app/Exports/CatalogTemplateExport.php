@@ -22,7 +22,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * Pola kolom (default 2 varian name, masing-masing 4 option):
  *   - Identitas produk: name, description, product_category, product_model,
  *     design_variant, specifications (cukup di baris pertama produk; baris
- *     lanjutan diwarisi).
+ *     lanjutan diwarisi). Format specifications: "Nama: Nilai" dipisah koma,
+ *     contoh: "Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch".
  *   - Definisi varian: variation_1_name + variation_1_option_1..4,
  *     variation_2_name + variation_2_option_1..4 (tambah varian = copy kolom).
  *   - Per kombinasi: variantion_combination (daftar opsi dipilih, urut sesuai
@@ -208,7 +209,7 @@ class CatalogExampleSheet implements FromArray, WithTitle, WithEvents
                 $row[$at('height_cm')] = '100';
                 $row[$at('width_cm')] = '200';
                 $row[$at('depth_cm')] = '20';
-                $row[$at('specifications')] = 'Bahan: Aluminium\nKusen: 3 inch';
+                $row[$at('specifications')] = 'Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch';
                 $row[$at('image_1')] = 'https://media.333labs.tech/.../jendela-depan.webp';
                 $row[$at('image_variation_1_option_1')] = 'https://media.333labs.tech/.../warna-putih.webp';
                 $row[$at('image_variation_1_option_2')] = 'https://media.333labs.tech/.../warna-hitam.webp';
@@ -290,7 +291,7 @@ class CatalogGuideSheet implements FromArray, WithTitle, WithEvents
             ['price_variantion_combination', 'WAJIB', 'Harga kombinasi ini (angka polos, tanpa titik ribuan).'],
             ['stock', 'OPTIONAL', 'Stok kombinasi ini. Kosong = pakai mode stok yang dipilih saat upload (file atau manual).'],
             ['weight_kg, height_cm, width_cm, depth_cm', 'WAJIB', 'Berat & dimensi packing: height_cm = TINGGI, width_cm = PANJANG, depth_cm = LEBAR (sama dengan form admin Produk; nama kolom mengikuti sistem). Angka > 0.'],
-            ['specifications', 'OPSIONAL', 'Spesifikasi produk milik PRODUK (bukan per kombinasi). Format: Nama: Nilai, pisahkan titik koma. Nilai di baris mana pun dalam grup akan tersimpan SEKALI untuk produk, tidak berulang. Kosong = sistem mengisi dari template spesifikasi per sub model. Admin bisa menambah spesifikasi lain kapan pun dari form edit produk.'],
+            ['specifications', 'OPSIONAL', 'Spesifikasi produk milik PRODUK (bukan per kombinasi). Format: Nama: Nilai, antar spesifikasi dipisah KOMA. Contoh: Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch. Titik koma dan baris baru juga diterima. Koma di dalam nilai aman ditulis apa adanya (mis. "Finishing: Powder coating (pilihan: hitam, putih, cokelat)") karena koma hanya memulai spesifikasi baru bila diikuti "Nama: Nilai". Nilai di baris mana pun dalam grup akan tersimpan SEKALI untuk produk, tidak berulang. Kosong = sistem mengisi dari template spesifikasi per sub model. Admin bisa menambah spesifikasi lain kapan pun dari form edit produk.'],
             ['image_1, image_2', 'OPTIONAL', 'Foto katalog umum produk (bukan per varian). Foto utama = image_1.'],
             ['image_variation_1_option_1..4', 'OPTIONAL', 'Foto per pilihan varian pertama: option_1 = Putih, beri foto putih di sini. Foto ini dipakai semua kombinasi yang memakai pilihan itu. Cukup isi sekali di baris pertama produk.'],
             ['image_variation_2_option_1..4', 'OPTIONAL', 'Sama, untuk varian kedua.'],
