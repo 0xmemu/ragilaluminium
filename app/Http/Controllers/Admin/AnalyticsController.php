@@ -222,18 +222,17 @@ class AnalyticsController extends Controller
         $fromDate = $payload['range']['from_date_iso'] ?? $from;
         $toDate = $payload['range']['to_date_iso'] ?? $to;
 
-        $spanDays = 1;
-        if ($fromDate && $toDate) {
-            try {
-                $spanDays = $this->performance->spanDays(
-                    \Carbon\Carbon::parse($fromDate),
-                    \Carbon\Carbon::parse($toDate),
-                );
-            } catch (\Throwable $e) {
-                $spanDays = 1;
-            }
+        if (! $fromDate || ! $toDate) {
+            return $this->performance->granularityOptions(now()->startOfDay(), now()->endOfDay());
         }
 
-        return $this->performance->granularityOptionsForSpan($spanDays);
+        try {
+            return $this->performance->granularityOptions(
+                \Carbon\Carbon::parse($fromDate)->startOfDay(),
+                \Carbon\Carbon::parse($toDate)->endOfDay(),
+            );
+        } catch (\Throwable $e) {
+            return $this->performance->granularityOptions(now()->startOfDay(), now()->endOfDay());
+        }
     }
 }

@@ -152,10 +152,8 @@ class StorePerformanceTest extends TestCase
 
     /**
      * Regresi 2026-09-18: granularitas otomatis grafik dan isi dropdown
-     * granularitas wajib berasal dari band rentang yang sama. Sebelumnya
-     * periode "Semua" dipaksa Per Bulan tanpa melihat rentang, sehingga pada
-     * data 40 hari grafik hanya berisi 2 titik sementara dropdown menawarkan
-     * Per Hari (nilai aktif tidak ada di daftar pilihan).
+     * granularitas wajib berasal dari sumber yang sama, sehingga nilai aktif
+     * selalu ada di daftar pilihan.
      */
     public function test_granularitas_otomatis_selalu_ada_di_daftar_pilihan(): void
     {
@@ -164,7 +162,7 @@ class StorePerformanceTest extends TestCase
         foreach (['today', 'yesterday', 'last_7', 'last_30', 'this_month', 'this_year', 'all'] as $period) {
             $range = $service->resolveRange(period: $period);
             $values = array_column(
-                $service->granularityOptionsForSpan($service->spanDays($range['from'], $range['to'])),
+                $service->granularityOptions($range['from'], $range['to']),
                 'value',
             );
 
@@ -176,21 +174,82 @@ class StorePerformanceTest extends TestCase
         }
     }
 
-    /** Rentang pendek, sedang, dan panjang tidak pernah menawarkan skala yang menghasilkan 1 titik. */
-    public function test_bucket_series_tidak_pernah_kosong_untuk_granularitas_terpilih(): void
+    /**
+     * Regresi 2026-09-18 (owner): Per Bulan harus tersedia untuk periode Semua,
+     * Tahunan, dan rentang kustom yang panjang. Sebelumnya aturan band hanya
+     * melihat panjang rentang, sehingga rentang 30 sampai 45 hari tidak pernah
+     * menawarkan Per Bulan walau grafiknya tetap terbentuk dari 2 bulan.
+     */
+    public function test_rentang_panjang_dan_periode_semua_menawarkan_per_bulan(): void
     {
         $service = app(StorePerformanceService::class);
-        $now = now();
 
-        foreach ([[1, 'hour'], [7, 'day'], [30, 'day'], [30, 'week'], [261, 'month'], [261, 'week']] as [$days, $granularity]) {
-            $from = $now->copy()->subDays($days - 1)->startOfDay();
-            $to = $now->copy()->endOfDay();
-            $series = $service->series($from, $to, $granularity, 'visitors');
+        $ranges = [
+            'rentang 40 hari' => ['2026-01-01', '2026-02-09'],
+            'rentang 180 hari' => ['2026-01-01', '2026-06-29'],
+            'rentang 400 hari' => ['2026-01-01', '2027-02-04'],
+            'rentang 800 hari' => ['2026-01-01', '2028-03-10'],
+        ];
 
-            $this->assertNotEmpty(
-                $series,
-                "Seri {$granularity} untuk rentang {$days} hari kosong.",
+        foreach ($ranges as $label => $dates) {
+            $values = array_column(
+                $service->granularityOptions(
+                    \Carbon\Carbon::parse($dates[0])->startOfDay(),
+                    \Carbon\Carbon::parse($dates[1])->endOfDay(),
+                ),
+                'value',
             );
+
+            $this->assertContains('month', $values, "Per Bulan seharusnya tersedia untuk {$label}.");
+        }
+    }
+
+    /** Rentang yang seluruhnya jatuh dalam satu bulan tidak menawarkan Per Bulan. */
+    public function test_rentang_dalam_satu_bulan_tidak_menawarkan_per_bulan(): void
+    {
+        $service = app(StorePerformanceService::class);
+
+        $values = array_column(
+            $service->granularityOptions(
+                \Carbon\Carbon::parse('2026-01-05')->startOfDay(),
+                \Carbon\Carbon::parse('2026-01-25')->endOfDay(),
+            ),
+            'value',
+        );
+
+        $this->assertNotContains('month', $values);
+        $this->assertContains('day', $values);
+    }
+
+    /**
+     * Tiap skala yang ditawarkan wajib benar-benar menggambar garis, minimal
+     * dua titik. Ini yang menjaga dropdown dan grafik tidak pernah berbeda.
+     */
+    public function test_setiap_skala_yang_ditawarkan_menggambar_minimal_dua_titik(): void
+    {
+        $service = app(StorePerformanceService::class);
+
+        $ranges = [
+            ['2026-01-01', '2026-01-01'],
+            ['2026-01-01', '2026-01-07'],
+            ['2026-01-01', '2026-02-09'],
+            ['2026-01-01', '2026-06-29'],
+            ['2026-01-01', '2028-03-10'],
+        ];
+
+        foreach ($ranges as $dates) {
+            $from = \Carbon\Carbon::parse($dates[0])->startOfDay();
+            $to = \Carbon\Carbon::parse($dates[1])->endOfDay();
+
+            foreach ($service->granularityOptions($from, $to) as $option) {
+                $series = $service->series($from, $to, $option['value'], 'visitors');
+
+                $this->assertGreaterThanOrEqual(
+                    2,
+                    count($series),
+                    "Skala {$option['value']} untuk ".$from->toDateString().' s/d '.$to->toDateString().' menghasilkan kurang dari 2 titik.',
+                );
+            }
         }
     }
 }

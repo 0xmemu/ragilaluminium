@@ -132,12 +132,9 @@ class StorePerformanceService
             $previousFrom = $previousTo->copy()->subSeconds($fullSeconds - 1);
         }
 
-        // Granularitas otomatis WAJIB diambil dari daftar band yang sama dengan
-        // yang ditawarkan ke UI (granularityOptionsForSpan). Sebelumnya 'all'
-        // dipaksa 'month' tanpa melihat rentang, sehingga pada data 40 hari
-        // grafik hanya berisi 2 titik sementara dropdown menawarkan Per Hari.
-        $spanDays = $this->spanDays($start, $end);
-        $autoGranularity = $this->granularityOptionsForSpan($spanDays)[0]['value'];
+        // Granularitas otomatis diambil dari daftar opsi yang sama dengan yang
+        // ditawarkan ke UI, sehingga nilai aktif selalu ada di pilihan.
+        $autoGranularity = $this->defaultGranularity($start, $end);
 
         $granularity = in_array($granularity, ['hour', 'day', 'week', 'month', 'year'], true)
             ? $granularity
@@ -161,43 +158,90 @@ class StorePerformanceService
         return max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1);
     }
 
+    /** Urutan skala dari paling rinci ke paling kasar. */
+    public const GRANULARITY_ORDER = ['hour', 'day', 'week', 'month', 'year'];
+
     /**
-     * Opsi granularitas tren untuk sebuah rentang hari, urut dengan opsi
-     * default lebih dulu. Ini satu-satunya sumber kebenaran: resolveRange
-     * memakai opsi pertama sebagai granularitas otomatis dan controller
-     * memakai seluruh daftar sebagai isi dropdown, sehingga nilai yang aktif
-     * tidak mungkin absen dari pilihan yang ditampilkan.
+     * Skala tren yang benar-benar berguna untuk rentang nyata, dari paling
+     * rinci ke paling kasar.
+     *
+     * Satu skala hanya ditawarkan bila jumlah titiknya masuk akal: minimal 2
+     * titik supaya garisnya terbentuk, dan maksimal agar grafik tidak menjadi
+     * kabut titik. Batas minimal juga melihat panjang rentang, bukan hanya
+     * jumlah titik, karena minggu kalender bisa menghasilkan 2 titik pada
+     * rentang 7 hari dan itu tidak berarti apa pun.
+     *
+     * Dihitung dari emptyBuckets() sehingga jumlah titik yang dipakai di sini
+     * persis sama dengan yang digambar grafik.
      *
      * @return array<int, array{value: string, label: string}>
      */
-    public function granularityOptionsForSpan(int $spanDays): array
+    public function granularityOptions(Carbon $from, Carbon $to): array
     {
-        return match (true) {
-            // 1-2 hari (Hari ini / Kemarin): murni per jam, 24-48 titik.
-            $spanDays <= 2 => [
-                ['value' => 'hour', 'label' => 'Per Jam'],
-            ],
-            // 3-10 hari (7 Hari): per hari, 3-10 titik.
-            $spanDays <= 10 => [
-                ['value' => 'day', 'label' => 'Per Hari'],
-            ],
-            // 11-45 hari (Bulan ini / 30 Hari): per hari atau ringkasan mingguan.
-            // Per Bulan tidak ditawarkan karena hanya menghasilkan 1-2 titik.
-            $spanDays <= 45 => [
-                ['value' => 'day', 'label' => 'Per Hari'],
-                ['value' => 'week', 'label' => 'Per Minggu'],
-            ],
-            // 46-366 hari (Tahun ini): per bulan (maks 12 titik) atau per minggu.
-            $spanDays <= 366 => [
-                ['value' => 'month', 'label' => 'Per Bulan'],
-                ['value' => 'week', 'label' => 'Per Minggu'],
-            ],
-            // Lebih dari setahun: per bulan atau per tahun kalender.
-            default => [
-                ['value' => 'month', 'label' => 'Per Bulan'],
-                ['value' => 'year', 'label' => 'Per Tahun'],
-            ],
+        $labels = [
+            'hour' => 'Per Jam',
+            'day' => 'Per Hari',
+            'week' => 'Per Minggu',
+            'month' => 'Per Bulan',
+            'year' => 'Per Tahun',
+        ];
+        $maxBuckets = ['hour' => 72, 'day' => 90, 'week' => 60, 'month' => 36, 'year' => PHP_INT_MAX];
+        $minSpanDays = ['hour' => 1, 'day' => 1, 'week' => 14, 'month' => 28, 'year' => 1];
+        $spanDays = $this->spanDays($from, $to);
+
+        $options = [];
+        foreach (self::GRANULARITY_ORDER as $value) {
+            if ($spanDays < $minSpanDays[$value]) {
+                continue;
+            }
+
+            $count = count($this->emptyBuckets($from, $to, $value));
+            if ($count < 2 || $count > $maxBuckets[$value]) {
+                continue;
+            }
+
+            $options[] = ['value' => $value, 'label' => $labels[$value]];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Skala terbaik untuk rentang ini, dijamin ada di granularityOptions().
+     * Bila pilihan terbaik tidak layak (mis. rentang 40 hari untuk Per Bulan),
+     * dipakai skala terdekat yang tersedia.
+     */
+    public function defaultGranularity(Carbon $from, Carbon $to): string
+    {
+        $spanDays = $this->spanDays($from, $to);
+
+        $preferred = match (true) {
+            $spanDays <= 2 => 'hour',
+            $spanDays > 90 => 'month',
+            $spanDays > 45 => 'week',
+            default => 'day',
         };
+
+        $values = array_column($this->granularityOptions($from, $to), 'value');
+        if ($values === []) {
+            return $preferred;
+        }
+
+        if (in_array($preferred, $values, true)) {
+            return $preferred;
+        }
+
+        $order = self::GRANULARITY_ORDER;
+        $index = (int) array_search($preferred, $order, true);
+        for ($distance = 1; $distance < count($order); $distance += 1) {
+            foreach ([$index - $distance, $index + $distance] as $candidate) {
+                if ($candidate >= 0 && $candidate < count($order) && in_array($order[$candidate], $values, true)) {
+                    return $order[$candidate];
+                }
+            }
+        }
+
+        return $values[0];
     }
 
     /**
@@ -699,9 +743,14 @@ class StorePerformanceService
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
 
-            if ($rows->isEmpty()) {
-                // Backward-compatible fallback for visitor history recorded before the event table.
-                $legacyGranularity = $granularity === 'hour' ? 'day' : $granularity;
+            // Cadangan untuk riwayat pengunjung sebelum tabel event ada. Tabel
+            // metrik lama hanya menyimpan agregat harian (metric_date berupa
+            // tanggal), jadi cadangan ini HANYA dipakai untuk skala Per Hari ke
+            // atas. Dulu skala Per Jam diturunkan diam-diam menjadi Per Hari,
+            // sehingga memilih Per Jam bisa menggambar satu titik saja dan sumbu
+            // grafiknya tidak cocok dengan pilihan dropdown.
+            if ($rows->isEmpty() && $granularity !== 'hour') {
+                $legacyGranularity = $granularity;
                 $buckets = $this->emptyBuckets($from, $to, $legacyGranularity);
                 $rows = PerformanceMetric::query()
                     ->selectRaw($this->bucketSelect('metric_date', $legacyGranularity).' as bucket')
