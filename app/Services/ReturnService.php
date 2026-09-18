@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EventLog;
 use App\Models\Order;
+use App\Models\OrderReturnCase;
 use App\Models\Payment;
 use App\Models\ShippingRecord;
 use Illuminate\Support\Carbon;
@@ -36,6 +37,62 @@ class ReturnService
      *  - menulis/update SATU payment record (status completed, paid_at = waktu
      *    delivered) lalu menandai order paid - dalam satu transaction.
      */
+    /**
+     * Pesanan ditolak/dikembalikan kurir sebelum diterima dan belum lunas:
+     * buat kasus retur otomatis supaya penutupan retur tetap terdokumentasi
+     * lewat form retur yang sama (keputusan owner 2026-09-19, tanpa restore
+     * stok karena barang kembali utuh).
+     *
+     * Idempoten: skip bila sudah ada kasus retur aktif untuk order ini.
+     */
+    public function openRefusedReturnCase(Order $order): bool
+    {
+        $hasActive = OrderReturnCase::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'open')
+            ->exists();
+
+        if ($hasActive) {
+            return false;
+        }
+
+        $created = false;
+
+        DB::transaction(function () use ($order, &$created): void {
+            $locked = Order::query()->lockForUpdate()->find($order->id);
+            if (! $locked) {
+                return;
+            }
+
+            $locked->load('items');
+
+            $case = OrderReturnCase::create([
+                'order_id' => $locked->id,
+                'status' => 'open',
+                'reason' => 'lainnya',
+                'reason_detail' => 'Otomatis: paket dikembalikan kurir sebelum diterima pembeli (scan returned J&T).',
+                'fault_party' => 'other',
+                'shipping_cost_borne_by_store' => true,
+                'customer_notes' => 'Paket dikembalikan ke pengirim oleh kurir.',
+                'admin_notes' => null,
+                'created_by_user_id' => null,
+                'updated_by_user_id' => null,
+            ]);
+
+            foreach ($locked->items as $item) {
+                $case->items()->create([
+                    'order_item_id' => $item->id,
+                    'requested_quantity' => (int) $item->quantity,
+                    'returned_quantity' => 0,
+                ]);
+            }
+
+            $created = true;
+        });
+
+        return $created;
+    }
+
     public function markDeliveredAndSettleCod(Order $order, bool $persist = true): bool
     {
         $isCod = $order->cod_flag || $order->payment_method === 'cod';

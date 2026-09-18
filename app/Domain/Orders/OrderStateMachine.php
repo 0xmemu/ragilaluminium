@@ -4,6 +4,7 @@ namespace App\Domain\Orders;
 
 use App\Models\EventLog;
 use App\Models\Order;
+use App\Models\Payment;
 use Closure;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,9 @@ class OrderStateMachine
     private const ORDER_TRANSITIONS = [
         'awaiting_confirmation' => ['processing', 'issue', 'cancelled'],
         'processing' => ['shipped', 'issue', 'cancelled'],
-        'shipped' => ['delivered', 'issue'],
+        // Retur dari shipped: paket ditolak/dikembalikan kurir sebelum
+        // diterima pembeli (scan returned J&T), belum pernah lunas.
+        'shipped' => ['delivered', 'issue', 'return_in_process'],
         'delivered' => ['completed', 'issue', 'return_in_process'],
         'issue' => ['processing', 'shipped', 'delivered'],
         'return_in_process' => ['completed', 'issue', 'return_completed'],
@@ -27,6 +30,7 @@ class OrderStateMachine
     /** @var array<string, list<string>> */
     private const CARRIER_ORDER_TRANSITIONS = [
         'processing' => ['delivered', 'return_in_process'],
+        'shipped' => ['delivered', 'return_in_process'],
     ];
 
     /** @var array<string, list<string>> */
@@ -121,6 +125,18 @@ class OrderStateMachine
                 'created_by_user_id' => $actorUserId,
                 'created_at' => now(),
             ]);
+
+            // Pesanan ditolak/dikembalikan kurir sebelum lunas: tutup payment
+            // pending supaya tidak menggantung sebagai "COD Belum Selesai".
+            // Barang kembali ke gudang dan tidak direstore ke stok
+            // (keputusan owner 2026-09-19). Efek samping ada di dalam transaksi
+            // yang sama, mengikuti pola restore stok pada pembatalan (ADR-006).
+            if ($to === 'return_completed' && $lockedOrder->payment_status !== 'paid') {
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+            }
 
             return true;
         });

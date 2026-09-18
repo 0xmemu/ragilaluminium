@@ -886,6 +886,13 @@ class OrderController extends Controller
                     'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
                 ],
             );
+
+            // Pesanan ditolak sebelum lunas: tutup payment pending supaya tidak
+            // menggantung sebagai "COD Belum Selesai". Barang kembali ke gudang
+            // dan tidak direstore ke stok (keputusan owner 2026-09-19).
+            if ($order->payment_status !== 'paid') {
+                $this->payments->cancelPendingForReturnCompleted($order, $request->user()->id);
+            }
         });
 
         $this->whatsapp->sendTemplateMessage(

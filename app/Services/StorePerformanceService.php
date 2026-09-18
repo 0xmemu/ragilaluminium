@@ -322,6 +322,7 @@ class StorePerformanceService
             $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
             $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
             $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
+            $this->kpi('refused_orders', 'Pesanan Ditolak', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya dikembalikan kurir sebelum diterima dan belum pernah lunas. Barang kembali ke gudang tanpa restore stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
             $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
             $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
@@ -380,6 +381,7 @@ class StorePerformanceService
                 'cod_pending_amount' => $current['cod_pending_amount'],
                 'cod_pending_count' => $current['cod_pending_count'],
                 'payment_pending_count' => $current['payment_pending_count'],
+                'refused_goods_value' => round($current['refused_goods_value'], 2),
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
@@ -539,10 +541,23 @@ class StorePerformanceService
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [$from, $to])
             ->sum('return_shipping_cost');
+        // Pesanan ditolak pelanggan sebelum lunas (keputusan owner 2026-09-19):
+        // barang kembali ke gudang tanpa restore stok, transaksi dianggap batal.
+        // Selama kasus retur berjalan masih dihitung penjualan; setelah retur
+        // selesai nilai barang dikeluarkan dari penjualan bersih.
+        $refusedOrders = (int) (clone $base)
+            ->whereIn('order_status', ['return_in_process', 'return_completed'])
+            ->where('payment_status', '!=', 'paid')
+            ->count();
+        $refusedGoodsValue = (float) (clone $base)
+            ->where('order_status', 'return_completed')
+            ->where('payment_status', '!=', 'paid')
+            ->sum('total_amount');
+
         // Penjualan Gross adalah seluruh total yang dibayar pelanggan. Ongkir raw dan
-        // COD adalah dana titipan untuk J&T; subsidi, refund, dan ongkir retur
-        // toko adalah pengurang hasil toko.
-        $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore;
+        // COD adalah dana titipan untuk J&T; subsidi, refund, ongkir retur toko,
+        // dan nilai barang retur ditolak adalah pengurang hasil toko.
+        $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore - $refusedGoodsValue;
 
         $returnCounts = $this->returnCounts($from, $to);
         $paymentCounts = $this->paymentCounts($from, $to);
@@ -605,6 +620,8 @@ class StorePerformanceService
             'refund_given' => round($returnCounts['refund'], 2),
             'return_rate_created' => $orders > 0 ? round(($returnCounts['created'] / $orders) * 100, 2) : 0.0,
             'return_rate_completed' => $completedOrders > 0 ? round(($returnCounts['completed'] / $completedOrders) * 100, 2) : 0.0,
+            'refused_orders' => $refusedOrders,
+            'refused_goods_value' => round($refusedGoodsValue, 2),
             'repeat_order_rate' => $this->repeatOrderRate($newCustomers, $repeatCustomers),
 
             // Ongkir retur ditanggung toko (biaya operasional, bukan pengurang omzet)

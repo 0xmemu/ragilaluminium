@@ -15,6 +15,22 @@ class PaymentService
     public function __construct(private readonly OrderStateMachine $states) {}
 
     /**
+     * Pesanan ditolak/dikembalikan kurir sebelum lunas dan retur ditutup:
+     * payment pending ditandai cancelled agar tidak menggantung sebagai
+     * "COD Belum Selesai" selamanya (keputusan owner 2026-09-19).
+     */
+    public function cancelPendingForReturnCompleted(Order $order, ?int $userId = null): int
+    {
+        return Payment::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'cancelled',
+                'updated_by_user_id' => $userId,
+            ]);
+    }
+
+    /**
      * Tandai satu payment selesai lalu lunasi order hanya jika total settlement cukup.
      * Order dan seluruh payment dikunci agar request admin paralel tetap konsisten.
      */

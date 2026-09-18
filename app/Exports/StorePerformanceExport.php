@@ -434,7 +434,11 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
         $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
         $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0));
-        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')', 'Tidak ada data', '-']);
+        // Nilai barang pesanan yang ditolak kurir sebelum lunas: pengurang
+        // penjualan (barang kembali, transaksi batal). Selalu dari payload
+        // karena tidak ada kolom tabel untuknya.
+        $rowRetDitolak = $money('Nilai Barang Retur Ditolak', -1 * $num($fin['refused_goods_value'] ?? 0));
+        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak, 'Tidak ada data', '-']);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 2, '#,##0');
 

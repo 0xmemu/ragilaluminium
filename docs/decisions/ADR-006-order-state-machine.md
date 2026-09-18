@@ -25,6 +25,11 @@ milestone. Carrier payloads and exception messages are not logged.
 
 Terminal order states are `completed` and `cancelled`. Cancellation is valid
 only before shipment. Returns use `return_in_process` rather than cancellation.
+Since 2026-09-19 returns are also legal from `shipped`: a COD package refused
+by the customer before receipt is reported by the carrier as `returned`, which
+moves the order to `return_in_process` and opens a return case automatically
+(no stock restore; unpaid payments are cancelled when the return completes).
+Its goods value is deducted from net revenue only at `return_completed`.
 
 ## Consequences
 

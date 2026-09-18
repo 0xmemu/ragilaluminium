@@ -644,6 +644,12 @@ class ShippingService
                     $this->returns->markDeliveredAndSettleCod($order->fresh());
                 }
 
+                if ($transitioned && $target === 'return_in_process') {
+                    // Pesanan ditolak/dikembalikan kurir sebelum lunas: buat
+                    // kasus retur otomatis supaya penutupan terdokumentasi.
+                    $this->returns->openRefusedReturnCase($order->fresh());
+                }
+
                 return;
             }
 
