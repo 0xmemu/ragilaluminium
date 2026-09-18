@@ -382,6 +382,13 @@ class ImportJobController extends Controller
             $file
         )[0] ?? [];
         $totalRawRows = count($allRows);
+
+        // Format v2 memakai jalur preview sendiri: kolomnya berbeda seluruhnya
+        // (header Bahasa Indonesia, satu baris satu varian).
+        if (\App\Support\CatalogTemplateV2Detector::isV2($allRows)) {
+            return $this->previewCatalogV2($allRows);
+        }
+
         $totalRawProducts = collect($allRows)->map(function ($r) {
             $name = trim((string) ($r['name'] ?? ''));
             $idKey = trim((string) ($r['id_key'] ?? ''));
@@ -534,6 +541,98 @@ class ImportJobController extends Controller
 
         return 'template-'.$jenis.($suffix !== '' ? '-'.$suffix : '').'.xlsx';
     }
+    /**
+     * Preview ringan format v2: klasifikasi URL media dan validasi aturan.
+     *
+     * Read-only, tidak menulis apa pun. Aturannya sama persis dengan verifier
+     * yang dipakai importer, sehingga hasil Periksa file mencerminkan apa yang
+     * akan terjadi saat import.
+     */
+    protected function previewCatalogV2(array $allRows)
+    {
+        $errors = \App\Support\CatalogImportVerifierV2::verify($allRows);
+
+        $rows = array_slice(array_values(array_filter($allRows, static function ($row): bool {
+            return trim((string) ($row['nama_produk'] ?? '')) !== ''
+                || trim((string) ($row['opsi_variasi_1'] ?? '')) !== '';
+        })), 0, 1000);
+
+        $resolver = app(\App\Services\MediaAssetResolver::class);
+        $cache = [];
+        $diffs = [];
+        $lastName = '';
+
+        foreach ($rows as $row) {
+            $name = trim((string) ($row['nama_produk'] ?? ''));
+            if ($name === '') {
+                $name = $lastName;
+            }
+            if ($name !== '') {
+                $lastName = $name;
+            }
+
+            $urls = [];
+            foreach ([
+                'gambar_per_varian', 'gambar_1_utama', 'gambar_2',
+                'media_bersama_1', 'media_bersama_2',
+                'gambar_hasil_pemasangan_1', 'gambar_hasil_pemasangan_2',
+            ] as $key) {
+                $url = trim((string) ($row[$key] ?? ''));
+                if ($url !== '') {
+                    $urls[] = $url;
+                }
+            }
+
+            $stats = ['internal' => 0, 'external' => 0, 'invalid' => 0];
+            $media = [];
+            foreach ($urls as $url) {
+                if (! isset($cache[$url])) {
+                    $objectKey = null;
+                    try {
+                        $objectKey = $resolver->internalObjectKeyPublic($url);
+                    } catch (\Throwable) {
+                        $objectKey = null;
+                    }
+                    if ($objectKey !== null) {
+                        $cache[$url] = 'internal';
+                    } else {
+                        $valid = filter_var($url, FILTER_VALIDATE_URL) && (bool) parse_url($url, PHP_URL_HOST);
+                        $cache[$url] = $valid ? 'external' : 'invalid';
+                    }
+                }
+                $stats[$cache[$url]]++;
+                $media[] = ['url' => $url, 'class' => $cache[$url]];
+            }
+
+            $diffs[] = [
+                'row' => count($diffs) + 2,
+                'name' => $name,
+                'parent_sku' => '',
+                'price' => $row['harga'] ?? null,
+                'stock' => $row['stok'] ?? null,
+                'media' => $media,
+                'media_stats' => $stats,
+            ];
+        }
+
+        $totalProducts = collect($allRows)
+            ->map(fn ($r) => trim((string) ($r['no_id'] ?? '')) ?: trim((string) ($r['nama_produk'] ?? '')))
+            ->filter()
+            ->unique()
+            ->count();
+
+        return response()->json([
+            'ok' => $errors === [],
+            'template' => 'v2',
+            'total_rows' => count($allRows),
+            'total_products' => $totalProducts,
+            'checked_rows' => count($diffs),
+            'errors' => array_slice($errors, 0, 20),
+            'error_count' => count($errors),
+            'rows' => $diffs,
+        ]);
+    }
+
     public function previewInternal(Request $request)
     {
         $validated = $request->validate([

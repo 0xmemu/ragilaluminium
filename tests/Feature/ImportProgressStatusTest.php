@@ -87,9 +87,25 @@ class ImportProgressStatusTest extends TestCase
         config(['media.allowed_source_hosts' => ['example.com']]);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
+        // Fixture memakai format v2 karena import katalog kini WAJIB v2.
+        // Dua baris = dua produk (NO. ID berbeda), masing-masing satu varian.
         $rows = collect([
-            ['name' => 'Pintu Aluminium Backfill 1', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 100000, 'stock' => 1, 'image_1' => 'https://example.com/a.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
-            ['name' => 'Pintu Aluminium Backfill 2', 'product_category' => 'DOOR', 'product_model' => 'GESER', 'price' => 200000, 'stock' => 2, 'image_1' => 'https://example.com/b.jpg', 'weight_kg' => 12, 'height_cm' => 110, 'width_cm' => 55, 'depth_cm' => 22],
+            [
+                'no_id' => 1, 'nama_produk' => 'Pintu Aluminium Backfill 1',
+                'kategori_produk' => 'PINTU', 'model_produk' => 'SLIDING_2_DAUN', 'sub_model' => 'POLOS',
+                'nama_variasi_1' => 'Warna', 'opsi_variasi_1' => 'Putih',
+                'harga' => 100000, 'stok' => 1,
+                'berat_kg' => 10, 'tinggi_cm' => 100, 'panjang_cm' => 50, 'lebar_cm' => 20,
+                'gambar_1_utama' => 'https://example.com/a.jpg',
+            ],
+            [
+                'no_id' => 2, 'nama_produk' => 'Pintu Aluminium Backfill 2',
+                'kategori_produk' => 'PINTU', 'model_produk' => 'SLIDING_2_DAUN', 'sub_model' => 'POLOS',
+                'nama_variasi_1' => 'Warna', 'opsi_variasi_1' => 'Hitam',
+                'harga' => 200000, 'stok' => 2,
+                'berat_kg' => 12, 'tinggi_cm' => 110, 'panjang_cm' => 55, 'lebar_cm' => 22,
+                'gambar_1_utama' => 'https://example.com/b.jpg',
+            ],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {

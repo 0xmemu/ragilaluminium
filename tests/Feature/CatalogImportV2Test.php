@@ -1,0 +1,248 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Imports\CatalogProductsImportV2;
+use App\Models\ImportJob;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\User;
+use App\Support\CatalogImportVerifierV2;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Maatwebsite\Excel\Facades\Excel;
+use Tests\TestCase;
+
+/**
+ * Importer katalog format v2 (satu baris = satu varian).
+ *
+ * Kontrak yang dijaga:
+ *  - Satu grup NO. ID menjadi satu produk; jumlah baris = jumlah varian.
+ *  - Nama produk dipakai APA ADANYA, tidak digenerate dari dimensi.
+ *  - Lebar (cm) masuk ke depth_cm, Tinggi ke height_cm, Panjang ke width_cm.
+ *  - Gambar per varian di-dedupe per nilai opsi.
+ *  - Verifikasi menolak berkas yang melanggar aturan sebelum membuat produk.
+ */
+class CatalogImportV2Test extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Berkas media harus benar-benar ada supaya URL dikenali internal.
+        $this->siapkanMedia([
+            "media-assets/varian-putih/pdp.webp",
+            "media-assets/varian-hitam/pdp.webp",
+            "media-assets/utama/pdp.webp",
+        ]);
+    }
+
+
+    /**
+     * Siapkan berkas nyata di disk media.
+     *
+     * URL media.333labs.tech hanya dikenali sebagai aset internal bila
+     * berkasnya benar-benar ada. Tanpa ini, URL dianggap eksternal lalu ditolak
+     * UrlGuard (benar secara keamanan, tetapi membuat tes tidak menguji media).
+     */
+    private function siapkanMedia(array $paths): void
+    {
+        \Illuminate\Support\Facades\Storage::fake("media");
+        foreach ($paths as $path) {
+            \Illuminate\Support\Facades\Storage::disk("media")->put($path, "isi-uji");
+        }
+    }
+
+    private function urlMedia(string $path): string
+    {
+        return "https://media.333labs.tech/" . $path;
+    }
+
+    /** Susun baris data format v2 untuk satu produk. */
+    private function baris(array $override = []): array
+    {
+        return array_merge([
+            "no_id" => 1,
+            "nama_produk" => "Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing",
+            "deskripsi_produk" => "Deskripsi produk uji.",
+            "spesifikasi" => "Bahan: Aluminium, Kusen: 3 inch",
+            "kategori_produk" => "JENDELA",
+            "model_produk" => "KACA_MATI",
+            "sub_model" => "POLOS",
+            "nama_variasi_1" => "Warna",
+            "opsi_variasi_1" => "Putih",
+            "gambar_per_varian" => $this->urlMedia('media-assets/varian-putih/pdp.webp'),
+            "nama_variasi_2" => "Kaca",
+            "opsi_variasi_2" => "Kaca Bening",
+            "harga" => 1250000,
+            "stok" => 10,
+            "berat_kg" => 12.5,
+            "tinggi_cm" => 170,
+            "panjang_cm" => 60,
+            "lebar_cm" => 20,
+            "gambar_1_utama" => $this->urlMedia('media-assets/utama/pdp.webp'),
+        ], $override);
+    }
+
+    /**
+     * Tulis berkas xlsx sementara dari daftar baris, memakai penulis
+     * PhpSpreadsheet langsung supaya header berkas benar-benar berisi slug
+     * format v2 (bukan hasil eksportir, agar importer diuji apa adanya).
+     */
+    private function berkas(array $rows): string
+    {
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet();
+        $ws->setTitle("Data");
+
+        $headers = array_keys($rows[0]);
+        foreach ($headers as $i => $header) {
+            $ws->setCellValue(
+                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1) . "1",
+                $header
+            );
+        }
+        foreach ($rows as $r => $row) {
+            foreach (array_values($row) as $c => $value) {
+                $ws->setCellValue(
+                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c + 1) . ($r + 2),
+                    $value
+                );
+            }
+        }
+
+        $path = \Illuminate\Support\Facades\Storage::disk("imports")->path("tmp/uji-v2.xlsx");
+        @mkdir(dirname($path), 0775, true);
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
+
+        return $path;
+    }
+
+    private function job(string $type = "catalog_import"): ImportJob
+    {
+        return ImportJob::create([
+            "type" => $type,
+            "source_file_name" => "uji.xlsx",
+            "source_file_path" => "tmp/uji.xlsx",
+            "stock_mode" => "file",
+            "status" => "pending",
+            "triggered_by_user_id" => User::factory()->create(["role" => "admin", "status" => "active"])->id,
+        ]);
+    }
+
+    public function test_verifier_v2_menolak_berkas_tanpa_foto_utama(): void
+    {
+        $rows = [$this->baris(["gambar_1_utama" => ""])];
+        $errors = CatalogImportVerifierV2::verify($rows);
+
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString("Gambar 1 (utama)", implode(" ", $errors));
+    }
+
+    public function test_verifier_v2_menolak_harga_nol_dan_kombinasi_duplikat(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([
+            $this->baris(["harga" => 0]),
+            $this->baris([]),
+        ]);
+
+        $pesan = implode(" | ", $errors);
+        $this->assertStringContainsString("Harga kosong atau nol", $pesan);
+        $this->assertStringContainsString("duplikat", $pesan);
+    }
+
+    public function test_import_v2_membuat_satu_produk_dengan_beberapa_varian(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_1" => "Hitam", "gambar_per_varian" => $this->urlMedia('media-assets/varian-hitam/pdp.webp')]),
+            $this->baris(["opsi_variasi_1" => "Putih", "opsi_variasi_2" => "Kaca Es", "gambar_per_varian" => $this->urlMedia('media-assets/varian-putih/pdp.webp')]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $this->assertSame(1, Product::count(), "satu grup NO. ID = satu produk");
+        $this->assertSame(3, ProductVariant::count(), "tiga baris = tiga varian");
+
+        $product = Product::first();
+        $this->assertSame("Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing", $product->name);
+        $this->assertStringNotContainsString("175", (string) $product->name);
+    }
+
+    public function test_import_v2_memetakan_dimensi_sesuai_kontrak(): void
+    {
+        $rows = [$this->baris(["tinggi_cm" => 170, "panjang_cm" => 60, "lebar_cm" => 20, "berat_kg" => 12.5])];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::first();
+        $this->assertEquals(170.0, (float) $product->height_cm, "Tinggi ke height_cm");
+        $this->assertEquals(60.0, (float) $product->width_cm, "Panjang ke width_cm");
+        $this->assertEquals(20.0, (float) $product->depth_cm, "Lebar ke depth_cm");
+        $this->assertEquals(12.5, (float) $product->weight_kg, "Berat ke weight_kg");
+    }
+
+    public function test_import_v2_harga_dan_stok_masuk_ke_varian(): void
+    {
+        $rows = [$this->baris(["harga" => 1250000, "stok" => 10])];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $variant = ProductVariant::first();
+        $this->assertEquals(1250000.0, (float) $variant->price);
+        $this->assertSame(10, (int) $variant->stock);
+        $this->assertSame("Putih", $variant->variation_1_option);
+        $this->assertSame("Kaca Bening", $variant->variation_2_option);
+    }
+
+    public function test_import_v2_menyimpan_spesifikasi_sebagai_atribut(): void
+    {
+        $rows = [$this->baris(["spesifikasi" => "Bahan: Aluminium, Kusen: 3 inch"])];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::first();
+        $attrs = $product->attributes()->pluck("attribute_value", "attribute_name")->all();
+
+        $this->assertSame("Aluminium", $attrs["Bahan"] ?? null);
+        $this->assertSame("3 inch", $attrs["Kusen"] ?? null);
+    }
+
+    /**
+     * Baris wajib SUKSES, bukan hanya produknya terbentuk.
+     *
+     * Celah yang pernah terjadi: produk dan varian terbuat sehingga tes produk
+     * tetap lulus, padahal barisnya gagal di tahap media. Tes ini mengunci
+     * hitungan baris sukses dan jumlah media yang benar-benar tersimpan.
+     */
+    public function test_semua_baris_sukses_dan_media_tersimpan(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_1" => "Hitam", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $job->refresh();
+        $this->assertSame(2, (int) $job->success_rows, "semua baris wajib sukses");
+        $this->assertSame(0, (int) $job->failed_rows, "tidak boleh ada baris gagal");
+
+        $this->assertGreaterThan(
+            0,
+            \App\Models\ProductMedia::count(),
+            "media wajib tersimpan dari URL di berkas"
+        );
+    }
+}

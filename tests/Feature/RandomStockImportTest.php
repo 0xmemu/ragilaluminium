@@ -124,26 +124,29 @@ class RandomStockImportTest extends TestCase
         {
             public function collection()
             {
+                // Format v2: satu baris = satu varian, header Bahasa Indonesia.
+                // Format stok acak ("random 30-40") tetap didukung.
                 return collect([[
-                    'parent_sku' => 'RARNDPK2',
-                    'variant_sku' => 'RARNDPK2-1',
-                    'name' => 'Jendela Random Stok',
-                    'product_category' => 'JENDELA',
-                    'product_model' => 'SWING',
-                    'design_variant' => 'POLOS',
-                    'price' => '1000000',
-                    'stock' => 'random 30-40',
-                    'image_1' => 'https://example.com/rnd.jpg',
-                    'weight_kg' => '10',
-                    'height_cm' => '100',
-                    'width_cm' => '50',
-                    'depth_cm' => '20',
+                    'no_id' => 1,
+                    'nama_produk' => 'Jendela Random Stok',
+                    'kategori_produk' => 'JENDELA',
+                    'model_produk' => 'SWING_1_DAUN',
+                    'sub_model' => 'POLOS',
+                    'nama_variasi_1' => 'Warna',
+                    'opsi_variasi_1' => 'Putih',
+                    'harga' => '1000000',
+                    'stok' => 'random 30-40',
+                    'gambar_1_utama' => 'https://example.com/rnd.jpg',
+                    'berat_kg' => '10',
+                    'tinggi_cm' => '100',
+                    'panjang_cm' => '50',
+                    'lebar_cm' => '20',
                 ]]);
             }
 
             public function headings(): array
             {
-                return ['parent_sku', 'variant_sku', 'name', 'product_category', 'product_model', 'design_variant', 'price', 'stock', 'image_1', 'weight_kg', 'height_cm', 'width_cm', 'depth_cm'];
+                return ['no_id', 'nama_produk', 'kategori_produk', 'model_produk', 'sub_model', 'nama_variasi_1', 'opsi_variasi_1', 'harga', 'stok', 'gambar_1_utama', 'berat_kg', 'tinggi_cm', 'panjang_cm', 'lebar_cm'];
             }
         };
 
@@ -151,7 +154,7 @@ class RandomStockImportTest extends TestCase
 
         (new ProcessCatalogImport($job->id, 'katalog.xlsx'))->handle();
 
-        $variant = ProductVariant::where('variant_sku', 'RARNDPK2-1')->first();
+        $variant = ProductVariant::where('variation_1_option', 'Putih')->first();
         $this->assertNotNull($variant, 'Varian dari import katalog harus dibuat');
         $stock = (int) $variant->stock;
         $this->assertGreaterThanOrEqual(30, $stock);

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Imports\CatalogProductsImport;
+use App\Imports\CatalogProductsImportV2;
 use App\Imports\ImportMediaUpdate;
 use App\Imports\ImportStockPriceUpdate;
 use App\Models\ImportJob;
@@ -51,6 +52,31 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
         ];
     }
 
+    /**
+     * Pilih importer katalog sesuai format berkas.
+     *
+     * Berkas format lama ditolak dengan pesan yang mengarahkan admin mengunduh
+     * template baru. Memelihara dua format sekaligus menambah permukaan bug
+     * tanpa manfaat, karena template v2 sudah tersedia di halaman Import.
+     */
+    protected function catalogImporter(ImportJob $job, string $path): CatalogProductsImport|CatalogProductsImportV2
+    {
+        $rows = \Maatwebsite\Excel\Facades\Excel::toArray(
+            new \App\Imports\InternalCatalogPreviewImport(),
+            $path
+        )[0] ?? [];
+
+        if (\App\Support\CatalogTemplateV2Detector::isV2($rows)) {
+            return new CatalogProductsImportV2($this->jobId, $path);
+        }
+
+        if (\App\Support\CatalogTemplateV2Detector::isLegacy($rows)) {
+            throw new \RuntimeException(\App\Support\CatalogTemplateV2Detector::legacyRejectionMessage());
+        }
+
+        throw new \RuntimeException(\App\Support\CatalogTemplateV2Detector::unknownRejectionMessage());
+    }
+
     /** Dipanggil bila job gagal permanen (mis. timeout / exception tak tertangani). */
     public function failed(\Throwable $e): void
     {
@@ -92,13 +118,38 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                     new \App\Imports\InternalCatalogPreviewImport(),
                     $path
                 )[0] ?? [];
-                $counted = count(array_filter($previewRows, fn ($r) => ! empty(trim((string) ($r['name'] ?? ''))) || ! empty(trim((string) ($r['parent_sku'] ?? '')))));
+                // Penghitung baris dan produk harus mengikuti format berkas.
+                // Format v2 memakai nama_produk/no_id; format lama memakai
+                // name/id_key/parent_sku. Tanpa pemisahan ini, berkas v2
+                // dilaporkan 0 baris sehingga progres tidak pernah bergerak.
+                $isV2 = \App\Support\CatalogTemplateV2Detector::isV2($previewRows);
+
+                $counted = count(array_filter(
+                    $previewRows,
+                    static fn ($r) => trim((string) ($r['nama_produk'] ?? '')) !== ''
+                        || trim((string) ($r['name'] ?? '')) !== ''
+                        || trim((string) ($r['opsi_variasi_1'] ?? '')) !== ''
+                        || trim((string) ($r['parent_sku'] ?? '')) !== ''
+                ));
                 $job->update(['total_rows' => $counted]);
 
-                $distinctProducts = collect($previewRows)->map(function ($r) {
+                $distinctProducts = collect($previewRows)->map(function ($r) use ($isV2) {
+                    if ($isV2) {
+                        // Kunci grup v2 = NO. ID, cadangan nama produk.
+                        $noId = trim((string) ($r['no_id'] ?? ''));
+                        if ($noId !== '') {
+                            return 'no_id:'.$noId;
+                        }
+
+                        $nama = trim((string) ($r['nama_produk'] ?? ''));
+
+                        return $nama !== '' ? 'nama:'.$nama : null;
+                    }
+
                     $name = trim((string) ($r['name'] ?? ''));
                     $idKey = trim((string) ($r['id_key'] ?? ''));
                     $parentSku = trim((string) ($r['parent_sku'] ?? ''));
+
                     return $idKey !== '' ? 'id_key:'.$idKey : ($name !== '' ? 'name:'.$name : ($parentSku !== '' ? 'sku:'.$parentSku : null));
                 })->filter()->unique()->count();
                 \Illuminate\Support\Facades\Cache::put("import_total_products_{$job->id}", $distinctProducts, 86400);
@@ -129,9 +180,19 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                 }
             }
 
+            // Import katalog: format ditentukan dari nama kolom berkas.
+            // Format v2 (header Bahasa Indonesia) memakai importer baru.
+            // Format lama DITOLAK dengan pesan yang menunjuk tombol unduh
+            // template baru, karena template v2 sepenuhnya menggantikan yang
+            // lama (keputusan owner 2026-09-18).
+            // WaJIB format v2 hanya untuk import katalog internal, karena
+            // template itulah yang diganti. Jalur lain memakai formatnya
+            // sendiri: berkas ekspor Shopee memakai parent_sku, dan update
+            // harga/stok serta update media punya template terpisah.
             $importer = match ($job->type) {
                 'stock_price_update' => new ImportStockPriceUpdate($this->jobId),
                 'media_update' => new ImportMediaUpdate($this->jobId),
+                'catalog_import' => $this->catalogImporter($job, $path),
                 default => new CatalogProductsImport($this->jobId, $path),
             };
 
