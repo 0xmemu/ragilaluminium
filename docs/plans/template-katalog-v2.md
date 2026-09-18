@@ -58,8 +58,14 @@ Yang sudah bagus di berkas owner:
 
 Owner mengirim ulang berkas dengan satu perubahan header: kolom J yang semula
 `Gambar Opsi Variasi 1` menjadi `Foto Produk Varian`. Seluruh header lain
-identik, dan struktur sheet tidak berubah. Berkas pertama 16.760 byte, berkas
-kedua 16.689 byte. Nama baru dipakai sebagai kontrak.
+identik, struktur sheet tidak berubah. Berkas pertama 16.760 byte, berkas
+kedua 16.689 byte.
+
+Kemudian owner memutuskan menyeragamkan nama itu menjadi `Gambar per Varian`,
+karena sebutan itu lebih tepat untuk foto yang menempel pada varian, dan nama
+yang sama dipakai di template lain. Jadi kontrak final kolom J adalah
+`Gambar per Varian`, dan kolom E pada template Update Media yang semula
+`Gambar Opsi Variasi` ikut diseragamkan menjadi nama yang sama.
 
 ### 2.2 Masalah yang harus diperbaiki di versi baru
 
@@ -119,7 +125,7 @@ Satu baris = satu varian. Grup menentukan warna header.
 | G | Sub Model | sub_model | `products.design_variant` | 1 |
 | H | Nama Variasi 1 | nama_variasi_1 | `variation_1_name` | 2 |
 | I | Opsi Variasi 1 | opsi_variasi_1 | `variation_1_option` | 2 |
-| J | Foto Produk Varian | foto_produk_varian | media milik varian (per opsi) | 4 |
+| J | Gambar per Varian | gambar_per_varian | media milik varian (per opsi) | 4 |
 | K | Nama Variasi 2 | nama_variasi_2 | `variation_2_name` | 2 |
 | L | Opsi Variasi 2 | opsi_variasi_2 | `variation_2_option` | 2 |
 | M | Harga | harga | `product_variants.price` | 3 |
@@ -168,7 +174,7 @@ admin langsung tahu isinya URL gambar, bukan teks biasa.
 | B | Nama Produk | nama_produk | TIDAK, dikunci |
 | C | SKU Varian | sku_varian | TIDAK, dikunci |
 | D | Variasi | variasi | TIDAK, dikunci |
-| E | Gambar Opsi Variasi | gambar_opsi_variasi | ya |
+| E | Gambar per Varian | gambar_per_varian | ya |
 | F | Gambar 1 (utama) | gambar_1_utama | ya |
 | G | Gambar 2 | gambar_2 | ya |
 | H | Media Bersama 1 | media_bersama_1 | ya |
@@ -179,6 +185,25 @@ admin langsung tahu isinya URL gambar, bukan teks biasa.
 Aturan sel kosong: sel kosong TIDAK mengubah data. Ini melanjutkan kontrak lama
 6 Sep 2026. Menghapus gambar memakai penanda khusus, bukan sel kosong, supaya
 "kosong" tidak pernah berarti "hapus".
+
+### 3.4 Aturan penyeragaman nama kolom
+
+Nama kolom media WAJIB sama persis di ketiga template, satu konsep satu nama
+(selaras ADR-018). Karena itu kolom foto varian bernama `Gambar per Varian` di
+template Import Produk maupun di template Update Media, bukan dua sebutan
+berbeda.
+
+| Konsep | Nama kolom kanonik | Slug |
+|---|---|---|
+| Foto yang menempel pada varian | Gambar per Varian | `gambar_per_varian` |
+| Foto katalog posisi 1, penanda utama | Gambar 1 (utama) | `gambar_1_utama` |
+| Foto katalog posisi berikutnya | Gambar 2 | `gambar_2` |
+| Media dipakai bersama seluruh varian | Media Bersama 1, 2 | `media_bersama_1`, `media_bersama_2` |
+| Dokumentasi pemasangan | Gambar Hasil Pemasangan 1, 2 | `gambar_hasil_pemasangan_1`, `gambar_hasil_pemasangan_2` |
+
+Nama kanonik ini dipakai di eksportir, importer, Panduan, dan UI admin. Dilarang
+memakai sebutan lama `Gambar Opsi Variasi` atau `Foto Produk Varian`.
+
 
 ---
 
@@ -230,7 +255,7 @@ Pekerjaan:
    - Nama, deskripsi, kategori, model, sub model diwarisi dari baris pertama
      grup, mengikuti perilaku marketplace yang sudah dipakai.
    - Harga dan stok dibaca per baris.
-   - `Gambar Opsi Variasi 1` di-dedupe per nilai opsi, baris pertama menang,
+   - `Gambar per Varian` di-dedupe per nilai opsi, baris pertama menang,
      karena satu opsi muncul di beberapa baris kombinasi. Tanpa dedupe, satu
      opsi akan melahirkan banyak baris media kembar.
    - SKU induk dan SKU varian di-generate otomatis (awalan `RA` plus 10
@@ -357,8 +382,11 @@ Dokumen:
 4. **Stok format acak.** Tetap didukung. Nilai seperti `random 1000-8000`
    diterima dan diproses `StockCellParser` seperti pada import sebelumnya,
    di samping angka biasa.
-5. **Cakupan unduhan penuh.** Lihat bagian 6b, dijawab dengan rekomendasi
-   teknis karena pertanyaan ini menanyakan maksud pertanyaannya.
+5. **Cakupan unduhan penuh.** Diputuskan owner: TIDAK dipecah, tetap satu
+   berkas. Penjelasan angkanya di bagian 6b.
+6. **Penyeragaman nama kolom media.** Diputuskan owner: kolom foto varian
+   bernama `Gambar per Varian`, dan nama yang sama dipakai di semua template.
+   Aturan lengkapnya di bagian 3.4.
 
 ### 6b. Penjelasan pertanyaan unduhan penuh
 
