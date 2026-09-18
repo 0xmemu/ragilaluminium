@@ -1227,10 +1227,34 @@ dengan paid_at pada periode (ledger).
   Export: subtotal "TOTAL DIBAYAR PEMBELI" -> "PENJUALAN GROSS" dan kolom tabel
   pesanan "Total Dibayar Pembeli" -> "Penjualan Gross", karena nilainya identik
   dengan KPI omzet (diverifikasi 2026-09-18: selisih Rp 0 terhadap jumlah komponen).
-- Terbuka (belum diputuskan): `refund_given` ("Refund Diberikan") dan
-  `refund_adjustments` ("Refund Retur") bernilai sama pada data uji tetapi
-  filternya berbeda (`refund_given` tidak menyaring item yang benar-benar
-  dikembalikan). Perlu keputusan owner apakah keduanya digabung jadi satu metrik.
+- **Terbuka, butuh keputusan owner: `refund_given` vs `refund_adjustments`.**
+  Keduanya menjumlahkan `order_return_cases.refund_amount` pada kasus retur
+  selesai dalam periode, tetapi filternya berbeda:
+  `refund_adjustments` hanya menghitung kasus yang punya item dengan
+  `returned_quantity > 0` (barang benar-benar kembali), sedangkan
+  `refund_given` tidak menyaring itu.
+  Akibatnya satu halaman menampilkan dua angka berbeda untuk hal yang
+  terbaca sama: "Refund Diberikan" ada di daftar Dampak Beban Biaya panel
+  Retur & Pembatalan, "Refund Retur" ada di baris pengurang panel Rekonsiliasi
+  Keuangan. Yang benar-benar mengurangi Penjualan Bersih hanya
+  `refund_adjustments`.
+  Dibuktikan 2026-09-18 dengan kasus terkontrol: refund Rp 50.000 dengan barang
+  dikembalikan + refund Rp 30.000 tanpa barang kembali menghasilkan
+  `refund_given` Rp 80.000 tetapi `refund_adjustments` Rp 50.000, sehingga
+  Penjualan Bersih hanya turun Rp 50.000.
+  Tidak tertangkap pengujian karena fixture `StorePerformanceTask1Test` dan
+  `StorePerformanceF10RulesTest` selalu membuat `OrderReturnItem`, jadi kedua
+  angka selalu sama di tes.
+  Keputusan yang dibutuhkan: bila refund tanpa barang kembali tetap mengurangi
+  Penjualan Bersih (mis. goodwill), maka filter `whereHas` pada
+  `refund_adjustments` yang salah dan angkanya harus dinaikkan; bila refund
+  hanya sah saat barang kembali, `refund_given` yang harus memakai filter sama.
+  Setelah diputuskan, satu konsep cukup satu nama (rekonsiliasi ADR-018).
+- Data 2026-09-18 menunjukkan kasus janggal: `order_return_cases` id=1
+  (order_id=1) berstatus `completed` dengan `refund_amount=100` tetapi
+  `completed_at` NULL dan 0 item. Karena semua KPI menyaring `completed_at`
+  pada periode, kasus itu tidak masuk angka mana pun. Perlu ditelusuri apakah
+  ada jalur penyelesaian retur yang tidak mengisi `completed_at`.
 - Laporan/export lama yang memakai istilah lama dianggap usang saat dibuka ulang.
 - Dokumen & skill yang menyinggung "Omset" sebagai label UI dikoreksi bertahap;
   angka dan rumus tidak berubah.
