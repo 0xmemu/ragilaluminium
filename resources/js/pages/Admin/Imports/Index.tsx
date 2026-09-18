@@ -156,49 +156,6 @@ export default function ImportsIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      {/* 4 Kartu KPI Ringkasan Import */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Total Pekerjaan Import</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-            {formatNumber(summary.total_jobs)}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Riwayat batch import yang pernah dijalankan
-          </p>
-        </Card>
-
-        <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Import Selesai (Sukses)</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-success">
-            {formatNumber(summary.total_completed)}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Pekerjaan tuntas tanpa kesalahan fatal
-          </p>
-        </Card>
-
-        <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Baris Berhasil Diimpor</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-            {formatNumber(summary.total_success_rows)}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Akumulasi baris kombinasi varian seluruh batch
-          </p>
-        </Card>
-
-        <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Baris Gagal / Perlu Koreksi</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-destructive">
-            {formatNumber(summary.total_failed_rows)}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Baris data dengan validasi format keliru
-          </p>
-        </Card>
-      </div>
-
       {/* Tabs status import DS v2 */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
