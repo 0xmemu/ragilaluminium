@@ -107,10 +107,15 @@ export function CheckoutSummary({
     shippingQuoteAttempted,
   } = c
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
-  const hasDiscount = discountTotal > 0
   // Harga asli ditampilkan tercoret di bawah subtotal. `subtotal` dari server
-  // SUDAH termasuk potongan, jadi angka coretnya adalah harga sebelum potongan.
-  const hasCompareSubtotal = compareSubtotal > Number(subtotal || 0)
+  // SUDAH termasuk potongan, jadi harga aslinya = compare_subtotal bila ada,
+  // atau subtotal + potongan produk bila compare_price tidak diisi. Tanpa
+  // fallback ini potongan produk bisa tidak terlihat sama sekali.
+  const subtotalOriginal = Math.max(
+    compareSubtotal,
+    Number(subtotal || 0) + Number(discountTotal || 0),
+  )
+  const hasCompareSubtotal = subtotalOriginal > Number(subtotal || 0)
 
   const shippingCost = effectiveShipping ? Number(effectiveShipping.net || 0) : 0
   const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
@@ -126,20 +131,22 @@ export function CheckoutSummary({
   // tidak ada angka yang dikarang.
   const shippingFreight = effectiveShipping ? Number(effectiveShipping.freight || 0) : 0
   const insuranceCost = Number(effectiveShipping?.insurance || 0)
-  const tariffIncludesInsurance = insuranceCost > 0
-  // Label "Tarif J&T" memakai total J&T (gross = ongkir + asuransi), sehingga
-  // pembeli bisa menjumlahkan tanpa angka dobel:
-  // tarif - subsidi = ongkir dibayar pelanggan.
+  // Harga ongkir SEBELUM subsidi (sudah termasuk asuransi). Ditampilkan
+  // tercoret di bawah angka yang dibayar, pola yang sama dengan Subtotal
+  // Produk: angka atas = yang dibayar, angka bawah = harga asli.
   const shippingTariff = effectiveShipping
     ? Number(effectiveShipping.gross || 0) || shippingFreight + insuranceCost
     : 0
-  // Rincian ongkir hanya muncul bila tarif J&T sudah ada, supaya label
-  // "Tarif J&T" tidak pernah menampilkan angka campuran.
-  const showShippingBreakdown = Boolean(
-    effectiveShipping
-      && shippingFreight > 0
-      && ((effectiveShipping.applied && shippingSubsidy > 0) || tariffIncludesInsurance),
-  )
+  // Subsidi ongkir menyatu ke label "Ongkos Kirim (subsidi 10%)" sebagai
+  // persentase, bukan baris terpisah, sehingga pembeli tidak melihat ongkir
+  // muncul dua kali.
+  const shippingSubsidyPercent =
+    shippingSubsidy > 0 && shippingFreight > 0
+      ? Math.round((shippingSubsidy / shippingFreight) * 100)
+      : 0
+  // Harga coret hanya bila memang ada selisih yang dibayar.
+  const shippingHasCompare =
+    effectiveShipping !== null && shippingTariff > Number(effectiveShipping?.net || 0)
   const totalBeforeDiscount = finalTotal + discount + shippingSubsidy
   const savedAmount = Math.max(0, totalBeforeDiscount - finalTotal)
 
@@ -330,31 +337,23 @@ export function CheckoutSummary({
         ) : null}
       </div>
 
-      <dl className="mt-3 space-y-2.5 text-xs">
+      <dl className="mt-3 space-y-3 text-xs">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
           <dd className="text-right">
             <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
             {hasCompareSubtotal ? (
               <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
-                {formatCurrency(compareSubtotal)}
+                {formatCurrency(subtotalOriginal)}
               </span>
             ) : null}
           </dd>
         </div>
-        {hasDiscount ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Hemat</dt>
-            <dd className="tabular-nums font-semibold text-sale">
-              {formatCurrency(discountTotal)}
-            </dd>
-          </div>
-        ) : null}
         {hasVoucher ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Hemat Voucher</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">Diskon Voucher</dt>
             <dd className="tabular-nums font-bold text-sale">
-              {formatCurrency(voucherDiscount)}
+              -{formatCurrency(voucherDiscount)}
             </dd>
           </div>
         ) : null}
@@ -382,39 +381,19 @@ export function CheckoutSummary({
             </p>
           </div>
         ) : effectiveShipping ? (
-          <>
-            {showShippingBreakdown ? (
-              <div className="space-y-1.5 rounded-md bg-surface-muted/60 px-2.5 py-2">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
-                  <dd className="tabular-nums font-semibold text-foreground">
-                    {formatCurrency(shippingTariff)}
-                  </dd>
-                </div>
-                {shippingSubsidy > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <dt className="min-w-0 break-words text-muted-foreground">
-                      Subsidi Ongkir ({Math.round((shippingSubsidy / (shippingFreight || 1)) * 100)}%)
-                    </dt>
-                    <dd className="tabular-nums font-semibold text-sale">
-                      -{formatCurrency(shippingSubsidy)}
-                    </dd>
-                  </div>
-                ) : null}
-                <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5">
-                  <dt className="min-w-0 break-words font-semibold text-foreground">Total Ongkos Kirim</dt>
-                  <dd className="tabular-nums font-bold text-foreground">
-                    {formatCurrency(effectiveShipping.net)}
-                  </dd>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(effectiveShipping.net)}</dd>
-              </div>
-            )}
-          </>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground min-w-0 break-words">
+              Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${shippingSubsidyPercent}%)` : ""}
+            </dt>
+            <dd className="text-right">
+              <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>
+              {shippingHasCompare ? (
+                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                  {formatCurrency(shippingTariff)}
+                </span>
+              ) : null}
+            </dd>
+          </div>
         ) : (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>

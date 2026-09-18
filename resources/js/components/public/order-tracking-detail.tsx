@@ -263,15 +263,21 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
           // dan asuransi tetap ada di kolom order dan halaman admin untuk
           // pembukuan, bukan untuk pelanggan.
           const insurancePaid = Number(b.insurance || 0)
-          const shippingTariff = Number(b.shipping_gross || 0) + insurancePaid
-          const shippingTotal = Number(b.shipping_net || 0) + insurancePaid
+          const shippingPaid = Number(b.shipping_net || 0) + insurancePaid
+          // Harga ongkir SEBELUM subsidi (sudah termasuk asuransi), ditampilkan
+          // tercoret di bawah angka yang dibayar: pola yang sama dengan
+          // ringkasan checkout dan Subtotal Produk.
+          const shippingOriginal = Number(b.shipping_gross || 0) + insurancePaid
           const shippingSubsidy = Math.abs(Number(b.shipping_subsidy || 0))
+          const shippingSubsidyPercent =
+            shippingSubsidy > 0 && Number(b.shipping_gross || 0) > 0
+              ? Math.round((shippingSubsidy / Number(b.shipping_gross || 0)) * 100)
+              : 0
           // `subtotal` sudah termasuk potongan, jadi harga aslinya ditampilkan
-          // tercoret di bawahnya (pola yang sama dengan ringkasan checkout).
+          // tercoret di bawahnya.
           const subtotalPaid = Number(b.subtotal || 0)
           const subtotalOriginal = subtotalPaid + Number(b.discount || 0)
-          const hasCompareSubtotal = Number(b.discount || 0) > 0
-          const showShippingBreakdown = shippingSubsidy > 0 || insurancePaid > 0
+          const hasCompareSubtotal = subtotalOriginal > subtotalPaid
 
           const moneyRow = (label: string, value: number, tone?: "sale") => (
             <div key={label} className="flex items-center justify-between gap-4">
@@ -297,29 +303,25 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
                   ) : null}
                 </dd>
               </div>
-              {Number(b.discount || 0) > 0 ? moneyRow("Hemat", Number(b.discount), "sale") : null}
-              {Number(b.voucher_discount || 0) > 0 ? moneyRow("Hemat Voucher", Number(b.voucher_discount), "sale") : null}
+              {Number(b.voucher_discount || 0) > 0
+                ? moneyRow("Diskon Voucher", -Math.abs(Number(b.voucher_discount)), "sale")
+                : null}
 
-              {showShippingBreakdown ? (
-                <div className="space-y-1.5 rounded-md bg-surface-muted/60 px-2.5 py-2">
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className="text-muted-foreground">Ongkos Kirim</dt>
-                    <dd className="tabular-nums font-semibold text-foreground">{formatCurrency(shippingTariff)}</dd>
-                  </div>
-                  {shippingSubsidy > 0 ? (
-                    <div className="flex items-center justify-between gap-4">
-                      <dt className="text-muted-foreground">Subsidi Ongkir</dt>
-                      <dd className="tabular-nums font-semibold text-sale">-{formatCurrency(shippingSubsidy)}</dd>
-                    </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-muted-foreground">
+                  Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${shippingSubsidyPercent}%)` : ""}
+                </dt>
+                <dd className="text-right">
+                  <span className="tabular-nums block font-semibold text-foreground">
+                    {formatCurrency(shippingPaid)}
+                  </span>
+                  {shippingOriginal > shippingPaid ? (
+                    <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                      {formatCurrency(shippingOriginal)}
+                    </span>
                   ) : null}
-                  <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-1.5">
-                    <dt className="font-semibold text-foreground">Total Ongkos Kirim</dt>
-                    <dd className="tabular-nums font-bold text-foreground">{formatCurrency(shippingTotal)}</dd>
-                  </div>
-                </div>
-              ) : (
-                moneyRow("Ongkos Kirim", shippingTotal)
-              )}
+                </dd>
+              </div>
 
               {Number(b.cod_fee || 0) > 0 ? moneyRow("Biaya COD", Number(b.cod_fee)) : null}
 
