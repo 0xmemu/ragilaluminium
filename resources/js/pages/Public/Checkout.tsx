@@ -50,7 +50,6 @@ interface CheckoutProps {
 export default function Checkout({
   items = [],
   subtotal = 0,
-  compare_subtotal: compareSubtotal = 0,
   discount_total = 0,
   voucher = null,
   voucher_discount = 0,
@@ -110,7 +109,7 @@ export default function Checkout({
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+                className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden"
                 aria-label="Kembali"
               >
                 <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -167,7 +166,7 @@ export default function Checkout({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -241,7 +240,6 @@ export default function Checkout({
           <CheckoutSummary
             items={checkoutItems}
             subtotal={subtotal}
-            compareSubtotal={compareSubtotal}
             discountTotal={discount_total}
             voucher={voucher}
             voucherDiscount={voucher_discount}

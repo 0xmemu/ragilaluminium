@@ -71,7 +71,6 @@ function formatPercent(value: number): string {
 export function CheckoutSummary({
   items,
   subtotal,
-  compareSubtotal = 0,
   discountTotal,
   voucher,
   voucherDiscount,
@@ -83,8 +82,6 @@ export function CheckoutSummary({
 }: {
   items: CheckoutItem[]
   subtotal: number
-  /** Harga sebelum potongan (harga coret), dari compare_price tiap baris. */
-  compareSubtotal?: number
   discountTotal: number
   voucher?: CheckoutVoucher | null
   voucherDiscount: number
@@ -109,15 +106,6 @@ export function CheckoutSummary({
     shippingQuoteAttempted,
   } = c
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
-  // Harga asli ditampilkan tercoret di bawah subtotal. `subtotal` dari server
-  // SUDAH termasuk potongan, jadi harga aslinya = compare_subtotal bila ada,
-  // atau subtotal + potongan produk bila compare_price tidak diisi. Tanpa
-  // fallback ini potongan produk bisa tidak terlihat sama sekali.
-  const subtotalOriginal = Math.max(
-    compareSubtotal,
-    Number(subtotal || 0) + Number(discountTotal || 0),
-  )
-  const hasCompareSubtotal = subtotalOriginal > Number(subtotal || 0)
 
   const shippingCost = effectiveShipping ? Number(effectiveShipping.net || 0) : 0
   const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
@@ -351,14 +339,7 @@ export function CheckoutSummary({
       <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
-          <dd className="space-y-0.5 text-right">
-            <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
-            {hasCompareSubtotal ? (
-              <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
-                {formatCurrency(subtotalOriginal)}
-              </span>
-            ) : null}
-          </dd>
+          <dd className="tabular-nums text-right font-semibold">{formatCurrency(subtotal)}</dd>
         </div>
         {hasVoucher ? (
           <div className="flex justify-between gap-4">
