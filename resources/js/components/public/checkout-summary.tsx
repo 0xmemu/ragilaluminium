@@ -216,25 +216,27 @@ export function CheckoutSummary({
                 <p className="font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
                   {item.name}
                 </p>
-                <p className="tabular-nums mt-0.5 text-[11px] text-muted-foreground">
+                <p className="tabular-nums mt-1 text-[11px] text-muted-foreground">
                   <span>{item.quantity} unit</span>
                   {variantText ? <span> · {variantText}</span> : null}
                 </p>
-                {discountPercent ? (
-                  <span className="mt-1 inline-block rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
-                    Hemat {discountPercent}%
-                  </span>
-                ) : null}
-                {hasLineDiscount ? (
-                  <span className="mt-1 block text-[11px] text-sale">
-                    Hemat {formatCurrency(lineDiscount)}
-                  </span>
-                ) : null}
               </div>
-              <div className="shrink-0 text-right">
+              {/* Angka yang dibayar di atas, harga sebelum diskon dicoret di
+                  bawahnya. Persentase diskon diletakkan di kanan harga coret,
+                  jadi potongan tidak perlu diulang sebagai teks "Hemat". */}
+              <div className="shrink-0 space-y-0.5 pl-2 text-right">
                 {hasLineDiscount && lineCompare != null ? (
-                  <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
-                    {formatCurrency(lineCompare)}
+                  <span className="flex items-baseline justify-end gap-1.5">
+                    <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                      {formatCurrency(lineCompare)}
+                    </span>
+                    {discountPercent ? (
+                      /* Lebar tetap supaya badge persen sejajar antar baris
+                         ketika pesanan memuat beberapa produk. */
+                      <span className="w-8 shrink-0 text-right text-[11px] font-semibold text-sale">
+                        {discountPercent}%
+                      </span>
+                    ) : null}
                   </span>
                 ) : null}
                 <span
@@ -352,10 +354,10 @@ export function CheckoutSummary({
         ) : null}
       </div>
 
-      <dl className="mt-3 space-y-3 text-xs">
+      <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
-          <dd className="text-right">
+          <dd className="space-y-0.5 text-right">
             <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
             {hasCompareSubtotal ? (
               <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
@@ -400,7 +402,7 @@ export function CheckoutSummary({
             <dt className="text-muted-foreground min-w-0 break-words">
               Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${formatPercent(shippingSubsidyPercent)})` : ""}
             </dt>
-            <dd className="text-right">
+            <dd className="space-y-0.5 text-right">
               <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>
               {shippingHasCompare ? (
                 <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
