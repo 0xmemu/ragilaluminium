@@ -245,4 +245,100 @@ class CatalogImportV2Test extends TestCase
             "media wajib tersimpan dari URL di berkas"
         );
     }
+
+    /**
+     * Bentuk respons Periksa file WAJIB sama dengan format lain.
+     *
+     * Regresi yang pernah terjadi: endpoint preview v2 mengirim kunci
+     * ok/errors/total_rows, sedangkan frontend membaca verify_errors dan total.
+     * Server menjawab 200, tetapi halaman gagal merender dan admin melihat
+     * layar gangguan sementara padahal server sukses. Bug seperti ini tidak
+     * terlihat dari uji status HTTP saja.
+     */
+    public function test_bentuk_respons_preview_v2_dibaca_frontend(): void
+    {
+        $path = $this->berkas([$this->baris([])]);
+
+        $upload = new \Illuminate\Http\UploadedFile(
+            $path,
+            "produk.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            null,
+            true
+        );
+
+        $res = $this->actingAs($this->job()->triggeredBy)
+            ->post(route("admin.imports.preview-catalog"), ["file" => $upload]);
+        $res->assertOk();
+
+        $data = json_decode($res->getContent(), true);
+        $this->assertIsArray($data);
+
+        foreach (["verify_errors", "total"] as $kunci) {
+            $this->assertArrayHasKey(
+                $kunci,
+                $data,
+                "respons preview wajib memuat kunci " . $kunci . " karena dibaca frontend"
+            );
+        }
+
+        $this->assertIsArray($data["verify_errors"], "verify_errors wajib array");
+        $this->assertSame(1, $data["total"], "total menghitung baris TERISI, bukan baris kosong template");
+    }
+
+    /**
+     * Progres job WAJIB berjalan: processed_rows naik bersama success_rows.
+     *
+     * Regresi yang pernah terjadi: importer v2 tidak pernah menaikkan
+     * processed_rows, sehingga halaman detail job selalu menampilkan 0 persen
+     * walau barisnya sudah diproses.
+     */
+    public function test_progres_job_naik_saat_baris_diproses(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_1" => "Hitam", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $job->refresh();
+        $this->assertSame(2, (int) $job->processed_rows, "processed_rows wajib naik mengikuti baris");
+        $this->assertSame(2, (int) $job->success_rows);
+    }
+
+    /**
+     * store() wajib mencatat total_rows sesuai format v2.
+     *
+     * Regresi yang pernah terjadi: penghitung baris membaca kolom format lama
+     * (name, parent_sku, option_1), sehingga berkas v2 tercatat 0 baris dan
+     * progres job tidak pernah benar.
+     */
+    public function test_store_mencatat_total_rows_format_v2(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_1" => "Hitam"]),
+        ];
+        $path = $this->berkas($rows);
+
+        $upload = new \Illuminate\Http\UploadedFile(
+            $path,
+            "produk.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            null,
+            true
+        );
+
+        $this->actingAs($this->job()->triggeredBy)
+            ->post(route("admin.imports.store"), [
+                "type" => "catalog_import",
+                "file" => $upload,
+            ]);
+
+        $job = \App\Models\ImportJob::query()->latest("id")->first();
+        $this->assertSame(2, (int) $job->total_rows, "total_rows wajib 2, bukan 0");
+    }
 }

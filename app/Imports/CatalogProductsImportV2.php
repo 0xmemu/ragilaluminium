@@ -88,6 +88,10 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
 
         $rowIndex = $row->getIndex();
 
+        // processed_rows WAJIB dinaikkan, kalau tidak halaman detail job
+        // selalu menampilkan progres 0 persen walau barisnya diproses.
+        $job->increment("processed_rows");
+
         try {
             $this->importRow($job, $data, $rowIndex);
         } catch (\Throwable $e) {

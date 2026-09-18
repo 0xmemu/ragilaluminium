@@ -205,9 +205,22 @@ class ImportJobController extends Controller
         $rows = $rowData[0] ?? [];
         // Skema dua-sheet (template baru): baris produk = punya option_1 atau
         // name/parent_sku. Skema lama: cukup name/parent_sku.
-        $rowCount = count(array_filter($rows, fn ($r) => ! empty(trim((string) ($r['name'] ?? '')))
-            || ! empty(trim((string) ($r['parent_sku'] ?? '')))
-            || ! empty(trim((string) ($r['option_1'] ?? '')))));
+        // Hitungan baris harus mengikuti format berkas. Format v2 memakai
+        // nama_produk/opsi_variasi_1, format lama memakai
+        // name/parent_sku/option_1. Memakai kolom lama membuat berkas v2
+        // tercatat 0 baris sehingga progres job tidak pernah benar.
+        $isV2 = \App\Support\CatalogTemplateV2Detector::isV2($rows);
+
+        $rowCount = count(array_filter($rows, function ($r) use ($isV2): bool {
+            if ($isV2) {
+                return trim((string) ($r["nama_produk"] ?? "")) !== ""
+                    || trim((string) ($r["opsi_variasi_1"] ?? "")) !== "";
+            }
+
+            return trim((string) ($r["name"] ?? "")) !== ""
+                || trim((string) ($r["parent_sku"] ?? "")) !== ""
+                || trim((string) ($r["option_1"] ?? "")) !== "";
+        }));
         // Batas baris dinaikkan untuk katalog besar: 10.000 produk x 4 varian
         // = 40.000 baris. Proses tetap chunk 1.000 baris + job background.
         $rowLimit = 50000;
@@ -555,10 +568,16 @@ class ImportJobController extends Controller
     {
         $errors = \App\Support\CatalogImportVerifierV2::verify($allRows);
 
-        $rows = array_slice(array_values(array_filter($allRows, static function ($row): bool {
-            return trim((string) ($row['nama_produk'] ?? '')) !== ''
-                || trim((string) ($row['opsi_variasi_1'] ?? '')) !== '';
-        })), 0, 1000);
+        // Baris template yang masih kosong (200 baris siap isi dengan dropdown)
+        // TIDAK dihitung sebagai baris data. Memakai count($allRows) membuat
+        // total selalu 199-200 walau admin hanya mengisi satu baris, dan itu
+        // menyesatkan saat memeriksa berkas.
+        $terisi = array_values(array_filter($allRows, static function ($row): bool {
+            return trim((string) ($row["nama_produk"] ?? "")) !== ""
+                || trim((string) ($row["opsi_variasi_1"] ?? "")) !== "";
+        }));
+
+        $rows = array_slice($terisi, 0, 1000);
 
         $resolver = app(\App\Services\MediaAssetResolver::class);
         $cache = [];
@@ -624,15 +643,18 @@ class ImportJobController extends Controller
             ->unique()
             ->count();
 
+        // BENTUK RESPONS WAJIB SAMA dengan preview format lain.
+        // Frontend membaca verify_errors dan total; mengirim kunci lain
+        // (errors, ok, total_rows) membuat halaman gagal merender setelah
+        // server menjawab 200, sehingga admin melihat layar gangguan
+        // sementara padahal server sukses.
         return response()->json([
-            'ok' => $errors === [],
+            'contract' => 'preview-only; tidak menulis data',
             'template' => 'v2',
-            'total_rows' => count($allRows),
-            'total_products' => $totalProducts,
-            'checked_rows' => count($diffs),
-            'errors' => array_slice($errors, 0, 20),
-            'error_count' => count($errors),
+            'verify_errors' => array_slice($errors, 0, 20),
             'rows' => $diffs,
+            'total' => count($terisi),
+            'total_products' => $totalProducts,
         ]);
     }
 
