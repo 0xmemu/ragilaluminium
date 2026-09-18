@@ -8,12 +8,19 @@ use Tests\Concerns\CreatesVisibleProducts;
 use Tests\TestCase;
 
 /**
- * Ukuran halaman katalog menyesuaikan lebar layar (kontrak owner 2026-09-18).
+ * Ukuran halaman katalog menyesuaikan perangkat (kontrak owner 2026-09-18).
  *
- * Jumlah kartu per halaman dihitung SERVER, jadi server tidak bisa tahu lebar
- * layar. Klien mengirim `per_page` saat viewport sempit; desktop memakai default
- * config (15 kartu, pas untuk grid 3 dan 5 kolom), mobile 16 kartu (8 baris
- * penuh pada grid 2 kolom, tanpa kartu menggantung).
+ * Jumlah kartu per halaman dihitung SERVER, jadi server tidak tahu lebar layar.
+ * Dua sinyal dipakai, berurutan:
+ *
+ *  1. `per_page` dari klien (paling akurat: klien mengukur viewport-nya sendiri).
+ *  2. User-Agent telepon, supaya pelanggan HP menerima 16 kartu sejak render
+ *     pertama tanpa permintaan ulang. Pelanggan memakai satu perangkat secara
+ *     konsisten, jadi sinyal ini stabil untuk mereka.
+ *
+ * Desktop memakai default config: 15 kartu, pas untuk grid 3 kolom (sm/md) dan
+ * 5 kolom (xl). HP 16 kartu: 8 baris penuh pada grid 2 kolom, tanpa kartu
+ * menggantung. Tablet sengaja tetap 15 karena lebarnya masuk grid 3 kolom.
  */
 class CatalogPageSizeTest extends TestCase
 {
@@ -117,6 +124,129 @@ class CatalogPageSizeTest extends TestCase
                 ->where('pagination.current_page', 2)
                 ->where('pagination.last_page', 2)
             );
+    }
+
+    /** User-Agent telepon Android (selalu memuat "Mobile"). */
+    private const UA_ANDROID_PHONE = 'Mozilla/5.0 (Linux; Android 13; SM-A505F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36';
+
+    /** User-Agent iPhone. */
+    private const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
+    /** User-Agent desktop. */
+    private const UA_DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
+
+    /** User-Agent tablet Android: "Android" tanpa "Mobile". */
+    private const UA_ANDROID_TABLET = 'Mozilla/5.0 (Linux; Android 13; SM-X700) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
+
+    /** User-Agent iPad (memuat "Mobile" tetapi bukan telepon). */
+    private const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
+
+    public function test_telepon_android_mendapat_ukuran_mobile_tanpa_parameter(): void
+    {
+        $this->seedProducts(20);
+
+        // Pelanggan HP mendarat dari tautan menu: URL bersih, tanpa per_page,
+        // tetapi kartunya sudah 16 sejak render pertama.
+        $this->withHeaders(['User-Agent' => self::UA_ANDROID_PHONE])
+            ->get('/products/all')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/Catalog')
+                ->has('products', 16)
+                ->where('pagination.per_page', 16)
+                ->where('pagination.last_page', 2)
+            );
+    }
+
+    public function test_iphone_mendapat_ukuran_mobile(): void
+    {
+        $this->seedProducts(20);
+
+        $this->withHeaders(['User-Agent' => self::UA_IPHONE])
+            ->get('/products/all')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 16)
+                ->where('pagination.per_page', 16)
+            );
+    }
+
+    public function test_desktop_tetap_ukuran_default(): void
+    {
+        $this->seedProducts(20);
+
+        $this->withHeaders(['User-Agent' => self::UA_DESKTOP])
+            ->get('/products/all')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 15)
+                ->where('pagination.per_page', 15)
+            );
+    }
+
+    public function test_tablet_dan_ipad_bukan_telepon(): void
+    {
+        $this->seedProducts(20);
+
+        // Lebar tablet masuk grid 3 kolom, dan 15 kartu pas mengisi 5 baris.
+        foreach ([self::UA_ANDROID_TABLET, self::UA_IPAD] as $agent) {
+            $this->withHeaders(['User-Agent' => $agent])
+                ->get('/products/all')
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->has('products', 15)
+                    ->where('pagination.per_page', 15)
+                );
+        }
+    }
+
+    public function test_user_agent_kosong_memakai_ukuran_default(): void
+    {
+        $this->seedProducts(20);
+
+        $this->withHeaders(['User-Agent' => ''])
+            ->get('/products/all')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 15)
+                ->where('pagination.per_page', 15)
+            );
+    }
+
+    public function test_parameter_per_page_menang_atas_deteksi_user_agent(): void
+    {
+        $this->seedProducts(20);
+
+        // Klien yang mengukur sendiri viewport-nya lebih akurat daripada
+        // User-Agent, jadi nilai eksplisitnya yang dipakai. Contoh nyata: HP
+        // yang diputar ke lanskap sehingga gridnya jadi 3 kolom.
+        $this->withHeaders(['User-Agent' => self::UA_ANDROID_PHONE])
+            ->get('/products/all?per_page=15')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 15)
+                ->where('pagination.per_page', 15)
+            );
+
+        // Dan sebaliknya: jendela desktop sempit meminta ukuran mobile.
+        $this->withHeaders(['User-Agent' => self::UA_DESKTOP])
+            ->get('/products/all?per_page=16')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('products', 16)
+                ->where('pagination.per_page', 16)
+            );
+    }
+
+    public function test_api_katalog_ikut_mengenali_telepon(): void
+    {
+        $this->seedProducts(20);
+
+        $this->withHeaders(['User-Agent' => self::UA_ANDROID_PHONE])
+            ->getJson('/api/catalog/windows')
+            ->assertOk()
+            ->assertJsonPath('pagination.per_page', 16)
+            ->assertJsonCount(16, 'products');
     }
 
     public function test_api_katalog_ikut_memakai_ukuran_halaman(): void

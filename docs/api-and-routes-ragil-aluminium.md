@@ -63,11 +63,19 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
 - `GET /products/{category}/{model}/{design}` -> `CatalogController@designShow`  (name: `catalog.design`)
-- Ukuran halaman katalog menyesuaikan lebar layar (kontrak owner 2026-09-18). Desktop memakai
-  `storefront.catalog_page_size` (default 15 kartu, pas untuk grid 3 dan 5 kolom). Klien mengirim
-  query `per_page` = `storefront.catalog_page_size_mobile` (default 16 kartu) saat viewport di bawah
-  breakpoint `sm` (grid 2 kolom, 16 kartu = 8 baris penuh tanpa kartu menggantung). Nilai `per_page`
-  di luar dua ukuran resmi itu diabaikan dan halaman kembali ke ukuran default desktop.
+- Ukuran halaman katalog menyesuaikan perangkat (kontrak owner 2026-09-18). Desktop memakai
+  `storefront.catalog_page_size` (default 15 kartu, pas untuk grid 3 kolom sm/md dan 5 kolom xl).
+  Telepon memakai `storefront.catalog_page_size_mobile` (default 16 kartu; pada grid 2 kolom berarti
+  8 baris penuh tanpa kartu menggantung). Urutan keputusan di server:
+  1. Query `per_page` dari klien. Klien yang mengukur lebar viewport sendiri paling akurat, jadi
+     nilai resmi yang dikirimnya menang. Dipakai saat jendela desktop dipersempit atau telepon
+     diputar ke lanskap.
+  2. User-Agent telepon, supaya pelanggan HP menerima 16 kartu SEJAK RENDER PERTAMA tanpa permintaan
+     ulang dan tanpa URL berisi parameter. Pelanggan memakai satu perangkat secara konsisten, jadi
+     sinyal ini stabil untuk mereka. Tablet Android (`Android` tanpa `Mobile`) dan iPad TIDAK
+     dihitung telepon karena lebarnya masuk grid 3 kolom (15 kartu pas).
+  3. Default config (desktop, 15 kartu).
+  Nilai `per_page` di luar dua ukuran resmi itu diabaikan dan halaman kembali ke ukuran default.
 - Respons listing katalog (Inertia maupun `/api/catalog/{category}`) membawa `pagination.per_page`,
   dan prop `catalogPageSize` berisi `{ desktop, mobile }` sebagai satu-satunya sumber angka resmi
   untuk klien. Query `per_page` hanya mengubah UKURAN halaman, tidak pernah mengubah isi atau urutan.

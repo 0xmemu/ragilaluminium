@@ -194,11 +194,12 @@ export default function Catalog({
   const perPageParam = catalogPageSizeParam(perPage, catalogPageSize)
   const serverPerPage = pagination?.per_page ?? null
 
-  // Tautan dari luar halaman (menu header, Flash Sale, tautan lama, dan tautan
-  // yang dibagikan) tidak membawa per_page, sehingga server mengirim ukuran
-  // desktop dan di layar sempit satu kartu menggantung lagi. Setelah lebar
-  // terbaca, minta ulang SEKALI dengan ukuran yang benar. Efek ini konvergen:
-  // respons berikutnya sudah membawa per_page yang cocok, jadi tidak mengulang.
+  // JARING PENGAMAN. Server sudah mengenali telepon dari User-Agent, jadi
+  // pelanggan di HP menerima 16 kartu sejak render pertama. Efek ini menangani
+  // sisa kasus yang tidak terlihat User-Agent: jendela desktop yang
+  // dipersempit, dan HP yang diputar ke lanskap (grid jadi 3 kolom). Setelah
+  // lebar terbaca, minta ulang SEKALI dengan ukuran yang benar. Efek ini
+  // konvergen: respons berikutnya sudah membawa ukuran yang cocok.
   // Nomor halaman dijepit karena jumlah halaman ikut berubah bersama ukurannya.
   React.useEffect(() => {
     if (viewportWidth <= 0) return

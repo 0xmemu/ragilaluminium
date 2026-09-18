@@ -1999,3 +1999,39 @@ Test: CatalogPageSizeTest 7 passed (139 assertions; termasuk cache 15/16 tidak b
 per_page nakal diabaikan), Vitest catalog-page-size.test.ts 10 passed, regresi suite katalog
 69 passed (740 assertions) - termasuk CatalogPaginationContractTest milik agent lain yang tetap sah
 karena default desktop TIDAK berubah. tsc bersih, eslint bersih untuk berkas yang diubah, build Vite PASS.
+
+### 2026-09-19 - Katalog: ukuran halaman dikenali server dari User-Agent (hapus kedip 15 kartu)
+Koreksi owner atas pekerjaan 2026-09-18, verbatim: "pelanggan tentu menggunakan website untuk
+testing antar device atau menghitung jumlah card antar perangkat, pelanggan pasti konsisten memakai
+satu jenis device tanpa mengatur urutan viewport seperti developer, tolong nalarnya dipakai".
+
+Dua hal yang owner tunjukkan:
+1. Caveat "tautan tidak bisa dibagikan lintas perangkat" tidak relevan. Pelanggan memakai satu
+   perangkat secara konsisten; mereka tidak mengubah-ubah lebar jendela seperti pengembang. Jadi
+   sinyal perangkat tersedia di server dan tidak perlu menunggu JS.
+2. Ukuran pengukuran waktu di browser menemukan cacat nyata: di HP, halaman sempat menampilkan 15
+   kartu selama sekitar 1,2 detik sebelum permintaan ulang mengubahnya jadi 16. Itu flash of wrong
+   content, dan kalau JS lambat atau gagal, pelanggan kembali melihat 15. Verifikasi: jejak kartu
+   per 300ms saat mendarat di 390px menunjukkan n=15 pada 300 sampai 1200ms, baru n=16 pada 1500ms.
+
+Perubahan:
+- app/Http/Controllers/CatalogController.php - method looksLikePhone() + konstanta
+  PHONE_AGENT_MARKERS (iphone, ipod, windows phone, opera mini, opera mobi, iemobile, blackberry,
+  dan Android yang memuat "Mobile"). catalogPageSize() kini berurutan: per_page dari klien, lalu
+  User-Agent telepon, lalu default desktop. Tablet Android dan iPad sengaja BUKAN telepon: lebarnya
+  masuk grid 3 kolom sehingga 15 kartu pas.
+- resources/js/pages/Public/Catalog.tsx - efek koreksi diturunkan perannya menjadi JARING PENGAMAN
+  untuk kasus yang tidak terlihat User-Agent (jendela desktop dipersempit, telepon diputar ke
+  lanskap). Komentarnya diperbarui supaya tidak lagi menyebut "tautan dari luar halaman", karena
+  kasus utama itu sudah ditangani server.
+
+Verifikasi live:
+- curl dengan User-Agent Android Mobile pada URL bersih: per_page 16, payload awal memuat 16 kartu
+  (24 tautan parent_sku termasuk 8 spotlight Flash Sale). Desktop: 15. iPad: 15.
+- canonicalUrl tetap bersih tanpa query string, jadi perbedaan ukuran per perangkat tidak
+  menimbulkan duplikat konten di mesin pencari.
+
+Test: CatalogPageSizeTest 14 passed (233 assertions), termasuk telepon Android 16 tanpa parameter,
+iPhone 16, desktop 15, tablet Android dan iPad 15, User-Agent kosong 15, dan per_page eksplisit
+menang atas deteksi User-Agent. Regresi katalog 50 passed (744 assertions). Vitest 10 passed,
+tsc bersih, eslint bersih, build Vite PASS.

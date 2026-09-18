@@ -179,15 +179,34 @@ class CatalogController extends Controller
     }
 
     /**
+     * Penanda User-Agent yang menunjukkan perangkat telepon (bukan tablet).
+     *
+     * Hanya dipakai untuk memilih ukuran halaman awal, bukan untuk mengunci
+     * fitur. Tablet sengaja TIDAK termasuk: grid tablet (768px ke atas) memakai
+     * 3 kolom, dan 15 kartu pas mengisi 5 baris di sana.
+     */
+    private const PHONE_AGENT_MARKERS = [
+        'iphone', 'ipod', 'windows phone', 'opera mini', 'opera mobi',
+        'iemobile', 'blackberry',
+    ];
+
+    /**
      * Ukuran halaman katalog.
      *
-     * Desktop memakai config default (15). Klien mengirim per_page = ukuran
-     * mobile saat viewport sempit, karena pada grid 2 kolom 15 kartu menyisakan
-     * satu kartu menggantung di baris terakhir.
+     * Grid katalog responsif (2 kolom di HP, sampai 5 kolom di layar lebar)
+     * sedangkan paginate() dihitung server. Urutan keputusan:
      *
-     * Nilai di luar dua ukuran resmi diabaikan (bukan divalidasi dengan pesan
-     * error) supaya URL yang menyisipkan per_page sembarang tidak bisa memaksa
-     * pagination raksasa. Halaman selalu kembali ke ukuran default yang aman.
+     *  1. per_page dari klien. Klien yang mengukur lebar viewport-nya sendiri
+     *     paling akurat, jadi nilai resmi yang dikirimnya menang.
+     *  2. User-Agent telepon. Pelanggan memakai satu perangkat secara konsisten
+     *     (tidak mengubah-ubah lebar jendela seperti pengembang), jadi
+     *     perangkatnya bisa dikenali di server. Dengan begitu HP menerima 16
+     *     kartu SEJAK RENDER PERTAMA: tanpa permintaan ulang, tanpa URL kotor.
+     *  3. Default config (desktop, 15 kartu).
+     *
+     * Nilai per_page di luar dua ukuran resmi diabaikan, bukan ditolak dengan
+     * pesan error, supaya URL yang menyisipkan per_page sembarang tidak bisa
+     * memaksa pagination raksasa.
      */
     protected function catalogPageSize(Request $request): int
     {
@@ -202,7 +221,34 @@ class CatalogController extends Controller
             }
         }
 
+        if ($this->looksLikePhone($request)) {
+            return $mobile;
+        }
+
         return $desktop;
+    }
+
+    /**
+     * Apakah permintaan datang dari telepon, dilihat dari User-Agent.
+     *
+     * Telepon Android selalu memuat "mobile"; tablet Android tidak. iPhone dan
+     * iPod dikenali dari namanya. iPad sengaja tidak dihitung telepon karena
+     * lebar layarnya masuk grid 3 kolom (15 kartu pas).
+     */
+    protected function looksLikePhone(Request $request): bool
+    {
+        $agent = strtolower((string) $request->userAgent());
+        if ($agent === '') {
+            return false;
+        }
+
+        foreach (self::PHONE_AGENT_MARKERS as $marker) {
+            if (str_contains($agent, $marker)) {
+                return true;
+            }
+        }
+
+        return str_contains($agent, 'android') && str_contains($agent, 'mobile');
     }
 
 protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
