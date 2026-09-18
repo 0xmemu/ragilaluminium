@@ -358,6 +358,15 @@ export function CheckoutSummary({
             </dd>
           </div>
         ) : null}
+        {showCodFee ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground min-w-0 break-words">
+              Biaya COD{cod.fee_type === "percent" ? ` ${formatNumber(cod.fee_value)}%` : ""}
+            </dt>
+            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
+          </div>
+        ) : null}
+
         {shippingQuoteLoading ? (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
@@ -412,15 +421,6 @@ export function CheckoutSummary({
             </dd>
           </div>
         )}
-
-        {showCodFee ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">
-              Biaya COD{cod.fee_type === "percent" ? ` ${formatNumber(cod.fee_value)}%` : ""}
-            </dt>
-            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
-          </div>
-        ) : null}
 
         <div className="flex justify-between gap-4 border-t border-border pt-3">
           <dt className="text-sm font-bold text-foreground">Total Pembayaran</dt>
