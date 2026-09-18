@@ -101,7 +101,7 @@ class CatalogTemplateV2DownloadTest extends TestCase
             "Nama Variasi 1", "Opsi Variasi 1", "Gambar per Varian",
             "Nama Variasi 2", "Opsi Variasi 2",
             "Harga", "Stok", "Berat (Kg)", "Tinggi (cm)", "Panjang (cm)", "Lebar (cm)",
-            "Gambar 1 (utama)", "Gambar 2", "Media Bersama 1", "Media Bersama 2",
+            "Gambar 1 (utama)", "Gambar 2", "Gambar 3", "Media Bersama 1", "Media Bersama 2",
             "Gambar Hasil Pemasangan 1", "Gambar Hasil Pemasangan 2",
         ];
         foreach ($harap as $i => $header) {
@@ -112,7 +112,7 @@ class CatalogTemplateV2DownloadTest extends TestCase
             );
         }
 
-        $this->assertCount(24, $harap, "jumlah kolom kontrak");
+        $this->assertCount(25, $harap, "jumlah kolom kontrak");
     }
 
     public function test_import_produk_memakai_warna_per_grup(): void
@@ -186,8 +186,8 @@ class CatalogTemplateV2DownloadTest extends TestCase
         $ws = $ss->getSheetByName("Update Media");
         $this->assertSame("RA-TPL-2", (string) $ws->getCell("A2")->getValue());
 
-        // Seluruh kolom media E sampai K wajib KOSONG saat diunduh.
-        foreach (range(5, 11) as $c) {
+        // Seluruh kolom media E sampai L wajib KOSONG saat diunduh.
+        foreach (range(5, 12) as $c) {
             $this->assertNull(
                 $ws->getCellByColumnAndRow($c, 2)->getValue(),
                 "kolom media ke-" . $c . " wajib kosong supaya tidak tertimpa"

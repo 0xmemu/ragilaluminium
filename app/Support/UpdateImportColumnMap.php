@@ -31,6 +31,7 @@ final class UpdateImportColumnMap
         'gambar_per_varian' => 'image_variation_option',
         'gambar_1_utama' => 'image_1',
         'gambar_2' => 'image_2',
+        'gambar_3' => 'image_3',
         'media_bersama_1' => 'shared_media_1',
         'media_bersama_2' => 'shared_media_2',
         'gambar_hasil_pemasangan_1' => 'installation_image_1',

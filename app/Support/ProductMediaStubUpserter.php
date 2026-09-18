@@ -8,8 +8,8 @@ use App\Services\MediaAssetResolver;
 
 /**
  * Upsert stub media untuk import (katalog & update media). Satu sumber
- * logika: resolver MediaAssetResolver, idempoten per media_asset_id, hanya
- * menambah/memperbarui flag, TIDAK PERNAH menghapus.
+ * logika: resolver MediaAssetResolver, idempoten per media_asset_id dan peran
+ * (katalog/pemasangan), hanya menambah/memperbarui flag, TIDAK PERNAH menghapus.
  */
 class ProductMediaStubUpserter
 {
@@ -30,6 +30,11 @@ class ProductMediaStubUpserter
         $mediaQuery = ProductMedia::query()
             ->where('product_id', $productId)
             ->where('media_asset_id', $asset->id);
+
+        // Pisahkan baris foto katalog vs hasil pemasangan: satu aset foto
+        // boleh sekaligus dipakai di Foto Produk dan di Hasil Pemasangan
+        // (selaras MediaAssetResolver::attach).
+        $mediaQuery->where('is_installation', $isInstallation);
         if ($variantId === null) {
             $mediaQuery->whereNull('product_variant_id');
         } else {

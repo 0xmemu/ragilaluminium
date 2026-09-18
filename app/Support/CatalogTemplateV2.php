@@ -95,6 +95,7 @@ final class CatalogTemplateV2
         // Grup 4: media katalog dan pemasangan.
         $add('Gambar 1 (utama)', 'gambar_1_utama', self::GROUP_MEDIA);
         $add('Gambar 2', 'gambar_2', self::GROUP_MEDIA);
+        $add('Gambar 3', 'gambar_3', self::GROUP_MEDIA);
         $add('Media Bersama 1', 'media_bersama_1', self::GROUP_MEDIA);
         $add('Media Bersama 2', 'media_bersama_2', self::GROUP_MEDIA);
         $add('Gambar Hasil Pemasangan 1', 'gambar_hasil_pemasangan_1', self::GROUP_MEDIA);
@@ -139,6 +140,7 @@ final class CatalogTemplateV2
             ['header' => 'Gambar per Varian', 'slug' => 'gambar_per_varian', 'group' => self::GROUP_MEDIA, 'locked' => false],
             ['header' => 'Gambar 1 (utama)', 'slug' => 'gambar_1_utama', 'group' => self::GROUP_MEDIA, 'locked' => false],
             ['header' => 'Gambar 2', 'slug' => 'gambar_2', 'group' => self::GROUP_MEDIA, 'locked' => false],
+            ['header' => 'Gambar 3', 'slug' => 'gambar_3', 'group' => self::GROUP_MEDIA, 'locked' => false],
             ['header' => 'Media Bersama 1', 'slug' => 'media_bersama_1', 'group' => self::GROUP_MEDIA, 'locked' => false],
             ['header' => 'Media Bersama 2', 'slug' => 'media_bersama_2', 'group' => self::GROUP_MEDIA, 'locked' => false],
             ['header' => 'Gambar Hasil Pemasangan 1', 'slug' => 'gambar_hasil_pemasangan_1', 'group' => self::GROUP_MEDIA, 'locked' => false],

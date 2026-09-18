@@ -190,6 +190,7 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
             ['Gambar per Varian', 'YA', 'URL foto yang menempel pada varian baris ini.'],
             ['Gambar 1 (utama)', 'YA', 'URL foto utama katalog produk.'],
             ['Gambar 2', 'YA', 'URL foto katalog kedua.'],
+            ['Gambar 3', 'YA', 'URL foto katalog ketiga.'],
             ['Media Bersama 1', 'YA', 'URL media yang dipakai semua varian produk.'],
             ['Media Bersama 2', 'YA', 'URL media bersama kedua.'],
             ['Gambar Hasil Pemasangan 1', 'YA', 'URL foto dokumentasi pemasangan.'],

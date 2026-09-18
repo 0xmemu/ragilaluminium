@@ -54,6 +54,14 @@ class CatalogImportV2Test extends TestCase
         }
     }
 
+    /** Tambah berkas uji pada disk media yang sudah di-fake di setUp. */
+    private function tambahMedia(array $paths): void
+    {
+        foreach ($paths as $path) {
+            \Illuminate\Support\Facades\Storage::disk("media")->put($path, "isi-uji");
+        }
+    }
+
     private function urlMedia(string $path): string
     {
         return "https://media.333labs.tech/" . $path;
@@ -246,6 +254,100 @@ class CatalogImportV2Test extends TestCase
         );
     }
 
+
+    public function test_gambar_3_masuk_galeri_katalog_posisi_3(): void
+    {
+        // Disk media sudah di-fake di setUp; tambahkan berkas tanpa mem-fake
+        // ulang supaya root disk tidak tergantikan.
+        $this->tambahMedia([
+            "media-assets/kedua/pdp.webp",
+            "media-assets/ketiga/pdp.webp",
+        ]);
+
+        $rows = [
+            $this->baris([
+                "gambar_2" => $this->urlMedia("media-assets/kedua/pdp.webp"),
+                "gambar_3" => $this->urlMedia("media-assets/ketiga/pdp.webp"),
+            ]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+        $galeri = $product->media()
+            ->where("is_installation", false)
+            ->whereNull("product_variant_id")
+            ->orderBy("position")
+            ->get();
+
+        $this->assertSame(
+            [1, 2, 3],
+            $galeri->pluck("position")->all(),
+            "galeri katalog wajib memuat posisi 1, 2, dan 3"
+        );
+        $this->assertTrue(
+            (bool) $galeri->firstWhere("position", 1)->is_main_image,
+            "posisi 1 wajib gambar utama"
+        );
+        $this->assertSame(
+            $this->urlMedia("media-assets/ketiga/pdp.webp"),
+            $galeri->firstWhere("position", 3)->source_url,
+            "posisi 3 wajib berasal dari kolom Gambar 3"
+        );
+    }
+
+    public function test_url_sama_di_gambar_2_dan_pemasangan_jadi_dua_baris(): void
+    {
+        $this->tambahMedia([
+            "media-assets/kedua/pdp.webp",
+            "media-assets/ketiga/pdp.webp",
+            "media-assets/pasang-dua/pdp.webp",
+        ]);
+
+        $urlBersama = $this->urlMedia("media-assets/kedua/pdp.webp");
+        $rows = [
+            $this->baris([
+                "gambar_2" => $urlBersama,
+                "gambar_3" => $this->urlMedia("media-assets/ketiga/pdp.webp"),
+                "gambar_hasil_pemasangan_1" => $urlBersama,
+                "gambar_hasil_pemasangan_2" => $this->urlMedia("media-assets/pasang-dua/pdp.webp"),
+            ]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+
+        $this->assertDatabaseHas("product_media", [
+            "product_id" => $product->id,
+            "source_url" => $urlBersama,
+            "show_in_catalog" => true,
+            "is_installation" => false,
+            "position" => 2,
+        ]);
+        $this->assertDatabaseHas("product_media", [
+            "product_id" => $product->id,
+            "source_url" => $urlBersama,
+            "show_in_catalog" => false,
+            "is_installation" => true,
+        ]);
+
+        $galeri = $product->media()
+            ->where("is_installation", false)
+            ->whereNull("product_variant_id")
+            ->orderBy("position")
+            ->get();
+        $this->assertSame(
+            [1, 2, 3],
+            $galeri->pluck("position")->all(),
+            "URL bersama dengan pemasangan tidak boleh keluar dari galeri katalog"
+        );
+    }
+
     /**
      * Bentuk respons Periksa file WAJIB sama dengan format lain.
      *
@@ -423,5 +525,27 @@ class CatalogImportV2Test extends TestCase
             ->has("importJob.imported_products", 1)
             ->where("importJob.imported_products.0.sku", fn ($sku) => is_string($sku) && $sku !== "")
         );
+    }
+
+    /**
+     * Halaman detail import WAJIB mengirim backUrl supaya tombol Kembali
+     * dirender layout.
+     *
+     * Regresi yang pernah terjadi: backUrl hanya dikirim di create(), tidak di
+     * show(), sehingga halaman detail tidak punya jalan kembali ke daftar
+     * import selain tombol Riwayat import di kanan atas.
+     */
+    public function test_halaman_detail_import_mengirim_back_url(): void
+    {
+        $job = $this->job();
+        $job->update(["status" => "completed"]);
+
+        $this->actingAs($job->triggeredBy)
+            ->get(route("admin.imports.show", $job))
+            ->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component("Admin/ImportShow")
+                ->where("backUrl", route("admin.imports.index"))
+            );
     }
 }

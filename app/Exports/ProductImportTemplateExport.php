@@ -227,6 +227,7 @@ class ProductImportExampleSheet implements FromArray, WithTitle, WithEvents
                 $line[$idx['lebar_cm']] = $lebar;
                 $line[$idx['gambar_1_utama']] = $row === 1 ? self::sampleUrl('utama') : null;
                 $line[$idx['gambar_2']] = $row === 1 ? self::sampleUrl('tampak-depan') : null;
+                $line[$idx['gambar_3']] = $row === 1 ? self::sampleUrl('tampak-samping') : null;
                 $line[$idx['media_bersama_1']] = $row === 1 ? self::sampleUrl('bersama-1') : null;
                 $line[$idx['media_bersama_2']] = $row === 1 ? self::sampleUrl('bersama-2') : null;
                 $line[$idx['gambar_hasil_pemasangan_1']] = $row === 1 ? self::sampleUrl('pemasangan-1') : null;
@@ -384,6 +385,7 @@ class ProductImportGuideSheet implements FromArray, WithTitle, WithEvents
             ['Lebar (cm)', 'Lebar packing untuk ongkir. TIDAK tampil di storefront.', '20'],
             ['Gambar 1 (utama)', 'URL foto utama katalog. WAJIB, tanpa ini produk tidak bisa aktif.', 'https://media.333labs.tech/...'],
             ['Gambar 2', 'URL foto katalog kedua.', 'https://media.333labs.tech/...'],
+            ['Gambar 3', 'URL foto katalog ketiga.', 'https://media.333labs.tech/...'],
             ['Media Bersama 1', 'URL media yang dipakai semua varian produk.', 'https://media.333labs.tech/...'],
             ['Media Bersama 2', 'URL media bersama kedua.', 'https://media.333labs.tech/...'],
             ['Gambar Hasil Pemasangan 1', 'URL foto dokumentasi pemasangan.', 'https://media.333labs.tech/...'],

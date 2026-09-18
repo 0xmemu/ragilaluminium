@@ -652,7 +652,7 @@ class ImportJobController extends Controller
 
             $urls = [];
             foreach ([
-                'gambar_per_varian', 'gambar_1_utama', 'gambar_2',
+                'gambar_per_varian', 'gambar_1_utama', 'gambar_2', 'gambar_3',
                 'media_bersama_1', 'media_bersama_2',
                 'gambar_hasil_pemasangan_1', 'gambar_hasil_pemasangan_2',
             ] as $key) {

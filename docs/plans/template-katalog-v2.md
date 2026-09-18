@@ -70,7 +70,7 @@ yang sama dipakai di template lain. Jadi kontrak final kolom J adalah
 ### 2.2 Masalah yang harus diperbaiki di versi baru
 
 1. Sheet `Data`: Harga, Stok, Berat, Tinggi, Panjang, Lebar, dan SELURUH kolom
-   media (J, S sampai X) kosong di 12 baris contoh. Template tanpa contoh
+   media (J, S sampai Y) kosong di 12 baris contoh. Template tanpa contoh
    terisi mengundang salah isi, dan ini punya sejarah: berkas import terakhir
    salah mengisi kolom dimensi.
 2. Sheet `Update Produk` dan `Update Media`: hanya `Variasi` terisi, kolom lain
@@ -136,10 +136,11 @@ Satu baris = satu varian. Grup menentukan warna header.
 | R | Lebar (cm) | lebar_cm | `depth_cm` (pengiriman) | 3 |
 | S | Gambar 1 (utama) | gambar_1_utama | media pos 1, penanda gambar utama | 4 |
 | T | Gambar 2 | gambar_2 | media pos 2 | 4 |
-| U | Media Bersama 1 | media_bersama_1 | media bersama | 4 |
-| V | Media Bersama 2 | media_bersama_2 | media bersama | 4 |
-| W | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | media pemasangan | 4 |
-| X | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | media pemasangan | 4 |
+| U | Gambar 3 | gambar_3 | media pos 3 | 4 |
+| V | Media Bersama 1 | media_bersama_1 | media bersama | 4 |
+| W | Media Bersama 2 | media_bersama_2 | media bersama | 4 |
+| X | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | media pemasangan | 4 |
+| Y | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | media pemasangan | 4 |
 
 Grup warna yang diusulkan:
 
@@ -148,7 +149,7 @@ Grup warna yang diusulkan:
 | 1 | Identitas & Produk | A sampai G |
 | 2 | Variasi | H, I, K, L |
 | 3 | Harga & Pengiriman | M sampai R |
-| 4 | Media | J, S sampai X |
+| 4 | Media | J, S sampai Y |
 
 Catatan: kolom J posisinya dekat variasi, tetapi warnanya ikut grup Media supaya
 admin langsung tahu isinya URL gambar, bukan teks biasa.
@@ -177,10 +178,11 @@ admin langsung tahu isinya URL gambar, bukan teks biasa.
 | E | Gambar per Varian | gambar_per_varian | ya |
 | F | Gambar 1 (utama) | gambar_1_utama | ya |
 | G | Gambar 2 | gambar_2 | ya |
-| H | Media Bersama 1 | media_bersama_1 | ya |
-| I | Media Bersama 2 | media_bersama_2 | ya |
-| J | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | ya |
-| K | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | ya |
+| H | Gambar 3 | gambar_3 | ya |
+| I | Media Bersama 1 | media_bersama_1 | ya |
+| J | Media Bersama 2 | media_bersama_2 | ya |
+| K | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | ya |
+| L | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | ya |
 
 Aturan sel kosong: sel kosong TIDAK mengubah data. Ini melanjutkan kontrak lama
 6 Sep 2026. Menghapus gambar memakai penanda khusus, bukan sel kosong, supaya
@@ -197,7 +199,7 @@ berbeda.
 |---|---|---|
 | Foto yang menempel pada varian | Gambar per Varian | `gambar_per_varian` |
 | Foto katalog posisi 1, penanda utama | Gambar 1 (utama) | `gambar_1_utama` |
-| Foto katalog posisi berikutnya | Gambar 2 | `gambar_2` |
+| Foto katalog posisi 2 dan 3 | Gambar 2, Gambar 3 | `gambar_2`, `gambar_3` |
 | Media dipakai bersama seluruh varian | Media Bersama 1, 2 | `media_bersama_1`, `media_bersama_2` |
 | Dokumentasi pemasangan | Gambar Hasil Pemasangan 1, 2 | `gambar_hasil_pemasangan_1`, `gambar_hasil_pemasangan_2` |
 

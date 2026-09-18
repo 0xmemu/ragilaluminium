@@ -203,8 +203,8 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
         $warisan = [
             "nama_produk", "deskripsi_produk", "spesifikasi", "kategori_produk",
             "model_produk", "sub_model", "berat_kg", "tinggi_cm", "panjang_cm",
-            "lebar_cm", "gambar_1_utama", "gambar_2", "media_bersama_1",
-            "media_bersama_2", "gambar_hasil_pemasangan_1", "gambar_hasil_pemasangan_2",
+            "lebar_cm", "gambar_1_utama", "gambar_2", "gambar_3",
+            "media_bersama_1", "media_bersama_2", "gambar_hasil_pemasangan_1", "gambar_hasil_pemasangan_2",
         ];
         foreach ($warisan as $key) {
             if (trim((string) ($data[$key] ?? "")) === "" && isset($this->lastIdentity[$key])) {
@@ -441,7 +441,7 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
     {
         $upserter = new ProductMediaStubUpserter($this->jobId);
 
-        // Media katalog: Gambar 1 (utama) dan Gambar 2.
+        // Media katalog: Gambar 1 (utama), Gambar 2, dan Gambar 3.
         $mainUrl = trim((string) ($data["gambar_1_utama"] ?? ""));
         if ($mainUrl !== "" && ! ($this->writtenProductMedia[$product->id][1] ?? false)) {
             $this->writtenProductMedia[$product->id][1] = true;
@@ -463,6 +463,19 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
                 variantId: null,
                 url: $secondUrl,
                 position: 2,
+                isMain: false,
+                showInCatalog: true,
+            );
+        }
+
+        $thirdUrl = trim((string) ($data["gambar_3"] ?? ""));
+        if ($thirdUrl !== "" && ! ($this->writtenProductMedia[$product->id][3] ?? false)) {
+            $this->writtenProductMedia[$product->id][3] = true;
+            $upserter->upsert(
+                productId: $product->id,
+                variantId: null,
+                url: $thirdUrl,
+                position: 3,
                 isMain: false,
                 showInCatalog: true,
             );
