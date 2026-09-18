@@ -141,37 +141,26 @@ export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
 
   const preferredOrder = ["Arah Buka", "Warna & Kaca", "Warna", "Kaca", "Ukuran"]
 
-  // Urutan tampilan opsi di dalam tiap axis.
-  const optionOrder: Record<string, string[]> = {
-    Warna: ["Putih", "Hitam", "Cokelat", "Serat Kayu"],
-    Kaca: ["Kaca Bening", "Kaca Riben", "Kaca Es"],
-  }
-
-  function sortOptions(name: string, options: string[]): string[] {
-    const order = optionOrder[name] ?? []
+  // Urutan opsi varian: ikuti urutan kemunculan alami dari baris varian (urutan di Excel).
+  // Jangan hardcode nama opsi atau memaksakan urutan alfabetis agar katalog fleksibel
+  // terhadap variasi baru apa pun di masa depan.
+  function sortDimensionOptions(options: string[]): string[] {
+    const parseDim = (s: string) => {
+      const m = s.match(/(\d+\.?\d*)\s*[x×]\s*(\d+\.?\d*)/)
+      return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0]
+    }
     return [...options].sort((a, b) => {
-      const ai = order.findIndex((o) => o.toLowerCase() === a.toLowerCase())
-      const bi = order.findIndex((o) => o.toLowerCase() === b.toLowerCase())
-      if (ai >= 0 && bi >= 0) return ai - bi
-      if (ai >= 0) return -1
-      if (bi >= 0) return 1
-      // Numeric sort for Ukuran ("200x180" -> height x width)
-      if (name === "Ukuran") {
-        const parseDim = (s: string) => {
-          const m = s.match(/(\d+\.?\d*)\s*[x×]\s*(\d+\.?\d*)/)
-          return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0]
-        }
-        const [ah, aw] = parseDim(a)
-        const [bh, bw] = parseDim(b)
-        return ah !== bh ? ah - bh : aw - bw
-      }
-      return a.localeCompare(b, "id")
+      const [ah, aw] = parseDim(a)
+      const [bh, bw] = parseDim(b)
+      return ah !== bh ? ah - bh : aw - bw
     })
   }
 
   return Array.from(axes, ([name, options]) => ({
     name,
-    options: sortOptions(name, Array.from(options)),
+    // Khusus axis Ukuran sintetis: urutkan secara numerik (Tinggi x Lebar).
+    // Semua axis varian nyata (Warna, Kaca, Bahan, dll.): pertahankan urutan alami dari Excel.
+    options: name === "Ukuran" ? sortDimensionOptions(Array.from(options)) : Array.from(options),
   })).sort((a, b) => {
     const ai = preferredOrder.indexOf(a.name)
     const bi = preferredOrder.indexOf(b.name)

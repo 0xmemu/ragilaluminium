@@ -70,8 +70,10 @@ const doorVariants: ProductVariant[] = [
 
 describe("product variant resolution", () => {
   it("derives option and dimension axes from backend variants", () => {
+    // Urutan opsi mengikuti urutan alami baris data (bukan alfabetis / hardcoded).
+    // variants[0] adalah Hitam, variants[1] adalah Putih -> [Hitam, Putih].
     expect(variantAxes(variants)).toEqual([
-      { name: "Warna", options: ["Putih", "Hitam"] },
+      { name: "Warna", options: ["Hitam", "Putih"] },
       // Axis Ukuran memakai dimension_compact; label dipetakan resolveVariant.
       { name: "Ukuran", options: ["120x100", "140x100"] },
     ])
@@ -101,7 +103,8 @@ describe("product variant resolution", () => {
       { name: "Arah Buka", options: ["Buka Kanan", "Buka Kiri"] },
       {
         name: "Warna & Kaca",
-        options: ["Hitam Kaca Es", "Putih Kaca Bening", "Serat Kayu Kaca Bening"],
+        // Mengikuti urutan alami kemunculan varian (doorVariants ID 10 -> 11 -> 12).
+        options: ["Putih Kaca Bening", "Hitam Kaca Es", "Serat Kayu Kaca Bening"],
       },
     ])
     expect(
@@ -116,5 +119,24 @@ describe("product variant resolution", () => {
         "Warna & Kaca": "Serat Kayu Kaca Bening",
       })?.variant_sku,
     ).toBe("DOOR-R-TYPO")
+  })
+
+  it("preserves natural variant option order from data without hardcoded name bias", () => {
+    // Simulasi produk dengan varian kustom / baru (mis. Anodize, Coklat, Serat Kayu, Champagne)
+    const customVariants: ProductVariant[] = [
+      { id: 101, variant_sku: "V1", price: 1000, stock: 1, variation_1_name: "Warna", variation_1_option: "Putih", label: "Putih" },
+      { id: 102, variant_sku: "V2", price: 1000, stock: 1, variation_1_name: "Warna", variation_1_option: "Hitam", label: "Hitam" },
+      { id: 103, variant_sku: "V3", price: 1000, stock: 1, variation_1_name: "Warna", variation_1_option: "Coklat", label: "Coklat" },
+      { id: 104, variant_sku: "V4", price: 1000, stock: 1, variation_1_name: "Warna", variation_1_option: "Serat Kayu", label: "Serat Kayu" },
+    ]
+
+    const axes = variantAxes(customVariants)
+    expect(axes).toEqual([
+      {
+        name: "Warna",
+        // Urutan persis sama dengan urutan di data/XLSX: Putih -> Hitam -> Coklat -> Serat Kayu
+        options: ["Putih", "Hitam", "Coklat", "Serat Kayu"],
+      },
+    ])
   })
 })
