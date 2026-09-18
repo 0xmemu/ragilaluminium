@@ -100,6 +100,39 @@ Tiga perubahan dibalik atas perintah owner karena menyimpang dari instruksi.
   pembeli kehilangan satu-satunya cara mengembalikan zoom. Diperbaiki di `onTouchEnd` (reset saat jari
   terangkat penuh, dan saat sisa satu jari pada keadaan tidak diperbesar).
 
+### 2026-09-18 - Tombol kembali di breadcrumb selalu tampil (tidak lagi hilang di browser tertentu)
+
+Laporan owner: "kok tombol back di breadcrum(desktop mode) tidak selalu muncul di browser tertentu ya".
+
+AKAR MASALAH: `components/ui/breadcrumbs.tsx` merender tombol kembali HANYA bila
+`window.history.length > 1` (sejak commit a7674e1 yang memang meniatkannya begitu). Di desktop
+tombol di samping judul sengaja disembunyikan mulai 768px (kontrak standar desain bagian 4),
+sehingga saat syarat itu tidak terpenuhi TIDAK ADA tombol kembali sama sekali. Nilai
+`window.history.length` tidak bisa dipercaya: buka tab baru, ketik alamat langsung, atau datang
+dari browser dalam aplikasi (Instagram, TikTok, Facebook) bisa melaporkan 1 walau pembeli datang
+dari halaman lain. Sebagian browser juga membatasi nilai itu demi privasi. Itu sebabnya gejalanya
+terasa "di browser tertentu".
+
+Perbaikan:
+- Tombol kembali SELALU dirender. Saat riwayat ada tetap `window.history.back()`; saat riwayat
+  tidak ada tombol menuju href induk terdekat dari breadcrumb (mis. halaman model sebelum halaman
+  produk), atau beranda bila tidak ada. Logika diekstrak ke `lib/breadcrumb-back.ts`
+  (`shouldUseHistoryBack`, `backFallbackHref`) dan dikunci `tests/frontend/breadcrumb-back.test.ts`
+  (9 test). `React.useMemo` dihapus karena nilainya dulu terkunci saat komponen pertama dipasang.
+- Sebelumnya versi mobile SUDAH punya cadangan (`page-top-bar.tsx` menyimpan href di sessionStorage,
+  `ProductDetail.tsx` punya cadangan `catalog.index`), sedangkan desktop tidak punya sama sekali.
+  Sekarang keduanya konsisten.
+- `docs/STANDAR-DESAIN-HALAMAN-PUBLIK.md` bagian 4 ditambah sub-bagian kontrak tombol kembali
+  selalu tampil beserta tabel perilakunya.
+
+Verifikasi live: `/product/...` desktop 1280px tombol tampil; jalur cadangan diuji dengan memaksa
+`history.length` jadi 1 lewat `Object.defineProperty`, klik mengarah ke
+`/products/jendela/kaca-mati/ornamen` (halaman model), bukan diam; jalur riwayat normal diuji dari
+beranda lalu klik produk dan klik kembali, mendarat di `/`. Mobile 390px tetap hanya punya SATU
+tombol kembali (breadcrumb tersembunyi). Halaman listing `/products/all`, `/cart`, `/products/jendela`
+masing-masing menampilkan tepat satu tombol kembali di desktop. vitest 120 passed, tsc bersih,
+eslint bersih, build Vite PASS.
+
 ### 2026-09-18 - Preview media bisa di-zoom (ponsel dan desktop)
 
 Permintaan owner: "preview media harusnya juga bisa di zoom di mobile maupun desktop, tapi pastikan
@@ -2107,3 +2140,43 @@ Verifikasi live (galeri 7 media):
 
 Test: vitest galeri dan zoom 28 passed. eslint berkas ini tetap 4 masalah (3 error, 1 warning) sama
 seperti sebelum perubahan, jadi tidak ada error baru. tsc bersih, build Vite PASS.
+
+### 2026-09-19 - Toast: bahasa desain diseragamkan tanpa garis, acuan notifikasi langsung admin
+Arahan owner: "admin notifikasi live sebenarnya cukup bagus sebagai dasar, tidak perlu stroke/line
+yang membingkai toast, yg malah jadi terkesan tua".
+
+Sebelumnya ada EMPAT implementasi notifikasi melayang dengan tiga bahasa desain berbeda: flash
+storefront (kartu putih bergaris), flash admin (kartu gelap bergaris, karena panel admin dark-first),
+undo keranjang (kartu bergaris merah tegas dengan sudut lebih besar), dan notifikasi langsung admin
+(`rounded-xl` gelap dengan `shadow-2xl`, tanpa memperhatikan garis). Tidak ada panduan tertulis sama
+sekali, jadi setiap tempat menulis gayanya sendiri.
+
+Perubahan:
+- Baru `resources/js/lib/toast.ts` berisi `TOAST_CARD_CLASS` = `rounded-xl border-0 bg-surface
+  shadow-2xl`, satu sumber gaya kartu toast. `border-0` WAJIB ada karena komponen Alert membawa
+  `border` di kelas dasarnya; tailwind-merge membuat `border-0` menang. Warna teks sengaja TIDAK
+  dimasukkan supaya warna per nada dari Alert (success hijau, danger merah) tidak tertimpa.
+- `components/shared/flash-messages.tsx` dan `components/admin/ui/flash-messages.tsx` memakai kelas
+  itu (sebelumnya `bg-surface shadow-float` dan `bg-card shadow-float`).
+- `pages/Public/Cart.tsx` toast undo memakai kelas itu, dan SEKALIAN diperbaiki: kontainernya
+  sekarang punya `role="status"` + `aria-live="polite"` + `aria-atomic`. Sebelumnya satu-satunya
+  toast di aplikasi yang tidak diumumkan pembaca layar, padahal jendela undo hanya 5 detik.
+- `components/admin/live-notification-manager.tsx` sebagai acuan ikut dibersihkan: kartunya menjadi
+  `rounded-xl bg-surface text-foreground shadow-2xl` (buang `border border-border` dan `bg-card`),
+  dan badge ikon cadangan berganti dari `border border-border` menjadi isian `bg-muted`.
+- Ditulis `### Toast dan notifikasi melayang` di frontend/docs/UI-CONSISTENCY-CONTRACT.md: aturan
+  tanpa garis, satu kelas kartu, wajib `role="status"` + `aria-live`, posisi kanonik tengah atas
+  dengan `z-toast` (60), larangan nilai seperti `z-[9999]`, durasi 4 detik, plus tabel pemakai.
+  `COMPONENT-INVENTORY.md` ikut mencatat Toast sebagai primitif.
+
+Verifikasi live (border diukur dari computed style):
+- Sukses storefront dan undo keranjang: `border 0px`, radius 16px, latar putih. Undo juga terbukti
+  membawa `aria-live="polite"` + `role="status"`.
+- Flash admin dan notifikasi langsung admin: `border 0px`, radius 9px, latar gelap `rgb(28,28,33)`.
+- Notifikasi langsung admin tetap pada `z-index 9999`; menyatukannya ke `z-toast` belum dikerjakan
+  dan tercatat sebagai sisa pekerjaan.
+
+Catatan: untuk memicu notifikasi langsung admin saya menyisipkan notifikasi uji dua kali, dan dua
+duanya sudah dihapus. Jumlah notifikasi kembali 30 dengan id tertinggi 52, nol sisa baris uji.
+
+tsc bersih, eslint berkas yang diubah tanpa error (2 warning lama di Cart), build Vite PASS.

@@ -77,6 +77,42 @@ selection changes and option labels are not clipped. Rules:
 - Never insert a wide measuring element into the DOM: lists can hold hundreds of
   options. Select uses a zero-width element; SearchSelect measures with canvas.
 
+### Toast dan notifikasi melayang
+
+Satu gaya kartu untuk semua notifikasi melayang, di storefront maupun admin.
+Acuan tampilannya notifikasi langsung admin (`live-notification-manager.tsx`).
+
+- **Tanpa garis tepi.** Pemisahan dari latar ditanggung bayangan (`shadow-2xl`),
+  bukan stroke. Kartu berbingkai terlihat tua (keputusan owner 2026-09-19).
+- Kelas kartu ada di SATU tempat: `TOAST_CARD_CLASS` di `resources/js/lib/toast.ts`
+  (`rounded-xl border-0 bg-surface shadow-2xl`). `border-0` wajib karena komponen
+  Alert membawa `border` di kelas dasarnya dan tailwind-merge membuat `border-0`
+  menang.
+- Permukaan memakai `bg-surface`, yang otomatis putih di storefront dan gelap
+  raised di panel admin. Jangan menulis `bg-white` atau `bg-card` di toast.
+- Warna belum ditetapkan di kelas kartu: komponen Alert yang menentukan warna
+  teks dan ikon per nada (success, danger, info). Menambahkan `text-*` di kelas
+  kartu akan menimpa warna itu lewat tailwind-merge dan menghapus maknanya.
+- **Wajib diumumkan pembaca layar.** Kontainer toast memakai `role="status"` dan
+  `aria-live="polite"` (dan `aria-atomic="true"` bila isinya diganti utuh).
+  Toast yang punya tombol aksi seperti "Urungkan" tidak boleh mengandalkan
+  penglihatan saja, karena jendelanya pendek.
+- Posisi kanonik: tengah atas, `z-toast` (60). Skala lapisan resmi hanya header
+  30, overlay 40, modal 50, toast 60. Nilai seperti `z-[9999]` dilarang.
+- Durasi tampil 4 detik untuk pesan hasil aksi. Durasi lain hanya bila ada
+  alasan kuat, misalnya jendela undo yang butuh waktu memutuskan.
+- Bentuk: kartu notifikasi boleh punya slot ikon, judul, isi, tautan tindakan,
+  dan tombol tutup, mengikuti struktur notifikasi langsung admin.
+
+Pemakai saat ini:
+
+| Notifikasi | Berkas | Sumber |
+|---|---|---|
+| Flash storefront (sukses/info/error) | `components/shared/flash-messages.tsx` | flash session |
+| Flash admin (sukses/info/error) | `components/admin/ui/flash-messages.tsx` | flash session |
+| Undo keranjang | `pages/Public/Cart.tsx` | state klien |
+| Notifikasi langsung admin | `components/admin/live-notification-manager.tsx` | Reverb + polling |
+
 ## Page family templates
 
 | Family | Grid contract | Required shared states |

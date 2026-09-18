@@ -2,6 +2,8 @@ import { usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
+import { TOAST_CARD_CLASS } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
 
 const AUTO_DISMISS_MS = 4000
@@ -49,7 +51,7 @@ function FlashMessagesInner({
         <Alert
           tone="success"
           title={success ?? undefined}
-          className="bg-card shadow-float"
+          className={cn(TOAST_CARD_CLASS)}
           onDismiss={() => setDismissed((prev) => ({ ...prev, success: true }))}
         />
       ) : null}
@@ -57,7 +59,7 @@ function FlashMessagesInner({
         <Alert
           tone="info"
           title={status ?? undefined}
-          className="bg-card shadow-float"
+          className={cn(TOAST_CARD_CLASS)}
           onDismiss={() => setDismissed((prev) => ({ ...prev, status: true }))}
         />
       ) : null}
@@ -65,7 +67,7 @@ function FlashMessagesInner({
         <Alert
           tone="danger"
           title={error ?? undefined}
-          className="bg-card shadow-float"
+          className={cn(TOAST_CARD_CLASS)}
           onDismiss={() => setDismissed((prev) => ({ ...prev, error: true }))}
         />
       ) : null}

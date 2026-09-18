@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
+import { TOAST_CARD_CLASS } from "@/lib/toast"
 import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import type { CartItem } from "@/types"
 
 
@@ -147,7 +149,7 @@ export default function Cart({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -298,8 +300,13 @@ export default function Cart({
       </section>
 
       {showUndoToast && initialUndoCount > 0 ? (
-        <div className="pointer-events-none fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast flex flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:top-20 lg:-translate-x-1/2">
-          <div className="pointer-events-auto ml-auto flex w-auto max-w-xl items-center gap-3 rounded-xl border border-destructive/70 bg-surface px-4 py-3 shadow-float">
+        <div
+          className="pointer-events-none fixed inset-x-3 top-[calc(3rem+0.75rem)] z-toast flex flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:top-20 lg:-translate-x-1/2"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div className={cn(TOAST_CARD_CLASS, "pointer-events-auto ml-auto flex w-auto max-w-xl items-center gap-3 px-4 py-3")}>
             <Icon name="trash" className="size-5 shrink-0 text-destructive" aria-hidden="true" />
             <span className="shrink-0 text-xs font-semibold text-destructive">
               Produk dihapus dari keranjang.
