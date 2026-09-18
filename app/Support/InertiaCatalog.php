@@ -44,10 +44,9 @@ class InertiaCatalog
         if ($variant) {
             $heightLabel = rtrim(rtrim(number_format((float) $variant->height_cm, 2, '.', ''), '0'), '.');
             $widthLabel = rtrim(rtrim(number_format((float) $variant->width_cm, 2, '.', ''), '0'), '.');
-            // Kontrak naming produk (2026-09-17): nama yang diisi admin adalah
-            // nama tampil dan TIDAK boleh ditimpa oleh dimensi, bobot, model,
-            // maupun sub model. Ukuran varian disajikan terpisah sebagai
-            // metadata (size_label) agar informasinya tetap tersedia.
+            // Kontrak naming (2026-09-17, ditegaskan owner 2026-09-18): nama yang
+            // diisi admin adalah nama tampil dan TIDAK boleh ditimpa dimensi,
+            // bobot, model, maupun sub model. Ukuran varian hanya metadata.
             $card['size_label'] = 'Tinggi '.$heightLabel.'cm × Panjang '.$widthLabel.'cm';
             $card['size_dimension'] = $heightLabel.'x'.$widthLabel;
             $card['variant_label'] = trim(implode(' ', array_filter([
@@ -119,8 +118,8 @@ class InertiaCatalog
         $heightLabel = rtrim(rtrim(number_format($height, 2, '.', ''), '0'), '.');
         $widthLabel = rtrim(rtrim(number_format($width, 2, '.', ''), '0'), '.');
 
-        // Sama seperti productCard(): nama admin tidak ditimpa; ukuran jadi
-        // metadata terpisah supaya kartu per-ukuran tetap bisa dibedakan.
+        // Sama seperti productCard(): nama dari admin tidak ditimpa. Ukuran tetap
+        // tersedia sebagai metadata terpisah, bukan pengganti nama produk.
         $card['size_label'] = 'Tinggi '.$heightLabel.'cm × Panjang '.$widthLabel.'cm';
         $card['size_dimension'] = $heightLabel.'x'.$widthLabel;
         $card['variant_label'] = trim(implode(' ', array_filter([
