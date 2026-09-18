@@ -257,26 +257,72 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
         {(() => {
           const b = order.billing
           if (!b) return null
-          const rows: Array<{ label: string; value: number; tone?: "sub" | "sale" }> = [
-            { label: "Subtotal Produk", value: b.subtotal },
-            { label: "Hemat", value: b.discount, tone: "sale" },
-            { label: "Hemat Voucher", value: b.voucher_discount, tone: "sale" },
-            { label: "Ongkir asli (tarif kurir)", value: b.shipping_gross },
-            { label: "Hemat Subsidi Ongkir", value: b.shipping_subsidy, tone: "sale" },
-            { label: "Ongkir dibayar", value: b.shipping_net },
-            { label: "Biaya COD", value: b.cod_fee },
-            { label: "Asuransi", value: b.insurance },
-          ]
+          // Istilah disamakan dengan ringkasan checkout, dan asuransi TIDAK
+          // lagi dipisah: pelanggan membayar satu ongkos kirim yang sudah
+          // memuat asuransi (keputusan owner 2026-09-18). Pemisahan ongkir
+          // dan asuransi tetap ada di kolom order dan halaman admin untuk
+          // pembukuan, bukan untuk pelanggan.
+          const insurancePaid = Number(b.insurance || 0)
+          const shippingTariff = Number(b.shipping_gross || 0) + insurancePaid
+          const shippingTotal = Number(b.shipping_net || 0) + insurancePaid
+          const shippingSubsidy = Math.abs(Number(b.shipping_subsidy || 0))
+          // `subtotal` sudah termasuk potongan, jadi harga aslinya ditampilkan
+          // tercoret di bawahnya (pola yang sama dengan ringkasan checkout).
+          const subtotalPaid = Number(b.subtotal || 0)
+          const subtotalOriginal = subtotalPaid + Number(b.discount || 0)
+          const hasCompareSubtotal = Number(b.discount || 0) > 0
+          const showShippingBreakdown = shippingSubsidy > 0 || insurancePaid > 0
+
+          const moneyRow = (label: string, value: number, tone?: "sale") => (
+            <div key={label} className="flex items-center justify-between gap-4">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className={cn("tabular-nums font-semibold", tone === "sale" ? "text-sale" : "text-foreground")}>
+                {formatCurrency(value)}
+              </dd>
+            </div>
+          )
+
           return (
             <dl className="mt-1 space-y-1.5 border-t border-border pt-3 text-[11px] lg:text-xs">
-              {rows.map((row) => (
-                <div key={row.label} className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">{row.label}</dt>
-                  <dd className={cn("tabular-nums font-semibold", row.tone === "sale" ? "text-sale" : "text-foreground")}>
-                    {formatCurrency(row.value)}
-                  </dd>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-muted-foreground">Subtotal Produk</dt>
+                <dd className="text-right">
+                  <span className="tabular-nums block font-semibold text-foreground">
+                    {formatCurrency(subtotalPaid)}
+                  </span>
+                  {hasCompareSubtotal ? (
+                    <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                      {formatCurrency(subtotalOriginal)}
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+              {Number(b.discount || 0) > 0 ? moneyRow("Hemat", Number(b.discount), "sale") : null}
+              {Number(b.voucher_discount || 0) > 0 ? moneyRow("Hemat Voucher", Number(b.voucher_discount), "sale") : null}
+
+              {showShippingBreakdown ? (
+                <div className="space-y-1.5 rounded-md bg-surface-muted/60 px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Ongkos Kirim</dt>
+                    <dd className="tabular-nums font-semibold text-foreground">{formatCurrency(shippingTariff)}</dd>
+                  </div>
+                  {shippingSubsidy > 0 ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-muted-foreground">Subsidi Ongkir</dt>
+                      <dd className="tabular-nums font-semibold text-sale">-{formatCurrency(shippingSubsidy)}</dd>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-1.5">
+                    <dt className="font-semibold text-foreground">Total Ongkos Kirim</dt>
+                    <dd className="tabular-nums font-bold text-foreground">{formatCurrency(shippingTotal)}</dd>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                moneyRow("Ongkos Kirim", shippingTotal)
+              )}
+
+              {Number(b.cod_fee || 0) > 0 ? moneyRow("Biaya COD", Number(b.cod_fee)) : null}
+
               <div className="flex items-center justify-between gap-4 border-t border-border pt-1.5">
                 <dt className="font-bold text-foreground">Total Pembayaran</dt>
                 <dd className="tabular-nums font-bold text-primary">{formatCurrency(b.total)}</dd>

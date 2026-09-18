@@ -69,6 +69,7 @@ function formatPercent(value: number): string {
 export function CheckoutSummary({
   items,
   subtotal,
+  compareSubtotal = 0,
   discountTotal,
   voucher,
   voucherDiscount,
@@ -80,6 +81,8 @@ export function CheckoutSummary({
 }: {
   items: CheckoutItem[]
   subtotal: number
+  /** Harga sebelum potongan (harga coret), dari compare_price tiap baris. */
+  compareSubtotal?: number
   discountTotal: number
   voucher?: CheckoutVoucher | null
   voucherDiscount: number
@@ -105,6 +108,9 @@ export function CheckoutSummary({
   } = c
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
   const hasDiscount = discountTotal > 0
+  // Harga asli ditampilkan tercoret di bawah subtotal. `subtotal` dari server
+  // SUDAH termasuk potongan, jadi angka coretnya adalah harga sebelum potongan.
+  const hasCompareSubtotal = compareSubtotal > Number(subtotal || 0)
 
   const shippingCost = effectiveShipping ? Number(effectiveShipping.net || 0) : 0
   const codFee = showCodFee ? Number(cod.fee_amount || 0) : 0
@@ -327,7 +333,14 @@ export function CheckoutSummary({
       <dl className="mt-3 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
-          <dd className="tabular-nums font-semibold">{formatCurrency(subtotal)}</dd>
+          <dd className="text-right">
+            <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
+            {hasCompareSubtotal ? (
+              <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                {formatCurrency(compareSubtotal)}
+              </span>
+            ) : null}
+          </dd>
         </div>
         {hasDiscount ? (
           <div className="flex justify-between gap-4">
@@ -373,12 +386,7 @@ export function CheckoutSummary({
             {showShippingBreakdown ? (
               <div className="space-y-1.5 rounded-md bg-surface-muted/60 px-2.5 py-2">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground min-w-0 break-words">
-                    Tarif J&T
-                    {tariffIncludesInsurance ? (
-                      <span className="block text-[11px] leading-4">sudah termasuk asuransi</span>
-                    ) : null}
-                  </dt>
+                  <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
                   <dd className="tabular-nums font-semibold text-foreground">
                     {formatCurrency(shippingTariff)}
                   </dd>
@@ -386,7 +394,7 @@ export function CheckoutSummary({
                 {shippingSubsidy > 0 ? (
                   <div className="flex justify-between gap-4">
                     <dt className="min-w-0 break-words text-muted-foreground">
-                      Hemat Subsidi Ongkir ({Math.round((shippingSubsidy / (shippingFreight || 1)) * 100)}%)
+                      Subsidi Ongkir ({Math.round((shippingSubsidy / (shippingFreight || 1)) * 100)}%)
                     </dt>
                     <dd className="tabular-nums font-semibold text-sale">
                       -{formatCurrency(shippingSubsidy)}
@@ -394,7 +402,7 @@ export function CheckoutSummary({
                   </div>
                 ) : null}
                 <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5">
-                  <dt className="min-w-0 break-words font-semibold text-foreground">Ongkir dibayar pelanggan</dt>
+                  <dt className="min-w-0 break-words font-semibold text-foreground">Total Ongkos Kirim</dt>
                   <dd className="tabular-nums font-bold text-foreground">
                     {formatCurrency(effectiveShipping.net)}
                   </dd>
@@ -402,14 +410,14 @@ export function CheckoutSummary({
               </div>
             ) : (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
+                <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
                 <dd className="tabular-nums font-semibold">{formatCurrency(effectiveShipping.net)}</dd>
               </div>
             )}
           </>
         ) : (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
             <dd className="text-right font-semibold shrink-0 text-muted-foreground">
               {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Lengkapi alamat untuk menghitung"}
             </dd>

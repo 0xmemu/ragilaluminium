@@ -50,7 +50,7 @@ interface CheckoutProps {
 export default function Checkout({
   items = [],
   subtotal = 0,
-  compare_subtotal: _compareSubtotal = 0,
+  compare_subtotal: compareSubtotal = 0,
   discount_total = 0,
   voucher = null,
   voucher_discount = 0,
@@ -241,6 +241,7 @@ export default function Checkout({
           <CheckoutSummary
             items={checkoutItems}
             subtotal={subtotal}
+            compareSubtotal={compareSubtotal}
             discountTotal={discount_total}
             voucher={voucher}
             voucherDiscount={voucher_discount}
