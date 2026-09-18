@@ -223,13 +223,17 @@ export function CheckoutSummary({
                     {formatCurrency(lineTotal)}
                   </span>
                   {hasLineDiscount && lineCompare != null ? (
+                    /* Urutan mengikuti permintaan owner: di mobile harga coret
+                       lebih dulu lalu label persen; dari breakpoint sm ke atas
+                       label persen lebih dulu. `order` dipakai supaya urutan
+                       visual bisa dibalik tanpa memindahkan elemen. */
                     <span className="flex items-baseline gap-1.5 sm:justify-end">
                       {discountPercent ? (
-                        <span className="text-[11px] font-semibold text-sale">
+                        <span className="order-2 text-[11px] font-semibold text-sale sm:order-1">
                           {discountPercent}%
                         </span>
                       ) : null}
-                      <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                      <span className="tabular-nums order-1 text-[11px] text-muted-foreground line-through sm:order-2">
                         {formatCurrency(lineCompare)}
                       </span>
                     </span>

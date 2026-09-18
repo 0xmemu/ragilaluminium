@@ -162,14 +162,16 @@ function CheckoutItemNoteRow({
             <span className="tabular-nums block text-xs font-bold text-foreground sm:text-sm">
               {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
             </span>
+            {/* Sama seperti ringkasan: di mobile harga coret dulu lalu label
+                persen, dari sm ke atas label persen lebih dulu. */}
             <span className="flex items-center gap-1.5 sm:justify-end">
               {discountPercent ? (
-                <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
+                <span className="order-2 rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground sm:order-1">
                   {discountPercent}%
                 </span>
               ) : null}
               {hasDiscount && compareTotal != null ? (
-                <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                <span className="tabular-nums order-1 text-[11px] text-muted-foreground line-through sm:order-2">
                   {formatCurrency(compareTotal)}
                 </span>
               ) : null}
