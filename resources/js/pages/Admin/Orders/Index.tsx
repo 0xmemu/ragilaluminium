@@ -574,14 +574,14 @@ function OrderCardRow({
         </div>
       </div>
 
-      {/* Baris Bawah Kartu: Rincian Unit & Total Dibayar Pembeli di Kanan Bawah */}
+      {/* Baris Bawah Kartu: Rincian Unit & Penjualan Gross di Kanan Bawah */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-surface/40 px-4 py-2.5 text-xs">
         <div className="flex items-center gap-2 text-muted-foreground">
           <span>Pesanan: <strong className="text-foreground">{formatNumber(order.product_count)}</strong> produk ({formatNumber(order.unit_count)} unit)</span>
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="text-xs text-muted-foreground">Total Pesanan (Dibayar Pembeli):</span>
+          <span className="text-xs text-muted-foreground">Penjualan Gross:</span>
           <span className="text-sm font-bold tabular-nums text-foreground">
             {formatCurrency(order.total_amount)}
           </span>
@@ -1316,12 +1316,12 @@ export default function OrdersIndex({
 
             {notesMode === "view" ? (
               <div className="p-5 space-y-4">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 overflow-hidden">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
                     <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                     <span>Isi Catatan Lengkap:</span>
                   </div>
-                  <p className="mt-2.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                  <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">
                     {notesModalOrder?.admin_notes}
                   </p>
                 </div>
