@@ -185,7 +185,7 @@ class StorePerformanceService
         ];
 
         $trafficKpis = [
-            $this->kpi('visitors', 'Jumlah Pengunjung', $current['visitors'], $previous['visitors'], 'number'),
+            $this->kpi('visitors', 'Pengunjung Unik', $current['visitors'], $previous['visitors'], 'number'),
             $this->kpi(
                 'conversion',
                 'Pengunjung yang Membeli',
@@ -198,9 +198,9 @@ class StorePerformanceService
                     number_format((int) $current['visitors'], 0, ',', '.')
                 )
             ),
-            $this->kpi('new_customers', 'Customer Baru', $current['new_customers'], $previous['new_customers'], 'number'),
-            $this->kpi('repeat_customers', 'Customer Order Ulang', $current['repeat_customers'], $previous['repeat_customers'], 'number'),
-            $this->kpi('repeat_order_rate', 'Rasio Pembelian Ulang', $current['repeat_order_rate'], $previous['repeat_order_rate'], 'percent'),
+            $this->kpi('new_customers', 'Pelanggan Baru', $current['new_customers'], $previous['new_customers'], 'number'),
+            $this->kpi('repeat_customers', 'Pelanggan Ulang', $current['repeat_customers'], $previous['repeat_customers'], 'number'),
+            $this->kpi('repeat_order_rate', 'Rasio Pelanggan Ulang', $current['repeat_order_rate'], $previous['repeat_order_rate'], 'percent'),
         ];
 
         $opsKpis = [
@@ -213,7 +213,7 @@ class StorePerformanceService
         ];
 
         $paymentsKpis = [
-            $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Gross dikurangi refund retur yang benar-benar selesai.'),
+            $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Dibayar', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Nominal payment COD yang selesai pada periode.'),
             $this->kpi('payment_pending_count', 'Pembayaran Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum cair pada order aktif. COD memang lunas saat paket tiba sehingga tidak dihitung di sini.'),
@@ -254,12 +254,14 @@ class StorePerformanceService
                 'previous_from' => $range['previous_from']->toIso8601String(),
                 'previous_to' => $range['previous_to']->toIso8601String(),
                 'granularity' => $range['granularity'],
-                'compare_label' => 'vs '.$range['previous_from']->translatedFormat('j M Y')
+                'compare_label' => 'vs '.$range['previous_from']->translatedFormat('j M Y H:i')
                     .(
                         $range['previous_from']->toDateString() === $range['previous_to']->toDateString()
-                            ? ''
-                            : ' - '.$range['previous_to']->translatedFormat('j M Y')
+                        && $range['previous_from']->format('H:i') === $range['previous_to']->format('H:i')
+                            ? ' '.$range['previous_from']->translatedFormat('H:i')
+                            : ' - '.$range['previous_to']->translatedFormat('j M Y H:i')
                     ),
+                'range_detail' => $range['from']->translatedFormat('j M Y H:i').' - '.$range['to']->translatedFormat('j M Y H:i'),
                 'compare_from_date' => $range['previous_from']->translatedFormat('d M Y'),
                 'compare_to_date' => $range['previous_to']->translatedFormat('d M Y'),
                 // KPI-008: nilai ISO utk control HTML date & param custom/export (display tetap d M Y di atas).
@@ -289,7 +291,7 @@ class StorePerformanceService
                 'cod_pending_amount' => $current['cod_pending_amount'],
                 'cod_pending_count' => $current['cod_pending_count'],
                 'payment_pending_count' => $current['payment_pending_count'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [
@@ -339,7 +341,7 @@ class StorePerformanceService
                 ],
                 [
                     'key' => 'visitors',
-                    'title' => 'Tren Pengunjung',
+                    'title' => 'Tren Pengunjung Unik',
                     'total' => $current['visitors'],
                     'previous_total' => $previous['visitors'] ?? 0.0,
                     'total_format' => 'number',
@@ -448,7 +450,7 @@ class StorePerformanceService
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [$from, $to])
             ->sum('return_shipping_cost');
-        // Gross adalah seluruh total yang dibayar pelanggan. Ongkir raw dan
+        // Penjualan Gross adalah seluruh total yang dibayar pelanggan. Ongkir raw dan
         // COD adalah dana titipan untuk J&T; subsidi, refund, dan ongkir retur
         // toko adalah pengurang hasil toko.
         $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore;
@@ -1224,8 +1226,9 @@ class StorePerformanceService
         if ((float) $previous > 0) {
             $change = round((((float) $value - (float) $previous) / (float) $previous) * 100, 1);
         } elseif ((float) $value > 0) {
-            // KPI-006: sebelumnya nol -> bukan 100% palsu; UI menampilkan "Baru pada periode ini".
-            $change = null;
+            // Naik dari nol -> 100% (owner 2026-09-15: format delta seragam persen,
+            // menggantikan KPI-006 "Baru pada periode ini" & fallback absolut "+N unit").
+            $change = 100.0;
         } elseif ((float) $value === 0.0 && (float) $previous === 0.0) {
             $change = 0.0;
         }

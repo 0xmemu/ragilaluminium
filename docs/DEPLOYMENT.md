@@ -302,7 +302,7 @@ Cron root (ringkasan):
 
 Cleanup mingguan (Senin 06:00, `/root/scripts_weekly_cleanup.sh`): hapus `sessions`
 dengan `last_activity` > 14 hari (keputusan cart 14 hari, 2026-08-21).
-`performance_visitor_events` TIDAK dihapus — KPI "Jumlah Pengunjung" untuk rentang
+`performance_visitor_events` TIDAK dihapus, KPI "Pengunjung Unik" untuk rentang
 lama ("Semua waktu"/"Tahun ini") dibaca dari tabel event
 (`visitorsBetween`/`series` prefer detail, fallback agregat hanya saat detail kosong);
 menghapus detail > N hari akan merusak angka lifetime. Data bisnis inti

@@ -327,7 +327,7 @@ class DashboardController extends Controller
         // Action Center: Order yang siap dikemas & butuh nomor resi pengiriman
         $needWaybillCount = Order::query()
             ->where('order_status', 'processing')
-            ->where('shipping_status', 'pending_pickup')
+            ->whereIn('shipping_status', ['pending_pickup', 'tracking_pending'])
             ->count();
         if ($needWaybillCount > 0) {
             $attention[] = [
@@ -367,7 +367,7 @@ class DashboardController extends Controller
         }
 
         // StorePerformanceService is the canonical read model for dashboard sales
-        // metrics. SATU SUMBER: kartu Penjualan (Gross) mengikuti filter
+        // metrics. SATU SUMBER: kartu Penjualan Gross mengikuti filter
         // performa_period (owner 2026-09-04) - tanpa perhitungan terpisah.
         $performance = $this->performance->build($performaPeriod);
 
@@ -381,6 +381,9 @@ class DashboardController extends Controller
         $salesKpis = collect($performance['sections'] ?? [])
             ->firstWhere('key', 'sales')['kpis'] ?? [];
         $sales = collect($salesKpis)->keyBy('key');
+        // net_revenue adalah KPI section 'payments', bukan 'sales' - lookup dari
+        // section sales selalu null sehingga tile Penjualan Bersih tampil Rp 0.
+        $netRevenueKpi = collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'net_revenue');
         $omzetKpi = $sales->get('omzet', []);
         $ordersKpi = $sales->get('orders', []);
         $unitsKpi = $sales->get('units', []);
@@ -512,6 +515,8 @@ class DashboardController extends Controller
                 'change_percent' => $revenueChangePercent,
                 'orders_delta' => $ordersDelta,
                 'units_delta' => $unitsDelta,
+                'orders_change_percent' => $ordersKpi['change_percent'] ?? null,
+                'units_change_percent' => $unitsKpi['change_percent'] ?? null,
                 // Label pembanding mengikuti periode (mis. 'vs 17 Agt - 15 Sep'),
                 // bukan 'dari kemarin' yang hanya benar untuk periode today.
                 'comparison_label' => $performance['range']['compare_label'] ?? 'dari kemarin',
@@ -530,8 +535,8 @@ class DashboardController extends Controller
                 'received_period_count' => $paymentsReceivedPeriodCount,
                 'received_period_label' => 'Pembayaran Diterima (' . ($performaPeriod === 'today' ? 'Hari ini' : ($performance['range']['label'] ?? 'Periode ini')) . ')',
                 // Penjualan bersih: gross dikurangi refund retur selesai (periode sama dengan KPI omzet).
-                'net_revenue' => (float) (collect($salesKpis)->firstWhere('key', 'net_revenue')['value'] ?? 0),
-                'net_revenue_change_percent' => collect($salesKpis)->firstWhere('key', 'net_revenue')['change_percent'] ?? null,
+                'net_revenue' => (float) ($netRevenueKpi['value'] ?? 0),
+                'net_revenue_change_percent' => $netRevenueKpi['change_percent'] ?? null,
                 // COD berjalan: pesanan COD aktif yang uangnya belum dicatat lunas
                 // (baru masuk saat paket tiba). Konteks untuk tile Pembayaran Diterima.
                 'cod_running_amount' => (float) Order::query()
@@ -542,6 +547,7 @@ class DashboardController extends Controller
             'performa' => [
                 'period' => $performaPeriod,
                 'period_label' => $performance['range']['label'] ?? 'Hari ini',
+                'period_detail' => $performance['range']['range_detail'] ?? null,
                 'period_options' => [
                     ['value' => 'today', 'label' => 'Hari Ini'],
                     ['value' => 'yesterday', 'label' => 'Kemarin'],
@@ -550,6 +556,7 @@ class DashboardController extends Controller
                     ['value' => 'this_month', 'label' => 'Bulan Ini'],
                 ],
                 'metrics' => $performaMetrics,
+                'comparison_label' => $performance['range']['compare_label'] ?? null,
                 'trend' => [
                     'total' => (int) ($performaVisitorChart['total'] ?? 0),
                     'total_format' => 'number',

@@ -206,7 +206,7 @@ class StorePerformanceExportTest extends TestCase
         // Urutan pendapatan: nilai produk, voucher, ongkir, asuransi, COD, total.
         $this->assertStringContainsString('Nilai Produk Terjual', (string) $rows[6]['A']);
         $this->assertStringContainsString('Potongan Voucher Toko', (string) $rows[7]['A']);
-        $this->assertStringContainsString('TOTAL DIBAYAR PEMBELI', (string) $rows[11]['A']);
+        $this->assertStringContainsString('PENJUALAN GROSS', (string) $rows[11]['A']);
 
         // Identitas aritmetika kini lewat RUMUS yang menunjuk TabelPesanan:
         // setiap baris pendapatan wajib berisi rumus SUM kolom terstruktur.
@@ -228,12 +228,12 @@ class StorePerformanceExportTest extends TestCase
         $this->assertContains('Biaya COD', $kolomRumus);
         $this->assertContains('Ongkir ke J&T', $kolomRumus, 'beban juga berumus');
         $this->assertContains('Refund Retur', $kolomRumus);
-        $this->assertContains('Ongkir Retur Toko', $kolomRumus);
+        $this->assertContains('Ongkir Retur (Toko)', $kolomRumus);
 
-        // Total dibayar dan Penjualan Bersih wajib rumus yang menjumlah
+        // Penjualan Gross dan Penjualan Bersih wajib rumus yang menjumlah
         // baris komponennya, bukan angka mati.
         $teksC = implode(' ', array_map(fn ($r) => (string) ($r[1] ?? ''), $lrRaw));
-        $this->assertStringContainsString('=SUM(B', $teksC, 'TOTAL DIBAYAR PEMBELI berupa penjumlahan komponen');
+        $this->assertStringContainsString('=SUM(B', $teksC, 'PENJUALAN GROSS berupa penjumlahan komponen');
 
         // Nilai komponen di payload tetap bisa direkonsiliasi dengan tabel:
         // total dibayar payload = nilai produk - voucher + ongkir + asuransi + COD.
@@ -289,7 +289,7 @@ class StorePerformanceExportTest extends TestCase
         $this->assertSame('Total Qty (Pcs)', $rpRows[1]['G'], 'nama kolom anti rancu (spek owner)');
         $this->assertSame('Jumlah Jenis SKU', $rpRows[1]['H']);
         $this->assertSame('Biaya COD', $rpRows[1]['M'], 'kolom uang pembeli terakhir sebelum total');
-        $this->assertSame('Total Dibayar Pembeli', $rpRows[1]['N'], 'total dibayar sebelum kolom beban');
+        $this->assertSame('Penjualan Gross', $rpRows[1]['N'], 'penjualan gross sebelum kolom beban');
         $this->assertSame('Penjualan Bersih', $rpRows[1]['R'], 'penjualan bersih setelah beban');
         $this->assertSame('Nama Pelanggan', $rpRows[1]['W'], 'kolom identitas pembeli (gaya referensi owner)');
         $this->assertSame('Nomor HP / WA', $rpRows[1]['X']);
@@ -485,21 +485,21 @@ class StorePerformanceExportTest extends TestCase
         // 6 sheet x 2 bulan kalender (Agt 2026 + Sep 2026).
         $this->assertCount(12, $ss->getSheetNames());
 
-        // Ringkasan Finansial Agustus: TOTAL DIBAYAR PEMBELI kini RUMUS SUM
+        // Ringkasan Finansial Agustus: PENJUALAN GROSS kini RUMUS SUM
         // yang menunjuk TabelPesanan bulan itu (bulan Agt punya 1 pesanan).
         $lr = $ss->getSheetByName('Ringkasan Finansial (Agt 2026)');
         $rumusTotal = null;
         $rumusNet = null;
         for ($r = 1; $r <= $lr->getHighestRow(); $r++) {
             $b = trim((string) $lr->getCell('A'.$r)->getValue());
-            if ($b === 'TOTAL DIBAYAR PEMBELI') {
+            if ($b === 'PENJUALAN GROSS') {
                 $rumusTotal = (string) $lr->getCell('B'.$r)->getValue();
             }
             if ($b === 'PENJUALAN BERSIH') {
                 $rumusNet = (string) $lr->getCell('B'.$r)->getValue();
             }
         }
-        $this->assertNotNull($rumusTotal, 'baris TOTAL DIBAYAR PEMBELI ada');
+        $this->assertNotNull($rumusTotal, 'baris PENJUALAN GROSS ada');
         $this->assertStringStartsWith('=SUM(B', $rumusTotal, 'total berupa rumus SUM kolom tabel');
         $this->assertNotNull($rumusNet, 'baris PENJUALAN BERSIH ada');
         $this->assertStringContainsString('B', $rumusNet, 'net berupa rumus yang menunjuk beban');
@@ -520,7 +520,7 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringStartsWith(
             '=SUBTOTAL(109',
             (string) $rp->getCell('N'.$jumlahRow)->getValue(),
-            'Total Row kolom Total Dibayar Pembeli berupa SUBTOTAL'
+            'Total Row kolom Penjualan Gross berupa SUBTOTAL'
         );
 
         // Tabel Item Agustus juga terisi.

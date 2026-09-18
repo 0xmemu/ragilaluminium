@@ -47,3 +47,22 @@ Migration forward-only menambah snapshot item, return ledger minimum (order_retu
 - Penjualan Bersih = Gross - ongkir raw J&T - biaya COD - refund retur selesai - ongkir retur yang ditanggung toko.
 - Biaya COD dan ongkir raw dikurangkan dari Gross sebagai dana yang diteruskan ke J&T, bukan karena biaya COD ditanggung toko.
 - Pesanan cancelled tidak masuk Gross atau Net. Nilainya hanya tampil sebagai catatan Pesanan Dibatalkan.
+
+## Penamaan kanonik (ADR-018)
+
+Satu konsep hanya punya satu nama, dipakai seragam di dashboard, halaman Performa
+Toko, tooltip, dan export XLSX. Label KPI bersumber TUNGGAL dari
+`StorePerformanceService::kpi()`: UI merender `kpiMap[key].label` dan sheet KPI
+export membaca `$kpi["label"]`, jadi ketiganya tidak bisa lagi berbeda istilah.
+
+Dipakai di halaman: **Penjualan Gross**, **Penjualan Bersih**, **Jumlah Pesanan**,
+**Jumlah Unit Terjual**, **Produk Terjual**, **Harga Rata-rata per Unit**,
+**Pengunjung Unik**, **Pengunjung yang Membeli**, **Pelanggan Baru**,
+**Pelanggan Ulang**, **Rasio Pelanggan Ulang**, **Pembayaran Diterima**,
+**Ongkir Retur (Toko)**, **Refund Retur**.
+
+Bentuk varian yang DILARANG: "Omset", "Gross"/"Net" telanjang, "Pesanan Masuk",
+"Jumlah Pengunjung", "Pesanan Ulang", "Rasio Repeat", "Konversi Pembeli",
+"Total Transaksi Pembeli", "Total Dibayar Pembeli" (nama lama subtotal export).
+"Gross" pada halaman ini adalah **tagihan pembeli** (termasuk ongkir dan biaya
+COD yang diteruskan ke J&T), bukan pendapatan bersih toko.

@@ -36,6 +36,8 @@ alur data, integrasi, trade-off performa, dan kebijakan dicatat di sini.
 
 - **ADR-012** — Arsitektur produksi: tetap Inertia, bukan SPA+API terpisah.
 - **ADR-013** — Performa pindah menu & api. subdomain: cache Redis Lapis A, satu origin, tanpa API subdomain.
+- **ADR-022** - Kontrak alignment form admin: primitif Field/FieldGrid/CheckboxField/FieldAction, padding section seragam, verifikasi center Y.
+
 
 ---
 
@@ -1138,7 +1140,7 @@ route legacy tak tersisa di frontend. Storefront `/flash-sale` (CatalogControlle
 
 ---
 
-# ADR-018: Vocabulary finansial seragam — Penjualan Gross / Refund Retur / Penjualan Bersih
+# ADR-018: Vocabulary finansial seragam: Penjualan Gross / Refund Retur / Penjualan Bersih
 
 ## Status
 
@@ -1172,9 +1174,50 @@ dengan paid_at pada periode (ledger).
    hanya label tampilan yang diganti; tidak ada perubahan query/angka.
 3. Definisi tooltip mengikuti rumus di atas, satu kalimat per metrik.
 
+4. **Satu sumber label.** Label KPI di UI TIDAK boleh ditulis ulang di komponen.
+   `StorePerformanceService::kpi()` adalah satu-satunya sumber label; UI merender
+   `kpiMap[key].label` dan hanya memakai teks fallback bila payload belum ada.
+   Export XLSX mewarisi label yang sama karena sheet KPI membaca `$kpi['label']`.
+   Dengan begitu UI, dashboard, dan export tidak bisa lagi berbeda istilah.
+5. **Tabel kanonik.** Nama resmi per konsep (id-ID), dipakai di SEMUA permukaan
+   (dashboard, Performa Toko, tooltip, export XLSX, Laporan Pesanan):
+
+   | Konsep | Nama kanonik | Kunci teknis |
+   |---|---|---|
+   | Agregat tagihan pembeli (produk + ongkir + asuransi + COD) | **Penjualan Gross** | `omzet`, `gross_revenue` |
+   | Penjualan Gross dikurangi ongkir J&T, biaya COD, refund retur, ongkir retur toko | **Penjualan Bersih** | `net_revenue` |
+   | Jumlah pesanan yang masuk alur fulfillment | **Jumlah Pesanan** | `orders` |
+   | Unit fisik terjual | **Jumlah Unit Terjual** | `units` |
+   | Produk unik terjual | **Produk Terjual** | `products` |
+   | Pengunjung unik (satu sesi per hari) | **Pengunjung Unik** | `visitors` |
+   | Pengunjung Unik yang menyelesaikan pembelian | **Pengunjung yang Membeli** | `conversion` |
+   | Pembeli yang belum pernah memesan sebelumnya, per nomor HP unik | **Pelanggan Baru** | `new_customers` |
+   | Pembeli yang sudah pernah memesan, per nomor HP unik | **Pelanggan Ulang** | `repeat_customers` |
+   | Porsi Pelanggan Ulang terhadap pelanggan unik | **Rasio Pelanggan Ulang** | `repeat_order_rate` |
+   | Dana riil masuk dari ledger pembayaran (paid_at) | **Pembayaran Diterima** | `payments_received` |
+   | Ongkir retur yang ditanggung toko | **Ongkir Retur (Toko)** | `return_shipping_cost_total` |
+   | Pengembalian dana pada kasus retur selesai | **Refund Retur** | `refund_adjustments` |
+
+6. **Dilarang sinonim lain** untuk konsep di atas, termasuk singkatan Inggris
+   ("Gross", "Net", "AOV" tanpa penjelasan) dan bentuk varian ("Omset",
+   "Total Transaksi Pembeli", "Total Dibayar Pembeli", "Pesanan Masuk",
+   "Jumlah Pengunjung", "Pesanan Ulang", "Rasio Repeat", "Konversi Pembeli").
+   Untuk angka rupiah selalu lengkap: **Penjualan Gross**, bukan "Gross" saja.
+
 ## Consequences
 
 - Semua permukaan memakai istilah yang sama; tidak ada "campuran vocabulary".
+- **Konsekuensi penerapan 2026-09-18:** label UI disatukan lewat `kpiMap[key].label`
+  (StorePerformance.tsx) dan label dashboard mengikuti tabel kanonik di atas;
+  label backend `visitors` dikoreksi "Jumlah Pengunjung" -> "Pengunjung Unik",
+  karena metriknya memang unik per sesi per hari, bukan jumlah kunjungan halaman.
+  Export: subtotal "TOTAL DIBAYAR PEMBELI" -> "PENJUALAN GROSS" dan kolom tabel
+  pesanan "Total Dibayar Pembeli" -> "Penjualan Gross", karena nilainya identik
+  dengan KPI omzet (diverifikasi 2026-09-18: selisih Rp 0 terhadap jumlah komponen).
+- Terbuka (belum diputuskan): `refund_given` ("Refund Diberikan") dan
+  `refund_adjustments` ("Refund Retur") bernilai sama pada data uji tetapi
+  filternya berbeda (`refund_given` tidak menyaring item yang benar-benar
+  dikembalikan). Perlu keputusan owner apakah keduanya digabung jadi satu metrik.
 - Laporan/export lama yang memakai istilah lama dianggap usang saat dibuka ulang.
 - Dokumen & skill yang menyinggung "Omset" sebagai label UI dikoreksi bertahap;
   angka dan rumus tidak berubah.

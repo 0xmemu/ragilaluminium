@@ -34,7 +34,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Table\Column as TableColumn;
  *      (kunjungan produk, pelanggan, retur); sisanya SUMIFS/COUNTIFS.
  *   6. Panduan - aturan baca, definisi, format angka.
  *
- * Label kontrak owner: "Penjualan Gross" (ADR-018), "Penjualan Bersih"
+ * Label kontrak owner (tabel kanonik ADR-018): "Penjualan Gross" (agregat
+ * tagihan pembeli, KPI omzet, kolom tabel pesanan, subtotal pendapatan),
+ * "Penjualan Bersih"
  * TANPA sisipan lain, label COD menyatakan keadaan barang ("COD (barang
  * belum sampai), N pesanan"), 100% Bahasa Indonesia.
  *
@@ -414,9 +416,9 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowOngkir = $moneyRow('Ongkir Dibayar Pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null);
         $rowAsuransi = $moneyRow('Asuransi Dibayar Pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null);
         $rowCod = $moneyRow('Biaya COD Dibayar Pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null);
-        $rowTotalDibayar = $push(['TOTAL DIBAYAR PEMBELI', '=SUM(B'.$rowNilai.':B'.$rowCod.')', 'Tidak ada data', '-']);
-        $this->totalRows[] = $rowTotalDibayar;
-        $this->registerNumber($rowTotalDibayar, 2, '#,##0');
+        $rowGross = $push(['PENJUALAN GROSS', '=SUM(B'.$rowNilai.':B'.$rowCod.')', 'Tidak ada data', '-']);
+        $this->totalRows[] = $rowGross;
+        $this->registerNumber($rowGross, 2, '#,##0');
         $this->noteRows[] = $push(['* Nilai produk terjual sudah memakai harga promo (setelah diskon produk). Koreksi nilai di Tabel Pesanan akan mengubah baris ini.']);
 
         // ---- II. BEBAN YANG DITANGGUNG TOKO ----
@@ -431,7 +433,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // dari jumlah beban (bug 2026-09-12).
         $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
         $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
-        $rowRetShip = $moneyRow('Ongkir Retur Ditanggung Toko', $sum('Ongkir Retur Toko'), -1 * $num($fin['return_shipping_store'] ?? 0));
+        $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0));
         $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')', 'Tidak ada data', '-']);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 2, '#,##0');
@@ -442,7 +444,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // Penjualan bersih = total dibayar + jumlah beban (beban sudah negatif).
         // Referensi WAJIB baris Jumlah beban yang ditangkap di atas; kalkulasi
         // offset manual pernah menunjuk baris pemisah kosong.
-        $rowNet = $push(['PENJUALAN BERSIH', '=B'.$rowTotalDibayar.'+B'.$rowBeban, 'Tidak ada data', '-']);
+        $rowNet = $push(['PENJUALAN BERSIH', '=B'.$rowGross.'+B'.$rowBeban, 'Tidak ada data', '-']);
         $this->grandTotalRows[] = $rowNet;
         $this->registerNumber($rowNet, 2, '#,##0');
         $this->noteRows[] = $push(['* Subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.']);
@@ -566,8 +568,8 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'Jumlah Jenis SKU',
             'Nilai Produk Terjual', 'Voucher',
             'Ongkir Dibayar Pelanggan', 'Asuransi', 'Biaya COD',
-            'Total Dibayar Pembeli',
-            'Ongkir ke J&T', 'Refund Retur', 'Ongkir Retur Toko',
+            'Penjualan Gross',
+            'Ongkir ke J&T', 'Refund Retur', 'Ongkir Retur (Toko)',
             'Penjualan Bersih',
             'Uang Sudah Masuk', 'Belum Cair',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
@@ -981,7 +983,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
             $row = [
                 $guard($label),
                 '=COUNTIFS('.$this->tableName('TabelPesanan').'[Metode],"'.$needle.'")',
-                '=SUMIFS('.$this->tableName('TabelPesanan').'[Total Dibayar Pembeli],'.$this->tableName('TabelPesanan').'[Metode],"'.$needle.'")',
+                '=SUMIFS('.$this->tableName('TabelPesanan').'[Penjualan Gross],'.$this->tableName('TabelPesanan').'[Metode],"'.$needle.'")',
                 null, // porsi dihitung setelah tahu baris
             ];
             $line = $push($row);
@@ -1085,7 +1087,7 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             ['ISI BERKAS', 'Berkas terdiri dari 6 sheet terintegrasi. Ringkasan Finansial: laba rugi bertingkat dan status arus kas, angkanya rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko: metrik penjualan, kunjungan, operasional, pembayaran, retur, dan pembatalan. Tabel Pesanan dan Tabel Item: mesin hitung sekaligus basis Pivot Table (1 baris = 1 pesanan / 1 item). Analisis: agregat yang tidak bisa diturunkan dari dua tabel. Panduan: halaman ini.'],
             ['PERAN DUA TABEL', 'Tabel Pesanan dan Tabel Item bukan duplikat laporan pesanan: keduanya sumber rumus Ringkasan Finansial dan Analisis, dan siap dipakai Pivot Table. Ubah satu sel di tabel, seluruh laporan ikut menyesuaikan.'],
             ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Setiap angka pendapatan dan beban adalah rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
-            ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Total Dibayar Pembeli. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur toko menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
+            ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Penjualan Gross. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur (toko) menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
             ['DISKON PRODUK', "Kolom 'Hemat Pembeli vs Harga Normal' adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku."],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah.'],
             ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD cair pada periode, dihitung dari tanggal pembayaran (bukan tanggal pesanan dibuat). Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba.'],

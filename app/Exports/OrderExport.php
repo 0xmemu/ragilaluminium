@@ -331,7 +331,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         'Total Diskon Produk', 'Subtotal Penjualan Produk',
         'Voucher Pesanan (Beban Toko)', 'Subsidi Ongkir Toko (Beban Toko)', 'Ongkir Ditanggung Pembeli',
         'Biaya COD Ditanggung Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
-        'Total Tagihan Dibayar Pembeli', 'Pengurangan Nilai Pesanan ke J&T',
+        'Penjualan Gross', 'Pengurangan Nilai Pesanan ke J&T',
         'Kasus Retur / Alasan', 'Nilai Refund Pembeli', 'Ongkir Retur Tambahan',
         'Net Profit Toko per Produk (Kas Bersih)',
         'Nama Pelanggan', 'No. Telepon / WA', 'Alamat Pengiriman', 'Kelurahan / Desa',
@@ -558,7 +558,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         'Total Nilai Normal', 'Total Diskon Produk', 'Total Penjualan Produk',
         'Voucher Toko', 'Subsidi Ongkir Toko',
         'Ongkir Dibayar Pembeli', 'Biaya COD Dibayar Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
-        'TOTAL DIBAYAR PEMBELI',
+        'PENJUALAN GROSS',
         'Ongkir Total ke J&T', 'Selisih Ongkir J&T', 'Biaya COD ke J&T', 'Total Potongan J&T',
         'Nilai Refund Pembeli', 'Ongkir Retur Toko',
         'NET PROFIT TOKO (KAS BERSIH)',
@@ -669,7 +669,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
             return;
         }
 
-        // Kolom TOTAL DIBAYAR PEMBELI selalu disorot amber (uang masuk).
+        // Kolom PENJUALAN GROSS selalu disorot amber (uang masuk).
         $sheet->getStyle('M3:M'.($lastRow - 1))->getFill()
             ->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFEF3C7');
 
@@ -743,7 +743,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['6. SKU Varian (variant_sku)', 'Kode unik kombinasi model dan varian. Digunakan untuk melacak pergerakan stok per jenis.'],
             ['7. Nama Produk & Variasi', 'Nama model barang dan varian detailnya (contoh: Warna: Putih, Kaca: Kaca Es). Dipisah kolomnya agar memudahkan Pivot Table varian.'],
             ['8. Berat (kg) & Volume', 'Mengikuti format modul pengiriman: berat tagih paket (max berat aktual vs volumetrik P x L x T / 5000, pallet kayu allowance 3 cm/sisi) dan dimensi luar paket, sebagai snapshot yang direkam saat order dibuat. Tanda "-" berarti order dibuat sebelum sistem menyimpan snapshot; nilai lama tidak dihitung ulang agar angka historis tidak berubah.'],
-            ['9. Sumber Diskon (discount_source)', 'Jenis promo yang berlaku (misal: Reguler, Flash Sale, Promo Toko).'],
+            ['9. Sumber Diskon (discount_source)', 'Jenis promo yang berlaku: Reguler atau Flash Sale.'],
             ['10. Harga Produk (Normal)', 'Harga katalog normal sebelum promo (harga jual + diskon garis produk).'],
             ['11. Diskon per Produk (line_discount)', 'Potongan harga yang disetting khusus pada produk tersebut untuk menurunkan margin harga normal.'],
             ['12. Diskon per Produk (%)', 'Persentase potongan harga terhadap harga normal: [Diskon per Produk] / [Harga Produk (Normal)]. Ditampilkan sebagai persen (misal 10%); 0% berarti produk terjual tanpa diskon.'],
@@ -756,7 +756,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['19. Ongkir Ditanggung Pembeli', 'Tarif ongkir kurir sesudah dipotong subsidi toko. Dibayar oleh pembeli saat checkout / bayar di tempat.'],
             ['20. Biaya COD Ditanggung Pembeli', 'Fee penanganan COD yang dibebankan kepada pembeli. Dibayar oleh pembeli ke kurir J&T saat serah terima barang.'],
             ['21. Asuransi Pengiriman Dibayar Pembeli (shipping_insurance_amount)', 'Biaya asuransi paket yang dibayar pembeli. Besarnya DIHITUNG OLEH J&T dari nilai barang yang diasuransikan; sistem tidak menghitung tarif ini sendiri, angkanya diambil apa adanya dari J&T. Bersifat opsional: muncul sebagai pilihan di checkout, dan hanya ditagihkan bila pembeli memilihnya. Termasuk uang titipan: masuk di tagihan pembeli lalu dipotong utuh oleh J&T.'],
-            ['22. Total Tagihan Dibayar Pembeli', 'Total uang yang ditagih kurir ke pembeli: [Total Penjualan Produk] - [Voucher] + [Ongkir Pembeli] + [Biaya COD] + [Asuransi Pengiriman].'],
+            ['22. Penjualan Gross', 'Total uang yang ditagih kurir ke pembeli (Total Tagihan pada pesan pelanggan): [Total Penjualan Produk] - [Voucher] + [Ongkir Pembeli] + [Biaya COD] + [Asuransi Pengiriman].'],
             ['23. Pengurangan Nilai Pesanan ke J&T', 'Total saldo yang dipotong oleh pihak J&T: [Ongkir Total ke J&T] + [Biaya COD] + [Asuransi Pengiriman].'],
             ['24. Kasus Retur / Alasan (return_case)', 'Keterangan alasan kendala pesanan (misal: Refund (rusak), Pesanan dibatalkan, atau -).'],
             ['25. Nilai Refund Pembeli (refund_amount)', 'Uang yang dikembalikan ke pembeli jika terjadi klaim barang rusak atau batal.'],
@@ -769,7 +769,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['32. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
             ['33. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
             ['35. Tagihan J&T Asli & Selisihnya (Sheet 2 kolom N & O)', 'Tagihan J&T (N) memakai angka ASLI dari J&T Cargo yang diambil otomatis dari pelacakan resi (field totalFreight), jadi tidak ada input manual dan tidak ada perhitungan sendiri. Angka itu SUDAH termasuk asuransi (insuredFee), sehingga asuransi tidak ditambahkan lagi di atasnya. Bila J&T belum melaporkan, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli] + [Asuransi Pengiriman], dan Selisih (O) bernilai 0. Selisih = [Tagihan J&T Asli] - [Subsidi] - [Ongkir Pembeli] - [Asuransi]; nilai POSITIF berarti tagihan J&T lebih besar dari asumsi (ditanggung toko), NEGATIF berarti lebih hemat dari perkiraan.'],
-            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Total Tagihan, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL. Pesanan Dibatalkan tampil dengan seluruh nilai uang 0 di kedua sheet; hanya kolom Retur & Refund yang tetap tercatat.'],
+            ['34. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Penjualan Gross, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL. Pesanan Dibatalkan tampil dengan seluruh nilai uang 0 di kedua sheet; hanya kolom Retur & Refund yang tetap tercatat.'],
         ];
     }
 

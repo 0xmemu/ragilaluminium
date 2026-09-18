@@ -109,7 +109,7 @@ class OrderExportContractTest extends TestCase
         // Kolom asuransi (W) menyisip setelah Biaya COD (V).
         $this->assertSame('Biaya COD Ditanggung Pembeli', $tx->getCell('V2')->getValue());
         $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $tx->getCell('W2')->getValue());
-        $this->assertSame('Total Tagihan Dibayar Pembeli', $tx->getCell('X2')->getValue());
+        $this->assertSame('Penjualan Gross', $tx->getCell('X2')->getValue());
         $this->assertSame('Pengurangan Nilai Pesanan ke J&T', $tx->getCell('Y2')->getValue());
 
         // 2 item = baris 3 dan 4; baris 5 TOTAL.
@@ -131,7 +131,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('=L3-M3', $tx->getCell('O3')->getValue());
         $this->assertSame('=M3*P3', $tx->getCell('Q3')->getValue());
         $this->assertSame('=O3*P3', $tx->getCell('R3')->getValue());
-        // Total Tagihan = subtotal - voucher + ongkir + COD + ASURANSI.
+        // Penjualan Gross = subtotal - voucher + ongkir + COD + ASURANSI.
         $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0, SUMIF($A$3:$A$4, A3, $R$3:$R$4)', (string) $tx->getCell('X3')->getValue());
         $this->assertStringEndsWith('- S3 + U3 + V3 + W3)', (string) $tx->getCell('X3')->getValue());
         // Pengurangan J&T = TAGIHAN ASLI J&T + COD. Fixture menyimpan
@@ -179,7 +179,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('1. IDENTITAS PESANAN', $rk->getCell('A1')->getValue());
         $this->assertSame('Nomor Pesanan', $rk->getCell('A2')->getValue());
         $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $rk->getCell('L2')->getValue());
-        $this->assertSame('TOTAL DIBAYAR PEMBELI', $rk->getCell('M2')->getValue());
+        $this->assertSame('PENJUALAN GROSS', $rk->getCell('M2')->getValue());
         $this->assertSame('Ongkir Total ke J&T', $rk->getCell('N2')->getValue());
         $this->assertSame('Selisih Ongkir J&T', $rk->getCell('O2')->getValue());
         $this->assertSame('Biaya COD ke J&T', $rk->getCell('P2')->getValue());
@@ -406,7 +406,7 @@ class OrderExportContractTest extends TestCase
     }
 
     /**
-     * Kontrak: asuransi masuk ke Total Tagihan Dibayar Pembeli DAN ke
+     * Kontrak: asuransi masuk ke Penjualan Gross DAN ke
      * pengurangan nilai pesanan ke J&T (keduanya, karena J&T memotong biaya
      * asuransi). Kalau hanya salah satu, net profit jadi salah.
      */

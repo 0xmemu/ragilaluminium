@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { DeltaBadge } from "@/components/admin/ui/delta-badge"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
@@ -29,7 +30,6 @@ interface Kpi {
   detail?: string | null
 }
 
-const MINUS = "−"
 
 interface Section {
   key: string
@@ -135,17 +135,6 @@ function formatDuration(value: number, isDays = false): string {
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 
 
-
-function ChangeBadge({ percent }: { percent: number }) {
-  const up = percent > 0
-  return (
-    <span className="inline-flex items-center gap-1">
-      <Icon name={up ? "trend-up" : "trend-down"} className="size-3" aria-hidden="true" />
-      {up ? "+" : MINUS}
-      {formatNumber(Math.abs(percent))}%
-    </span>
-  )
-}
 
 function HoverHint({
   label,
@@ -448,7 +437,8 @@ export default function StorePerformance({
     return map
   }, [report, sparklineBy])
 
-  const compareLabel = report.range.compare_label?.replace(/^vs\s+/, "") || "periode lalu"
+  // Tampilkan "vs <rentang>" utuh sesuai owner 2026-09-15 (jangan buang prefiks "vs").
+  const compareLabel = report.range.compare_label || "vs periode lalu"
   const [chartTab, setChartTab] = React.useState(0)
   const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
@@ -619,7 +609,7 @@ export default function StorePerformance({
             <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             <span className="text-xs text-muted-foreground">·</span>
             <span className="text-xs text-muted-foreground" aria-live="polite">
-              {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}${report.range.is_running ? " (jam setara)" : ""}`}
+              {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}`}
             </span>
           </div>
         </div>
@@ -662,7 +652,7 @@ export default function StorePerformance({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Skala Grafik:</span>
+            <span className="text-xs text-muted-foreground">Granularitas:</span>
             <Select
               value={granularity}
               onChange={(event) => {
@@ -707,7 +697,7 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Penjualan Gross"
+                label={kpiMap["omzet"]?.label ?? "Penjualan Gross"}
                 hint="Total nilai transaksi pembeli pada periode (sebelum dikurangi ongkir J&T, biaya COD, subsidi, dan retur)."
                 className="text-xs font-medium text-muted-foreground"
               />
@@ -727,18 +717,18 @@ export default function StorePerformance({
               (kpiMap["omzet"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["omzet"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["omzet"]?.change_percent === null ? "Baru" : (kpiMap["omzet"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["omzet"].change_percent} />}
+              <DeltaBadge percent={kpiMap["omzet"]?.change_percent} />
             </span>
           </div>
         </div>
 
-        {/* KARTU 2: Pesanan Masuk */}
+        {/* KARTU 2: Jumlah Pesanan */}
         <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
             <div>
               <HoverHint
-                label="Pesanan Masuk"
-                hint="Total pesanan fulfillment dan kuantitas unit fisik terjual."
+                label={kpiMap["orders"]?.label ?? "Jumlah Pesanan"}
+                hint="Pesanan yang sudah masuk alur fulfillment (diproses atau lebih lanjut). Pesanan yang baru masuk dan belum dikonfirmasi belum ikut dihitung."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
@@ -757,7 +747,7 @@ export default function StorePerformance({
               (kpiMap["orders"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["orders"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["orders"]?.change_percent === null ? "Baru" : (kpiMap["orders"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["orders"].change_percent} />}
+              <DeltaBadge percent={kpiMap["orders"]?.change_percent} />
             </span>
           </div>
         </div>
@@ -767,7 +757,7 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Jumlah Produk Terjual"
+                label={kpiMap["products"]?.label ?? "Produk Terjual"}
                 hint="Jumlah produk unik yang terjual pada periode."
                 className="text-xs font-medium text-muted-foreground"
               />
@@ -784,7 +774,7 @@ export default function StorePerformance({
               (kpiMap["products"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["products"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["products"]?.change_percent === null ? "Baru" : (kpiMap["products"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["products"].change_percent} />}
+              <DeltaBadge percent={kpiMap["products"]?.change_percent} />
             </span>
           </div>
         </div>
@@ -794,7 +784,7 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Jumlah Unit Terjual"
+                label={kpiMap["units"]?.label ?? "Jumlah Unit Terjual"}
                 hint="Total unit fisik terjual pada periode (dari pesanan fulfillment)."
                 className="text-xs font-medium text-muted-foreground"
               />
@@ -811,7 +801,7 @@ export default function StorePerformance({
               (kpiMap["units"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["units"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["units"]?.change_percent === null ? "Baru" : (kpiMap["units"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["units"].change_percent} />}
+              <DeltaBadge percent={kpiMap["units"]?.change_percent} />
             </span>
           </div>
         </div>
@@ -821,8 +811,8 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Konversi Pembeli"
-                hint="Rasio pengunjung unik yang berhasil menyelesaikan transaksi pembelian."
+                label={kpiMap["conversion"]?.label ?? "Pengunjung yang Membeli"}
+                hint="Persentase pengunjung unik yang menyelesaikan pembelian pada periode ini."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
@@ -830,7 +820,9 @@ export default function StorePerformance({
               {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
             </p>
             <p className="mt-1 text-xs text-muted-foreground truncate" title={kpiMap["conversion"]?.detail ?? undefined}>
-              {formatNumber(kpiMap["orders"]?.value ?? 0)} pembeli dari {formatNumber(kpiMap["visitors"]?.value ?? 0)} pengunjung
+              {/* Angka pembeli diambil dari detail backend (pembeli unik), bukan jumlah
+                pesanan: satu pelanggan dengan beberapa pesanan tetap dihitung satu orang. */}
+              {kpiMap["conversion"]?.detail ?? ""}
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -841,7 +833,7 @@ export default function StorePerformance({
               (kpiMap["conversion"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["conversion"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["conversion"]?.change_percent === null ? "Baru" : (kpiMap["conversion"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["conversion"].change_percent} />}
+              <DeltaBadge percent={kpiMap["conversion"]?.change_percent} />
             </span>
           </div>
         </div>
@@ -850,8 +842,8 @@ export default function StorePerformance({
           <div>
             <div>
               <HoverHint
-                label="Harga Rata-rata per Unit"
-                hint="Range harga yang paling sering dibeli pelanggan, dihitung dari nilai pesanan dibagi jumlah unit terjual."
+                label={kpiMap["avg_unit_price"]?.label ?? "Harga Rata-rata per Unit"}
+                hint="Nilai pesanan dibagi jumlah unit terjual pada periode ini."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
@@ -870,34 +862,7 @@ export default function StorePerformance({
               (kpiMap["avg_unit_price"]?.change_percent ?? 0) < 0 && "text-destructive",
               (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
             )}>
-              {kpiMap["avg_unit_price"]?.change_percent === null ? "Baru" : (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["avg_unit_price"].change_percent} />}
-            </span>
-          </div>
-        </div>
-
-        {/* KARTU 3c: Jumlah Produk Terjual */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
-          <div>
-            <div>
-              <HoverHint
-                label="Jumlah Produk Terjual"
-                hint="Jumlah produk unik yang terjual pada periode."
-                className="text-xs font-medium text-muted-foreground"
-              />
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatNumber(kpiMap["products"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">produk</span>
-            </p>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">{compareLabel}</span>
-            <span className={cn(
-              "font-semibold",
-              (kpiMap["products"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["products"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["products"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-            )}>
-              {kpiMap["products"]?.change_percent === null ? "Baru" : (kpiMap["products"]?.change_percent ?? 0) === 0 ? "Tetap" : <ChangeBadge percent={kpiMap["products"].change_percent} />}
+              <DeltaBadge percent={kpiMap["avg_unit_price"]?.change_percent} />
             </span>
           </div>
         </div>
@@ -918,24 +883,24 @@ export default function StorePerformance({
           {/* Kolom Kiri: Laporan Laba/Rugi Penjualan */}
           <div className="p-5 border-b lg:border-b-0 lg:border-r border-border">
             <p className="text-xs font-medium text-muted-foreground">
-              Penjualan Bersih
+              Dari Penjualan Gross ke Penjualan Bersih
             </p>
 
             <div className="mt-3 space-y-2 text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                 <HoverHint
-                  label="Total Transaksi Pembeli (Penjualan Gross)"
+                  label={kpiMap["omzet"]?.label ?? "Penjualan Gross"}
                   hint="Total nilai transaksi kotor pembeli termasuk nilai produk, ongkir, dan biaya COD."
                   className="font-semibold text-foreground"
                 />
                 <span className="font-bold tabular-nums text-foreground">{formatCurrency(report.financial.gross_revenue)}</span>
               </div>
 
-              {/* Promo ditanggung toko: SUDAH tercakup dalam Gross (pelanggan
+              {/* Promo ditanggung toko: SUDAH tercakup dalam Penjualan Gross (pelanggan
                   membayar lebih murah), jadi TIDAK dikurangkan lagi di sini -
                   ditampilkan agar beban promo toko tetap terdata. */}
               <div className="border-t border-border pt-3">
-                <p className="text-xs font-semibold text-foreground mb-2">Promo Ditanggung Toko (tercakup dalam Gross)</p>
+                <p className="text-xs font-semibold text-foreground mb-2">Promo Ditanggung Toko (tercakup dalam Penjualan Gross)</p>
                 <div className="space-y-1">
                   {[
                     { label: "Potongan Harga Produk", hint: "Diskon harga produk yang ditanggung toko.", val: report.financial.product_discount ?? 0 },
@@ -960,8 +925,8 @@ export default function StorePerformance({
               {[
                 { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dasar yang diteruskan ke J&T Cargo, sudah termasuk subsidi ongkir yang ditanggung toko.", val: report.financial.shipping_raw ?? 0 },
                 { label: "Titipan Biaya Layanan COD J&T", hint: "Biaya administrasi COD yang dipotong oleh pihak kurir J&T Cargo.", val: report.financial.cod_fee ?? 0 },
-                { label: "Refund Kasus Retur", hint: "Pengembalian dana kepada pembeli atas kasus retur yang selesai.", val: report.financial.refund_adjustments ?? 0 },
-                { label: "Ongkir Retur Toko", hint: "Biaya pengiriman barang retur yang ditanggung oleh pihak toko.", val: report.financial.return_shipping_store ?? 0 },
+                { label: "Refund Retur", hint: "Pengembalian dana kepada pembeli atas kasus retur yang selesai.", val: report.financial.refund_adjustments ?? 0 },
+                { label: "Ongkir Retur (Toko)", hint: "Biaya pengiriman barang retur yang ditanggung oleh pihak toko.", val: report.financial.return_shipping_store ?? 0 },
               ].map((row, idx) => (
                 <div key={idx} className="flex items-center justify-between py-1.5 text-muted-foreground">
                   <span className="pl-2">
@@ -975,7 +940,7 @@ export default function StorePerformance({
 
               <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 p-2.5 border border-border">
                 <HoverHint
-                  label="Penjualan Bersih"
+                  label={kpiMap["net_revenue"]?.label ?? "Penjualan Bersih"}
                   hint="Hak pendapatan bersih toko setelah dikurangi ongkir, fee COD, subsidi, dan retur."
                   className="text-xs font-bold text-foreground"
                 />
@@ -995,7 +960,7 @@ export default function StorePerformance({
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <HoverHint
-                    label="Total Pembayaran Diterima"
+                    label={kpiMap["payments_received"]?.label ?? "Pembayaran Diterima"}
                     hint="Total dana riil dari transaksi transfer lunas dan COD yang selesai pada periode ini."
                     className="text-xs font-semibold text-foreground"
                   />
@@ -1021,7 +986,7 @@ export default function StorePerformance({
 
                 <div className="rounded-md border border-border bg-card p-2.5">
                   <HoverHint
-                    label="COD Selesai"
+                    label={kpiMap["cod_paid"]?.label ?? "COD Dibayar"}
                     hint="Pembayaran tunai yang diserahterimakan saat paket tiba di pembeli."
                     className="text-xs text-muted-foreground"
                   />
@@ -1035,7 +1000,7 @@ export default function StorePerformance({
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <HoverHint
-                    label="Transfer Menunggu Verifikasi"
+                    label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Pending"}
                     hint="Pesanan metode transfer yang belum selesai dibayar atau menunggu verifikasi admin."
                     className="text-xs font-semibold text-foreground"
                   />
@@ -1072,7 +1037,7 @@ export default function StorePerformance({
           >
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Perlu Diproses"
+                label={kpiMap["open_orders"]?.label ?? "Pesanan Belum Selesai"}
                 hint="Pesanan aktif menunggu diproses dan disiapkan workshop."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
@@ -1089,7 +1054,7 @@ export default function StorePerformance({
           >
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Dalam Pengiriman"
+                label={kpiMap["dispatched_orders"]?.label ?? "Dalam Pengiriman"}
                 hint="Pesanan sedang dalam pengiriman ekspedisi kurir."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
@@ -1106,7 +1071,7 @@ export default function StorePerformance({
           >
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Pesanan Selesai"
+                label={kpiMap["completed_orders"]?.label ?? "Pesanan Selesai"}
                 hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
@@ -1120,7 +1085,7 @@ export default function StorePerformance({
           <div className="rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <HoverHint
-                label="SLA Konfirmasi"
+                label={kpiMap["avg_confirm_hours"]?.label ?? "Rata-rata Waktu Konfirmasi"}
                 hint="Rata-rata waktu respon sejak pesanan masuk hingga dikonfirmasi admin."
                 className="text-xs font-semibold text-muted-foreground"
               />
@@ -1134,14 +1099,14 @@ export default function StorePerformance({
           <div className="rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Rata-rata Waktu Proses"
+                label={kpiMap["avg_process_days"]?.label ?? "Rata-rata Waktu Proses"}
                 hint="Waktu dari dikonfirmasi sampai disiapkan/siap kirim."
                 className="text-xs font-semibold text-muted-foreground"
               />
               <Icon name="clock" className="size-4 text-muted-foreground" aria-hidden="true" />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
-              {formatDuration(kpiMap["avg_process_days"]?.value ?? 0)}
+              {formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}
             </p>
           </div>
         </div>
@@ -1160,19 +1125,19 @@ export default function StorePerformance({
                 <p className="font-bold text-foreground">Retur Barang</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
                   <li className="flex justify-between">
-                    <span>Kasus Diajukan:</span>
+                    <span>{kpiMap["returns_created"]?.label ?? "Retur Diajukan"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_created"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Kasus Masih Terbuka:</span>
+                    <span>{kpiMap["returns_open"]?.label ?? "Retur Aktif"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_open"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Retur Selesai:</span>
+                    <span>{kpiMap["returns_completed"]?.label ?? "Retur Selesai"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_completed"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Rasio Retur:</span>
+                    <span>{kpiMap["return_rate_completed"]?.label ?? "Rasio Retur Selesai"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["return_rate_completed"]?.value ?? 0)}%</span>
                   </li>
                 </ul>
@@ -1182,19 +1147,19 @@ export default function StorePerformance({
                 <p className="font-bold text-foreground">Pembatalan Pesanan</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
                   <li className="flex justify-between">
-                    <span>Total Dibatalkan:</span>
+                    <span>{kpiMap["cancelled_orders"]?.label ?? "Pesanan Dibatalkan"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_orders"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Dibatalkan Pembeli:</span>
+                    <span>{kpiMap["cancelled_by_customer"]?.label ?? "Dibatalkan Pelanggan"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_by_customer"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Dibatalkan Toko:</span>
+                    <span>{kpiMap["cancelled_by_store"]?.label ?? "Dibatalkan Toko"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_by_store"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Rasio Pembatalan:</span>
+                    <span>{kpiMap["cancellation_rate"]?.label ?? "Rasio Pembatalan"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancellation_rate"]?.value ?? 0)}%</span>
                   </li>
                 </ul>
@@ -1204,15 +1169,15 @@ export default function StorePerformance({
                 <p className="font-bold text-foreground">Dampak Beban Biaya</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
                   <li className="flex justify-between">
-                    <span>Refund Dana:</span>
+                    <span>{kpiMap["refund_given"]?.label ?? "Refund Diberikan"}:</span>
                     <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["refund_given"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Ongkir Retur (Toko):</span>
+                    <span>{kpiMap["return_shipping_cost_total"]?.label ?? "Ongkir Retur (Toko)"}:</span>
                     <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["return_shipping_cost_total"]?.value ?? 0)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Kasus Ongkir Toko:</span>
+                    <span>{kpiMap["return_shipping_cost_cases"]?.label ?? "Kasus Retur (Ongkir Toko)"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["return_shipping_cost_cases"]?.value ?? 0)} kasus</span>
                   </li>
                 </ul>
@@ -1364,39 +1329,39 @@ export default function StorePerformance({
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
-                  label="Pengunjung Unik"
-                  hint="Jumlah pengunjung fisik unik (berdasarkan IP dan sesi) yang mengakses toko."
+                  label={kpiMap["visitors"]?.label ?? "Pengunjung Unik"}
+                  hint="Jumlah pengunjung unik berdasarkan id sesi per hari yang membuka halaman toko."
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
-                  label="Pelanggan Baru"
-                  hint="Jumlah pelanggan yang baru pertama kali melakukan pemesanan pada toko."
+                  label={kpiMap["new_customers"]?.label ?? "Pelanggan Baru"}
+                  hint="Jumlah pelanggan yang belum pernah memesan sebelum periode ini (dihitung per nomor HP unik)."
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
-                  label="Pesanan Ulang"
-                  hint="Jumlah pelanggan yang melakukan pemesanan lebih dari satu kali."
+                  label={kpiMap["repeat_customers"]?.label ?? "Pelanggan Ulang"}
+                  hint="Jumlah pelanggan yang sudah pernah memesan sebelum periode ini (dihitung per nomor HP unik)."
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
-                  label="Rasio Repeat"
-                  hint="Persentase pesanan dari pelanggan setia dibanding total pembeli."
+                  label={kpiMap["repeat_order_rate"]?.label ?? "Rasio Pelanggan Ulang"}
+                  hint="Persentase pelanggan ulang dari total pelanggan unik yang membeli pada periode ini."
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
-                  label="Pesanan Selesai"
+                  label={kpiMap["completed_orders"]?.label ?? "Pesanan Selesai"}
                   hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
                   className="text-xs font-medium text-muted-foreground"
                 />
@@ -1418,7 +1383,7 @@ export default function StorePerformance({
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-xs text-foreground">{methodLabel}</span>
                           <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                            {pct}% dari Gross
+                            {pct}% dari {kpiMap["omzet"]?.label ?? "Penjualan Gross"}
                           </span>
                         </div>
                         <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>

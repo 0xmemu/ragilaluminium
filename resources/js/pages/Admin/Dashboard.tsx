@@ -31,8 +31,10 @@ interface OmzetData {
   units: number
   change_percent: number
   orders_delta: number
+  orders_change_percent?: number | null
   comparison_label?: string
   units_delta: number
+  units_change_percent?: number | null
   sparkline: number[]
   series?: Array<{ label: string; value: number }>
   previous_series?: Array<{ label: string; value: number }>
@@ -58,8 +60,10 @@ interface PerformaTrend {
 interface PerformaData {
   period: string
   period_label: string
+  period_detail?: string
   period_options: Array<{ value: string; label: string }>
   metrics: PerformaMetric[]
+  comparison_label?: string
   trend: PerformaTrend
   detail_href: string
 }
@@ -393,11 +397,19 @@ export default function Dashboard({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                      Penjualan (Gross)
+                      Penjualan Gross
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {performa.period_label}
+                      {performa.period_detail ? ` · ${performa.period_detail}` : null}
                     </p>
+                    {/* Periode pembanding cukup sekali di sini; badge delta di
+                        tiap metrik hanya menampilkan angkanya saja. */}
+                    {omzet.comparison_label ? (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                        {omzet.comparison_label}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-[11px] text-muted-foreground/80" title="Nilai pesanan yang masuk alur fulfillment pada periode.">
                       Nilai pesanan yang masuk alur fulfillment
                     </p>
@@ -428,21 +440,21 @@ export default function Dashboard({
               <div className="mt-auto grid divide-x divide-border border-t border-border sm:grid-cols-3">
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Order masuk"
-                    value={`${formatNumber(omzet.orders)} order`}
-                    delta={<DeltaBadge absolute={omzet.orders_delta} absoluteSuffix="order" comparisonLabel={omzet.comparison_label} />}
+                    label="Jumlah Pesanan"
+                    value={`${formatNumber(omzet.orders)} pesanan`}
+                    delta={<DeltaBadge percent={omzet.orders_change_percent} absolute={omzet.orders_delta} absoluteSuffix="pesanan" />}
                   />
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
-                    label="Jumlah unit"
+                    label="Jumlah Unit Terjual"
                     value={`${formatNumber(omzet.units)} unit`}
-                    delta={<DeltaBadge absolute={omzet.units_delta} absoluteSuffix="unit" comparisonLabel={omzet.comparison_label} />}
+                    delta={<DeltaBadge percent={omzet.units_change_percent} absolute={omzet.units_delta} absoluteSuffix="unit" />}
                   />
                 </div>
                 <div className="px-4 py-3">
                   <MetricTile
-                    // Gross dikurangi refund retur yang benar-benar selesai -
+                    // Penjualan Gross dikurangi refund retur yang benar-benar selesai -
                     // satu periode dengan KPI omzet di atas. Prioritas utama
                     // admin: nilai bisnis, bukan pencatatan pembayaran.
                     label="Penjualan Bersih"
@@ -475,7 +487,7 @@ export default function Dashboard({
                       label="Import selesai"
                       value={formatNumber(importMediaSummary.imports.completed)}
                     />
-                    <DensityChip label="Pengunjung" value={formatNumber(visitorsMetric?.value ?? 0)} />
+                    <DensityChip label="Pengunjung Unik" value={formatNumber(visitorsMetric?.value ?? 0)} />
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -506,7 +518,12 @@ export default function Dashboard({
                 <h2 className="text-sm font-semibold tracking-tight text-foreground">
                   Performa toko
                 </h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{performa.period_label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{performa.period_label}{performa.period_detail ? ` · ${performa.period_detail}` : null}</p>
+                {/* Periode pembanding cukup sekali di header; badge delta di
+                    tiap metrik hanya menampilkan angkanya saja. */}
+                {performa.comparison_label ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/80">{performa.comparison_label}</p>
+                ) : null}
               </div>
               <div className="flex items-center gap-1.5">
                 <OptionMenu
@@ -536,7 +553,7 @@ export default function Dashboard({
             </div>
             <div className="mt-4 border-t border-border pt-3">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Tren Pengunjung</p>
+                <p className="text-xs font-medium text-muted-foreground">Tren Pengunjung Unik</p>
                 <div className="text-right">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p>
                   <p className="text-lg font-bold tabular-nums tracking-tight text-foreground">
