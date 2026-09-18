@@ -225,21 +225,21 @@ export function CheckoutSummary({
               </p>
               {/* Harga di bawah nama produk, rata kanan mengikuti tepi angka
                   pada rincian biaya di bawahnya. Angka yang dibayar di atas,
-                  harga sebelum diskon dicoret di bawahnya, persentase diskon di
-                  kanan harga coret. */}
+                  harga sebelum diskon dicoret di bawahnya, dan persentase
+                  diskon mendahului harga coret itu. */}
               <div className="mt-1 space-y-0.5 text-right">
                 {hasLineDiscount && lineCompare != null ? (
                   <span className="flex items-baseline justify-end gap-1.5">
-                    <span className="tabular-nums text-[11px] text-muted-foreground line-through">
-                      {formatCurrency(lineCompare)}
-                    </span>
                     {discountPercent ? (
-                      /* Lebar tetap supaya badge persen sejajar antar baris
+                      /* Lebar tetap supaya label persen sejajar antar baris
                          ketika pesanan memuat beberapa produk. */
                       <span className="w-8 shrink-0 text-right text-[11px] font-semibold text-sale">
                         {discountPercent}%
                       </span>
                     ) : null}
+                    <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                      {formatCurrency(lineCompare)}
+                    </span>
                   </span>
                 ) : null}
                 <span

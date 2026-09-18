@@ -146,14 +146,14 @@ function CheckoutItemNoteRow({
             <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
             <span className="text-right">
               <span className="flex items-center justify-end gap-1.5">
-                {hasDiscount && compareTotal != null ? (
-                  <span className="tabular-nums text-[11px] text-muted-foreground line-through">
-                    {formatCurrency(compareTotal)}
-                  </span>
-                ) : null}
                 {discountPercent ? (
                   <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
                     {discountPercent}%
+                  </span>
+                ) : null}
+                {hasDiscount && compareTotal != null ? (
+                  <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                    {formatCurrency(compareTotal)}
                   </span>
                 ) : null}
               </span>
