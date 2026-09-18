@@ -139,11 +139,15 @@ function CheckoutItemNoteRow({
           <p className="text-xs font-semibold text-foreground leading-snug sm:text-sm">
             {item.name}
           </p>
-          {variantLabel ? (
-            <p className="text-xs text-muted-foreground">{variantLabel}</p>
-          ) : null}
-          <div className="flex items-end justify-between gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">{item.quantity} unit</span>
+          {/* Jumlah dan varian dalam satu baris, pola sama dengan ringkasan:
+              "1 unit · Putih / Kaca Bening". Sebelumnya jumlah diletakkan di
+              baris terpisah rata bawah, sehingga terpisah jauh dari varian
+              yang diterangkannya. */}
+          <p className="text-xs text-muted-foreground">
+            <span>{item.quantity} unit</span>
+            {variantLabel ? <span> · {variantLabel}</span> : null}
+          </p>
+          <div className="flex justify-end pt-1">
             <span className="text-right">
               <span className="flex items-center justify-end gap-1.5">
                 {discountPercent ? (
