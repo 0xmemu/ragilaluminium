@@ -32,6 +32,19 @@ const SEARCH_THRESHOLD = 7
 /** Ruang teks di dalam tombol trigger: pl-3 (12px) + pr-8 (32px). */
 const BUTTON_TEXT_INSET = 44
 
+/**
+ * Batas lebar kontrol dan popover. Opsi bisa sangat panjang (mis. nama
+ * produk lengkap), jadi lebar tidak boleh mengikuti label tanpa batas: kalau
+ * dibiarkan, satu dropdown melebarkan seluruh baris dan halaman bergeser
+ * horizontal. Di atas batas ini label dipotong dan teks utuhnya tersedia
+ * lewat atribut title serta di dalam popover yang lebih lebar.
+ */
+const MAX_CONTROL_WIDTH = 384
+const MAX_POPOVER_WIDTH = 480
+
+/** Bantalan di dalam popover: p-1 container + item + ikon status. */
+const POPOVER_TEXT_INSET = 52
+
 function collectOptions(children: React.ReactNode): OptionItem[] {
   const options: OptionItem[] = []
   React.Children.forEach(children, (child) => {
@@ -53,15 +66,16 @@ function collectOptions(children: React.ReactNode): OptionItem[] {
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   /**
-   * Lebarkan kontrol mengikuti label terpanjang supaya lebarnya tidak berubah
-   * saat pilihan berganti dan label di popup tidak terpotong.
-   * Opt-in karena select yang memakai flex-1 justru harus mengisi ruang induk.
+   * Aktif secara default: setiap dropdown admin melebar mengikuti label
+   * terpanjang supaya lebarnya tidak berubah saat pilihan berganti dan label
+   * di popover tidak terpotong. Matikan dengan false hanya untuk kasus yang
+   * memang harus persis selebar sel induknya.
    */
   matchOptionWidth?: boolean
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ className, children, value, onChange, name, id, disabled, matchOptionWidth = false, ...props }, ref) => {
+  ({ className, children, value, onChange, name, id, disabled, matchOptionWidth = true, ...props }, ref) => {
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement>(null)
     const triggerRef = React.useRef<HTMLButtonElement | null>(null)
@@ -108,6 +122,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       document.fonts?.ready.then(measure).catch(() => {})
     }, [matchOptionWidth, labelKey])
 
+    const minWidthStyle =
+      longestLabelWidth !== null
+        ? { minWidth: Math.min(longestLabelWidth + BUTTON_TEXT_INSET, MAX_CONTROL_WIDTH) }
+        : undefined
+
     const selected = options.find((option) => option.value === String(value ?? ""))
     const selectedLabel = selected?.label ?? options.find((option) => option.value === "")?.label ?? "Pilih..."
 
@@ -120,16 +139,20 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       const rect = trigger.getBoundingClientRect()
       const spaceBelow = window.innerHeight - rect.bottom
       const preferUp = spaceBelow < 280 && rect.top > spaceBelow
+      const wanted = longestLabelWidth !== null
+        ? Math.min(longestLabelWidth + POPOVER_TEXT_INSET, MAX_POPOVER_WIDTH)
+        : 0
+      const width = Math.max(Math.round(rect.width), wanted)
       setPopoverStyle({
         position: "fixed",
-        left: Math.round(rect.left),
-        width: Math.round(rect.width),
+        left: Math.max(8, Math.min(Math.round(rect.left), window.innerWidth - width - 8)),
+        width,
         top: preferUp ? undefined : Math.round(rect.bottom + 4),
         bottom: preferUp ? Math.round(window.innerHeight - rect.top + 4) : undefined,
         visibility: "visible",
         zIndex: 60,
       })
-    }, [])
+    }, [longestLabelWidth])
 
     // useLayoutEffect: posisi dihitung sebelum browser menggambar, jadi tidak
     // ada satu frame pun saat portal masih berada pada posisi alir.
@@ -176,7 +199,13 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     }
 
     return (
-      <div ref={containerRef} className={cn("relative inline-flex w-full min-w-0 items-center", className)}>
+      <div
+        ref={containerRef}
+        className={cn("relative inline-flex w-full min-w-0 items-center", className)}
+        // Inline style menang atas utilitas min-w-0, jadi flex tetap boleh
+        // membungkus baris dan tidak memaksa tombol keluar dari kotak induk.
+        style={minWidthStyle}
+      >
         <button
           ref={(node) => {
             triggerRef.current = node
@@ -205,10 +234,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             "flex h-9 min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-surface py-2 pl-3 pr-8 text-left text-sm text-foreground transition duration-150 ease-standard hover:border-foreground/20 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70",
             className,
           )}
-          // pl-3 + pr-8 = 44px ruang teks di dalam tombol.
-          style={longestLabelWidth !== null ? { minWidth: longestLabelWidth + BUTTON_TEXT_INSET } : undefined}
+          style={minWidthStyle}
         >
-          <span className={cn("min-w-0 truncate", !selected && !options.some((option) => option.value === "") && "text-muted-foreground")}>
+          <span
+            className={cn("min-w-0 truncate", !selected && !options.some((option) => option.value === "") && "text-muted-foreground")}
+            title={selectedLabel}
+          >
             {selectedLabel}
           </span>
         </button>
@@ -258,11 +289,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                       value={option.label}
                       onSelect={() => selectOption(option)}
                       className={cn(
-                        "cursor-pointer",
+                        // items-start: label bisa membungkus lebih dari satu baris.
+                        "cursor-pointer items-start",
                         isSelected && "bg-primary/10 font-semibold text-primary",
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      <span className="min-w-0 flex-1 break-words leading-snug">
+                        {option.label}
+                      </span>
                       {isSelected ? <Icon name="check" className="size-3.5 shrink-0" aria-hidden="true" /> : null}
                     </CommandItem>
                   )

@@ -57,6 +57,26 @@ database fields, or API payloads.
 - Motion is restrained and respects `prefers-reduced-motion`. Do not use motion
   to hide loading or validation feedback.
 
+### Dropdown admin (Select)
+
+Components in resources/js/components/admin/ui/select.tsx widen to the longest
+option label by default (matchOptionWidth), so the width does not jump when the
+selection changes and option labels are not clipped. Rules:
+
+- Control width is capped at 384px and popover width at 480px. Options can be
+  full product names; without a cap one dropdown widens its whole row and the
+  page scrolls horizontally.
+- min-width is applied to both the container and the button, so a flex-wrap row
+  wraps instead of pushing the button out of its parent box.
+- Popover labels wrap (break-words) instead of being clipped. A clipped button
+  label must carry a title attribute with the full text.
+- A select that must match its parent cell exactly (for example a form grid
+  column) sets matchOptionWidth={false}.
+- SearchSelect (search-select.tsx) follows the same popover rule, but its trigger
+  deliberately does not widen because its option lists can run to hundreds.
+- Never insert a wide measuring element into the DOM: lists can hold hundreds of
+  options. Select uses a zero-width element; SearchSelect measures with canvas.
+
 ## Page family templates
 
 | Family | Grid contract | Required shared states |
