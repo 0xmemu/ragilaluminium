@@ -211,20 +211,23 @@ export function CheckoutSummary({
           const variantText = [item.variation_1_option, item.variation_2_option].filter(Boolean).join(" / ")
 
           return (
-            <li key={item.line_id} className="flex justify-between gap-3 py-2.5 text-xs">
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
-                  {item.name}
-                </p>
-                <p className="tabular-nums mt-1 text-[11px] text-muted-foreground">
-                  <span>{item.quantity} unit</span>
-                  {variantText ? <span> · {variantText}</span> : null}
-                </p>
-              </div>
-              {/* Angka yang dibayar di atas, harga sebelum diskon dicoret di
-                  bawahnya. Persentase diskon diletakkan di kanan harga coret,
-                  jadi potongan tidak perlu diulang sebagai teks "Hemat". */}
-              <div className="shrink-0 space-y-0.5 pl-2 text-right">
+            <li key={item.line_id} className="py-2.5 text-xs">
+              {/* Nama produk membentang penuh selebar panel: harga tidak lagi
+                  berebut lebar di sisi kanan, sehingga nama panjang tidak
+                  terpotong menjadi banyak baris. */}
+              <p className="font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
+                {item.name}
+              </p>
+              {/* Jumlah dan varian dalam SATU baris. */}
+              <p className="tabular-nums mt-1 truncate text-[11px] text-muted-foreground">
+                <span>{item.quantity} unit</span>
+                {variantText ? <span> · {variantText}</span> : null}
+              </p>
+              {/* Harga di bawah nama produk, rata kanan mengikuti tepi angka
+                  pada rincian biaya di bawahnya. Angka yang dibayar di atas,
+                  harga sebelum diskon dicoret di bawahnya, persentase diskon di
+                  kanan harga coret. */}
+              <div className="mt-1 space-y-0.5 text-right">
                 {hasLineDiscount && lineCompare != null ? (
                   <span className="flex items-baseline justify-end gap-1.5">
                     <span className="tabular-nums text-[11px] text-muted-foreground line-through">
