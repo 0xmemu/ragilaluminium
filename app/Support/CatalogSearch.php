@@ -364,12 +364,23 @@ class CatalogSearch
             }
 
             $key = self::normalizeColorToken($piece);
-            if (isset($byKey[$key])) {
-                $found[] = $byKey[$key];
+
+            // Ejaan yang berbeda tipis dianggap SATU warna yang sama: mis.
+            // "Cokelat" vs "Coklat" dan "Putih" vs "Putiih". Semua nilai resmi
+            // yang berdekatan dikelompokkan supaya katalog tidak terbelah dan
+            // pencarian satu ejaan tetap menjangkau ejaan lainnya.
+            // Kelompok dihitung dari nilai yang benar-benar ada di DB, jadi
+            // warna baru ikut terbawa tanpa perlu menambah daftar di kode.
+            $group = self::spellingGroup($key, $byKey);
+            if ($group !== []) {
+                foreach ($group as $officialKey) {
+                    $found[] = $byKey[$officialKey];
+                }
                 continue;
             }
 
-            // Alias ejaan deterministik → nilai resmi (jika resmi itu ada).
+            // Cadangan saat DB hanya punya SATU ejaan: alias ejaan deterministik
+            // ke nilai resmi (bila nilai resmi itu ada). Tidak menambah warna baru.
             $canonical = self::COLOR_SPELLING_ALIASES[$key] ?? null;
             if ($canonical !== null && isset($byKey[$canonical])) {
                 $found[] = $byKey[$canonical];
@@ -394,6 +405,61 @@ class CatalogSearch
         }
 
         return array_values(array_unique($found));
+    }
+
+    /**
+     * Kelompok ejaan: nilai resmi yang berjarak edit maksimal 1 dari kata kueri.
+     *
+     * Dihitung dari nilai resmi di DB (bukan daftar tetap), supaya ejaan
+     * kembar yang muncul di kemudian hari tetap saling terjangkau tanpa
+     * mengubah kode. Kata pendek (di bawah 5 huruf) dikecualikan agar nilai
+     * pendek yang memang berbeda (mis. "Es" vs "As") tidak tercampur.
+     *
+     * @param  array<string, string>  $byKey  normalize(token) => nilai asli DB
+     * @return list<string> kunci resmi yang cocok (kosong = tidak ada)
+     */
+    private static function spellingGroup(string $key, array $byKey): array
+    {
+        $group = [];
+        foreach (array_keys($byKey) as $candidate) {
+            if ($candidate === $key) {
+                $group[] = $candidate;
+
+                continue;
+            }
+            if (mb_strlen($key) < 5) {
+                continue;
+            }
+            if (abs(mb_strlen($candidate) - mb_strlen($key)) > 1) {
+                continue;
+            }
+            if (self::editDistance($candidate, $key) <= 1) {
+                $group[] = $candidate;
+            }
+        }
+
+        return $group;
+    }
+
+    /** Jarak edit aman multibyte (levenshtein() bawaan PHP berbasis byte). */
+    private static function editDistance(string $a, string $b): int
+    {
+        $ca = preg_split("//u", $a, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $cb = preg_split("//u", $b, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $la = count($ca);
+        $lb = count($cb);
+
+        $prev = range(0, $lb);
+        for ($i = 1; $i <= $la; $i++) {
+            $cur = [$i];
+            for ($j = 1; $j <= $lb; $j++) {
+                $cost = $ca[$i - 1] === $cb[$j - 1] ? 0 : 1;
+                $cur[$j] = min($prev[$j] + 1, $cur[$j - 1] + 1, $prev[$j - 1] + $cost);
+            }
+            $prev = $cur;
+        }
+
+        return $prev[$lb];
     }
 
     private static function normalizeColorToken(string $value): string
