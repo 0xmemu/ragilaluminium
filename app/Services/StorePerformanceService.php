@@ -132,12 +132,12 @@ class StorePerformanceService
             $previousFrom = $previousTo->copy()->subSeconds($fullSeconds - 1);
         }
 
-        $autoGranularity = match (true) {
-            $period === 'today' || $period === 'yesterday' => 'hour',
-            in_array($period, ['this_year', 'all'], true) || $start->diffInDays($end) > 90 => 'month',
-            $start->diffInDays($end) > 45 => 'week',
-            default => 'day',
-        };
+        // Granularitas otomatis WAJIB diambil dari daftar band yang sama dengan
+        // yang ditawarkan ke UI (granularityOptionsForSpan). Sebelumnya 'all'
+        // dipaksa 'month' tanpa melihat rentang, sehingga pada data 40 hari
+        // grafik hanya berisi 2 titik sementara dropdown menawarkan Per Hari.
+        $spanDays = $this->spanDays($start, $end);
+        $autoGranularity = $this->granularityOptionsForSpan($spanDays)[0]['value'];
 
         $granularity = in_array($granularity, ['hour', 'day', 'week', 'month', 'year'], true)
             ? $granularity
@@ -153,6 +153,51 @@ class StorePerformanceService
             'period' => $period,
             'is_running' => $isRunning,
         ];
+    }
+
+    /** Jumlah hari kalender yang tercakup rentang, minimal 1. */
+    public function spanDays(Carbon $from, Carbon $to): int
+    {
+        return max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1);
+    }
+
+    /**
+     * Opsi granularitas tren untuk sebuah rentang hari, urut dengan opsi
+     * default lebih dulu. Ini satu-satunya sumber kebenaran: resolveRange
+     * memakai opsi pertama sebagai granularitas otomatis dan controller
+     * memakai seluruh daftar sebagai isi dropdown, sehingga nilai yang aktif
+     * tidak mungkin absen dari pilihan yang ditampilkan.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    public function granularityOptionsForSpan(int $spanDays): array
+    {
+        return match (true) {
+            // 1-2 hari (Hari ini / Kemarin): murni per jam, 24-48 titik.
+            $spanDays <= 2 => [
+                ['value' => 'hour', 'label' => 'Per Jam'],
+            ],
+            // 3-10 hari (7 Hari): per hari, 3-10 titik.
+            $spanDays <= 10 => [
+                ['value' => 'day', 'label' => 'Per Hari'],
+            ],
+            // 11-45 hari (Bulan ini / 30 Hari): per hari atau ringkasan mingguan.
+            // Per Bulan tidak ditawarkan karena hanya menghasilkan 1-2 titik.
+            $spanDays <= 45 => [
+                ['value' => 'day', 'label' => 'Per Hari'],
+                ['value' => 'week', 'label' => 'Per Minggu'],
+            ],
+            // 46-366 hari (Tahun ini): per bulan (maks 12 titik) atau per minggu.
+            $spanDays <= 366 => [
+                ['value' => 'month', 'label' => 'Per Bulan'],
+                ['value' => 'week', 'label' => 'Per Minggu'],
+            ],
+            // Lebih dari setahun: per bulan atau per tahun kalender.
+            default => [
+                ['value' => 'month', 'label' => 'Per Bulan'],
+                ['value' => 'year', 'label' => 'Per Tahun'],
+            ],
+        };
     }
 
     /**

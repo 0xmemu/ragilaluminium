@@ -601,8 +601,8 @@ export default function StorePerformance({
 
       {/* FILTER PERIODE & BANNER KONTROL */}
       <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
-        {/* Baris Atas: Identitas Periode Analisis */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        {/* Identitas periode di kiri, kontrol di kanan (owner 2026-09-18). */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-foreground">Periode Analisis:</span>
             <span className="text-xs font-semibold text-primary">{report.range.label}</span>
@@ -612,11 +612,8 @@ export default function StorePerformance({
               {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}`}
             </span>
           </div>
-        </div>
 
-        {/* Baris Bawah: Kontrol Dropdown Periode & Granularitas (owner 2026-09-18: Opsi 1 Dropdown) */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="ml-auto flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Periode:</span>
               <Select

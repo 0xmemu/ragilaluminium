@@ -149,4 +149,48 @@ class StorePerformanceTest extends TestCase
             'metric_name' => 'storefront_page_views',
         ]);
     }
+
+    /**
+     * Regresi 2026-09-18: granularitas otomatis grafik dan isi dropdown
+     * granularitas wajib berasal dari band rentang yang sama. Sebelumnya
+     * periode "Semua" dipaksa Per Bulan tanpa melihat rentang, sehingga pada
+     * data 40 hari grafik hanya berisi 2 titik sementara dropdown menawarkan
+     * Per Hari (nilai aktif tidak ada di daftar pilihan).
+     */
+    public function test_granularitas_otomatis_selalu_ada_di_daftar_pilihan(): void
+    {
+        $service = app(StorePerformanceService::class);
+
+        foreach (['today', 'yesterday', 'last_7', 'last_30', 'this_month', 'this_year', 'all'] as $period) {
+            $range = $service->resolveRange(period: $period);
+            $values = array_column(
+                $service->granularityOptionsForSpan($service->spanDays($range['from'], $range['to'])),
+                'value',
+            );
+
+            $this->assertContains(
+                $range['granularity'],
+                $values,
+                "Granularitas otomatis periode {$period} ({$range['granularity']}) tidak ada di daftar pilihan: ".implode(', ', $values),
+            );
+        }
+    }
+
+    /** Rentang pendek, sedang, dan panjang tidak pernah menawarkan skala yang menghasilkan 1 titik. */
+    public function test_bucket_series_tidak_pernah_kosong_untuk_granularitas_terpilih(): void
+    {
+        $service = app(StorePerformanceService::class);
+        $now = now();
+
+        foreach ([[1, 'hour'], [7, 'day'], [30, 'day'], [30, 'week'], [261, 'month'], [261, 'week']] as [$days, $granularity]) {
+            $from = $now->copy()->subDays($days - 1)->startOfDay();
+            $to = $now->copy()->endOfDay();
+            $series = $service->series($from, $to, $granularity, 'visitors');
+
+            $this->assertNotEmpty(
+                $series,
+                "Seri {$granularity} untuk rentang {$days} hari kosong.",
+            );
+        }
+    }
 }
