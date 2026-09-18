@@ -1,0 +1,387 @@
+# Rencana: Template Import/Update Katalog v2 (3 berkas terpisah)
+
+Status: RENCANA, belum dieksekusi.
+Tanggal: 2026-09-18.
+Sumber: berkas `template fix.xlsx` dari owner, diperiksa langsung dari berkasnya.
+
+---
+
+## 1. Keputusan owner (acuan)
+
+1. "kedalaman itu lebar" sehingga kolom `Lebar (cm)` dipetakan ke `depth_cm`.
+   Istilah "Kedalaman" tidak dipakai lagi di template.
+2. "kolom berat, dan dimensi itu diisi untuk kebutuhan pengiriman bukan untuk
+   spesifikasi produk yg tampil di storefront" sehingga 4 kolom pengiriman
+   (Berat, Tinggi, Panjang, Lebar) tidak pernah dirender ke storefront.
+   Sudah diperiksa: tidak ada pemakaian berat atau dimensi di komponen PDP.
+3. "ini sepenuhnya menggantikan template yang lama" sehingga format lama
+   dipensiunkan, tidak hidup berdampingan.
+4. "nama header akan mengikuti yang baru" sehingga header Bahasa Indonesia
+   menjadi nama resmi.
+5. "pastikan sistem dapat mengenali format baru ini" sehingga importer wajib
+   membaca header baru, bukan hanya eksportirnya yang berubah.
+6. "ubah warna header per grup fungsi (misal sku-deskripsi) (harga-dimensi)
+   (media)" sehingga header diwarnai per grup.
+7. "pisahkan sheet yang saya kirim tadi menjadi 3 template yang terpisah,
+   import produk, update produk, update media" sehingga hasilnya 3 BERKAS,
+   bukan 1 berkas berisi 3 sheet.
+8. "format unduhan harus termasuk produk yang ada di website (ini akan
+   berdasarkan filter di menu import)" sehingga template update terisi data
+   nyata dan bisa disaring.
+9. "nantinya akan ditambahkan unduh laporan per model produk tertentu, sub
+   model tertentu dan lainnya" sehingga filter harus mudah ditambah.
+10. "data template update produk dan media ini juga harus di guard agar sku,
+    varian dan semua kolom yang rawan jika dirubah agar di protected dan tidak
+    bisa dirubah" sehingga kolom identitas dikunci.
+
+---
+
+## 2. Fakta terverifikasi
+
+### 2.1 Isi berkas owner
+
+| Sheet | Jumlah kolom | Baris terisi |
+|---|---|---|
+| Data | 24 | 12 baris data, 1 grup produk, 12 kombinasi (4 warna x 3 kaca) |
+| Update Produk | 8 | hanya kolom `Variasi` terisi, 12 baris |
+| Update Media | 11 | hanya kolom `Variasi` terisi, 12 baris |
+
+Yang sudah bagus di berkas owner:
+- Dropdown pada `Kategori Produk`, `Model Produk`, `Sub Model`.
+- Isi dropdown sah semua: kategori `JENDELA, PINTU, BOVEN`, sub model
+  `POLOS, ORNAMEN`, dan 9 model yang seluruhnya dikenal sistem.
+- Header baris 1: tinggi 26, bold, teks putih, latar merah `C20000`.
+- Satu baris = satu varian, sehingga tidak ada lagi kolom opsi 1 sampai 4.
+  Ini menghapus seluruh kelas masalah urutan opsi yang pernah terjadi.
+
+### 2.2 Masalah yang harus diperbaiki di versi baru
+
+1. Sheet `Data`: Harga, Stok, Berat, Tinggi, Panjang, Lebar, dan SELURUH kolom
+   media (J, S sampai X) kosong di 12 baris contoh. Template tanpa contoh
+   terisi mengundang salah isi, dan ini punya sejarah: berkas import terakhir
+   salah mengisi kolom dimensi.
+2. Sheet `Update Produk` dan `Update Media`: hanya `Variasi` terisi, kolom lain
+   kosong sehingga contoh tidak menunjukkan bentuk yang benar.
+3. Tidak ada sheet Panduan. Template lama punya kamus kolom, ini hilang.
+
+### 2.3 Kesiapan sistem (hasil pemeriksaan kode)
+
+| Lapisan | Keadaan |
+|---|---|
+| Importer katalog sekarang | membaca 38 kolom gaya lama |
+| Kecocokan kolom lama vs baru | 0 dari 24 kolom baru cocok |
+| Jalur update harga/stok | `parent_sku`, `variant_sku`, `variant_combination`, `price`, `stock` |
+| Jalur update media | `parent_sku`, `variant_sku`, `image_N`, `image_variation_N_option_M`, `shared_media_N`, `installation_image_N` |
+| Pemecahan kombinasi | sudah ada, `explode` koma pada kombinasi varian |
+| Proteksi sheet | tersedia di PhpSpreadsheet, belum dipakai di eksportir mana pun |
+| Verifier | aturan V1 sampai V8, semuanya merujuk kolom lama |
+
+Kesimpulan penting: karena 0 kolom cocok, format baru TIDAK akan terbaca bila
+hanya eksportirnya diganti. Importer dan verifier wajib ikut diubah dan harus
+rilis bersamaan.
+
+### 2.4 Volume data (dasar perencanaan filter unduhan)
+
+| Ukuran | Nilai |
+|---|---|
+| Produk | 179 |
+| Varian | 2.138 |
+| product_media | 1.335 |
+| Produk per model | terbanyak JUNGKIT_2_DAUN 37, terkecil SWING_3_DAUN 2 |
+| Produk per sub model | ORNAMEN 94, POLOS 81, kosong 3, KOMBINASI 1 |
+
+Implikasi: unduhan penuh 2.138 baris masih aman, tetapi filter per model tetap
+wajib karena admin akan sering mengunduh sebagian.
+
+---
+
+## 3. Peta kolom resmi (kontrak v2)
+
+### 3.1 Template "Import Produk", sheet `Data`
+
+Satu baris = satu varian. Grup menentukan warna header.
+
+| Kol | Header | Kunci slug | Target | Grup |
+|---|---|---|---|---|
+| A | NO. ID | no_id | kunci grup internal, tidak disimpan | 1 |
+| B | Nama Produk | nama_produk | `products.name` | 1 |
+| C | Deskripsi Produk | deskripsi_produk | `products.description` | 1 |
+| D | Spesifikasi | spesifikasi | `product_attributes` | 1 |
+| E | Kategori Produk | kategori_produk | `products.product_category` | 1 |
+| F | Model Produk | model_produk | `products.product_model` | 1 |
+| G | Sub Model | sub_model | `products.design_variant` | 1 |
+| H | Nama Variasi 1 | nama_variasi_1 | `variation_1_name` | 2 |
+| I | Opsi Variasi 1 | opsi_variasi_1 | `variation_1_option` | 2 |
+| J | Gambar Opsi Variasi 1 | gambar_opsi_variasi_1 | media milik opsi variasi 1 | 4 |
+| K | Nama Variasi 2 | nama_variasi_2 | `variation_2_name` | 2 |
+| L | Opsi Variasi 2 | opsi_variasi_2 | `variation_2_option` | 2 |
+| M | Harga | harga | `product_variants.price` | 3 |
+| N | Stok | stok | `product_variants.stock` | 3 |
+| O | Berat (Kg) | berat_kg | `weight_kg` (pengiriman) | 3 |
+| P | Tinggi (cm) | tinggi_cm | `height_cm` (pengiriman) | 3 |
+| Q | Panjang (cm) | panjang_cm | `width_cm` (pengiriman) | 3 |
+| R | Lebar (cm) | lebar_cm | `depth_cm` (pengiriman) | 3 |
+| S | Gambar 1 (utama) | gambar_1_utama | media pos 1, penanda gambar utama | 4 |
+| T | Gambar 2 | gambar_2 | media pos 2 | 4 |
+| U | Media Bersama 1 | media_bersama_1 | media bersama | 4 |
+| V | Media Bersama 2 | media_bersama_2 | media bersama | 4 |
+| W | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | media pemasangan | 4 |
+| X | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | media pemasangan | 4 |
+
+Grup warna yang diusulkan:
+
+| Grup | Nama | Kolom |
+|---|---|---|
+| 1 | Identitas & Produk | A sampai G |
+| 2 | Variasi | H, I, K, L |
+| 3 | Harga & Pengiriman | M sampai R |
+| 4 | Media | J, S sampai X |
+
+Catatan: kolom J posisinya dekat variasi, tetapi warnanya ikut grup Media supaya
+admin langsung tahu isinya URL gambar, bukan teks biasa.
+
+### 3.2 Template "Update Produk"
+
+| Kol | Header | Kunci slug | Bisa diubah admin |
+|---|---|---|---|
+| A | SKU Produk | sku_produk | TIDAK, dikunci |
+| B | Nama Produk | nama_produk | TIDAK, dikunci |
+| C | SKU Varian | sku_varian | TIDAK, dikunci |
+| D | Variasi | variasi | TIDAK, dikunci |
+| E | Harga | harga | ya |
+| F | Stok | stok | ya |
+| G | Deskripsi Produk | deskripsi_produk | ya |
+| H | Spesifikasi | spesifikasi | ya |
+
+### 3.3 Template "Update Media"
+
+| Kol | Header | Kunci slug | Bisa diubah admin |
+|---|---|---|---|
+| A | SKU Produk | sku_produk | TIDAK, dikunci |
+| B | Nama Produk | nama_produk | TIDAK, dikunci |
+| C | SKU Varian | sku_varian | TIDAK, dikunci |
+| D | Variasi | variasi | TIDAK, dikunci |
+| E | Gambar Opsi Variasi | gambar_opsi_variasi | ya |
+| F | Gambar 1 (utama) | gambar_1_utama | ya |
+| G | Gambar 2 | gambar_2 | ya |
+| H | Media Bersama 1 | media_bersama_1 | ya |
+| I | Media Bersama 2 | media_bersama_2 | ya |
+| J | Gambar Hasil Pemasangan 1 | gambar_hasil_pemasangan_1 | ya |
+| K | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | ya |
+
+Aturan sel kosong: sel kosong TIDAK mengubah data. Ini melanjutkan kontrak lama
+6 Sep 2026. Menghapus gambar memakai penanda khusus, bukan sel kosong, supaya
+"kosong" tidak pernah berarti "hapus".
+
+---
+
+## 4. Rencana eksekusi per fase
+
+### Fase 0: Kunci kontrak di dokumen kanonik
+
+- Perbarui `docs/DOMAIN/import-export-katalog.md`: format v2 menggantikan v1.
+- Perbarui `docs/import-template-dual-sheet.md` atau tandai usang dengan
+  penunjuk ke v2.
+- Tambah ADR di `docs/decisions/`: "Template katalog v2: header Indonesia,
+  tiga berkas terpisah, kolom identitas dikunci".
+- Syarat: tanpa em dash, Bahasa Indonesia.
+
+### Fase 1: Tiga eksportir template kosong
+
+Tiga kelas eksportir terpisah, masing-masing 2 sheet, yaitu sheet data dan
+sheet Panduan.
+
+| Berkas | Kelas | Sheet |
+|---|---|---|
+| Import Produk | `ProductImportTemplateExport` | `Data` dan `Panduan` |
+| Update Produk | `ProductUpdateTemplateExport` | `Update Produk` dan `Panduan` |
+| Update Media | `MediaUpdateTemplateExport` (ubah yang lama) | `Update Media` dan `Panduan` |
+
+Pekerjaan:
+1. Header persis seperti bagian 3, dengan warna per grup fungsi.
+2. Baris contoh TERISI LENGKAP di sheet data: harga, stok, berat, dimensi, dan
+   URL media. Ini memperbaiki kelemahan berkas owner yang contohnya kosong.
+3. Sheet Panduan: kamus kolom, aturan sel kosong, dan catatan tegas bahwa
+   dimensi hanya untuk pengiriman dan tidak tampil di storefront.
+4. Dropdown kategori, model, sub model. Daftar dibaca dari database
+   (`sub_models`, `CatalogLabels`), bukan ditulis tetap, supaya model atau sub
+   model baru ikut otomatis. Ini sejalan dengan arahan agar sistem tidak
+   terpaku pada data saat ini.
+5. Freeze pane di baris data pertama, tinggi baris header 26.
+6. Format sel `@` (teks) untuk kolom SKU dan URL supaya tidak berubah jadi
+   notasi ilmiah, mengikuti pelajaran kolom identitas 12 Sep 2026.
+
+### Fase 2: Importer format v2 untuk Import Produk
+
+1. Kelas importer baru, misalnya `CatalogProductsImportV2`, dengan aturan:
+   - Satu baris = satu varian, grup ditentukan kolom `NO. ID`.
+   - Nama, deskripsi, kategori, model, sub model diwarisi dari baris pertama
+     grup, mengikuti perilaku marketplace yang sudah dipakai.
+   - Harga dan stok dibaca per baris.
+   - `Gambar Opsi Variasi 1` di-dedupe per nilai opsi, baris pertama menang,
+     karena satu opsi muncul di beberapa baris kombinasi. Tanpa dedupe, satu
+     opsi akan melahirkan banyak baris media kembar.
+   - SKU induk dan SKU varian di-generate otomatis (awalan `RA` plus 10
+     karakter acak), karena template tidak menyediakan kolom SKU.
+2. Verifier disesuaikan ke kolom baru:
+   - V1 grup kontigu berdasarkan `NO. ID`.
+   - V2 satu `NO. ID` satu nama.
+   - V3 kombinasi Opsi 1 dan Opsi 2 unik dalam satu grup.
+   - V4 daftar opsi konsisten dalam satu grup.
+   - V5 harga lebih dari 0 di setiap baris.
+   - V7 `Gambar 1 (utama)` wajib supaya produk bisa aktif.
+   - V8 berat dan dimensi wajib di baris pertama grup.
+3. Format lama: ditolak dengan pesan yang menunjuk tombol unduh template baru,
+   karena keputusan owner adalah sepenuhnya menggantikan. Menolak lebih selamat
+   daripada memelihara dua format sekaligus.
+
+### Fase 3: Importer Update Produk dan Update Media
+
+1. `ProductUpdateImport`: membaca `sku_produk`, `sku_varian`, `harga`, `stok`,
+   `deskripsi_produk`, `spesifikasi`.
+2. `MediaUpdateImport`: pemetaan kolom lama dipindahkan ke kolom baru.
+3. Kolom identitas yang dikirim balik wajib cocok dengan database. Bila tidak
+   cocok, baris gagal dengan pesan jelas. Ini melanjutkan aturan lama bahwa
+   salah induk adalah error per baris, bukan diam-diam diabaikan.
+4. Sel kosong berarti tidak mengubah. Penanda hapus ditentukan di Fase 3 dan
+   ditulis di Panduan.
+5. Preview diff sebelum simpan tetap wajib, melanjutkan kontrak 6 Sep 2026.
+
+### Fase 4: Filter dan unduhan
+
+1. Tambah filter di menu import: kategori produk, model produk, sub model, dan
+   kata kunci. Filter yang sudah ada sekarang: status, tipe, pencarian.
+2. Endpoint unduhan menerima filter yang sama sehingga admin mengunduh tepat
+   bagian yang dibutuhkan.
+3. Unduhan Update Produk dan Update Media terisi data nyata dari database:
+   kolom identitas terisi, kolom yang boleh diubah mengikuti keputusan owner di
+   bagian 6.
+4. Siapkan agar filter mudah ditambah: satu penyaring bersama, misalnya
+   `CatalogDownloadFilter`, supaya "unduh per model" dan "per sub model"
+   berikutnya tidak menyalin logika.
+5. Sertakan ringkasan kecil di sheet Panduan: jumlah produk, jumlah varian, dan
+   filter yang dipakai, supaya admin tahu cakupan unduhannya.
+
+### Fase 5: Proteksi kolom identitas
+
+1. Aktifkan proteksi sheet pada ketiga template.
+2. Kolom terkunci:
+   - Update Produk: A sampai D (SKU Produk, Nama Produk, SKU Varian, Variasi).
+   - Update Media: A sampai D.
+   - Import Produk: tidak ada kolom terkunci mutlak; cukup lindungi sel di luar
+     area data.
+3. Gaya sel terkunci: latar abu dan teks lebih redup, supaya admin melihat
+   kolom mana yang tidak boleh disentuh.
+4. Catatan jujur yang WAJIB ada di Panduan: proteksi sheet Excel adalah
+   pencegah salah isi, bukan keamanan. Proteksi bisa dilepas siapa pun yang
+   membuka berkas. Pertahanan yang sebenarnya ada di sisi server: importer
+   tetap memvalidasi dan MENOLAK perubahan SKU atau identitas, apa pun isi
+   berkasnya.
+
+### Fase 6: Verifikasi dan pembersihan
+
+1. Tes per jalur: importer v2, verifier v2, update produk, update media.
+2. Tes penjaga: header wajib persis, dan identitas tidak boleh berubah walau
+   sel dikirim berbeda.
+3. Bukti dengan mutasi: matikan pengunci, tes harus GAGAL, lalu pulihkan.
+4. Uji unduhan bertfilter: per model, per sub model, dan penuh.
+5. Pensiunkan template lama, perbarui rujukan route dan UI.
+6. Jalankan quality gate: typecheck, lint, tes, build.
+7. Simpan sampel hasil ke `xlsx-review/` sesuai standar "selesai".
+
+---
+
+## 5. Berkas yang akan disentuh
+
+Eksportir:
+- `app/Exports/ProductImportTemplateExport.php` (baru)
+- `app/Exports/ProductUpdateTemplateExport.php` (baru)
+- `app/Exports/MediaUpdateTemplateExport.php` (diubah ke format v2)
+- `app/Exports/CatalogTemplateExport.php` (pensiun)
+- `app/Exports/StockPriceTemplateExport.php` (pensiun, digantikan Update Produk)
+
+Importer:
+- `app/Imports/CatalogProductsImportV2.php` (baru)
+- `app/Imports/ProductUpdateImport.php` (baru)
+- `app/Imports/MediaUpdateImport.php` (baru)
+- `app/Support/CatalogImportVerifier.php` (aturan v2)
+
+Controller dan route:
+- `app/Http/Controllers/Admin/ImportJobController.php`
+- `routes/web.php` (3 endpoint unduhan template, menerima parameter filter)
+
+UI:
+- `resources/js/pages/Admin/ImportCreate.tsx` (pemilih template dan filter)
+- `resources/js/pages/Admin/Imports/` (panel unduhan bertfilter)
+
+Dokumen:
+- `docs/DOMAIN/import-export-katalog.md`
+- `docs/plans/template-katalog-v2.md` (berkas ini)
+- ADR baru di `docs/decisions/`
+
+---
+
+## 6. Keputusan yang masih dibutuhkan owner
+
+1. Template Update Produk dan Update Media saat diunduh: kolom yang boleh
+   diubah diisi nilai SEKARANG atau dibiarkan KOSONG?
+   Pertimbangan: nilai sekarang lebih aman untuk harga dan stok karena admin
+   melihat angka lama; kosong lebih aman untuk media karena mencegah tertimpa
+   tanpa sengaja. Bisa juga berbeda per kolom.
+2. Penanda hapus gambar: nilai khusus seperti `-` atau `hapus`, atau kolom
+   terpisah. Wajib jelas supaya sel kosong tidak pernah berarti hapus.
+3. Sheet Panduan dan Contoh: disertakan per berkas atau dipisah? Berkas owner
+   tidak punya keduanya. Rekomendasi: Panduan disertakan, Contoh diletakkan di
+   sheet sendiri.
+4. Stok: template baru memakai kolom `Stok` per baris. Apakah masih perlu
+   dukungan format acak seperti "random 1000-8000" yang dipakai berkas import
+   terakhir?
+5. Cakupan unduhan penuh 2.138 baris: satu berkas atau dipecah per bagian?
+
+---
+
+## 7. Urutan pengerjaan yang disarankan
+
+Fase 1 dan Fase 2 harus rilis bersamaan, karena menambah dukungan baca tanpa
+template baru tidak berguna, dan sebaliknya template baru tanpa dukungan baca
+membuat admin tidak bisa import sama sekali.
+
+Urutan aman:
+1. Fase 0 (kontrak dokumen) dan Fase 1 (eksportir) lebih dulu, supaya template
+   baru bisa diunduh dan diperiksa owner.
+2. Fase 2 (importer import produk) menyusul, langsung diikuti uji coba import
+   nyata dengan berkas kecil.
+3. Fase 3 (update produk dan media) setelah import produk terbukti benar.
+4. Fase 4 (filter dan unduhan) menyusul.
+5. Fase 5 (proteksi) dan Fase 6 (verifikasi) menutup.
+
+---
+
+## 8. Risiko
+
+| Risiko | Dampak | Mitigasi |
+|---|---|---|
+| Kolom identitas diubah di berkas update | Data produk tertukar | Kunci di Excel dan tolak di server |
+| Proteksi dilepas manual | Guard tampak gagal | Validasi server sebagai pertahanan utama |
+| Unduhan penuh 2.138 baris berat | Proses lambat | Filter per model, batas baris, unduhan per bagian |
+| Satu opsi muncul di banyak baris | Gambar opsi menjadi banyak baris kembar | Dedupe per nilai opsi, baris pertama menang |
+| Template baru belum terbaca importer | Import gagal total | Fase 1 dan 2 rilis bersamaan |
+| Berkas lama sudah beredar di tangan admin | Upload gagal | Pesan galat menunjuk tombol unduh template baru |
+| Contoh kosong ditiru admin | Data tidak lengkap, produk tidak aktif | Contoh terisi lengkap dan verifier menolak yang kosong |
+
+---
+
+## 9. Ringkasan perbedaan v1 ke v2
+
+| Aspek | v1 | v2 |
+|---|---|---|
+| Jumlah berkas | 1 berkas, banyak sheet | 3 berkas terpisah |
+| Bahasa header | Inggris teknis | Indonesia |
+| Opsi varian | kolom opsi 1 sampai 4 di baris pertama grup | satu baris satu varian |
+| Kunci grup | `id_key` | `NO. ID` |
+| Kombinasi varian | kolom khusus, mudah salah | terbentuk dari Opsi Variasi 1 dan 2 |
+| Kedalaman | kolom `depth_cm` | kolom `Lebar (cm)` |
+| Kolom identitas | bebas diubah | dikunci dan divalidasi server |
+| Unduhan update | kosong | terisi data nyata, tersaring |
+| Contoh | terisi sebagian | terisi lengkap |
+| Panduan | ada | ada per berkas |
