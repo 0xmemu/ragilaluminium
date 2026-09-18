@@ -135,41 +135,46 @@ function CheckoutItemNoteRow({
           )}
         </div>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-xs font-semibold text-foreground leading-snug sm:text-sm">
-            {item.name}
-          </p>
-          {/* Jumlah dan varian dalam satu baris, pola sama dengan ringkasan:
-              "1 unit · Putih / Kaca Bening". Sebelumnya jumlah diletakkan di
-              baris terpisah rata bawah, sehingga terpisah jauh dari varian
-              yang diterangkannya. */}
-          <p className="text-xs text-muted-foreground">
-            <span>{item.quantity} unit</span>
-            {variantLabel ? <span> · {variantLabel}</span> : null}
-          </p>
-          <div className="flex justify-end pt-1">
-            <span className="text-right">
-              <span className="flex items-center justify-end gap-1.5">
-                {discountPercent ? (
-                  <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
-                    {discountPercent}%
-                  </span>
-                ) : null}
-                {hasDiscount && compareTotal != null ? (
-                  <span className="tabular-nums text-[11px] text-muted-foreground line-through">
-                    {formatCurrency(compareTotal)}
-                  </span>
-                ) : null}
-              </span>
-              <span className="tabular-nums block text-xs font-bold text-primary sm:text-sm">
-                {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
-              </span>
-              {lineDiscount > 0 ? (
-                <span className="tabular-nums block text-[11px] text-sale">
-                  Hemat {formatCurrency(lineDiscount)}
+        {/* Dua blok: kiri identitas produk, kanan rincian harga.
+            Pada layar sempit keduanya bertumpuk (harga turun ke bawah, tetap
+            rata kanan) karena memaksakan sebaris membuat blok harga hanya
+            kebagian ~121px sehingga angkanya pecah sampai enam baris. Dari
+            breakpoint sm ke atas keduanya berdampingan, kiri dan kanan. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-xs font-semibold text-foreground leading-snug sm:text-sm">
+              {item.name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <span>{item.quantity} unit</span>
+              {variantLabel ? <span> · {variantLabel}</span> : null}
+            </p>
+          </div>
+
+          <div className="shrink-0 space-y-0.5 text-right">
+            <span className="flex items-center justify-end gap-1.5">
+              {discountPercent ? (
+                <span className="rounded bg-accent px-1.5 text-[10px] font-semibold leading-4 text-accent-foreground">
+                  {discountPercent}%
+                </span>
+              ) : null}
+              {hasDiscount && compareTotal != null ? (
+                <span className="tabular-nums text-[11px] text-muted-foreground line-through">
+                  {formatCurrency(compareTotal)}
                 </span>
               ) : null}
             </span>
+            {/* Harga produk memakai warna teks utama, bukan merah: merah
+                disisakan untuk penanda potongan, selaras dengan Total
+                Pembayaran. */}
+            <span className="tabular-nums block text-xs font-bold text-foreground sm:text-sm">
+              {formatCurrency(item.line_total ?? unitPrice * item.quantity)}
+            </span>
+            {lineDiscount > 0 ? (
+              <span className="tabular-nums block text-[11px] text-sale">
+                Hemat {formatCurrency(lineDiscount)}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
