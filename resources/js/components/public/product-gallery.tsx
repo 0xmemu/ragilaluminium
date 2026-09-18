@@ -370,6 +370,11 @@ export function ProductGallery({
     <div className="group/gallery -mx-2.5 min-w-0 overflow-hidden sm:-mx-8 lg:mx-0 lg:overflow-visible" aria-label="Galeri produk">
       {activeMedia ? (
         <>
+          {/* Pembungkus relative TANPA overflow-hidden. Area media di bawahnya
+              memakai overflow-hidden untuk menggeser track, sehingga panah yang
+              menonjol keluar tepi foto akan terpotong bila diletakkan di dalam.
+              Panahnya karena itu ditaruh di level pembungkus ini. */}
+          <div className="relative w-full lg:w-[480px] lg:max-w-[480px]">
           <div
             data-gallery-main
             ref={galleryRef}
@@ -377,7 +382,7 @@ export function ProductGallery({
             onTouchMove={onGalleryTouchMove}
             onTouchEnd={onGalleryTouchEnd}
             onTouchCancel={onGalleryTouchEnd}
-            className="relative aspect-square w-full overflow-hidden bg-white lg:w-[480px] lg:max-w-[480px]"
+            className="relative aspect-square w-full overflow-hidden bg-white"
           >
             {/* Horizontal strip: semua gambar sejajar - swipe real-time */}
             <div
@@ -430,29 +435,6 @@ export function ProductGallery({
               ))}
             </div>
 
-            {items.length > 1 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => moveGallery(-1)}
-                  disabled={activeMediaIndex === 0}
-                  aria-label="Lihat foto sebelumnya"
-                  className="absolute -left-5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
-                >
-                  <Icon name="arrow-left" className="size-5" weight="bold" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveGallery(1)}
-                  disabled={activeMediaIndex === items.length - 1}
-                  aria-label="Lihat foto berikutnya"
-                  className="absolute -right-5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
-                >
-                  <Icon name="arrow-right" className="size-5" weight="bold" aria-hidden="true" />
-                </button>
-              </>
-            ) : null}
-
           {items.length > 1 ? (
             <button
               type="button"
@@ -466,6 +448,30 @@ export function ProductGallery({
               {activeMediaIndex + 1}/{items.length}
             </button>
           ) : null}
+          </div>
+
+            {items.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => moveGallery(-1)}
+                  disabled={activeMediaIndex === 0}
+                  aria-label="Lihat foto sebelumnya"
+                  className="absolute -left-5 top-1/2 z-20 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                >
+                  <Icon name="arrow-left" className="size-6" weight="bold" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveGallery(1)}
+                  disabled={activeMediaIndex === items.length - 1}
+                  aria-label="Lihat foto berikutnya"
+                  className="absolute -right-5 top-1/2 z-20 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                >
+                  <Icon name="arrow-right" className="size-6" weight="bold" aria-hidden="true" />
+                </button>
+              </>
+            ) : null}
           </div>
 
           {items.length > 1 ? (

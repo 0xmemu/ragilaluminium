@@ -2069,3 +2069,41 @@ tampilan tanpa dampak spec. `npm run typecheck` bersih dan build Vite PASS.
 Sekalian di-commit: pekerjaan autoplay video galeri (lib/gallery-video.ts, gallery-video.test.ts,
 dan perubahan product-gallery.tsx) yang sebelumnya sudah tercatat di MEMORY namun kodenya masih
 di working tree. Test-nya 8 test dan semuanya lolos.
+
+### 2026-09-19 - Galeri PDP: panah terpotong diperbaiki (kontainer pemotong) + ukuran 48px seperti carousel
+Laporan owner: "tombol terpotong dan tombol kurang besar, lihat ukuran tombol corousel".
+
+Temuan: perbaikan posisi sebelumnya (`-left-5` / `-right-5`) MENIMBULKAN cacat baru. Panah
+diletakkan di dalam `[data-gallery-main]`, dan elemen itu memakai `overflow-hidden` untuk menggeser
+track foto. Akibatnya panah yang menonjol keluar tepi foto TERPOTONG oleh induknya. Terukur di
+1440px: hanya 20 dari 40px yang terlihat, yaitu separuh tombol.
+
+Kesalahan verifikasi saya sebelumnya: saya memeriksa pemotongan terhadap TEPI LAYAR, bukan terhadap
+induk ber-overflow. Panah lolos pemeriksaan itu padahal terpotong oleh kontainernya sendiri.
+
+Perubahan (resources/js/components/public/product-gallery.tsx):
+- Panah dikeluarkan dari `[data-gallery-main]` ke pembungkus baru
+  `<div className="relative w-full lg:w-[480px] lg:max-w-[480px]">` yang TIDAK memotong. Lebar 480px
+  desktop pindah ke pembungkus ini; area media cukup `aspect-square w-full overflow-hidden`.
+- Ukuran panah dinaikkan `size-10` (40px) menjadi `size-12` (48px) dan ikon `size-5` menjadi
+  `size-6`, MENYAMAI `carouselNavBtnClass` pada breakpoint md/lg (48px). Warna tetap
+  `bg-foreground/75` sesuai keputusan owner sebelumnya: yang disamakan ukuran dan posisi, bukan
+  gaya warnanya.
+- `z-10` dinaikkan ke `z-20` supaya panah tetap di atas hitungan foto (1/7) dan elemen lain.
+
+Verifikasi live (galeri 7 media):
+- 1024 sampai 1920px: panah 48x48 utuh, keluar 20px di kedua sisi, `terpotong: false` (diperiksa
+  dengan menelusuri SEMUA leluhur ber-overflow dan menghitung irisan kotaknya), tidak menabrak kolom
+  info produk (jarak tetap 12px). Area media tetap 480px.
+- Fungsi panah: klik berikutnya 1/7 ke 2/7, klik sebelumnya 2/7 ke 1/7 lalu panah kiri menjadi
+  disabled dengan opacity 0 seperti sebelumnya.
+- Lightbox masih terbuka dari klik foto (dialog dengan aria-label berisi nama produk dan nomor foto).
+- Mobile 390px, 640px, 768px, 1023px: panah tetap `display: none` (memang hanya tampil sejak lg),
+  hitungan 1/7 tetap di dalam gambar, tidak ada scroll horizontal. Restrukturisasi tidak mengubah
+  perilaku ponsel dan tablet.
+- Catatan alat uji: klik Playwright ber-timeout karena tab browser tidak aktif di depan sehingga
+  requestAnimationFrame tidak berjalan; klik koordinat (cua.click) bekerja dan membuktikan handler
+  panah normal. Bukan cacat kode.
+
+Test: vitest galeri dan zoom 28 passed. eslint berkas ini tetap 4 masalah (3 error, 1 warning) sama
+seperti sebelum perubahan, jadi tidak ada error baru. tsc bersih, build Vite PASS.
