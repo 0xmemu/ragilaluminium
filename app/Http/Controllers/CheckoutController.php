@@ -139,14 +139,14 @@ class CheckoutController extends Controller
             ];
         }
 
-        // Biaya COD = persen x (subtotal dibayar + TOTAL ongkos kirim yang
-        // dibayar pembeli); fee preview baru valid setelah ongkir tersedia
-        // (keputusan owner 2026-09-03).
+        // ATURAN BASIS: biaya COD = persen x TOTAL PEMBAYARAN SEBELUM biaya
+        // COD, yaitu subtotal dibayar + ongkos kirim yang dibayar pembeli
+        // (keputusan owner 2026-09-18). Fee pratinjau baru valid setelah
+        // ongkir tersedia.
         //
-        // Basis memakai `net` (sudah termasuk asuransi), karena `net` adalah
-        // angka ongkos kirim yang benar-benar dibayar pembeli dan itulah yang
-        // tertulis di ringkasan. Memakai net_ongkir membuat biaya COD tidak
-        // dapat diverifikasi dari angka yang terlihat.
+        // Basis memakai `net`, angka ongkos kirim yang benar-benar dibayar
+        // pembeli dan yang tertulis di ringkasan. Perlakuannya sama dengan
+        // atau tanpa asuransi karena `net` sudah memuat asuransi bila ada.
         if ($cod['enabled']) {
             $codFeePreview = CodSettings::calculateFee(
                 $subtotalAfterVoucher,

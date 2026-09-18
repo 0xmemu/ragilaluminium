@@ -106,14 +106,17 @@ class CodSettings
     }
 
     /**
-     * Biaya COD = persen dari (subtotal produk setelah voucher + TOTAL ongkos
-     * kirim yang dibayar pembeli).
+     * ATURAN BASIS (keputusan owner 2026-09-18):
+     * biaya COD = persen x TOTAL PEMBAYARAN SEBELUM biaya COD.
      *
-     * Ongkir yang dihitung adalah NET setelah subsidi (subsidi bukan bagian
-     * nilai yang ditagih ke penerima, keputusan owner 2026-09-03) DAN sudah
-     * termasuk asuransi (keputusan owner 2026-09-18). Memakai total ongkos
-     * kirim yang dibayar pembeli ini penting supaya biaya COD dapat
-     * diverifikasi dari angka yang tampil di ringkasan checkout.
+     * Total pembayaran sebelum biaya COD = subtotal produk setelah voucher
+     * + ongkos kirim yang dibayar pembeli.
+     *
+     * Ongkos kirim yang dibayar adalah NET setelah subsidi (subsidi bukan
+     * bagian nilai yang ditagih ke penerima, keputusan owner 2026-09-03) DAN
+     * sudah memuat asuransi. Perlakuannya SAMA dengan atau tanpa asuransi:
+     * yang jadi basis selalu angka ongkos kirim yang benar-benar dibayar
+     * pembeli, sehingga biaya COD dapat diverifikasi dari ringkasan checkout.
      */
     public static function calculateFee(float $subtotalAfterVoucher, float $shippingNet = 0): float
     {

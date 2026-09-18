@@ -390,7 +390,9 @@ Payload quote memisahkan ongkir dan asuransi untuk pembukuan: `freight` = tarif 
 
 Rumus subsidi (keputusan owner 2026-09-18): subsidi = persen x TOTAL ongkir, yaitu tarif kurir DITAMBAH asuransi, ada asuransi ataupun tidak. Sebelumnya hanya tarif dasar yang disubsidi, sehingga 10 persen dari angka yang terlihat pembeli (termasuk asuransi) tidak sama dengan selisih yang terlihat. Asuransi tetap ditagihkan penuh sesuai angka J&T karena merupakan uang titipan, sehingga seluruh subsidi jatuh ke komponen ongkir dan `net_ongkir + subsidy + insurance_charged = gross` selalu berlaku.
 
-Rumus biaya COD (keputusan owner 2026-09-03, dipertegas 2026-09-18): biaya COD = persen x (subtotal produk setelah voucher + TOTAL ongkos kirim yang dibayar pembeli, sudah termasuk asuransi). Basisnya `net`, bukan `net_ongkir`, supaya biaya COD dapat diverifikasi pembeli dari angka yang tampil di ringkasan.
+Rumus biaya COD (keputusan owner 2026-09-18): biaya COD = persen x TOTAL PEMBAYARAN SEBELUM biaya COD, yaitu subtotal produk setelah voucher + ongkos kirim yang dibayar pembeli. Basisnya `net` (ongkir dibayar), bukan `net_ongkir`, supaya biaya COD dapat diverifikasi pembeli dari angka yang tampil di ringkasan.
+
+Perlakuan basis ini SAMA dengan atau tanpa asuransi: yang menjadi basis selalu angka ongkos kirim yang benar-benar dibayar pembeli. Bila J&T tidak menagih asuransi, `net` sama dengan tarif kurir setelah subsidi, dan rumusnya tidak berubah. Ketiga jalur (pratinjau checkout, `createFromCart`, `editOrder`) memakai basis yang sama.
 
 Order menyimpan `shipping_amount` (ongkir net setelah subsidi, tanpa asuransi), `shipping_subsidy_amount`, dan `shipping_insurance_amount` secara terpisah; `total_amount` menjumlahkan ketiganya secara eksplisit.
 

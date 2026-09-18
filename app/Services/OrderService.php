@@ -159,9 +159,10 @@ class OrderService
                     $codFee = 0.0;
                     if ($paymentMethod === 'cod') {
                         CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
-                        // Basis COD = TOTAL ongkos kirim yang dibayar pembeli,
-                        // yaitu ongkir net DITAMBAH asuransi (keputusan owner
-                        // 2026-09-18), supaya cocok dengan angka di ringkasan.
+                        // Basis COD = TOTAL PEMBAYARAN sebelum biaya COD:
+                        // subtotal setelah voucher + ongkos kirim yang dibayar
+                        // pembeli (memuat asuransi bila J&T menagihnya).
+                        // Perlakuannya sama dengan atau tanpa asuransi.
                         $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost + $shippingInsurance);
                     }
 
@@ -674,8 +675,9 @@ class OrderService
             $shippingInsurance = (float) ($breakdown['insurance_charged'] ?? 0);
             if ($isCod) {
                 CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
-                // Basis COD = TOTAL ongkos kirim dibayar pembeli (ongkir net +
-                // asuransi), sama dengan jalur createFromCart.
+                // Basis COD = TOTAL PEMBAYARAN sebelum biaya COD (subtotal
+                // setelah voucher + ongkos kirim dibayar, memuat asuransi bila
+                // ada), sama dengan jalur createFromCart.
                 $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost + $shippingInsurance);
             }
             $package = $this->packageForResolvedLines(array_map(static fn (array $line): array => [

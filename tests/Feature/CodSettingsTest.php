@@ -262,6 +262,125 @@ class CodSettingsTest extends TestCase
         );
     }
 
+    /**
+     * ATURAN BASIS BIAYA COD (keputusan owner 2026-09-18):
+     * biaya COD = persen x TOTAL PEMBAYARAN SEBELUM biaya COD, yaitu
+     * subtotal setelah voucher + ongkos kirim yang dibayar pembeli.
+     * Perlakuannya SAMA dengan atau tanpa asuransi, karena ongkos kirim yang
+     * dibayar sudah memuat asuransi bila J&T menagihnya.
+     *
+     * Test ini menutup kasus TANPA asuransi. Ketika asuransi bernilai 0,
+     * `net_ongkir` dan `net` memang sama, sehingga test ini TIDAK dapat
+     * membedakan keduanya; yang menjaganya adalah dua test lain di berkas ini
+     * (`cod checkout adds handling fee` dan `biaya cod di pratinjau sama
+     * dengan yang tersimpan`) yang memakai asuransi tidak nol.
+     */
+    public function test_basis_cod_adalah_total_pembayaran_sebelum_biaya_cod_tanpa_asuransi(): void
+    {
+        CodSettings::update([
+            'enabled' => true,
+            'fee_type' => 'percent',
+            'fee_value' => 4,
+            'max_order_amount' => null,
+        ]);
+
+        \App\Support\ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'fixed',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        // J&T palsu TIDAK menagih asuransi, meniru kondisi asuransi tidak berlaku.
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('tariff')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: ['data' => [
+                    'estimateCustomerCost' => 120000,
+                    'estimateInsuranceCost' => 0,
+                    'estimateSumFreight' => 120000,
+                ]],
+                requestId: 'cod-tanpa-asuransi',
+                elapsedMs: 1,
+            ));
+        });
+
+        $product = Product::create([
+            'parent_sku' => 'WIN-COD-NOINS',
+            'name' => 'Jendela COD Tanpa Asuransi',
+            'short_name' => 'NOINS',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-COD-NOINS-100',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+
+        $this->withSession(['ragil_cart' => [
+            'WIN-COD-NOINS-100' => [
+                'line_id' => 'WIN-COD-NOINS-100',
+                'parent_sku' => 'WIN-COD-NOINS',
+                'variant_sku' => 'WIN-COD-NOINS-100',
+                'name' => 'Jendela COD Tanpa Asuransi',
+                'unit_price' => 1000000,
+                'quantity' => 1,
+            ],
+        ]]);
+
+        $this->post(route('checkout.validate'), [
+            'name' => 'Budi',
+            'phone' => '081234567890',
+            'email' => 'budi@example.com',
+            'province' => 'Jawa Tengah',
+            'city' => 'Semarang',
+            'district' => 'Candisari',
+            'village' => 'Jatingaleh',
+            'province_id' => '33',
+            'city_id' => '3374',
+            'district_id' => '337401',
+            'village_id' => '3374011001',
+            'address_line1' => 'Jl. Contoh 1',
+            'postal_code' => '50254',
+        ])->assertRedirect();
+
+        $this->post(route('checkout.place-order'), ['payment_method' => 'cod'])->assertRedirect();
+
+        $order = Order::query()->latest('id')->firstOrFail();
+
+        // Asuransi memang tidak ditagihkan pada kasus ini.
+        $this->assertEquals(0.0, (float) $order->shipping_insurance_amount, 'tanpa asuransi');
+        $this->assertEquals(120000.0, (float) $order->shipping_amount, 'yang dibayar hanya tarif kurir');
+
+        // ATURAN: 4% x (subtotal setelah voucher + ongkos kirim dibayar + asuransi)
+        $basis = (float) $order->subtotal_amount
+            - (float) $order->voucher_discount_amount
+            + (float) $order->shipping_amount
+            + (float) $order->shipping_insurance_amount;
+
+        $this->assertSame(
+            round($basis * 0.04, 2),
+            (float) $order->cod_fee_amount,
+            'biaya COD = persen x total pembayaran sebelum biaya COD'
+        );
+        $this->assertSame(44800.0, (float) $order->cod_fee_amount, '4% x 1.120.000');
+
+        // Total = subtotal - voucher + ongkir + asuransi + biaya COD
+        $this->assertEqualsWithDelta(
+            $basis + (float) $order->cod_fee_amount,
+            (float) $order->total_amount,
+            0.01,
+        );
+    }
+
     public function test_disabled_cod_cannot_be_selected_at_checkout(): void
     {
         CodSettings::update(['enabled' => false]);
