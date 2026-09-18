@@ -99,16 +99,18 @@ class ProductImportDataSheet implements FromArray, WithTitle, WithEvents
         // Dropdown dari data yang benar-benar ada, bukan daftar tetap, supaya
         // model dan sub model baru ikut otomatis tanpa mengubah kode.
         $letters = CatalogTemplateV2::lettersBySlug($columns);
-        $categories = array_values(array_unique(array_filter(
-            CatalogLabels::categoryCodes(),
-            static fn ($code) => ! in_array($code, ['WINDOW', 'DOOR', 'BOUVEN'], true)
-        )));
-        CatalogTemplateV2Styler::listValidation($sheet, $letters['kategori_produk'], $categories, 500);
+        CatalogTemplateV2Styler::listValidation($sheet, $letters['kategori_produk'], self::categoryOptions(), 500);
         CatalogTemplateV2Styler::listValidation($sheet, $letters['model_produk'], CatalogLabels::modelCodes(), 500);
         CatalogTemplateV2Styler::listValidation($sheet, $letters['sub_model'], self::subModelCodes(), 500);
     }
 
-    private static function subModelCodes(): array
+    /**
+     * Daftar sub model untuk dropdown. Dibaca dari database supaya sub model
+     * baru ikut muncul tanpa mengubah kode.
+     *
+     * @return list<string>
+     */
+    public static function subModelCodes(): array
     {
         return SubModel::query()
             ->where('is_active', true)
@@ -118,6 +120,23 @@ class ProductImportDataSheet implements FromArray, WithTitle, WithEvents
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Daftar kategori untuk dropdown.
+     *
+     * Nilai legacy berbahasa Inggris (WINDOW, DOOR, BOUVEN) dibuang karena
+     * template memakai kode Indonesia, dan keduanya menunjuk kategori yang
+     * sama sehingga muncul dua kali di dropdown.
+     *
+     * @return list<string>
+     */
+    public static function categoryOptions(): array
+    {
+        return array_values(array_unique(array_filter(
+            CatalogLabels::categoryCodes(),
+            static fn ($code) => ! in_array($code, ['WINDOW', 'DOOR', 'BOUVEN'], true)
+        )));
     }
 
     /** @return array<string, int> */
@@ -253,6 +272,40 @@ class ProductImportExampleSheet implements FromArray, WithTitle, WithEvents
         $sheet->getRowDimension(3)->setRowHeight(30);
         CatalogTemplateV2Styler::applyWidths($sheet, ProductImportDataSheet::widths());
         $sheet->freezePane('A4');
+
+        // Dropdown WAJIB ada di sheet Contoh juga, bukan hanya di sheet Data.
+        // Sheet ini yang dibuka lebih dulu untuk melihat bentuk isian, jadi
+        // kolom Kategori, Model, dan Sub Model di sini harus bisa dipilih.
+        // Data contoh mulai baris 4 (baris 1-2 keterangan, baris 3 header).
+        $letters = CatalogTemplateV2::lettersBySlug($columns);
+
+        CatalogTemplateV2Styler::listValidation(
+            $sheet,
+            $letters['kategori_produk'],
+            ProductImportDataSheet::categoryOptions(),
+            self::lastExampleRow(),
+            4
+        );
+        CatalogTemplateV2Styler::listValidation(
+            $sheet,
+            $letters['model_produk'],
+            CatalogLabels::modelCodes(),
+            self::lastExampleRow(),
+            4
+        );
+        CatalogTemplateV2Styler::listValidation(
+            $sheet,
+            $letters['sub_model'],
+            ProductImportDataSheet::subModelCodes(),
+            self::lastExampleRow(),
+            4
+        );
+    }
+
+    /** Baris terakhir data contoh, dipakai sebagai batas rentang dropdown. */
+    private static function lastExampleRow(): int
+    {
+        return 3 + count(self::sampleRows());
     }
 }
 

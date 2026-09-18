@@ -4,49 +4,79 @@ import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { Icon } from "@/components/shared/icon"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { shouldPlayGalleryVideo } from "@/lib/gallery-video"
 import { cn } from "@/lib/utils"
 import type { ProductMedia } from "@/types"
 
-/** Sub-komponen Video Galeri: autoplay saat aktif, pause & resume detik terakhir saat berganti */
+/**
+ * Sub-komponen Video Galeri.
+ * Video berputar HANYA bila keempat syarat ini terpenuhi sekaligus:
+ *   1. slide video sedang aktif ditampilkan di galeri,
+ *   2. elemen video benar-benar terlihat di layar (minimal separuh bagiannya),
+ *   3. mode preview (lightbox) tidak sedang dibuka,
+ *   4. tab atau jendela pembeli sedang aktif.
+ * Syarat 2 sampai 4 mencegah video berjalan terus di latar belakang saat
+ * pembeli menggulir halaman, membuka preview foto lain, atau meninggalkan tab.
+ * Posisi detik terakhir disimpan supaya video lanjut dari tempat berhenti,
+ * bukan mengulang dari nol. Syarat lengkapnya ada di lib/gallery-video.ts.
+ */
 function GalleryVideoItem({
   item,
   title,
   index,
   isActive,
+  galleryInView,
+  isPreviewOpen,
   onOpenLightbox,
 }: {
   item: ProductMedia
   title: string
   index: number
   isActive: boolean
+  /** Dihitung komponen induk dari posisi container galeri. */
+  galleryInView: boolean
+  isPreviewOpen: boolean
   onOpenLightbox: () => void
 }) {
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const savedTimeRef = React.useRef(0)
+  // Jangan putar saat tab atau jendela tidak aktif (hemat kuota pembeli).
+  // Visibilitas container galeri dihitung komponen induk dan dikirim lewat prop.
+  const [pageVisible, setPageVisible] = React.useState(true)
+  const shouldPlay = shouldPlayGalleryVideo({
+    isActive,
+    galleryInView,
+    isPreviewOpen,
+    pageVisible,
+  })
+  React.useEffect(() => {
+    const onVisibility = () => setPageVisible(document.visibilityState === "visible")
+    onVisibility()
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => document.removeEventListener("visibilitychange", onVisibility)
+  }, [])
 
   React.useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
-    if (isActive) {
+    if (shouldPlay) {
       if (savedTimeRef.current > 0 && Math.abs(video.currentTime - savedTimeRef.current) > 0.5) {
         video.currentTime = savedTimeRef.current
       }
       const playPromise = video.play()
       if (playPromise !== undefined) {
         playPromise.catch(() => {
-          // Fallback bila browser blokir audio autoplay
+          // Browser bisa memblokir pemutaran bersuara sebelum pembeli berinteraksi
           video.muted = true
           video.play().catch(() => {})
         })
       }
-    } else {
-      if (!video.paused) {
-        savedTimeRef.current = video.currentTime
-        video.pause()
-      }
+    } else if (!video.paused) {
+      savedTimeRef.current = video.currentTime
+      video.pause()
     }
-  }, [isActive])
+  }, [shouldPlay])
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -138,6 +168,11 @@ export function ProductGallery({
   const galleryStartX = React.useRef(0)
   const [galleryWidth, setGalleryWidth] = React.useState(0)
   const galleryRef = React.useRef<HTMLDivElement>(null)
+  // Apakah container galeri sedang terlihat di layar. Dipakai video supaya tidak
+  // berputar di latar belakang saat pembeli menggulir jauh dari galeri.
+  // Default true: bila IntersectionObserver tidak tersedia atau tidak melapor,
+  // video tetap diputar seperti perilaku lama; observer mengoreksi begitu melapor.
+  const [galleryInView, setGalleryInView] = React.useState(true)
   const didSwipe = React.useRef(false)
 
   // Ref untuk drag real-time TANPA setState per frame (re-render per move bikin jank).
@@ -253,6 +288,22 @@ export function ProductGallery({
     }
   }, [highlightedMediaId, items])
 
+  // Amati container galeri: video berhenti begitu galeri tergulir keluar layar.
+  // Memakai IntersectionObserver, bukan event scroll, agar tidak membebani render.
+  React.useEffect(() => {
+    const el = galleryRef.current
+    if (!el || typeof IntersectionObserver === "undefined") return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry) setGalleryInView(entry.isIntersecting && entry.intersectionRatio >= 0.25)
+      },
+      { threshold: [0, 0.25, 0.5] },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   // Scroll strip: update index terlihat untuk badge +N tanpa merubah foto utama.
   const onStripScroll = () => {
     const strip = stripRef.current
@@ -348,6 +399,8 @@ export function ProductGallery({
                       title={title}
                       index={index}
                       isActive={activeMediaIndex === index}
+                      galleryInView={galleryInView}
+                      isPreviewOpen={lightboxIndex >= 0}
                       onOpenLightbox={() => {
                         if (!didSwipe.current) setLightboxIndex(index)
                       }}
@@ -384,7 +437,7 @@ export function ProductGallery({
                   onClick={() => moveGallery(-1)}
                   disabled={activeMediaIndex === 0}
                   aria-label="Lihat foto sebelumnya"
-                  className="absolute left-2.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                  className="absolute -left-5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
                   <Icon name="arrow-left" className="size-5" weight="bold" aria-hidden="true" />
                 </button>
@@ -393,7 +446,7 @@ export function ProductGallery({
                   onClick={() => moveGallery(1)}
                   disabled={activeMediaIndex === items.length - 1}
                   aria-label="Lihat foto berikutnya"
-                  className="absolute right-2.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+                  className="absolute -right-5 top-1/2 z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-foreground/75 text-white shadow-md backdrop-blur-sm transition hover:bg-foreground hover:scale-105 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
                 >
                   <Icon name="arrow-right" className="size-5" weight="bold" aria-hidden="true" />
                 </button>

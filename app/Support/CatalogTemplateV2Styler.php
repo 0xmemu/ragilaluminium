@@ -194,29 +194,87 @@ final class CatalogTemplateV2Styler
      *
      * @param  list<string>  $values
      */
-    public static function listValidation(Worksheet $sheet, string $column, array $values, int $lastRow): void
-    {
+    public static function listValidation(
+        Worksheet $sheet,
+        string $column,
+        array $values,
+        int $lastRow,
+        ?int $firstRow = null,
+    ): void {
         $values = array_values(array_unique(array_filter($values, static fn ($v) => trim((string) $v) !== '')));
         if ($values === []) {
             return;
         }
 
         $formula = implode(',', $values);
-        // Excel menolak formula inline yang kepanjangan; lewati dengan aman.
-        if (strlen($formula) > 250) {
-            return;
+
+        // Excel menolak daftar inline di atas 255 karakter dan menampilkan
+        // dropdown KOSONG tanpa pesan apa pun. Karena itu daftar panjang
+        // dipindahkan ke kolom bantu di sheet Panduan, lalu formula menunjuk
+        // rentangnya. Ini menyelamatkan model produk yang jumlahnya terus
+        // bertambah tanpa perlu mengubah kode.
+        if (strlen($formula) + 2 > 255) {
+            $formula = self::referencedList($sheet, $column, $values, $lastRow);
+            if ($formula === null) {
+                return;
+            }
+        } else {
+            $formula = '"'.$formula.'"';
         }
+
+        $start = $firstRow ?? self::FIRST_DATA_ROW;
+        $end = max($lastRow, $start + 1);
 
         // WAJIB memakai setDataValidation() pada rentang, bukan getCell() per
         // baris: getCell() menciptakan sel sehingga used range sheet melar
         // sampai ratusan baris kosong dan berkas template jadi tidak bersih.
-        $target = $column.self::FIRST_DATA_ROW.':'.$column.max($lastRow, 500);
         $validation = new DataValidation();
         $validation->setType(DataValidation::TYPE_LIST);
         $validation->setAllowBlank(true);
         $validation->setShowDropDown(true);
-        $validation->setFormula1('"'.$formula.'"');
-        $sheet->setDataValidation($target, $validation);
+        // Excel WAJIB menolak nilai di luar daftar, kalau tidak admin bisa
+        // mengetik model yang salah dan baru ketahuan saat import. Pesan
+        // pengarahnya ditampilkan supaya admin tahu harus pilih dari daftar.
+        $validation->setShowErrorMessage(true);
+        $validation->setErrorTitle('Nilai tidak dikenal');
+        $validation->setError('Pilih nilai dari daftar. Daftar ini dibaca dari data sistem, '
+            .'jadi model atau sub model yang baru ditambahkan akan muncul sendiri.');
+        $validation->setShowInputMessage(true);
+        $validation->setPromptTitle('Pilih dari daftar');
+        $validation->setPrompt('Klik panah di kanan sel untuk memilih.');
+        $validation->setFormula1($formula);
+        $sheet->setDataValidation($column.$start.':'.$column.$end, $validation);
+    }
+
+    /**
+     * Tulis daftar nilai ke kolom bantu di sheet Panduan, lalu kembalikan
+     * formula yang menunjuk rentangnya.
+     *
+     * Dipakai saat daftar melewati batas 255 karakter milik validasi inline.
+     * Kolom bantu ditempatkan berurutan mulai kolom E agar tidak bertabrakan
+     * dengan isi Panduan (kolom A sampai C).
+     */
+    private static function referencedList(Worksheet $sheet, string $column, array $values, int $lastRow): ?string
+    {
+        $panduan = $sheet->getParent()?->getSheetByName('Panduan');
+        if ($panduan === null) {
+            return null;
+        }
+
+        // Kolom bantu dipilih dari huruf kolom sumber agar dua daftar berbeda
+        // tidak saling menimpa: E untuk kolom E, F untuk kolom F, dst.
+        $mulaiBaris = 2;
+        foreach ($values as $i => $nilai) {
+            $panduan->setCellValue($column.($mulaiBaris + $i), $nilai);
+        }
+        $akhirBaris = $mulaiBaris + count($values) - 1;
+        $panduan->getColumnDimension($column)->setWidth(max(14, min(28, $lastRow > 0 ? 20 : 20)));
+        $panduan->getStyle($column.$mulaiBaris.':'.$column.$akhirBaris)
+            ->getFont()->getColor()->setARGB('FF9CA3AF');
+        $panduan->getStyle($column.$mulaiBaris.':'.$column.$akhirBaris)
+            ->getNumberFormat()->setFormatCode('@');
+
+        return 'Panduan!$'.$column.'$'.$mulaiBaris.':$'.$column.'$'.$akhirBaris;
     }
 
     /** Lebar kolom: teks panjang lebih lebar, kolom pendek secukupnya. */

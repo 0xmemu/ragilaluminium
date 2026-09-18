@@ -282,4 +282,66 @@ class CatalogTemplateV2DownloadTest extends TestCase
             );
         }
     }
+
+    /**
+     * Dropdown kategori, model, dan sub model WAJIB ada di sheet Data DAN
+     * sheet Contoh.
+     *
+     * Regresi yang pernah terjadi: dropdown hanya dipasang di sheet Data,
+     * sehingga sheet Contoh (yang dibuka lebih dulu untuk melihat bentuk
+     * isian) tidak punya pilihan apa pun. Selain itu showErrorMessage tidak
+     * aktif, sehingga Excel membiarkan nilai di luar daftar diketik dan baru
+     * ketahuan saat import.
+     */
+    public function test_dropdown_ada_di_sheet_data_dan_contoh(): void
+    {
+        $res = $this->actingAs($this->admin())
+            ->get(route("admin.imports.product-import-template"));
+        $res->assertOk();
+
+        $isi = $this->isiBerkas($res);
+        $tmp = tempnam(sys_get_temp_dir(), "dd") . ".xlsx";
+        file_put_contents($tmp, $isi);
+
+        $ss = IOFactory::load($tmp);
+        $this->assertSame(["Data", "Contoh", "Panduan"], $ss->getSheetNames());
+
+        foreach (["Data", "Contoh"] as $namaSheet) {
+            $ws = $ss->getSheetByName($namaSheet);
+            $sheetProtection = null;
+
+            // Kolom E, F, G (Kategori Produk, Model Produk, Sub Model).
+            foreach (["E", "F", "G"] as $kolom) {
+                $adaValidasi = false;
+                for ($row = 2; $row <= 20; $row++) {
+                    $validation = $ws->getCell($kolom . $row)->getDataValidation();
+                    if ($validation->getType() === "list" && (string) $validation->getFormula1() !== "") {
+                        $adaValidasi = true;
+
+                        // PhpSpreadsheet sudah membalik atribut XML
+                        // showDropDown saat membaca (reader: "showDropDown is
+                        // inverted, works as hideDropDown if true"), sehingga
+                        // nilai true di API berarti dropdown TAMPIL.
+                        $this->assertTrue(
+                            $validation->getShowDropDown(),
+                            $namaSheet . "!" . $kolom . $row . " dropdown wajib tampil"
+                        );
+                        $this->assertTrue(
+                            $validation->getShowErrorMessage(),
+                            $namaSheet . "!" . $kolom . $row . " wajib menolak nilai di luar daftar"
+                        );
+
+                        break;
+                    }
+                }
+
+                $this->assertTrue(
+                    $adaValidasi,
+                    $namaSheet . " kolom " . $kolom . " wajib punya dropdown pilihan"
+                );
+            }
+        }
+
+        unlink($tmp);
+    }
 }

@@ -168,7 +168,7 @@ Empat penyempurnaan storefront atas permintaan owner dalam satu sesi.
   (owner 2026-09-18): video berputar HANYA bila keempat syarat terpenuhi sekaligus, yaitu slide video
   aktif, container galeri terlihat di layar, mode preview tidak terbuka, dan tab pembeli aktif.
   Syarat diekstrak ke `lib/gallery-video.ts` (`shouldPlayGalleryVideo`, `shouldPlayPreviewVideo`) dan
-  dikunci `tests/frontend/gallery-video.test.ts` (9 test). Visibilitas diukur pada CONTAINER galeri
+  dikunci `tests/frontend/gallery-video.test.ts` (8 test). Visibilitas diukur pada CONTAINER galeri
   (`[data-gallery-main]`), bukan elemen video, karena video berada di dalam track yang digeser dengan
   transform sehingga `getBoundingClientRect`-nya tidak andal. Default `galleryInView = true` supaya
   video tetap diputar bila IntersectionObserver tidak tersedia atau tidak melapor (perilaku lama).
@@ -2035,3 +2035,37 @@ Test: CatalogPageSizeTest 14 passed (233 assertions), termasuk telepon Android 1
 iPhone 16, desktop 15, tablet Android dan iPad 15, User-Agent kosong 15, dan per_page eksplisit
 menang atas deteksi User-Agent. Regresi katalog 50 passed (744 assertions). Vitest 10 passed,
 tsc bersih, eslint bersih, build Vite PASS.
+
+### 2026-09-19 - Galeri PDP: panah geser foto utama digeser keluar seperti carousel
+Laporan owner: "posisinya belum seperti carousel".
+
+Perbandingan terukur sebelum perubahan:
+- Carousel (beranda, hero, ModelDetail) memakai `carouselNavBtnClass` di
+  carousel-controls.tsx: `md:-left-5` / `md:-right-5`, jadi panah MENGGANTUNG 20px di luar tepi
+  track, ukuran 48px, latar hitam 60% bergaris tepi putih.
+- Galeri foto utama PDP memakai `left-2.5` / `right-2.5`, jadi panah 40px berada 10px DI DALAM
+  tepi gambar. Karena letaknya di dalam area foto, posisinya terasa berbeda dari carousel.
+
+Keputusan owner: OPSI posisi saja. Yang disamakan hanya posisinya, bukan ukuran maupun warnanya.
+
+Perubahan (resources/js/components/public/product-gallery.tsx):
+- Panah "Lihat foto sebelumnya": `left-2.5` menjadi `-left-5`.
+- Panah "Lihat foto berikutnya": `right-2.5` menjadi `-right-5`.
+- Ukuran (40px), warna (`bg-foreground/75`), dan seluruh perilaku hover maupun disabled TIDAK diubah.
+- Panah strip thumbnail di halaman yang sama TIDAK diubah karena posisinya sudah menonjol keluar
+  (`-left-3.5` / `-right-3.5`).
+
+Verifikasi live di browser (galeri punya 7 media):
+- Sebelum: gambar 120..600, panah kiri di 130 (masuk 10px), panah kanan berakhir 590 (masuk 10px).
+- Sesudah di 1024px, 1280px, dan 1440px: panah keluar 20px di KEDUA sisi, gambar tetap 480px,
+  tidak ada panah yang terpotong tepi layar atau lebar kontainer. Ruang kiri minimum 28px pada
+  1024px dan 100px pada 1440px, jadi panah selalu utuh.
+- Tidak ada overflow yang memotong: satu-satunya klip leluhur adalah MAIN dengan
+  `overflow-x-hidden` yang berada jauh di luar jangkauan panah.
+
+Catatan: tidak ada test atau dokumen yang mengunci kelas posisi panah, jadi perubahan ini murni
+tampilan tanpa dampak spec. `npm run typecheck` bersih dan build Vite PASS.
+
+Sekalian di-commit: pekerjaan autoplay video galeri (lib/gallery-video.ts, gallery-video.test.ts,
+dan perubahan product-gallery.tsx) yang sebelumnya sudah tercatat di MEMORY namun kodenya masih
+di working tree. Test-nya 8 test dan semuanya lolos.
