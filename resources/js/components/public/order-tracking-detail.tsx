@@ -428,12 +428,18 @@ function StatusSummary({ order }: { order: PublicOrder }) {
             aria-current={step.state === "current" ? "step" : undefined}
             className="relative flex flex-col items-center text-center min-w-0"
           >
-            {/* Garis penghubung identik di belakang icon */}
+            {/* Garis penghubung antar ikon. Sengaja TIDAK dimulai dari titik
+                tengah: ikon langkah aktif berlatar semi transparan (tint 10%),
+                sehingga garis yang lewat di belakangnya tampak menembus
+                lingkarannya. Garis kini mulai dan berakhir tepat di tepi ikon
+                (setengah dari size-11 = 22px), jadi tidak pernah berada di
+                belakang ikon. Bila ukuran ikon diubah, angka 22px ini harus
+                ikut disesuaikan. */}
             {!isLast ? (
               <div
                 aria-hidden="true"
                 className={cn(
-                  "absolute left-1/2 right-[-50%] top-[22px] h-[2px] -translate-y-1/2 z-0",
+                  "absolute left-[calc(50%_+_22px)] right-[calc(-50%_+_22px)] top-[22px] h-[2px] -translate-y-1/2 z-0",
                   connectorColor,
                 )}
               />
