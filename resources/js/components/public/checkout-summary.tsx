@@ -224,16 +224,16 @@ export function CheckoutSummary({
                 {variantText ? <span> · {variantText}</span> : null}
               </p>
               {/* Harga di bawah nama produk, rata kanan mengikuti tepi angka
-                  pada rincian biaya di bawahnya. Angka yang dibayar di atas,
-                  harga sebelum diskon dicoret di bawahnya, dan persentase
-                  diskon mendahului harga coret itu. */}
+                  pada rincian biaya di bawahnya: harga jual di atas, harga
+                  sebelum diskon dicoret di bawahnya bersama persen diskon. */}
               <div className="mt-1 space-y-0.5 text-right">
+                <span className="tabular-nums block font-bold text-foreground">
+                  {formatCurrency(lineTotal)}
+                </span>
                 {hasLineDiscount && lineCompare != null ? (
                   <span className="flex items-baseline justify-end gap-1.5">
                     {discountPercent ? (
-                      /* Lebar tetap supaya label persen sejajar antar baris
-                         ketika pesanan memuat beberapa produk. */
-                      <span className="w-8 shrink-0 text-right text-[11px] font-semibold text-sale">
+                      <span className="text-[11px] font-semibold text-sale">
                         {discountPercent}%
                       </span>
                     ) : null}
@@ -242,15 +242,6 @@ export function CheckoutSummary({
                     </span>
                   </span>
                 ) : null}
-                <span
-                  className={
-                    hasLineDiscount
-                      ? "tabular-nums block font-bold text-sale"
-                      : "tabular-nums block font-semibold text-foreground"
-                  }
-                >
-                  {formatCurrency(lineTotal)}
-                </span>
               </div>
             </li>
           )
@@ -377,14 +368,6 @@ export function CheckoutSummary({
             </dd>
           </div>
         ) : null}
-        {showCodFee ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">
-              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
-            </dt>
-            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
-          </div>
-        ) : null}
         {shippingQuoteLoading ? (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
@@ -401,10 +384,6 @@ export function CheckoutSummary({
             </p>
           </div>
         ) : effectiveShipping ? (
-          /* Baris pengiriman memakai warna untuk membedakan dua angka yang
-             mudah tertukar: ongkir ASLI (harga sebelum subsidi, abu dicoret)
-             dan potongan SUBSIDI (merah, penanda diskon) yang besarnya
-             berbeda dari harga aslinya. */
           <div className="flex justify-between gap-4">
             <dt className="min-w-0 break-words">
               <span className="block text-muted-foreground">Ongkos Kirim</span>
@@ -417,7 +396,7 @@ export function CheckoutSummary({
             <dd className="space-y-0.5 text-right">
               <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>
               {shippingHasCompare ? (
-                <span className="tabular-nums block text-[11px] text-info line-through">
+                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
                   {formatCurrency(shippingTariff)}
                 </span>
               ) : null}
@@ -433,9 +412,18 @@ export function CheckoutSummary({
         )}
 
         {liveEta ? (
-          <div className="flex justify-between gap-4 border-t border-border pt-2.5">
+          <div className="flex justify-between gap-4 text-[11px]">
             <dt className="text-muted-foreground min-w-0 break-words">Estimasi tiba</dt>
-            <dd className="text-right font-semibold text-primary">{liveEta ? displayEtaRangeLabel(liveEta) : null}</dd>
+            <dd className="text-right font-medium text-foreground">{displayEtaRangeLabel(liveEta)}</dd>
+          </div>
+        ) : null}
+
+        {showCodFee ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground min-w-0 break-words">
+              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
+            </dt>
+            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
           </div>
         ) : null}
 

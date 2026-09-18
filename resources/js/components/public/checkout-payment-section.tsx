@@ -13,7 +13,7 @@ export function CheckoutPaymentSection({
   cod,
   pageErrors,
   c,
-  total,
+  total: _total,
 }: {
   details: CheckoutDetails | null
   editingDetails: boolean
@@ -48,7 +48,7 @@ export function CheckoutPaymentSection({
                   "Bayar di tempat (COD)",
                   cod.enabled && cod.allowed
                     ? cod.fee_amount > 0
-                      ? `Termasuk biaya penanganan ${formatCurrency(cod.fee_amount)}.`
+                      ? `Biaya penanganan COD: ${formatCurrency(cod.fee_amount)}.`
                       : "Pembayaran dicatat menunggu saat pesanan dibuat."
                     : cod.block_reason || "Layanan COD sedang tidak tersedia.",
                   cod.enabled && cod.allowed,
