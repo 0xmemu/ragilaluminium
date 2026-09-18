@@ -1201,28 +1201,10 @@ export default function StorePerformance({
 
                   {chart ? (
                     <div className="mt-3">
-                      {/* Baris Sejajar: Total Metrik di Kiri, Legend & Toggle Model Chart di Kanan */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-2">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xs text-muted-foreground">Total {chart.title.replace(/^Tren /, "")}:</span>
-                          <span className="text-base font-bold tabular-nums text-foreground">
-                            {chart.total_format === "currency"
-                              ? formatCurrency(chart.total)
-                              : chart.key === "conversion_rate"
-                                ? formatNumber(chart.total) + "%"
-                                : formatNumber(chart.total)}
-                          </span>
-                          {chart.previous_total !== undefined ? (
-                            <span className="text-xs text-muted-foreground">
-                              (vs {chart.total_format === "currency"
-                                ? formatCurrency(chart.previous_total)
-                                : chart.key === "conversion_rate"
-                                  ? formatNumber(chart.previous_total) + "%"
-                                  : formatNumber(chart.previous_total)})
-                            </span>
-                          ) : null}
-                        </div>
-
+                      {/* Legend & toggle model grafik. Total metrik sengaja tidak
+                          diulang di sini karena setiap metrik tren sudah punya
+                          kartu ringkasannya sendiri di halaman ini. */}
+                      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border/40 pb-2.5 mb-2">
                         <div className="flex items-center gap-3">
                           {/* Legend Indikator Garis */}
                           <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
@@ -1335,17 +1317,11 @@ export default function StorePerformance({
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <HoverHint
-                  label={kpiMap["completed_orders"]?.label ?? "Pesanan Selesai"}
-                  hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
-                  className="text-xs font-medium text-muted-foreground"
-                />
-                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["completed_orders"]?.value ?? 0)}</p>
-              </div>
             </div>
 
-            {/* Sub-section B: Bauran Metode Pembayaran */}
+            {/* Sub-section B: Bauran Metode Pembayaran (pangsa nilai pesanan).
+                Nominal rupiah ada di blok Arus Kas, jadi di sini hanya pangsa
+                dan jumlah pesanan supaya tidak ada angka kembar. */}
             {report.payment_mix.length ? (
               <div className="mt-4 border-t border-border pt-3">
                 <p className="text-xs font-semibold text-foreground mb-2.5">Metode Pembayaran</p>
@@ -1362,8 +1338,7 @@ export default function StorePerformance({
                             {pct}% dari {kpiMap["omzet"]?.label ?? "Penjualan Gross"}
                           </span>
                         </div>
-                        <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatCurrency(row.revenue)}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                        <p className="mt-1.5 text-xs text-muted-foreground tabular-nums">
                           {formatNumber(row.count)} pesanan
                         </p>
                       </div>
