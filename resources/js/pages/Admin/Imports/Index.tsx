@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
-import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
@@ -32,7 +31,6 @@ export interface ImportItem {
   created_at: string
   href: string
   failed_rows_href: string | null
-  retry_url: string | null
 }
 
 export interface ImportSummary {
@@ -85,7 +83,6 @@ export default function ImportsIndex({
   jobs,
 }: ImportsIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
-  const [busyJobId, setBusyJobId] = React.useState<number | null>(null)
   const [q, setQ] = React.useState(searchQuery)
 
   function visit(params: Record<string, string | undefined>) {
@@ -342,32 +339,6 @@ export default function ImportsIndex({
                           <Button asChild variant="outline" size="xs" className="text-destructive">
                             <Link href={item.failed_rows_href}>Baris gagal</Link>
                           </Button>
-                        ) : null}
-
-                        {item.retry_url ? (
-                          <ConfirmAction
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                disabled={busyJobId === item.id}
-                                className="text-xs"
-                              >
-                                {busyJobId === item.id ? "Memproses..." : "Jalankan ulang"}
-                              </Button>
-                            }
-                            title={`Jalankan ulang import #${item.id}?`}
-                            description="Proses import akan dimasukkan kembali ke antrean pekerjaan."
-                            confirmLabel="Jalankan ulang"
-                            onConfirm={() => {
-                              if (!item.retry_url) return
-                              setBusyJobId(item.id)
-                              router.post(item.retry_url, {}, {
-                                preserveScroll: true,
-                                onFinish: () => setBusyJobId(null),
-                              })
-                            }}
-                          />
                         ) : null}
 
                         <Button asChild variant="secondary" size="xs">

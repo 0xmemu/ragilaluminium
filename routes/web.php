@@ -277,7 +277,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('imports/create', [ImportJobController::class, 'create'])->name('imports.create');
     Route::post('imports', [ImportJobController::class, 'store'])->name('imports.store');
     Route::get('imports/{import_job}', [ImportJobController::class, 'show'])->name('imports.show');
-    Route::post('imports/{import_job}/retry', [ImportJobController::class, 'retry'])->name('imports.retry');
     Route::get('imports/{import_job}/failed-rows', [ImportJobController::class, 'failedRows'])->name('imports.failed-rows');
     Route::get('imports/{import_job}/correction-file', [ImportJobController::class, 'downloadCorrectionFile'])->name('imports.correction-file');
 

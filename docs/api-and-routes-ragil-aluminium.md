@@ -163,7 +163,6 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `GET /admin/imports/{import_job}` -> `Admin\ImportJobController@show`  (name: `admin.imports.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports/{import_job}/correction-file` -> `Admin\ImportJobController@downloadCorrectionFile`  (name: `admin.imports.correction-file`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/imports/{import_job}/failed-rows` -> `Admin\ImportJobController@failedRows`  (name: `admin.imports.failed-rows`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `POST /admin/imports/{import_job}/retry` -> `Admin\ImportJobController@retry`  (name: `admin.imports.retry`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kebijakan-privasi` -> `Admin\KebijakanPrivasiController@edit`  (name: `admin.kebijakan-privasi.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/kebijakan-privasi` -> `Admin\KebijakanPrivasiController@update`  (name: `admin.kebijakan-privasi.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/ketentuan-layanan` -> `Admin\KetentuanLayananController@edit`  (name: `admin.ketentuan-layanan.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

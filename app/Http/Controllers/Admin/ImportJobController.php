@@ -14,7 +14,6 @@ use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -118,7 +117,6 @@ class ImportJobController extends Controller
                 'created_at' => optional($j->created_at)?->toIso8601String() ?? now()->toIso8601String(),
                 'href' => route('admin.imports.show', $j),
                 'failed_rows_href' => ((int) ($j->failed_rows ?? 0) > 0) ? route('admin.imports.failed-rows', $j) : null,
-                'retry_url' => in_array($j->status, ['failed', 'completed', 'pending'], true) ? route('admin.imports.retry', $j) : null,
             ];
         });
 
@@ -334,27 +332,6 @@ class ImportJobController extends Controller
         $failed = $failedQuery->get();
 
         return Excel::download(new \App\Exports\CorrectionFileExport($failed), 'correction-'.$import_job->id.'.xlsx');
-    }
-
-    public function retry(ImportJob $import_job): RedirectResponse
-    {
-        if ($import_job->source_file_path && Storage::disk('imports')->exists($import_job->source_file_path)) {
-            $import_job->update(['status' => 'pending', 'started_at' => null, 'completed_at' => null]);
-            ProcessCatalogImport::dispatch($import_job->id, $import_job->source_file_path);
-
-            ActivityLogService::record(
-                'import.retried',
-                'import_job',
-                (int) $import_job->id,
-                ['type' => $import_job->type],
-                (int) request()->user()?->id,
-            );
-
-            return redirect()->route('admin.imports.show', $import_job)
-                ->with('success', 'Import dijalankan ulang.');
-        }
-
-        return redirect()->back()->withErrors('Berkas sumber tidak ditemukan, tidak bisa menjalankan ulang.');
     }
 
     /**

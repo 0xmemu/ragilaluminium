@@ -314,13 +314,6 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
-    "admin.imports.retry": [
-        {
-            "name": "import_job",
-            "required": true,
-            "binding": "id"
-        }
-    ],
     "admin.imports.failed-rows": [
         {
             "name": "import_job",

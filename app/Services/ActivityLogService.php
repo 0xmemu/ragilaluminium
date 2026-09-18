@@ -212,7 +212,6 @@ class ActivityLogService
                 $log->entity_id,
                 $payload['type'] ?? $payload['file'] ?? 'katalog'
             ),
-            'import.retried' => sprintf('Import #%s diulang', $log->entity_id),
             'product.voucher.created' => sprintf('Voucher dibuat%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
             'product.voucher.updated' => sprintf('Voucher diperbarui%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
             'product.voucher.published' => sprintf('Voucher diaktifkan%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
