@@ -5,6 +5,7 @@ import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
@@ -170,7 +171,8 @@ export default function ProductForm({
     description: product?.description ?? "",
     product_category: product?.product_category ?? options.categories[0]?.value ?? "JENDELA",
     product_model: product?.product_model ?? options.models[0]?.value ?? "SLIDING",
-    design_variant: product?.design_variant ?? options.designs[0]?.value ?? "POLOS",
+    // Sub model OPSIONAL: bawaan kosong (berdiri sendiri), tidak dipaksa POLOS.
+    design_variant: product?.design_variant ?? "",
     status: product?.status ?? "archived",
     weight_kg: (product as unknown as Record<string, unknown> & { weight_kg?: string })?.weight_kg as string ?? "",
     width_cm: (product as unknown as Record<string, unknown> & { width_cm?: string })?.width_cm as string ?? "",
@@ -342,38 +344,58 @@ export default function ProductForm({
   // from < to: ditempatkan setelah target; from > to: sebelum target.
   const [orderNotice, setOrderNotice] = React.useState<string | null>(null)
 
-  // Foto dari opsi varian membawa productVariantId. Dipakai untuk memisahkan
-  // area katalog dan area varian saat mengurutkan (slot grid sendiri tidak
-  // membedakannya di mode edit).
+  // Error validasi server: form.* mengisi form.errors, sedangkan jalur router.*
+  // mengisi shared props. Digabung supaya kedua jalur tetap menampilkan pesan
+  // di FormErrorSummary dan di bawah field terkait.
+  const sharedErrors = (usePage<SharedPageProps>().props.errors ?? {}) as Record<string, string>
+  const combinedErrors: Record<string, string> = { ...sharedErrors, ...form.errors }
+
+  // Sub model bersifat opsional. Daftar berisi sub model milik model terpilih
+  // plus pilihan kosong; nilai bebas yang sudah tersimpan ikut ditampilkan
+  // supaya tidak hilang saat form disimpan.
+  const designOptions = React.useMemo(() => {
+    const items = [
+      { value: "", label: "Tanpa sub model" },
+      ...options.designs
+        .filter((option) => option.model === form.data.product_model)
+        .map((option) => ({ value: option.value, label: option.label })),
+    ]
+    const current = form.data.design_variant
+    if (current && !items.some((item) => item.value === current)) {
+      items.push({ value: current, label: current })
+    }
+    return items
+  }, [options.designs, form.data.product_model, form.data.design_variant])
+
+
+  // Deteksi foto varian vs foto non-varian (katalog, shared media, video).
   const isVariantPhoto = (assetId: number) =>
     pickedMedia.find((m) => m.assetId === assetId)?.productVariantId != null ||
     variantOptionMedia.some((m) => m.assetId === assetId)
 
+  // Pindah slot media:
+  // - Media non-varian (katalog, shared media, video) BEBAS dipindah ke mana pun
+  //   (ke depan varian, ke tengah, maupun ke paling belakang setelah varian).
+  // - Urutan sesama foto varian (V1 < V2 < V3 ...) tetap terjaga sesuai urutan opsi varian.
   const moveSlot = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= mediaSlots.length || to >= mediaSlots.length) return
-    const fromSlot = mediaSlots[from]
-    const toSlot = mediaSlots[to]
-    if (!fromSlot || !toSlot) return
 
-    const fromIsVariant = isVariantPhoto(fromSlot.assetId)
-    const toIsVariant = isVariantPhoto(toSlot.assetId)
+    // Buat susunan baru calon
+    const next = [...mediaSlots]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
 
-    // Kontrak band posisi: foto katalog 1-49, foto varian 50-79. Keduanya
-    // disimpan terpisah, jadi memindahkan foto varian ke tengah foto katalog
-    // (atau sebaliknya) tidak akan pernah tersimpan. Gerakan itu ditolak
-    // dengan pesan, bukan diterima lalu diam-diam dikembalikan saat simpan.
-    if (fromIsVariant !== toIsVariant) {
-      setOrderNotice(
-        fromIsVariant
-          ? "Foto varian hanya bisa diurutkan sesama foto varian. Untuk memindahkannya ke urutan katalog, ubah fotonya di Definisi Varian."
-          : "Foto katalog hanya bisa diurutkan sesama foto katalog. Foto varian menempel pada opsinya di Definisi Varian.",
-      )
+    // Periksa apakah urutan relatif sesama foto varian tetap konsisten
+    const variantInNext = next.filter((s) => isVariantPhoto(s.assetId)).map((s) => s.assetId)
+    const variantInOrig = mediaSlots.filter((s) => isVariantPhoto(s.assetId)).map((s) => s.assetId)
+    const variantOrderPreserved = variantInNext.every((id, idx) => id === variantInOrig[idx])
+
+    if (!variantOrderPreserved) {
+      setOrderNotice("Urutan sesama foto varian tetap mengikuti urutan varian. Media katalog & shared media bebas dipindah ke depan atau belakang varian.")
       return
     }
 
     setOrderNotice(null)
-    const next = mediaSlots.filter((_, i) => i !== from)
-    next.splice(to, 0, fromSlot)
     applySlotOrder(next)
   }
 
@@ -629,20 +651,21 @@ export default function ProductForm({
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Sub Model</label>
-                        <Select
+                        <SearchSelect
+                          id="product-design-variant"
+                          options={designOptions}
                           value={form.data.design_variant}
-                          onChange={(event) => form.setData("design_variant", event.target.value as never)}
-                          className="h-8 text-xs"
-                        >
-                          <option value="">Tanpa sub model</option>
-                          {options.designs
-                            .filter((option) => option.model === form.data.product_model)
-                            .map((option) => (
-                              <option key={option.model + ":" + option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                        </Select>
+                          onValueChange={(next) =>
+                            form.setData(
+                              "design_variant",
+                              next.trim().toUpperCase().replace(/\s+/g, "_") as never,
+                            )
+                          }
+                          placeholder="Tanpa sub model"
+                          searchPlaceholder="Cari atau ketik sub model"
+                          emptyMessage="Belum ada sub model untuk model ini."
+                          creatable
+                        />
                         {combinedErrors.design_variant ? <p className="mt-1 text-xs text-destructive">{combinedErrors.design_variant}</p> : null}
                       </div>
                     </div>
@@ -987,40 +1010,39 @@ export default function ProductForm({
                       </span>
 
                       {/* Tombol geser cepat kiri/kanan di hover */}
-                      <div className="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          type="button"
-                          disabled={
-                            mediaSlots[index - 1] === undefined
-                            || isVariantPhoto(mediaSlots[index - 1].assetId) !== isVariantPhoto(slot.assetId)
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            const prev = mediaSlots[index - 1]
-                            if (prev) moveSlot(index, index - 1)
-                          }}
-                          className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
-                          title="Geser ke kiri"
-                        >
-                          <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={
-                            mediaSlots[index + 1] === undefined
-                            || isVariantPhoto(mediaSlots[index + 1].assetId) !== isVariantPhoto(slot.assetId)
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            const next = mediaSlots[index + 1]
-                            if (next) moveSlot(index, index + 1)
-                          }}
-                          className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
-                          title="Geser ke kanan"
-                        >
-                          <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
-                        </button>
-                      </div>
+                      {(() => {
+                        const isVariant = isVariantPhoto(slot.assetId)
+                        const canLeft = index > 0 && (!isVariant || !isVariantPhoto(mediaSlots[index - 1].assetId))
+                        const canRight = index < mediaSlots.length - 1 && (!isVariant || !isVariantPhoto(mediaSlots[index + 1].assetId))
+                        return (
+                          <div className="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              type="button"
+                              disabled={!canLeft}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (canLeft) moveSlot(index, index - 1)
+                              }}
+                              className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                              title="Geser ke kiri"
+                            >
+                              <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!canRight}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (canRight) moveSlot(index, index + 1)
+                              }}
+                              className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                              title="Geser ke kanan"
+                            >
+                              <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                          </div>
+                        )
+                      })()}
 
                       <button
                         type="button"

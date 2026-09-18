@@ -10,14 +10,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Produk tanpa sub model (design_variant kosong).
+ * Produk tanpa sub model (design_variant kosong) dan sub model bebas.
  *
- * Perilaku yang berlaku saat ini: boleh. Form admin menyediakan opsi
- * "Tanpa sub model" dan validasi design_variant memakai `nullable`, sehingga
- * produk bisa hidup tanpa klasifikasi sub model.
+ * Kontrak owner 2026-09-18: sub model OPSIONAL dan sistem tidak ketat soal
+ * daftar sub model. Dua hal yang dikunci test ini:
+ *  1. Produk boleh hidup tanpa klasifikasi sub model (contoh nyata: Boven
+ *     Zigzag, tiga produk aktif dengan design_variant NULL).
+ *  2. Kode sub model baru boleh dipakai walau belum terdaftar di sub_models,
+ *     mis. ZIGZAG dengan ORNAMEN. Owner verbatim: "tidak masalah jika mungkin
+ *     ada zigzag ornamen, walaupun tidak ada secara nyata, artinya sistem
+ *     berlaku dengan benar".
  *
- * Test ini mengunci perilaku itu apa adanya supaya tidak berubah tanpa sengaja,
- * sekaligus mendokumentasikan konsekuensinya.
+ * Kode desain dinormalisasi ke huruf kapital supaya cocok dengan filter
+ * katalog (CatalogLabels::normalizeDesign dipakai di sisi storefront).
  */
 class ProductWithoutSubModelTest extends TestCase
 {
@@ -63,21 +68,88 @@ class ProductWithoutSubModelTest extends TestCase
         $this->assertNull($product->design_variant);
     }
 
-    public function test_sub_model_yang_tidak_cocok_dengan_model_tetap_ditolak(): void
+    public function test_kode_sub_model_baru_diterima_walau_belum_terdaftar(): void
     {
-        // Kode sub model yang tidak terdaftar untuk model mana pun harus ditolak.
+        // Kontrak 2026-09-18: sistem tidak ketat. ZIGZAG + ORNAMEN boleh dipakai
+        // walau sub model ORNAMEN belum terdaftar untuk ZIGZAG.
         $this->actingAs($this->admin())->post(route('admin.products.store'), [
             'workflow' => 'wizard',
-            'name' => 'Produk salah sub model',
+            'name' => 'Zigzag Ornamen Baru',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'ZIGZAG',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'archived',
+            'homepage_popular' => false,
+        ])->assertSessionHasNoErrors();
+
+        $product = Product::where('name', 'Zigzag Ornamen Baru')->firstOrFail();
+
+        $this->assertSame('ORNAMEN', $product->design_variant);
+    }
+
+    public function test_kode_sub_model_kode_asing_tetap_disimpan_apa_adanya(): void
+    {
+        // Kode yang sama sekali baru (tidak ada di sub_models) pun diterima.
+        $this->actingAs($this->admin())->post(route('admin.products.store'), [
+            'workflow' => 'wizard',
+            'name' => 'Produk sub model baru',
             'category_id' => 1,
             'product_category' => 'WINDOW',
             'product_model' => 'SWING',
             'design_variant' => 'KODE_TIDAK_TERDAFTAR',
             'status' => 'archived',
             'homepage_popular' => false,
-        ])->assertSessionHasErrors('design_variant');
+        ])->assertSessionHasNoErrors();
 
-        $this->assertNull(Product::where('name', 'Produk salah sub model')->first());
+        $product = Product::where('name', 'Produk sub model baru')->firstOrFail();
+
+        $this->assertSame('KODE_TIDAK_TERDAFTAR', $product->design_variant);
+    }
+
+    public function test_kode_sub_model_huruf_kecil_dinormalkan_ke_kapital(): void
+    {
+        // Filter katalog memakai kode kapital, jadi input huruf kecil pun
+        // disimpan kapital supaya produknya tidak hilang dari filter desain.
+        $this->actingAs($this->admin())->post(route('admin.products.store'), [
+            'workflow' => 'wizard',
+            'name' => 'Produk sub model huruf kecil',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'ZIGZAG',
+            'design_variant' => 'ornamen',
+            'status' => 'archived',
+            'homepage_popular' => false,
+        ])->assertSessionHasNoErrors();
+
+        $product = Product::where('name', 'Produk sub model huruf kecil')->firstOrFail();
+
+        $this->assertSame('ORNAMEN', $product->design_variant);
+    }
+
+    public function test_kode_sub_model_bebas_tetap_dinormalkan_saat_edit(): void
+    {
+        $product = Product::create([
+            'parent_sku' => 'RATANPASUB04',
+            'name' => 'Sub Model Bebas Edit',
+            'short_name' => 'Sub Bebas',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'ZIGZAG',
+            'design_variant' => null,
+            'status' => 'archived',
+        ]);
+
+        $this->actingAs($this->admin())->put(route('admin.products.update', $product), [
+            'name' => 'Sub Model Bebas Edit',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'ZIGZAG',
+            'design_variant' => 'seri baru',
+            'status' => 'archived',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('SERI_BARU', $product->fresh()->design_variant);
     }
 
     public function test_produk_tanpa_sub_model_tetap_dapat_dibuka_di_katalog(): void

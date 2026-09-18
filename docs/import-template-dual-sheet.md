@@ -34,7 +34,7 @@ format default, sesuai rancangan owner (2026-09-05).
 Sheet 1 "Data" (diproses importer) - 1 baris = 1 KOMBINASI varian jadi:
 
 - Identitas produk: name, description, product_category, product_model,
-  design_variant, specifications. Cukup di baris pertama produk; baris
+  design_variant (opsional), specifications. Cukup di baris pertama produk; baris
   lanjutan diwarisi. Format specifications: "Nama: Nilai" dipisah koma,
   contoh "Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch". Titik koma dan
   baris baru juga diterima. Koma di dalam nilai aman (koma hanya memulai

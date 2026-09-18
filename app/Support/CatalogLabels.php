@@ -190,7 +190,10 @@ class CatalogLabels
             return null;
         }
 
-        $key = strtoupper($code);
+        // Spasi jadi garis bawah, sama seperti normalizeModel: kode sub model
+        // diperlakukan sebagai kode, bukan label bebas. Kontrak 2026-09-18
+        // membolehkan kode sub model baru yang diketik admin di form produk.
+        $key = strtoupper(str_replace(' ', '_', $code));
         $key = self::DESIGN_ALIASES[$key] ?? $key;
 
         return $key;

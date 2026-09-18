@@ -88,6 +88,18 @@ Tiga perubahan dibalik atas perintah owner karena menyimpang dari instruksi.
   dirender lagi.
 - Sisa pekerjaan agent lain yang belum di-commit TIDAK disentuh; suite penuh 856 passed, 1 gagal
   (`MasalahSolusiAdminTest`, unggah foto Masalah-Solusi, di luar lingkup ini).
+- Penyempurnaan 2026-09-18 (permintaan owner): di PONSEL tombol zoom dan tombol panah
+  Sebelumnya/Berikutnya TIDAK ditampilkan sama sekali. Pembeli memakai gesti sepenuhnya: cubit dua
+  jari untuk zoom, ketuk dua kali untuk masuk atau keluar dari perbesaran, seret satu jari untuk
+  menggeser foto saat diperbesar, dan geser satu jari untuk pindah media saat skala utuh. Tombol hanya
+  dirender sejak lebar 1024px (`hidden lg:flex`) karena baru berguna saat ada tetikus. Penghitung
+  slide di ponsel dinaikkan ke `bottom-28` supaya tidak bertabrakan dengan tombol beli lengket.
+- Bug yang ditemukan saat menyembunyikan tombol: penanda "sudah menggeser" (`gesture.travel`) tidak
+  pernah dibersihkan setelah cubitan berakhir, sehingga ketuk dua kali berikutnya DIABAIKAN. Sebelum
+  tombol disembunyikan bug ini tidak terasa karena tombol Utuh masih tersedia; begitu tombol hilang,
+  pembeli kehilangan satu-satunya cara mengembalikan zoom. Diperbaiki di `onTouchEnd` (reset saat jari
+  terangkat penuh, dan saat sisa satu jari pada keadaan tidak diperbesar).
+
 ### 2026-09-18 - Preview media bisa di-zoom (ponsel dan desktop)
 
 Permintaan owner: "preview media harusnya juga bisa di zoom di mobile maupun desktop, tapi pastikan
@@ -99,8 +111,13 @@ Perubahan:
   ikut dapat: galeri foto produk, foto ulasan di PDP, dan halaman Ulasan.
 - Zoom desktop TIDAK memakai tombol +/- saja sebagai cara utama (itu yang terasa kuno). Cara utamanya:
   roda tetikus dan cubit trackpad (ctrl+wheel) yang memperbesar TEPAT di posisi kursor, sehingga
-  bagian yang dituju tidak melompat keluar layar. Tombol +/- dan "Utuh" tetap disediakan sebagai
-  pelengkap, plus pintasan papan tuntas `+` `-` `0`.
+  bagian yang dituju tidak melompat keluar layar. Tombol +/- tetap disediakan sebagai pelengkap,
+  plus pintasan papan tuntas `+` `-` `0`.
+- Penyempurnaan 2026-09-18 (permintaan owner): tombol Sebelumnya dan Berikutnya di lightbox memakai
+  GAYA YANG SAMA dengan tombol navigasi galeri foto produk dan carousel (`bg-foreground/75`, bulat
+  penuh, size-10, `hover:scale-105 hover:bg-foreground`), bukan lagi gaya kaca `bg-white/10`.
+  Tombol pemulih ukuran jadi IKON SAJA (ikon expand, tanpa teks "Utuh") dengan `title` sebagai
+  keterangan; `aria-label="Kembalikan ukuran foto"` dipertahankan supaya tetap terbaca pembaca layar.
 - Ponsel: cubit dua jari (berlabuh di titik tengah cubitan) dan ketuk dua kali untuk masuk ke 250%,
   ketuk dua kali lagi kembali ke 100%. Satu jari dipakai menggeser foto saat sedang diperbesar.
 - Batas zoom 100% sampai 400%, langkah tombol 50%, sasaran ketuk dua kali 250%.
@@ -1878,3 +1895,56 @@ Verifikasi:
 
 Cakupan aman: 107 nilai template mengandung koma, 24 mengandung titik dua; parser koma
 mempertahankan keduanya.
+
+### 2026-09-18 - Sub model produk opsional dan bebas (tidak diikat daftar sub_models)
+Konteks: saat memeriksa kolom XLSX specifications, muncul pertanyaan owner soal ZIGZAG
+yang tidak punya sub model. Owner menetapkan kontrak baru, verbatim: "artinya sistem jangan
+terlalu ketat disini. tidak masalah jika mungkin ada zigzag ornamen, walaupun tidak ada
+secara nyata, artinya sistem berlaku dengan benar. jika tanpa memilih ornamen atau polos
+atau sub model lain, maka dia memang tanpa sub model alias berdiri sendiri seperti zigzag."
+
+Sebelumnya `design_variant` divalidasi `Rule::exists('sub_models','code')->where('product_model', ...)`,
+jadi kode seperti ZIGZAG + ORNAMEN ditolak form admin walau storefront sudah permisif
+(`CatalogTaxonomy::availableDesignFilters()` membangun chip dari desain yang benar-benar ada,
+dan `CatalogController::designHasProducts()` mengalihkan URL desain kosong ke halaman model).
+
+Perubahan:
+- `app/Http/Controllers/Admin/ProductController.php` - validasi `design_variant` di store dan
+  update dilonggarkan menjadi `['nullable','string','max:100']` (tidak lagi `Rule::exists`).
+  Ditambah normalisasi `CatalogLabels::normalizeDesign()` sebelum simpan, supaya kode dari
+  form selalu tersimpan kapital dan cocok dengan filter katalog.
+- `app/Support/CatalogLabels.php` - `normalizeDesign()` kini melakukan `str_replace(' ','_')`
+  sebelum `strtoupper`, sama seperti `normalizeModel()`. Sebelumnya spasi dibiarkan, sehingga
+  "seri khusus" tersimpan sebagai "SERI KHUSUS" (berspasi) dan tidak pernah cocok dengan slug
+  filter desain. Data lama sudah seragam kapital tanpa spasi, jadi tidak ada baris yang berubah.
+- `resources/js/components/admin/ui/search-select.tsx` - prop baru `creatable`: baris
+  "Pakai <ketikan>" muncul di bawah hasil filter bila nilai yang diketik belum ada padanannya.
+  Nilai tersimpan dicocokkan tanpa peduli besar-kecil huruf, dan label nilai tersimpan yang
+  belum terdaftar tetap ditampilkan HANYA pada pemilih creatable.
+- `resources/js/lib/search-select.ts` - helper murni `withCreatableRow()` (dipakai komponen,
+  diuji Vitest tanpa render).
+- `resources/js/pages/Admin/ProductForm.tsx` - pemilih Sub Model memakai `SearchSelect`
+  creatable; bawaannya kosong (tidak lagi dipaksa "POLOS"), daftar berisi sub model milik
+  model terpilih plus "Tanpa sub model", dan kode bebas yang sudah tersimpan ikut ditampilkan.
+- `app/Exports/CatalogTemplateExport.php` + `docs/import-template-dual-sheet.md` - baris
+  panduan dipisah: `product_category / product_model` WAJIB, `design_variant` OPSIONAL dengan
+  penjelasan kode baru boleh diketik dan kosong berarti berdiri sendiri.
+
+Verifikasi:
+- Live MySQL pada produk 360 (RAG6L2GPMGTQ, Boven Zigzag): input "ornamen" -> tersimpan
+  ORNAMEN; "seri khusus" -> SERI_KHUSUS; "" -> NULL. Nama produk tidak tersentuh, data
+  dipulihkan ke NULL setelah uji.
+- Label storefront: ZIGZAG + ORNAMEN -> "Ornamen", productLine "Boven Zigzag Ornamen";
+  ZIGZAG + NULL -> productLine "Boven Zigzag" (tanpa suffix).
+- Tests: `ProductWithoutSubModelTest` 9 passed (16 assertions) - termasuk kode baru diterima,
+  kode asing disimpan apa adanya, huruf kecil dinormalkan, dan normalisasi saat edit.
+  Suite terkait (AdminProductWizard, AdminProductMediaVariant, ModelProductAdmin, ImportPipeline,
+  ImportCatalogIndonesia, FlashSalePeriod) total 30 passed (271 assertions).
+  Regresi luas `--filter="Catalog|Admin|Product"`: 402 passed, 1 gagal di MasalahSolusiAdminTest
+  yang berasal dari perubahan agent lain yang belum di-commit (terbukti lolos saat perubahan
+  itu di-stash, dan tidak ada berkas MasalahSolusi di perubahan ini).
+- Vitest `tests/frontend/search-select.test.ts` 15 passed (7 test baru untuk withCreatableRow).
+- tsc bersih; eslint ProductForm 16 masalah (9 error) identik sebelum dan sesudah patch, tidak
+  ada error baru; build Vite PASS.
+- Dropdown Excel kolom F tetap dibiarkan (showErrorMessage default false = saran, bukan
+  larangan), jadi tidak memblokir kode sub model baru.

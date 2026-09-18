@@ -1,7 +1,8 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 
 import { Icon } from "@/components/shared/icon"
-import { filterSearchOptions, type SearchSelectOption } from "@/lib/search-select"
+import { withCreatableRow, type SearchSelectOption, type SearchSelectRow } from "@/lib/search-select"
 import { cn } from "@/lib/utils"
 
 /**
@@ -10,6 +11,11 @@ import { cn } from "@/lib/utils"
  * papan tuntas ArrowUp/Down/Enter). Dipakai untuk daftar opsi yang bisa
  * melebihi segenggam, mis. pemilih model produk di form sub model.
  */
+/** Bantalan dalam popover: p-1 container + px-2.5 item + ikon status + border. */
+const POPOVER_INSET = 52
+/** Batas lebar popover supaya tidak menutupi seluruh layar pada opsi panjang. */
+const POPOVER_MAX_WIDTH = 420
+
 export function SearchSelect({
   id,
   options,
@@ -21,6 +27,7 @@ export function SearchSelect({
   disabled = false,
   error,
   className,
+  creatable = false,
 }: {
   id: string
   options: SearchSelectOption[]
@@ -32,39 +39,136 @@ export function SearchSelect({
   disabled?: boolean
   error?: string
   className?: string
+  /** Boleh memakai nilai baru yang diketik, bukan hanya opsi yang ada. */
+  creatable?: boolean
 }) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [activeIndex, setActiveIndex] = React.useState(0)
   const rootRef = React.useRef<HTMLDivElement>(null)
   const searchRef = React.useRef<HTMLInputElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  const popoverRef = React.useRef<HTMLDivElement>(null)
+  // Posisi awal WAJIB sudah fixed dan tersembunyi: kalau dibiarkan kosong ({}),
+  // render pertama portal menempel di akhir <body> sebagai elemen alir, jauh di
+  // bawah konten. Saat kotak pencarian auto-fokus, browser menggulir halaman ke
+  // sana sehingga halaman terlihat melompat turun begitu dropdown dibuka.
+  const [popoverStyle, setPopoverStyle] = React.useState<React.CSSProperties>({
+    position: "fixed",
+    top: 0,
+    left: 0,
+    visibility: "hidden",
+    zIndex: 60,
+  })
 
-  const filtered = React.useMemo(
-    () => filterSearchOptions(options, query),
-    [options, query],
+  // Baris tambahan "Pakai <ketikan>" muncul hanya bila creatable dan ketikan
+  // belum ada padanannya. Logikanya ada di helper murni supaya bisa diuji
+  // Vitest tanpa merender komponen.
+  const rows = React.useMemo<SearchSelectRow[]>(
+    () => withCreatableRow(options, query, creatable),
+    [options, query, creatable],
   )
 
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? ""
+  // Nilai tersimpan dicocokkan tanpa peduli besar-kecil huruf: server
+  // menormalkan kode ke kapital, sedangkan opsi bisa berlabel lain.
+  const selectedLabel =
+    options.find((option) => option.value === value)?.label ??
+    options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label ??
+    (creatable ? value : "")
 
   React.useEffect(() => {
     if (!open) return
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-        setQuery("")
-      }
+      const target = event.target as Node
+      if (rootRef.current?.contains(target)) return
+      if (popoverRef.current?.contains(target)) return
+      setOpen(false)
+      setQuery("")
     }
     document.addEventListener("mousedown", onPointerDown)
     return () => document.removeEventListener("mousedown", onPointerDown)
   }, [open])
 
-  React.useEffect(() => {
-    if (open) searchRef.current?.focus()
+  // Fokus kotak pencarian tanpa menggulir halaman. Fokus biasa memakai
+  // scroll-into-view sehingga halaman ikut melompat.
+  React.useLayoutEffect(() => {
+    if (!open) return
+    searchRef.current?.focus({ preventScroll: true })
   }, [open])
 
+  // Opsi disimpan di ref supaya callback posisi tidak perlu ikut dibuat ulang
+  // ketika induk mengirim array baru setiap render.
+  const optionsRef = React.useRef(options)
+  React.useEffect(() => {
+    optionsRef.current = options
+  }, [options])
+
+  // Popover lewat portal: hindari terpotong ancestor ber-overflow hidden.
+  // Lebar popover mengikuti label terpanjang, bukan lebar trigger: tanpa ini
+  // label panjang membungkus sampai beberapa baris sehingga daftar sulit dibaca.
+  // Trigger sengaja tidak ikut melebar karena opsi SearchSelect bisa ratusan.
+  const positionPopover = React.useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const preferUp = spaceBelow < 260 && rect.top > spaceBelow
+
+    // Font diambil dari elemen nyata, lalu lebar diukur lewat canvas supaya
+    // daftar ratusan opsi tidak menambah elemen pengukur ke DOM.
+    const sample = popoverRef.current?.querySelector<HTMLElement>('[role="option"] span')
+      ?? popoverRef.current?.querySelector<HTMLElement>('[role="option"]')
+      ?? trigger
+    const context = document.createElement("canvas").getContext("2d")
+    let contentWidth = 0
+    if (context) {
+      const style = window.getComputedStyle(sample)
+      context.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily]
+        .filter(Boolean)
+        .join(" ")
+      contentWidth = optionsRef.current.reduce(
+        (max, option) => Math.max(max, context.measureText(option.label).width),
+        0,
+      )
+    }
+
+    const wanted = contentWidth > 0
+      ? Math.min(Math.ceil(contentWidth) + POPOVER_INSET, POPOVER_MAX_WIDTH)
+      : 0
+    const width = Math.max(Math.round(rect.width), wanted)
+    // Popover bisa lebih lebar dari trigger, jadi tepinya dijaga di viewport.
+    const left = Math.max(
+      8,
+      Math.min(Math.round(rect.left), window.innerWidth - width - 8),
+    )
+
+    setPopoverStyle({
+      position: "fixed",
+      left,
+      width,
+      top: preferUp ? undefined : Math.round(rect.bottom + 4),
+      bottom: preferUp ? Math.round(window.innerHeight - rect.top + 4) : undefined,
+      visibility: "visible",
+      zIndex: 60,
+    })
+  }, [])
+
+  // useLayoutEffect: posisi dihitung sebelum browser menggambar, jadi tidak ada
+  // satu frame pun saat portal masih berada di posisi alir.
+  React.useLayoutEffect(() => {
+    if (!open) return
+    positionPopover()
+    window.addEventListener("scroll", positionPopover, true)
+    window.addEventListener("resize", positionPopover)
+    return () => {
+      window.removeEventListener("scroll", positionPopover, true)
+      window.removeEventListener("resize", positionPopover)
+    }
+  }, [open, positionPopover])
 
 
-  function commit(option: SearchSelectOption) {
+
+  function commit(option: SearchSelectRow) {
     onValueChange(option.value)
     setOpen(false)
     setQuery("")
@@ -80,13 +184,13 @@ export function SearchSelect({
     }
     if (event.key === "ArrowDown") {
       event.preventDefault()
-      setActiveIndex((current) => Math.min(filtered.length - 1, current + 1))
+      setActiveIndex((current) => Math.min(rows.length - 1, current + 1))
     } else if (event.key === "ArrowUp") {
       event.preventDefault()
       setActiveIndex((current) => Math.max(0, current - 1))
     } else if (event.key === "Enter") {
       event.preventDefault()
-      const option = filtered[activeIndex]
+      const option = rows[activeIndex]
       if (option) commit(option)
     } else if (event.key === "Escape") {
       setOpen(false)
@@ -98,6 +202,7 @@ export function SearchSelect({
     <div ref={rootRef} className={cn("relative", className)}>
       <button
         id={id}
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
@@ -136,11 +241,13 @@ export function SearchSelect({
         <p className="mt-1 text-xs font-medium text-destructive" role="alert">{error}</p>
       ) : null}
 
-      {open ? (
+      {open ? createPortal(
         <div
+          ref={popoverRef}
           role="listbox"
           aria-label={placeholder}
-          className="absolute left-0 top-full z-50 mt-1 w-full min-w-48 overflow-hidden rounded-md border border-border bg-surface shadow-xl"
+          style={popoverStyle}
+          className="overflow-hidden rounded-md border border-border bg-surface shadow-xl"
         >
           <div className="border-b border-border bg-surface p-1.5">
             <input
@@ -157,10 +264,10 @@ export function SearchSelect({
             />
           </div>
           <div className="max-h-60 divide-y divide-border/20 overflow-y-auto bg-surface p-1 text-xs">
-            {filtered.length === 0 ? (
+            {rows.length === 0 ? (
               <p className="p-2.5 text-center text-xs text-muted-foreground">{emptyMessage}</p>
             ) : (
-              filtered.map((option, index) => {
+              rows.map((option, index) => {
                 const isSelected = option.value === value
                 const isActive = index === activeIndex
                 return (
@@ -179,8 +286,18 @@ export function SearchSelect({
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => commit(option)}
                   >
-                    <span className="min-w-0 break-words leading-4">{option.label}</span>
-                    {isSelected ? (
+                    <span className="min-w-0 break-words leading-4">
+                      {option.custom ? (
+                        <>
+                          Pakai <span className="font-semibold">{option.label}</span>
+                        </>
+                      ) : (
+                        option.label
+                      )}
+                    </span>
+                    {option.custom ? (
+                      <Icon name="plus" className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    ) : isSelected ? (
                       <Icon name="check" className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
                     ) : null}
                   </button>
@@ -188,7 +305,8 @@ export function SearchSelect({
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )
