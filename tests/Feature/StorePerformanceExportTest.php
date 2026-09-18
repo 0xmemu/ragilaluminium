@@ -83,7 +83,7 @@ class StorePerformanceExportTest extends TestCase
                     'kpis' => [
                         [
                             'key' => 'cod_paid',
-                            'label' => 'COD Dibayar',
+                            'label' => 'COD Selesai',
                             'value' => 0.0,
                             'previous' => 0.0,
                             'change_percent' => 0.0,
@@ -278,7 +278,7 @@ class StorePerformanceExportTest extends TestCase
             fn ($r) => implode(' ', array_map(fn ($c) => (string) $c, $r)),
             $kpi->toArray(null, false, true, true)
         ));
-        $this->assertStringContainsString('COD Dibayar', $kpiText, 'KPI pindah ke sheet operasional');
+        $this->assertStringContainsString('COD Selesai', $kpiText, 'KPI pindah ke sheet operasional');
         $this->assertStringContainsString('Pengunjung yang Membeli', $kpiText);
         $this->assertStringContainsString('PENJUALAN', strtoupper($kpiText), 'judul section ikut pindah');
 

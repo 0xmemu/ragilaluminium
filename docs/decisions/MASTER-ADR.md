@@ -1197,6 +1197,19 @@ dengan paid_at pada periode (ledger).
    | Dana riil masuk dari ledger pembayaran (paid_at) | **Pembayaran Diterima** | `payments_received` |
    | Ongkir retur yang ditanggung toko | **Ongkir Retur (Toko)** | `return_shipping_cost_total` |
    | Pengembalian dana pada kasus retur selesai | **Refund Retur** | `refund_adjustments` |
+   | Pesanan COD yang barangnya sudah sampai ke pembeli | **COD Selesai** | `cod_paid` |
+
+6. **Label COD menyatakan keadaan BARANG, bukan keadaan uang.** Sistem tidak
+   punya skema pembayaran sistematis dan tidak melacak setoran uang dari kurir
+   J&T. Satu-satunya penanda COD lunas adalah kejadian barang sampai (status
+   `delivered` dari J&T, `ReturnService::markDeliveredAndSettleCod`). Karena itu
+   `cod_paid` bernama **COD Selesai**, bukan "COD Dibayar"/"COD Cair": menamainya
+   seolah uang mengaku ada pencatatan pembayaran yang tidak dimiliki sistem.
+   Diterima: "COD Selesai", "Total tagihan (COD)". Ditolak: "COD Dibayar",
+   "COD belum cair", "COD belum dibayar pembeli". Rujukan:
+   `docs/DOMAIN/checkout-pembayaran-cod.md` bagian 2 (kontrak 2026-09-11).
+   Catatan pengulangan: rename "COD Selesai" -> "COD Dibayar" pernah dilakukan
+   saat penyatuan istilah 2026-09-18 dan DIBATALKAN karena melanggar aturan ini.
 
 6. **Dilarang sinonim lain** untuk konsep di atas, termasuk singkatan Inggris
    ("Gross", "Net", "AOV" tanpa penjelasan) dan bentuk varian ("Omset",

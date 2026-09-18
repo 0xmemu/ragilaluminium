@@ -986,8 +986,8 @@ export default function StorePerformance({
 
                 <div className="rounded-md border border-border bg-card p-2.5">
                   <HoverHint
-                    label={kpiMap["cod_paid"]?.label ?? "COD Dibayar"}
-                    hint="Pembayaran tunai yang diserahterimakan saat paket tiba di pembeli."
+                    label={kpiMap["cod_paid"]?.label ?? "COD Selesai"}
+                    hint="Pesanan COD yang barangnya sudah sampai ke pembeli. Sistem tidak melacak setoran uang dari kurir."
                     className="text-xs text-muted-foreground"
                   />
                   <p className="mt-1 font-bold tabular-nums text-foreground">
