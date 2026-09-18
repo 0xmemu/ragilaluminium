@@ -223,7 +223,7 @@ export default function Checkout({
         {pageErrors.checkout ? (
           <Alert tone="danger" title={pageErrors.checkout} className="mb-4" />
         ) : null}
-        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="min-w-0 space-y-4">
             <CheckoutItemNotes items={checkoutItems} onChange={updateCheckoutNote} />
             <CheckoutAddressForm details={details ?? null} c={c} />
