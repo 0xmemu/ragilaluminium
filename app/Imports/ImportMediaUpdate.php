@@ -67,7 +67,10 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
 
             if ($parentSku === '' && $variantSku === '') {
-                throw new \RuntimeException('parent_sku/variant_sku kosong');
+                // Baris tanpa SKU = sheet non-data (Panduan) atau baris kosong:
+                // dilewati senyap, konsisten dgn importer katalog. Kesalahan
+                // SKU di sheet data tetap ditandai verifier sebelum eksekusi.
+                return;
             }
 
             $variant = $variantSku === ''

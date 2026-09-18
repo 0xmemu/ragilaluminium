@@ -138,6 +138,82 @@ class UpdateTemplateV2Test extends TestCase
         $this->assertSame(5, (int) $v->stock, "stok tidak berubah saat sel kosong");
     }
 
+    public function test_deskripsi_dan_spesifikasi_dari_header_v2(): void
+    {
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok", "Deskripsi Produk", "Spesifikasi"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "", "", "Deskripsi baru hasil update.", "Bahan: Aluminium, Kusen: 3 inch, Kualitas: Grade A"],
+        ]);
+
+        Excel::import(new ImportStockPriceUpdate($this->job("stock_price_update")->id), $path);
+
+        $p = $this->product->fresh();
+        $this->assertSame("Deskripsi baru hasil update.", $p->description, "deskripsi produk terbarui dari kolom v2");
+        $attrs = $p->attributes()->whereNull("product_variant_id")
+            ->pluck("attribute_value", "attribute_name")->all();
+        $this->assertSame(
+            ["Bahan" => "Aluminium", "Kusen" => "3 inch", "Kualitas" => "Grade A"],
+            $attrs,
+            "spesifikasi tersimpan sebagai atribut level produk"
+        );
+        $this->assertEquals(1000000.0, (float) $this->variant->fresh()->price, "harga tidak berubah saat sel kosong");
+    }
+
+    public function test_deskripsi_spesifikasi_kosong_tidak_mengubah(): void
+    {
+        $this->product->update(["description" => "Deskripsi awal."]);
+        \App\Models\ProductAttribute::create([
+            "product_id" => $this->product->id,
+            "attribute_name" => "Bahan",
+            "attribute_value" => "Aluminium",
+            "source" => "internal",
+        ]);
+
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok", "Deskripsi Produk", "Spesifikasi"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "", "", "", ""],
+        ]);
+
+        Excel::import(new ImportStockPriceUpdate($this->job("stock_price_update")->id), $path);
+
+        $p = $this->product->fresh();
+        $this->assertSame("Deskripsi awal.", $p->description, "deskripsi tidak berubah saat sel kosong");
+        $this->assertDatabaseHas("product_attributes", [
+            "product_id" => $this->product->id,
+            "attribute_name" => "Bahan",
+            "attribute_value" => "Aluminium",
+        ]);
+    }
+
+    public function test_sheet_panduan_tidak_menghasilkan_baris_gagal(): void
+    {
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Gambar per Varian", "Gambar 1 (utama)", "Gambar 2", "Media Bersama 1", "Media Bersama 2", "Gambar Hasil Pemasangan 1", "Gambar Hasil Pemasangan 2"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "https://media.333labs.tech/media-assets/varian/pdp.webp", "", "", "", "", "", ""],
+        ]);
+
+        // Template asli punya sheet kedua berisi panduan tanpa kolom SKU.
+        // Maatwebsite membaca semua sheet, jadi sheet itu WAJIB tidak
+        // menghasilkan baris gagal.
+        $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
+        $panduan = $ss->createSheet();
+        $panduan->setTitle("Panduan Update Media");
+        $panduan->setCellValue("A1", "2");
+        $panduan->setCellValue("B1", "Ragil Aluminium");
+        $panduan->setCellValue("C1", "Panduan Update Media");
+        $panduan->setCellValue("A2", "URL foto utama katalog produk.");
+        $panduan->setCellValue("B2", "YA");
+        $panduan->setCellValue("C2", "Gambar 1 (utama)");
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
+
+        $job = $this->job("media_update");
+        Excel::import(new ImportMediaUpdate($job->id), $path);
+        $job->refresh();
+
+        $this->assertSame(0, (int) $job->failed_rows, "sheet Panduan tidak boleh menghasilkan baris gagal");
+        $this->assertSame(1, (int) $job->success_rows, "baris data di sheet pertama tetap diproses");
+    }
+
     public function test_sku_varian_yang_diubah_admin_ditolak(): void
     {
         $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok", "Deskripsi Produk", "Spesifikasi"];

@@ -355,11 +355,8 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
     /**
      * Spesifikasi disimpan sebagai atribut produk.
      *
-     * Pemisah: titik koma atau baris baru selalu memulai baris baru. Koma juga
-     * pemisah resmi, tetapi banyak nilai katalog mengandung koma (mis.
-     * "Powder coating interpon (pilihan: hitam, putih)"), sehingga potongan
-     * koma hanya dianggap pasangan baru bila memuat titik dua; kalau tidak,
-     * potongan itu disambungkan kembali ke nilai sebelumnya.
+     * Aturan pemisahan dipusatkan di SpecificationsParser supaya importer
+     * update memakai aturan yang sama persis dengan import katalog.
      */
     protected function syncAttributes(Product $product, array $data): void
     {
@@ -370,37 +367,8 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             return;
         }
 
-        $attributes = [];
-        $push = static function (string $part) use (&$attributes): void {
-            foreach (preg_split("/,/", $part) ?: [] as $chunk) {
-                if (trim($chunk) === "") {
-                    continue;
-                }
-
-                if (str_contains($chunk, ":")) {
-                    [$nama, $nilai] = array_pad(explode(":", $chunk, 2), 2, null);
-                    if (trim((string) $nama) !== "" && trim((string) $nilai) !== "") {
-                        $attributes[] = ["name" => trim($nama), "value" => trim($nilai)];
-                    }
-
-                    continue;
-                }
-
-                $last = count($attributes) - 1;
-                if ($last < 0) {
-                    continue;
-                }
-                $attributes[$last]["value"] = rtrim((string) $attributes[$last]["value"]).", ".trim($chunk);
-            }
-        };
-
-        foreach (preg_split("/[;
-]+/", $raw) ?: [] as $part) {
-            $push((string) $part);
-        }
-
         $created = 0;
-        foreach ($attributes as $attr) {
+        foreach (\App\Support\SpecificationsParser::parse($raw) as $attr) {
             if ($attr["name"] === "" || $attr["value"] === "") {
                 continue;
             }

@@ -76,6 +76,22 @@
     --mobile-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
     /* Sticky commerce CTA strip above bottom nav */
     --mobile-sticky-cta-height: 5rem;
+    /* Posisi atas toast. Toast duduk di area halaman, BUKAN menimpa header
+       atau menu navigasi (keluhan owner 2026-09-19: toast tampak mengambang
+       di antara navbar dan isi halaman).
+       Di bawah md breadcrumb disembunyikan, jadi acuan terdekat adalah judul
+       halaman. Sejak md toast turun sampai bawah breadcrumb.
+       Nilai diukur langsung di browser dan ditulis dalam PIXEL, bukan rem:
+       root font-size admin 14px sedangkan storefront 16px, jadi rem
+       menghasilkan piksel berbeda dan posisi toast meleset. Lihat docs/MEMORY.md. */
+    --toast-top: 120px;
+  }
+
+  /* Sejak md: header 48px + menu navigasi 44px + breadcrumb 44px + jarak 12px. */
+  @media (min-width: 768px) {
+    :root {
+      --toast-top: 156px;
+    }
   }
 
   /* Admin dark: turunan sidebar graphite #131212 (netral), bukan mineral hijau hue 150. */
@@ -124,6 +140,7 @@
      ========================================================================== */
   html.admin-shell {
     color-scheme: dark;
+    --toast-top: 96px;
     --background: 0 0% 7%; /* #121212 kanvas */
     --foreground: 0 0% 96%;
     --action-foreground: 0 0% 94%;

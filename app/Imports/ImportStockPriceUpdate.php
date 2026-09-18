@@ -5,16 +5,21 @@ namespace App\Imports;
 use App\Models\ImportJob;
 use App\Models\ImportJobRow;
 use App\Models\Product;
+use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
+use App\Services\AttributeTemplateService;
+use App\Support\SpecificationsParser;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Row;
 
 /**
- * Mode B: Update Harga & Stok (stock_price_update).
+ * Mode B: Update Produk (stock_price_update).
  *
- * Hanya mengubah price & stock (kolom lain DIABAIKAN walau ada di file).
+ * Mengubah harga & stok per varian, plus deskripsi dan spesifikasi produk
+ * dari template v2 (diterapkan dari baris pertama grup yang sukses; sel
+ * kosong berarti tidak mengubah).
  * SKU parent/variant yang tidak dikenal -> baris GAGAL "SKU tidak ditemukan",
  * TIDAK PERNAH membuat produk/varian baru.
  * stock_mode file/manual mengikuti aturan yang sama seperti import katalog.
@@ -22,6 +27,9 @@ use Maatwebsite\Excel\Row;
 class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
 {
     protected bool $started = false;
+
+    /** Produk yang detailnya sudah diterapkan di job ini: [productId] => true. */
+    protected array $detailApplied = [];
 
     public function __construct(public int $jobId)
     {
@@ -62,7 +70,10 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
 
             if ($parentSku === '' && $variantSku === '') {
-                throw new \RuntimeException('parent_sku/variant_sku kosong');
+                // Baris tanpa SKU = sheet non-data (Panduan) atau baris kosong:
+                // dilewati senyap, konsisten dgn importer katalog. Kesalahan
+                // SKU di sheet data tetap ditandai verifier sebelum eksekusi.
+                return;
             }
 
             $variant = $variantSku === ''
@@ -117,6 +128,14 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
                 );
             }
 
+            // Detail produk (template v2): deskripsi dan spesifikasi berlaku
+            // untuk satu produk. Diterapkan dari baris pertama grup yang
+            // sukses; sel kosong berarti tidak mengubah (kontrak update).
+            if (! isset($this->detailApplied[$product->id])) {
+                $this->detailApplied[$product->id] = true;
+                $this->syncDetail($product, $data);
+            }
+
             ImportJobRow::create([
                 'import_job_id' => $this->jobId,
                 'row_number' => $rowIndex,
@@ -151,5 +170,49 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
         }
 
         return (float) str_replace(',', '.', (string) $raw);
+    }
+
+    /**
+     * Terapkan deskripsi dan spesifikasi dari baris update ke produk.
+     *
+     * Atribut level varian tidak tersentuh. Spesifikasi menggantikan seluruh
+     * atribut level produk dengan hasil parsing terbaru; bila tidak ada
+     * pasangan "Nama: Nilai" yang sah, pakai template per sub model
+     * (ADR-019) seperti importer katalog.
+     */
+    protected function syncDetail(Product $product, array $data): void
+    {
+        $description = trim((string) ($data['description'] ?? ''));
+        $specsRaw = trim((string) ($data['specifications'] ?? ''));
+
+        if ($description !== '') {
+            $product->description = $description;
+            $product->save();
+        }
+
+        if ($specsRaw === '') {
+            return;
+        }
+
+        $product->attributes()->whereNull('product_variant_id')->delete();
+        $created = 0;
+        foreach (SpecificationsParser::parse($specsRaw) as $attr) {
+            ProductAttribute::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'product_variant_id' => null,
+                    'attribute_name' => $attr['name'],
+                ],
+                [
+                    'attribute_value' => $attr['value'],
+                    'source' => 'internal',
+                ],
+            );
+            $created++;
+        }
+
+        if ($created === 0) {
+            app(AttributeTemplateService::class)->applyToProduct($product);
+        }
     }
 }
