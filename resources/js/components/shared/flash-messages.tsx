@@ -43,7 +43,7 @@ function FlashMessagesInner({
 
   return (
     <div
-      className="fixed inset-x-3 top-[var(--toast-top)] z-toast mx-auto flex w-auto max-w-lg flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:w-full lg:-translate-x-1/2"
+      className="fixed inset-x-3 top-[var(--toast-top)] z-toast mx-auto flex w-auto max-w-xl flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:w-full lg:-translate-x-1/2"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -51,7 +51,7 @@ function FlashMessagesInner({
         <Alert
           tone="success"
           title={success ?? undefined}
-          className={cn(TOAST_CARD_CLASS, "ml-auto w-full max-w-xl")}
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, success: true }))}
         />
       ) : null}
@@ -59,7 +59,7 @@ function FlashMessagesInner({
         <Alert
           tone="info"
           title={status ?? undefined}
-          className={cn(TOAST_CARD_CLASS, "ml-auto w-full max-w-xl")}
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, status: true }))}
         />
       ) : null}
@@ -67,7 +67,7 @@ function FlashMessagesInner({
         <Alert
           tone="danger"
           title={error ?? undefined}
-          className={cn(TOAST_CARD_CLASS, "ml-auto w-full max-w-xl")}
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, error: true }))}
         />
       ) : null}

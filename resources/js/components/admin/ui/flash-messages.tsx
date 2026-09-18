@@ -51,7 +51,7 @@ function FlashMessagesInner({
         <Alert
           tone="success"
           title={success ?? undefined}
-          className={cn(TOAST_CARD_CLASS)}
+          className={cn(TOAST_CARD_CLASS, "mx-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, success: true }))}
         />
       ) : null}
@@ -59,7 +59,7 @@ function FlashMessagesInner({
         <Alert
           tone="info"
           title={status ?? undefined}
-          className={cn(TOAST_CARD_CLASS)}
+          className={cn(TOAST_CARD_CLASS, "mx-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, status: true }))}
         />
       ) : null}
@@ -67,7 +67,7 @@ function FlashMessagesInner({
         <Alert
           tone="danger"
           title={error ?? undefined}
-          className={cn(TOAST_CARD_CLASS)}
+          className={cn(TOAST_CARD_CLASS, "mx-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, error: true }))}
         />
       ) : null}

@@ -111,6 +111,19 @@ Acuan tampilannya notifikasi langsung admin (`live-notification-manager.tsx`).
   seperti `z-[9999]` dilarang.
 - Durasi tampil 4 detik untuk pesan hasil aksi. Durasi lain hanya bila ada
   alasan kuat, misalnya jendela undo yang butuh waktu memutuskan.
+- **Lebar mengikuti isi, bukan lebar kontainer.** Kartu memakai `w-fit` dengan
+  batas `max-w-full` (atau `max-w-xl` untuk teks panjang). Dilarang memberi
+  `w-full` pada kartu: itu memaksa kartu selebar kontainer sehingga pesan pendek
+  menyisakan ruang kosong besar di dalamnya (dikeluhkan owner 2026-09-19).
+  Sebelum perbaikan, "Produk ditambahkan ke keranjang." memakai kartu 576px
+  padahal teksnya hanya perlu sekitar 270px.
+- Kontainer pembungkus tetap boleh selebar halaman karena hanya mengatur posisi;
+  yang menyesuaikan isi adalah kartunya. Kartu yang mengecil tetap diletakkan di
+  tengah pembungkus (`mx-auto`), kecuali notifikasi langsung admin yang memang
+  rata kanan (`ml-auto`).
+- Batas lebar dibuat supaya teks panjang membungkus, bukan memanjang satu baris:
+  storefront `max-w-full` di dalam pembungkus `max-w-xl`, admin `max-w-full` di
+  dalam pembungkus `max-w-lg` (768px), notifikasi langsung admin lebar `max-w-sm`.
 - Bentuk: kartu notifikasi boleh punya slot ikon, judul, isi, tautan tindakan,
   dan tombol tutup, mengikuti struktur notifikasi langsung admin.
 

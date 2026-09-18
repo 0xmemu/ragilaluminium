@@ -12,6 +12,10 @@
  * - `bg-surface` dipakai di terang maupun gelap; nilainya sudah putih di
  *   storefront dan gelap raised di panel admin.
  *
+ * Lebar TIDAK diatur di sini. Pemakainya memakai `w-fit` + batas `max-w-*`,
+ * supaya kartu menyesuaikan panjang isi: pesan pendek menghasilkan kartu pendek
+ * tanpa ruang kosong, pesan panjang tetap dibatasi dan teksnya membungkus.
+ *
  * Warna teks TIDAK dimasukkan ke sini: Alert menentukan warna teks dan ikon
  * per nada (success, danger, info). Menambahkan `text-foreground` di sini akan
  * menimpanya lewat tailwind-merge dan menghapus makna warnanya.

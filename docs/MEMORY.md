@@ -2217,3 +2217,35 @@ Verifikasi terukur (elemen uji dengan kelas `top-[var(--toast-top)]`, dan toast 
 Catatan alat uji: toast yang durasinya 4 detik sering lolos dari penangkapan karena tab browser
 tidak aktif di depan sehingga promise di halaman menggantung. Pengukuran akhir memakai elemen uji
 berkelas sama untuk mendapat nilai pasti, lalu dikonfirmasi sekali dengan toast undo asli.
+
+### 2026-09-19 - Toast: lebar menyesuaikan isi, ruang kosong dihapus
+Arahan owner: "dimensi toast jangan menyisakan space kosong di dalam toast. sesuaikan dengan isi dan
+ukuran text, fleksible tiap toast".
+
+Akar masalah: kartu toast diberi `w-full` sehingga selalu selebar kontainernya, sedangkan pesannya
+pendek. Terukur di halaman keranjang desktop sebelum perbaikan, pesan "Produk ditambahkan ke
+keranjang." memakai kartu 576px padahal teksnya hanya perlu sekitar 270px, jadi ada sekitar 300px
+ruang kosong di dalam kartu.
+
+Perubahan:
+- Flash storefront dan toast undo keranjang: kartu dari `w-full max-w-xl` menjadi `w-fit max-w-full`.
+  Pembungkusnya tetap `max-w-xl` (dinaikkan dari `max-w-lg` supaya pesan panjang tidak membungkus
+  terlalu cepat).
+- Flash admin: kartu dari tanpa kelas lebar menjadi `mx-auto w-fit max-w-full` supaya kartu yang
+  mengecil tetap di tengah.
+- Notifikasi langsung admin (acuan): kartu dari `w-fit` + rata kanan (`ml-auto`) supaya tidak lagi
+  dipaksa selebar `max-w-sm` saat isinya pendek.
+- `lib/toast.ts` mendokumentasikan bahwa lebar SENGAJA tidak diatur di kelas bersama, karena tiap
+  pemakai punya batas pembungkus berbeda.
+
+Verifikasi terukur (lebar kartu, bukan lebar kontainer):
+- Storefront pesan pendek 330px (sebelumnya 576px), pesan sedang 543px, pesan panjang membungkus
+  pada 1265px dengan sisa kanan 16px yang merupakan padding, bukan ruang kosong.
+- Toast undo keranjang 339px, terpotret rapi bersama ikon dan tombol Urungkan.
+- Flash admin 257px untuk pesan pendek dan 420px untuk pesan panjang, keduanya tetap tepat di
+  tengah kontainer.
+- Notifikasi langsung admin 312px, sebelumnya dipaksa selebar 360px.
+- tsc bersih, build Vite PASS.
+
+Catatan: untuk menguji notifikasi langsung admin saya menyisipkan notifikasi uji dan sudah
+menghapusnya. Jumlah notifikasi kembali 30 dengan id tertinggi 52, nol sisa baris uji.

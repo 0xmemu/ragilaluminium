@@ -291,7 +291,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
         return (
           <div
             key={toast.id}
-            className="pointer-events-auto group relative flex items-start gap-3 rounded-xl bg-surface p-3.5 text-foreground shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-top-4"
+            className="pointer-events-auto group relative ml-auto flex w-fit max-w-full items-start gap-3 rounded-xl bg-surface p-3.5 text-foreground shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-top-4"
           >
             {/* Ikon dengan animasi ping badge */}
             <div className="relative mt-0.5 shrink-0">
