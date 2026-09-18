@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exports\CatalogTemplateExport;
 use App\Exports\MediaUpdateTemplateExport;
+use App\Exports\ProductImportTemplateExport;
+use App\Exports\ProductUpdateTemplateExport;
 use App\Exports\StockPriceTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessCatalogImport;
 use App\Support\MediaNamer;
 use App\Models\ImportJob;
 use App\Services\ActivityLogService;
+use App\Support\CatalogDownloadFilter;
 use App\Support\ExportSafety;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\RedirectResponse;
@@ -150,15 +153,43 @@ class ImportJobController extends Controller
             'previewUrl' => route('admin.imports.preview-catalog'),
             'previewUpdateUrl' => route('admin.imports.preview-update'),
             'csrf' => csrf_token(),
-            'internalTemplateUrl' => route('admin.imports.internal-template'),
+            'productImportTemplateUrl' => route('admin.imports.product-import-template'),
             'stockPriceTemplateUrl' => route('admin.imports.stock-price-template'),
             'mediaUpdateTemplateUrl' => route('admin.imports.media-update-template'),
+            // Pilihan filter unduhan. Endpoint update menerima parameter ini
+            // sehingga admin dapat mengunduh hanya bagian yang dibutuhkan.
+            'downloadFilters' => [
+                'kategori' => self::distinctProductValues('product_category'),
+                'model' => self::distinctProductValues('product_model'),
+                'sub_model' => self::distinctProductValues('design_variant'),
+            ],
             'types' => [
                 ['value' => 'catalog_import', 'label' => 'Import Katalog (produk & varian baru, lengkap)'],
                 ['value' => 'stock_price_update', 'label' => 'Update Harga & Stok (hanya harga/stok; media tidak disentuh)'],
                 ['value' => 'media_update', 'label' => 'Update Media (hanya foto/video; harga & stok tidak disentuh)'],
             ],
         ]);
+    }
+
+    /**
+     * Nilai unik sebuah kolom produk untuk pilihan filter unduhan.
+     *
+     * Dibaca dari database, bukan daftar tetap, supaya kategori, model, atau
+     * sub model baru langsung muncul di pilihan tanpa mengubah kode.
+     *
+     * @return list<string>
+     */
+    private static function distinctProductValues(string $column): array
+    {
+        return \App\Models\Product::query()
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column)
+            ->map(static fn ($v): string => (string) $v)
+            ->values()
+            ->all();
     }
 
     public function store(Request $request): RedirectResponse
@@ -460,19 +491,48 @@ class ImportJobController extends Controller
         ]);
     }
 
-    public function downloadInternalTemplate(): BinaryFileResponse
+    /** Template Import Produk v2: produk dan varian baru. */
+    public function downloadProductImportTemplate(): BinaryFileResponse
     {
-        return Excel::download(new CatalogTemplateExport(), 'template-import-katalog.xlsx');
+        return Excel::download(new ProductImportTemplateExport(), 'template-import-produk.xlsx');
     }
 
-    public function downloadStockPriceTemplate(): BinaryFileResponse
+    /**
+     * Template Update Produk v2: harga, stok, deskripsi, spesifikasi.
+     *
+     * Menerima filter yang sama dengan menu import, sehingga admin dapat
+     * mengunduh hanya bagian yang dia butuhkan (mis. satu model produk).
+     */
+    public function downloadStockPriceTemplate(Request $request): BinaryFileResponse
     {
-        return Excel::download(new StockPriceTemplateExport(), 'template-update-harga-stok.xlsx');
+        $filter = CatalogDownloadFilter::fromRequest($request->query());
+
+        return Excel::download(
+            new ProductUpdateTemplateExport($filter),
+            $this->downloadFileName('update-produk', $filter)
+        );
     }
 
-    public function downloadMediaUpdateTemplate(): BinaryFileResponse
+    /** Template Update Media v2: foto produk dan varian. */
+    public function downloadMediaUpdateTemplate(Request $request): BinaryFileResponse
     {
-        return Excel::download(new MediaUpdateTemplateExport(), 'template-update-media.xlsx');
+        $filter = CatalogDownloadFilter::fromRequest($request->query());
+
+        return Excel::download(
+            new MediaUpdateTemplateExport($filter),
+            $this->downloadFileName('update-media', $filter)
+        );
+    }
+
+    /**
+     * Nama berkas unduhan memuat penanda filter supaya admin yang mengunduh
+     * beberapa bagian sekaligus tidak menimpa berkas satu sama lain.
+     */
+    private function downloadFileName(string $jenis, CatalogDownloadFilter $filter): string
+    {
+        $suffix = $filter->fileSuffix();
+
+        return 'template-'.$jenis.($suffix !== '' ? '-'.$suffix : '').'.xlsx';
     }
     public function previewInternal(Request $request)
     {

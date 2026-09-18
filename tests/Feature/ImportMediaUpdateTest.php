@@ -207,26 +207,40 @@ class ImportMediaUpdateTest extends TestCase
         $this->assertSame(1, ImportJobRow::where('import_job_id', $job->id)->where('status', 'skipped')->count());
     }
 
-    public function test_template_media_update_xlsx(): void
+    public function test_template_media_update_v2(): void
     {
         $raw = Excel::raw(new MediaUpdateTemplateExport(), \Maatwebsite\Excel\Excel::XLSX);
-        $path = tempnam(sys_get_temp_dir(), 'tpl_m').'.xlsx';
+        $path = tempnam(sys_get_temp_dir(), "tpl_m").".xlsx";
         file_put_contents($path, $raw);
         $ss = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
 
-        // Kontrak 09-06: 2 sheet (Data + Panduan; contoh di dalam Data dgn
-        // penanda CATATAN), header adaptif = blok media export (image_variation
-        // sebelum shared_media, kolom _N sesuai pemakaian).
-        $this->assertSame(['Data', 'Panduan'], $ss->getSheetNames());
-        $first = $ss->getSheet(0)->toArray()[0];
-        $this->assertSame('parent_sku', $first[0]);
-        $this->assertSame('variant_sku', $first[1]);
-        $this->assertSame('image_1', $first[2]);
-        // Header template harus identik blok media sheet export B.
-        $exp = (new \App\Exports\ProductExportFullUpdateSheet(\App\Models\Product::query()))->headings();
-        $expMedia = array_slice($exp, array_search('image_1', $exp));
-        $tplMedia = array_slice($first, array_search('image_1', $first));
-        $this->assertSame($expMedia, $tplMedia);
-        $this->assertNotContains('installation_slots', $first);
+        // Kontrak v2 (2026-09-18): dua sheet tanpa Contoh, header Bahasa
+        // Indonesia, empat kolom identitas dikunci, kolom media dikosongkan.
+        $this->assertSame(["Update Media", "Panduan"], $ss->getSheetNames());
+
+        $ws = $ss->getSheet(0);
+        $this->assertSame("SKU Produk", (string) $ws->getCell("A1")->getValue());
+        $this->assertSame("Nama Produk", (string) $ws->getCell("B1")->getValue());
+        $this->assertSame("SKU Varian", (string) $ws->getCell("C1")->getValue());
+        $this->assertSame("Variasi", (string) $ws->getCell("D1")->getValue());
+        $this->assertSame("Gambar per Varian", (string) $ws->getCell("E1")->getValue());
+        $this->assertSame("Gambar 1 (utama)", (string) $ws->getCell("F1")->getValue());
+
+        // Empat kolom identitas wajib terkunci pada baris data. Template
+        // kosong tetap punya baris 2 supaya rentang kunci punya tempat, jadi
+        // baris 2 dipakai sebagai acuan (bukan baris 1 yang isinya header).
+        $ws->setCellValue("A2", "CONTOH-SKU");
+        $raw2 = Excel::raw(new MediaUpdateTemplateExport(), \Maatwebsite\Excel\Excel::XLSX);
+        $path2 = tempnam(sys_get_temp_dir(), "tpl_m2").".xlsx";
+        file_put_contents($path2, $raw2);
+        $ss2 = \PhpOffice\PhpSpreadsheet\IOFactory::load($path2);
+        $ws2 = $ss2->getSheet(0);
+        foreach (["A", "B", "C", "D"] as $kolom) {
+            $this->assertSame(
+                "protected",
+                $ws2->getCell($kolom . "2")->getStyle()->getProtection()->getLocked(),
+                "kolom identitas " . $kolom . " wajib terkunci"
+            );
+        }
     }
 }

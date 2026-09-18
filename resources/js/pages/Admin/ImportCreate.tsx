@@ -56,9 +56,10 @@ export default function ImportCreate({
   previewUrl,
   previewUpdateUrl,
   csrf,
-  internalTemplateUrl,
+  productImportTemplateUrl,
   stockPriceTemplateUrl,
   mediaUpdateTemplateUrl,
+  downloadFilters,
   types,
   backUrl,
 }: {
@@ -67,11 +68,31 @@ export default function ImportCreate({
   previewUrl: string
   previewUpdateUrl: string
   csrf: string
-  internalTemplateUrl: string
+  productImportTemplateUrl: string
   stockPriceTemplateUrl: string
   mediaUpdateTemplateUrl: string
+  downloadFilters: {
+    kategori: string[]
+    model: string[]
+    sub_model: string[]
+  }
   types: SelectOption[]
 }) {
+  // Filter unduhan template update. Dikirim sebagai query string supaya
+  // admin mengunduh hanya bagian katalog yang dia butuhkan.
+  const [downloadKategori, setDownloadKategori] = useState("")
+  const [downloadModel, setDownloadModel] = useState("")
+  const [downloadSubModel, setDownloadSubModel] = useState("")
+
+  function buildTemplateUrl(baseUrl: string): string {
+    const params = new URLSearchParams()
+    if (downloadKategori) params.set("kategori", downloadKategori)
+    if (downloadModel) params.set("model", downloadModel)
+    if (downloadSubModel) params.set("sub_model", downloadSubModel)
+    const query = params.toString()
+    return query ? `${baseUrl}?${query}` : baseUrl
+  }
+
   const form = useForm<{
     type: string
     file: File | null
@@ -170,20 +191,20 @@ export default function ImportCreate({
     <AdminLayout
       backUrl={backUrl}
       title="Import Produk"
-      description="Tiga mode: Import Katalog (buat/perbarui produk lengkap), Update Harga & Stok (ubah price/stock saja), dan Update Media (ganti atau tambah foto via URL)."
+      description="Tiga mode: Import Produk (buat produk dan varian baru), Update Produk (ubah harga, stok, deskripsi), dan Update Media (ganti foto via URL). Template update dapat disaring per kategori, model, atau sub model."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {form.data.type === "stock_price_update" ? (
             <Button asChild variant="secondary">
-              <a href={stockPriceTemplateUrl} download>Unduh Template Excel</a>
+              <a href={buildTemplateUrl(stockPriceTemplateUrl)} download>Unduh Template Update Produk</a>
             </Button>
           ) : form.data.type === "media_update" ? (
             <Button asChild variant="secondary">
-              <a href={mediaUpdateTemplateUrl} download>Unduh Template Excel</a>
+              <a href={buildTemplateUrl(mediaUpdateTemplateUrl)} download>Unduh Template Update Media</a>
             </Button>
           ) : (
             <Button asChild variant="secondary">
-              <a href={internalTemplateUrl} download>Unduh Template Excel</a>
+              <a href={productImportTemplateUrl} download>Unduh Template Import Produk</a>
             </Button>
           )}
           <Button asChild variant="secondary">
@@ -230,6 +251,53 @@ export default function ImportCreate({
                   {form.errors.type ? <p className="mt-1 text-xs text-destructive">{form.errors.type}</p> : null}
                 </td>
               </tr>
+              {form.data.type === "stock_price_update" || form.data.type === "media_update" ? (
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Filter unduhan template
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      value={downloadKategori}
+                      onChange={(event) => setDownloadKategori(event.target.value)}
+                      className="h-8 w-40 text-xs"
+                      aria-label="Filter kategori unduhan"
+                    >
+                      <option value="">Semua kategori</option>
+                      {downloadFilters.kategori.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={downloadModel}
+                      onChange={(event) => setDownloadModel(event.target.value)}
+                      className="h-8 w-44 text-xs"
+                      aria-label="Filter model unduhan"
+                    >
+                      <option value="">Semua model</option>
+                      {downloadFilters.model.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={downloadSubModel}
+                      onChange={(event) => setDownloadSubModel(event.target.value)}
+                      className="h-8 w-36 text-xs"
+                      aria-label="Filter sub model unduhan"
+                    >
+                      <option value="">Semua sub model</option>
+                      {downloadFilters.sub_model.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Filter ini menyaring isi template update. Unduh tanpa filter berarti seluruh katalog.
+                  </p>
+                </td>
+              </tr>
+              ) : null}
               {form.data.type !== "media_update" ? (
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">

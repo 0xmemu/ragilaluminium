@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\BerandaController;
+use App\Http\Controllers\Admin\CtaSettingsController;
+use App\Http\Controllers\Admin\BerandaPopularController;
 use App\Http\Controllers\Admin\CaraPemesananController;
 use App\Http\Controllers\Admin\ApaKataController;
 use App\Http\Controllers\Admin\CodSettingsController;
@@ -267,7 +269,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('media/products/search', [ProductMediaController::class, 'searchProducts'])->name('media.products.search');
 
     // Imports
-    Route::get('imports/internal-template', [ImportJobController::class, 'downloadInternalTemplate'])->name('imports.internal-template');
+    // Tiga template katalog v2. Endpoint update menerima filter yang sama
+    // dengan menu import, supaya admin mengunduh hanya bagian yang dibutuhkan.
+    Route::get('imports/product-import-template', [ImportJobController::class, 'downloadProductImportTemplate'])->name('imports.product-import-template');
     Route::get('imports/stock-price-template', [ImportJobController::class, 'downloadStockPriceTemplate'])->name('imports.stock-price-template');
     Route::get('imports/media-update-template', [ImportJobController::class, 'downloadMediaUpdateTemplate'])->name('imports.media-update-template');
     Route::post('imports/preview', [ImportJobController::class, 'previewInternal'])->name('imports.preview');
@@ -298,8 +302,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('orders/{order}/payments', [PaymentController::class, 'byOrder'])->name('orders.payments');
     Route::post('orders/{order}/payments', [PaymentController::class, 'store'])->name('payments.store');
-    Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+    // Route statis WAJIB didaftarkan sebelum route ber-parameter: kalau
+    // payments/{payment} lebih dulu, "bank-details" tertangkap sebagai id
+    // payment (model binding gagal -> 404) sehingga rekening tak bisa disimpan.
     Route::put('payments/bank-details', [PaymentController::class, 'updateBank'])->name('payments.bank-update');
+    Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
 
     // Shipping
     Route::get('shipping', [ShippingRecordController::class, 'index'])->name('shipping.index');
@@ -382,6 +389,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('cod-settings', [CodSettingsController::class, 'edit'])->name('cod-settings.edit');
     Route::put('cod-settings', [CodSettingsController::class, 'update'])->name('cod-settings.update');
 
+    // Teks CTA penutup storefront (banner merah di akhir halaman publik).
+    Route::get('cta-storefront', [CtaSettingsController::class, 'edit'])->name('cta-settings.edit');
+    Route::put('cta-storefront', [CtaSettingsController::class, 'update'])->name('cta-settings.update');
+
     Route::get('shipping-subsidy', [ShippingSubsidyController::class, 'edit'])->name('shipping-subsidy.edit');
     Route::put('shipping-subsidy', [ShippingSubsidyController::class, 'update'])->name('shipping-subsidy.update');
 
@@ -389,6 +400,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('beranda', [BerandaController::class, 'update'])->name('beranda.update');
     Route::get('beranda/how-to-order', [BerandaController::class, 'editHowToOrder'])->name('beranda.how-to-order.edit');
     Route::put('beranda/how-to-order', [BerandaController::class, 'updateHowToOrder'])->name('beranda.how-to-order.update');
+    // Pengaturan urutan carousel "Paling Banyak Dipesan" (flag homepage_popular).
+    Route::get('beranda/paling-banyak-dipesan', [BerandaPopularController::class, 'index'])->name('beranda.popular.index');
+    Route::put('beranda/paling-banyak-dipesan', [BerandaPopularController::class, 'update'])->name('beranda.popular.update');
 
     Route::get('kelola/sub-model', [SubModelController::class, 'index'])->name('sub-models.index');
     Route::get('kelola/sub-model/create', [SubModelController::class, 'create'])->name('sub-models.create');

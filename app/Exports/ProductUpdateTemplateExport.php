@@ -3,7 +3,6 @@
 namespace App\Exports;
 
 use App\Models\Product;
-use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Support\CatalogDownloadFilter;
 use App\Support\CatalogTemplateV2;
@@ -16,17 +15,18 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
- * Template Update Media v2: ubah foto produk dan varian yang sudah ada.
+ * Template Update Produk v2: ubah harga, stok, deskripsi, dan spesifikasi
+ * produk yang sudah ada.
  *
- * Dua sheet: Update Media (data nyata dari DB, sudah tersaring) dan Panduan.
- * Empat kolom pertama adalah identitas yang DIKUNCI dan divalidasi ulang di
- * server. Seluruh kolom media DIBIARKAN KOSONG saat diunduh supaya tidak ada
- * gambar tertimpa tanpa sengaja (keputusan owner).
+ * Dua sheet: Update Produk (data nyata dari DB, sudah tersaring) dan Panduan.
+ * Empat kolom pertama adalah identitas yang DIKUNCI di Excel dan tetap
+ * divalidasi ulang di server. Kolom Harga, Stok, Deskripsi, dan Spesifikasi
+ * diisi NILAI SEKARANG supaya admin melihat angka lama (keputusan owner).
  *
- * Aturan sel: kosong berarti tidak mengubah. Untuk menghapus, isi sel dengan
- * penanda `hapus`.
+ * Template ini bukan tempat membuat produk baru. Baris yang SKU-nya tidak
+ * dikenal akan ditolak importer.
  */
-class MediaUpdateTemplateExport implements WithMultipleSheets
+class ProductUpdateTemplateExport implements WithMultipleSheets
 {
     public function __construct(private CatalogDownloadFilter $filter = new CatalogDownloadFilter())
     {
@@ -35,15 +35,15 @@ class MediaUpdateTemplateExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            new MediaUpdateDataSheet($this->filter),
-            new MediaUpdateGuideSheet($this->filter),
+            new ProductUpdateDataSheet($this->filter),
+            new ProductUpdateGuideSheet($this->filter),
         ];
     }
 
     /** @return list<array{header: string, slug: string, group: int, locked: bool}> */
     public static function columns(): array
     {
-        return CatalogTemplateV2::updateMediaColumns();
+        return CatalogTemplateV2::updateProductColumns();
     }
 
     /** @return list<string> */
@@ -56,14 +56,12 @@ class MediaUpdateTemplateExport implements WithMultipleSheets
     {
         return count(self::columns());
     }
-
 }
 
 /**
- * Sheet data Update Media: satu baris = satu varian. Kolom identitas terisi,
- * seluruh kolom media KOSONG supaya admin mengisi hanya yang ingin diubah.
+ * Sheet data Update Produk: satu baris = satu varian, terisi data sekarang.
  */
-class MediaUpdateDataSheet implements FromArray, WithTitle, WithEvents
+class ProductUpdateDataSheet implements FromArray, WithTitle, WithEvents
 {
     use RegistersEventListeners;
 
@@ -74,11 +72,11 @@ class MediaUpdateDataSheet implements FromArray, WithTitle, WithEvents
     public function array(): array
     {
         $idx = [];
-        foreach (MediaUpdateTemplateExport::columns() as $i => $col) {
+        foreach (ProductUpdateTemplateExport::columns() as $i => $col) {
             $idx[$col['slug']] = $i;
         }
 
-        $rows = [MediaUpdateTemplateExport::headers()];
+        $rows = [ProductUpdateTemplateExport::headers()];
 
         $this->filter->products()->chunk(200, function ($products) use (&$rows, $idx): void {
             foreach ($products as $product) {
@@ -91,42 +89,69 @@ class MediaUpdateDataSheet implements FromArray, WithTitle, WithEvents
         return $rows;
     }
 
-    /** Kolom media sengaja null: sel kosong berarti tidak mengubah media. */
+    /**
+     * Satu baris data. Kolom identitas dan kolom boleh-ubah sama-sama terisi
+     * nilai sekarang; yang membedakan adalah pengunciannya di Excel.
+     */
     private static function line(Product $product, ProductVariant $variant, array $idx): array
     {
-        $line = array_fill(0, MediaUpdateTemplateExport::columnCount(), null);
+        $line = array_fill(0, ProductUpdateTemplateExport::columnCount(), null);
         $line[$idx['sku_produk']] = (string) $product->parent_sku;
         $line[$idx['nama_produk']] = (string) $product->name;
         $line[$idx['sku_varian']] = (string) $variant->variant_sku;
         $line[$idx['variasi']] = CatalogTemplateV2::variationLabel($variant);
+        $line[$idx['harga']] = (float) $variant->price;
+        $line[$idx['stok']] = (int) $variant->stock;
+        $line[$idx['deskripsi_produk']] = (string) ($product->description ?? '');
+        $line[$idx['spesifikasi']] = self::specifications($product);
 
         return $line;
     }
 
+    /** Spesifikasi produk sebagai "Nama: Nilai" dipisah koma. */
+    public static function specifications(Product $product): string
+    {
+        $attrs = $product->relationLoaded('attributes')
+            ? $product->attributes
+            : $product->attributes()->get();
+
+        return $attrs
+            ->map(fn ($a) => trim((string) $a->attribute_name).': '.trim((string) $a->attribute_value))
+            ->filter(fn (string $line) => $line !== ':')
+            ->implode(', ');
+    }
+
     public function title(): string
     {
-        return 'Update Media';
+        return 'Update Produk';
     }
 
     public function afterSheet(AfterSheet $event): void
     {
         $sheet = $event->sheet->getDelegate();
-        $columns = MediaUpdateTemplateExport::columns();
+        $columns = ProductUpdateTemplateExport::columns();
         $lastRow = max($sheet->getHighestRow(), CatalogTemplateV2Styler::FIRST_DATA_ROW);
 
         CatalogTemplateV2Styler::styleHeader($sheet, $columns);
         CatalogTemplateV2Styler::applyAutoFilter($sheet, count($columns));
         CatalogTemplateV2Styler::applyWidths($sheet, [
             'A' => 18, 'B' => 40, 'C' => 18, 'D' => 26,
-            'E' => 44, 'F' => 44, 'G' => 44, 'H' => 44, 'I' => 44, 'J' => 44, 'K' => 44,
+            'E' => 14, 'F' => 10, 'G' => 44, 'H' => 30,
         ]);
+        // SKU dan nama adalah identitas: paksa teks supaya angka panjang tidak
+        // berubah jadi notasi ilmiah sebelum dikirim balik ke server.
         CatalogTemplateV2Styler::forceTextColumns($sheet, [1, 3], $lastRow);
+        // Rentang terkunci cukup sampai baris data terakhir: template update
+        // jumlah barisnya tetap, admin tidak menambah baris.
         CatalogTemplateV2Styler::protectLockedColumns($sheet, $columns, $lastRow);
     }
 }
 
-/** Sheet Panduan Update Media. Tanpa Contoh, sesuai keputusan owner. */
-class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
+/**
+ * Sheet Panduan Update Produk. Tanpa sheet Contoh sesuai keputusan owner,
+ * karena bentuk barisnya sudah nyata dari data yang diunduh.
+ */
+class ProductUpdateGuideSheet implements FromArray, WithTitle, WithEvents
 {
     use RegistersEventListeners;
 
@@ -137,7 +162,7 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
     public function array(): array
     {
         $rows = [
-            ['PANDUAN UPDATE MEDIA', 'Ragil Aluminium'],
+            ['PANDUAN UPDATE PRODUK', 'Ragil Aluminium'],
             ['Cakupan unduhan', $this->filter->summary(), ''],
             [],
             ['LEGENDA WARNA HEADER', '', ''],
@@ -170,7 +195,7 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
     private static function groupColumns(int $group): string
     {
         $letters = [];
-        foreach (MediaUpdateTemplateExport::columns() as $i => $col) {
+        foreach (ProductUpdateTemplateExport::columns() as $i => $col) {
             if ($col['group'] === $group) {
                 $letters[] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
             }
@@ -183,17 +208,14 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
     private static function dictionary(): array
     {
         return [
-            ['SKU Produk', 'TIDAK', 'Kunci produk. DIKUNCI, jangan diubah.'],
-            ['Nama Produk', 'TIDAK', 'Hanya penanda bacaan.'],
+            ['SKU Produk', 'TIDAK', 'Kunci produk. DIKUNCI, jangan diubah. Mengubahnya membuat baris ditolak.'],
+            ['Nama Produk', 'TIDAK', 'Hanya penanda bacaan. Nama produk diubah lewat menu Produk, bukan lewat berkas ini.'],
             ['SKU Varian', 'TIDAK', 'Kunci varian. DIKUNCI, jangan diubah.'],
-            ['Variasi', 'TIDAK', 'Penanda bacaan kombinasi varian.'],
-            ['Gambar per Varian', 'YA', 'URL foto yang menempel pada varian baris ini.'],
-            ['Gambar 1 (utama)', 'YA', 'URL foto utama katalog produk.'],
-            ['Gambar 2', 'YA', 'URL foto katalog kedua.'],
-            ['Media Bersama 1', 'YA', 'URL media yang dipakai semua varian produk.'],
-            ['Media Bersama 2', 'YA', 'URL media bersama kedua.'],
-            ['Gambar Hasil Pemasangan 1', 'YA', 'URL foto dokumentasi pemasangan.'],
-            ['Gambar Hasil Pemasangan 2', 'YA', 'URL foto pemasangan kedua.'],
+            ['Variasi', 'TIDAK', 'Penanda bacaan kombinasi varian, mis. Putih, Kaca Bening.'],
+            ['Harga', 'YA', 'Harga jual varian. Angka polos tanpa titik dan tanpa Rp.'],
+            ['Stok', 'YA', 'Jumlah stok. Angka biasa, atau format acak seperti random 1000-8000.'],
+            ['Deskripsi Produk', 'YA', 'Deskripsi produk. Berlaku untuk seluruh varian produk itu.'],
+            ['Spesifikasi', 'YA', 'Pasangan Nama: Nilai dipisah koma. Berlaku untuk produk itu.'],
         ];
     }
 
@@ -201,14 +223,13 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
     private static function rules(): array
     {
         return [
-            'Berkas ini hanya MENGGANTI media. Harga, stok, deskripsi, dan spesifikasi tidak disentuh; itu ada di template Update Produk.',
+            'Berkas ini hanya MENGUBAH produk yang sudah ada. Tidak bisa membuat produk atau varian baru.',
             'Empat kolom pertama dikunci. Kolom itu tidak boleh diubah, dan server tetap menolaknya walau kunci dibuka.',
-            'Sel kosong berarti TIDAK mengubah media. Seluruh kolom media sengaja dikosongkan supaya tidak ada gambar tertimpa tanpa sengaja.',
-            'Untuk MENGHAPUS media, isi sel dengan kata hapus. Sel kosong tidak pernah menghapus.',
-            'URL harus URL publik yang bisa dibuka, bukan nama file atau kode objek.',
+            'Sel kosong berarti TIDAK mengubah data. Kosongkan sel yang tidak ingin diubah.',
+            'Kolom Harga, Stok, Deskripsi, dan Spesifikasi sudah berisi nilai sekarang sebagai pembanding.',
             'Satu baris = satu varian. Jangan menambah atau menghapus baris.',
+            'Biarkan kolom identitas apa adanya supaya baris tetap cocok dengan sistem.',
             'Selalu tekan Periksa file sebelum Mulai Import.',
-            'Proteksi Excel mencegah salah isi, bukan keamanan. Sistem tetap menolak perubahan SKU walau proteksi dilepas.',
         ];
     }
 
@@ -238,7 +259,7 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
             $row++;
         }
 
-        $sheet->getColumnDimension('A')->setWidth(24);
+        $sheet->getColumnDimension('A')->setWidth(18);
         $sheet->getColumnDimension('B')->setWidth(14);
         $sheet->getColumnDimension('C')->setWidth(78);
         $last = max($sheet->getHighestRow(), 1);
