@@ -16,9 +16,13 @@ use Maatwebsite\Excel\Row;
 /**
  * Mode C: Update Media (media_update).
  *
- * Hanya mengubah FOTO produk/varian (image_katalog + installation_image).
- * Sel kosong = foto yang ada TIDAK diubah; import TIDAK PERNAH menghapus
- * (penghapusan lewat halaman Media produk di admin).
+ * Hanya mengubah FOTO produk/varian.
+ *
+ * Aturan sel (keputusan owner 2026-09-18):
+ *  - Sel KOSONG berarti tidak mengubah media.
+ *  - Sel berisi "hapus" MENGARSIPKAN media, bukan menghapus permanen
+ *    (kontrak arsip repo: arsipkan, jangan hapus permanen).
+ *  - Selain dua itu, sel berisi URL publik yang akan dipasang.
  * SKU parent/variant yang tidak dikenal -> baris GAGAL; TIDAK membuat produk baru.
  * URL tidak valid di baris -> baris GAGAL (biar admin langsung tahu).
  */
@@ -48,7 +52,9 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
         }
 
         $rowIndex = $row->getIndex();
-        $data = $row->toArray();
+        // Selaraskan header v2 (Gambar per Varian, Media Bersama, dst) ke
+        // kunci internal supaya template baru langsung terbaca.
+        $data = \App\Support\UpdateImportColumnMap::normalize($row->toArray());
         // Baris catatan/contoh dilewati (konsisten dgn importer katalog & stok).
         $firstCell = (string) ($data['parent_sku'] ?? array_values($data)[0] ?? '');
         if (preg_match('/^\s*(CATATAN|CONTOH)\s*:/i', $firstCell)) {
@@ -88,13 +94,20 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
 
             // Kontrak owner (09-05): baris dgn semua kolom gambar kosong =
             // DILEWATI (bukan gagal, bukan sukses bisu). Tandai dgn marker.
+            // Kolom media v2 ikut dihitung: Gambar per Varian, Media Bersama,
+            // dan penanda hapus. Tanpa ini, baris yang hanya mengisi kolom v2
+            // akan dianggap kosong lalu dilewati.
             $hasAnyImage = false;
             for ($i = 1; $i <= 9; $i++) {
                 if (trim((string) ($data['image_'.$i] ?? '')) !== ''
-                    || trim((string) ($data['installation_image_'.$i] ?? '')) !== '') {
+                    || trim((string) ($data['installation_image_'.$i] ?? '')) !== ''
+                    || trim((string) ($data['shared_media_'.$i] ?? '')) !== '') {
                     $hasAnyImage = true;
                     break;
                 }
+            }
+            if (! $hasAnyImage && trim((string) ($data['image_variation_option'] ?? '')) !== '') {
+                $hasAnyImage = true;
             }
             if (! $hasAnyImage) {
                 ImportJobRow::create([
@@ -146,6 +159,55 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                     position: 100 + $i,
                     showInCatalog: false,
                     isInstallation: true,
+                );
+            }
+
+            // Penanda hapus (keputusan owner): sel berisi "hapus" mengarsipkan
+            // media, bukan menghapus permanen (kontrak arsip repo).
+            $hapus = \App\Support\UpdateImportColumnMap::isDeleteMarker($data["image_variation_option"] ?? null);
+
+            // Gambar per Varian (template v2): menempel pada varian baris ini,
+            // posisi 50 mengikuti pita media per opsi yang sudah dipakai.
+            $urlVar = trim((string) ($data['image_variation_option'] ?? ''));
+
+            if ($hapus && $variant !== null) {
+                \App\Models\ProductMedia::query()
+                    ->where('product_id', $product->id)
+                    ->where('product_variant_id', $variant->id)
+                    ->where('visibility', '!=', 'archived')
+                    ->update(['visibility' => 'archived']);
+                $urlVar = '';
+            }
+
+            if ($urlVar !== '') {
+                if (! filter_var($urlVar, FILTER_VALIDATE_URL)) {
+                    throw new \RuntimeException('URL Gambar per Varian tidak valid: '.$urlVar);
+                }
+                $upserter->upsert(
+                    productId: $product->id,
+                    variantId: $variant?->id,
+                    url: $urlVar,
+                    position: 50,
+                    showInCatalog: true,
+                );
+            }
+
+            // Media Bersama 1..2 (template v2): dipakai semua varian, posisi 81
+            // dan 82 mengikuti pita media bersama yang sudah dipakai sistem.
+            for ($i = 1; $i <= 2; $i++) {
+                $urlBersama = trim((string) ($data['shared_media_'.$i] ?? ''));
+                if ($urlBersama === '') {
+                    continue;
+                }
+                if (! filter_var($urlBersama, FILTER_VALIDATE_URL)) {
+                    throw new \RuntimeException('URL Media Bersama '.$i.' tidak valid: '.$urlBersama);
+                }
+                $upserter->upsert(
+                    productId: $product->id,
+                    variantId: null,
+                    url: $urlBersama,
+                    position: 80 + $i,
+                    showInCatalog: true,
                 );
             }
 

@@ -45,7 +45,9 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
         }
 
         $rowIndex = $row->getIndex();
-        $data = $row->toArray();
+        // Selaraskan header v2 (SKU Produk, Harga, Stok) ke kunci internal
+        // supaya template baru langsung terbaca tanpa menggandakan importer.
+        $data = \App\Support\UpdateImportColumnMap::normalize($row->toArray());
         // Baris catatan/contoh di sheet Data (mis. "CATATAN: hapus baris ini")
         // dilewati, konsisten dengan importer katalog. Kalau admin lupa hapus
         // baris contoh, tidak muncul sebagai baris gagal.
