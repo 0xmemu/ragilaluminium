@@ -226,4 +226,60 @@ class CatalogTemplateV2DownloadTest extends TestCase
         $this->assertArrayHasKey("RA-TPL-B", $skus, "produk model ZIGZAG wajib ada");
         $this->assertArrayNotHasKey("RA-TPL-A", $skus, "produk model lain wajib tersaring keluar");
     }
+
+    /**
+     * Proteksi sheet TIDAK BOLEH mengunci pengaturan tampilan.
+     *
+     * Regresi yang pernah terjadi: memanggil setSheet(true) saja mengunci
+     * pengaturan lebar kolom, tinggi baris, sort, dan autofilter, karena pada
+     * OOXML atribut bernilai 1 berarti DIKUNCI dan bawaannya true. Akibatnya
+     * admin tidak bisa melebarkan kolom untuk membaca data, dan autofilter
+     * yang dipasang eksportir tidak bisa dipakai.
+     *
+     * Aturan yang dijaga: <b>tampilan boleh diatur, struktur tidak boleh</b>.
+     */
+    public function test_proteksi_mengizinkan_atur_tampilan_dan_mengunci_struktur(): void
+    {
+        $this->produk("RA-TPL-P1", "ZIGZAG", "ORNAMEN");
+
+        $res = $this->actingAs($this->admin())
+            ->get(route("admin.imports.stock-price-template"));
+        $res->assertOk();
+
+        $isi = $this->isiBerkas($res);
+        $tmp = tempnam(sys_get_temp_dir(), "prot") . ".xlsx";
+        file_put_contents($tmp, $isi);
+
+        // Baca XML mentah: satu-satunya cara memastikan arti atribut proteksi,
+        // karena PhpSpreadsheet mengembalikan nilai yang sama untuk null dan
+        // false sehingga tidak bisa membedakan mana yang benar-benar diizinkan.
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($tmp) === true, "berkas xlsx wajib bisa dibuka");
+        $xml = (string) $zip->getFromName("xl/worksheets/sheet1.xml");
+        $zip->close();
+
+        $this->assertMatchesRegularExpression(
+            '/sheetProtection[^>]*sheet="1"/',
+            $xml,
+            "sheet wajib diproteksi"
+        );
+
+        // Tampilan: WAJIB diizinkan (0).
+        foreach (["formatCells", "formatColumns", "formatRows", "sort", "autoFilter"] as $izin) {
+            $this->assertMatchesRegularExpression(
+                '/sheetProtection[^>]*' . $izin . '="0"/',
+                $xml,
+                $izin . " wajib diizinkan supaya admin bisa mengatur tampilan"
+            );
+        }
+
+        // Struktur: WAJIB tetap dikunci (1).
+        foreach (["insertColumns", "deleteColumns", "insertRows", "deleteRows"] as $kunci) {
+            $this->assertMatchesRegularExpression(
+                '/sheetProtection[^>]*' . $kunci . '="1"/',
+                $xml,
+                $kunci . " wajib dikunci supaya struktur kolom tidak bergeser"
+            );
+        }
+    }
 }

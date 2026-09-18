@@ -22,6 +22,46 @@ final class CatalogTemplateV2Styler
     public const FIRST_DATA_ROW = 2;
 
     /**
+     * Proteksi sheet dengan daftar izin EKSPLISIT.
+     *
+     * Penting: pada OOXML, atribut sheetProtection bernilai 1 berarti operasi
+     * itu DIKUNCI, dan PhpSpreadsheet memakai arti yang sama (docblock:
+     * "locked when sheet is protected, default true"). Jadi memanggil
+     * setSheet(true) saja akan ikut mengunci pengaturan lebar kolom, tinggi
+     * baris, sort, dan autofilter. Akibatnya admin tidak bisa melebarkan kolom
+     * untuk membaca data, dan autofilter yang dipasang eksportir tidak bisa
+     * dipakai sama sekali.
+     *
+     * Yang DIIZINKAN (nilai false): ubah format sel, atur lebar kolom, atur
+     * tinggi baris, urutkan, pakai autofilter, pilih sel, sisip hyperlink.
+     * Semuanya tidak mengubah arti data.
+     *
+     * Yang TETAP DIKUNCI (nilai true): sisip dan hapus kolom serta baris,
+     * karena menggeser pemetaan kolom atau melanggar kontrak satu baris satu
+     * varian, dan pivot table yang tidak dipakai di berkas template.
+     */
+    public static function applySheetProtection(Worksheet $sheet): void
+    {
+        $protection = $sheet->getProtection();
+        $protection->setSheet(true);
+
+        $protection->setFormatCells(false);
+        $protection->setFormatColumns(false);
+        $protection->setFormatRows(false);
+        $protection->setSort(false);
+        $protection->setAutoFilter(false);
+        $protection->setSelectLockedCells(false);
+        $protection->setSelectUnlockedCells(false);
+        $protection->setInsertHyperlinks(false);
+
+        $protection->setInsertColumns(true);
+        $protection->setDeleteColumns(true);
+        $protection->setInsertRows(true);
+        $protection->setDeleteRows(true);
+        $protection->setPivotTables(true);
+    }
+
+    /**
      * Tulis header dengan warna per grup fungsi, lalu kunci kolom identitas.
      *
      * @param  list<array{header: string, group: int, locked?: bool}>  $columns
@@ -68,7 +108,7 @@ final class CatalogTemplateV2Styler
      */
     public static function protectLockedColumns(Worksheet $sheet, array $columns, int $lastRow): void
     {
-        $sheet->getProtection()->setSheet(true);
+        self::applySheetProtection($sheet);
         // Seluruh sel dibiarkan TERBUKA secara default, lalu kolom identitas
         // ditutup satu per satu. Pendekatan ini menghindari admin terkunci
         // dari kolom yang memang boleh dia ubah.
@@ -101,7 +141,7 @@ final class CatalogTemplateV2Styler
             return;
         }
 
-        $sheet->getProtection()->setSheet(true);
+        self::applySheetProtection($sheet);
         $last = Coordinate::stringFromColumnIndex($columnCount);
         $sheet->getStyle(
             'A'.self::FIRST_DATA_ROW.':'.$last.max($lastRow, 500)
