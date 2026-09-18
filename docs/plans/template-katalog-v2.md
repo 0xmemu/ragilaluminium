@@ -54,6 +54,13 @@ Yang sudah bagus di berkas owner:
 - Satu baris = satu varian, sehingga tidak ada lagi kolom opsi 1 sampai 4.
   Ini menghapus seluruh kelas masalah urutan opsi yang pernah terjadi.
 
+### 2.1b Perubahan pada berkas owner kedua (18 Sep, 20:40)
+
+Owner mengirim ulang berkas dengan satu perubahan header: kolom J yang semula
+`Gambar Opsi Variasi 1` menjadi `Foto Produk Varian`. Seluruh header lain
+identik, dan struktur sheet tidak berubah. Berkas pertama 16.760 byte, berkas
+kedua 16.689 byte. Nama baru dipakai sebagai kontrak.
+
 ### 2.2 Masalah yang harus diperbaiki di versi baru
 
 1. Sheet `Data`: Harga, Stok, Berat, Tinggi, Panjang, Lebar, dan SELURUH kolom
@@ -112,7 +119,7 @@ Satu baris = satu varian. Grup menentukan warna header.
 | G | Sub Model | sub_model | `products.design_variant` | 1 |
 | H | Nama Variasi 1 | nama_variasi_1 | `variation_1_name` | 2 |
 | I | Opsi Variasi 1 | opsi_variasi_1 | `variation_1_option` | 2 |
-| J | Gambar Opsi Variasi 1 | gambar_opsi_variasi_1 | media milik opsi variasi 1 | 4 |
+| J | Foto Produk Varian | foto_produk_varian | media milik varian (per opsi) | 4 |
 | K | Nama Variasi 2 | nama_variasi_2 | `variation_2_name` | 2 |
 | L | Opsi Variasi 2 | opsi_variasi_2 | `variation_2_option` | 2 |
 | M | Harga | harga | `product_variants.price` | 3 |
@@ -186,30 +193,35 @@ Aturan sel kosong: sel kosong TIDAK mengubah data. Ini melanjutkan kontrak lama
   tiga berkas terpisah, kolom identitas dikunci".
 - Syarat: tanpa em dash, Bahasa Indonesia.
 
-### Fase 1: Tiga eksportir template kosong
+### Fase 1: Tiga eksportir template
 
-Tiga kelas eksportir terpisah, masing-masing 2 sheet, yaitu sheet data dan
-sheet Panduan.
+| Berkas | Kelas | Sheet | Isi baris data |
+|---|---|---|---|
+| Import Produk | `ProductImportTemplateExport` | `Data`, `Contoh`, `Panduan` | Contoh TERISI lengkap |
+| Update Produk | `ProductUpdateTemplateExport` | `Update Produk`, `Panduan` | Data nyata dari DB, tersaring |
+| Update Media | `MediaUpdateTemplateExport` (ubah yang lama) | `Update Media`, `Panduan` | Data nyata dari DB, tersaring |
 
-| Berkas | Kelas | Sheet |
-|---|---|---|
-| Import Produk | `ProductImportTemplateExport` | `Data` dan `Panduan` |
-| Update Produk | `ProductUpdateTemplateExport` | `Update Produk` dan `Panduan` |
-| Update Media | `MediaUpdateTemplateExport` (ubah yang lama) | `Update Media` dan `Panduan` |
+Keputusan owner: sheet `Contoh` hanya ada di Import Produk. Template update
+cukup `Panduan` karena bentuk barisnya sudah nyata dari data yang diunduh.
 
 Pekerjaan:
-1. Header persis seperti bagian 3, dengan warna per grup fungsi.
-2. Baris contoh TERISI LENGKAP di sheet data: harga, stok, berat, dimensi, dan
-   URL media. Ini memperbaiki kelemahan berkas owner yang contohnya kosong.
-3. Sheet Panduan: kamus kolom, aturan sel kosong, dan catatan tegas bahwa
-   dimensi hanya untuk pengiriman dan tidak tampil di storefront.
+1. Header persis seperti bagian 3, dengan warna empat grup fungsi:
+   Identitas & Produk, Variasi, Harga & Pengiriman, Media. Warna grup dipakai
+   konsisten di ketiga berkas.
+2. Sheet Contoh (hanya Import Produk) TERISI LENGKAP: harga, stok, berat,
+   dimensi, dan URL media. Ini memperbaiki kelemahan berkas owner yang
+   contohnya kosong dan pernah memicu salah isi kolom dimensi.
+3. Sheet Panduan per berkas: kamus kolom, aturan sel kosong, penanda hapus
+   `hapus` untuk media, dan catatan tegas bahwa berat serta dimensi hanya untuk
+   pengiriman dan tidak tampil di storefront.
 4. Dropdown kategori, model, sub model. Daftar dibaca dari database
    (`sub_models`, `CatalogLabels`), bukan ditulis tetap, supaya model atau sub
-   model baru ikut otomatis. Ini sejalan dengan arahan agar sistem tidak
-   terpaku pada data saat ini.
+   model baru ikut otomatis.
 5. Freeze pane di baris data pertama, tinggi baris header 26.
 6. Format sel `@` (teks) untuk kolom SKU dan URL supaya tidak berubah jadi
    notasi ilmiah, mengikuti pelajaran kolom identitas 12 Sep 2026.
+7. Template Update diisi data nyata: kolom identitas TERISI, kolom Harga/Stok/
+   Deskripsi/Spesifikasi diisi NILAI SEKARANG, kolom Media DIBIARKAN KOSONG.
 
 ### Fase 2: Importer format v2 untuk Import Produk
 
@@ -243,9 +255,12 @@ Pekerjaan:
 3. Kolom identitas yang dikirim balik wajib cocok dengan database. Bila tidak
    cocok, baris gagal dengan pesan jelas. Ini melanjutkan aturan lama bahwa
    salah induk adalah error per baris, bukan diam-diam diabaikan.
-4. Sel kosong berarti tidak mengubah. Penanda hapus ditentukan di Fase 3 dan
-   ditulis di Panduan.
-5. Preview diff sebelum simpan tetap wajib, melanjutkan kontrak 6 Sep 2026.
+4. Sel kosong berarti tidak mengubah. Menghapus gambar memakai penanda `hapus`
+   pada sel kolom media, sesuai keputusan owner. Penanda ini ditulis di Panduan
+   tiap berkas supaya tidak ada tafsir ganda.
+5. Stok menerima angka biasa MAUPUN format acak seperti `random 1000-8000`,
+   diproses `StockCellParser` seperti jalur import sebelumnya.
+6. Preview diff sebelum simpan tetap wajib, melanjutkan kontrak 6 Sep 2026.
 
 ### Fase 4: Filter dan unduhan
 
@@ -254,8 +269,12 @@ Pekerjaan:
 2. Endpoint unduhan menerima filter yang sama sehingga admin mengunduh tepat
    bagian yang dibutuhkan.
 3. Unduhan Update Produk dan Update Media terisi data nyata dari database:
-   kolom identitas terisi, kolom yang boleh diubah mengikuti keputusan owner di
-   bagian 6.
+   kolom identitas terisi, kolom Harga/Stok/Deskripsi/Spesifikasi terisi nilai
+   sekarang, kolom Media dibiarkan kosong.
+3b. Unduhan penuh tanpa filter tetap SATU BERKAS: 2.138 baris varian dari 179
+   produk. Angka ini kecil untuk Excel. Yang menyelesaikan masalah kegunaan
+   adalah filter, bukan pemecahan berkas. Per model terbesar 444 baris
+   (JUNGKIT_2_DAUN), terkecil 24 baris (SWING_3_DAUN).
 4. Siapkan agar filter mudah ditambah: satu penyaring bersama, misalnya
    `CatalogDownloadFilter`, supaya "unduh per model" dan "per sub model"
    berikutnya tidak menyalin logika.
@@ -321,24 +340,52 @@ Dokumen:
 
 ---
 
-## 6. Keputusan yang masih dibutuhkan owner
+## 6. Keputusan owner (sudah diputuskan 18 Sep 2026)
 
-1. Template Update Produk dan Update Media saat diunduh: kolom yang boleh
-   diubah diisi nilai SEKARANG atau dibiarkan KOSONG?
-   Pertimbangan: nilai sekarang lebih aman untuk harga dan stok karena admin
-   melihat angka lama; kosong lebih aman untuk media karena mencegah tertimpa
-   tanpa sengaja. Bisa juga berbeda per kolom.
-2. Penanda hapus gambar: nilai khusus seperti `-` atau `hapus`, atau kolom
-   terpisah. Wajib jelas supaya sel kosong tidak pernah berarti hapus.
-3. Sheet Panduan dan Contoh: disertakan per berkas atau dipisah? Berkas owner
-   tidak punya keduanya. Rekomendasi: Panduan disertakan, Contoh diletakkan di
-   sheet sendiri.
-4. Stok: template baru memakai kolom `Stok` per baris. Apakah masih perlu
-   dukungan format acak seperti "random 1000-8000" yang dipakai berkas import
-   terakhir?
-5. Cakupan unduhan penuh 2.138 baris: satu berkas atau dipecah per bagian?
+1. **Isi kolom saat unduhan.** Mengikuti rekomendasi: kolom yang boleh diubah
+   pada template Update Produk diisi NILAI SEKARANG (harga, stok, deskripsi,
+   spesifikasi), sehingga admin melihat angka lama dan preview diff punya
+   pembanding. Seluruh kolom media pada template Update Media DIBIARKAN KOSONG,
+   supaya tidak ada gambar tertimpa tanpa sengaja. Aturan sel kosong tetap:
+   kosong berarti tidak mengubah.
+2. **Penanda hapus gambar.** Dipakai penanda `hapus` pada sel kolom media.
+   Wajib ditulis di sheet Panduan supaya sel kosong tidak pernah disalahartikan
+   sebagai perintah hapus.
+3. **Sheet Contoh dan Panduan.** Sheet Contoh HANYA ada di template Import
+   Produk. Template Update Produk dan Update Media hanya berisi sheet Panduan,
+   tanpa Contoh, karena bentuk barisnya sudah nyata dari data yang diunduh.
+4. **Stok format acak.** Tetap didukung. Nilai seperti `random 1000-8000`
+   diterima dan diproses `StockCellParser` seperti pada import sebelumnya,
+   di samping angka biasa.
+5. **Cakupan unduhan penuh.** Lihat bagian 6b, dijawab dengan rekomendasi
+   teknis karena pertanyaan ini menanyakan maksud pertanyaannya.
 
----
+### 6b. Penjelasan pertanyaan unduhan penuh
+
+Yang ditanyakan: ketika admin mengunduh template Update Produk atau Update
+Media TANPA memilih filter, isinya adalah SELURUH katalog, yaitu 2.138 baris
+varian dari 179 produk. Pertanyaannya apakah itu dijadikan satu berkas atau
+dipecah beberapa berkas.
+
+Data pendukung:
+
+| Cakupan | Baris varian |
+|---|---|
+| Seluruh katalog tanpa filter | 2.138 |
+| Per model terbesar, JUNGKIT_2_DAUN | 444 |
+| Per model terkecil, SWING_3_DAUN | 24 |
+| Jumlah product_media | 1.335 |
+
+Rekomendasi: TETAP SATU BERKAS untuk unduhan penuh. Alasannya 2.138 baris
+dengan 11 kolom masih kecil untuk Excel dan tidak bermasalah dibuka, sementara
+memecah otomatis menimbulkan pertanyaan baru (dipecah per apa, dan bagaimana
+admin menggabungkan kembali hasilnya). Yang menyelesaikan masalah kegunaan
+bukan pemecahan berkas, melainkan FILTER: admin yang hanya ingin mengurus satu
+model cukup memilih model itu dan mengunduh 24 sampai 444 baris.
+
+Bila nanti terbukti lambat, batas aman bisa ditambahkan sebagai pengaman:
+unduhan tanpa filter di atas ambang tertentu dipecah per model secara otomatis
+dengan nama berkas memuat nama modelnya.
 
 ## 7. Urutan pengerjaan yang disarankan
 
