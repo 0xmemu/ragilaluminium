@@ -452,7 +452,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // ---- IV. STATUS ARUS KAS ----
         $push(['IV. STATUS ARUS KAS']);
         $this->groupRows[] = $r - 1;
-        $money('Transfer Bank Sudah Cair (Lunas)', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0));
+        $money('Transfer Bank Lunas', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0));
         $money('COD Selesai (barang sudah sampai)', $fin['cod_paid'] ?? null);
         $money('Total Pembayaran Sudah Diterima', $fin['payments_received'] ?? null, true);
         $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
@@ -571,7 +571,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'Penjualan Gross',
             'Ongkir ke J&T', 'Refund Retur', 'Ongkir Retur (Toko)',
             'Penjualan Bersih',
-            'Uang Sudah Masuk', 'Belum Cair',
+            'Uang Sudah Masuk', 'Belum Masuk',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
             'Nama Pelanggan', 'Nomor HP / WA', 'Kota Pengiriman',
         ];
@@ -873,7 +873,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         };
 
         // ---- I. PRODUK TERLARIS (semua kolom angka berumus ke TabelItem) ----
-        $block('I. PRODUK TERLARIS', ['SKU Induk', 'Nama Produk', 'Unit Terjual', 'Total Penjualan', 'Jumlah Pesanan'], 'E');
+        $block('I. PRODUK TERLARIS', ['SKU Induk', 'Nama Produk', 'Unit Terjual', 'Nilai Produk Terjual', 'Jumlah Pesanan'], 'E');
         $topAll = $this->payload['top_products'] ?? [];
         $top = array_slice($topAll, 0, 15);
         $firstData = $r;
@@ -1090,13 +1090,13 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Penjualan Gross. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur (toko) menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
             ['DISKON PRODUK', "Kolom 'Hemat Pembeli vs Harga Normal' adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku."],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah.'],
-            ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank cair + COD selesai pada periode, dihitung dari tanggal pembayaran (bukan tanggal pesanan dibuat). Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba.'],
+            ['ARUS KAS', 'Pembayaran sudah diterima = transfer bank lunas + COD selesai pada periode, dihitung dari tanggal pembayaran (bukan tanggal pesanan dibuat). Sisa COD dihitung terpisah dari pesanan yang barangnya belum sampai, karena sistem menetapkan COD lunas lewat event status pesanan tiba.'],
             ['PENGUNJUNG YANG MEMBELI', 'Dihitung dari jumlah pembeli unik dibagi jumlah pengunjung, bukan jumlah pesanan dibagi pengunjung.'],
             ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
             ['PESANAN DIBATALKAN', 'Pesanan yang dibatalkan tetap tampil di Tabel Pesanan dengan seluruh nilai uang dan jumlah 0 (nomor pesanan, tanggal, metode, status, dan pelanggan tetap terdata) supaya konteks pembatalan terlihat tanpa mengubah total. Jumlah, nilai, dan rasio pembatalan ada di KPI seksi Retur & Pembatalan; rincian transaksinya ada di Laporan Pesanan.'],
             ['DETAIL PELANGGAN', 'Identitas pembeli (Nama, Nomor HP/WhatsApp, Kota) tersedia di kolom W sampai Y sheet Tabel Pesanan, dan agregat per pelanggan ada di blok Pelanggan Terbaik sheet Analisis. Nomor HP disimpan sebagai teks agar digit tidak berubah.'],
             ['BAURAN PEMBAYARAN', "Metode pembayaran distandarisasi menjadi 'COD' dan 'Transfer bank'. Porsi Nilai di blok IV sheet Analisis dihitung dari Nilai Penjualan tiap metode dibagi total keduanya."],
-            ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual, Total Penjualan, dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; kriteria menunjuk kolom SKU sehingga tetap hidup bila diubah. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table dengan sumber TabelPesanan atau TabelItem.'],
+            ['ANALISIS', 'Blok Produk Terlaris menghitung Unit Terjual, Nilai Produk Terjual, dan Jumlah Pesanan langsung dari Tabel Item lewat SUMIFS/COUNTIFS; kriteria menunjuk kolom SKU sehingga tetap hidup bila diubah. Untuk memutar data per SKU, metode, atau status, gunakan Pivot Table dengan sumber TabelPesanan atau TabelItem.'],
             ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp sehingga aman dijumlahkan. Sel yang memang tidak punya nilai dibiarkan kosong.'],
         ];
     }

@@ -98,7 +98,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     title: "Dashboard",
     summary: "Ringkasan kondisi toko hari ini dan daftar pekerjaan yang perlu ditangani.",
     steps: [
-      "Cek kartu ringkasan di atas untuk angka pesanan dan omzet hari ini.",
+      "Cek kartu ringkasan di atas untuk angka Penjualan Gross dan pesanan hari ini.",
       "Buka daftar Perlu Ditangani Hari Ini untuk pekerjaan yang tidak boleh tertunda.",
       "Klik item di daftar untuk langsung menuju halaman terkait.",
     ],
@@ -295,13 +295,13 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Laporan analitik keuangan, arus kas, operasional, dan interaksi katalog produk.",
     steps: [
       "Pilih rentang waktu di baris filter untuk menganalisis periode tertentu.",
-      "Pantau Rekonsiliasi Keuangan untuk melihat hak bersih toko dan piutang COD kurir.",
+      "Pantau Rekonsiliasi Keuangan untuk melihat penjualan bersih toko dan status kas.",
       "Gunakan tab metrik grafik dan tabel produk terlaris untuk memantau performa penjualan.",
       "Unduh laporan lengkap berformat Excel (XLSX) melalui tombol Unduh Laporan di kanan atas.",
     ],
     notes: [
-      "Omzet dihitung berdasarkan pesanan fulfillment yang masuk proses.",
-      "Piutang COD kurir mencatat dana pesanan dalam pengiriman yang belum dicairkan J&T.",
+      "Penjualan Gross dihitung berdasarkan pesanan fulfillment yang masuk proses.",
+      "COD yang barangnya belum sampai dihitung terpisah; sistem tidak melacak setoran uang dari kurir J&T.",
     ],
   },
   "admin.users.index": {

@@ -183,7 +183,7 @@ export default function PaymentsIndex({
       {/* 4 Kartu KPI Ringkasan Kas */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Total Kas Diterima (Cair)</p>
+          <p className="text-xs font-medium text-muted-foreground">Total Kas Diterima</p>
           <p className="font-mono text-lg font-bold tabular-nums text-foreground">
             {formatCurrency(summary.total_received)}
           </p>
@@ -203,12 +203,12 @@ export default function PaymentsIndex({
         </Card>
 
         <Card className="p-4 space-y-1 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">COD Selesai Cair</p>
+          <p className="text-xs font-medium text-muted-foreground">COD Selesai</p>
           <p className="font-mono text-lg font-bold tabular-nums text-foreground">
             {formatCurrency(summary.cod_paid)}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            {formatNumber(summary.cod_count)} paket sampai dan disetor kurir
+            {formatNumber(summary.cod_count)} paket sudah sampai ke pembeli
           </p>
         </Card>
 

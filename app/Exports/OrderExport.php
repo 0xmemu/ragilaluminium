@@ -325,7 +325,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
     ];
 
     protected const HEADERS = [
-        'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Bayar Cair', 'Status Pesanan', 'No. Resi J&T',
+        'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Pembayaran Lunas', 'Status Pesanan', 'No. Resi J&T',
         'SKU Varian', 'Nama Produk', 'Variasi Kusen & Kaca', 'Berat (kg)', 'Volume',
         'Sumber Diskon', 'Harga Produk (Normal)', 'Diskon per Produk', 'Diskon per Produk (%)', 'Harga Jual Satuan', 'Qty',
         'Total Diskon Produk', 'Subtotal Penjualan Produk',
@@ -554,7 +554,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
     ];
 
     protected const HEADERS = [
-        'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Bayar Cair', 'Status Pesanan',
+        'Nomor Pesanan', 'Tanggal Pesanan', 'Tanggal Pembayaran Lunas', 'Status Pesanan',
         'Total Nilai Normal', 'Total Diskon Produk', 'Total Penjualan Produk',
         'Voucher Toko', 'Subsidi Ongkir Toko',
         'Ongkir Dibayar Pembeli', 'Biaya COD Dibayar Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
@@ -737,7 +737,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             [''],
             ['1. Nomor Pesanan (order_number)', 'Kode unik transaksi pesanan. Pada pesanan dengan multi-item (beberapa produk), nomor pesanan ini akan berulang (Skema A).'],
             ['2. Tanggal Pesanan (created_at)', 'Waktu saat pembeli membuat pesanan di sistem toko online.'],
-            ['3. Tanggal Bayar Cair (paid_at)', 'Waktu saat pembayaran pesanan telah terkonfirmasi lunas dan masuk ke saldo toko (krusial untuk monitoring arus kas cair).'],
+            ['3. Tanggal Pembayaran Lunas (paid_at)', 'Waktu saat pembayaran pesanan telah terkonfirmasi lunas (krusial untuk monitoring arus kas).'],
             ['4. Status Pesanan (order_status)', 'Status operasional terkini: Diproses, Selesai, atau Dibatalkan. Pesanan Dibatalkan: seluruh nilai uang = 0 di semua sheet; hanya Retur/Refund yang tetap tercatat.'],
             ['5. No. Resi J&T (waybill_number)', 'Nomor Air Waybill (AWB) dari kurir J&T untuk bukti pengiriman fisik dan pelacakan paket. Disimpan dalam format Teks karena resi J&T murni angka: sebagai angka, Excel menampilkannya sebagai notasi ilmiah (2,01719E+11) dan digit di atas 15 bisa dibulatkan.'],
             ['6. SKU Varian (variant_sku)', 'Kode unik kombinasi model dan varian. Digunakan untuk melacak pergerakan stok per jenis.'],

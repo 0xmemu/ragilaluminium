@@ -874,7 +874,7 @@ export default function StorePerformance({
         <header className="border-b border-border bg-muted/30 px-5 py-3">
           <HoverHint
             label="Rekonsiliasi Keuangan & Arus Kas"
-            hint="Penjabaran transparan dari total nilai transaksi pembeli hingga pendapatan bersih dan status pencairan kas."
+            hint="Penjabaran transparan dari total nilai transaksi pembeli hingga pendapatan bersih dan status kas."
             className="text-sm font-bold text-foreground"
           />
         </header>
@@ -1408,7 +1408,7 @@ export default function StorePerformance({
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
               <HoverHint
                 label="Produk Terlaris"
-                hint="Peringkat produk berdasarkan nilai omzet pesanan fulfillment."
+                hint="Peringkat produk berdasarkan nilai produk terjual dari pesanan fulfillment."
                 className="text-sm font-semibold tracking-tight text-foreground"
               />
               <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
@@ -1424,7 +1424,7 @@ export default function StorePerformance({
                       <th className="px-4 py-2">Nama Produk</th>
                       <th className="px-3 py-2 text-right">Unit</th>
                       <th className="px-3 py-2 text-right">Pesanan</th>
-                      <th className="px-4 py-2 text-right">Omzet</th>
+                      <th className="px-4 py-2 text-right">Nilai Produk Terjual</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1458,7 +1458,7 @@ export default function StorePerformance({
               <EmptyState
                 className="min-h-40 border-0 bg-transparent"
                 title="Belum ada penjualan produk"
-                description="Omzet produk muncul setelah ada pesanan fulfillment pada periode ini."
+                description="Nilai produk terjual muncul setelah ada pesanan fulfillment pada periode ini."
               />
             )}
           </div>
@@ -1498,12 +1498,12 @@ export default function StorePerformance({
                   Rincian Penjualan Produk Terlaris
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Peringkat produk berdasarkan nilai omzet dan unit fisik dari pesanan fulfillment periode {report.range.label}.
+                  Peringkat produk berdasarkan nilai produk terjual dan unit fisik dari pesanan fulfillment periode {report.range.label}.
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">Total Omzet Produk</p>
+                  <p className="text-[11px] text-muted-foreground">Total Nilai Produk Terjual</p>
                   <p className="text-sm font-bold tabular-nums text-foreground">
                     {formatCurrency(report.top_products.reduce((acc, p) => acc + p.revenue, 0))}
                   </p>
@@ -1540,8 +1540,8 @@ export default function StorePerformance({
                     <th className="px-4 py-2.5">Produk & SKU</th>
                     <th className="px-4 py-2.5 text-right">Unit Terjual</th>
                     <th className="px-4 py-2.5 text-right">Pesanan</th>
-                    <th className="px-4 py-2.5 text-right">Omzet Produk</th>
-                    <th className="px-4 py-2.5 text-right">Porsi Omzet</th>
+                    <th className="px-4 py-2.5 text-right">Nilai Produk Terjual</th>
+                    <th className="px-4 py-2.5 text-right">Porsi Penjualan Gross</th>
                     <th className="px-4 py-2.5 text-center w-24">Aksi</th>
                   </tr>
                 </thead>
