@@ -217,26 +217,21 @@ type ProductBreakdownGridProps = {
   breakdowns: {
     most_viewed: ProductBreakdown[]
     most_clicked: ProductBreakdown[]
-    best_sellers: ProductBreakdown[]
   }
   onViewAll: () => void
 }
 
 function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridProps) {
-  const [tab, setTab] = React.useState<"viewed" | "clicked" | "sellers">("viewed")
+  // Hanya interaksi. Peringkat penjualan sudah ada di tabel Produk Terlaris di
+  // sebelah kiri, jadi tidak dibuat ulang di sini.
+  const [tab, setTab] = React.useState<"viewed" | "clicked">("viewed")
 
   const tabs = [
     { key: "viewed" as const, label: "Paling Dilihat" },
     { key: "clicked" as const, label: "Paling Diklik" },
-    { key: "sellers" as const, label: "Terlaris" },
   ]
 
-  const data =
-    tab === "viewed"
-      ? breakdowns.most_viewed
-      : tab === "clicked"
-        ? breakdowns.most_clicked
-        : breakdowns.best_sellers
+  const data = tab === "viewed" ? breakdowns.most_viewed : breakdowns.most_clicked
 
   // Batasi persis 6 produk di kartu ringkas
   const previewRows = data.slice(0, 6)
@@ -269,11 +264,7 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
           </div>
         </div>
 
-        {tab === "viewed" || tab === "clicked" ? (
-          <EngagementList rows={previewRows} />
-        ) : (
-          <SellersList rows={previewRows} />
-        )}
+        <EngagementList rows={previewRows} />
         {data.length === 0 ? (
           <EmptyState className="min-h-24 border-0 bg-transparent py-8" title="Belum ada data" description="Belum ada interaksi produk pada periode ini." />
         ) : null}
@@ -320,36 +311,6 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
           <div className="text-right text-xs tabular-nums">
             <p className="font-semibold text-foreground">{formatNumber(p.views ?? 0)} dilihat</p>
             <p className="text-[11px] text-muted-foreground">{formatNumber(p.clicks ?? 0)} klik</p>
-          </div>
-        </article>
-      ))}
-    </div>
-  )
-}
-
-function SellersList({ rows }: { rows: ProductBreakdown[] }) {
-  if (!rows.length) return null
-  return (
-    <div className="mt-3 divide-y divide-border">
-      {rows.map((p) => (
-        <article key={p.product_id} className="flex items-center gap-3 py-2">
-          {p.image ? (
-            <img src={p.image} alt={p.name} className="size-9 shrink-0 rounded-md object-cover border border-border" />
-          ) : (
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">
-              {p.name.charAt(0)}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
-            <div className="flex items-center gap-1">
-              <span className="truncate font-mono text-xs text-muted-foreground">{p.parent_sku}</span>
-              <CopySkuButton sku={p.parent_sku} />
-            </div>
-          </div>
-          <div className="text-right text-xs tabular-nums">
-            <p className="font-semibold text-foreground">{formatNumber(p.units ?? 0)} unit</p>
-            <p className="text-[11px] text-muted-foreground">{formatCurrency(p.revenue ?? 0)}</p>
           </div>
         </article>
       ))}
@@ -412,7 +373,7 @@ export default function StorePerformance({
   const [showInteractionModal, setShowInteractionModal] = React.useState(false)
   const [searchQueryTop, setSearchQueryTop] = React.useState("")
   const [searchQueryInteraction, setSearchQueryInteraction] = React.useState("")
-  const [modalInteractionTab, setModalInteractionTab] = React.useState<"viewed" | "clicked" | "sellers">("viewed")
+  const [modalInteractionTab, setModalInteractionTab] = React.useState<"viewed" | "clicked">("viewed")
 
   const sparklineBy = React.useMemo(() => {
     const byKey: Record<string, number[]> = {}
@@ -514,9 +475,7 @@ export default function StorePerformance({
     const list =
       modalInteractionTab === "viewed"
         ? report.product_breakdowns.most_viewed
-        : modalInteractionTab === "clicked"
-          ? report.product_breakdowns.most_clicked
-          : report.product_breakdowns.best_sellers
+        : report.product_breakdowns.most_clicked
     const q = searchQueryInteraction.trim().toLowerCase()
     if (!q) return list
     return list.filter((p) => p.name.toLowerCase().includes(q) || p.parent_sku.toLowerCase().includes(q))
@@ -1659,7 +1618,7 @@ export default function StorePerformance({
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* POPUP MODAL 2: RINCIAN INTERAKSI PRODUK (VIEWS / CLICKS / SELLERS FULL)   */}
+      {/* POPUP MODAL 2: RINCIAN INTERAKSI PRODUK (PALING DILIHAT & PALING DIKLIK) */}
       {/* ========================================================================= */}
       <Dialog open={showInteractionModal} onOpenChange={setShowInteractionModal}>
         <DialogContent className="!w-[min(96vw,68rem)] !max-w-5xl flex max-h-[88vh] flex-col gap-0 p-0 overflow-hidden">
@@ -1670,7 +1629,7 @@ export default function StorePerformance({
                   Rincian Interaksi & Minat Produk
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Data aktivitas pengunjung (tampilan halaman & klik) dibanding produk yang paling banyak terjual.
+                  Halaman produk yang paling banyak dilihat dan diklik pengunjung.
                 </DialogDescription>
               </div>
 
@@ -1679,7 +1638,6 @@ export default function StorePerformance({
                 {([
                   ["viewed", "Paling Dilihat"],
                   ["clicked", "Paling Diklik"],
-                  ["sellers", "Terlaris"],
                 ] as const).map(([key, label]) => (
                   <button
                     key={key}
@@ -1718,18 +1676,9 @@ export default function StorePerformance({
                     <th className="px-4 py-2.5 w-12 text-center">No</th>
                     <th className="px-4 py-2.5 w-14 text-center">Foto</th>
                     <th className="px-4 py-2.5">Produk & SKU</th>
-                    {modalInteractionTab === "sellers" ? (
-                      <>
-                        <th className="px-4 py-2.5 text-right">Unit Terjual</th>
-                        <th className="px-4 py-2.5 text-right">Total Nilai Penjualan</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="px-4 py-2.5 text-right">Dilihat</th>
-                        <th className="px-4 py-2.5 text-right">Diklik</th>
-                        <th className="px-4 py-2.5 text-right">Rasio Klik / Lihat</th>
-                      </>
-                    )}
+                    <th className="px-4 py-2.5 text-right">Dilihat</th>
+                    <th className="px-4 py-2.5 text-right">Diklik</th>
+                    <th className="px-4 py-2.5 text-right">Rasio Klik / Lihat</th>
                     <th className="px-4 py-2.5 text-center w-24">Aksi</th>
                   </tr>
                 </thead>
@@ -1766,30 +1715,17 @@ export default function StorePerformance({
                             <CopySkuButton sku={product.parent_sku} />
                           </div>
                         </td>
-                        {modalInteractionTab === "sellers" ? (
-                          <>
-                            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-foreground">
-                              {formatNumber(product.units ?? 0)} unit
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-primary">
-                              {formatCurrency(product.revenue ?? 0)}
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-foreground">
-                              {formatNumber(views)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-medium tabular-nums text-muted-foreground">
-                              {formatNumber(clicks)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums">
-                              <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-                                {ctr}
-                              </span>
-                            </td>
-                          </>
-                        )}
+                        <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                          {formatNumber(views)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium tabular-nums text-muted-foreground">
+                          {formatNumber(clicks)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums">
+                          <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+                            {ctr}
+                          </span>
+                        </td>
                         <td className="px-4 py-2.5 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Link
