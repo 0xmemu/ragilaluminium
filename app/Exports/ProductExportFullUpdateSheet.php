@@ -105,7 +105,7 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
     {
         ExportSafety::assertQueryWithinLimit($this->query);
 
-        return $this->query->with(['variants', 'media.mediaAsset']);
+        return $this->query->with(['variants', 'attributes', 'media.mediaAsset']);
     }
 
     /** @return list<string> */
@@ -145,11 +145,16 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
         foreach ($product->media->sortBy('position')->values() as $m) {
             $url = (string) ($m->urlFor('pdp') ?? $m->mediaAsset?->urlFor('pdp') ?? '');
             if ($url === '') { continue; }
-            if ($m->position === 1) { $main[0] = $url; continue; }
-            if ($m->position >= 2 && $m->position <= 9) { $main[$m->position - 1] = $url; continue; }
-            if ($m->position >= 11 && $m->position <= 19) { $shared[] = $url; continue; }
-            if ($m->position >= 50 && $m->position <= 79) { $optionImages[] = $url; continue; }
-            if ($m->position >= 101) { $installation[] = $url; }
+            // Klasifikasi memakai penanda asli media (varian / hasil pemasangan),
+            // karena urutan form kini murni 1..N.
+            $isVariant = $m->product_variant_id !== null
+                || ($m->position >= 50 && $m->position <= 79);
+            $isInstallation = (bool) $m->is_installation || $m->position >= 101;
+
+            if ($isInstallation) { $installation[] = $url; continue; }
+            if ($isVariant) { $optionImages[] = $url; continue; }
+            if (count($main) < 9) { $main[] = $url; continue; }
+            $shared[] = $url;
         }
 
         $variants = $product->variants->sortBy('id')->values();
@@ -175,7 +180,7 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
                 (float) $product->height_cm,
                 (float) $product->width_cm,
                 (float) $product->depth_cm,
-                $product->specifications,
+                $this->attributesCell($product),
             ];
             // Urutan kolom ikut template import: image_1..N, image_variation_*,
             // shared_media_*, installation_image_*. Jumlah kolom per series
@@ -197,6 +202,29 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
         }
 
         return $rows;
+    }
+
+    /**
+     * Spesifikasi produk tersimpan di tabel product_attributes, bukan kolom
+     * products. Ditulis "Nama: Nilai, Nama: Nilai" supaya bisa dibaca balik
+     * oleh CatalogProductsImport (pemisah koma).
+     */
+    protected function attributesCell($product): ?string
+    {
+        $parts = [];
+        foreach ($product->attributes as $attribute) {
+            if ($attribute->product_variant_id !== null) {
+                continue;
+            }
+            $name = trim((string) $attribute->attribute_name);
+            $value = trim((string) $attribute->attribute_value);
+            if ($name === '' || $value === '') {
+                continue;
+            }
+            $parts[] = $name.': '.$value;
+        }
+
+        return $parts !== [] ? implode(', ', $parts) : null;
     }
 
     protected function combination($variant): ?string

@@ -717,11 +717,41 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
             if (is_array($decoded)) {
                 $attributes = $decoded;
             } else {
-                foreach (preg_split('/[;\\n]+/', $raw) ?: [] as $part) {
-                    [$name, $value] = array_pad(explode(':', $part, 2), 2, null);
-                    if (trim((string) $name) !== '' && trim((string) $value) !== '') {
-                        $attributes[] = ['name' => trim($name), 'value' => trim($value)];
+                // Pemisah spesifikasi: titik koma atau baris baru selalu memulai
+                // baris spesifikasi baru. Koma juga pemisah resmi (kontrak
+                // 2026-09-18: "Bahan: Aluminium, Kaca: Tempered, Kusen: 4 inch"),
+                // tetapi banyak nilai katalog mengandung koma, mis. "Powder
+                // coating interpon (pilihan: hitam, putih, cokelat, serat kayu)".
+                // Karena itu potongan koma hanya dianggap spesifikasi baru bila
+                // memuat titik dua; kalau tidak, potongan itu disambungkan kembali
+                // ke nilai sebelumnya agar koma di dalam nilai tidak memecah data.
+                $pushAttributes = function (string $part) use (&$attributes): void {
+                    foreach (preg_split('/,/', $part) ?: [] as $chunk) {
+                        if (trim($chunk) === '') {
+                            continue;
+                        }
+
+                        if (str_contains($chunk, ':')) {
+                            [$name, $value] = array_pad(explode(':', $chunk, 2), 2, null);
+                            if (trim((string) $name) !== '' && trim((string) $value) !== '') {
+                                $attributes[] = ['name' => trim($name), 'value' => trim($value)];
+                            }
+
+                            continue;
+                        }
+
+                        $last = count($attributes) - 1;
+                        if ($last < 0) {
+                            continue;
+                        }
+
+                        $attributes[$last]['value'] = rtrim((string) ($attributes[$last]['value'] ?? ''))
+                            .', '.trim($chunk);
                     }
+                };
+
+                foreach (preg_split('/[;\n]+/', (string) $raw) ?: [] as $part) {
+                    $pushAttributes((string) $part);
                 }
             }
         } elseif (is_array($raw)) {
