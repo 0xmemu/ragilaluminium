@@ -30,10 +30,16 @@ return [
     |
     | Dipakai CatalogController lewat paginate(). Sebelumnya kunci ini tidak ada
     | sehingga (int) null = 0 dan paginate(0) diam-diam memakai default model (15).
-    | Nilai di bawah mempertahankan 15 agar perilaku tidak berubah.
+    | Nilai 15 dipertahankan untuk desktop: grid 3 kolom (sm/md) dan 5 kolom (xl)
+    | terisi penuh dengan 15 kartu.
+    |
+    | catalog_page_size_mobile dipakai bila halaman diminta dengan per_page
+    | (klien mengirimnya saat viewport < 640px, di sana grid 2 kolom). 16 kartu
+    | = 8 baris penuh tanpa kartu menggantung di baris terakhir.
     |
     */
     'catalog_page_size' => (int) env('STOREFRONT_CATALOG_PAGE_SIZE', 15),
+    'catalog_page_size_mobile' => (int) env('STOREFRONT_CATALOG_PAGE_SIZE_MOBILE', 16),
 
     'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'RA'),
     'manual_sku_floor' => (int) env('STOREFRONT_MANUAL_SKU_FLOOR', 1),

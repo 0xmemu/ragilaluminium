@@ -178,6 +178,33 @@ class CatalogController extends Controller
         return redirect($target, 301);
     }
 
+    /**
+     * Ukuran halaman katalog.
+     *
+     * Desktop memakai config default (15). Klien mengirim per_page = ukuran
+     * mobile saat viewport sempit, karena pada grid 2 kolom 15 kartu menyisakan
+     * satu kartu menggantung di baris terakhir.
+     *
+     * Nilai di luar dua ukuran resmi diabaikan (bukan divalidasi dengan pesan
+     * error) supaya URL yang menyisipkan per_page sembarang tidak bisa memaksa
+     * pagination raksasa. Halaman selalu kembali ke ukuran default yang aman.
+     */
+    protected function catalogPageSize(Request $request): int
+    {
+        $desktop = (int) config('storefront.catalog_page_size');
+        $mobile = (int) config('storefront.catalog_page_size_mobile');
+
+        $requested = $request->input('per_page');
+        if (is_string($requested) && ctype_digit($requested)) {
+            $requested = (int) $requested;
+            if (in_array($requested, [$desktop, $mobile], true)) {
+                return $requested;
+            }
+        }
+
+        return $desktop;
+    }
+
 protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
     {
         $sort = (string) $request->input('sort', 'popular');
@@ -189,6 +216,13 @@ protected function category(?string $category, Request $request, string $mode = 
         $promoOnly = $mode === 'promo';
         $flashOnly = $mode === 'flash' || $request->boolean('flash');
         $flashPeriodLive = FlashSalePeriodSettings::isLive();
+
+        // Penanda dari carousel "Paling Banyak Dipesan" (tautan Lihat Semua).
+        // Hanya di konteks ini urutan kurasi admin dipakai; sort=popular biasa
+        // tetap murni skor penjualan agar tidak mengubah arti filter Populer.
+        // Fragmen urutannya milik Product::palingBanyakDipesanOrderSql() supaya
+        // galeri ini dan carousel beranda/katalog tidak pernah bisa berbeda.
+        $fromCuratedPopular = $request->input('from') === 'paling-banyak-dipesan';
 
         $promoAttributes = [
             'promo_compare_price',
@@ -260,11 +294,25 @@ protected function category(?string $category, Request $request, string $mode = 
             ->when($sort === 'newest' || $sort === 'baru', fn ($q) => $q->latest('created_at')->orderByDesc('id'))
             ->when(
                 in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
-                // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
-                // (belum ada pembelian → produk stok tertinggi tampil di depan).
-                fn ($q) => $q->orderByRaw(Product::popularityScoreSql().' DESC')->orderByDesc('stock_sort')->orderByDesc('id')
+                function ($q) use ($fromCuratedPopular) {
+                    // Halaman "Lihat Semua" milik carousel Paling Banyak Dipesan
+                    // (from=paling-banyak-dipesan) memakai SATU urutan bersama
+                    // dengan carousel: kurasi admin dulu, sisanya skor penjualan.
+                    // sort=popular tanpa penanda itu tetap murni penjualan.
+                    if ($fromCuratedPopular) {
+                        $q->orderByRaw(Product::palingBanyakDipesanOrderSql());
+
+                        return;
+                    }
+
+                    // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
+                    // (belum ada pembelian → produk stok tertinggi tampil di depan).
+                    $q->orderByRaw(Product::popularityScoreSql().' DESC')
+                        ->orderByDesc('stock_sort')
+                        ->orderByDesc('id');
+                }
             )
-             ->paginate((int) config('storefront.catalog_page_size'))
+             ->paginate($this->catalogPageSize($request))
             ->withQueryString();
 
         // P2-2.1: hasil katalog per kombinasi filter di-cache 5 menit;
@@ -273,8 +321,17 @@ protected function category(?string $category, Request $request, string $mode = 
             'cat', (string) $category, $mode, (string) ($model ?? ''),
             (string) ($design ?? ''),
             (string) $request->input('q'), (string) $request->input('sort'),
+            // Penanda asal ikut jadi kunci cache: urutan kurasi hanya berlaku
+            // untuk konteks Paling Banyak Dipesan, jadi hasilnya tidak boleh
+            // bertukar dengan listing sort=popular biasa.
+            $fromCuratedPopular ? 'from-curated' : 'from-other',
+            // Filter Flash Sale harus menjadi bagian dari kunci cache,
+            // agar hasil filter flash tidak bertabrakan dengan listing umum.
+            $flashOnly ? 'flash' : 'no-flash',
             (string) $request->input('price_min'), (string) $request->input('price_max'),
             (string) $products->currentPage(),
+            // Ukuran halaman ikut jadi kunci: hasil 15 dan 16 potongannya beda.
+            'pp'.$products->perPage(),
         ]);
         $products = \App\Support\ProductCache::rememberCatalog($cacheKey, fn () => $products);
 
@@ -397,6 +454,10 @@ protected function category(?string $category, Request $request, string $mode = 
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
                 'links' => $products->linkCollection()->toArray(),
+            ],
+            'catalogPageSize' => [
+                'desktop' => (int) config('storefront.catalog_page_size'),
+                'mobile' => (int) config('storefront.catalog_page_size_mobile'),
             ],
             'categoryLinks' => CategoryUrl::categoryLinks(),
             'filterModels' => collect(CatalogTaxonomy::models($category))

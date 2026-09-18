@@ -1948,3 +1948,54 @@ Verifikasi:
   ada error baru; build Vite PASS.
 - Dropdown Excel kolom F tetap dibiarkan (showErrorMessage default false = saran, bukan
   larangan), jadi tidak memblokir kode sub model baru.
+
+### 2026-09-18 - Katalog: jumlah kartu per halaman menyesuaikan lebar layar (mobile 16, desktop 15)
+Keluhan owner: "card produk di halaman katalog kok masih 15 terus, sudah di ingatkan berulang kali
+untuk jadi 16 untuk mobile view", lalu setelah percobaan pertama: "tapi di desktop view malah jadi
+16 juga, harusnya tetap 15 dong".
+
+Akar masalah dua lapis:
+1. Angka 15 berasal dari commit optimasi performa 04ebe37 yang membuat kunci config eksplisit
+   "sama seperti perilaku sebelumnya" (default bawaan paginator Laravel), bukan keputusan desain.
+   Sebelum itu kunci storefront.catalog_page_size belum ada sehingga paginate(0) diam-diam memakai 15.
+2. Jumlah kartu per halaman dihitung SERVER, sedangkan grid katalog responsif
+   (grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5). Server tidak punya
+   cara mengetahui lebar layar, jadi satu angka tidak bisa memenuhi 2 kolom (mobile) dan 5 kolom
+   (desktop) sekaligus. Percobaan pertama mengganti angka global ke 16, dan itu memang membuat
+   desktop ikut berubah, kesalahan yang ditegur owner.
+
+Keputusan owner: mobile 16, desktop 15 (opsi A dari pilihan yang diajukan).
+
+Perubahan:
+- config/storefront.php - catalog_page_size tetap 15, ditambah catalog_page_size_mobile = 16.
+- app/Http/Controllers/CatalogController.php - method catalogPageSize() membaca query per_page dan
+  HANYA menerima dua ukuran resmi itu; nilai lain (mis. 1000) diabaikan sehingga URL tidak bisa
+  memaksa pagination raksasa. Kunci cache katalog ikut memuat per_page karena potongan halaman 15
+  dan 16 berbeda dan tidak boleh bertukar. Prop baru catalogPageSize: { desktop, mobile } supaya
+  klien tidak menebak angka sendiri.
+- resources/js/lib/catalog-page-size.ts - fungsi murni resolveCatalogPageSize() (lebar jadi ukuran),
+  catalogPageSizeParam() (desktop = default server, jadi parameter tidak dikirim) dan
+  clampCatalogPage() (jepit nomor halaman saat jumlah halaman menyusut).
+- resources/js/hooks/use-catalog-viewport-width.ts - lebar viewport, awal 0 yang dipetakan ke
+  ukuran desktop supaya render pertama sama dengan yang sudah dikirim server.
+- resources/js/pages/Public/Catalog.tsx - visit() dan toggleFlash() selalu menyertakan per_page;
+  ditambah efek koreksi SEKALI saat halaman dibuka untuk tautan dari luar halaman (menu header,
+  Flash Sale, tautan lama, tautan dibagikan) yang tidak membawa per_page. Efek ini konvergen karena
+  respons berikutnya sudah membawa ukuran yang cocok.
+
+Verifikasi live di browser:
+- Mobile 390px mendarat tanpa parameter: halaman mengoreksi sendiri ke ?per_page=16, 16 kartu, grid
+  terhitung 2 kolom dengan 8 baris yang SEMUANYA berisi 2 kartu (tidak ada kartu menggantung).
+- Desktop 1440px: 15 kartu, URL tetap bersih tanpa per_page.
+- Desktop 1280px membuka ?per_page=16: terkoreksi kembali ke 15 kartu dan parameter dibuang.
+- Halaman 2 = 16 kartu; halaman terakhir (9) = 2 kartu dari 130 produk (8 x 16 + 2).
+- Tautan pagination membawa per_page=16 (?per_page=16&page=2).
+- Catatan alat uji: setViewportSize pada browser in-app TIDAK mengirim event resize, sehingga
+  koreksi baru terlihat setelah window.dispatchEvent(new Event('resize')). Browser sungguhan
+  mengirim event ini, jadi bukan cacat kode.
+- API /api/catalog/windows: 15 kartu; dengan ?per_page=16: 16 kartu; dengan ?per_page=1000: 15.
+
+Test: CatalogPageSizeTest 7 passed (139 assertions; termasuk cache 15/16 tidak bertukar dan
+per_page nakal diabaikan), Vitest catalog-page-size.test.ts 10 passed, regresi suite katalog
+69 passed (740 assertions) - termasuk CatalogPaginationContractTest milik agent lain yang tetap sah
+karena default desktop TIDAK berubah. tsc bersih, eslint bersih untuk berkas yang diubah, build Vite PASS.

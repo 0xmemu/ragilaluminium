@@ -63,6 +63,14 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
 - `GET /products/{category}/{model}/{design}` -> `CatalogController@designShow`  (name: `catalog.design`)
+- Ukuran halaman katalog menyesuaikan lebar layar (kontrak owner 2026-09-18). Desktop memakai
+  `storefront.catalog_page_size` (default 15 kartu, pas untuk grid 3 dan 5 kolom). Klien mengirim
+  query `per_page` = `storefront.catalog_page_size_mobile` (default 16 kartu) saat viewport di bawah
+  breakpoint `sm` (grid 2 kolom, 16 kartu = 8 baris penuh tanpa kartu menggantung). Nilai `per_page`
+  di luar dua ukuran resmi itu diabaikan dan halaman kembali ke ukuran default desktop.
+- Respons listing katalog (Inertia maupun `/api/catalog/{category}`) membawa `pagination.per_page`,
+  dan prop `catalogPageSize` berisi `{ desktop, mobile }` sebagai satu-satunya sumber angka resmi
+  untuk klien. Query `per_page` hanya mengubah UKURAN halaman, tidak pernah mengubah isi atau urutan.
 - Canonical category slug is always Indonesian: `jendela` / `pintu` / `boven`.
 - Legacy English aliases `window|windows|door|doors|bouven` under `/products/...` are no longer routes; they `301` (moved permanently) to the canonical Indonesian slug so there is no duplicate content:
   - `GET /products/windows` -> `301 /products/jendela`; `GET /products/doors` -> `301 /products/pintu`; `GET /products/bouven` -> `301 /products/boven`.

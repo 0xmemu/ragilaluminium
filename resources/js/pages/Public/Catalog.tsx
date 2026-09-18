@@ -14,12 +14,15 @@ import { PalingBanyakDipesanSection } from "@/components/public/home-sections"
 import { ProductCard } from "@/components/public/product-card"
 import { ProductCardGrid } from "@/components/public/product-card-grid"
 import { FlashSaleCarouselSection } from "@/components/public/flash-sale-carousel-section"
+import { FlashSaleCountdown, FlashSaleLabel } from "@/components/public/flash-sale-stage"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { ProductListingFrame } from "@/components/public/product-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
+import { catalogPageSizeParam, clampCatalogPage, resolveCatalogPageSize, type CatalogPageSizes } from "@/lib/catalog-page-size"
+import { useCatalogViewportWidth } from "@/hooks/use-catalog-viewport-width"
 import { routeUrl } from "@/lib/routes"
 import type {
   FlashSalePeriod,
@@ -43,6 +46,8 @@ interface CatalogProps {
   youMightLike?: ProductCardData[]
   flashSalePeriod?: FlashSalePeriod | null
   pagination: PaginationData
+  /** Ukuran halaman resmi dari server (desktop & mobile). */
+  catalogPageSize?: CatalogPageSizes
   filterModels: SelectOption[]
   filterDesigns: SelectOption[]
   activeModel?: string | null
@@ -152,6 +157,7 @@ export default function Catalog({
   youMightLike = [],
   flashSalePeriod = null,
   pagination,
+  catalogPageSize = { desktop: 15, mobile: 16 },
   filterModels = [],
   filterDesigns = [],
   activeModel = null,
@@ -177,6 +183,48 @@ export default function Catalog({
     return new URLSearchParams(window.location.search).get("from") === "paling-banyak-dipesan"
   }, [])
   const flashCarouselProducts = React.useMemo(() => flashSaleSpotlight, [flashSaleSpotlight])
+
+  // Jumlah kartu per halaman dihitung server, jadi server tidak tahu lebar
+  // layar. Di bawah breakpoint sm grid hanya 2 kolom dan 15 kartu menyisakan
+  // satu kartu menggantung di baris terakhir, jadi klien meminta 16 kartu lewat
+  // parameter per_page. Lebar 0 (belum terukur) = ukuran desktop, sama dengan
+  // yang sudah dikirim server, sehingga render pertama tidak memicu muat ulang.
+  const viewportWidth = useCatalogViewportWidth()
+  const perPage = resolveCatalogPageSize(viewportWidth, catalogPageSize)
+  const perPageParam = catalogPageSizeParam(perPage, catalogPageSize)
+  const serverPerPage = pagination?.per_page ?? null
+
+  // Tautan dari luar halaman (menu header, Flash Sale, tautan lama, dan tautan
+  // yang dibagikan) tidak membawa per_page, sehingga server mengirim ukuran
+  // desktop dan di layar sempit satu kartu menggantung lagi. Setelah lebar
+  // terbaca, minta ulang SEKALI dengan ukuran yang benar. Efek ini konvergen:
+  // respons berikutnya sudah membawa per_page yang cocok, jadi tidak mengulang.
+  // Nomor halaman dijepit karena jumlah halaman ikut berubah bersama ukurannya.
+  React.useEffect(() => {
+    if (viewportWidth <= 0) return
+    if (serverPerPage === null || serverPerPage === perPage) return
+
+    const params = new URLSearchParams(window.location.search)
+    if (perPageParam === undefined) {
+      params.delete("per_page")
+    } else {
+      params.set("per_page", String(perPageParam))
+    }
+
+    const total = pagination?.total ?? 0
+    const targetPage = clampCatalogPage(pagination?.current_page ?? 1, total, perPage)
+    if (targetPage <= 1) {
+      params.delete("page")
+    } else {
+      params.set("page", String(targetPage))
+    }
+
+    router.get(basePath, Object.fromEntries(params), {
+      preserveScroll: true,
+      preserveState: false,
+      replace: true,
+    })
+  }, [viewportWidth, serverPerPage, perPage, perPageParam, basePath, pagination])
 
   const [loading, setLoading] = React.useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
@@ -222,8 +270,17 @@ export default function Catalog({
         design: merged.design || undefined,
         price_min: merged.priceMin || undefined,
         price_max: merged.priceMax || undefined,
+        // Penanda asal carousel ikut dipertahankan supaya urutan kurasi
+        // "Paling Banyak Dipesan" tidak diam-diam balik ke skor penjualan
+        // saat pembeli mengganti filter atau urutan.
+        from: fromTopSold ? "paling-banyak-dipesan" : undefined,
         // Populer adalah urutan kanonis/default; query hanya diperlukan untuk pilihan lain.
         sort: sort === "popular" ? undefined : sort,
+        flash: isFlash ? 1 : undefined,
+        // Ukuran halaman yang pas untuk lebar layar sekarang. Filter dan
+        // navigasi dibangun ulang dari sini supaya jumlah kartu tidak diam-diam
+        // kembali ke default desktop saat filter diganti.
+        per_page: perPageParam,
       },
       {
         preserveScroll: true,
@@ -236,9 +293,28 @@ export default function Catalog({
 
   function toggleFlash() {
     setLoading(true)
+    // Halaman /flash-sale adalah halaman khusus (bukan listing berfilter), jadi
+    // mematikan pill di sana harus kembali ke daftar produk biasa. Sebelumnya
+    // navigasi memakai basePath apa adanya sehingga pill aktif tapi diklik tidak
+    // melakukan apa pun (memuat ulang halaman yang sama).
+    const targetPath = isFlash && basePath === "/flash-sale" ? "/products/all" : basePath
+    const sort = resolveSortValue(filters.sort)
     router.get(
-      basePath,
-      isFlash ? {} : { flash: 1 },
+      targetPath,
+      {
+        // Filter lain dipertahankan seperti visit(): pill Flash adalah filter,
+        // bukan tombol reset. Sebelumnya filter model/desain/harga/pencarian dan
+        // penanda asal carousel ikut terbuang saat pill ini diklik.
+        q: searchQuery || undefined,
+        model: filters.model || undefined,
+        design: filters.design || undefined,
+        price_min: filters.priceMin || undefined,
+        price_max: filters.priceMax || undefined,
+        from: fromTopSold ? "paling-banyak-dipesan" : undefined,
+        sort: sort === "popular" ? undefined : sort,
+        flash: isFlash ? undefined : 1,
+        per_page: perPageParam,
+      },
       {
         preserveScroll: true,
         preserveState: false,
@@ -359,6 +435,7 @@ export default function Catalog({
                   />
                 ))}
               </ProductCardGrid>
+
             </>
           ) : null}
 
@@ -456,7 +533,10 @@ export default function Catalog({
 
   const listingBody = (
     <ProductListingFrame
-      title={categoryName}
+      // Judul halaman Flash Sale memakai label bergaya + hitung mundur, sama
+      // seperti headline carousel Flash Sale (satu komponen bersama).
+      title={isFlash ? <FlashSaleLabel /> : categoryName}
+      titleRight={isFlash ? <FlashSaleCountdown period={period} /> : undefined}
       breadcrumbs={[
         { label: "Beranda", href: routeUrl("home") },
         ...(listingAllProducts

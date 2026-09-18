@@ -469,6 +469,12 @@ This is the **functional contract** for each page — its purpose, the data it c
 - Two modes on one route: **model hub** (no listing query) showing model/design entry cards; **SKU listing** when query params present (`sort`, `q`, `model`, `price_min`/`price_max`, etc.).
 - Consumes: paginated product cards (main image via derivatives, name, price range, category/model), filter/sort options.
 - Actions: filter, sort (`sort=popular` = website order volume), paginate, open PDP.
+- Ukuran halaman mengikuti lebar layar (kontrak owner 2026-09-18): desktop 15 kartu
+  (`storefront.catalog_page_size`, pas untuk grid 3 dan 5 kolom), mobile 16 kartu
+  (`storefront.catalog_page_size_mobile`, 8 baris penuh pada grid 2 kolom tanpa kartu
+  menggantung). Klien mengirim query `per_page` saat viewport di bawah breakpoint `sm`;
+  server hanya menerima dua nilai resmi itu dan mengabaikan nilai lain, lalu menyajikan
+  angka resminya lewat prop `catalogPageSize`.
 - States: Empty (no matches), Loading, Error.
 
 **Category pages (`GET /products/{category}`; legacy category paths redirect 301)**
