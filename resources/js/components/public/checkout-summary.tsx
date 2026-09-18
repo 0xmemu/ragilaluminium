@@ -370,13 +370,13 @@ export function CheckoutSummary({
         ) : null}
         {shippingQuoteLoading ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
+            <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
             <dd className="shrink-0 text-right font-semibold">Menghitung ongkir…</dd>
           </div>
         ) : effectiveShipping?.provisional ? (
           <div className="space-y-1">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground min-w-0 break-words">Estimasi ongkir sementara</dt>
+              <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
               <dd className="tabular-nums font-bold">{formatCurrency(effectiveShipping.net)}</dd>
             </div>
             <p className="text-[11px] leading-4 text-muted-foreground">
@@ -384,24 +384,36 @@ export function CheckoutSummary({
             </p>
           </div>
         ) : effectiveShipping ? (
-          <div className="flex justify-between gap-4">
-            <dt className="min-w-0 break-words">
-              <span className="block text-muted-foreground">Ongkos Kirim</span>
-              {shippingSubsidyPercent > 0 ? (
-                <span className="block text-[11px] font-semibold leading-4 text-sale">
-                  subsidi {formatPercent(shippingSubsidyPercent)}
-                </span>
-              ) : null}
-            </dt>
-            <dd className="space-y-0.5 text-right">
-              <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>
-              {shippingHasCompare ? (
-                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+          <>
+            {/* Pola transparan: tarif kurir, potongan subsidi, lalu yang
+                benar-benar dibayar. Ketiganya bisa dijumlahkan pembeli:
+                tarif - subsidi = ongkir dibayar. */}
+            {shippingHasCompare ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground min-w-0 break-words">Tarif Ongkir</dt>
+                <dd className="tabular-nums text-right text-muted-foreground line-through">
                   {formatCurrency(shippingTariff)}
-                </span>
-              ) : null}
-            </dd>
-          </div>
+                </dd>
+              </div>
+            ) : null}
+            {shippingSubsidy > 0 ? (
+              <div className="flex justify-between gap-4">
+                <dt className="min-w-0 break-words text-sale">
+                  Subsidi Ongkir
+                  {shippingSubsidyPercent > 0 ? ` ${formatPercent(shippingSubsidyPercent)}` : ""}
+                </dt>
+                <dd className="tabular-nums text-right font-semibold text-sale">
+                  -{formatCurrency(shippingSubsidy)}
+                </dd>
+              </div>
+            ) : null}
+            <div className="flex justify-between gap-4">
+              <dt className="min-w-0 break-words font-semibold text-foreground">Ongkir dibayar</dt>
+              <dd className="tabular-nums text-right font-semibold text-foreground">
+                {formatCurrency(effectiveShipping.net)}
+              </dd>
+            </div>
+          </>
         ) : (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
@@ -411,17 +423,10 @@ export function CheckoutSummary({
           </div>
         )}
 
-        {liveEta ? (
-          <div className="flex justify-between gap-4 text-[11px]">
-            <dt className="text-muted-foreground min-w-0 break-words">Estimasi tiba</dt>
-            <dd className="text-right font-medium text-foreground">{displayEtaRangeLabel(liveEta)}</dd>
-          </div>
-        ) : null}
-
         {showCodFee ? (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">
-              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
+              Biaya COD{cod.fee_type === "percent" ? ` ${formatNumber(cod.fee_value)}%` : ""}
             </dt>
             <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
           </div>
@@ -429,7 +434,9 @@ export function CheckoutSummary({
 
         <div className="flex justify-between gap-4 border-t border-border pt-3">
           <dt className="text-sm font-bold text-foreground">Total Pembayaran</dt>
-          <dd className="tabular-nums text-base font-bold text-primary">
+          {/* Total tidak memakai warna diskon: dominansinya dari ukuran dan
+              ketebalan, supaya merah tetap bermakna khusus untuk potongan. */}
+          <dd className="tabular-nums text-base font-bold text-foreground">
             {formatCurrency(finalTotal)}
           </dd>
         </div>
@@ -439,6 +446,23 @@ export function CheckoutSummary({
           </p>
         ) : null}
       </dl>
+
+      {/* Estimasi Tiba dipisah dari daftar rincian: ini informasi pengiriman,
+          bukan komponen perhitungan, sehingga tidak memutus alur penjumlahan
+          biaya. Warnanya dibedakan (biru info) dari angka rupiah. */}
+      {liveEta ? (
+        /* Bertumpuk, bukan sebaris: pada panel sempit label dan tanggal saling
+           berdesakan sehingga labelnya terpotong di tengah frasa. */
+        <div className="mt-3 rounded-md border border-info/25 bg-info/5 px-3 py-2">
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-info">
+            <Icon name="truck" className="size-3.5 shrink-0" weight="bold" aria-hidden="true" />
+            Estimasi Tiba
+          </span>
+          <span className="mt-0.5 block text-[11px] font-semibold text-info">
+            {displayEtaRangeLabel(liveEta)}
+          </span>
+        </div>
+      ) : null}
 
       <TrustAssuranceCard className="mt-2.5" />
     </aside>
