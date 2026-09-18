@@ -6,6 +6,12 @@ use App\Models\CmsPage;
 
 /**
  * Store-wide shipping subsidy on cms_pages.slug = checkout.
+ *
+ * Skema HANYA persentase dari tarif kurir (keputusan owner 2026-09-18).
+ * Opsi nominal tetap DIHAPUS: subsidi nominal tidak dapat ditampilkan sebagai
+ * persentase di checkout, sehingga labelnya menyesatkan pembeli. Kunci
+ * `subsidy_type` dipertahankan bernilai 'percent' agar bentuk data tersimpan
+ * dan ledger lama tetap valid, tetapi nilai 'fixed' tidak lagi dihormati.
  */
 class ShippingSubsidySettings
 {
@@ -34,15 +40,12 @@ class ShippingSubsidySettings
     {
         $page = self::page();
         $stored = is_array($page?->content['shipping_subsidy'] ?? null) ? $page->content['shipping_subsidy'] : [];
-        $type = ($stored['subsidy_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent';
         $carriers = is_array($stored['carriers'] ?? null) ? $stored['carriers'] : [];
 
         return [
             'enabled' => (bool) ($stored['enabled'] ?? false),
-            'subsidy_type' => $type,
-            'subsidy_value' => $type === 'percent'
-                ? min(100, max(0, (float) ($stored['subsidy_value'] ?? 0)))
-                : max(0, (float) ($stored['subsidy_value'] ?? 0)),
+            'subsidy_type' => 'percent',
+            'subsidy_value' => min(100, max(0, (float) ($stored['subsidy_value'] ?? 0))),
             'carriers' => ['jnt' => (bool) ($carriers['jnt'] ?? true)],
         ];
     }
@@ -58,12 +61,10 @@ class ShippingSubsidySettings
         if (array_key_exists('enabled', $settings)) {
             $merged['enabled'] = (bool) $settings['enabled'];
         }
-        if (array_key_exists('subsidy_type', $settings)) {
-            $merged['subsidy_type'] = $settings['subsidy_type'] === 'fixed' ? 'fixed' : 'percent';
-        }
+        // `subsidy_type` dari pemanggil DIABAIKAN: skema selalu persentase.
+        $merged['subsidy_type'] = 'percent';
         if (array_key_exists('subsidy_value', $settings)) {
-            $value = max(0, (float) $settings['subsidy_value']);
-            $merged['subsidy_value'] = $merged['subsidy_type'] === 'percent' ? min(100, $value) : $value;
+            $merged['subsidy_value'] = min(100, max(0, (float) $settings['subsidy_value']));
         }
         if (array_key_exists('jnt_enabled', $settings)) {
             $merged['carriers']['jnt'] = (bool) $settings['jnt_enabled'];
@@ -93,24 +94,29 @@ class ShippingSubsidySettings
         return $after;
     }
 
-    /** @return array{gross: float, subsidy: float, net: float, applied: bool} */
+    /**
+     * @return array{gross: float, subsidy: float, subsidy_percent: float, net: float, applied: bool}
+     */
     public static function apply(float $grossShipping, string $carrier = 'jnt'): array
     {
         $gross = max(0, round($grossShipping, 2));
         $settings = self::get();
         $carrierOk = (bool) ($settings['carriers'][$carrier] ?? false);
+        $percent = min(100, max(0, (float) $settings['subsidy_value']));
 
-        if (! $settings['enabled'] || ! $carrierOk || $settings['subsidy_value'] <= 0 || $gross <= 0) {
-            return ['gross' => $gross, 'subsidy' => 0.0, 'net' => $gross, 'applied' => false];
+        if (! $settings['enabled'] || ! $carrierOk || $percent <= 0 || $gross <= 0) {
+            return ['gross' => $gross, 'subsidy' => 0.0, 'subsidy_percent' => 0.0, 'net' => $gross, 'applied' => false];
         }
 
-        $subsidy = $settings['subsidy_type'] === 'fixed'
-            ? min($gross, round((float) $settings['subsidy_value'], 2))
-            : round($gross * (min(100, max(0, (float) $settings['subsidy_value'])) / 100), 2);
+        $subsidy = round($gross * ($percent / 100), 2);
 
         return [
             'gross' => $gross,
             'subsidy' => $subsidy,
+            // Persentase ASLI dari setelan dikirim apa adanya. Frontend tidak
+            // lagi menghitung balik dari nominal, supaya persentase pecahan
+            // (mis. 9,5%) tidak tampil sebagai 10%.
+            'subsidy_percent' => $percent,
             'net' => max(0, round($gross - $subsidy, 2)),
             'applied' => $subsidy > 0,
         ];

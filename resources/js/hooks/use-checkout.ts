@@ -37,6 +37,8 @@ export interface CheckoutVoucher {
 export interface CheckoutShippingQuote {
   gross: number
   subsidy: number
+  /** Persentase subsidi ongkir dari setelan toko (mis. 10 untuk 10%). */
+  subsidy_percent?: number
   net: number
   applied: boolean
   status: string
@@ -390,6 +392,7 @@ export function useCheckout({
           setShippingQuote({
             gross: provisionalAmount,
             subsidy: 0,
+            subsidy_percent: 0,
             net: provisionalAmount,
             applied: false,
             status,
@@ -414,6 +417,7 @@ export function useCheckout({
         setShippingQuote({
           gross,
           subsidy,
+          subsidy_percent: number(source.subsidy_percent) ?? 0,
           net,
           applied: Boolean(source.applied),
           status,

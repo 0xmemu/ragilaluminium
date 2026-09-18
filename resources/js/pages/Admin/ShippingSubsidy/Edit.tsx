@@ -4,13 +4,12 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
-import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface SubsidySettings {
   enabled: boolean
-  subsidy_type: "percent" | "fixed"
+  /** Persentase dari tarif kurir. Skema lain tidak didukung. */
   subsidy_value: number
   jnt_enabled: boolean
 }
@@ -33,7 +32,6 @@ export default function ShippingSubsidyEdit({
 
   const form = useForm({
     enabled: settings.enabled,
-    subsidy_type: settings.subsidy_type,
     subsidy_value: settings.subsidy_value,
     jnt_enabled: settings.jnt_enabled,
   })
@@ -45,7 +43,7 @@ export default function ShippingSubsidyEdit({
       setSubsidyTypeError("Nilai subsidi harus berupa angka 0 atau lebih.")
       return
     }
-    if (form.data.subsidy_type === "percent" && numeric > 100) {
+    if (numeric > 100) {
       setSubsidyTypeError("Persentase subsidi maksimal 100.")
       return
     }
@@ -97,35 +95,25 @@ export default function ShippingSubsidyEdit({
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Skema subsidi
+                  Persentase subsidi
                 </th>
                 <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Select
-                      id="subsidy_type"
-                      value={form.data.subsidy_type}
-                      onChange={(event) =>
-                        form.setData("subsidy_type", event.target.value as "percent" | "fixed")
-                      }
-                      className="h-8 w-56 text-xs"
-                    >
-                      <option value="percent">Persentase dari ongkir (%)</option>
-                      <option value="fixed">Nominal tetap (Rp)</option>
-                    </Select>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Input
                       id="subsidy_value"
                       type="number"
                       min={0}
+                      max={100}
                       step="0.01"
-                      max={form.data.subsidy_type === "percent" ? 100 : undefined}
                       value={subsidyValue}
                       onChange={(event) => {
                         setSubsidyValue(event.target.value)
                         setSubsidyTypeError("")
                       }}
-                      className={`h-8 w-32 text-xs ${subsidyTypeError ? "border-destructive" : ""}`}
+                      className={`h-8 w-28 text-xs ${subsidyTypeError ? "border-destructive" : ""}`}
                       required
                     />
+                    <span className="text-xs font-semibold text-muted-foreground">%</span>
                   </div>
                   {subsidyTypeError ? (
                     <p className="mt-1 text-xs text-destructive">{subsidyTypeError}</p>
@@ -134,7 +122,7 @@ export default function ShippingSubsidyEdit({
                     <p className="mt-1 text-xs text-destructive">{form.errors.subsidy_value}</p>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {form.data.subsidy_type === "percent" ? "Nilai persentase" : "Nilai nominal"}
+                    Persentase dari tarif kurir, maksimal 100. Isi 100 untuk ongkir gratis.
                   </p>
                 </td>
               </tr>

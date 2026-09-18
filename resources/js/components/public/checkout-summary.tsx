@@ -30,6 +30,8 @@ export interface CheckoutItem {
 export interface CheckoutShipping {
   gross: number
   subsidy: number
+  /** Persentase subsidi ongkir dari setelan toko (mis. 10 untuk 10%). */
+  subsidy_percent?: number
   net: number
   applied: boolean
   status?: string
@@ -139,14 +141,32 @@ export function CheckoutSummary({
     : 0
   // Subsidi ongkir menyatu ke label "Ongkos Kirim (subsidi 10%)" sebagai
   // persentase, bukan baris terpisah, sehingga pembeli tidak melihat ongkir
-  // muncul dua kali.
+  // muncul dua kali. Persentasenya diambil dari setelan toko yang dikirim
+  // server, bukan dihitung balik, supaya angka pecahan tidak dibulatkan salah.
   const shippingSubsidyPercent =
-    shippingSubsidy > 0 && shippingFreight > 0
-      ? Math.round((shippingSubsidy / shippingFreight) * 100)
-      : 0
+    shippingSubsidy > 0 ? Number(effectiveShipping?.subsidy_percent || 0) : 0
   // Harga coret hanya bila memang ada selisih yang dibayar.
   const shippingHasCompare =
     effectiveShipping !== null && shippingTariff > Number(effectiveShipping?.net || 0)
+  // Identitas voucher untuk baris atas kotak voucher: satu entri per voucher
+  // yang dipakai (dukung penumpukan), berisi nama, persentase, dan sasaran.
+  const voucherIdentity: Array<{ key: string; name: string; percent: number | null; target: string | null }> =
+    voucher?.vouchers?.length
+      ? voucher.vouchers.map((entry, index) => ({
+          key: entry.code || `voucher-${index}`,
+          name: entry.name,
+          percent: entry.discount_percent ?? null,
+          target: entry.target_label && entry.target_label !== "Semua produk" ? entry.target_label : null,
+        }))
+      : voucher?.name || voucher?.code
+        ? [{
+            key: voucher.code ?? "voucher",
+            name: voucher.name || voucher.code || "Voucher",
+            percent: null,
+            target: null,
+          }]
+        : []
+
   const totalBeforeDiscount = finalTotal + discount + shippingSubsidy
   const savedAmount = Math.max(0, totalBeforeDiscount - finalTotal)
 
@@ -234,11 +254,33 @@ export function CheckoutSummary({
 
       {/* Embedded Voucher Action Box */}
       <div className="mt-3 rounded-md border border-border bg-surface-muted/40 px-3 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Icon name="ticket" className="size-3.5 shrink-0 text-primary" weight="bold" aria-hidden="true" />
-            <span>{hasVoucher ? `Voucher (${voucher?.code})` : "Voucher Toko"}</span>
-          </div>
+        <div className="flex items-start justify-between gap-2">
+          {hasVoucher ? (
+            /* Identitas voucher tampil di baris atas ini: nama, persentase,
+               dan sasaran berlakunya. Nominal potongannya tidak diulang di
+               sini karena sudah ada baris "Diskon Voucher" di ringkasan. */
+            <div className="inline-flex min-w-0 items-start gap-1.5 text-xs font-semibold text-foreground">
+              <Icon name="ticket" className="mt-0.5 size-3.5 shrink-0 text-primary" weight="bold" aria-hidden="true" />
+              <span className="min-w-0 space-y-0.5">
+                {voucherIdentity.map((entry) => (
+                  <span key={entry.key} className="block break-words">
+                    {entry.name}
+                    {entry.percent != null ? (
+                      <span className="font-medium text-primary"> · {formatPercent(entry.percent)}</span>
+                    ) : null}
+                    {entry.target ? (
+                      <span className="font-medium text-primary"> · {entry.target}</span>
+                    ) : null}
+                  </span>
+                ))}
+              </span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Icon name="ticket" className="size-3.5 shrink-0 text-primary" weight="bold" aria-hidden="true" />
+              <span>Voucher Toko</span>
+            </div>
+          )}
           {!voucherOpen && (
             <button
               type="button"
@@ -265,33 +307,6 @@ export function CheckoutSummary({
             </button>
           )}
         </div>
-
-        {hasVoucher ? (
-          <div className="mt-0.5 space-y-1 text-[11px] text-muted-foreground">
-            {voucher?.vouchers?.length ? (
-              voucher.vouchers.map((entry) => (
-                <p key={entry.code} className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 break-words">
-                    {entry.name}
-                    {entry.discount_percent != null ? (
-                      <span className="font-medium text-primary"> · {formatPercent(entry.discount_percent)}</span>
-                    ) : null}
-                    {entry.target_label && entry.target_label !== "Semua produk" ? (
-                      <span className="font-medium text-primary"> · {entry.target_label}</span>
-                    ) : null}
-                  </span>
-                  <span className="tabular-nums shrink-0 font-semibold text-foreground">
-                    Hemat {formatCurrency(entry.discount)}
-                  </span>
-                </p>
-              ))
-            ) : (
-              <p>
-                {voucher?.name} · Hemat {formatCurrency(voucherDiscount)}
-              </p>
-            )}
-          </div>
-        ) : null}
 
         {voucherOpen && !hasVoucher ? (
           <form onSubmit={applyVoucher} className="mt-2 space-y-1.5">
@@ -383,7 +398,7 @@ export function CheckoutSummary({
         ) : effectiveShipping ? (
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground min-w-0 break-words">
-              Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${shippingSubsidyPercent}%)` : ""}
+              Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${formatPercent(shippingSubsidyPercent)})` : ""}
             </dt>
             <dd className="text-right">
               <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>

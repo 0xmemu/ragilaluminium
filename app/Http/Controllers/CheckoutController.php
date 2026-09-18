@@ -116,6 +116,10 @@ class CheckoutController extends Controller
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
                 'subsidy' => $breakdown['subsidy'],
+                // Persentase ASLI dari setelan, dikirim supaya label checkout
+                // tidak menghitung balik dari nominal (persen pecahan bisa
+                // tampil salah setelah dibulatkan).
+                'subsidy_percent' => (float) ($breakdown['subsidy_percent'] ?? 0),
                 'net' => $breakdown['net'],
                 // Ongkir tanpa asuransi: inilah basis biaya COD, supaya angka
                 // pratinjau sama dengan yang tersimpan saat pesanan dibuat.

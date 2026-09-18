@@ -29,7 +29,6 @@ class ShippingSubsidyTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.shipping-subsidy.update'), [
                 'enabled' => true,
-                'subsidy_type' => 'percent',
                 'subsidy_value' => 50,
                 'jnt_enabled' => true,
             ])
@@ -37,9 +36,53 @@ class ShippingSubsidyTest extends TestCase
 
         $settings = ShippingSubsidySettings::get();
         $this->assertTrue($settings['enabled']);
+        // Skema selalu persentase (keputusan owner 2026-09-18).
         $this->assertSame('percent', $settings['subsidy_type']);
         $this->assertEquals(50.0, $settings['subsidy_value']);
         $this->assertTrue($settings['carriers']['jnt']);
+    }
+
+    /**
+     * Penjaga kontrak: skema subsidi ongkir HANYA persentase.
+     *
+     * Opsi nominal tetap dihapus karena tidak dapat ditampilkan sebagai
+     * persentase di checkout, sehingga labelnya menyesatkan pembeli. Nilai
+     * yang dikirim admin sebagai 'fixed' harus diabaikan dan tetap dihitung
+     * sebagai persentase.
+     */
+    public function test_subsidi_ongkir_hanya_persentase(): void
+    {
+        // Kirim 'fixed' beserta nilai besar: harus dianggap persen, bukan rupiah.
+        // Sengaja TIDAK memakai tipe 'percent' di sini supaya test ini benar
+        // benar membuktikan tipe 'fixed' diabaikan.
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'fixed',
+            'subsidy_value' => 25000,
+            'jnt_enabled' => true,
+        ]);
+
+        $settings = ShippingSubsidySettings::get();
+        $this->assertSame('percent', $settings['subsidy_type'], "'fixed' harus diabaikan");
+        $this->assertEquals(100.0, $settings['subsidy_value'], 'nilai di atas 100 dijepit ke 100');
+
+        // 25.000 dianggap 100 persen, bukan Rp 25.000.
+        $applied = ShippingSubsidySettings::apply(60000, 'jnt');
+        $this->assertEquals(60000.0, $applied['subsidy'], '100 persen dari 60.000');
+        $this->assertEquals(0.0, $applied['net'], 'ongkir gratis');
+        $this->assertEquals(100.0, $applied['subsidy_percent'], 'persentase asli ikut dikirim');
+
+        // Persentase pecahan dikirim apa adanya, bukan dibulatkan.
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 9.5,
+            'jnt_enabled' => true,
+        ]);
+
+        $pecahan = ShippingSubsidySettings::apply(100000, 'jnt');
+        $this->assertEquals(9.5, $pecahan['subsidy_percent'], 'persen pecahan tidak dibulatkan di backend');
+        $this->assertEquals(9500.0, $pecahan['subsidy']);
     }
 
     public function test_checkout_applies_percent_subsidy_to_shipping(): void
@@ -130,8 +173,8 @@ class ShippingSubsidyTest extends TestCase
     {
         ShippingSubsidySettings::update([
             'enabled' => true,
-            'subsidy_type' => 'fixed',
-            'subsidy_value' => 25000,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 25,
             'jnt_enabled' => false,
         ]);
 
@@ -237,7 +280,7 @@ class ShippingSubsidyTest extends TestCase
     {
         ShippingSubsidySettings::update([
             'enabled' => false,
-            'subsidy_type' => 'fixed',
+            'subsidy_type' => 'percent',
             'subsidy_value' => 0,
             'jnt_enabled' => true,
         ]);
@@ -307,7 +350,7 @@ class ShippingSubsidyTest extends TestCase
     {
         ShippingSubsidySettings::update([
             'enabled' => false,
-            'subsidy_type' => 'fixed',
+            'subsidy_type' => 'percent',
             'subsidy_value' => 0,
             'jnt_enabled' => true,
         ]);
@@ -372,7 +415,7 @@ class ShippingSubsidyTest extends TestCase
     {
         ShippingSubsidySettings::update([
             'enabled' => false,
-            'subsidy_type' => 'fixed',
+            'subsidy_type' => 'percent',
             'subsidy_value' => 0,
             'jnt_enabled' => true,
         ]);

@@ -150,10 +150,10 @@ final class OperationalSettings
             ],
             self::SHIPPING_SUBSIDY => [
                 'enabled' => (bool) ($value['enabled'] ?? false),
-                'subsidy_type' => ($value['subsidy_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
-                'subsidy_value' => ($value['subsidy_type'] ?? 'percent') === 'percent'
-                    ? min(100, max(0, (float) ($value['subsidy_value'] ?? 0)))
-                    : max(0, (float) ($value['subsidy_value'] ?? 0)),
+                // Skema subsidi ongkir selalu persentase (keputusan owner
+                // 2026-09-18); nilai 'fixed' lama tidak lagi dihormati.
+                'subsidy_type' => 'percent',
+                'subsidy_value' => min(100, max(0, (float) ($value['subsidy_value'] ?? 0))),
                 'carriers' => [
                     'jnt' => (bool) ($value['carriers']['jnt'] ?? $value['jnt_enabled'] ?? true),
                 ],
