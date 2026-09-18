@@ -1,7 +1,7 @@
 import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
-import { InstallationLightbox, type InstallationLightboxItem } from "@/components/public/installation-lightbox"
+import { InstallationLightbox } from "@/components/public/installation-lightbox"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"

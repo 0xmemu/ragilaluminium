@@ -614,60 +614,50 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* Baris Bawah: Kontrol Segmented Periode & Granularitas */}
+        {/* Baris Bawah: Kontrol Dropdown Periode & Granularitas (owner 2026-09-18: Opsi 1 Dropdown) */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-surface p-1">
-            {periodOptions
-              .filter((option) => option.value !== "custom")
-              .map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    setPeriod(option.value)
-                    apply({ period: option.value })
-                  }}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-medium transition",
-                    period === option.value
-                      ? "bg-foreground text-background shadow-xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            <button
-              type="button"
-              onClick={() => setPeriod("custom")}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium transition",
-                period === "custom"
-                  ? "bg-foreground text-background shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-              )}
-            >
-              Kustom
-            </button>
-          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Periode:</span>
+              <Select
+                value={period}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setPeriod(value)
+                  if (value !== "custom") {
+                    apply({ period: value })
+                  }
+                }}
+                className="h-8 w-36 text-xs font-medium bg-surface"
+                id="period-select" aria-label="Filter periode analisis"
+              >
+                {periodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Granularitas:</span>
-            <Select
-              value={granularity}
-              onChange={(event) => {
-                const value = event.target.value
-                setGranularity(value)
-                apply({ granularity: value })
-              }}
-              className="h-8 text-xs font-medium w-28 bg-surface"
-            >
-              {granularityOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Granularitas:</span>
+              <Select
+                value={granularity}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setGranularity(value)
+                  apply({ granularity: value })
+                }}
+                className="h-8 w-28 text-xs font-medium bg-surface"
+                id="granularity-select" aria-label="Filter skala grafik"
+              >
+                {granularityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
         </div>
 
