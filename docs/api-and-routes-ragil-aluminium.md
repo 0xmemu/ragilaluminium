@@ -281,6 +281,8 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 - `POST /admin/testimonials/admin-review` -> `Admin\TestimonialController@storeAdminReview` (name: `admin.testimonials.admin-review.store`); verified delivered/completed order tanpa duplikasi
 - `POST /admin/testimonials/{testimonial}/moderate` -> `Admin\TestimonialController@moderate` (name: `admin.testimonials.moderate`); status moderasi dan audit
 - `POST /admin/testimonials/{testimonial}/media` -> `Admin\TestimonialController@addMedia` (name: `admin.testimonials.media`); tambah foto/video tanpa mengubah teks pelanggan
+- `POST /admin/testimonials/{testimonial}/reply` -> `Admin\TestimonialController@reply` (name: `admin.testimonials.reply`); simpan balasan admin atas ulasan pelanggan, tidak mengubah published/moderasi
+- `DELETE /admin/testimonials/{testimonial}/reply` -> `Admin\TestimonialController@destroyReply` (name: `admin.testimonials.reply.destroy`); hapus balasan tanpa menghapus ulasan
 - `GET /admin/users` -> `Admin\UserController@index`  (name: `admin.users.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/users` -> `Admin\UserController@store`  (name: `admin.users.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/users/create` -> `Admin\UserController@create`  (name: `admin.users.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -385,10 +387,14 @@ Dua angka asuransi yang berbeda dan tidak boleh dicampur:
 
 DILARANG ada rumus tarif asuransi di sistem ini: tanpa persen, tanpa floor, tanpa nilai tetap, dan tanpa config `insurance_rate` / `insurance_fee` / `offer_fee`. Bila J&T tidak mengirim biayanya, biaya dianggap 0, bukan dihitung sendiri.
 
-Payload quote memisahkan ongkir dan asuransi untuk pembukuan: `freight` = tarif J&T tanpa asuransi, `insurance` = biaya asuransi dari J&T, `insurance_charged` = biaya yang ditagihkan (selalu sama dengan `insurance`), `net_ongkir` = ongkir setelah subsidi tanpa asuransi, `net` = `net_ongkir` + `insurance_charged` (inilah angka yang dibayar pembeli), `gross` = total J&T termasuk asuransi.
+Payload quote memisahkan ongkir dan asuransi untuk pembukuan: `freight` = tarif J&T tanpa asuransi, `insurance` = biaya asuransi dari J&T, `insurance_charged` = biaya yang ditagihkan (selalu sama dengan `insurance`), `gross` = total J&T termasuk asuransi, `subsidy` = potongan toko, `net` = `gross` - `subsidy` (inilah satu angka yang dibayar pembeli), `net_ongkir` = `net` - `insurance_charged` (ongkir setelah subsidi tanpa asuransi).
+
+Rumus subsidi (keputusan owner 2026-09-18): subsidi = persen x TOTAL ongkir, yaitu tarif kurir DITAMBAH asuransi, ada asuransi ataupun tidak. Sebelumnya hanya tarif dasar yang disubsidi, sehingga 10 persen dari angka yang terlihat pembeli (termasuk asuransi) tidak sama dengan selisih yang terlihat. Asuransi tetap ditagihkan penuh sesuai angka J&T karena merupakan uang titipan, sehingga seluruh subsidi jatuh ke komponen ongkir dan `net_ongkir + subsidy + insurance_charged = gross` selalu berlaku.
+
+Rumus biaya COD (keputusan owner 2026-09-03, dipertegas 2026-09-18): biaya COD = persen x (subtotal produk setelah voucher + TOTAL ongkos kirim yang dibayar pembeli, sudah termasuk asuransi). Basisnya `net`, bukan `net_ongkir`, supaya biaya COD dapat diverifikasi pembeli dari angka yang tampil di ringkasan.
 
 Order menyimpan `shipping_amount` (ongkir net setelah subsidi, tanpa asuransi), `shipping_subsidy_amount`, dan `shipping_insurance_amount` secara terpisah; `total_amount` menjumlahkan ketiganya secara eksplisit.
 
-Tampilan checkout: label "Tarif J&T" memakai `gross` (tarif SUDAH TERMASUK asuransi, ditandai "sudah termasuk asuransi"), sehingga `tarif - subsidi = ongkir dibayar pelanggan` bisa dijumlahkan pembeli tanpa angka dobel. Biaya asuransi tidak ditampilkan sebagai baris terpisah.
+Tampilan checkout: baris "Ongkos Kirim" menampilkan `net` sebagai angka yang dibayar dengan `gross` dicoret di bawahnya, dan label `(subsidi N%)` memakai persentase asli dari setelan, sehingga `gross - subsidi = net` dapat diverifikasi pembeli. Biaya asuransi tidak ditampilkan sebagai baris terpisah karena sudah menyatu ke tarif.
 
 Asuransi saling meniadakan di laba bersih: ditambahkan ke total pembeli, lalu dikurangi lagi sebagai potongan J&T. Perbaikan yang menyentuh hanya satu sisi membuat laba bersih salah.

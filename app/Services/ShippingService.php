@@ -199,19 +199,27 @@ class ShippingService
                     $gross = $insuranceCost > 0 && is_numeric($sumFromJnt)
                         ? round((float) $sumFromJnt, 2)
                         : round($freight + $insuranceCost, 2);
-                    $applied = ShippingSubsidySettings::apply($freight, 'jnt');
-                    $net = round(max(0, (float) $applied['net']) + $insuranceCost, 2);
+                    // Subsidi dihitung dari TOTAL ongkir, yaitu tarif kurir
+                    // DITAMBAH asuransi (keputusan owner 2026-09-18): 10 persen
+                    // berlaku atas seluruh ongkos kirim, ada asuransi ataupun
+                    // tidak. Sebelumnya hanya tarif dasar yang disubsidi,
+                    // sehingga persentase di label tidak cocok dengan selisih
+                    // angka yang terlihat pembeli.
+                    $applied = ShippingSubsidySettings::apply($gross, 'jnt');
+                    $net = round(max(0, (float) $applied['net']), 2);
 
                     return [
                         ...$applied,
                         'gross' => $gross,
                         'net' => $net,
-                        // Ongkir bersih setelah subsidi TANPA asuransi: nilai
-                        // inilah yang disimpan sebagai shipping_amount, supaya
-                        // kolom "Ongkir" tidak bercampur dengan asuransi dan
-                        // total pesanan menjumlahkan keduanya secara eksplisit.
-                        // Yang dibayar pembeli tetap satu angka: `net`.
-                        'net_ongkir' => round(max(0, (float) $applied['net']), 2),
+                        // Ongkir setelah subsidi TANPA asuransi: nilai inilah
+                        // yang disimpan sebagai shipping_amount, supaya kolom
+                        // "Ongkir" tidak bercampur dengan asuransi dan total
+                        // pesanan menjumlahkan keduanya secara eksplisit.
+                        // Asuransi tetap ditagihkan PENUH sesuai angka J&T
+                        // (uang titipan), sehingga seluruh subsidi jatuh ke
+                        // komponen ongkir. Yang dibayar pembeli: `net`.
+                        'net_ongkir' => round(max(0, $net - $insuranceCost), 2),
                         'freight' => $freight,
                         'insurance' => $insuranceCost,
                         'insurance_charged' => $insuranceCost,

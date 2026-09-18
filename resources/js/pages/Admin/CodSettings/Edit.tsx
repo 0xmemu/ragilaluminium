@@ -141,7 +141,7 @@ export default function CodSettingsEdit({
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
                   <HoverHint
                     label="Biaya penanganan (handling fee)"
-                    hint="Nilai biaya (%). Rumus: biaya COD = 4% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400."
+                    hint="Nilai biaya (%). Rumus: biaya COD = persen x (subtotal produk setelah voucher + TOTAL ongkos kirim yang dibayar pembeli, SUDAH TERMASUK asuransi). Subtotal produk memakai harga setelah diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, total ongkos kirim Rp 21.000 (termasuk asuransi). Biaya COD = 4% x (Rp 90.000 + Rp 21.000) = Rp 4.440."
                   />
                 </th>
                 <td className="px-4 py-2.5">

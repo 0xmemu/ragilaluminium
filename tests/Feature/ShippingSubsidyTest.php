@@ -146,15 +146,26 @@ class ShippingSubsidyTest extends TestCase
         $order = Order::query()->latest('id')->first();
         $this->assertNotNull($order);
 
-        $gross = (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount;
+        // Gross = tarif kurir DITAMBAH asuransi. Subsidi dihitung dari total
+        // ini (keputusan owner 2026-09-18), bukan dari tarif dasar saja.
+        $gross = (float) $order->shipping_amount
+            + (float) $order->shipping_subsidy_amount
+            + (float) $order->shipping_insurance_amount;
         $this->assertGreaterThan(0, $gross);
         $this->assertEquals(
             round($gross * 0.5, 2),
-            (float) $order->shipping_subsidy_amount
+            (float) $order->shipping_subsidy_amount,
+            'subsidi 50 persen dari TOTAL ongkir termasuk asuransi'
         );
         $this->assertEquals(
-            round($gross - (float) $order->shipping_subsidy_amount, 2),
-            (float) $order->shipping_amount
+            round(
+                $gross
+                    - (float) $order->shipping_subsidy_amount
+                    - (float) $order->shipping_insurance_amount,
+                2
+            ),
+            (float) $order->shipping_amount,
+            'ongkir net = gross - subsidi - asuransi (asuransi ditagihkan penuh)'
         );
         // Asuransi selalu ikut (keputusan owner 2026-09-18): biaya dari J&T
         // di-snapshot ke order, dan total pesanan memuatnya secara eksplisit.
@@ -166,6 +177,85 @@ class ShippingSubsidyTest extends TestCase
                 - (float) $order->voucher_discount_amount
                 + (float) $order->cod_fee_amount,
             (float) $order->total_amount
+        );
+    }
+
+    /**
+     * Penjaga: persentase subsidi dan persentase biaya COD harus dapat
+     * diverifikasi pembeli dari angka yang tampil di ringkasan.
+     *
+     * Sebelumnya subsidi dihitung dari tarif dasar saja sementara angka yang
+     * tampil sudah termasuk asuransi, sehingga 10 persen dari angka yang
+     * terlihat tidak sama dengan selisih yang terlihat (7.500 vs 7.000).
+     * Biaya COD pun sama: basisnya ongkir tanpa asuransi, padahal yang tampil
+     * termasuk asuransi.
+     */
+    public function test_persentase_subsidi_dan_biaya_cod_dapat_diverifikasi(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 10,
+            'jnt_enabled' => true,
+        ]);
+        \App\Support\CodSettings::update([
+            'enabled' => true,
+            'fee_type' => 'percent',
+            'fee_value' => 4,
+            'max_order_amount' => null,
+        ]);
+
+        // J&T palsu meniru bentuk balasan nyata: ongkir standar 70.000,
+        // asuransi 5.000, total 75.000.
+        $this->mock(\App\Services\Shipping\JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('tariff')->andReturn(new \App\Services\Shipping\JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: ['data' => [
+                    'estimateCustomerCost' => 70000,
+                    'estimateInsuranceCost' => 5000,
+                    'estimateSumFreight' => 75000,
+                ]],
+                requestId: 'verifikasi-persen',
+                elapsedMs: 1,
+            ));
+        });
+
+        $subtotal = 580000.0;
+        $q = app(\App\Services\ShippingService::class)
+            ->quote(20.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', $subtotal);
+
+        // 10 persen dari Total Ongkir = selisih angka yang dicoret.
+        $this->assertEquals(7500.0, (float) $q['subsidy'], '10 persen dari 75.000');
+        $this->assertEquals(67500.0, (float) $q['net'], 'total ongkir setelah subsidi');
+        $this->assertEqualsWithDelta(
+            round((float) $q['gross'] * 0.10, 2),
+            (float) $q['gross'] - (float) $q['net'],
+            0.01,
+            'persen subsidi harus cocok dengan selisih yang terlihat pembeli'
+        );
+
+        // 4 persen dari (subtotal setelah voucher + TOTAL ongkir dibayar).
+        $codFee = \App\Support\CodSettings::calculateFee($subtotal, (float) $q['net']);
+        $this->assertEqualsWithDelta(
+            round(($subtotal + 67500.0) * 0.04, 2),
+            $codFee,
+            0.01,
+            'basis COD memakai total ongkir yang dibayar pembeli'
+        );
+        $this->assertNotEquals(
+            round(($subtotal + (float) $q['net_ongkir']) * 0.04, 2),
+            $codFee,
+            'basis COD bukan ongkir tanpa asuransi'
+        );
+
+        // Invariant pembukuan: tagihan J&T (asumsi) harus tetap sama dengan gross.
+        $this->assertEqualsWithDelta(
+            (float) $q['gross'],
+            (float) $q['net_ongkir'] + (float) $q['subsidy'] + (float) $q['insurance'],
+            0.01,
+            'net_ongkir + subsidi + asuransi = total ongkir'
         );
     }
 
@@ -187,8 +277,9 @@ class ShippingSubsidyTest extends TestCase
     /**
      * Asuransi pengiriman menyatu ke tarif ongkir (keputusan owner 2026-09-18):
      * pengiriman toko selalu diasuransikan, pembeli tidak memilih. Quote
-     * memisahkan freight & insurance untuk pembukuan; subsidi hanya atas
-     * freight; net = freight - subsidi + asuransi. Order menyimpan snapshot.
+     * memisahkan freight & insurance untuk pembukuan; subsidi dihitung dari
+     * TOTAL ongkir (tarif + asuransi); net = gross - subsidi. Order menyimpan
+     * snapshot.
      */
     public function test_checkout_with_insurance_snapshot_and_total_consistency(): void
     {
@@ -205,9 +296,10 @@ class ShippingSubsidyTest extends TestCase
         $this->assertArrayHasKey('freight', $breakdown);
         $this->assertGreaterThanOrEqual(0.0, (float) $breakdown['insurance']);
         $this->assertEqualsWithDelta(
-            max(0, (float) $breakdown['freight'] - (float) $breakdown['subsidy']) + (float) $breakdown['insurance'],
+            (float) $breakdown['gross'] - (float) $breakdown['subsidy'],
             (float) $breakdown['net'],
             0.01,
+            'net = total ongkir - subsidi',
         );
 
         $product = Product::create([

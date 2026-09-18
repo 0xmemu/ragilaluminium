@@ -107,9 +107,15 @@ class CodSettingsTest extends TestCase
         $order = Order::query()->latest('id')->first();
         $this->assertNotNull($order);
         $this->assertTrue((bool) $order->cod_flag);
-        // Keputusan owner 2026-09-03: COD = fee% x (subtotal dibayar + ongkir NET)
-        // subtotal 1.000.000 + ongkir net 60.000 = 1.060.000 x 10% = 106.000.
-        $this->assertEquals(106000.0, (float) $order->cod_fee_amount);
+        // Keputusan owner 2026-09-03 (dipertegas 2026-09-18): COD = fee% x
+        // (subtotal dibayar + TOTAL ongkir dibayar pembeli, sudah termasuk
+        // asuransi). Ongkir net 60.000 + asuransi 5.000 = 65.000.
+        $basisOngkir = (float) $order->shipping_amount + (float) $order->shipping_insurance_amount;
+        $this->assertEquals(
+            round(((float) $order->subtotal_amount + $basisOngkir) * 0.10, 2),
+            (float) $order->cod_fee_amount,
+            'biaya COD dihitung dari total ongkir yang dibayar pembeli'
+        );
         // Total memuat asuransi secara eksplisit (selalu ditagihkan sejak
         // keputusan owner 2026-09-18).
         $this->assertEquals(
@@ -238,9 +244,11 @@ class CodSettingsTest extends TestCase
             'biaya COD di pratinjau harus sama dengan yang tersimpan di order',
         );
 
-        // Basis fee = subtotal + ongkir TANPA asuransi: 4% x 1.120.000 = 44.800.
-        // Kalau asuransi ikut jadi basis, hasilnya 45.000 dan test ini gagal.
-        $this->assertSame(44800.0, (float) $order->cod_fee_amount);
+        // Basis fee = subtotal + TOTAL ongkir dibayar pembeli (termasuk
+        // asuransi): 4% x (1.000.000 + 125.000) = 45.000. Asuransi 5.000 ikut
+        // jadi basis supaya biaya COD dapat diverifikasi dari angka yang
+        // terlihat di ringkasan.
+        $this->assertSame(45000.0, (float) $order->cod_fee_amount);
 
         // Total yang ditampilkan = subtotal + ongkir + asuransi + biaya COD.
         $this->assertEqualsWithDelta(

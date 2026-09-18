@@ -106,11 +106,14 @@ class CodSettings
     }
 
     /**
-     * Biaya COD = persen dari (subtotal produk yang dibayar pembeli + ongkir net
-     * yang dibayar pembeli). Ongkir yang dihitung adalah NET (setelah subsidi) —
-     * subsidi bukan bagian dari nilai yang ditagih ke penerima (keputusan owner
-     * 2026-09-03, mengikuti praktik integrasi J&T: fee COD dihitung dari harga
-     * paket termasuk ongkir).
+     * Biaya COD = persen dari (subtotal produk setelah voucher + TOTAL ongkos
+     * kirim yang dibayar pembeli).
+     *
+     * Ongkir yang dihitung adalah NET setelah subsidi (subsidi bukan bagian
+     * nilai yang ditagih ke penerima, keputusan owner 2026-09-03) DAN sudah
+     * termasuk asuransi (keputusan owner 2026-09-18). Memakai total ongkos
+     * kirim yang dibayar pembeli ini penting supaya biaya COD dapat
+     * diverifikasi dari angka yang tampil di ringkasan checkout.
      */
     public static function calculateFee(float $subtotalAfterVoucher, float $shippingNet = 0): float
     {
