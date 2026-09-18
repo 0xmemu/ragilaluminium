@@ -357,41 +357,43 @@ export function CheckoutSummary({
         ) : null}
       </div>
 
+      {/* Rincian dipisah per komponen dengan warna: abu untuk komponen
+          produk, biru untuk pengiriman (info kurir), dan kuning untuk biaya
+          pembayaran (biaya tambahan metode bayar). Warna dipakai sebagai
+          penanda kelompok, bukan hiasan, sehingga tiap potongan tampil pada
+          bagian yang sesuai tanpa menambah subjudul teks. */}
       <dl className="mt-3 space-y-2.5 text-xs">
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
-          <dd className="space-y-0.5 text-right">
-            <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
-            {hasCompareSubtotal ? (
-              <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
-                {formatCurrency(subtotalOriginal)}
-              </span>
-            ) : null}
-          </dd>
-        </div>
-        {hasVoucher ? (
+        {/* Komponen PRODUK */}
+        <div className="space-y-2 rounded-md border-l-2 border-l-muted-foreground/25 bg-surface-muted/50 py-2 pl-2.5 pr-2">
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">Diskon Voucher</dt>
-            <dd className="tabular-nums font-bold text-sale">
-              -{formatCurrency(voucherDiscount)}
+            <dt className="text-muted-foreground min-w-0 break-words">Subtotal Produk ({items.reduce((total, item) => total + Number(item.quantity || 0), 0)} unit)</dt>
+            <dd className="space-y-0.5 text-right">
+              <span className="tabular-nums block font-semibold">{formatCurrency(subtotal)}</span>
+              {hasCompareSubtotal ? (
+                <span className="tabular-nums block text-[11px] text-muted-foreground line-through">
+                  {formatCurrency(subtotalOriginal)}
+                </span>
+              ) : null}
             </dd>
           </div>
-        ) : null}
-        {showCodFee ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground min-w-0 break-words">
-              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
-            </dt>
-            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
-          </div>
-        ) : null}
+          {hasVoucher ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground min-w-0 break-words">Diskon Voucher</dt>
+              <dd className="tabular-nums font-bold text-sale">
+                -{formatCurrency(voucherDiscount)}
+              </dd>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Komponen PENGIRIMAN */}
         {shippingQuoteLoading ? (
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4 rounded-md border-l-2 border-l-info/40 bg-info/5 py-2 pl-2.5 pr-2">
             <dt className="text-muted-foreground min-w-0 break-words">Pengiriman</dt>
             <dd className="shrink-0 text-right font-semibold">Menghitung ongkir…</dd>
           </div>
         ) : effectiveShipping?.provisional ? (
-          <div className="space-y-1">
+          <div className="space-y-1 rounded-md border-l-2 border-l-info/40 bg-info/5 py-2 pl-2.5 pr-2">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground min-w-0 break-words">Estimasi ongkir sementara</dt>
               <dd className="tabular-nums font-bold">{formatCurrency(effectiveShipping.net)}</dd>
@@ -401,9 +403,16 @@ export function CheckoutSummary({
             </p>
           </div>
         ) : effectiveShipping ? (
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4 rounded-md border-l-2 border-l-info/40 bg-info/5 py-2 pl-2.5 pr-2">
             <dt className="text-muted-foreground min-w-0 break-words">
-              Ongkos Kirim{shippingSubsidyPercent > 0 ? ` (subsidi ${formatPercent(shippingSubsidyPercent)})` : ""}
+              Ongkos Kirim
+              {shippingSubsidyPercent > 0 ? (
+                /* Keterangan subsidi dibuat baris tersendiri supaya labelnya
+                   tidak terpotong di tengah tanda kurung. */
+                <span className="block text-[11px] leading-4">
+                  subsidi {formatPercent(shippingSubsidyPercent)}
+                </span>
+              ) : null}
             </dt>
             <dd className="space-y-0.5 text-right">
               <span className="tabular-nums block font-semibold">{formatCurrency(effectiveShipping.net)}</span>
@@ -415,13 +424,23 @@ export function CheckoutSummary({
             </dd>
           </div>
         ) : (
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4 rounded-md border-l-2 border-l-info/40 bg-info/5 py-2 pl-2.5 pr-2">
             <dt className="text-muted-foreground min-w-0 break-words">Ongkos Kirim</dt>
             <dd className="text-right font-semibold shrink-0 text-muted-foreground">
               {shippingQuoteAttempted ? "Dihitung saat konfirmasi" : "Lengkapi alamat untuk menghitung"}
             </dd>
           </div>
         )}
+
+        {/* Komponen PEMBAYARAN */}
+        {showCodFee ? (
+          <div className="flex justify-between gap-4 rounded-md border-l-2 border-l-warning/50 bg-warning/5 py-2 pl-2.5 pr-2">
+            <dt className="text-muted-foreground min-w-0 break-words">
+              Biaya COD{cod.fee_type === "percent" ? ` (${formatNumber(cod.fee_value)}%)` : ""}
+            </dt>
+            <dd className="tabular-nums font-semibold">{formatCurrency(cod.fee_amount)}</dd>
+          </div>
+        ) : null}
 
         {liveEta ? (
           <div className="flex justify-between gap-4 border-t border-border pt-2.5">
