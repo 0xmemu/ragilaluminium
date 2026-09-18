@@ -914,13 +914,16 @@ export default function StorePerformance({
                 </div>
               ))}
 
-              <div className="mt-3 flex items-center justify-between rounded-md bg-muted/40 p-2.5 border border-border">
+              <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-muted/40 p-2.5 border border-border">
                 <HoverHint
                   label={kpiMap["net_revenue"]?.label ?? "Penjualan Bersih"}
                   hint="Hak pendapatan bersih toko setelah dikurangi ongkir, fee COD, subsidi, dan retur."
                   className="text-xs font-bold text-foreground"
                 />
-                <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
+                <span className="flex items-center gap-2">
+                  <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
+                  <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -942,8 +945,9 @@ export default function StorePerformance({
                   />
                   <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">Lunas</span>
                 </div>
-                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
+                <p className="mt-1 flex items-center gap-2 text-lg font-bold tabular-nums text-foreground">
                   {formatCurrency(report.financial.payments_received ?? 0)}
+                  <DeltaBadge percent={kpiMap["payments_received"]?.change_percent} />
                 </p>
               </div>
 
@@ -966,8 +970,9 @@ export default function StorePerformance({
                     hint="Pesanan COD yang barangnya sudah sampai ke pembeli. Sistem tidak melacak setoran uang dari kurir."
                     className="text-xs text-muted-foreground"
                   />
-                  <p className="mt-1 font-bold tabular-nums text-foreground">
+                  <p className="mt-1 flex items-center gap-1.5 font-bold tabular-nums text-foreground">
                     {formatCurrency(report.financial.cod_paid ?? 0)}
+                    <DeltaBadge percent={kpiMap["cod_paid"]?.change_percent} />
                   </p>
                 </div>
               </div>
@@ -982,8 +987,12 @@ export default function StorePerformance({
                   />
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Pending</span>
                 </div>
-                <p className="mt-1 text-base font-bold tabular-nums text-foreground">
-                  {formatNumber(report.financial.payment_pending_count ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+                <p className="mt-1 flex items-center gap-2 text-base font-bold tabular-nums text-foreground">
+                  <span>
+                    {formatNumber(report.financial.payment_pending_count ?? 0)}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">pesanan</span>
+                  </span>
+                  <DeltaBadge percent={kpiMap["payment_pending_count"]?.change_percent} upIsBad />
                 </p>
               </div>
             </div>
@@ -1022,6 +1031,9 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["open_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
+            <div className="mt-1.5">
+              <DeltaBadge percent={kpiMap["open_orders"]?.change_percent} upIsBad />
+            </div>
           </Link>
 
           <Link
@@ -1039,6 +1051,9 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
+            <div className="mt-1.5">
+              <DeltaBadge percent={kpiMap["dispatched_orders"]?.change_percent} />
+            </div>
           </Link>
 
           <Link
@@ -1056,6 +1071,9 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
+            <div className="mt-1.5">
+              <DeltaBadge percent={kpiMap["completed_orders"]?.change_percent} />
+            </div>
           </Link>
 
           <div className="rounded-lg border border-border bg-surface p-4">
@@ -1070,6 +1088,9 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
             </p>
+            <div className="mt-1.5">
+              <DeltaBadge percent={kpiMap["avg_confirm_hours"]?.change_percent} upIsBad />
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-4">
@@ -1084,6 +1105,9 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}
             </p>
+            <div className="mt-1.5">
+              <DeltaBadge percent={kpiMap["avg_process_days"]?.change_percent} upIsBad />
+            </div>
           </div>
         </div>
 
@@ -1100,9 +1124,12 @@ export default function StorePerformance({
               <div>
                 <p className="font-bold text-foreground">Retur Barang</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
+                  <li className="flex items-center justify-between gap-2">
                     <span>{kpiMap["returns_created"]?.label ?? "Retur Diajukan"}:</span>
-                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_created"]?.value ?? 0)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <DeltaBadge percent={kpiMap["returns_created"]?.change_percent} upIsBad />
+                      <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["returns_created"]?.value ?? 0)}</span>
+                    </span>
                   </li>
                   <li className="flex justify-between">
                     <span>{kpiMap["returns_open"]?.label ?? "Retur Aktif"}:</span>
@@ -1122,9 +1149,12 @@ export default function StorePerformance({
               <div>
                 <p className="font-bold text-foreground">Pembatalan Pesanan</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
+                  <li className="flex items-center justify-between gap-2">
                     <span>{kpiMap["cancelled_orders"]?.label ?? "Pesanan Dibatalkan"}:</span>
-                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_orders"]?.value ?? 0)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <DeltaBadge percent={kpiMap["cancelled_orders"]?.change_percent} upIsBad />
+                      <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_orders"]?.value ?? 0)}</span>
+                    </span>
                   </li>
                   <li className="flex justify-between">
                     <span>{kpiMap["cancelled_by_customer"]?.label ?? "Dibatalkan Pelanggan"}:</span>
@@ -1134,9 +1164,12 @@ export default function StorePerformance({
                     <span>{kpiMap["cancelled_by_store"]?.label ?? "Dibatalkan Toko"}:</span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancelled_by_store"]?.value ?? 0)}</span>
                   </li>
-                  <li className="flex justify-between">
+                  <li className="flex items-center justify-between gap-2">
                     <span>{kpiMap["cancellation_rate"]?.label ?? "Rasio Pembatalan"}:</span>
-                    <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancellation_rate"]?.value ?? 0)}%</span>
+                    <span className="flex items-center gap-1.5">
+                      <DeltaBadge percent={kpiMap["cancellation_rate"]?.change_percent} upIsBad />
+                      <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["cancellation_rate"]?.value ?? 0)}%</span>
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -1144,9 +1177,12 @@ export default function StorePerformance({
               <div>
                 <p className="font-bold text-foreground">Dampak Beban Biaya</p>
                 <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
+                  <li className="flex items-center justify-between gap-2">
                     <span>{kpiMap["refund_given"]?.label ?? "Refund Diberikan"}:</span>
-                    <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["refund_given"]?.value ?? 0)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <DeltaBadge percent={kpiMap["refund_given"]?.change_percent} upIsBad />
+                      <span className="font-semibold text-destructive tabular-nums">{formatCurrency(kpiMap["refund_given"]?.value ?? 0)}</span>
+                    </span>
                   </li>
                   <li className="flex justify-between">
                     <span>{kpiMap["return_shipping_cost_total"]?.label ?? "Ongkir Retur (Toko)"}:</span>
@@ -1204,7 +1240,18 @@ export default function StorePerformance({
                       {/* Legend & toggle model grafik. Total metrik sengaja tidak
                           diulang di sini karena setiap metrik tren sudah punya
                           kartu ringkasannya sendiri di halaman ini. */}
-                      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border/40 pb-2.5 mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-2">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs text-muted-foreground">Pembanding:</span>
+                          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                            {chart.total_format === "currency"
+                              ? formatCurrency(chart.previous_total)
+                              : chart.key === "conversion_rate"
+                                ? formatNumber(chart.previous_total) + "%"
+                                : formatNumber(chart.previous_total)}
+                          </span>
+                        </div>
+
                         <div className="flex items-center gap-3">
                           {/* Legend Indikator Garis */}
                           <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
@@ -1292,6 +1339,9 @@ export default function StorePerformance({
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
+                <div className="mt-1">
+                  <DeltaBadge percent={kpiMap["visitors"]?.change_percent} />
+                </div>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
@@ -1300,6 +1350,9 @@ export default function StorePerformance({
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
+                <div className="mt-1">
+                  <DeltaBadge percent={kpiMap["new_customers"]?.change_percent} />
+                </div>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
@@ -1308,6 +1361,9 @@ export default function StorePerformance({
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["repeat_customers"]?.value ?? 0)}</p>
+                <div className="mt-1">
+                  <DeltaBadge percent={kpiMap["repeat_customers"]?.change_percent} />
+                </div>
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
@@ -1316,6 +1372,9 @@ export default function StorePerformance({
                   className="text-xs font-medium text-muted-foreground"
                 />
                 <p className="mt-1.5 text-base font-bold tabular-nums text-primary">{formatNumber(kpiMap["repeat_order_rate"]?.value ?? 0)}%</p>
+                <div className="mt-1">
+                  <DeltaBadge percent={kpiMap["repeat_order_rate"]?.change_percent} />
+                </div>
               </div>
             </div>
 
