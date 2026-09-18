@@ -1,7 +1,10 @@
 import { Link } from "@inertiajs/react"
 import * as React from "react"
 
+import { usePage } from "@inertiajs/react"
+
 import { Icon } from "@/components/shared/icon"
+import type { SharedPageProps } from "@/types"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
@@ -31,6 +34,9 @@ export function TestimonialCard({
   const cardHref = href ?? testimonial.product?.href ?? null
   const isScreenshot = variant === "screenshot"
   const message = (testimonial.message ?? "").trim()
+  const adminReply = (testimonial.admin_reply ?? "").trim()
+  const { brand } = usePage<SharedPageProps>().props
+  const storeName = brand?.short_name || "Toko"
   const hasImage = Boolean(testimonial.image_url)
   const imageUrl = testimonial.image_url ?? null
   const photos = (testimonial.images ?? []).filter((url): url is string => Boolean(url))
@@ -40,6 +46,23 @@ export function TestimonialCard({
     : `Hasil pemasangan dari ${testimonial.customer_name}`
 
   // Mode Screenshot (Shopee / WhatsApp): murni gambar 1:1 tanpa frame
+  // Hitung berapa foto 56px yang muat dalam lebar kartu; sisanya jadi badge "+N"
+  // pada foto terakhir yang ditampilkan (overlay gelap) - bukan scroll.
+  React.useEffect(() => {
+    const el = photoRowRef.current
+    if (!el || photos.length === 0) return
+    const CELL = 56 + 6
+    const compute = () => {
+      const width = el.clientWidth
+      const count = Math.max(1, Math.floor((width + 6) / CELL))
+      setVisiblePhotos(Math.min(photos.length, count))
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [photos.length])
+
   if (isScreenshot) {
     return (
       <>
@@ -94,23 +117,6 @@ export function TestimonialCard({
     ? `${testimonial.product.href}#penilaian-ulasan`
     : cardHref
 
-  // Hitung berapa foto 56px yang muat dalam lebar kartu; sisanya jadi badge "+N"
-  // pada foto terakhir yang ditampilkan (overlay gelap) - bukan scroll.
-  React.useEffect(() => {
-    const el = photoRowRef.current
-    if (!el || photos.length === 0) return
-    const CELL = 56 + 6
-    const compute = () => {
-      const width = el.clientWidth
-      const count = Math.max(1, Math.floor((width + 6) / CELL))
-      setVisiblePhotos(Math.min(photos.length, count))
-    }
-    compute()
-    const ro = new ResizeObserver(compute)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [photos.length])
-
   const shown = visiblePhotos > 0 ? visiblePhotos : Math.min(photos.length, 3)
   const extra = photos.length - shown
   const showOverlay = extra > 0
@@ -150,6 +156,16 @@ export function TestimonialCard({
         <p className={cn("mt-1 text-xs leading-snug text-foreground", compact ? "line-clamp-4" : "line-clamp-5")}>
           {message}
         </p>
+      ) : null}
+      {adminReply ? (
+        <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Balasan {storeName}
+          </p>
+          <p className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90 line-clamp-3">
+            {adminReply}
+          </p>
+        </div>
       ) : null}
 
       {photos.length ? (

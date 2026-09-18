@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { InstallationLightbox, type InstallationLightboxItem } from "@/components/public/installation-lightbox"
@@ -11,7 +11,7 @@ import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import type { ProductAttribute, ProductDetailData, Testimonial } from "@/types"
+import type { ProductAttribute, ProductDetailData, SharedPageProps, Testimonial } from "@/types"
 
 function StarRow({
   value,
@@ -102,6 +102,10 @@ export function ProductInfoSections({
   ratingLabel: string | null
   ratedReviews: Testimonial[]
 }) {
+  // Nama toko untuk label balasan ulasan (owner 2026-09-18).
+  const { brand } = usePage<SharedPageProps>().props
+  const storeName = brand?.short_name || "Toko"
+
   const [previewReview, setPreviewReview] = React.useState<Testimonial | null>(null)
   const [previewIndex, setPreviewIndex] = React.useState(0)
   const [reviewsOpen, setReviewsOpen] = React.useState(false)
@@ -258,6 +262,16 @@ export function ProductInfoSections({
                   <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground line-clamp-3">
                     {review.message}
                   </p>
+                  {(review.admin_reply ?? "").trim() ? (
+                    <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Balasan {storeName}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90 line-clamp-3">
+                        {review.admin_reply}
+                      </p>
+                    </div>
+                  ) : null}
                   {photos.length ? (
                     <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
                       {photos.slice(0, 3).map((src, index) => (

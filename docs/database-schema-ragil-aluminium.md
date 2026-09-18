@@ -652,6 +652,9 @@ Indexes:
 - `source_reference` (`VARCHAR`), nullable; referensi screenshot/WA atau sumber audit
 - `media_items` (`JSON`), nullable; item type/url/source tambahan oleh admin
 - `verified_at` (`TIMESTAMP`), nullable; terisi bila ditautkan ke order delivered/completed
+- `admin_reply` (`TEXT`), nullable; balasan admin atas ulasan pelanggan, tidak menimpa teks pelanggan
+- `admin_replied_at` (`TIMESTAMP`), nullable; waktu balasan disimpan atau terakhir diubah
+- `admin_reply_admin_id` (`INTEGER`), nullable, FK -> users.id; admin penulis balasan
 
 Indexes:
 - `cms_testimonials_product_published_idx` (IDX on `product_id`, `published`)

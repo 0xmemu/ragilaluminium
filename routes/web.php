@@ -497,6 +497,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('testimonials/{testimonial}/moderate', [TestimonialController::class, 'moderate'])->name('testimonials.moderate');
     Route::post('testimonials/{testimonial}/source', [TestimonialController::class, 'updateSource'])->name('testimonials.source');
     Route::post('testimonials/{testimonial}/media', [TestimonialController::class, 'addMedia'])->name('testimonials.media');
+    // Balasan admin atas ulasan pelanggan (owner 2026-09-18).
+    Route::post('testimonials/{testimonial}/reply', [TestimonialController::class, 'reply'])->name('testimonials.reply');
+    Route::delete('testimonials/{testimonial}/reply', [TestimonialController::class, 'destroyReply'])->name('testimonials.reply.destroy');
     Route::post('testimonials/admin-review', [TestimonialController::class, 'storeAdminReview'])->name('testimonials.admin-review.store');
 
     Route::get('gallery-items/create', [GalleryItemController::class, 'create'])->name('gallery-items.create');

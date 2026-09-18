@@ -20,18 +20,23 @@ class CmsTestimonial extends Model
         'cms_page_id', 'product_id', 'order_id', 'author_admin_id', 'author_type', 'moderation_status',
         'verified_at', 'customer_name', 'message', 'rating', 'source', 'source_reference', 'location',
         'image_url', 'image_urls', 'media_items', 'published', 'sort_order',
+        'admin_reply', 'admin_replied_at', 'admin_reply_admin_id',
     ];
 
     protected $casts = [
         'published' => 'boolean', 'sort_order' => 'integer', 'rating' => 'integer', 'product_id' => 'integer',
         'cms_page_id' => 'integer', 'order_id' => 'integer', 'author_admin_id' => 'integer',
         'image_urls' => 'array', 'media_items' => 'array', 'verified_at' => 'datetime',
+        'admin_replied_at' => 'datetime', 'admin_reply_admin_id' => 'integer',
     ];
 
     public function cmsPage(): BelongsTo { return $this->belongsTo(CmsPage::class); }
     public function product(): BelongsTo { return $this->belongsTo(Product::class); }
     public function order(): BelongsTo { return $this->belongsTo(Order::class); }
     public function authorAdmin(): BelongsTo { return $this->belongsTo(User::class, 'author_admin_id'); }
+
+    /** Admin yang menulis balasan; terpisah dari penulis ulasan (authorAdmin). */
+    public function replyAdmin(): BelongsTo { return $this->belongsTo(User::class, 'admin_reply_admin_id'); }
 
     public function scopePublished(Builder $query): Builder
     {
@@ -42,10 +47,15 @@ class CmsTestimonial extends Model
     public function scopeWithScreenshot(Builder $query): Builder { return $query->whereNotNull('image_url')->where('image_url', '!=', ''); }
     public function scopeWebsite(Builder $query): Builder { return $query->where('source', 'website'); }
     public function scopeVerified(Builder $query): Builder { return $query->whereNotNull('verified_at'); }
+    public function scopeReplied(Builder $query): Builder { return $query->whereNotNull('admin_reply')->where('admin_reply', '!=', ''); }
+    public function scopeUnreplied(Builder $query): Builder { return $query->where(fn (Builder $q) => $q->whereNull('admin_reply')->orWhere('admin_reply', '')); }
 
     public static function sourceLabel(string $source): string { return self::SOURCE_LABELS[$source] ?? $source; }
     public function isCustomerAuthored(): bool { return ($this->author_type ?: 'customer') === 'customer'; }
     public function isAdminAuthored(): bool { return ($this->author_type ?: 'customer') === 'admin'; }
+
+    /** Apakah ulasan ini sudah punya balasan admin yang berisi teks. */
+    public function hasAdminReply(): bool { return filled($this->admin_reply); }
 
     /** @return list<string> */
     public function imagesPayload(): array
@@ -75,6 +85,10 @@ class CmsTestimonial extends Model
             'rating' => $this->rating, 'source' => $this->source, 'location' => $this->location,
             'image_url' => $this->image_url, 'images' => $this->imagesPayload(), 'media' => $this->mediaPayload(),
             'verified_purchase' => $this->verified_at !== null,
+            // Balasan admin (owner 2026-09-18). Hanya terkirim ke storefront bila
+            // barisnya lolos scope published, jadi tidak bocor saat masih pending.
+            'admin_reply' => $this->hasAdminReply() ? (string) $this->admin_reply : null,
+            'admin_replied_at' => optional($this->admin_replied_at)?->toIso8601String(),
             'product' => $includeProduct && $product ? ['id' => $product->id, 'parent_sku' => $product->parent_sku, 'name' => $product->short_name ?: $product->name, 'href' => route('product.show', $product->parent_sku, absolute: false)] : null,
         ];
     }

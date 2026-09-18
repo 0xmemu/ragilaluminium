@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsGalleryItem;
+use App\Models\MediaAsset;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -23,23 +24,28 @@ use Inertia\Response;
 
 class TestimonialController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         $tab = (string) $request->query('tab', 'website');
         $q = trim((string) $request->query('q', ''));
         $sort = (string) $request->query('sort', 'newest');
         $published = $request->query('published');
         $channel = (string) $request->query('channel', 'all');
+        // Filter status balasan (owner 2026-09-18): admin perlu cepat menemukan
+        // ulasan yang belum ditanggapi tanpa menyisir daftar satu per satu.
+        $reply = (string) $request->query('reply', 'all');
 
+        // Foto hasil pemasangan punya menu sendiri (Pengaturan Website ->
+        // Hasil Pemasangan Kami); tautan lama tab=foto dialihkan ke sana.
         if ($tab === 'foto') {
-            return $this->fotoIndex($q, $sort, $published, false);
+            return redirect()->route('admin.hasil-pemasangan.index');
         }
 
         if ($tab === 'eksternal' || $tab === 'marketplace') {
             return $this->marketplaceScreenshotIndex($q, $published);
         }
 
-        return $this->websiteIndex($q, $sort, $published, $channel);
+        return $this->websiteIndex($q, $sort, $published, $channel, $reply);
     }
 
     /** Pengaturan Website → Apa Kata Pelanggan Kami (screenshot Shopee/WA + meta + urutan). */
@@ -62,7 +68,7 @@ class TestimonialController extends Controller
         foreach ($validated['rows'] as $index => $row) {
             CmsTestimonial::query()
                 ->whereKey((int) $row['id'])
-                ->marketplace()
+                ->withScreenshot()
                 ->update([
                     'sort_order' => array_key_exists('sort_order', $row) && $row['sort_order'] !== null
                         ? (int) $row['sort_order']
@@ -172,6 +178,12 @@ class TestimonialController extends Controller
         $validated = $this->validated($request);
         $validated['cms_page_id'] = $this->testimonialsPageId();
 
+        // Screenshot marketplace selalu tampil saat dibuat (tidak ada toggle
+        // di form); untuk menyembunyikan dipakai aksi Sembunyikan di daftar.
+        if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
+            $validated['published'] = true;
+        }
+
         if (! isset($validated['sort_order']) || (int) $validated['sort_order'] === 0) {
             if (in_array($validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true)) {
                 $validated['sort_order'] = (int) CmsTestimonial::query()->marketplace()->max('sort_order') + 1;
@@ -268,8 +280,11 @@ class TestimonialController extends Controller
 
     protected function marketplaceScreenshotIndex(string $q, mixed $published): Response
     {
+        // Sinkron dengan feed publik /reviews/ss: semua ulasan published
+        // yang punya screenshot, bukan hanya source Shopee/WhatsApp.
         $query = CmsTestimonial::query()
-            ->marketplace()
+            ->published()
+            ->withScreenshot()
             ->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id');
@@ -291,7 +306,7 @@ class TestimonialController extends Controller
 
         return Inertia::render('Admin/Testimonials/Index', [
             'title' => 'Ulasan Pelanggan',
-            'description' => 'Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace (Shopee, Tokopedia, WA), dan foto hasil pemasangan.',
+            'description' => 'Kelola ulasan pembeli dari transaksi website dan tangkapan layar marketplace (Shopee, Tokopedia, WA).',
             'tab' => 'eksternal',
             'tabs' => $this->tabs(),
             'filters' => [
@@ -326,6 +341,7 @@ class TestimonialController extends Controller
                     'rating' => $t->rating,
                     'source' => $t->source,
                     'source_label' => CmsTestimonial::sourceLabel((string) $t->source),
+                    'source_url' => route('admin.testimonials.source', $t),
                     'location' => $t->location,
                     'product' => $t->product
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
@@ -343,10 +359,14 @@ class TestimonialController extends Controller
         ]);
     }
 
-    protected function websiteIndex(string $q, string $sort, mixed $published, string $channel = 'all'): Response
+    protected function websiteIndex(string $q, string $sort, mixed $published, string $channel = 'all', string $reply = 'all'): Response
     {
         if (! in_array($channel, ['all', 'marketplace', 'website'], true)) {
             $channel = 'all';
+        }
+
+        if (! in_array($reply, ['all', 'replied', 'unreplied'], true)) {
+            $reply = 'all';
         }
 
         $query = CmsTestimonial::query()->with('product:id,parent_sku,name,short_name');
@@ -370,6 +390,12 @@ class TestimonialController extends Controller
             $query->where('published', $published === '1');
         }
 
+        if ($reply === 'replied') {
+            $query->replied();
+        } elseif ($reply === 'unreplied') {
+            $query->unreplied();
+        }
+
         match ($sort) {
             'oldest' => $query->orderBy('id'),
             'rating_desc' => $query->orderByDesc('rating')->orderByDesc('id'),
@@ -391,9 +417,10 @@ class TestimonialController extends Controller
                 'sort' => in_array($sort, ['newest', 'oldest', 'rating_desc', 'rating_asc', 'sort_order'], true) ? $sort : 'newest',
                 'published' => in_array($published, ['1', '0'], true) ? $published : '',
                 'channel' => $channel,
+                'reply' => $reply,
             ],
             'channelOptions' => [
-                ['value' => 'all', 'label' => 'Semua kanal'],
+                ['value' => 'all', 'label' => 'Semua sumber'],
                 ['value' => 'marketplace', 'label' => 'Apa kata (Shopee/WA)'],
                 ['value' => 'website', 'label' => 'Ulasan website'],
             ],
@@ -408,6 +435,11 @@ class TestimonialController extends Controller
                 ['value' => '', 'label' => 'Semua status'],
                 ['value' => '1', 'label' => 'Tampil'],
                 ['value' => '0', 'label' => 'Tersembunyi'],
+            ],
+            'replyOptions' => [
+                ['value' => 'all', 'label' => 'Semua balasan'],
+                ['value' => 'unreplied', 'label' => 'Belum dibalas'],
+                ['value' => 'replied', 'label' => 'Sudah dibalas'],
             ],
             'createHref' => route('admin.testimonials.create'),
             'adminReviewHref' => route('admin.testimonials.create', ['intent' => 'admin-order']),
@@ -442,6 +474,14 @@ class TestimonialController extends Controller
                     'edit_href' => route('admin.testimonials.edit', $t),
                     'publish_url' => route('admin.testimonials.publish', $t),
                     'unpublish_url' => route('admin.testimonials.unpublish', $t),
+                    // Balasan admin (owner 2026-09-18). Kartu marketplace murni
+                    // screenshot tanpa teks, jadi tombol balas hanya untuk ulasan website.
+                    'admin_reply' => $t->admin_reply,
+                    'admin_replied_at' => optional($t->admin_replied_at)?->toIso8601String(),
+                    'has_reply' => $t->hasAdminReply(),
+                    'can_reply' => ! in_array((string) $t->source, CmsTestimonial::MARKETPLACE_SOURCES, true),
+                    'reply_url' => route('admin.testimonials.reply', $t),
+                    'destroy_reply_url' => route('admin.testimonials.reply.destroy', $t),
                 ];
             })->all(),
             'pagination' => InertiaAdmin::pagination($rows),
@@ -549,7 +589,7 @@ class TestimonialController extends Controller
             'title' => 'Ulasan Pelanggan',
             'description' => 'Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace (Shopee, Tokopedia, WA), dan foto hasil pemasangan.',
             'tab' => 'foto',
-            'tabs' => $this->tabs(),
+            'tabs' => [],
             'filters' => [
                 'q' => $q,
                 'sort' => in_array($sort, ['newest', 'oldest', 'sort_order'], true) ? $sort : 'newest',
@@ -592,11 +632,6 @@ class TestimonialController extends Controller
                 'label' => 'Ulasan Eksternal',
                 'href' => route('admin.testimonials.index', ['tab' => 'eksternal']),
             ],
-            [
-                'key' => 'foto',
-                'label' => 'Hasil Pemasangan',
-                'href' => route('admin.testimonials.index', ['tab' => 'foto']),
-            ],
         ];
     }
 
@@ -606,7 +641,7 @@ class TestimonialController extends Controller
     protected function validated(Request $request, ?CmsTestimonial $existing = null): array
     {
         $validated = $request->validate([
-            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
             'message' => ['nullable', 'string'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
             'source' => ['required', Rule::in(CmsTestimonial::SOURCES)],
@@ -616,10 +651,12 @@ class TestimonialController extends Controller
             'image_urls' => ['nullable', 'array', 'max:20'],
             'image_urls.*' => ['nullable', 'string', 'max:2048'],
             'image' => ['nullable', 'image', 'max:5120'],
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'published' => ['boolean'],
         ]);
 
+        $validated['customer_name'] = filled($validated['customer_name'] ?? null) ? trim((string) $validated['customer_name']) : 'Pelanggan';
         $validated['published'] = $request->boolean('published');
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
         $validated['product_id'] = ! empty($validated['product_id'] ?? null) ? (int) $validated['product_id'] : null;
@@ -635,6 +672,17 @@ class TestimonialController extends Controller
         } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url')) {
             $imageUrl = $existing->image_url;
         }
+
+        // Pilihan dari MediaPicker (modal Kelola Media): resolve public URL
+        // aset Media Library sebagai screenshot. Menang atas URL manual.
+        $mediaAssetId = $validated['media_asset_id'] ?? null;
+        if (! empty($mediaAssetId)) {
+            $asset = MediaAsset::query()->find((int) $mediaAssetId);
+            if ($asset) {
+                $imageUrl = $asset->urlFor('pdp') ?? $asset->urlFor('card') ?? $asset->urlFor('thumb') ?? $imageUrl;
+            }
+        }
+        unset($validated['media_asset_id']);
 
         $validated['image_url'] = $imageUrl;
         unset($validated['image']);
@@ -687,6 +735,27 @@ class TestimonialController extends Controller
             ->values()
             ->all();
     }
+    /** Ubah sumber testimoni secara cepat dari tabel (kolom Sumber). */
+    public function updateSource(Request $request, CmsTestimonial $testimonial): RedirectResponse
+    {
+        $validated = $request->validate([
+            'source' => ['required', Rule::in(CmsTestimonial::SOURCES)],
+        ]);
+
+        $from = (string) $testimonial->source;
+        $testimonial->update(['source' => $validated['source']]);
+
+        ActivityLogService::record(
+            'cms.testimonial_source_updated',
+            'cms_testimonial',
+            $testimonial->id,
+            ['from' => $from, 'to' => $validated['source']],
+            $request->user()?->id,
+        );
+
+        return back()->with('success', 'Sumber testimoni diperbarui.');
+    }
+
     public function moderate(Request $request, CmsTestimonial $testimonial): RedirectResponse
     {
         $validated = $request->validate(['moderation_status' => ['required', Rule::in(CmsTestimonial::MODERATION_STATUSES)]]);
@@ -694,6 +763,76 @@ class TestimonialController extends Controller
         $testimonial->update(['moderation_status' => $validated['moderation_status'], 'published' => $validated['moderation_status'] === 'approved' ? $testimonial->published : false]);
         ActivityLogService::record('cms.testimonial_moderated', 'cms_testimonial', $testimonial->id, ['from' => $from, 'to' => $validated['moderation_status'], 'author_type' => $testimonial->author_type], $request->user()?->id);
         return back()->with('success', 'Status moderasi ulasan diperbarui.');
+    }
+
+    /**
+     * Simpan balasan admin atas ulasan pelanggan (owner 2026-09-18).
+     *
+     * Balasan hidup di baris ulasan yang sama supaya teks pelanggan tetap utuh.
+     * published & moderation_status SENGAJA tidak disentuh: membalas ulasan yang
+     * masih pending boleh, dan balasannya ikut tampil begitu ulasan disetujui.
+     */
+    public function reply(Request $request, CmsTestimonial $testimonial): RedirectResponse
+    {
+        if (in_array((string) $testimonial->source, CmsTestimonial::MARKETPLACE_SOURCES, true)) {
+            return back()->with('error', 'Ulasan marketplace tidak punya teks, jadi tidak bisa dibalas.');
+        }
+
+        $validated = $request->validate([
+            'admin_reply' => ['required', 'string', 'min:2', 'max:1000'],
+        ], [
+            'admin_reply.required' => 'Isi balasan tidak boleh kosong.',
+            'admin_reply.min' => 'Balasan minimal 2 karakter.',
+            'admin_reply.max' => 'Balasan maksimal 1000 karakter.',
+        ]);
+
+        $before = ['admin_reply' => $testimonial->admin_reply];
+        $testimonial->update([
+            'admin_reply' => trim((string) $validated['admin_reply']),
+            'admin_replied_at' => now(),
+            'admin_reply_admin_id' => $request->user()?->id,
+        ]);
+
+        ActivityLogService::record(
+            'cms.testimonial_replied',
+            'cms_testimonial',
+            $testimonial->id,
+            ['customer_name' => $testimonial->customer_name],
+            $request->user()?->id,
+            'admin',
+            $before,
+            ['admin_reply' => $testimonial->admin_reply],
+        );
+
+        return back()->with('success', 'Balasan ulasan disimpan.');
+    }
+
+    /** Hapus balasan admin. Ulasannya sendiri tidak ikut terhapus. */
+    public function destroyReply(Request $request, CmsTestimonial $testimonial): RedirectResponse
+    {
+        if (! $testimonial->hasAdminReply()) {
+            return back()->with('error', 'Ulasan ini belum punya balasan.');
+        }
+
+        $before = ['admin_reply' => $testimonial->admin_reply];
+        $testimonial->update([
+            'admin_reply' => null,
+            'admin_replied_at' => null,
+            'admin_reply_admin_id' => null,
+        ]);
+
+        ActivityLogService::record(
+            'cms.testimonial_reply_deleted',
+            'cms_testimonial',
+            $testimonial->id,
+            ['customer_name' => $testimonial->customer_name],
+            $request->user()?->id,
+            'admin',
+            $before,
+            ['admin_reply' => null],
+        );
+
+        return back()->with('success', 'Balasan ulasan dihapus.');
     }
 
     public function addMedia(Request $request, CmsTestimonial $testimonial): RedirectResponse

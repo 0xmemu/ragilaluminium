@@ -1,7 +1,8 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -19,6 +20,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -40,6 +42,7 @@ interface WebsiteRow {
   rating?: number | null
   source: string
   source_label?: string
+  source_url?: string | null
   location?: string | null
   product?: string | null
   image_url?: string | null
@@ -49,6 +52,14 @@ interface WebsiteRow {
   edit_href: string
   publish_url: string
   unpublish_url: string
+  /** Balasan admin atas ulasan (owner 2026-09-18). */
+  admin_reply?: string | null
+  admin_replied_at?: string | null
+  has_reply?: boolean
+  /** Kartu marketplace murni screenshot, tidak punya teks untuk dibalas. */
+  can_reply?: boolean
+  reply_url?: string
+  destroy_reply_url?: string
 }
 
 interface FotoRow {
@@ -107,6 +118,9 @@ function PublishActions({
   onBusy,
   kind,
   readonly = false,
+  canReply = false,
+  hasReply = false,
+  onReply,
 }: {
   published: boolean
   editHref: string
@@ -116,43 +130,175 @@ function PublishActions({
   onBusy: (value: boolean) => void
   kind: string
   readonly?: boolean
+  /** Buka dialog balasan; hanya untuk ulasan website yang punya teks. */
+  canReply?: boolean
+  hasReply?: boolean
+  onReply?: () => void
 }) {
+  const showMenu = (!readonly && (published || publishUrl)) || canReply
+
   return (
     <RowActions>
       <Button asChild variant="secondary" size="xs">
         <Link href={editHref}>{readonly ? "Kelola media" : "Edit"}</Link>
       </Button>
-      {readonly ? null : published ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Sembunyikan
-            </button>
-          }
-          title={`Sembunyikan ${kind}?`}
-          description="Item tidak akan tampil di storefront."
-          confirmLabel="Sembunyikan"
-          processing={busy}
-          onConfirm={() => {
-            if (!unpublishUrl) return
-            onBusy(true)
-            router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        />
-      ) : (
-        <Button
-          size="xs"
-          disabled={busy || !publishUrl}
-          onClick={() => {
-            if (!publishUrl) return
-            onBusy(true)
-            router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        >
-          Publikasikan
-        </Button>
-      )}
+      {showMenu ? (
+        <RowActionsMenu>
+          {canReply && onReply ? (
+            <DropdownMenuItem asChild>
+              <button type="button" className="w-full text-left" onClick={onReply}>
+                {hasReply ? "Edit balasan" : "Balas ulasan"}
+              </button>
+            </DropdownMenuItem>
+          ) : null}
+          {!readonly && (published || publishUrl) ? (
+            published ? (
+              <ConfirmAction
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                    disabled={busy}
+                  >
+                    Sembunyikan
+                  </button>
+                }
+                title={`Sembunyikan ${kind}?`}
+                description="Item tidak akan tampil di storefront."
+                confirmLabel="Sembunyikan"
+                processing={busy}
+                onConfirm={() => {
+                  if (!unpublishUrl) return
+                  onBusy(true)
+                  router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+                }}
+              />
+            ) : (
+              <DropdownMenuItem asChild>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  disabled={busy || !publishUrl}
+                  onClick={() => {
+                    if (!publishUrl) return
+                    onBusy(true)
+                    router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+                  }}
+                >
+                  Publikasikan
+                </button>
+              </DropdownMenuItem>
+            )
+          ) : null}
+        </RowActionsMenu>
+      ) : null}
     </RowActions>
+  )
+}
+
+/**
+ * Dialog balasan admin atas ulasan pelanggan (owner 2026-09-18).
+ *
+ * Dikontrol dari state halaman (bukan DialogTrigger per baris) supaya hanya ada
+ * satu dialog terpasang meski daftar berisi 20 baris. Pola submit meniru
+ * AttachProductsDialog: useForm + router, footer tombol onClick.
+ */
+function ReplyDialog({
+  row,
+  onClose,
+}: {
+  row: WebsiteRow | null
+  onClose: () => void
+}) {
+  const form = useForm({ admin_reply: row?.admin_reply ?? "" })
+
+  React.useEffect(() => {
+    form.setData("admin_reply", row?.admin_reply ?? "")
+    form.clearErrors()
+    // Sinkronkan teks saat admin membuka ulasan lain; `form` facade baru tiap render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row?.id, row?.admin_reply])
+
+  const busy = form.processing
+
+  return (
+    <Dialog open={Boolean(row)} onOpenChange={(next) => (next ? undefined : onClose())}>
+      <DialogContent className="max-w-lg bg-card text-card-foreground">
+        <DialogTitle>Balas ulasan pelanggan</DialogTitle>
+        <DialogDescription>
+          Balasan tampil di website tepat di bawah ulasan pelanggan. Teks asli pelanggan tidak diubah.
+        </DialogDescription>
+
+        {row ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <p className="text-xs font-semibold text-foreground">
+                {row.customer_name}
+                {row.rating ? ` · ${row.rating} dari 5 bintang` : ""}
+              </p>
+              <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                {row.message?.trim() || "(tanpa teks)"}
+              </p>
+            </div>
+
+            <Field
+              id={`admin-reply-${row.id}`}
+              label="Balasan toko"
+              error={form.errors.admin_reply}
+              hint="Maksimal 1000 karakter. Contoh: Terima kasih Kak, senang produknya cocok."
+            >
+              <Textarea
+                id={`admin-reply-${row.id}`}
+                rows={5}
+                value={form.data.admin_reply}
+                maxLength={1000}
+                onChange={(event) => form.setData("admin_reply", event.target.value)}
+                placeholder="Tulis balasan untuk pelanggan"
+              />
+            </Field>
+
+            <div className="flex items-center justify-between gap-2">
+              {row.has_reply && row.destroy_reply_url ? (
+                <ConfirmAction
+                  trigger={
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive" disabled={busy}>
+                      Hapus balasan
+                    </Button>
+                  }
+                  title="Hapus balasan ulasan?"
+                  description="Balasan dihapus dari website. Ulasan pelanggan tetap tampil."
+                  confirmLabel="Hapus balasan"
+                  processing={busy}
+                  onConfirm={() => {
+                    router.delete(row.destroy_reply_url!, {
+                      preserveScroll: true,
+                      onSuccess: onClose,
+                    })
+                  }}
+                />
+              ) : (
+                <span />
+              )}
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy || form.data.admin_reply.trim().length < 2}
+                  onClick={() => {
+                    form.post(row.reply_url!, { preserveScroll: true, onSuccess: onClose })
+                  }}
+                >
+                  {busy ? "Menyimpan..." : "Simpan balasan"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -295,12 +441,14 @@ export default function TestimonialsIndex({
   previewUrl = null,
   reorderUrl = null,
   canReorder = false,
+  sourceLabels = {},
+  replyOptions = [],
 }: {
   title: string
   description: string
   tab: "website" | "foto" | "eksternal"
   tabs: TabItem[]
-  filters: { q: string; sort: string; published: string; channel?: string }
+  filters: { q: string; sort: string; published: string; channel?: string; reply?: string }
   channelOptions?: Array<{ value: string; label: string }>
   sortOptions: Array<{ value: string; label: string }>
   publishedOptions: Array<{ value: string; label: string }>
@@ -317,19 +465,26 @@ export default function TestimonialsIndex({
   previewUrl?: string | null
   reorderUrl?: string | null
   canReorder?: boolean
+  sourceLabels?: Record<string, string>
+  replyOptions?: Array<{ value: string; label: string }>
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
   const [published, setPublished] = React.useState(filters.published)
   const [channel, setChannel] = React.useState(filters.channel ?? "all")
+  const [reply, setReply] = React.useState(filters.reply ?? "all")
+  const [replyTarget, setReplyTarget] = React.useState<WebsiteRow | null>(null)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
   const [reorderMode, setReorderMode] = React.useState(false)
   const [orderedRows, setOrderedRows] = React.useState<WebsiteRow[]>(
-    tab === "website" ? (rows as WebsiteRow[]) : [],
+    tab === "website" || tab === "eksternal" ? (rows as WebsiteRow[]) : [],
   )
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
   const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index" || tab === "eksternal"
+  // Tabel testimoni (Pelanggan/Sumber/Screenshot) dipakai tab website dan eksternal;
+  // tabel galeri (Label/Sumber) hanya untuk surface foto hasil pemasangan.
+  const isTestimonialTable = tab === "website" || tab === "eksternal"
 
   const reorderForm = useForm({
     rows: (rows as WebsiteRow[]).map((row, index) => ({
@@ -341,7 +496,7 @@ export default function TestimonialsIndex({
 
 
   React.useEffect(() => {
-    if (tab !== "website") return
+    if (tab !== "website" && tab !== "eksternal") return
     const next = rows as WebsiteRow[]
     // Keep the reorder editor aligned with the active website testimonial tab.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -354,10 +509,13 @@ export default function TestimonialsIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, tab])
 
-  function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string }>) {
+  function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string; reply: string }>) {
     const params: Record<string, string> = {
       q: next?.q ?? q,
       published: next?.published ?? published,
+    }
+    if (next?.reply !== undefined || reply !== "all") {
+      params.reply = next?.reply ?? reply
     }
     if (sortOptions.length > 0) {
       params.sort = next?.sort ?? sort
@@ -371,7 +529,8 @@ export default function TestimonialsIndex({
     router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
   }
 
-  const hasActiveFilters = Boolean(q?.trim()) || (published && published !== "all")
+  const hasActiveFilters =
+    Boolean(q?.trim()) || (published && published !== "all") || (reply && reply !== "all")
 
   function resetAllFilters() {
     router.get(routeUrl(indexRoute), {}, { preserveState: false, preserveScroll: true })
@@ -570,19 +729,38 @@ export default function TestimonialsIndex({
             ))}
           </Select>
         ) : null}
+        {tab === "website" && replyOptions.length > 0 ? (
+          <Select
+            value={reply}
+            onChange={(event) => {
+              const value = event.target.value
+              setReply(value)
+              apply({ reply: value })
+            }}
+            className="w-44"
+            disabled={reorderMode}
+            aria-label="Filter status balasan"
+          >
+            {replyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
       </ListToolbar>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        {(tab === "website" ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
+        {(isTestimonialTable ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
           <div className="overflow-x-auto">
-            {tab === "website" ? (
+            {isTestimonialTable ? (
               <table className="min-w-full text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     {reorderMode ? <th className="px-3 py-3 font-semibold">Urutan</th> : null}
                     <th className="px-3 py-3 font-semibold">Pelanggan</th>
-                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Kanal" : "Rating"}</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Screenshot" : "Komentar"}</th>
                     {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
                     <th className="px-3 py-3 font-semibold">Status</th>
@@ -637,7 +815,30 @@ export default function TestimonialsIndex({
                       </td>
                       <td className="px-3 py-3">
                         {isApaKata ? (
-                          <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
+                          row.source_url ? (
+                            <Select
+                              value={row.source}
+                              aria-label={"Sumber " + row.customer_name}
+                              disabled={busyId === row.id}
+                              onChange={(event) => {
+                                setBusyId(row.id)
+                                router.post(
+                                  row.source_url as string,
+                                  { source: event.target.value },
+                                  { preserveScroll: true, onFinish: () => setBusyId(null) },
+                                )
+                              }}
+                              className="h-8 w-36 text-xs"
+                            >
+                              {Object.entries(sourceLabels).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                            </Select>
+                          ) : (
+                            <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
+                          )
                         ) : (
                           <RatingStars rating={row.rating} />
                         )}
@@ -654,7 +855,15 @@ export default function TestimonialsIndex({
                             <span className="text-muted-foreground">-</span>
                           )
                         ) : (
-                          <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "-")}</p>
+                          <div className="min-w-0">
+                            <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "-")}</p>
+                            {row.has_reply ? (
+                              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                                <span className="font-semibold text-foreground">Balasan toko: </span>
+                                {row.admin_reply}
+                              </p>
+                            ) : null}
+                          </div>
                         )}
                       </td>
                       {!isApaKata ? (
@@ -689,6 +898,9 @@ export default function TestimonialsIndex({
                             busy={busyId === row.id}
                             onBusy={(value) => setBusyId(value ? row.id : null)}
                             kind={isApaKata ? "screenshot" : "ulasan"}
+                            canReply={Boolean(row.can_reply)}
+                            hasReply={Boolean(row.has_reply)}
+                            onReply={() => setReplyTarget(row)}
                           />
                         )}
                       </td>
@@ -777,7 +989,7 @@ export default function TestimonialsIndex({
                 ? "Belum ada screenshot"
                 : tab === "website"
                   ? "Belum ada ulasan website"
-                  : "Belum ada ulasan foto"
+                  : "Belum ada foto hasil pemasangan"
             }
             description={
               isApaKata
@@ -795,6 +1007,9 @@ export default function TestimonialsIndex({
           </div>
         ) : null}
       </section>
+
+      {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman. */}
+      <ReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
     </AdminLayout>
   )
 }

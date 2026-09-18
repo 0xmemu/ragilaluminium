@@ -153,6 +153,14 @@ export interface SharedPageProps extends Record<string, unknown> {
   cartPreview?: CartPreviewItem[]
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
+  /**
+   * Teks CTA penutup storefront dari Pengaturan Website > CTA Storefront.
+   * Null di halaman admin. Bila `enabled` false, seluruh CTA penutup disembunyikan.
+   */
+  ctaSettings?: {
+    enabled: boolean
+    pages: Record<string, { eyebrow: string; heading: string }>
+  } | null
   announcements: Announcement[]
   announcementSlide?: { enabled: boolean; interval: number }
   flashSalePeriod?: FlashSalePeriod | null
@@ -190,10 +198,7 @@ export interface ProductCardData {
   parent_sku: string
   name: string
   short_name?: string | null
-  /** Ukuran varian sebagai metadata (nama produk tidak pernah ditimpa). */
-  size_label?: string | null
-  size_dimension?: string | null
-  variant_label?: string | null
+
   card_key?: string | null
   product_category?: string | null
   product_model?: string | null
@@ -291,6 +296,9 @@ export interface Testimonial {
   image_url?: string | null
   /** Semua foto ulasan (multi-gambar); fallback ke [image_url] bila kosong. */
   images?: string[] | null
+  /** Balasan admin atas ulasan (owner 2026-09-18); null bila belum dibalas. */
+  admin_reply?: string | null
+  admin_replied_at?: string | null
   product?: {
     id: number
     parent_sku: string
@@ -645,11 +653,23 @@ export type ResourceRow = Record<string, unknown> & {
 export interface DetailField {
   label: string
   value: unknown
+  /**
+   * "text" = tampilkan apa adanya (tanpa humanize), untuk teks bebas seperti
+   * deskripsi atau ringkasan ukuran. Tanpa ini humanize() mengubah tiap kata
+   * jadi Title Case ("6,6 kg" -> "6,6 Kg", "129.666 unit" -> "129.666 Unit").
+   */
+  format?: "idr" | "date" | "datetime" | "text"
 }
 
 export interface DetailSection {
   title: string
-  rows: Array<{ label: string; value: unknown }>
+  rows: Array<{
+    label: string
+    value: unknown
+    format?: "text"
+    meta?: string | null
+    thumb_url?: string | null
+  }>
 }
 
 export interface ResourceIndexProps {
