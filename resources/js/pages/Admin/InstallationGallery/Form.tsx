@@ -165,7 +165,7 @@ export default function InstallationGalleryForm({
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
-                      variant={!isStandalone ? "default" : "secondary"}
+                      variant={!isStandalone ? "primary" : "secondary"}
                       size="sm"
                       className={cn("h-8 text-xs", isStandalone && "opacity-60")}
                       onClick={() => {
@@ -185,7 +185,7 @@ export default function InstallationGalleryForm({
                     </Button>
                     <Button
                       type="button"
-                      variant={isStandalone ? "default" : "secondary"}
+                      variant={isStandalone ? "primary" : "secondary"}
                       size="sm"
                       className={cn("h-8 text-xs", !isStandalone && "opacity-60")}
                       onClick={() => {
@@ -303,7 +303,7 @@ export default function InstallationGalleryForm({
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
                   <td className="px-4 py-2.5">
                     <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
-                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.label}</p>
+                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
                       </p>

@@ -735,7 +735,7 @@ export default function MediaLibrary({
           setFolderDialog(null)
           // Muat ulang props folders agar pohon folder langsung menampilkan
           // folder baru (preserveState menahan render props baru).
-          router.reload({ only: ["folders"], preserveScroll: true })
+          router.reload({ only: ["folders"] })
         },
       })
       return
@@ -747,7 +747,7 @@ export default function MediaLibrary({
       onFinish: () => setFolderSaving(false),
       onSuccess: () => {
         setFolderDialog(null)
-        router.reload({ only: ["folders"], preserveScroll: true })
+        router.reload({ only: ["folders"] })
       },
     })
   }

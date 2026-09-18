@@ -121,7 +121,7 @@ export default function InstallationGalleryIndex({
           {reorderMode ? (
             <>
               <Button
-                variant="default"
+                variant="primary"
                 disabled={reorderForm.processing}
                 onClick={handleReorderSubmit}
               >
