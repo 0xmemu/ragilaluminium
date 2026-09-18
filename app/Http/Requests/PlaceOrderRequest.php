@@ -21,7 +21,6 @@ class PlaceOrderRequest extends FormRequest
     {
         return [
             'payment_method' => ['required', 'in:cod,transfer'],
-            'insurance' => ['sometimes', 'boolean'],
         ];
     }
 }

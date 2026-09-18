@@ -46,12 +46,6 @@ class CheckoutController extends Controller
         // sisa item lama ikut menambah berat sehingga tarif membengkak 4x).
         $lineIds = $this->selectedCheckoutLineIds($request);
 
-        // Asuransi pengiriman WAJIB mulai tidak terpilih pada setiap
-        // kunjungan checkout baru. Nilai sesi bisa tertinggal dari pemilihan
-        // sebelumnya dan tidak pernah dibersihkan, sehingga kotak asuransi
-        // tampak sudah tercentang tanpa pembeli memilihnya.
-        $request->session()->put('checkout_insurance', false);
-
         $priced = $this->cart->pricedLines($lineIds);
 
         // Keranjang kosong tidak boleh menampilkan halaman checkout.
@@ -117,13 +111,15 @@ class CheckoutController extends Controller
                 $details['province'] ?? null,
                 $details['postal_code'] ?? null,
                 $details['district'] ?? null,
-                (bool) $request->session()->get('checkout_insurance', false),
                 $this->cart->subtotal($lineIds),
             );
             $shippingPreview = [
                 'gross' => $breakdown['gross'],
                 'subsidy' => $breakdown['subsidy'],
                 'net' => $breakdown['net'],
+                // Ongkir tanpa asuransi: inilah basis biaya COD, supaya angka
+                // pratinjau sama dengan yang tersimpan saat pesanan dibuat.
+                'net_ongkir' => (float) ($breakdown['net_ongkir'] ?? $breakdown['net']),
                 'freight' => (float) ($breakdown['freight'] ?? 0),
                 'applied' => $breakdown['applied'],
                 'state' => $breakdown['state'],
@@ -132,22 +128,26 @@ class CheckoutController extends Controller
                 'manual_review' => $breakdown['manual_review'],
                 'message' => $breakdown['message'],
                 'carrier_eta' => $breakdown['carrier_eta'] ?? null,
-                // Asuransi wajib ikut di props awal. Tanpa ini ketersediaan
-                // asuransi tidak diketahui frontend sampai alamat diisi ulang,
-                // sehingga opsi di checkout tidak pernah muncul.
+                // Biaya asuransi ikut sebagai info bahwa tarif sudah memuatnya
+                // (bukan lagi sebagai pilihan pembeli).
                 'insurance' => (float) ($breakdown['insurance'] ?? 0),
-                'insurance_selected' => (bool) ($breakdown['insurance_selected'] ?? false),
-                'insurance_available' => (bool) ($breakdown['insurance_available'] ?? false),
                 'insured_value' => (float) ($breakdown['insured_value'] ?? 0),
             ];
         }
 
         // Biaya COD = persen x (subtotal dibayar + ongkir NET dibayar pembeli);
-        // fee preview baru valid setelah ongkir (net) tersedia (keputusan owner 2026-09-03).
+        // fee preview baru valid setelah ongkir tersedia (keputusan owner 2026-09-03).
+        //
+        // Basis memakai net_ongkir (TANPA asuransi), sama persis dengan yang
+        // dipakai OrderService saat pesanan dibuat. Sebelumnya pratinjau
+        // memakai `net` sementara order memakai `net_ongkir`, sehingga sejak
+        // asuransi selalu ditagihkan (2026-09-18) angka yang dilihat pembeli
+        // beda Rp 200 dari yang tersimpan. Asuransi adalah uang titipan ke
+        // J&T, jadi tidak ikut jadi basis fee toko.
         if ($cod['enabled']) {
             $codFeePreview = CodSettings::calculateFee(
                 $subtotalAfterVoucher,
-                (float) ($shippingPreview['net'] ?? 0),
+                (float) ($shippingPreview['net_ongkir'] ?? $shippingPreview['net'] ?? 0),
             );
         }
 
@@ -190,7 +190,6 @@ class CheckoutController extends Controller
             ],
             'shipping' => $shippingPreview,
             'shippingWeightKg' => max(1.0, $this->orders->cartWeightKg($lineIds)),
-            'insurance' => (bool) $request->session()->get('checkout_insurance', false),
             'eta' => OrderEta::forOrder(),
             'defaultPayment' => $defaultPayment,
             'details' => $details,
@@ -310,16 +309,12 @@ class CheckoutController extends Controller
                 ->withErrors(['payment_method' => 'Layanan COD sedang tidak tersedia. Pilih transfer bank.']);
         }
 
-        $withInsurance = $request->boolean('insurance');
-        $request->session()->put('checkout_insurance', $withInsurance);
-
         $shipping = $this->shipping->estimateBreakdown(
             $this->orders->cartWeightKg($lineIds),
             $details['city'],
             $details['province'] ?? null,
             $details['postal_code'] ?? null,
             $details['district'] ?? null,
-            $withInsurance,
             $this->cart->subtotal($lineIds),
         );
 
@@ -363,9 +358,9 @@ class CheckoutController extends Controller
         // jadi seluruhnya keluar. Baris lain milik pembeli tetap tersimpan.
         $this->cart->removeOrderedLines($lineIds ?? array_keys($this->cart->get()));
         // Detail pengiriman & metode bayar dipertahankan agar checkout ulang
-        // (order berikutnya) tidak perlu mengisi dari nol. Voucher dan pilihan
-        // asuransi dibersihkan supaya tidak terbawa ke order berikutnya.
-        $request->session()->forget([VoucherService::SESSION_KEY, 'checkout_insurance']);
+        // (order berikutnya) tidak perlu mengisi dari nol. Voucher dibersihkan
+        // supaya tidak terbawa ke order berikutnya.
+        $request->session()->forget([VoucherService::SESSION_KEY]);
 
         return redirect()->route('order.confirmation', $order->order_number);
     }

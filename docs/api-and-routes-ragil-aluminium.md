@@ -371,15 +371,24 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 ### Insurance contract (keputusan owner 2026-09-18)
 
+Asuransi pengiriman BUKAN pilihan pembeli. Pengiriman toko selalu diasuransikan, dan biayanya menyatu ke tagihan ongkir: pelanggan melihat dan membayar SATU angka ongkir.
+
+Konsekuensi kontrak:
+
+- Tidak ada field pilihan asuransi di request (`insurance` pada `POST /api/shipping/quote` dan `POST /checkout/place-order` sudah DIHAPUS), tidak ada `checkout_insurance` di sesi, dan tidak ada checkbox di ringkasan checkout.
+- `quote()` / `estimateBreakdown()` tidak menerima parameter pilihan; argumen keduanya `(weightKg, city, province, postalCode, area, insuredValue)`.
+
 Dua angka asuransi yang berbeda dan tidak boleh dicampur:
 
 - `offerFee` yang dikirim ke `agingCost/get` = NILAI BARANG yang diasuransikan (dokumen J&T: 保价金额, IDR), diambil dari subtotal keranjang. Ini angka milik kami.
 - `estimateInsuranceCost` yang dibaca dari respons J&T = BIAYA asuransi. 100 persen angka J&T, dibaca apa adanya.
 
-DILARANG ada rumus tarif asuransi di sistem ini: tanpa persen, tanpa floor, tanpa nilai tetap, dan tanpa config `insurance_rate` / `insurance_fee` / `offer_fee`. Bila J&T tidak mengirim biayanya, asuransi cukup tidak ditawarkan (biaya 0), bukan dihitung sendiri.
+DILARANG ada rumus tarif asuransi di sistem ini: tanpa persen, tanpa floor, tanpa nilai tetap, dan tanpa config `insurance_rate` / `insurance_fee` / `offer_fee`. Bila J&T tidak mengirim biayanya, biaya dianggap 0, bukan dihitung sendiri.
 
-Payload quote memisahkan ongkir dan asuransi: `freight` = tarif J&T tanpa asuransi, `insurance` = biaya asuransi, `insurance_charged` = yang benar-benar ditagihkan (0 bila pembeli tidak memilih), `net_ongkir` = ongkir setelah subsidi tanpa asuransi, `net` = `net_ongkir` + `insurance_charged`.
+Payload quote memisahkan ongkir dan asuransi untuk pembukuan: `freight` = tarif J&T tanpa asuransi, `insurance` = biaya asuransi dari J&T, `insurance_charged` = biaya yang ditagihkan (selalu sama dengan `insurance`), `net_ongkir` = ongkir setelah subsidi tanpa asuransi, `net` = `net_ongkir` + `insurance_charged` (inilah angka yang dibayar pembeli), `gross` = total J&T termasuk asuransi.
 
-Tampilan checkout memakai keputusan owner 2026-09-18: label "Tarif J&T" menampilkan total J&T, yaitu tarif SUDAH TERMASUK asuransi bila pembeli memilihnya, sehingga `tarif - subsidi = ongkir dibayar pelanggan` bisa dijumlahkan pembeli tanpa angka dobel. Biaya asuransi karena itu tidak ditampilkan sebagai baris terpisah.
+Order menyimpan `shipping_amount` (ongkir net setelah subsidi, tanpa asuransi), `shipping_subsidy_amount`, dan `shipping_insurance_amount` secara terpisah; `total_amount` menjumlahkan ketiganya secara eksplisit.
+
+Tampilan checkout: label "Tarif J&T" memakai `gross` (tarif SUDAH TERMASUK asuransi, ditandai "sudah termasuk asuransi"), sehingga `tarif - subsidi = ongkir dibayar pelanggan` bisa dijumlahkan pembeli tanpa angka dobel. Biaya asuransi tidak ditampilkan sebagai baris terpisah.
 
 Asuransi saling meniadakan di laba bersih: ditambahkan ke total pembeli, lalu dikurangi lagi sebagai potongan J&T. Perbaikan yang menyentuh hanya satu sisi membuat laba bersih salah.

@@ -208,8 +208,12 @@ class StoreVoucherTest extends TestCase
         $this->assertEquals('HEMAT10', $order->voucher_code);
         $this->assertEquals(100000.0, (float) $order->voucher_discount_amount);
         $this->assertEquals(1000000.0, (float) $order->subtotal_amount);
+        // Asuransi selalu ikut ke tagihan ongkir (keputusan owner 2026-09-18).
         $this->assertEquals(
-            (float) $order->subtotal_amount + (float) $order->shipping_amount - (float) $order->voucher_discount_amount,
+            (float) $order->subtotal_amount
+                + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount
+                - (float) $order->voucher_discount_amount,
             (float) $order->total_amount
         );
     }

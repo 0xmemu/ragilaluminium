@@ -113,11 +113,13 @@ class ShippingSubsidyTest extends TestCase
             round($gross - (float) $order->shipping_subsidy_amount, 2),
             (float) $order->shipping_amount
         );
-        // Tanpa asuransi (default): snapshot asuransi 0.
-        $this->assertEquals(0.0, (float) $order->shipping_insurance_amount);
+        // Asuransi selalu ikut (keputusan owner 2026-09-18): biaya dari J&T
+        // di-snapshot ke order, dan total pesanan memuatnya secara eksplisit.
+        $this->assertGreaterThan(0.0, (float) $order->shipping_insurance_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount
                 + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount
                 - (float) $order->voucher_discount_amount
                 + (float) $order->cod_fee_amount,
             (float) $order->total_amount
@@ -140,9 +142,10 @@ class ShippingSubsidyTest extends TestCase
     }
 
     /**
-     * Asuransi pengiriman opsional (pilihan pembeli): quote dengan asuransi
-     * memisahkan freight & insurance; subsidi hanya atas freight; net =
-     * freight - subsidi + asuransi. Order menyimpan snapshot insurance.
+     * Asuransi pengiriman menyatu ke tarif ongkir (keputusan owner 2026-09-18):
+     * pengiriman toko selalu diasuransikan, pembeli tidak memilih. Quote
+     * memisahkan freight & insurance untuk pembukuan; subsidi hanya atas
+     * freight; net = freight - subsidi + asuransi. Order menyimpan snapshot.
      */
     public function test_checkout_with_insurance_snapshot_and_total_consistency(): void
     {
@@ -153,14 +156,14 @@ class ShippingSubsidyTest extends TestCase
             'jnt_enabled' => true,
         ]);
 
-        // Struktur quote dengan asuransi: insurance >= 0 dan net konsisten.
-        $withInsurance = app(\App\Services\ShippingService::class)->quote(1.0, 'KOTA SEMARANG', 'JAWA TENGAH', '50254', 'Candisari', true);
-        $this->assertArrayHasKey('insurance', $withInsurance);
-        $this->assertArrayHasKey('freight', $withInsurance);
-        $this->assertGreaterThanOrEqual(0.0, (float) $withInsurance['insurance']);
+        // Struktur quote: insurance >= 0 dan net konsisten tanpa argumen pilihan.
+        $breakdown = app(\App\Services\ShippingService::class)->quote(1.0, 'KOTA SEMARANG', 'JAWA TENGAH', '50254', 'Candisari');
+        $this->assertArrayHasKey('insurance', $breakdown);
+        $this->assertArrayHasKey('freight', $breakdown);
+        $this->assertGreaterThanOrEqual(0.0, (float) $breakdown['insurance']);
         $this->assertEqualsWithDelta(
-            max(0, (float) $withInsurance['freight'] - (float) $withInsurance['subsidy']) + (float) $withInsurance['insurance'],
-            (float) $withInsurance['net'],
+            max(0, (float) $breakdown['freight'] - (float) $breakdown['subsidy']) + (float) $breakdown['insurance'],
+            (float) $breakdown['net'],
             0.01,
         );
 
@@ -211,7 +214,6 @@ class ShippingSubsidyTest extends TestCase
 
         $this->post(route('checkout.place-order'), [
             'payment_method' => 'transfer',
-            'insurance' => 1,
         ])->assertRedirect();
 
         $order = Order::query()->latest('id')->first();
@@ -227,14 +229,11 @@ class ShippingSubsidyTest extends TestCase
         );
     }
     /**
-     * Kontrak: opsi asuransi HARUS tersedia sebelum pembeli mencentang.
-     *
-     * Sebelumnya mentok: biaya asuransi hanya dihitung bila offerFee dikirim,
-     * sementara offerFee hanya dikirim bila pembeli sudah mencentang - padahal
-     * checkbox-nya baru muncul setelah biaya diketahui. Akibatnya opsi tidak
-     * pernah bisa dipilih.
+     * Kontrak BARU (keputusan owner 2026-09-18): asuransi TIDAK lagi pilihan
+     * pembeli. Pengiriman toko selalu diasuransikan, biayanya selalu ikut ke
+     * tagihan ongkir, dan tidak ada flag pilihan yang bisa mematikannya.
      */
-    public function test_opsi_asuransi_tersedia_tanpa_harus_dicentang_dulu(): void
+    public function test_asuransi_selalu_ditagihkan_tanpa_pilihan_pembeli(): void
     {
         ShippingSubsidySettings::update([
             'enabled' => false,
@@ -276,27 +275,25 @@ class ShippingSubsidyTest extends TestCase
         $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
         $svc = app(\App\Services\ShippingService::class);
 
-        // Kondisi awal halaman: pembeli BELUM mencentang.
-        $belum = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 5000000);
-        $this->assertTrue($belum['insurance_available'], 'opsi asuransi harus tersedia tanpa dicentang');
-        $this->assertEquals(10000.0, (float) $belum['insurance'], 'biaya 0,2% dari nilai barang');
-        $this->assertEquals(0.0, (float) $belum['insurance_charged'], 'belum ditagihkan');
-        $this->assertEquals(5000000.0, (float) $belum['insured_value']);
-        $this->assertEquals(120000.0, (float) $belum['net'], 'net belum termasuk asuransi');
+        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
 
-        // Setelah dicentang: biaya masuk ke net.
-        $sudah = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', true, 5000000);
-        $this->assertTrue($sudah['insurance_selected']);
-        $this->assertEquals(10000.0, (float) $sudah['insurance_charged']);
-        $this->assertEquals(130000.0, (float) $sudah['net'], 'net termasuk asuransi');
+        $this->assertEquals(10000.0, (float) $q['insurance'], 'biaya 0,2% dari nilai barang');
+        $this->assertEquals(10000.0, (float) $q['insurance_charged'], 'SELALU ditagihkan, tanpa pilihan');
+        $this->assertEquals(5000000.0, (float) $q['insured_value']);
+        $this->assertEquals(130000.0, (float) $q['net'], 'net = ongkir + asuransi (selalu)');
+        $this->assertEquals(120000.0, (float) $q['freight'], 'ongkir tidak berubah karena asuransi');
+        $this->assertArrayNotHasKey('insurance_selected', $q, 'tidak ada lagi flag pilihan');
+        $this->assertArrayNotHasKey('insurance_available', $q, 'tidak ada lagi flag ketersediaan opsi');
 
         // Nilai pertanggungan mengikuti nilai barang, bukan angka tetap.
-        $besar = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 10283000);
+        $besar = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 10283000);
         $this->assertEquals(20566.0, (float) $besar['insurance'], 'biaya ikut nilai barang');
 
-        // Keranjang kosong: tidak ditawarkan.
-        $kosong = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 0);
-        $this->assertFalse($kosong['insurance_available']);
+        // Keranjang kosong: tidak ada nilai barang, jadi tidak ada biaya asuransi.
+        $kosong = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 0);
+        $this->assertEquals(0.0, (float) $kosong['insurance']);
+        $this->assertEquals(0.0, (float) $kosong['insurance_charged']);
+        $this->assertEquals(120000.0, (float) $kosong['net'], 'net = ongkir saja tanpa asuransi');
     }
     /**
      * Penjaga: ongkir HANYA dari estimateCustomerCost (ongkos standar J&T).
@@ -347,17 +344,17 @@ class ShippingSubsidyTest extends TestCase
         $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
         $svc = app(\App\Services\ShippingService::class);
 
-        // Tanpa asuransi: ongkir = 120.000. sumFreight (130.000) TIDAK BOLEH
-        // bocor jadi ongkir.
-        $tanpa = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', false, 5000000);
+        // Tanpa nilai barang: ongkir = 120.000 dan tidak ada asuransi.
+        // sumFreight TIDAK BOLEH bocor jadi ongkir.
+        $tanpa = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 0);
         $this->assertEquals(120000.0, (float) $tanpa['freight'], 'ongkir dari estimateCustomerCost');
         $this->assertEquals(120000.0, (float) $tanpa['gross'], 'gross tanpa asuransi');
         $this->assertEquals(120000.0, (float) $tanpa['net'], 'net tanpa asuransi');
         $this->assertEquals(0.0, (float) $tanpa['insurance_charged']);
 
-        // Dengan asuransi: net = 120.000 + 10.000 = 130.000.
+        // Dengan nilai barang: net = 120.000 + 10.000 = 130.000.
         // Kalau sumFreight dipakai sebagai ongkir, hasilnya 140.000 (dobel).
-        $dengan = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', true, 5000000);
+        $dengan = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
         $this->assertEquals(120000.0, (float) $dengan['freight'], 'ongkir tetap ongkos standar');
         $this->assertEquals(10000.0, (float) $dengan['insurance_charged']);
         $this->assertEquals(130000.0, (float) $dengan['net'], 'net = ongkir + asuransi (sekali)');
@@ -407,7 +404,7 @@ class ShippingSubsidyTest extends TestCase
         $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
         $svc = app(\App\Services\ShippingService::class);
 
-        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', true, 5000000);
+        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
 
         // Ongkir diturunkan: 130.000 (total J&T) - 10.000 (asuransi J&T).
         $this->assertSame('ready', $q['state'], 'tarif J&T tetap dianggap final');

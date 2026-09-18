@@ -63,7 +63,7 @@ class ShippingService
     }
 
     /**
-     * @return array{gross: float, subsidy: float, net: float, applied: bool, carrier: string, freight: float, insurance: float, insurance_available: bool}
+     * @return array<string, mixed>
      */
     public function estimateBreakdown(
         float $weightKg,
@@ -71,24 +71,21 @@ class ShippingService
         ?string $destinationProvince = null,
         ?string $postalCode = null,
         ?string $destinationArea = null,
-        bool $withInsurance = false,
         ?float $insuredValue = null,
     ): array {
-        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $withInsurance, $insuredValue);
+        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $insuredValue);
     }
 
     /**
      * Customer-facing quote contract shared by checkout and the quote endpoint.
      * Provisional states never pretend to be a final carrier tariff.
      *
-     * Asuransi pengiriman (opsional, pilihan pembeli): `offerFee` = NILAI
-     * BARANG yang diasuransikan (dokumen J&T: 保价金额) dan SELALU dikirim
-     * selama nilai barang diketahui, supaya biaya asuransi bisa ditawarkan
-     * SEBELUM pembeli memilih. Yang menentukan biaya ditagihkan atau tidak
-     * adalah `$withInsurance`, bukan ada/tidaknya `offerFee`.
-     *
-     * Ongkir (freight) tetap basis subsidi; saat dipilih, asuransi
-     * ditambahkan di atas ongkir net: net = freight - subsidi + asuransi.
+     * Asuransi pengiriman TIDAK LAGI opsional (keputusan owner 2026-09-18):
+     * pembeli tidak memilih apa pun, toko mengirim barang dengan asuransi, dan
+     * biayanya menyatu ke tarif ongkir. Karena itu tidak ada flag pilihan:
+     * `offerFee` = NILAI BARANG yang diasuransikan (dokumen J&T: 保价金额)
+     * dikirim selama nilai barang diketahui, dan biaya yang J&T kembalikan
+     * SELALU ikut ke tagihan ongkir.
      *
      * @return array<string, mixed>
      */
@@ -98,7 +95,6 @@ class ShippingService
         ?string $destinationProvince = null,
         ?string $postalCode = null,
         ?string $destinationArea = null,
-        bool $withInsurance = false,
         ?float $insuredValue = null,
     ): array {
         $weightKg = max($weightKg, 1.0);
@@ -139,7 +135,6 @@ class ShippingService
                 ...$applied,
                 'freight' => $freight,
                 'insurance' => 0.0,
-                'insurance_available' => false,
                 'carrier' => 'jnt',
                 'state' => 'fallback',
                 'is_final' => false,
@@ -164,11 +159,9 @@ class ShippingService
                 'receiveCity' => $destinationCity,
                 'receiveArea' => $destinationArea ?? $destinationCity,
             ];
-            // offerFee = nilai barang yang diasuransikan. SELALU dikirim bila
-            // nilai barang diketahui: tanpa ini biaya asuransi tidak pernah
-            // bisa ditampilkan, sehingga pilihan asuransi di checkout tidak
-            // akan pernah muncul (butuh biaya untuk memunculkan opsi,
-            // sementara biaya baru ada setelah opsi dipilih).
+            // offerFee = nilai barang yang diasuransikan. Selalu dikirim bila
+            // nilai barang diketahui: tanpa ini J&T tidak mengembalikan biaya
+            // asuransinya, padahal pengiriman toko selalu diasuransikan.
             if ($insuredValue > 0) {
                 $payload['offerFee'] = (string) (int) round($insuredValue);
             }
@@ -201,15 +194,13 @@ class ShippingService
                 // angka sama sekali, sistem tidak menebak tarif sendiri.
                 if (is_numeric($freight) && (float) $freight > 0) {
                     $freight = round((float) $freight, 2);
-                    // Asuransi hanya ditagihkan bila pembeli memilihnya.
-                    $insuranceCharged = $withInsurance ? $insuranceCost : 0.0;
-                    // Total memakai total J&T apa adanya saat asuransi
-                    // ditagihkan; tanpa asuransi = onkos standar J&T.
-                    $gross = $insuranceCharged > 0 && is_numeric($sumFromJnt)
+                    // Asuransi SELALU ditagihkan bersama ongkir: pengiriman toko
+                    // selalu diasuransikan, pembeli tidak memilih.
+                    $gross = $insuranceCost > 0 && is_numeric($sumFromJnt)
                         ? round((float) $sumFromJnt, 2)
-                        : round($freight + $insuranceCharged, 2);
+                        : round($freight + $insuranceCost, 2);
                     $applied = ShippingSubsidySettings::apply($freight, 'jnt');
-                    $net = round(max(0, (float) $applied['net']) + $insuranceCharged, 2);
+                    $net = round(max(0, (float) $applied['net']) + $insuranceCost, 2);
 
                     return [
                         ...$applied,
@@ -219,12 +210,11 @@ class ShippingService
                         // inilah yang disimpan sebagai shipping_amount, supaya
                         // kolom "Ongkir" tidak bercampur dengan asuransi dan
                         // total pesanan menjumlahkan keduanya secara eksplisit.
+                        // Yang dibayar pembeli tetap satu angka: `net`.
                         'net_ongkir' => round(max(0, (float) $applied['net']), 2),
                         'freight' => $freight,
                         'insurance' => $insuranceCost,
-                        'insurance_selected' => $withInsurance && $insuranceCost > 0,
-                        'insurance_charged' => $insuranceCharged,
-                        'insurance_available' => $insuranceCost > 0,
+                        'insurance_charged' => $insuranceCost,
                         'insured_value' => $insuredValue,
                         'carrier' => 'jnt',
                         'state' => 'ready',
@@ -251,7 +241,6 @@ class ShippingService
             ...$provisional,
             'freight' => (float) $this->localEstimate($weightKg),
             'insurance' => 0.0,
-            'insurance_available' => false,
             'carrier' => 'jnt',
             'state' => 'manual_review',
             'is_final' => false,

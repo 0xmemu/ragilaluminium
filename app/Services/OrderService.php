@@ -653,14 +653,15 @@ class OrderService
             $isCod = (bool) $locked->cod_flag || $locked->payment_method === 'cod';
             $codFee = 0.0;
 
-            $wantsInsurance = max(0, (float) ($locked->shipping_insurance_amount ?? 0)) > 0;
-
+            // PENTING: argumen harus lengkap dan berurutan. Sebelumnya baris
+            // ini hanya mengirim 6 argumen sehingga kecamatan terkirim sebagai
+            // area tujuan dan nilai subtotal terbaca sebagai flag asuransi.
             $breakdown = $this->shipping->estimateBreakdown(
                 $this->cartWeightForLines($lines),
                 (string) $data['city'],
                 $data['province'] ?? null,
                 $data['postal_code'] ?? null,
-                $wantsInsurance,
+                $data['district'] ?? null,
                 $subtotalAfterVoucher,
             );
             $shippingCost = (float) ($breakdown['net_ongkir'] ?? $breakdown['net']);

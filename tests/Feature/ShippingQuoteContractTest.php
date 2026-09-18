@@ -245,9 +245,10 @@ class ShippingQuoteContractTest extends TestCase
     }
 
     /**
-     * Biaya asuransi harus angka J&T apa adanya. Angka uji sengaja dibuat
-     * tidak wajar (7.777) supaya rumus lokal mana pun akan gagal di sini:
-     * 0,2% dari nilai 1.000.000 = 2.000, dan floor Rp 5.000 = 5.000.
+     * Biaya asuransi harus angka J&T apa adanya DAN selalu ditagihkan bersama
+     * ongkir (tanpa pilihan pembeli). Angka uji sengaja tidak wajar (7.777)
+     * supaya rumus lokal mana pun gagal: 0,2% dari nilai 1.000.000 = 2.000,
+     * dan floor Rp 5.000 = 5.000.
      */
     public function test_biaya_asuransi_diambil_apa_adanya_dari_jnt(): void
     {
@@ -266,23 +267,18 @@ class ShippingQuoteContractTest extends TestCase
             ));
         });
 
-        $dipilih = app(ShippingService::class)->quote(20, 'KOTA BANDUNG', 'JAWA BARAT', null, null, true, 1000000.0);
+        $quote = app(ShippingService::class)->quote(20, 'KOTA BANDUNG', 'JAWA BARAT', null, null, 1000000.0);
 
-        $this->assertSame(7777.0, $dipilih['insurance'], 'biaya asuransi harus sama persis dengan angka J&T');
-        $this->assertSame(40000.0, $dipilih['freight'], 'ongkir dari estimateCustomerCost J&T');
-        $this->assertTrue($dipilih['insurance_selected']);
-        $this->assertSame(7777.0, $dipilih['insurance_charged']);
+        $this->assertSame(7777.0, $quote['insurance'], 'biaya asuransi harus sama persis dengan angka J&T');
+        $this->assertSame(40000.0, $quote['freight'], 'ongkir dari estimateCustomerCost J&T');
+        $this->assertSame(7777.0, $quote['insurance_charged'], 'asuransi selalu ditagihkan');
         $this->assertSame(
-            $dipilih['net_ongkir'] + $dipilih['insurance_charged'],
-            $dipilih['net'],
-            'total = ongkir net + asuransi ditagihkan',
+            $quote['net_ongkir'] + $quote['insurance_charged'],
+            $quote['net'],
+            'total = ongkir net + asuransi',
         );
-
-        $tidakDipilih = app(ShippingService::class)->quote(20, 'KOTA BANDUNG', 'JAWA BARAT', null, null, false, 1000000.0);
-
-        $this->assertSame(7777.0, $tidakDipilih['insurance'], 'biaya tetap angka J&T meski tidak dipilih');
-        $this->assertFalse($tidakDipilih['insurance_selected']);
-        $this->assertSame(0.0, $tidakDipilih['insurance_charged'], 'tidak dipilih berarti tidak ditagihkan');
+        $this->assertArrayNotHasKey('insurance_selected', $quote, 'tidak ada lagi pilihan pembeli');
+        $this->assertArrayNotHasKey('insurance_available', $quote);
     }
 
     public function test_asuransi_tidak_dihitung_saat_jnt_tidak_memberi_biaya(): void
@@ -298,11 +294,9 @@ class ShippingQuoteContractTest extends TestCase
             ));
         });
 
-        $quote = app(ShippingService::class)->quote(20, 'KOTA BANDUNG', 'JAWA BARAT', null, null, true, 1000000.0);
+        $quote = app(ShippingService::class)->quote(20, 'KOTA BANDUNG', 'JAWA BARAT', null, null, 1000000.0);
 
         $this->assertEquals(0, $quote['insurance'], 'tanpa angka J&T, asuransi 0 dan bukan hasil hitungan lokal');
-        $this->assertFalse($quote['insurance_available']);
-        $this->assertFalse($quote['insurance_selected']);
         $this->assertEquals(0, $quote['insurance_charged']);
         $this->assertSame($quote['freight'], $quote['net'], 'tanpa asuransi, tagihan = tarif J&T');
     }

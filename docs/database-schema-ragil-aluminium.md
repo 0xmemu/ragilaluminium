@@ -356,7 +356,7 @@ Indexes:
 - `voucher_discount_amount` (`NUMERIC`), NN, default '0'
 - `cod_fee_amount` (`NUMERIC`), NN, default '0'
 - `shipping_subsidy_amount` (`NUMERIC`), NN, default '0'
-- `shipping_insurance_amount` (`NUMERIC`), NN, default '0' — asuransi pengiriman opsional (pilihan pembeli, keputusan 2026-08-21); terpisah dari ongkir net
+- `shipping_insurance_amount` (`NUMERIC`), NN, default '0' — biaya asuransi pengiriman dari J&T, SELALU ditagihkan bersama ongkir sejak keputusan 2026-09-18 (bukan pilihan pembeli); terpisah dari ongkir net untuk pembukuan
 - `checkout_idempotency_key` (`VARCHAR`), nullable, UQ
 
 Indexes:

@@ -35,9 +35,8 @@ export interface CheckoutShipping {
   status?: string
   provisional?: boolean
   freight?: number
+  /** Biaya asuransi dari J&T; sudah termasuk di dalam `gross` dan `net`. */
   insurance?: number
-  insurance_available?: boolean
-  insurance_selected?: boolean
   insured_value?: number
   message?: string | null
   carrier_eta?: string | null
@@ -103,8 +102,6 @@ export function CheckoutSummary({
     shippingQuote,
     shippingQuoteLoading,
     shippingQuoteAttempted,
-    insurance,
-    setInsurance,
   } = c
   const effectiveShipping = shippingQuote ?? (!shippingQuoteAttempted ? shipping : null)
   const hasDiscount = discountTotal > 0
@@ -117,31 +114,25 @@ export function CheckoutSummary({
   const finalTotal = Math.max(0, Number(subtotal || 0) - (hasVoucher ? Number(voucherDiscount || 0) : 0) + shippingCost + codFee)
   const shippingSubsidy = effectiveShipping ? Number(effectiveShipping.subsidy || 0) : 0
   // Angka ongkir dan asuransi dipakai apa adanya dari J&T.
-  // TIDAK ada rumus asuransi di sini: kalau J&T tidak mengirim biayanya,
-  // asuransi tidak ditawarkan dan tidak ada angka yang dikarang.
+  // Asuransi TIDAK LAGI pilihan pembeli (keputusan owner 2026-09-18):
+  // pengiriman toko selalu diasuransikan, biayanya menyatu ke tarif ongkir.
+  // TIDAK ada rumus asuransi di sini; kalau J&T tidak mengirim biayanya,
+  // tidak ada angka yang dikarang.
   const shippingFreight = effectiveShipping ? Number(effectiveShipping.freight || 0) : 0
   const insuranceCost = Number(effectiveShipping?.insurance || 0)
-  const insuranceCharged = effectiveShipping?.insurance_selected ? insuranceCost : 0
-  // Tarif ongkir yang ditampilkan SUDAH TERMASUK asuransi bila ada (keputusan
-  // owner 2026-09-18). Karena itu label "Tarif J&T" memakai total J&T
-  // (gross = ongkir + asuransi), dan biaya asuransi TIDAK ditampilkan sebagai
-  // baris terpisah supaya pembeli bisa menjumlahkan tanpa angka dobel:
+  const tariffIncludesInsurance = insuranceCost > 0
+  // Label "Tarif J&T" memakai total J&T (gross = ongkir + asuransi), sehingga
+  // pembeli bisa menjumlahkan tanpa angka dobel:
   // tarif - subsidi = ongkir dibayar pelanggan.
   const shippingTariff = effectiveShipping
-    ? Number(effectiveShipping.gross || 0) || shippingFreight + insuranceCharged
+    ? Number(effectiveShipping.gross || 0) || shippingFreight + insuranceCost
     : 0
-  const showInsuranceControl = Boolean(
-    effectiveShipping
-      && !effectiveShipping.provisional
-      && !shippingQuoteLoading
-      && (effectiveShipping.insurance_available || insuranceCost > 0),
-  )
   // Rincian ongkir hanya muncul bila tarif J&T sudah ada, supaya label
   // "Tarif J&T" tidak pernah menampilkan angka campuran.
   const showShippingBreakdown = Boolean(
     effectiveShipping
       && shippingFreight > 0
-      && ((effectiveShipping.applied && shippingSubsidy > 0) || showInsuranceControl),
+      && ((effectiveShipping.applied && shippingSubsidy > 0) || tariffIncludesInsurance),
   )
   const totalBeforeDiscount = finalTotal + discount + shippingSubsidy
   const savedAmount = Math.max(0, totalBeforeDiscount - finalTotal)
@@ -384,7 +375,7 @@ export function CheckoutSummary({
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground min-w-0 break-words">
                     Tarif J&T
-                    {insuranceCharged > 0 ? (
+                    {tariffIncludesInsurance ? (
                       <span className="block text-[11px] leading-4">sudah termasuk asuransi</span>
                     ) : null}
                   </dt>
@@ -400,29 +391,6 @@ export function CheckoutSummary({
                     <dd className="tabular-nums font-semibold text-sale">
                       -{formatCurrency(shippingSubsidy)}
                     </dd>
-                  </div>
-                ) : null}
-                {showInsuranceControl ? (
-                  <div className="flex items-center justify-between gap-4">
-                    <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
-                      <input
-                        type="checkbox"
-                        className="size-4 rounded border-border accent-primary"
-                        checked={Boolean(insurance)}
-                        onChange={(event) => setInsurance(event.target.checked)}
-                      />
-                      <span className="min-w-0 break-words">
-                        Asuransi pengiriman
-                        {(effectiveShipping.insured_value ?? 0) > 0
-                          ? ` (pertanggungan ${formatCurrency(effectiveShipping.insured_value ?? 0)})`
-                          : null}
-                        {!insurance && insuranceCost > 0 ? (
-                          <span className="block text-[11px] leading-4 text-muted-foreground">
-                            Menambah {formatCurrency(insuranceCost)} pada tarif di atas.
-                          </span>
-                        ) : null}
-                      </span>
-                    </label>
                   </div>
                 ) : null}
                 <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5">

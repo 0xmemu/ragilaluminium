@@ -42,9 +42,8 @@ export interface CheckoutShippingQuote {
   status: string
   provisional: boolean
   freight?: number
+  /** Biaya asuransi dari J&T; sudah termasuk di dalam `gross` dan `net`. */
   insurance?: number
-  insurance_available?: boolean
-  insurance_selected?: boolean
   /** Nilai barang yang diasuransikan (dikirim ke J&T sebagai offerFee). */
   insured_value?: number
   message?: string | null
@@ -61,7 +60,6 @@ export interface UseCheckoutOptions {
   removeVoucherUrl?: string | null
   shippingQuoteUrl?: string | null
   shippingWeightKg?: number
-  insurance?: boolean
 }
 
 const emptyDetails: CheckoutDetails = {
@@ -125,7 +123,6 @@ export function useCheckout({
   removeVoucherUrl = routeUrl("checkout.voucher.remove"),
   shippingQuoteUrl = null,
   shippingWeightKg = 1,
-  insurance: initialInsurance = false,
 }: UseCheckoutOptions) {
   const [editingDetails, setEditingDetails] = React.useState(!details)
   const detailForm = useForm<CheckoutDetails>({ ...emptyDetails, ...(details ?? {}) })
@@ -138,7 +135,6 @@ export function useCheckout({
   const [voucherCode, setVoucherCode] = React.useState(voucher?.code ?? "")
   const [voucherOpen, setVoucherOpen] = React.useState(false)
   const voucherForm = useForm({ code: voucher?.code ?? "" })
-  const [insurance, setInsurance] = React.useState(initialInsurance)
 
   function applyVoucher(event: React.FormEvent) {
     event.preventDefault()
@@ -357,7 +353,6 @@ export function useCheckout({
               village: data.village,
               postal_code: data.postal_code,
               address_line1: data.address_line1,
-              insurance,
             }),
           },
         )
@@ -401,7 +396,6 @@ export function useCheckout({
             provisional: true,
             freight: provisionalAmount,
             insurance: 0,
-            insurance_available: false,
             message: typeof source.message === "string" ? source.message : null,
           })
           return
@@ -414,15 +408,9 @@ export function useCheckout({
         const gross = number(source.gross ?? source.original ?? source.base) ?? net
         const subsidy = number(source.subsidy ?? source.discount) ?? Math.max(0, gross - net)
         const insuranceAmount = number(source.insurance) ?? 0
-        const insuranceAvailable = Boolean(source.insurance_available) || insuranceAmount > 0
-        // insurance_selected/insured_value ikut dipetakan: tanpa ini ringkasan
-        // tidak tahu apakah biaya asuransi benar-benar ditagihkan, sehingga
-        // "net" (yang sudah memuat asuransi) tampil tanpa penjelasannya.
+        // insured_value ikut dipetakan supaya ringkasan bisa menjelaskan
+        // pertanggungan tanpa membuka kembali pilihan asuransi.
         const insuredValue = number(source.insured_value) ?? 0
-        const insuranceSelected =
-          source.insurance_selected === undefined
-            ? insuranceAmount > 0
-            : Boolean(source.insurance_selected)
         setShippingQuote({
           gross,
           subsidy,
@@ -432,8 +420,6 @@ export function useCheckout({
           provisional: false,
           freight: number(source.freight) ?? undefined,
           insurance: insuranceAmount,
-          insurance_selected: insuranceSelected,
-          insurance_available: insuranceAvailable,
           insured_value: insuredValue,
           message: typeof source.message === "string" ? source.message : null,
           carrier_eta: typeof source.carrier_eta === "string" ? source.carrier_eta : null,
@@ -464,7 +450,6 @@ export function useCheckout({
     detailForm.data,
     shippingQuoteUrl,
     shippingWeightKg,
-    insurance,
   ])
 
   function selectProvince(option: WilayahOption | null) {
@@ -537,10 +522,6 @@ export function useCheckout({
   function placeOrder(event: React.FormEvent) {
     event.preventDefault()
     if (!details || paymentForm.processing) return
-    paymentForm.transform((data) => ({
-      ...data,
-      insurance,
-    }))
     paymentForm.post(routeUrl("checkout.place-order"))
   }
 
@@ -623,8 +604,6 @@ export function useCheckout({
     paymentForm,
     hasVoucher,
     showCodFee,
-    insurance,
-    setInsurance,
     voucherCode,
     setVoucherCode,
     voucherOpen,

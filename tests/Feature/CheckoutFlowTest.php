@@ -56,9 +56,14 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals('SENAYAN', $order->shipping_village);
         // Subtotal otoritatif dari harga DB (2 x 1.000.000).
         $this->assertEquals(2000000, (float) $order->subtotal_amount);
-        // Total = subtotal + ongkir (dihitung otomatis saat checkout).
+        // Total = subtotal + ongkir + asuransi. Sejak keputusan owner
+        // 2026-09-18 asuransi selalu ikut ke tagihan ongkir, jadi total
+        // memuatnya secara eksplisit.
+        $this->assertGreaterThan(0.0, (float) $order->shipping_insurance_amount);
         $this->assertEquals(
-            (float) $order->subtotal_amount + (float) $order->shipping_amount,
+            (float) $order->subtotal_amount
+                + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount,
             (float) $order->total_amount
         );
         // Stok berkurang setelah order dibuat.
