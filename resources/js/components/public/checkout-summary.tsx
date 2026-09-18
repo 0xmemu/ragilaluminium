@@ -398,7 +398,7 @@ export function CheckoutSummary({
             ) : null}
             {shippingSubsidy > 0 ? (
               <div className="flex justify-between gap-4">
-                <dt className="min-w-0 break-words text-sale">
+                <dt className="text-muted-foreground min-w-0 break-words">
                   Subsidi Ongkir
                   {shippingSubsidyPercent > 0 ? ` ${formatPercent(shippingSubsidyPercent)}` : ""}
                 </dt>
