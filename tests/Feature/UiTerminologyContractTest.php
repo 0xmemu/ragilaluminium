@@ -30,10 +30,10 @@ class UiTerminologyContractTest extends TestCase
      * @var array<string, list<string>>
      */
     private const BERKAS = [
-        "app/Services/StorePerformanceService.php" => ["Omset", "Piutang", "piutang", "Cair"],
-        "app/Exports/StorePerformanceExport.php" => ["Omset", "Piutang", "piutang", "Cair"],
+        "app/Services/StorePerformanceService.php" => ["Omset", "Piutang", "piutang", "Cair", "Hangus"],
+        "app/Exports/StorePerformanceExport.php" => ["Omset", "Piutang", "piutang", "Cair", "Hangus"],
         "app/Exports/OrderExport.php" => ["Omset", "Piutang", "piutang", "Cair"],
-        "resources/js/pages/Admin/Analytics/StorePerformance.tsx" => ["Omset", "Omzet", "Piutang", "piutang", "Cair"],
+        "resources/js/pages/Admin/Analytics/StorePerformance.tsx" => ["Omset", "Omzet", "Piutang", "piutang", "Cair", "Hangus"],
         "resources/js/pages/Admin/Payments/Index.tsx" => ["Omset", "Omzet", "Piutang", "piutang", "Cair"],
         "resources/js/config/admin-page-guides.ts" => ["Omset", "Omzet", "Piutang", "piutang", "Cair"],
     ];

@@ -209,6 +209,7 @@ class StorePerformanceRefusedCostTest extends TestCase
         $kpi = $this->borneKpi();
 
         $this->assertNotNull($kpi, 'KPI beban paket ditolak ada di blok Retur & Pembatalan');
+        $this->assertSame('Ongkir & COD Ditanggung Toko', $kpi["label"]);
         $this->assertSame(200000.0, (float) $kpi["value"]);
         $this->assertStringContainsString("Ongkir kirim", (string) $kpi["detail"]);
         $this->assertStringContainsString("perjalanan balik", (string) $kpi["detail"]);
