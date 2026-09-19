@@ -309,7 +309,7 @@ class StorePerformanceService
         $paymentsKpis = [
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
-            $this->kpi('cod_paid', 'COD Selesai (uang masuk)', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
+            $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
             $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada order aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
 

@@ -171,6 +171,10 @@ class OrderController extends Controller
             'date_to' => $datePreset === 'range' && $dateTo !== '' ? $dateTo : null,
         ], fn ($v) => $v !== null && $v !== '');
 
+        // Pelanggan yang perlu perhatian admin: riwayat penolakan paket yang
+        // belum pernah lunas. Satu query untuk seluruh halaman, bukan per baris.
+        $refusedByPhone = $this->refusedPackagesByPhone($orders->getCollection());
+
         return Inertia::render('Admin/Orders/Index', [
             'title' => 'Daftar Pesanan',
             'description' => 'Kelola semua pesanan dari awal dibuat hingga selesai, dibatalkan, atau retur.',
@@ -185,7 +189,10 @@ class OrderController extends Controller
             'dateTo' => $dateTo,
             'searchQuery' => trim((string) $request->input('q', '')),
             'summary' => $summary,
-            'orders' => $orders->getCollection()->map(fn (Order $order) => $this->orderCard($order))->values()->all(),
+            'orders' => $orders->getCollection()
+                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone))
+                ->values()
+                ->all(),
             'pagination' => InertiaAdmin::pagination($orders),
             'exportUrl' => route('admin.orders.export', $filterQuery),
         ]);
@@ -1088,7 +1095,99 @@ class OrderController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function orderCard(Order $order): array
+    /**
+     * Penanda perhatian untuk satu pesanan, atau null bila pelanggan bersih.
+     *
+     * Hanya PENANDA VISUAL: tidak memblokir apa pun. Admin tetap yang memutuskan
+     * apakah pesanan COD berikutnya layak dikirim, karena penolakan paket bisa
+     * juga terjadi karena pembeli tidak bisa dihubungi, bukan selalu ditolak
+     * secara sadar.
+     *
+     * @param  array<string, int>  $refusedByPhone
+     * @return array{kind: string, count: int, label: string, hint: string}|null
+     */
+    private function customerAttention(Order $order, array $refusedByPhone): ?array
+    {
+        if ($refusedByPhone === []) {
+            return null;
+        }
+
+        $phone = PhoneNumber::normalize($order->customer_phone);
+        if ($phone === null) {
+            return null;
+        }
+
+        $count = (int) ($refusedByPhone[$phone] ?? 0);
+        if ($count < 1) {
+            return null;
+        }
+
+        return [
+            'kind' => 'refused_package',
+            'count' => $count,
+            'label' => 'Perlu perhatian',
+            'hint' => $count === 1
+                ? 'Pelanggan ini punya 1 paket yang dikembalikan kurir sebelum diterima dan belum lunas. Pertimbangkan konfirmasi ulang sebelum mengirim pesanan COD berikutnya.'
+                : 'Pelanggan ini punya '.$count.' paket yang dikembalikan kurir sebelum diterima dan belum lunas. Pertimbangkan konfirmasi ulang sebelum mengirim pesanan COD berikutnya.',
+        ];
+    }
+
+    /**
+     * Riwayat penolakan paket per pelanggan, dikunci per nomor telepon.
+     *
+     * Penandanya SENGAJA sama dengan yang dipakai laporan Performa Toko: paket
+     * yang dikembalikan kurir sebelum diterima pembeli dan belum pernah lunas.
+     * Nomor sudah dinormalisasi sejak checkout (PhoneNumber::normalize), jadi
+     * pelanggan yang sama selalu terbaca sebagai satu orang.
+     *
+     * Satu query untuk seluruh halaman, bukan per baris, supaya daftar pesanan
+     * tetap ringan walau riwayat penolakan bertambah.
+     *
+     * @param  IlluminateSupportCollection<int, Order>  $orders
+     * @return array<string, int> nomor ternormalisasi => jumlah penolakan
+     */
+    private function refusedPackagesByPhone($orders): array
+    {
+        $phones = $orders
+            ->map(fn (Order $order) => PhoneNumber::normalize($order->customer_phone))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($phones === []) {
+            return [];
+        }
+
+        // Kolom tersimpan apa adanya, jadi baris lama bisa berformat 08xxx
+        // sementara baris baru 628xxx. Kandidat dicari dalam beberapa bentuk,
+        // lalu hasilnya digabung per nomor ternormalisasi supaya satu orang
+        // tidak terhitung sebagai dua pelanggan.
+        $variants = [];
+        foreach ($phones as $phone) {
+            $variants[] = $phone;
+            if (str_starts_with($phone, '62')) {
+                $variants[] = '0'.substr($phone, 2);
+                $variants[] = '+'.$phone;
+            }
+        }
+
+        return Order::query()
+            ->whereIn('customer_phone', array_values(array_unique($variants)))
+            ->whereIn('order_status', ['return_in_process', 'return_completed'])
+            ->where('payment_status', '!=', 'paid')
+            ->select('customer_phone', DB::raw('count(*) as total'))
+            ->groupBy('customer_phone')
+            ->get()
+            ->groupBy(fn ($row) => PhoneNumber::normalize($row->customer_phone))
+            ->map(fn ($rows) => (int) $rows->sum('total'))
+            ->filter(fn (int $total, ?string $phone) => $phone !== null && $phone !== '' && $total > 0)
+            ->all();
+    }
+    /**
+     * @param  array<string, int>  $refusedByPhone  nomor ternormalisasi => jumlah penolakan
+     */
+    private function orderCard(Order $order, array $refusedByPhone = []): array
     {
         $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
         $items = $order->items ?? collect();
@@ -1114,6 +1213,7 @@ class OrderController extends Controller
             'flow' => $isCod ? 'cod' : 'transfer',
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
+            'attention' => $this->customerAttention($order, $refusedByPhone),
             'customer_email' => $order->customer_email,
             'shipping_address_line1' => $order->shipping_address_line1,
             'shipping_address_line2' => $order->shipping_address_line2,

@@ -62,6 +62,13 @@ interface OrderCard {
   flow?: "cod" | "transfer"
   customer_name: string
   customer_phone?: string | null
+  /** Penanda perhatian admin (mis. riwayat paket ditolak). Null bila bersih. */
+  attention?: {
+    kind: string
+    count: number
+    label: string
+    hint: string
+  } | null
   shipping_address_line1?: string | null
   shipping_address_line2?: string | null
   shipping_village?: string | null
@@ -295,6 +302,16 @@ function OrderCardRow({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
+          {order.attention ? (
+            <span
+              className="inline-flex shrink-0 items-center text-warning"
+              title={order.attention.hint}
+              aria-label={order.attention.label + ": " + order.attention.hint}
+              role="img"
+            >
+              <Icon name="warning" className="size-3.5" aria-hidden="true" />
+            </span>
+          ) : null}
           <span className="hidden sm:inline">
             · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
