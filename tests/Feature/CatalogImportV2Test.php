@@ -156,7 +156,7 @@ class CatalogImportV2Test extends TestCase
         ]);
 
         $pesan = implode(" | ", $errors);
-        $this->assertStringContainsString("Harga kosong atau nol", $pesan);
+        $this->assertStringContainsString("Harga kosong, tidak valid, atau nol", $pesan);
         $this->assertStringContainsString("duplikat", $pesan);
     }
 
@@ -357,6 +357,22 @@ class CatalogImportV2Test extends TestCase
      * layar gangguan sementara padahal server sukses. Bug seperti ini tidak
      * terlihat dari uji status HTTP saja.
      */
+    public function test_harga_berformat_ribuan_tersimpan_benar(): void
+    {
+        $rows = [$this->baris(["harga" => "1.250.000"])];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+        $this->assertEquals(
+            1250000.0,
+            (float) $product->activeVariants()->first()->price,
+            "harga format ribuan Indonesia wajib tersimpan sebagai 1250000"
+        );
+    }
+
     public function test_bentuk_respons_preview_v2_dibaca_frontend(): void
     {
         $path = $this->berkas([$this->baris([])]);

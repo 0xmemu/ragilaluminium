@@ -138,7 +138,8 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                 }
                 $upserter->upsert(
                     productId: $product->id,
-                    variantId: $variant?->id,
+                    // Kolom Gambar 1..9 selalu media level produk (audit P1-3).
+                    variantId: null,
                     url: $url,
                     position: $i,
                     isMain: $i === 1,
@@ -157,7 +158,8 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                 }
                 $upserter->upsert(
                     productId: $product->id,
-                    variantId: $variant?->id,
+                    // Hasil pemasangan juga level produk, selaras import katalog.
+                    variantId: null,
                     url: $url,
                     position: 100 + $i,
                     showInCatalog: false,

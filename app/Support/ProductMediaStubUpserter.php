@@ -52,6 +52,9 @@ class ProductMediaStubUpserter
             'last_updated_by_import_job_id' => $this->jobId,
             'media_asset_id' => $asset->id,
             'source_url' => $url,
+            // Isi ulang via import adalah aksi eksplisit: baris yang pernah
+            // diarsip lewat panel admin kembali tampil (audit P1-4).
+            'visibility' => 'visible',
             'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
             'position' => $showInCatalog ? $position : ($media->position ?: $position),
             'is_main_image' => $showInCatalog && $isMain ? true : (bool) $media->is_main_image,

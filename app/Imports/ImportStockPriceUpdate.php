@@ -169,7 +169,15 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             return $fallback;
         }
 
-        return (float) str_replace(',', '.', (string) $raw);
+        $price = \App\Support\NumberCellNormalizer::parse($raw);
+        if ($price === null) {
+            throw new \RuntimeException('Harga tidak valid: '.(string) $raw);
+        }
+        if ($price <= 0) {
+            throw new \RuntimeException('Harga 0 atau kurang tidak diizinkan. Nonaktifkan produk lewat form produk bila tidak jual.');
+        }
+
+        return $price;
     }
 
     /**

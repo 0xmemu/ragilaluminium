@@ -98,12 +98,14 @@ class ImportMediaUpdateTest extends TestCase
         $this->assertSame(1, ImportJobRow::where('import_job_id', $job->id)->where('status', 'success')->count());
     }
 
-    public function test_media_update_tambah_foto_level_varian(): void
+    public function test_media_update_image_1_di_baris_varian_tetap_level_produk(): void
     {
         Queue::fake([DownloadMediaAsset::class]);
         [$product, $variant] = $this->product('RGL-M2', 'RGL-M2-A');
         $job = $this->job();
 
+        // Kolom image_1..9 selalu media level produk, apa pun baris yang
+        // mengisinya (audit P1-3). Foto varian memakai kolom Gambar per Varian.
         $this->importRows($job, [
             ['parent_sku', 'variant_sku', 'image_1'],
             ['RGL-M2', 'RGL-M2-A', 'https://example.com/var-1.jpg'],
@@ -111,10 +113,15 @@ class ImportMediaUpdateTest extends TestCase
 
         $this->assertDatabaseHas('product_media', [
             'product_id' => $product->id,
-            'product_variant_id' => $variant->id,
+            'product_variant_id' => null,
             'source_url' => 'https://example.com/var-1.jpg',
             'is_main_image' => true,
         ]);
+        $this->assertSame(
+            0,
+            ProductMedia::where('product_id', $product->id)->where('product_variant_id', $variant->id)->count(),
+            'kolom image_1 tidak boleh menempel ke varian'
+        );
     }
 
     public function test_media_update_foto_pemasangan_dan_slots(): void

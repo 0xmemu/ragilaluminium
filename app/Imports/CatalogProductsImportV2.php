@@ -516,10 +516,6 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
 
     protected function number(mixed $value): ?float
     {
-        if ($value === null || trim((string) $value) === '') {
-            return null;
-        }
-
-        return (float) str_replace(',', '.', (string) $value);
+        return \App\Support\NumberCellNormalizer::parse($value);
     }
 }

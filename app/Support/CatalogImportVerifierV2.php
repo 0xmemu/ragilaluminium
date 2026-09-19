@@ -86,9 +86,9 @@ final class CatalogImportVerifierV2
                 }
 
                 // V5: harga wajib lebih dari nol pada setiap baris varian.
-                $harga = $row['harga'] ?? null;
-                if ($harga === null || $harga === '' || (float) str_replace(',', '.', (string) $harga) <= 0) {
-                    $errors[] = 'Baris '.$rowNo.': Harga kosong atau nol pada NO. ID "'.$label.'".';
+                $harga = \App\Support\NumberCellNormalizer::parse($row['harga'] ?? null);
+                if ($harga === null || $harga <= 0) {
+                    $errors[] = 'Baris '.$rowNo.': Harga kosong, tidak valid, atau nol pada NO. ID "'.$label.'".';
                 }
 
                 if (trim((string) ($row['gambar_1_utama'] ?? '')) !== '') {

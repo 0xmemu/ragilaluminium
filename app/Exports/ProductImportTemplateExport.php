@@ -377,7 +377,7 @@ class ProductImportGuideSheet implements FromArray, WithTitle, WithEvents
             ['Gambar per Varian', 'URL foto yang menempel pada varian baris ini. Satu opsi cukup diisi sekali.', 'https://media.333labs.tech/...'],
             ['Nama Variasi 2', 'Nama sumbu variasi kedua. Boleh dikosongkan bila produk hanya punya satu variasi.', 'Kaca'],
             ['Opsi Variasi 2', 'Nilai opsi untuk baris ini.', 'Kaca Bening'],
-            ['Harga', 'Harga jual varian ini. Angka polos tanpa titik dan tanpa Rp.', '1250000'],
+            ['Harga', 'Harga jual varian ini. Angka polos atau format ribuan Indonesia (1.250.000) tanpa Rp.', '1250000'],
             ['Stok', 'Jumlah stok. Angka biasa, atau format acak seperti random 1000-8000.', '10'],
             ['Berat (Kg)', 'Berat packing untuk ongkir. TIDAK tampil di storefront. Isi di baris pertama grup.', '12.5'],
             ['Tinggi (cm)', 'Tinggi packing untuk ongkir. TIDAK tampil di storefront.', '170'],

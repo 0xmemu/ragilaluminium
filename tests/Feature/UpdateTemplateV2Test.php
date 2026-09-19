@@ -247,6 +247,83 @@ class UpdateTemplateV2Test extends TestCase
         );
     }
 
+    public function test_harga_berformat_ribuan_tersimpan_benar(): void
+    {
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "1.250.000", 42],
+        ]);
+
+        Excel::import(new ImportStockPriceUpdate($this->job("stock_price_update")->id), $path);
+
+        $this->assertEquals(
+            1250000.0,
+            (float) $this->variant->fresh()->price,
+            "harga format ribuan Indonesia wajib tersimpan sebagai 1250000"
+        );
+    }
+
+    public function test_harga_nol_ditolak_importer(): void
+    {
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", 0, 42],
+        ]);
+
+        $job = $this->job("stock_price_update");
+        Excel::import(new ImportStockPriceUpdate($job->id), $path);
+        $job->refresh();
+
+        $this->assertSame(1, (int) $job->failed_rows, "harga 0 wajib ditolak per baris");
+        $this->assertEquals(
+            1000000.0,
+            (float) $this->variant->fresh()->price,
+            "harga lama tidak berubah saat baris ditolak"
+        );
+    }
+
+    public function test_gambar_1_dan_2_selalu_level_produk(): void
+    {
+        \Illuminate\Support\Facades\Storage::disk("media")->put("media-assets/kedua/pdp.webp", "isi-uji");
+
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Gambar per Varian", "Gambar 1 (utama)", "Gambar 2", "Media Bersama 1", "Media Bersama 2", "Gambar Hasil Pemasangan 1", "Gambar Hasil Pemasangan 2"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "", "https://media.333labs.tech/media-assets/varian/pdp.webp", "https://media.333labs.tech/media-assets/kedua/pdp.webp", "", "", "", ""],
+        ]);
+
+        Excel::import(new ImportMediaUpdate($this->job("media_update")->id), $path);
+
+        $levelProduk = \App\Models\ProductMedia::where("product_id", $this->product->id)
+            ->whereNull("product_variant_id")->orderBy("position")->get();
+        $this->assertSame([1, 2], $levelProduk->pluck("position")->all(), "Gambar 1 dan 2 wajib jadi media level produk");
+        $this->assertSame(0, \App\Models\ProductMedia::where("product_variant_id", $this->variant->id)->count(),
+            "kolom Gambar 1/2 tidak boleh menempel ke varian (audit P1-3)");
+        $this->assertTrue((bool) $levelProduk->firstWhere("position", 1)->is_main_image, "posisi 1 wajib main");
+        $this->assertNotNull($this->product->mainImage()->first(), "mainImage produk wajib tetap terisi");
+    }
+
+    public function test_media_diarsip_lalu_diisi_ulang_muncul_kembali(): void
+    {
+        $url = "https://media.333labs.tech/media-assets/varian/pdp.webp";
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Gambar per Varian", "Gambar 1 (utama)", "Gambar 2", "Media Bersama 1", "Media Bersama 2", "Gambar Hasil Pemasangan 1", "Gambar Hasil Pemasangan 2"];
+        $baris = [["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", $url, "", "", "", "", "", ""]];
+
+        // Import pertama: media varian dibuat.
+        Excel::import(new ImportMediaUpdate($this->job("media_update")->id), $this->berkas($headers, $baris));
+        $media = \App\Models\ProductMedia::where("product_variant_id", $this->variant->id)->firstOrFail();
+        $media->update(["visibility" => "archived"]);
+
+        // Import kedua dengan URL sama: kembali visible, tanpa baris kembar.
+        Excel::import(new ImportMediaUpdate($this->job("media_update")->id), $this->berkas($headers, $baris));
+        $media->refresh();
+        $this->assertSame("visible", $media->visibility, "isi ulang URL sama wajib memunculkan kembali media (audit P1-4)");
+        $this->assertSame(
+            1,
+            \App\Models\ProductMedia::where("product_variant_id", $this->variant->id)->count(),
+            "isi ulang tidak boleh membuat baris kembar"
+        );
+    }
+
     /**
      * Fitur penanda hapus dihapus (keputusan owner 19 Sep 2026): tidak ada
      * skenario admin yang membutuhkannya, dan arsip media cukup lewat panel

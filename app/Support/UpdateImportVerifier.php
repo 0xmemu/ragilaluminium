@@ -156,11 +156,13 @@ final class UpdateImportVerifier
                     $errors[] = 'Baris '.$rowNo.': tidak ada yang diubah (harga dan stok kosong).';
                     continue;
                 }
-                // U5 price
+                // U5 price: normalisasi format ribuan/desimal Indonesia.
                 if ($priceRaw !== '') {
-                    $price = (float) str_replace(',', '.', $priceRaw);
-                    if (! is_numeric(str_replace(',', '.', $priceRaw)) || $price < 0) {
+                    $price = \App\Support\NumberCellNormalizer::parse($priceRaw);
+                    if ($price === null) {
                         $errors[] = 'Baris '.$rowNo.': harga "'.$priceRaw.'" tidak valid.';
+                    } elseif ($price <= 0) {
+                        $errors[] = 'Baris '.$rowNo.': harga 0 atau kurang tidak diizinkan. Nonaktifkan produk lewat form produk bila tidak jual.';
                     }
                 }
                 // U5 stock: angka atau rentang a-b
