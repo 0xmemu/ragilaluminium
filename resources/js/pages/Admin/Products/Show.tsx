@@ -32,6 +32,7 @@ interface ProductHeader {
   status: string
   description?: string | null
   public_visible: boolean
+  image_url?: string | null
   edit_href: string
   product_href: string
 }
@@ -617,15 +618,29 @@ export default function ProductShow({
 
       <div className="space-y-4">
         {/* Identitas di kiri, daftar detail di kanan: dua kartu berdampingan */}
-        <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <section
-            className="rounded-lg border border-border bg-card p-5"
+            className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
             aria-label="Identitas produk"
           >
-            <h2 className="text-base font-semibold leading-6 text-foreground">{product.name}</h2>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">{product.parent_sku}</p>
-            <div className="mt-3">
-              <StatusBadge status={product.status} />
+            {/* Foto utama persegi di kiri nama produk: tingginya mengikuti
+                tinggi kartu sehingga rasionya tetap 1:1 tanpa mendikte tinggi. */}
+            {product.image_url ? (
+              <div className="size-36 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                <img
+                  src={product.image_url}
+                  alt={"Foto utama " + product.name}
+                  className="size-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <h2 className="text-base font-semibold leading-6 text-foreground">{product.name}</h2>
+              <p className="mt-1.5 font-mono text-sm text-muted-foreground">{product.parent_sku}</p>
+              <div className="mt-3">
+                <StatusBadge status={product.status} />
+              </div>
             </div>
           </section>
 

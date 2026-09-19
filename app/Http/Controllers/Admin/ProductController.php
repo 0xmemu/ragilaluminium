@@ -546,6 +546,10 @@ class ProductController extends Controller
                 'status' => $product->status,
                 'description' => $product->description,
                 'public_visible' => $publicVisible,
+                // Foto utama katalog untuk kartu identitas; relasi mainImage
+                // sudah menghormati visibility, show_in_catalog, dan posisi.
+                'image_url' => $product->mainImage?->urlFor('card')
+                    ?? $product->mainImage?->urlFor('thumb'),
                 'edit_href' => route('admin.products.edit', $product),
                 'product_href' => route('product.show', $product->parent_sku, absolute: false),
             ],
