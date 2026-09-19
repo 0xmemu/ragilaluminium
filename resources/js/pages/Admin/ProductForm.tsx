@@ -1,9 +1,9 @@
-import { Head, Link, router, useForm, usePage } from "@inertiajs/react"
+import { Head, router, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Select } from "@/components/admin/ui/select"
@@ -12,36 +12,9 @@ import { Icon } from "@/components/shared/icon"
 import type { SharedPageProps } from "@/types"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { SelectOption } from "@/types"
-
-interface VariantDraft {
-  variation_1_name: string
-  variation_1_option: string
-  variation_2_name: string
-  variation_2_option: string
-  variation_3_name: string
-  variation_3_option: string
-  variation_4_name: string
-  variation_4_option: string
-  variation_5_name: string
-  variation_5_option: string
-  price: string
-  promo_price: string
-  stock?: string | number
-  weight_kg: string
-  width_cm: string
-  height_cm: string
-  depth_cm: string
-  status: string
-}
-
-interface VariantRecord extends VariantDraft {
-  id: number
-  variant_sku: string
-}
 
 interface ProductFormData {
   workflow: "wizard"
@@ -81,7 +54,6 @@ type VariationOption = { value: string; media_asset_id?: number | null; thumb_ur
 type VariantDef = { name: string; options: VariationOption[]; locked?: boolean }
 
 const emptyOption = (): VariationOption => ({ value: "" })
-type Combination = { options: string[]; price: string; stock: string }
 
 /** Produk kartesian dari definisi varian: [Warna(Hitam,Putih) x Kaca(Bening,Es)] -> 4 kombinasi. */
 function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label: string }> {
@@ -124,9 +96,7 @@ export default function ProductForm({
   submitUrl,
   publishUrl,
   options,
-  activeTab = 'identitas',
   installationMedia = [],
-  mediaHref,
   mediaActionUrls,
   attributes = [],
 }: {
@@ -189,9 +159,6 @@ export default function ProductForm({
   // Satu halaman penuh: semua section (identitas, varian, media) selalu tampil
   // bertumpuk, tanpa tab. Prop activeTab dipertahankan agar redirect lama
   // (?tab=media / ?tab=varian) tetap valid tanpa error, hanya diabaikan.
-  const libraryAssets = ((usePage<SharedPageProps>().props as unknown as {
-    library?: Array<{ id: number; label: string; kind: string; status: string; usage_count: number; thumb_url?: string | null; media_url?: string | null }>
-  }).library) ?? []
 
   const [pickerOpen, setPickerOpen] = React.useState(false)
   // Media hasil pemasangan: tambah via MediaPicker (simpan instan lewat
@@ -264,6 +231,11 @@ export default function ProductForm({
   const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
   const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
 
+  // ADR-021: definisi varian (nama bebas + opsi) diisi admin;
+  // harga & stok diisi per kombinasi setelah definisi selesai.
+  const [variantDefs, setVariantDefs] = React.useState<VariantDef[]>([])
+  const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>({})
+
   React.useEffect(() => {
     if (!editing) return
     // Kontrak props terkini: variant_defs & variants dikirim sebagai props
@@ -295,11 +267,6 @@ export default function ProductForm({
       productVariantId: m.product_variant_id ?? null,
     })))
   }, [editing])
-
-  // ADR-021: definisi varian (nama bebas + opsi) diisi admin;
-  // harga & stok diisi per kombinasi setelah definisi selesai.
-  const [variantDefs, setVariantDefs] = React.useState<VariantDef[]>([])
-  const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>({})
 
   const combos = buildCombinations(variantDefs)
 
@@ -443,7 +410,6 @@ export default function ProductForm({
     })
   }, [editing, incomingVariants, combos.length])
 
-  const combinationKey = (options: string[]) => options.join("|")
   // Ketikan opsi mengubah key teks; simpan nilai harga/stok per INDEX kombinasi agar tidak hilang saat mengetik.
 
 
@@ -1174,7 +1140,6 @@ export default function ProductForm({
                     const media = pickedMedia.find((m) => m.assetId === slot.assetId)
                     if (!media) return null
                     const catalogIndex = mediaSlots.slice(0, index + 1).filter((s) => s.type === "catalog").length - 1
-                    const catalogTotal = mediaSlots.filter((s) => s.type === "catalog").length
 
                     return (
                     <li
