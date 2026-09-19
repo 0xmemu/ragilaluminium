@@ -78,7 +78,7 @@ interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"
 type WizardStep = "identity" | "variants" | "media" | "review" | null
 
 type VariationOption = { value: string; media_asset_id?: number | null; thumb_url?: string | null }
-type VariantDef = { name: string; options: VariationOption[] }
+type VariantDef = { name: string; options: VariationOption[]; locked?: boolean }
 
 const emptyOption = (): VariationOption => ({ value: "" })
 type Combination = { options: string[]; price: string; stock: string }
@@ -274,6 +274,7 @@ export default function ProductForm({
     if (raw && raw.length) {
       setVariantDefs(raw.map((def) => ({
         name: def.name ?? "",
+        locked: Boolean(def.name && String(def.name).trim() !== ""),
         options: (def.options ?? []).map((option) => ({
           value: option.value ?? "",
           media_asset_id: option.media_asset_id ?? null,
@@ -838,72 +839,228 @@ export default function ProductForm({
             </div>
 
             <div className="divide-y divide-border">
-              {variantDefs.map((def, defIndex) => (
-                <div key={defIndex} className="grid grid-cols-[6rem_1fr] items-center gap-x-3 gap-y-2.5 p-4">
-                  <span className="self-center text-xs font-semibold text-muted-foreground">Varian {defIndex + 1}</span>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      value={def.name}
-                      onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, name: event.target.value } : d)))}
-                      onKeyDown={blockEnter}
-                      placeholder="Nama varian (mis. Warna)"
-                      className="h-8 w-56 text-xs font-medium"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() => setVariantDefs((prev) => prev.filter((_, i) => i !== defIndex))}
-                    >
-                      Hapus varian
-                    </Button>
-                  </div>
-                  <span className="self-start text-xs text-muted-foreground/70">Opsi</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {def.options.map((option, optionIndex) => (
-                      <span key={optionIndex} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface p-1.5 shadow-sm">
+              {variantDefs.map((def, defIndex) => {
+                const isLocked = def.locked !== false && Boolean(def.name && def.name.trim() !== "")
+
+                return (
+                  <div key={defIndex} className="space-y-3 p-4 sm:p-5">
+                    {/* Header baris: Nama varian */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          Varian {defIndex + 1}:
+                        </span>
+                        {isLocked ? (
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground text-sm">
+                              {def.name}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() =>
+                                setVariantDefs((prev) =>
+                                  prev.map((d, i) => (i === defIndex ? { ...d, locked: false } : d)),
+                                )
+                              }
+                              className="h-6 gap-1 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                              title="Ubah nama varian"
+                              aria-label={`Edit nama varian ${def.name}`}
+                            >
+                              <Icon name="pencil" className="size-3" aria-hidden="true" />
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() =>
+                                setVariantDefs((prev) => prev.filter((_, i) => i !== defIndex))
+                              }
+                              className="size-6 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title="Hapus varian ini"
+                              aria-label={`Hapus varian ${def.name}`}
+                            >
+                              <Icon name="x" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={def.name}
+                              onChange={(event) =>
+                                setVariantDefs((prev) =>
+                                  prev.map((d, i) =>
+                                    i === defIndex ? { ...d, name: event.target.value } : d,
+                                  ),
+                                )
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault()
+                                  if (def.name.trim()) {
+                                    setVariantDefs((prev) =>
+                                      prev.map((d, i) => (i === defIndex ? { ...d, locked: true } : d)),
+                                    )
+                                  }
+                                }
+                              }}
+                              placeholder="Ketik nama varian (mis. Warna) lalu tekan Enter"
+                              className="h-8 w-64 text-xs font-medium"
+                              autoFocus={!def.name}
+                            />
+                            {def.name.trim() ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="xs"
+                                onClick={() =>
+                                  setVariantDefs((prev) =>
+                                    prev.map((d, i) => (i === defIndex ? { ...d, locked: true } : d)),
+                                  )
+                                }
+                                className="h-8 px-2 text-xs"
+                              >
+                                Selesai
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() =>
+                                setVariantDefs((prev) => prev.filter((_, i) => i !== defIndex))
+                              }
+                              className="size-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title="Hapus varian ini"
+                              aria-label="Hapus varian"
+                            >
+                              <Icon name="x" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Penempatan Opsi Varian yang jelas dan teratur */}
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+                        Pilihan opsi {def.name ? `untuk ${def.name}` : ""}:
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {def.options.map((option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card p-1.5 shadow-xs transition hover:border-foreground/20"
+                          >
+                            {/* Gambar opsi 35px x 35px dengan tombol silang X di pojok kanan atas */}
+                            <div className="relative size-[35px] shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setOptionPicker({ defIndex, optionIndex })}
+                                className="relative size-[35px] overflow-hidden rounded border border-border bg-muted/40 transition hover:ring-2 hover:ring-primary/40 focus:outline-none"
+                                aria-label={`Gambar untuk ${option.value || "opsi " + (optionIndex + 1)}`}
+                                title={option.thumb_url ? "Ganti foto opsi" : "Pilih foto opsi dari Media Library"}
+                              >
+                                {option.thumb_url ? (
+                                  <img src={option.thumb_url} alt="" className="size-full object-cover" />
+                                ) : (
+                                  <div className="flex size-full items-center justify-center text-muted-foreground/60">
+                                    <Icon name="image" className="size-3.5" aria-hidden="true" />
+                                  </div>
+                                )}
+                              </button>
+                              {option.thumb_url || option.media_asset_id ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setVariantDefs((prev) =>
+                                      prev.map((d, i) =>
+                                        i === defIndex
+                                          ? {
+                                              ...d,
+                                              options: d.options.map((o, oi) =>
+                                                oi === optionIndex ? { ...o, media_asset_id: null, thumb_url: null } : o,
+                                              ),
+                                            }
+                                          : d,
+                                      ),
+                                    )
+                                  }}
+                                  className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-xs transition hover:scale-110"
+                                  aria-label={`Hapus foto ${option.value || "opsi"}`}
+                                  title="Hapus foto dari opsi ini"
+                                >
+                                  <Icon name="x" className="size-2.5" aria-hidden="true" />
+                                </button>
+                              ) : null}
+                            </div>
+
+                            {/* Input nilai opsi (misal Putih, Hitam, Kaca Bening) */}
+                            <input
+                              value={option.value}
+                              onChange={(event) =>
+                                setVariantDefs((prev) =>
+                                  prev.map((d, i) =>
+                                    i === defIndex
+                                      ? {
+                                          ...d,
+                                          options: d.options.map((o, oi) =>
+                                            oi === optionIndex ? { ...o, value: event.target.value } : o,
+                                          ),
+                                        }
+                                      : d,
+                                  ),
+                                )
+                              }
+                              onKeyDown={blockEnter}
+                              className="w-28 bg-transparent text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground/60 sm:w-32"
+                              aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
+                              placeholder="Nilai opsi..."
+                            />
+
+                            {/* Tombol hapus opsi */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setVariantDefs((prev) =>
+                                  prev.map((d, i) =>
+                                    i === defIndex
+                                      ? { ...d, options: d.options.filter((_, oi) => oi !== optionIndex) }
+                                      : d,
+                                  ),
+                                )
+                              }
+                              className="mr-0.5 inline-flex size-5 items-center justify-center rounded text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                              aria-label={`Hapus opsi ${option.value}`}
+                              title="Hapus opsi ini"
+                            >
+                              <Icon name="x" className="size-3" aria-hidden="true" />
+                            </button>
+                          </div>
+                        ))}
+
                         <button
                           type="button"
-                          onClick={() => setOptionPicker({ defIndex, optionIndex })}
-                          className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface-muted"
-                          aria-label={`Gambar untuk ${option.value || "opsi " + (optionIndex + 1)}`}
-                          title="Pilih gambar opsi"
+                          onClick={() =>
+                            setVariantDefs((prev) =>
+                              prev.map((d, i) =>
+                                i === defIndex ? { ...d, options: [...d.options, emptyOption()] } : d,
+                              ),
+                            )
+                          }
+                          className="inline-flex h-[43px] items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                         >
-                          {option.thumb_url ? (
-                            <img src={option.thumb_url} alt="" className="size-full object-cover" />
-                          ) : (
-                            <svg className="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                          )}
+                          <Icon name="plus" className="size-3" aria-hidden="true" />
+                          Tambah opsi
                         </button>
-                        <input
-                          value={option.value}
-                          onChange={(event) => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.map((o, oi) => (oi === optionIndex ? { ...o, value: event.target.value } : o)) } : d)))}
-                          onKeyDown={blockEnter}
-                          className="w-32 bg-transparent text-xs text-foreground outline-none"
-                          aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
-                          placeholder="Nilai opsi..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: d.options.filter((_, oi) => oi !== optionIndex) } : d)))}
-                          className="text-muted-foreground transition hover:text-destructive"
-                          aria-label={`Hapus opsi ${option.value}`}
-                        >
-                          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setVariantDefs((prev) => prev.map((d, i) => (i === defIndex ? { ...d, options: [...d.options, emptyOption()] } : d)))}
-                      className="inline-flex h-9 items-center rounded-md border border-dashed border-border px-2.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                    >
-                      + Tambah opsi
-                    </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {combos.length ? (
