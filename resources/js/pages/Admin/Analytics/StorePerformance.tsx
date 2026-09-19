@@ -988,7 +988,14 @@ export default function StorePerformance({
                     hint="Pesanan yang paketnya kembali sebelum diterima pembeli dan returnya sudah selesai pada periode ini. Pembeli tidak membayar, barang kembali ke gudang tanpa menambah stok."
                     className="text-xs font-semibold text-foreground"
                   />
-                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                      (report.financial.refused_borne_count ?? 0) > 0
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
                     {formatNumber(report.financial.refused_borne_count ?? 0)} pesanan
                   </span>
                 </div>
@@ -1000,7 +1007,12 @@ export default function StorePerformance({
                       hint="Ongkir yang sudah ditagih J&T untuk mengantar paket ini. Pembeli tidak menanggungnya, jadi toko yang membayar."
                       className="text-muted-foreground"
                     />
-                    <span className="tabular-nums text-destructive">
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        (report.financial.refused_shipping_cost ?? 0) > 0 ? "text-destructive font-medium" : "text-muted-foreground",
+                      )}
+                    >
                       {(report.financial.refused_shipping_cost ?? 0) > 0
                         ? "− " + formatCurrency(report.financial.refused_shipping_cost ?? 0)
                         : formatCurrency(0)}
@@ -1012,7 +1024,12 @@ export default function StorePerformance({
                       hint="Biaya layanan COD J&T yang tetap ditagih karena tidak ada uang COD pembeli untuk dipotong."
                       className="text-muted-foreground"
                     />
-                    <span className="tabular-nums text-destructive">
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        (report.financial.refused_cod_fee ?? 0) > 0 ? "text-destructive font-medium" : "text-muted-foreground",
+                      )}
+                    >
                       {(report.financial.refused_cod_fee ?? 0) > 0
                         ? "− " + formatCurrency(report.financial.refused_cod_fee ?? 0)
                         : formatCurrency(0)}
@@ -1026,8 +1043,15 @@ export default function StorePerformance({
                     hint="Ongkir kirim dan biaya layanan COD yang ditanggung toko untuk paket ini. Ongkir perjalanan balik belum ikut dihitung karena tagihannya belum tercatat otomatis."
                     className="font-semibold text-foreground"
                   />
-                  <span className="tabular-nums font-bold text-destructive">
-                    {formatCurrency(report.financial.refused_borne_cost ?? 0)}
+                  <span
+                    className={cn(
+                      "tabular-nums font-bold",
+                      (report.financial.refused_borne_cost ?? 0) > 0 ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {(report.financial.refused_borne_cost ?? 0) > 0
+                      ? "− " + formatCurrency(report.financial.refused_borne_cost ?? 0)
+                      : formatCurrency(0)}
                   </span>
                 </div>
               </div>
