@@ -319,7 +319,9 @@ function ChartFrame({
   title,
   subtitle,
   summaryText,
-  legend,
+  warna,
+  nama,
+  satuan,
   hasData,
   onRun,
   children,
@@ -327,7 +329,10 @@ function ChartFrame({
   title: string
   subtitle: string
   summaryText: string
-  legend: Array<{ label: string; color: string }>
+  /** Satu warna per metrik, dipakai juga di legenda supaya terbaca tanpa warna. */
+  warna: string
+  nama: string
+  satuan: string
   hasData: boolean
   onRun: () => void
   children: React.ReactNode
@@ -350,12 +355,10 @@ function ChartFrame({
             {children}
           </div>
           <ul className="mt-2 flex flex-wrap items-center gap-3">
-            {legend.map((item) => (
-              <li key={item.label} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="h-0.5 w-4 rounded" style={{ backgroundColor: item.color }} aria-hidden="true" />
-                {item.label}
-              </li>
-            ))}
+            <li className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-0.5 w-4 rounded" style={{ backgroundColor: warna }} aria-hidden="true" />
+              {nama} · {satuan}
+            </li>
           </ul>
         </div>
       ) : (
@@ -470,14 +473,115 @@ export default function SystemHealth({
   const attentionItems = checks.filter((check) => NEEDS_ATTENTION.includes(check.status))
   const counts = summary.counts
 
-  // ---- Grafik ----
-  const cpuMemoryPoints = history.filter((point) => point.cpu_pct !== null || point.memory_pct !== null)
-  const loadPoints = history.filter((point) => point.load_1 !== null)
-  const dbPoints = history.filter((point) => point.db_response_ms !== null)
-
+  // ---- Grafik: satu grafik per metrik, masing-masing satu warna ----
   const lastPoint = history.length > 0 ? history[history.length - 1] : null
-  const memNow = lastPoint?.memory_pct ?? server.memory_pct
+
+  const titik = (ambil: (p: HistoryPoint) => number | null) => history.filter((p) => ambil(p) !== null)
+
+  const cpuPoints = titik((p) => p.cpu_pct)
+  const memPoints = titik((p) => p.memory_pct)
+  const loadPoints = titik((p) => p.load_1)
+  const dbPoints = titik((p) => p.db_response_ms)
+  const diskPoints = titik((p) => p.disk_pct)
+
   const cpuNow = lastPoint?.cpu_pct ?? server.cpu_pct
+  const memNow = lastPoint?.memory_pct ?? server.memory_pct
+  const diskNow = lastPoint?.disk_pct ?? server.disk_pct
+
+  const trendMetrics: Array<{
+    key: string
+    title: string
+    subtitle: string
+    dataKey: keyof HistoryPoint
+    nama: string
+    warna: string
+    satuan: string
+    format: (value: number) => string
+    domain: [number, number | "auto"]
+    points: HistoryPoint[]
+    summary: string
+  }> = [
+    {
+      key: "cpu",
+      title: "CPU",
+      subtitle: `${cpuPoints.length} titik · WIB`,
+      dataKey: "cpu_pct",
+      nama: "CPU",
+      warna: "hsl(var(--sale))",
+      satuan: "Persen",
+      format: (v) => v.toFixed(1) + "%",
+      domain: [0, 100],
+      points: cpuPoints,
+      summary:
+        cpuNow !== null
+          ? `Terakhir ${cpuNow.toFixed(1)}%. Persentase pemakaian CPU pada saat snapshot diambil.`
+          : "Belum ada pembacaan CPU.",
+    },
+    {
+      key: "memory",
+      title: "Memori",
+      subtitle: `${memPoints.length} titik · WIB`,
+      dataKey: "memory_pct",
+      nama: "Memori",
+      warna: "#f59e0b",
+      satuan: "Persen",
+      format: (v) => v.toFixed(1) + "%",
+      domain: [0, 100],
+      points: memPoints,
+      summary:
+        memNow !== null
+          ? `Terakhir ${memNow.toFixed(1)}%. Perlu perhatian di atas 75%, kritis di atas 90%.`
+          : "Belum ada pembacaan memori.",
+    },
+    {
+      key: "load",
+      title: "Load average",
+      subtitle: `${loadPoints.length} titik · WIB`,
+      dataKey: "load_1",
+      nama: "Load 1 menit",
+      warna: "#6366f1",
+      satuan: "Jumlah proses",
+      format: (v) => v.toFixed(2),
+      domain: [0, "auto"],
+      points: loadPoints,
+      summary:
+        server.load_1 !== null
+          ? `Terakhir ${server.load_1.toFixed(2)} · ${loadHealthy ? "normal" : "tinggi"} untuk ${server.vcpu ?? "-"} vCPU.`
+          : "Belum ada pembacaan load.",
+    },
+    {
+      key: "database",
+      title: "Database latency",
+      subtitle: `${dbPoints.length} titik · WIB`,
+      dataKey: "db_response_ms",
+      nama: "Respons query",
+      warna: "#10b981",
+      satuan: "Milidetik",
+      format: (v) => Math.round(v) + " ms",
+      domain: [0, "auto"],
+      points: dbPoints,
+      summary:
+        server.db_response_ms !== null
+          ? `Terakhir ${Math.round(server.db_response_ms)} ms. Perlu perhatian di atas 200 ms.`
+          : "Belum ada pengukuran.",
+    },
+    {
+      key: "disk",
+      title: "Disk",
+      subtitle: `${diskPoints.length} titik · WIB`,
+      dataKey: "disk_pct",
+      nama: "Disk terpakai",
+      warna: "#06b6d4",
+      satuan: "Persen",
+      format: (v) => v.toFixed(1) + "%",
+      domain: [0, 100],
+      points: diskPoints,
+      summary:
+        diskNow !== null
+          ? `Terakhir ${diskNow.toFixed(1)}%${server.disk_mount ? " pada " + server.disk_mount : ""}. Perubahannya lambat, yang perlu diwaspadai adalah pertumbuhan yang tidak pernah turun.`
+          : "Belum ada pembacaan disk.",
+    },
+  ]
 
   const lastRunIso = lastCheckedAt ?? summary.checked_at
   const staleMs = lastRunIso ? nowMs - new Date(lastRunIso).getTime() : null
@@ -612,104 +716,51 @@ export default function SystemHealth({
         {/* 9. Integrasi eksternal */}
         <ServiceHealthPanel title="Integrasi eksternal" checks={integrations} />
 
-        {/* 12. Tren resource */}
+        {/* 12. Tren resource: satu grafik per metrik, masing-masing satu warna.
+            Menggabungkan beberapa metrik dalam satu sumbu membuat garis
+            berskala kecil menempel di dasar dan terbaca seolah nol, jadi setiap
+            metrik punya grafik dan skalanya sendiri. */}
         <section aria-label="Tren resource" className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+            <span className="text-[11px] text-muted-foreground">
+              {history.length} titik · snapshot tiap 15 menit · WIB
+            </span>
+          </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <ChartFrame
-              title="CPU & memori"
-              subtitle={`${history.length} titik · WIB`}
-              summaryText={
-                cpuNow !== null || memNow !== null
-                  ? `CPU ${cpuNow !== null ? cpuNow.toFixed(0) + "%" : "-"}, memori ${memNow !== null ? memNow.toFixed(1) + "%" : "-"} pada titik terakhir.`
-                  : "Belum ada pembacaan."
-              }
-              legend={[
-                { label: "CPU (%)", color: "hsl(var(--sale))" },
-                { label: "Memori (%)", color: "#f59e0b" },
-              ]}
-              hasData={cpuMemoryPoints.length > 1}
-              onRun={runChecks}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={cpuMemoryPoints} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
-                  <Tooltip content={<TrendTooltip format={(v) => v.toFixed(1) + "%"} unitLabel="Persentase" />} />
-                  <Line type="monotone" dataKey="cpu_pct" name="CPU" stroke="hsl(var(--sale))" strokeWidth={2} dot={false} connectNulls />
-                  <Line type="monotone" dataKey="memory_pct" name="Memori" stroke="#f59e0b" strokeWidth={2} dot={false} connectNulls />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartFrame>
-
-            <ChartFrame
-              title="Load average"
-              subtitle={`${loadPoints.length} titik · WIB`}
-              summaryText={
-                server.load_1 !== null
-                  ? `Load ${server.load_1.toFixed(2)} · ${loadHealthy ? "normal" : "tinggi"} untuk ${server.vcpu ?? "-"} vCPU.`
-                  : "Belum ada pembacaan."
-              }
-              legend={[{ label: "Load 1 menit", color: "hsl(var(--sale))" }]}
-              hasData={loadPoints.length > 1}
-              onRun={runChecks}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={loadPoints} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10 }} domain={[0, "auto"]} />
-                  <Tooltip content={<TrendTooltip format={(v) => v.toFixed(2)} unitLabel="Jumlah proses" />} />
-                  <Line type="monotone" dataKey="load_1" name="Load 1 menit" stroke="hsl(var(--sale))" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartFrame>
-
-            <ChartFrame
-              title="Database latency"
-              subtitle={`${dbPoints.length} titik · WIB`}
-              summaryText={
-                server.db_response_ms !== null
-                  ? `Terakhir ${Math.round(server.db_response_ms)} ms.`
-                  : "Belum ada pengukuran."
-              }
-              legend={[{ label: "Respons (ms)", color: "#10b981" }]}
-              hasData={dbPoints.length > 1}
-              onRun={runChecks}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dbPoints} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10 }} domain={[0, "auto"]} />
-                  <Tooltip content={<TrendTooltip format={(v) => Math.round(v) + " ms"} unitLabel="Milidetik" />} />
-                  <Line type="monotone" dataKey="db_response_ms" name="Respons" stroke="#10b981" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartFrame>
-
-            {/*
-              Disk sengaja TIDAK dibuat grafik besar: perubahannya lambat,
-              sehingga garis mendatar tidak memberi keputusan apa pun. Nilainya
-              sudah ada di kartu resource di atas.
-            */}
-            <Card className="border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Catatan disk</h3>
-              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                Perubahan disk berlangsung lambat, jadi angkanya cukup dipantau dari kartu resource di atas.
-                Yang perlu diwaspadai bukan satu pembacaan, melainkan pertumbuhan yang tidak pernah turun.
-              </p>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Snapshot harian:{" "}
-                <span className="font-semibold tabular-nums text-foreground">
-                  {history.length > 0
-                    ? `${Math.min(...history.filter((p) => p.disk_pct !== null).map((p) => p.disk_pct as number)).toFixed(1)}% sampai ${Math.max(...history.filter((p) => p.disk_pct !== null).map((p) => p.disk_pct as number)).toFixed(1)}%`
-                    : "belum ada data"}
-                </span>
-              </p>
-            </Card>
+            {trendMetrics.map((metrik) => (
+              <ChartFrame
+                key={metrik.key}
+                title={metrik.title}
+                subtitle={metrik.subtitle}
+                summaryText={metrik.summary}
+                warna={metrik.warna}
+                nama={metrik.nama}
+                satuan={metrik.satuan}
+                hasData={metrik.points.length > 1}
+                onRun={runChecks}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={metrik.points} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10 }} domain={metrik.domain} />
+                    <Tooltip
+                      content={<TrendTooltip format={metrik.format} unitLabel={metrik.satuan} />}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey={metrik.dataKey}
+                      name={metrik.nama}
+                      stroke={metrik.warna}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartFrame>
+            ))}
           </div>
         </section>
 
