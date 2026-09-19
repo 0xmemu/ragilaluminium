@@ -283,7 +283,7 @@ export default function FaqIndex({
               ) : (
                 <Button type="button" onClick={openCreatePanel}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah FAQ
+                  Tambah
                 </Button>
               )}
             </>
@@ -677,7 +677,7 @@ export default function FaqIndex({
               !isArchivedTab ? (
                 <Button type="button" onClick={openCreatePanel}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah FAQ
+                  Tambah
                 </Button>
               ) : undefined
             }

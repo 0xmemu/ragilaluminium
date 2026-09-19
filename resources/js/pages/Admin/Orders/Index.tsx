@@ -537,7 +537,7 @@ function OrderCardRow({
               title="Tambah catatan internal admin"
             >
               <Icon name="plus" className="size-3 text-muted-foreground" aria-hidden="true" />
-              <span>Tambah catatan</span>
+              <span>Tambah</span>
             </button>
           )}
         </div>

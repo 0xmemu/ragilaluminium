@@ -81,7 +81,7 @@ class AdminDashboardTest extends TestCase
                 ->has('statusOrder', 5)
                 ->has('attention')
                 ->has('quickActions', 3)
-                ->where('quickActions.0.label', 'Tambah Produk')
+                ->where('quickActions.0.label', 'Tambah')
                 ->where('quickActions.0.href', route('admin.products.create'))
                 ->where('quickActions.1.label', 'Mulai Import')
                 ->where('quickActions.1.href', route('admin.imports.create'))

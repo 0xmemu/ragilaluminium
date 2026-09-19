@@ -107,7 +107,7 @@ export default function HowToOrderForm({
             disabled={form.data.steps.length >= 8}
             onClick={() => form.setData("steps", [...form.data.steps, { title: "", description: "" }])}
           >
-            Tambah langkah
+            Tambah
           </Button>
         </section>
 

@@ -144,7 +144,7 @@ export default function InstallationGalleryForm({
             <Link href={backUrl}>Batal</Link>
           </Button>
           <Button type="submit" form="installation-project-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Tambah hasil pemasangan"}
+            {form.processing ? "Menyimpan..." : "Tambah"}
           </Button>
         </div>
       }
@@ -400,7 +400,7 @@ export default function InstallationGalleryForm({
                   onClick={() => setPicker("gallery")}
                 >
                   <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah foto
+                  Tambah
                 </Button>
               </div>
 

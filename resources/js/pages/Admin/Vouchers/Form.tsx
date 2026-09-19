@@ -119,7 +119,7 @@ export default function VoucherForm({
             <Link href={indexHref}>Batal</Link>
           </Button>
           <Button type="submit" form="voucher-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah voucher"}
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah"}
           </Button>
         </div>
       }

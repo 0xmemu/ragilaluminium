@@ -157,7 +157,7 @@ export default function InstallationGalleryIndex({
               <Button asChild>
                 <Link href={createUrl}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah Pemasangan
+                  Tambah
                 </Link>
               </Button>
             </>
@@ -303,7 +303,7 @@ export default function InstallationGalleryIndex({
               <Button asChild size="sm">
                 <Link href={createUrl}>
                   <Icon name="plus" className="size-3.5" />
-                  Tambah Pemasangan
+                  Tambah
                 </Link>
               </Button>
             </div>

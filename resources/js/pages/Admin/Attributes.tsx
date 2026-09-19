@@ -87,7 +87,7 @@ export default function Attributes({
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
       <Button type="submit" form="attribute-create-form" disabled={form.processing}>
-        {form.processing ? "Menyimpan..." : "Tambah spesifikasi"}
+        {form.processing ? "Menyimpan..." : "Tambah"}
       </Button>
       <Button asChild variant="secondary">
         <Link href={backUrl}>Kembali ke produk</Link>
@@ -142,7 +142,7 @@ export default function Attributes({
             </div>
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : "Tambah spesifikasi"}
+                {form.processing ? "Menyimpan..." : "Tambah"}
               </Button>
             </div>
           </form>

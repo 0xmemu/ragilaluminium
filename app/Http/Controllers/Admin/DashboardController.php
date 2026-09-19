@@ -575,7 +575,7 @@ class DashboardController extends Controller
             'attention' => $attention,
             'quickActions' => [
                 [
-                    'label' => 'Tambah Produk',
+                    'label' => 'Tambah',
                     'description' => 'Buat produk katalog baru',
                     'href' => route('admin.products.create'),
                     'icon' => 'package',

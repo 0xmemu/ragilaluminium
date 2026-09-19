@@ -727,13 +727,13 @@ export default function ProductForm({
                 onClick={addAttribute}
               >
                 <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                Tambah spesifikasi
+                Tambah
               </Button>
             </div>
             {(form.data.attributes ?? []).length === 0 ? (
               <div className="p-6 text-center">
                 <p className="text-xs text-muted-foreground">
-                  Belum ada spesifikasi khusus. Klik tombol "Tambah spesifikasi" di atas untuk menambahkan.
+                  Belum ada spesifikasi khusus. Klik tombol "Tambah" di atas untuk menambahkan.
                 </p>
               </div>
             ) : (
@@ -1024,7 +1024,7 @@ export default function ProductForm({
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                         >
                           <Icon name="plus" className="size-3" aria-hidden="true" />
-                          Tambah opsi
+                          Tambah
                         </button>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-# UI Consistency Contract — Ragil Aluminium
+# UI Consistency Contract · Ragil Aluminium
 
 Status: canonical for active Inertia + React pages (2026-08-06).
 
@@ -56,6 +56,38 @@ database fields, or API payloads.
   useful accessible name. Icon-only actions require `aria-label`.
 - Motion is restrained and respects `prefers-reduced-motion`. Do not use motion
   to hide loading or validation feedback.
+
+### Label tombol tambah
+
+Semua tombol, tautan, dan tombol submit yang menambah entitas atau baris baru
+berlabel **"Tambah"** saja, tanpa imbuhan konteks (kontrak global, 20 Sep 2026).
+
+| Dilarang | Wajib |
+|---|---|
+| "Tambah spesifikasi" | "Tambah" |
+| "Tambah produk" | "Tambah" |
+| "Tambah langkah", "Tambah kartu" | "Tambah" |
+| "Tambah media", "Tambah foto" | "Tambah" |
+| "Tambah kategori", "Tambah admin" | "Tambah" |
+| "Tambah baris template" | "Tambah" |
+
+Alasannya: konteks sudah dibawa judul seksi atau kartu di sekitarnya, sehingga
+imbuhan itu mubazir dan membuat label tidak seragam antar halaman.
+
+Berlaku juga untuk label tombol yang datang dari controller (prop `createLabel`,
+`quickActions.label`), bukan hanya yang ditulis di JSX.
+
+Yang **tidak** termasuk aturan ini: judul halaman dan judul modal, heading,
+atribut `title`, dan `aria-label` yang memang boleh deskriptif karena bukan
+label tombol yang dibaca mata. Storefront tidak terikat ("Tambah ke keranjang").
+
+Verifikasi setelah mengubah tombol tambah:
+
+```bash
+grep -rn "Tambah [a-z]" resources/js/pages/Admin resources/js/components/admin
+```
+
+Hasilnya hanya boleh menyisakan judul, deskripsi, dan atribut title.
 
 ### Dropdown admin (Select)
 

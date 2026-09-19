@@ -23,12 +23,24 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
   `docs/api-and-routes-ragil-aluminium.md`, `docs/sitemap/*` + `config/sitemap.php`,
   `config/admin-sitemap.php`) → then report `SPEC_CHANGED_AND_DOCS_UPDATED`.
 - UI changes must be wired to real routes/controllers/services - functional, responsive,
+- **ALIGNMENT FORM ADMIN (kontrak global, ADR-022, 2026-09-17):** semua baris form admin wajib lurus. Pakai primitif bersama di resources/js/components/admin/ui/field.tsx: Field (sudah content-start), FieldGrid untuk grid form, CheckboxField untuk checkbox yang sebaris dengan field (atau standalone bila satu baris penuh), FieldAction untuk tombol yang sebaris dengan field. Jangan pakai sm:self-end, items-end, atau sm:pt-* manual untuk menyejajarkan kontrol. Section/kartu dalam satu halaman form wajib memakai skala padding sama (p-5 sm:p-6) supaya tepi kiri/kanan lurus; baris media digabung ke grid field, bukan stripe dengan padding sendiri. Verifikasi: kontrol dalam satu baris harus punya center Y sama (toleransi pembulatan 1px).
   accessible. Mockups or fake data are NOT completion (`frontend/skills/ragil-ui-functional-integration/SKILL.md`).
 - Do NOT port UI from `website_2.0/ui` (Next.js). `resources/` is a real folder, not a junction.
 - Archive instead of hard-delete. Guest-only checkout (no customer accounts).
 - Customer-facing copy in Bahasa Indonesia; currency IDR.
 - **Route parameter HARUS Inggris & cocok dengan variabel controller.** `Route::resource`/manual dengan segmen URI Indonesia (kelola/produk, kelola/kategori, sub-model, model-produk, masalah-solusi, dll) WAJIB memetakan parameter ke nama Inggris via `->parameters([...])` (contoh: `->parameters(['produk' => 'product'])`), karena Laravel men-generate nama parameter dari segmen URI (produk -> {produk}) padahal kode memakai $product -> implicit binding & route() 500. Test `AdminRouteParameterNamingTest` mengunci ini; jangan menambah route admin berparameter baru tanpa memastikan nama parameter cocok dengan variabel method controller.
 - **DILARANG EM DASH (karakter U+2014) di SEMUA teks**: copy storefront/admin, placeholder, pesan error, tooltip, hint, komentar kode, dokumen. Ganti dengan koma, titik, titik dua, atau "·"; placeholder kosong pakai "-" (hyphen). EN DASH (–) TIDAK dilarang dan boleh dipakai untuk rentang/range (mis. jam, tanggal, harga) sesuai konvensi. (KONTRAK 2026-08-21, user verbatim: "JANGAN SAMPAI ADA TEXT DENGAN EM DASHES"; koreksi 2026-08-23: en dash TIDAK termasuk larangan.)
+- **TOMBOL TAMBAH CUKUP "Tambah" (kontrak global, 2026-09-20).** Semua tombol, tautan,
+  dan tombol submit di panel admin yang menambah entitas atau baris baru berlabel
+  "Tambah" saja, tanpa imbuhan konteks. "Tambah spesifikasi", "Tambah produk",
+  "Tambah langkah", "Tambah media", "Tambah kategori" semuanya salah. Konteks sudah
+  dibawa judul seksi atau kartu di sekitarnya, jadi imbuhan itu mubazir dan bikin label
+  tidak seragam. Berlaku juga untuk label tombol yang datang dari controller
+  (`createLabel`, `quickActions.label`). Yang TIDAK termasuk: judul halaman dan modal,
+  heading, atribut `title`, dan `aria-label` yang memang boleh deskriptif karena bukan
+  label tombol yang dibaca mata. Storefront tidak terikat: "Tambah ke keranjang" tetap.
+  Verifikasi: `grep -rn "Tambah [a-z]" resources/js/pages/Admin resources/js/components/admin`
+  hanya boleh menyisakan judul, deskripsi, dan atribut title.
 
 ---
 

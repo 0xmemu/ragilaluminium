@@ -165,7 +165,7 @@ export default function CaraPemesananEdit({
                 ])
               }
             >
-              Tambah langkah
+              Tambah
             </Button>
           </div>
           {form.data.steps.map((step, index) => (
@@ -239,7 +239,7 @@ export default function CaraPemesananEdit({
                 ])
               }
             >
-              Tambah kartu
+              Tambah
             </Button>
           </div>
           {form.data.info_cards.map((card, index) => (
