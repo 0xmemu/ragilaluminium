@@ -162,6 +162,25 @@ Pemakai saat ini:
 | Admin detail/form | primary form/detail column plus secondary summary/action column | dirty, validation, disabled, saved/error |
 | Admin pengaturan (edit nilai) | lihat ADR-023: dibuka MODE RINGKASAN read-only, form aktif setelah tombol ubah | ringkasan nilai efektif, saved/error |
 
+## Teks komponen reusable storefront
+
+Komponen yang dipakai BERULANG di beberapa halaman tidak boleh menyimpan copy-nya sendiri di kode
+bila isinya kalimat yang mungkin berubah (jaminan, ajakan, bantuan). Copy seperti itu ditaruh di
+`CtaSettings` dan dibaca lewat prop `ctaSettings`, dengan teks kode sebagai CADANGAN bila
+pengaturan belum tersedia.
+
+Pemakai saat ini:
+
+| Komponen | Kunci pengaturan | Dipakai di |
+|---|---|---|
+| `TrustAssuranceCard` | `trust` | keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan |
+| `SupportAction` (pelacakan) | `order-help` | halaman pelacakan pesanan |
+| `ClosingCTASection` | nama halaman publik | beranda, detail model, tentang kami, FAQ, cara pemesanan, masalah & solusi |
+
+Aturannya: menambah komponen reusable baru yang copy-nya berubah-ubah wajib menambah kuncinya di
+`CtaSettings::PAGES` + `INITIAL_TEXT` dan memakainya lewat `forPage(<kunci>)`, bukan menulis
+kalimat baru di komponen.
+
 ## Mode ringkasan halaman pengaturan (ADR-023)
 
 Halaman pengaturan TIDAK membuka form yang langsung aktif. Aturannya:

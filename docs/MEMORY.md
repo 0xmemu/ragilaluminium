@@ -2395,3 +2395,42 @@ ADR-023 (CodSettings, ShippingSubsidy, StorefrontPlatforms, CaraPemesanan, CmsDo
 Beranda/HowToOrderForm, Beranda/KontakForm, CmsPageForm).
 
 tsc bersih, build Vite PASS.
+
+### 2026-09-19 - CTA Storefront juga mengatur kartu reusable (temuan owner)
+Owner menunjuk dua blok di storefront yang bukan banner penutup tapi jelas CTA reusable:
+kartu "Belanja Aman & Terpercaya" (keranjang, checkout) dan blok "Butuh bantuan dengan pesanan ini?"
+(halaman pelacakan). Keduanya memang tidak muncul di halaman CTA Storefront.
+
+TEMUAN: teks keduanya HIDUP KERAS DI KODE. TrustAssuranceCard dipakai di 5 tempat
+(checkout-summary, order-tracking-detail, Cart, OrderList, OrderConfirmation) dan SupportAction di
+order-tracking-detail. Jadi mengubah kalimat jaminan berarti mengubah kode dan deploy, padahal
+halaman CTA Storefront sudah ada khusus untuk mengatur teks semacam itu.
+
+YANG DIKERJAKAN:
+- CtaSettings: dua kunci blok baru, `trust` (Kartu Jaminan, semua halaman: "Belanja Aman &
+  Terpercaya" / "Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.") dan
+  `order-help` (Bantuan di halaman Pesanan: "Butuh bantuan dengan pesanan ini?" / "Hubungi tim
+  kami, sertakan nomor pesanan agar cepat ditindaklanjuti."). Keduanya masuk INITIAL_TEXT sehingga
+  memasang fitur ini TIDAK mengubah tampilan storefront.
+- TrustAssuranceCard dan SupportAction membaca `ctaSettings.pages[<kunci>]`, dengan teks kode
+  sebagai cadangan bila pengaturan belum tersedia (tampilan tidak pernah kosong).
+- Halaman admin CTA Storefront: label field menyesuaikan jenis blok lewat peta REUSABLE_BLOCKS
+  (blok reusable memakai label "Judul kartu" + "Keterangan", bukan "Kop kecil" + "Judul ajakan").
+  Pratinjau blok `trust` menunjuk halaman keranjang karena di sanalah kartu itu selalu terlihat.
+- Menambah kunci blok berarti pengaturan lama tetap aman: `get()` mengisi kunci yang belum ada dari
+  INITIAL_TEXT, jadi blok baru tidak pernah kosong untuk data yang sudah tersimpan.
+
+VERIFIKASI:
+- Live: kartu jaminan di /cart menampilkan teks dari pengaturan (dicek dengan mengubah teks uji
+  UJI-OTOMATIS-JUDUL lewat CtaSettings, storefront langsung berubah, CTA halaman lain TIDAK ikut
+  berubah karena diuji hanya kunci `trust`).
+- Data dipulihkan tepat: hash CtaSettings identik sebelum dan sesudah (0b363ebe80a907eae8d7f1e2fce59580)
+  dan nol sisa teks uji.
+- Test: `CtaReusableBlockTest` 6 passed (45 assertions) mengunci pendaftaran blok, teks bawaan,
+  pengiriman ke halaman publik, isolasi antar halaman, fallback teks kosong, dan ctaSettings null
+  di halaman admin. Regresi storefront + CTA 57 passed (381 assertions).
+- Halaman admin CTA Storefront tetap mode ringkasan (0 input) dan kini menampilkan 8 blok.
+- Catatan: blok `order-help` tidak bisa diverifikasi visual live karena halaman pelacakan menuntut
+  lookup pesanan bersesi; pembuktian lewat test feature (prop `ctaSettings` terkirim ke halaman).
+
+tsc bersih, build Vite PASS.

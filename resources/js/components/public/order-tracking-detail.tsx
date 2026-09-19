@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import {
   Check,
   CheckCircle,
@@ -18,6 +18,7 @@ import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import type { SharedPageProps } from "@/types"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
@@ -626,6 +627,13 @@ function JnTCard({ order, className }: { order: PublicOrder; className?: string 
  * Card 4: Support Section
  */
 function SupportAction({ className }: { className?: string }) {
+  // Teks diatur admin lewat Pengaturan Website > CTA Storefront, blok
+  // "Bantuan di halaman Pesanan". Fallback = teks bawaan CtaSettings.
+  const { ctaSettings } = usePage<SharedPageProps>().props
+  const configured = ctaSettings?.pages?.["order-help"]
+  const title = configured?.eyebrow || "Butuh bantuan dengan pesanan ini?"
+  const body = configured?.heading || "Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti."
+
   return (
     <section
       className={cn(
@@ -634,10 +642,8 @@ function SupportAction({ className }: { className?: string }) {
       )}
       id="bantuan"
     >
-      <p className="text-sm font-bold text-foreground">Butuh bantuan dengan pesanan ini?</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.
-      </p>
+      <p className="text-sm font-bold text-foreground">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{body}</p>
       <Button asChild variant="secondary" size="sm" className="mt-3 rounded-full border border-border bg-surface hover:bg-surface-muted text-foreground font-semibold text-xs px-4 py-2">
         <Link href={routeUrl("contact")}>Hubungi Kami</Link>
       </Button>

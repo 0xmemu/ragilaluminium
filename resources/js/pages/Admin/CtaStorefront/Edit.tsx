@@ -12,6 +12,24 @@ import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
+/**
+ * Blok yang BUKAN banner penutup: kartu reusable di halaman transaksi.
+ * Label kolomnya berbeda karena isinya judul + keterangan, bukan kop + judul
+ * ajakan.
+ */
+const REUSABLE_BLOCKS: Record<string, { judul: string; isi: string; hintIsi: string }> = {
+  trust: {
+    judul: "Judul kartu",
+    isi: "Keterangan",
+    hintIsi: "Kalimat penjelas di bawah judul kartu.",
+  },
+  "order-help": {
+    judul: "Judul bantuan",
+    isi: "Keterangan",
+    hintIsi: "Kalimat penjelas di bawah judul bantuan.",
+  },
+}
+
 interface CtaBlock {
   key: string
   label: string
@@ -207,8 +225,8 @@ export default function CtaStorefrontEdit({
             <FieldGrid className="mt-4">
               <Field
                 id={`eyebrow-${block.key}`}
-                label="Kop kecil"
-                hint="Baris kecil di atas judul."
+                label={REUSABLE_BLOCKS[block.key]?.judul ?? "Kop kecil"}
+                hint={REUSABLE_BLOCKS[block.key] ? undefined : "Baris kecil di atas judul."}
                 error={form.errors[`blocks.${index}.eyebrow`]}
               >
                 <Input
@@ -221,8 +239,8 @@ export default function CtaStorefrontEdit({
               </Field>
               <Field
                 id={`heading-${block.key}`}
-                label="Judul ajakan"
-                hint="Kalimat utama yang dibaca pengunjung."
+                label={REUSABLE_BLOCKS[block.key]?.isi ?? "Judul ajakan"}
+                hint={REUSABLE_BLOCKS[block.key]?.hintIsi ?? "Kalimat utama yang dibaca pengunjung."}
                 error={form.errors[`blocks.${index}.heading`]}
               >
                 <Input
