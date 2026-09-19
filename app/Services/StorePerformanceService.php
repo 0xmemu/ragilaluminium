@@ -336,6 +336,7 @@ class StorePerformanceService
         $returnCostKpis = [
             $this->kpi('return_shipping_cost_total', 'Ongkir Retur (Toko)', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Total ongkir retur yang DITANGGUNG TOKO dari kasus retur selesai periode ini (bukan dibayar pembeli).'),
             $this->kpi('return_shipping_cost_cases', 'Kasus Retur (Ongkir Toko)', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang ongkirnya ditanggung toko.'),
+            $this->kpi('refused_borne_cost', 'Ongkir Kirim & COD Ditanggung Toko', $current['refused_borne_cost'], $previous['refused_borne_cost'] ?? 0, 'currency', 'Beban nyata toko atas paket yang tidak diterima pembeli: ongkir KIRIM yang sudah ditagih J&T ditambah biaya layanan COD yang hangus. Pembeli tidak membayar, tetapi kurir tetap menagih keduanya ke toko. Ongkir kaki balik belum termasuk karena tagihannya belum tercatat otomatis.'),
         ];
 
         return [
@@ -389,6 +390,10 @@ class StorePerformanceService
                 'cod_pending_in_period_count' => $current['cod_pending_in_period_count'],
                 'payment_pending_count' => $current['payment_pending_count'],
                 'refused_goods_value' => round($current['refused_goods_value'], 2),
+                'refused_borne_count' => $current['refused_borne_count'],
+                'refused_shipping_cost' => $current['refused_shipping_cost'],
+                'refused_cod_fee' => $current['refused_cod_fee'],
+                'refused_borne_cost' => $current['refused_borne_cost'],
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
@@ -566,6 +571,46 @@ class StorePerformanceService
         // dan nilai barang retur ditolak adalah pengurang hasil toko.
         $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore - $refusedGoodsValue;
 
+        // Paket yang tidak diterima pembeli juga meninggalkan BEBAN NYATA di
+        // kas: pembeli tidak membayar sepeser pun, tetapi J&T sudah mengantar
+        // paket ke alamat pembeli sehingga ongkir kirim tetap ditagih ke toko,
+        // dan biaya layanan COD ikut hangus karena tidak ada uang COD yang bisa
+        // dipotong. Scope-nya sengaja SAMA dengan refused_goods_value supaya
+        // kedua angka bisa direkonsiliasi baris per baris.
+        //
+        // Angka ini adalah RINCIAN dari pengurang yang sudah tercermin di
+        // Penjualan Bersih, bukan pengurang tambahan: nilai barang yang batal
+        // sudah dikeluarkan lewat refused_goods_value, sedangkan ongkir dan biaya
+        // COD memang tetap keluar sehingga sudah ikut terhitung di shipping_raw
+        // dan cod_fee. Jangan kurangkan lagi dari Penjualan Bersih.
+        //
+        // Ongkir memakai tagihan ASLI J&T bila sudah dilaporkan, kalau belum
+        // jatuh ke asumsi checkout. Ongkir KAKI BALIK belum ikut dihitung karena
+        // tagihannya belum tercatat otomatis, jadi tidak ada sumber angka yang
+        // bisa dipercaya.
+        $refusedCostOrders = (clone $base)
+            ->where('order_status', 'return_completed')
+            ->where('payment_status', '!=', 'paid')
+            ->get([
+                'id', 'cod_fee_amount',
+                'shipping_amount', 'shipping_subsidy_amount', 'shipping_insurance_amount',
+            ]);
+        $refusedActualOngkir = $refusedCostOrders->isEmpty()
+            ? []
+            : ShippingRecord::actualOngkirByOrder($refusedCostOrders->pluck('id')->all());
+
+        $refusedShippingBorne = 0.0;
+        $refusedCodFeeBorne = 0.0;
+        foreach ($refusedCostOrders as $refusedOrder) {
+            $asumsiRefused = (float) $refusedOrder->shipping_amount
+                + (float) $refusedOrder->shipping_subsidy_amount
+                + (float) $refusedOrder->shipping_insurance_amount;
+            $refusedShippingBorne += $refusedActualOngkir[$refusedOrder->id] ?? $asumsiRefused;
+            $refusedCodFeeBorne += (float) $refusedOrder->cod_fee_amount;
+        }
+        $refusedBorneCost = $refusedShippingBorne + $refusedCodFeeBorne;
+        $refusedBorneCount = $refusedCostOrders->count();
+
         $returnCounts = $this->returnCounts($from, $to);
         $paymentCounts = $this->paymentCounts($from, $to);
         $cancellationCounts = $this->cancellationCounts($from, $to);
@@ -629,6 +674,10 @@ class StorePerformanceService
             'return_rate_completed' => $completedOrders > 0 ? round(($returnCounts['completed'] / $completedOrders) * 100, 2) : 0.0,
             'refused_orders' => $refusedOrders,
             'refused_goods_value' => round($refusedGoodsValue, 2),
+            'refused_borne_count' => $refusedBorneCount,
+            'refused_shipping_cost' => round($refusedShippingBorne, 2),
+            'refused_cod_fee' => round($refusedCodFeeBorne, 2),
+            'refused_borne_cost' => round($refusedBorneCost, 2),
             'repeat_order_rate' => $this->repeatOrderRate($newCustomers, $repeatCustomers),
 
             // Ongkir retur ditanggung toko (biaya operasional, bukan pengurang omzet)

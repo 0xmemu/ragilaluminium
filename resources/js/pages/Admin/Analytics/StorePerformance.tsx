@@ -87,6 +87,10 @@ interface Report {
     cod_pending_count?: number
     payment_pending_count?: number
     refused_goods_value?: number
+    refused_borne_count?: number
+    refused_shipping_cost?: number
+    refused_cod_fee?: number
+    refused_borne_cost?: number
     definition: string
   }
   sections: Section[]
@@ -971,6 +975,60 @@ export default function StorePerformance({
                     {formatNumber(report.financial.cod_pending_count ?? 0)}{" "}
                     <span className="text-xs font-normal text-muted-foreground">pesanan</span>
                   </p>
+                </div>
+              </div>
+              {/* Paket tidak diterima pembeli: pembeli tidak membayar sepeser pun,
+                  tetapi J&T tetap menagih ongkir kirim dan biaya layanan COD ke
+                  toko. Kas yang tadinya tertahan jadi batal, dan beban nyatanya
+                  muncul di sini supaya alur kasnya utuh. */}
+              <div className="rounded-md border border-border bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <HoverHint
+                    label="Paket Ditolak Kurir"
+                    hint="Pesanan yang paketnya dikembalikan kurir sebelum diterima pembeli dan returnya sudah selesai pada periode ini. Pembeli tidak membayar, barang kembali ke gudang tanpa restore stok."
+                    className="text-xs font-semibold text-foreground"
+                  />
+                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                    {formatNumber(report.financial.refused_borne_count ?? 0)} pesanan
+                  </span>
+                </div>
+
+                <div className="mt-2 space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <HoverHint
+                      label="Ongkir Kirim Hangus"
+                      hint="Ongkir yang sudah ditagih J&T ke toko untuk mengantar paket yang akhirnya dikembalikan. Pembeli tidak menanggungnya, jadi toko yang membayar."
+                      className="text-muted-foreground"
+                    />
+                    <span className="tabular-nums text-destructive">
+                      {(report.financial.refused_shipping_cost ?? 0) > 0
+                        ? "− " + formatCurrency(report.financial.refused_shipping_cost ?? 0)
+                        : formatCurrency(0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <HoverHint
+                      label="Biaya Layanan COD Hangus"
+                      hint="Biaya layanan COD J&T yang hangus karena tidak ada uang COD pembeli untuk dipotong, sehingga ditagihkan ke toko."
+                      className="text-muted-foreground"
+                    />
+                    <span className="tabular-nums text-destructive">
+                      {(report.financial.refused_cod_fee ?? 0) > 0
+                        ? "− " + formatCurrency(report.financial.refused_cod_fee ?? 0)
+                        : formatCurrency(0)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
+                  <HoverHint
+                    label="Beban Nyata Toko"
+                    hint="Ongkir kirim hangus ditambah biaya layanan COD hangus: inilah kas yang benar-benar keluar dari toko untuk paket yang tidak diterima pembeli. Ongkir kaki balik belum ikut dihitung karena tagihannya belum tercatat otomatis."
+                    className="font-semibold text-foreground"
+                  />
+                  <span className="tabular-nums font-bold text-destructive">
+                    {formatCurrency(report.financial.refused_borne_cost ?? 0)}
+                  </span>
                 </div>
               </div>
             </div>

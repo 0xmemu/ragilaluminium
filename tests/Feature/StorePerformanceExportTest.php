@@ -263,12 +263,13 @@ class StorePerformanceExportTest extends TestCase
         // Biaya COD diteruskan ke J&T (baris 15): TIDAK boleh kena gaya judul seksi.
         $this->assertNotSame('FF1B365D', $lrSheet->getCell('A15')->getStyle()->getFont()->getColor()->getARGB());
 
-        // PENJUALAN BERSIH (baris 20): double underline akuntansi.
-        $this->assertSame('double', $lrSheet->getCell('A20')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        // PENJUALAN BERSIH (baris 23): double underline akuntansi. Bergeser
+        // dari 21 sejak dua baris beban paket ditolak disisipkan di blok beban.
+        $this->assertSame('double', $lrSheet->getCell('A23')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
-        // Pembayaran sudah diterima: subtotal arus kas biasa, TANPA double
+        // Pembayaran sudah diterima (baris 28): subtotal arus kas biasa, TANPA double
         // underline (hanya PENJUALAN BERSIH yang double).
-        $this->assertNotSame('double', $lrSheet->getCell('A26')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        $this->assertNotSame('double', $lrSheet->getCell('A28')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
         // ---- KPI OPERASIONAL TOKO: metrik pindah ke sheet sendiri ----
         // Regresi terjaga: KPI bernilai 0 tetap tertulis 0 numerik
