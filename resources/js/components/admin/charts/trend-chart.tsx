@@ -30,13 +30,12 @@ interface TrendChartProps<T extends TrendChartPoint> {
   showChartTypeToggle?: boolean
   defaultType?: "line" | "bar"
   /**
-   * Nama field angka pada tiap titik seri untuk garis pembanding kedua,
-   * misalnya Penjualan Bersih di samping Penjualan Gross. Bila dikosongkan,
-   * grafik berperilaku persis seperti sebelumnya (satu garis).
+   * Rentang sumbu Y tetap. Dipakai bila beberapa tab mengukur satuan yang sama
+   * dan perbedaannya ingin tetap terlihat saat berpindah tab; tanpa ini setiap
+   * tab menskalakan sumbunya sendiri sehingga dua garis yang mirip tampak
+   * identik. Bila dikosongkan, sumbu mengikuti data tab itu sendiri.
    */
-  secondarySeriesKey?: string
-  /** Label garis pembanding kedua pada tooltip. */
-  secondaryLabel?: string
+  domain?: [number, number]
 }
 
 function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
@@ -63,8 +62,7 @@ export default function TrendChart<T extends TrendChartPoint>({
   chartType: controlledChartType,
   showChartTypeToggle = false,
   defaultType = "line",
-  secondarySeriesKey,
-  secondaryLabel,
+  domain,
 }: TrendChartProps<T>) {
   const [internalChartType, setInternalChartType] = React.useState<"line" | "bar">(defaultType)
   const activeType = controlledChartType ?? internalChartType
@@ -84,12 +82,6 @@ export default function TrendChart<T extends TrendChartPoint>({
     return formatNumber(v)
   }
 
-  // Garis pembanding kedua dibaca lewat kunci dinamis, jadi tipenya dilebarkan.
-  const secondaryVal = (item: T): number | undefined => {
-    if (!secondarySeriesKey) return undefined
-    const raw = (item as unknown as Record<string, unknown>)[secondarySeriesKey]
-    return typeof raw === "number" ? raw : undefined
-  }
 
   return (
     <div className={cn("w-full space-y-2", className)}>
@@ -134,7 +126,7 @@ export default function TrendChart<T extends TrendChartPoint>({
                 tickMargin={8}
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
-              <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+              <YAxis hide domain={domain ?? ["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
                 cursor={{ fill: "hsl(var(--accent) / 0.4)" }}
                 content={({ active, payload }) => {
@@ -158,17 +150,6 @@ export default function TrendChart<T extends TrendChartPoint>({
                           {formatVal(currentVal)}
                         </span>
                       </div>
-                      {secondarySeriesKey ? (
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--copper))" }} />
-                            {secondaryLabel ?? "Pembanding"}:
-                          </span>
-                          <span className="tabular-nums font-semibold text-foreground">
-                            {formatVal(Number(secondaryVal(item) ?? 0))}
-                          </span>
-                        </div>
-                      ) : null}
                       {hasPrev ? (
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -202,19 +183,6 @@ export default function TrendChart<T extends TrendChartPoint>({
                 isAnimationActive={true}
                 animationDuration={500}
               />
-              {secondarySeriesKey ? (
-                <Line
-                  type="monotone"
-                  dataKey={secondarySeriesKey}
-                  name={secondaryLabel ?? "Pembanding"}
-                  stroke="hsl(var(--copper))"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, stroke: "hsl(var(--background))", strokeWidth: 2, fill: "hsl(var(--copper))" }}
-                  isAnimationActive={true}
-                  animationDuration={600}
-                />
-              ) : null}
             </BarChart>
           ) : (
             <LineChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -229,7 +197,7 @@ export default function TrendChart<T extends TrendChartPoint>({
                 tickMargin={8}
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
-              <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+              <YAxis hide domain={domain ?? ["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload || !payload.length) return null
@@ -252,17 +220,6 @@ export default function TrendChart<T extends TrendChartPoint>({
                           {formatVal(currentVal)}
                         </span>
                       </div>
-                      {secondarySeriesKey ? (
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--copper))" }} />
-                            {secondaryLabel ?? "Pembanding"}:
-                          </span>
-                          <span className="tabular-nums font-semibold text-foreground">
-                            {formatVal(Number(secondaryVal(item) ?? 0))}
-                          </span>
-                        </div>
-                      ) : null}
                       {hasPrev ? (
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -278,19 +235,6 @@ export default function TrendChart<T extends TrendChartPoint>({
                   )
                 }}
               />
-              {secondarySeriesKey ? (
-                <Line
-                  type="monotone"
-                  dataKey={secondarySeriesKey}
-                  name={secondaryLabel ?? "Pembanding"}
-                  stroke="hsl(var(--copper))"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, stroke: "hsl(var(--background))", strokeWidth: 2, fill: "hsl(var(--copper))" }}
-                  isAnimationActive={true}
-                  animationDuration={600}
-                />
-              ) : null}
               <Line
                 type="monotone"
                 dataKey="previous_value"

@@ -408,6 +408,24 @@ export default function StorePerformance({
     const k = kpiMap[key]
     return { delta: (k?.value ?? 0) - (k?.previous ?? 0), suffix }
   }
+  // Sumbu Y dibagi antar tab bersatuan uang (Penjualan Gross dan Penjualan
+  // Bersih) supaya selisih keduanya tetap terlihat saat berpindah tab. Tanpa
+  // ini tiap tab menskalakan sumbunya sendiri, sehingga beda beberapa persen
+  // hilang dan kedua garis tampak identik. Tab hitungan tidak ikut dibagi
+  // karena besarannya jauh berbeda (pesanan paling tinggi 2, unit 5,
+  // pengunjung sampai ribuan), sehingga garis kecil akan rata di dasar.
+  const moneyDomain = React.useMemo((): [number, number] | undefined => {
+    const uang = (report.charts ?? []).filter((c) => c.total_format === "currency")
+    if (uang.length < 2) return undefined
+    const nilai: number[] = []
+    for (const c of uang) {
+      for (const p of c.series ?? []) nilai.push(p.value)
+      for (const p of c.previous_series ?? []) nilai.push(p.value)
+    }
+    if (!nilai.length) return undefined
+    return [0, Math.max(...nilai)]
+  }, [report])
+
   const durasiConfirm = durasi("avg_confirm_hours", "jam")
   const durasiProcess = durasi("avg_process_days", "hari")
   const [chartTab, setChartTab] = React.useState(0)
@@ -1266,32 +1284,15 @@ export default function StorePerformance({
                           previous_value: prev[idx]?.value,
                           previous_label: prev[idx]?.label,
                         }))
-                        // Tab Gross menampilkan Penjualan Bersih sebagai garis
-                        // pembanding dalam skala yang sama, supaya selisih keduanya
-                        // terlihat. Tanpa ini, tiap tab menskalakan sumbunya sendiri
-                        // sehingga kedua garis tampak identik.
-                        const netChart = report.charts.find((c) => c.key === "net_revenue")
-                        const banding =
-                          chart.key === "revenue" && netChart
-                            ? netChart.series.map((p) => p.value)
-                            : null
-                        const denganBanding = banding
-                          ? combinedSeries.map((item, idx) => ({
-                              ...item,
-                              net_value: banding[idx],
-                            }))
-                          : combinedSeries
-
-                        return denganBanding.length ? (
+                        return combinedSeries.length ? (
                           <React.Suspense fallback={<div className="h-[175px] w-full animate-pulse rounded-md bg-muted/40" />}>
                             <TrendChart
-                              series={denganBanding}
+                              series={combinedSeries}
                               format={chart.key === "conversion_rate" ? "percent" : chart.total_format === "currency" ? "currency" : "number"}
                               chartType={chartModel}
                               showChartTypeToggle={false}
                               height={175}
-                              secondarySeriesKey={banding ? "net_value" : undefined}
-                              secondaryLabel="Penjualan Bersih"
+                              domain={chart.total_format === "currency" ? moneyDomain : undefined}
                             />
                           </React.Suspense>
                         ) : (
