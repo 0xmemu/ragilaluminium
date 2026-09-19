@@ -818,9 +818,13 @@ export default function ProductForm({
                         </span>
                         {isLocked ? (
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-foreground text-sm">
-                              {def.name}
-                            </span>
+                            <Input
+                              value={def.name}
+                              readOnly
+                              aria-readonly="true"
+                              aria-label={`Nama varian ${def.name}`}
+                              className="h-8 w-64 cursor-not-allowed border-dashed bg-muted/40 text-xs font-medium text-muted-foreground focus-visible:ring-0"
+                            />
                             <Button
                               type="button"
                               variant="ghost"
@@ -918,7 +922,7 @@ export default function ProductForm({
                         {def.options.map((option, optionIndex) => (
                           <div
                             key={optionIndex}
-                            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card p-1.5 shadow-xs transition hover:border-foreground/20"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card p-1 shadow-xs transition hover:border-foreground/20"
                           >
                             {/* Gambar opsi 65px x 65px dengan tombol silang X di pojok kanan atas */}
                             <div className="relative size-[65px] shrink-0">
@@ -982,7 +986,10 @@ export default function ProductForm({
                                 )
                               }
                               onKeyDown={blockEnter}
-                              className="w-28 bg-transparent text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground/60 sm:w-32"
+                              style={{
+                                width: `${Math.min(18, Math.max(4, (option.value || "Nilai opsi...").length + 0.5))}ch`,
+                              }}
+                              className="bg-transparent text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground/60"
                               aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
                               placeholder="Nilai opsi..."
                             />
