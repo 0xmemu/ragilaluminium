@@ -298,7 +298,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
               <div
                 className={`flex size-9 items-center justify-center rounded-full ${
                   isOrder
-                    ? "bg-primary/15 text-primary"
+                    ? "bg-success/15 text-success"
                     : isWa
                       ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                       : "bg-muted text-foreground"

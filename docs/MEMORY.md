@@ -2278,3 +2278,20 @@ Catatan proses: beberapa percobaan pertama gagal menangkap gambar karena saya sa
 potret (klip `y=40..130` sedangkan toast admin berada di `y=96..142`, jadi terpotong), dan karena
 `router.post` pada tombol admin memicu kilat yang mudah terlewat. Verifikasi akhir memakai POST form
 penuh plus klip yang dihitung dari posisi elemen.
+
+### 2026-09-19 - Notifikasi pesanan baru: ikon keranjang jadi hijau
+Arahan owner: "pesanan baru masuk ikon animasi keranjang harusnya berwarna hijau".
+
+Akar masalah: badge ikon order di notifikasi langsung admin memakai `bg-primary/15 text-primary`.
+Di panel admin `--primary` adalah `0 0% 96%` (hampir putih), jadi ikon keranjang tampil keabu-abuan
+di atas badge abu-abu. WhatsApp dan bell memakai warna berbeda, jadi hanya order yang terlihat pucat.
+
+Perubahan: `components/admin/live-notification-manager.tsx` badge order menjadi `bg-success/15
+text-success`, memakai token semantik `--success` (hijau) sehingga ikut tema terang maupun gelap.
+Struktur animasi ping badge tidak diubah.
+
+Verifikasi terukur di halaman admin (root font 14px):
+- Sebelum: warna ikon `rgb(245,245,245)`, latar transparan.
+- Sesudah: warna ikon `rgb(55,190,125)`, latar `rgba(55,190,125,0.15)`.
+- Tangkapan layar menunjukkan ikon keranjang hijau dengan animasi ping, ikon WhatsApp tetap
+  emerald, dan badge bell tetap netral.
