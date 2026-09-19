@@ -22,6 +22,35 @@ class OrderEventLabels
         'cancelled' => 'Dibatalkan',
     ];
 
+    /**
+     * Metode pembayaran yang dipilih pembeli. Penanda cod_flag ikut dibaca
+     * supaya pesanan lama yang metodenya belum tercatat tetap terbaca COD.
+     */
+    public static function paymentMethod(?string $method, bool $codFlag = false): string
+    {
+        if ($codFlag || $method === 'cod') {
+            return 'COD';
+        }
+
+        return match ($method) {
+            'transfer' => 'Transfer Bank',
+            null, '' => '-',
+            default => 'Lainnya',
+        };
+    }
+
+    /** Status uang masuk menurut catatan sistem. */
+    public static function paymentStatus(?string $status): string
+    {
+        return match ($status) {
+            'paid' => 'Lunas',
+            'refunded' => 'Refund',
+            'pending' => 'Belum dibayar',
+            null, '' => '-',
+            default => str_replace('_', ' ', $status),
+        };
+    }
+
     public static function orderStatus(?string $code): string
     {
         if ($code === null || $code === '') {
