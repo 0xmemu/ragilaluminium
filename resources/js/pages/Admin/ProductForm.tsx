@@ -968,7 +968,7 @@ export default function ProductForm({
                               ) : null}
                             </div>
 
-                            {/* Input nilai opsi: tinggi mengikuti ukuran form, bukan tinggi thumbnail */}
+                            {/* Input nilai opsi: ukuran tetap 132x32 px, tidak mengikuti panjang isi */}
                             <Input
                               value={option.value}
                               onChange={(event) =>
@@ -986,10 +986,7 @@ export default function ProductForm({
                                 )
                               }
                               onKeyDown={blockEnter}
-                              style={{
-                                width: `${Math.min(22, Math.max(9, (option.value || "Nilai opsi...").length + 4))}ch`,
-                              }}
-                              className="h-9 w-auto text-xs font-medium"
+                              className="h-9 w-[132px] shrink-0 text-xs font-medium"
                               aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
                               placeholder="Nilai opsi..."
                             />
