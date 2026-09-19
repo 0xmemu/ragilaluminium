@@ -60,14 +60,4 @@ final class UpdateImportColumnMap
 
         return $data;
     }
-
-    /** Penanda hapus media. Sel kosong berarti tidak mengubah. */
-    public static function isDeleteMarker(mixed $value): bool
-    {
-        if (! is_string($value)) {
-            return false;
-        }
-
-        return strtolower(trim($value)) === CatalogTemplateV2::DELETE_MARKER;
-    }
 }

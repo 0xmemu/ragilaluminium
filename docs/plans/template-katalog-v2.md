@@ -185,8 +185,9 @@ admin langsung tahu isinya URL gambar, bukan teks biasa.
 | L | Gambar Hasil Pemasangan 2 | gambar_hasil_pemasangan_2 | ya |
 
 Aturan sel kosong: sel kosong TIDAK mengubah data. Ini melanjutkan kontrak lama
-6 Sep 2026. Menghapus gambar memakai penanda khusus, bukan sel kosong, supaya
-"kosong" tidak pernah berarti "hapus".
+6 Sep 2026. Penghapusan atau arsip media dilakukan lewat panel admin media,
+bukan lewat template, sehingga "kosong" tidak pernah berarti "hapus"
+(keputusan owner 19 Sep 2026: penanda hapus dihapus dari template).
 
 ### 3.4 Aturan penyeragaman nama kolom
 
@@ -238,9 +239,9 @@ Pekerjaan:
 2. Sheet Contoh (hanya Import Produk) TERISI LENGKAP: harga, stok, berat,
    dimensi, dan URL media. Ini memperbaiki kelemahan berkas owner yang
    contohnya kosong dan pernah memicu salah isi kolom dimensi.
-3. Sheet Panduan per berkas: kamus kolom, aturan sel kosong, penanda hapus
-   `hapus` untuk media, dan catatan tegas bahwa berat serta dimensi hanya untuk
-   pengiriman dan tidak tampil di storefront.
+3. Sheet Panduan per berkas: kamus kolom, aturan sel kosong, dan catatan tegas
+   bahwa berat serta dimensi hanya untuk pengiriman dan tidak tampil di
+   storefront. Penghapusan media lewat panel admin, bukan lewat template.
 4. Dropdown kategori, model, sub model. Daftar dibaca dari database
    (`sub_models`, `CatalogLabels`), bukan ditulis tetap, supaya model atau sub
    model baru ikut otomatis.
@@ -282,9 +283,9 @@ Pekerjaan:
 3. Kolom identitas yang dikirim balik wajib cocok dengan database. Bila tidak
    cocok, baris gagal dengan pesan jelas. Ini melanjutkan aturan lama bahwa
    salah induk adalah error per baris, bukan diam-diam diabaikan.
-4. Sel kosong berarti tidak mengubah. Menghapus gambar memakai penanda `hapus`
-   pada sel kolom media, sesuai keputusan owner. Penanda ini ditulis di Panduan
-   tiap berkas supaya tidak ada tafsir ganda.
+4. Sel kosong berarti tidak mengubah. Penghapusan gambar dilakukan lewat panel
+   admin media sesuai keputusan owner 19 Sep 2026; penanda `hapus` dihapus dan
+   sel berisi "hapus" kini gagal sebagai URL tidak valid.
 5. Stok menerima angka biasa MAUPUN format acak seperti `random 1000-8000`,
    diproses `StockCellParser` seperti jalur import sebelumnya.
 6. Preview diff sebelum simpan tetap wajib, melanjutkan kontrak 6 Sep 2026.
@@ -375,9 +376,9 @@ Dokumen:
    pembanding. Seluruh kolom media pada template Update Media DIBIARKAN KOSONG,
    supaya tidak ada gambar tertimpa tanpa sengaja. Aturan sel kosong tetap:
    kosong berarti tidak mengubah.
-2. **Penanda hapus gambar.** Dipakai penanda `hapus` pada sel kolom media.
-   Wajib ditulis di sheet Panduan supaya sel kosong tidak pernah disalahartikan
-   sebagai perintah hapus.
+2. **Penghapusan gambar lewat panel admin.** Penanda `hapus` pada kolom media
+   dihapus (keputusan owner 19 Sep 2026) karena tidak ada skenario admin yang
+   membutuhkannya; arsip media cukup lewat panel admin media.
 3. **Sheet Contoh dan Panduan.** Sheet Contoh HANYA ada di template Import
    Produk. Template Update Produk dan Update Media hanya berisi sheet Panduan,
    tanpa Contoh, karena bentuk barisnya sudah nyata dari data yang diunduh.

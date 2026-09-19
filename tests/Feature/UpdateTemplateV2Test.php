@@ -248,12 +248,12 @@ class UpdateTemplateV2Test extends TestCase
     }
 
     /**
-     * Sel berisi "hapus" mengarsipkan media, dan sel kosong TIDAK menghapusnya.
-     *
-     * Dua aturan ini mudah tertukar, dan salah tafsir berarti foto produk
-     * hilang tanpa disengaja. Tes ini mengunci keduanya.
+     * Fitur penanda hapus dihapus (keputusan owner 19 Sep 2026): tidak ada
+     * skenario admin yang membutuhkannya, dan arsip media cukup lewat panel
+     * admin. Sel berisi "hapus" kini GAGAL sebagai URL tidak valid, dan sel
+     * kosong tetap tidak mengubah media.
      */
-    public function test_penanda_hapus_mengarsipkan_dan_sel_kosong_tidak(): void
+    public function test_kata_hapus_gagal_sebagai_url_dan_sel_kosong_tidak_mengubah(): void
     {
         // Siapkan satu media varian yang aktif.
         $media = \App\Models\ProductMedia::create([
@@ -276,15 +276,20 @@ class UpdateTemplateV2Test extends TestCase
         Excel::import(new ImportMediaUpdate($jobA->id), $path);
         $this->assertSame("visible", $media->fresh()->visibility, "sel kosong TIDAK boleh menghapus media");
 
-        // 2. Sel berisi "hapus": media wajib diarsipkan.
+        // 2. Sel berisi "hapus": baris GAGAL sebagai URL tidak valid, media
+        // tidak tersentuh sama sekali.
         $path = $this->berkas($headers, [
             ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "hapus", "", "", "", "", "", ""],
         ]);
         $jobB = $this->job("media_update");
         Excel::import(new ImportMediaUpdate($jobB->id), $path);
-        $this->assertSame("archived", $media->fresh()->visibility, "penanda hapus wajib mengarsipkan media");
-
-        // Arsip, bukan hapus permanen.
-        $this->assertDatabaseHas("product_media", ["id" => $media->id]);
+        $jobB->refresh();
+        $this->assertSame(1, (int) $jobB->failed_rows, "kata hapus wajib gagal sebagai URL tidak valid");
+        $alasan = (string) \Illuminate\Support\Facades\DB::table("import_job_rows")
+            ->where("import_job_id", $jobB->id)
+            ->where("status", "failed")
+            ->value("error_reason");
+        $this->assertStringContainsString("tidak valid", $alasan, "pesan wajib menyebut URL tidak valid");
+        $this->assertSame("visible", $media->fresh()->visibility, "template tidak boleh mengarsipkan media");
     }
 }

@@ -18,11 +18,11 @@ use Maatwebsite\Excel\Row;
  *
  * Hanya mengubah FOTO produk/varian.
  *
- * Aturan sel (keputusan owner 2026-09-18):
+ * Aturan sel (keputusan owner 2026-09-19):
  *  - Sel KOSONG berarti tidak mengubah media.
- *  - Sel berisi "hapus" MENGARSIPKAN media, bukan menghapus permanen
- *    (kontrak arsip repo: arsipkan, jangan hapus permanen).
- *  - Selain dua itu, sel berisi URL publik yang akan dipasang.
+ *  - Selain itu, sel berisi URL publik yang akan dipasang.
+ *  - Penghapusan/arsip media dilakukan lewat panel admin media, bukan lewat
+ *    template; penanda "hapus" telah dihapus.
  * SKU parent/variant yang tidak dikenal -> baris GAGAL; TIDAK membuat produk baru.
  * URL tidak valid di baris -> baris GAGAL (biar admin langsung tahu).
  */
@@ -97,9 +97,9 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
 
             // Kontrak owner (09-05): baris dgn semua kolom gambar kosong =
             // DILEWATI (bukan gagal, bukan sukses bisu). Tandai dgn marker.
-            // Kolom media v2 ikut dihitung: Gambar per Varian, Media Bersama,
-            // dan penanda hapus. Tanpa ini, baris yang hanya mengisi kolom v2
-            // akan dianggap kosong lalu dilewati.
+            // Kolom media v2 ikut dihitung: Gambar per Varian dan Media
+            // Bersama. Tanpa ini, baris yang hanya mengisi kolom v2 akan
+            // dianggap kosong lalu dilewati.
             $hasAnyImage = false;
             for ($i = 1; $i <= 9; $i++) {
                 if (trim((string) ($data['image_'.$i] ?? '')) !== ''
@@ -165,22 +165,10 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                 );
             }
 
-            // Penanda hapus (keputusan owner): sel berisi "hapus" mengarsipkan
-            // media, bukan menghapus permanen (kontrak arsip repo).
-            $hapus = \App\Support\UpdateImportColumnMap::isDeleteMarker($data["image_variation_option"] ?? null);
-
             // Gambar per Varian (template v2): menempel pada varian baris ini,
             // posisi 50 mengikuti pita media per opsi yang sudah dipakai.
+            // Penghapusan media lewat panel admin, bukan lewat template.
             $urlVar = trim((string) ($data['image_variation_option'] ?? ''));
-
-            if ($hapus && $variant !== null) {
-                \App\Models\ProductMedia::query()
-                    ->where('product_id', $product->id)
-                    ->where('product_variant_id', $variant->id)
-                    ->where('visibility', '!=', 'archived')
-                    ->update(['visibility' => 'archived']);
-                $urlVar = '';
-            }
 
             if ($urlVar !== '') {
                 if (! filter_var($urlVar, FILTER_VALIDATE_URL)) {

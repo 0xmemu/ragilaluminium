@@ -149,12 +149,6 @@ final class CatalogTemplateV2
     }
 
     /**
-     * Penanda hapus media. Sel kosong berarti tidak mengubah, sehingga admin
-     * butuh penanda khusus untuk menghapus (keputusan owner).
-     */
-    public const DELETE_MARKER = 'hapus';
-
-    /**
      * Label variasi yang dibaca admin, mis. "Putih, Kaca Bening".
      *
      * Dipakai template Update Produk dan Update Media supaya keduanya tidak

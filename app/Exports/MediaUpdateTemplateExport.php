@@ -23,8 +23,8 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * server. Seluruh kolom media DIBIARKAN KOSONG saat diunduh supaya tidak ada
  * gambar tertimpa tanpa sengaja (keputusan owner).
  *
- * Aturan sel: kosong berarti tidak mengubah. Untuk menghapus, isi sel dengan
- * penanda `hapus`.
+ * Aturan sel: kosong berarti tidak mengubah. Penghapusan media dilakukan
+ * lewat panel admin media, bukan lewat template.
  */
 class MediaUpdateTemplateExport implements WithMultipleSheets
 {
@@ -205,7 +205,7 @@ class MediaUpdateGuideSheet implements FromArray, WithTitle, WithEvents
             'Berkas ini hanya MENGGANTI media. Harga, stok, deskripsi, dan spesifikasi tidak disentuh; itu ada di template Update Produk.',
             'Empat kolom pertama dikunci. Kolom itu tidak boleh diubah, dan server tetap menolaknya walau kunci dibuka.',
             'Sel kosong berarti TIDAK mengubah media. Seluruh kolom media sengaja dikosongkan supaya tidak ada gambar tertimpa tanpa sengaja.',
-            'Untuk MENGHAPUS media, isi sel dengan kata hapus. Sel kosong tidak pernah menghapus.',
+            'Penghapusan media dilakukan lewat panel admin media. Sel kosong tidak pernah menghapus.',
             'URL harus URL publik yang bisa dibuka, bukan nama file atau kode objek.',
             'Satu baris = satu varian. Jangan menambah atau menghapus baris.',
             'Selalu tekan Periksa file sebelum Mulai Import.',
