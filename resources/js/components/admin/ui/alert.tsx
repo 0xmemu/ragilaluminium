@@ -37,8 +37,14 @@ export function Alert({
       role={tone === "danger" ? "alert" : "status"}
       className={cn("relative flex gap-3 rounded-lg border p-4 text-sm", styles[tone], className)}
     >
-      <Icon name={icons[tone]} className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <div className={cn("min-w-0 flex-1", onDismiss && "pr-8")}>
+      {/* Kotak setinggi line-height (text-sm = 20px) dengan isi di tengah:
+          ikon tepat sejajar garis pertama teks, baik satu baris maupun banyak.
+          Ukuran 20px disamakan dengan Alert storefront; sebelumnya 16px
+          sehingga ikon terlihat kecil dibanding teksnya. */}
+      <span className="flex h-5 shrink-0 items-center">
+        <Icon name={icons[tone]} className="size-5" aria-hidden="true" />
+      </span>
+      <div className={cn("min-w-0 flex-1", onDismiss && "pr-9")}>
         {title ? <p className="font-semibold text-current">{title}</p> : null}
         {children ? <div className={cn("leading-6", title && "mt-1")}>{children}</div> : null}
       </div>
@@ -46,10 +52,10 @@ export function Alert({
         <button
           type="button"
           onClick={onDismiss}
-          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-current/70 transition hover:bg-current/10 hover:text-current"
+          className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-current/70 transition hover:bg-current/10 hover:text-current"
           aria-label="Tutup notifikasi"
         >
-          <Icon name="x" className="h-3.5 w-3.5" aria-hidden="true" />
+          <Icon name="x" className="size-4" aria-hidden="true" />
         </button>
       ) : null}
     </div>
