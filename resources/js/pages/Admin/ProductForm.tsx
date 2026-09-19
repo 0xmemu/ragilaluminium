@@ -581,7 +581,6 @@ export default function ProductForm({
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Identitas & Taksonomi Produk</h2>
-                <p className="text-xs text-muted-foreground">Informasi katalog, kategori, dan dimensi pengiriman J&T Cargo.</p>
               </div>
               {product ? <StatusBadge status={product.status} /> : <StatusBadge status="archived" label="Draf baru" />}
             </div>
@@ -692,9 +691,6 @@ export default function ProductForm({
                     Pengiriman (J&T Cargo) <span className="text-destructive">*</span>
                   </th>
                   <td className="px-4 py-2.5 space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Berat dan dimensi paket milik produk, bukan per varian. Dipakai untuk ongkir & kubikasi.
-                    </p>
                     <div className="grid gap-3 sm:grid-cols-4">
                       <div>
                         <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Berat (kg)</label>
@@ -756,9 +752,6 @@ export default function ProductForm({
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Spesifikasi Produk</h2>
-                <p className="text-xs text-muted-foreground">
-                  Spesifikasi material dan detail teknis produk untuk etalase pembeli (mis. Bahan, Kusen, Ketebalan Kaca).
-                </p>
               </div>
               <Button
                 type="button"
@@ -976,11 +969,6 @@ export default function ProductForm({
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Foto Produk ({pickedMedia.length} foto{variantOptionMedia.length ? `, ${variantOptionMedia.length} foto varian` : ""})</h2>
-                <p className="text-xs text-muted-foreground">
-                  Foto pertama otomatis menjadi foto utama katalog. Urutan bisa digeser dengan cursor.
-                  Foto katalog dan foto varian berada di area terpisah: foto varian tetap di belakang dan
-                  urutannya dikelola di Definisi Varian.
-                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -993,9 +981,6 @@ export default function ProductForm({
                   title="Tambah media dari Media Library"
                 >
                   <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                </Button>
-                <Button type="button" variant="secondary" size="xs" onClick={() => setPickerOpen(true)}>
-                  Kelola media
                 </Button>
               </div>
             </div>
@@ -1179,11 +1164,7 @@ export default function ProductForm({
               >
                 <Icon name="plus" className="size-3.5" aria-hidden="true" />
               </Button>
-              {mediaHref ? (
-                <Button asChild type="button" variant="ghost" size="xs">
-                  <a href={mediaHref}>Kelola media</a>
-                </Button>
-              ) : null}
+
             </div>
             <div className="p-4">
               {(editing ? instRows.length : pendingInst.length) ? (
