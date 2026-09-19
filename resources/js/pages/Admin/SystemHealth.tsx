@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils"
 /**
  * System Health Console.
  *
- * Mengikuti kontrak admin UI:
- * 1. Header (title, deskripsi, status ringkas, waktu pemeriksaan, tombol periksa 40px)
- * 2. Panel masalah (hanya tampil jika ada warning/error/offline)
- * 3. Resource server (4 card terpisah: Load average, Memori, Disk, DB Latency)
- * 4. Tren resource (diletakkan tepat di bawah Resource server: CPU & Memori %, Load average, Database latency ms)
+ * Mengikuti kontrak admin UI & design engineering standards:
+ * 1. Header (title, deskripsi, status semantik ringkas, waktu pemeriksaan WIB, primary action 40px)
+ * 2. Panel masalah (hanya muncul saat ada kendala/warning, tombol aksi langsung)
+ * 3. Resource server (4 card metrik: Load average, Memori, Disk, DB Latency)
+ * 4. Tren resource (diletakkan tepat di bawah Resource server: CPU & Memori %, Load average 1m, Database latency ms)
  * 5. Layanan infrastruktur (Database, Storage aplikasi)
- * 6. Integrasi eksternal (Cloudflare, Media storage / R2 dengan kapasitas GB, Gateway WhatsApp, J&T Cargo)
- * 7. Tentang pemeriksaan (disclosure)
+ * 6. Integrasi eksternal (Cloudflare, Media storage / R2 kuota riil, Gateway WhatsApp, J&T Cargo)
+ * 7. Tentang pemeriksaan (disclosure informasi yang dapat dilipat)
  */
 
 type HealthStatus =
@@ -96,17 +96,6 @@ interface HistoryPoint {
   queue_backlog: number | null
 }
 
-interface EnvInfo {
-  app_env: string
-  whatsapp_number_id: string | null
-  jnt_environment: string
-  queue_connection: string
-  cache_store: string
-  media_disk: string
-  cloudflare_hostname?: string
-  cloudflare_zone?: string
-}
-
 const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: string }> = {
   healthy: { label: "Sehat", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
   warning: { label: "Perlu Perhatian", dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
@@ -163,15 +152,15 @@ function ResourceMetricGrid({ metrics }: { metrics: Metric[] }) {
       <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">Resource server</h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label} className="border border-border bg-card p-4">
+          <Card key={metric.label} className="border border-border bg-card p-4 transition-colors hover:border-border/80">
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
               {metric.status !== "healthy" && metric.status !== "unknown" ? (
                 <StatusBadge status={metric.status} />
               ) : null}
             </div>
-            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground">{metric.value}</p>
-            <p className="mt-1 text-[11px] leading-4 text-muted-foreground" title={metric.hint}>
+            <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">{metric.value}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground" title={metric.hint}>
               {metric.detail}
             </p>
           </Card>
@@ -214,7 +203,12 @@ function ServiceHealthRow({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         {check.action?.href ? (
-          <Button asChild variant="outline" size="sm" className="min-h-[40px] h-10 px-3 text-xs">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="min-h-[40px] h-10 px-3.5 text-xs active:scale-[0.98] transition-transform duration-150"
+          >
             <a href={check.action.href}>{check.action.label}</a>
           </Button>
         ) : check.action ? (
@@ -222,7 +216,7 @@ function ServiceHealthRow({
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-[40px] h-10 px-3 text-xs"
+            className="min-h-[40px] h-10 px-3.5 text-xs active:scale-[0.98] transition-transform duration-150"
             onClick={onAction}
             disabled={actionLoading}
           >
@@ -235,21 +229,26 @@ function ServiceHealthRow({
             type="button"
             variant="ghost"
             size="sm"
-            className="min-h-[40px] h-10 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            className="min-h-[40px] h-10 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.98] transition-transform duration-150"
             onClick={() => setOpen((prev) => !prev)}
             aria-expanded={open}
           >
+            <Icon
+              name="caret-down"
+              className={cn("size-3.5 transition-transform duration-200", open && "rotate-180")}
+              aria-hidden="true"
+            />
             {open ? "Sembunyikan rincian" : "Lihat rincian"}
           </Button>
         ) : null}
       </div>
 
       {open && hasDetails ? (
-        <ul className="mt-2.5 space-y-1 rounded-md bg-muted/40 p-3 text-xs leading-5 text-muted-foreground border border-border/50">
+        <ul className="mt-3 space-y-1.5 rounded-lg bg-muted/40 p-3.5 text-xs leading-relaxed text-muted-foreground border border-border/60">
           {check.details.map((detail) => (
-            <li key={detail} className="flex items-start gap-1.5">
-              <span className="text-muted-foreground/60 select-none">•</span>
-              <span>{detail}</span>
+            <li key={detail} className="flex items-start gap-2">
+              <span className="text-primary/70 select-none mt-0.5">•</span>
+              <span className="text-foreground/80">{detail}</span>
             </li>
           ))}
         </ul>
@@ -316,16 +315,18 @@ function ChartCustomTooltip({
   if (!row) return null
 
   return (
-    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md">
+    <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm px-3.5 py-2.5 shadow-lg">
       <p className="text-[11px] font-medium text-muted-foreground">Pukul {label} WIB</p>
-      <ul className="mt-1 space-y-1">
+      <ul className="mt-1.5 space-y-1">
         {seriesList.map((item) => {
           const rawVal = row[item.dataKey]
           const numVal = typeof rawVal === "number" ? rawVal : null
           return (
-            <li key={item.key} className="flex items-center gap-2 text-xs">
-              <span className="size-2 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
-              <span className="text-muted-foreground">{item.name}:</span>
+            <li key={item.key} className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                <span className="text-muted-foreground">{item.name}</span>
+              </div>
               <span className="font-semibold tabular-nums text-foreground">
                 {numVal !== null ? item.format(numVal) : "-"}
               </span>
@@ -428,14 +429,14 @@ function TrendChartCard({
       ) : (
         <div className="px-5 py-8 text-center">
           <p className="text-sm font-medium text-foreground">Belum ada data tren</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
             Data akan terkumpul secara otomatis setiap 15 menit dan setiap pemeriksaan sistem dijalankan.
           </p>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="mt-3 min-h-[40px] h-10 px-4 text-xs"
+            className="mt-3 min-h-[40px] h-10 px-4 text-xs active:scale-[0.98] transition-transform duration-150"
             onClick={onRunChecks}
             disabled={runLoading}
           >
@@ -461,7 +462,6 @@ export default function SystemHealth({
   description: string
   checks: HealthCheck[]
   summary: HealthSummary
-  env: EnvInfo
   runUrl: string
   server: ServerMetrics
   history: HistoryPoint[]
@@ -500,7 +500,9 @@ export default function SystemHealth({
       : null
   const diskDeltaText =
     diskDelta !== null
-      ? (diskDelta >= 0 ? `+${diskDelta.toFixed(1)}%` : `${diskDelta.toFixed(1)}%`) + " sejak pemeriksaan sebelumnya"
+      ? (Math.abs(diskDelta) < 0.05
+          ? "Stabil sejak pemeriksaan sebelumnya"
+          : (diskDelta >= 0 ? `+${diskDelta.toFixed(1)}%` : `${diskDelta.toFixed(1)}%`) + " sejak pemeriksaan sebelumnya")
       : "Periksa tren untuk menilai pertumbuhan"
 
   const dbLatencyValue =
@@ -514,7 +516,7 @@ export default function SystemHealth({
     {
       label: "Load average",
       value: server.load_1 === null ? "Tidak tersedia" : server.load_1.toFixed(2),
-      detail: `${loadDetail} · 5 menit ${server.load_5?.toFixed(2) ?? "-"}`,
+      detail: `${loadDetail} · 5m ${server.load_5?.toFixed(2) ?? "-"}`,
       status: loadHealthy ? "healthy" : "warning",
       hint: "Rata-rata beban proses selama 1 menit, dibandingkan jumlah vCPU.",
     },
@@ -624,10 +626,11 @@ export default function SystemHealth({
       title={title}
       description={description}
       actions={
-        <div className="flex flex-col items-stretch gap-1.5 sm:items-end w-full sm:w-auto">
-          <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:items-end w-full sm:w-auto">
+          <div className="flex items-center justify-end gap-2 text-xs">
             <StatusBadge status={summary.overall} />
-            <span className="text-[11px] text-muted-foreground text-center sm:text-right">
+            <span className="text-muted-foreground/40 select-none">•</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground text-center sm:text-right">
               Pemeriksaan terakhir: {waktuPemeriksaan}
             </span>
           </div>
@@ -636,7 +639,7 @@ export default function SystemHealth({
             onClick={runChecks}
             disabled={running}
             aria-busy={running}
-            className="min-h-[40px] h-10 w-full sm:w-auto px-4"
+            className="min-h-[40px] h-10 w-full sm:w-auto px-4 shadow-sm active:scale-[0.98] transition-transform duration-150"
           >
             <Icon
               name={running ? "spinner" : "refresh"}
@@ -653,7 +656,7 @@ export default function SystemHealth({
       <div className="space-y-6">
         {/* Warning jika data stale */}
         {isStale ? (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
             Data mungkin sudah lama. Pemeriksaan terakhir {Math.round((staleMs ?? 0) / 60000)} menit lalu.
           </p>
         ) : null}
@@ -664,7 +667,7 @@ export default function SystemHealth({
             <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">
               Masalah yang perlu ditangani
             </h2>
-            <Card className="divide-y divide-border border border-border bg-card">
+            <Card className="divide-y divide-border border border-amber-500/30 bg-card">
               {attentionItems.map((item) => (
                 <div key={item.key} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -677,13 +680,18 @@ export default function SystemHealth({
                         <p className="text-sm font-semibold text-foreground">{item.name}</p>
                         <StatusBadge status={item.status} />
                       </div>
-                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.summary}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.summary}</p>
                     </div>
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
                     {item.action?.href ? (
-                      <Button asChild variant="outline" size="sm" className="min-h-[40px] h-10 px-4 text-xs">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[40px] h-10 px-4 text-xs active:scale-[0.98] transition-transform duration-150"
+                      >
                         <a href={item.action.href}>{item.action.label}</a>
                       </Button>
                     ) : (
@@ -691,7 +699,7 @@ export default function SystemHealth({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="min-h-[40px] h-10 px-4 text-xs"
+                        className="min-h-[40px] h-10 px-4 text-xs active:scale-[0.98] transition-transform duration-150"
                         onClick={runChecks}
                         disabled={running}
                       >
@@ -717,7 +725,7 @@ export default function SystemHealth({
                 Snapshot berkala tiap 15 menit dan setiap pemeriksaan sistem dijalankan. Waktu Indonesia Barat (WIB).
               </p>
             </div>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] tabular-nums text-muted-foreground">
               {history.length} titik riwayat
             </span>
           </div>
@@ -788,22 +796,22 @@ export default function SystemHealth({
         />
 
         {/* 6. Tentang pemeriksaan */}
-        <details className="group rounded-lg border border-border bg-card">
-          <summary className="flex cursor-pointer select-none items-center gap-2 px-5 py-3 text-xs font-semibold text-muted-foreground transition hover:text-foreground">
-            <Icon name="info" className="size-3.5" aria-hidden="true" />
-            Tentang pemeriksaan
+        <details className="group rounded-xl border border-border bg-card overflow-hidden">
+          <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-3.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground">
+            <div className="flex items-center gap-2">
+              <Icon name="info" className="size-3.5 text-primary" aria-hidden="true" />
+              <span>Tentang pemeriksaan sistem</span>
+            </div>
             <Icon
               name="caret-down"
-              className="ml-auto size-3.5 transition-transform group-open:rotate-180"
+              className="size-3.5 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
               aria-hidden="true"
             />
           </summary>
-          <div className="border-t border-border px-5 py-3">
-            <p className="text-xs leading-5 text-muted-foreground">
-              Pemeriksaan melakukan query database, read/write cache dan storage, serta permintaan ke gateway dan API
-              dengan timeout pendek. Pemeriksaan dapat dijalankan kapan pun tanpa mengganggu pengunjung. Uji koneksi ke
-              API eksternal hanya dijalankan saat Anda menekan tombol periksa.
-            </p>
+          <div className="border-t border-border bg-muted/20 px-5 py-3.5 text-xs leading-relaxed text-muted-foreground">
+            Pemeriksaan melakukan query database, read/write cache dan storage, serta permintaan ke gateway dan API
+            dengan timeout pendek. Pemeriksaan dapat dijalankan kapan pun tanpa mengganggu pengunjung. Uji koneksi ke
+            API eksternal hanya dijalankan saat Anda menekan tombol periksa.
           </div>
         </details>
       </div>
