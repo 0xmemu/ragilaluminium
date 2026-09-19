@@ -1395,13 +1395,13 @@ final class SystemHealthService
     /**
      * Status backup & pemulihan untuk panel admin (kontrak owner 2026-09-20).
      *
-     * Sumber data = artefak nyata di server: dump terbaru, marker uji restore
-     * mingguan, marker PITR binlog, log upload R2, dan marker ALERT. Semua
-     * dibaca read-only oleh www-data tanpa sudo. Bila direktori backup tidak
-     * ada (mis. lingkungan lokal), return null supaya UI menyembunyikan
-     * panel, bukan mengarang status.
+     * Sumber data = artefak nyata di server: dump harian, log arsip mingguan
+     * dan bulanan, marker uji restore, dan marker ALERT. Semua dibaca
+     * read-only oleh www-data tanpa sudo. Bila direktori backup tidak ada
+     * (mis. lingkungan lokal), return null supaya UI menyembunyikan panel,
+     * bukan mengarang status. Copy ditulis awam, tanpa istilah teknis.
      *
-     * @return array{overall: string, headline: string, items: list<array{key: string, label: string, status: string, summary: string, detail: string|null}>}|null
+     * @return array{overall: string, items: list<array{key: string, label: string, status: string, timestamp: string, hint: string, scope: string}>}|null
      */
     public function backupStatus(): ?array
     {
@@ -1414,131 +1414,88 @@ final class SystemHealthService
         $now = now();
         $items = [];
 
-        // 1) Dump harian: symlink -latest.sql.gz.
+        // ===== 1) Backup harian (dump penuh database setiap malam) =====
         $latest = $dir.'/ragil/ragil_aluminium-latest.sql.gz';
-        $umurDetikDump = null;
 
         if (is_file($latest)) {
             $mtime = @filemtime($latest);
-            $size = (int) @filesize($latest);
-            $umurDetikDump = $mtime !== null ? max(0, $now->getTimestamp() - $mtime) : null;
-            $jam = intdiv((int) $umurDetikDump, 3600);
+            $umurDetik = $mtime !== null ? max(0, $now->getTimestamp() - $mtime) : null;
+            $timestamp = $mtime !== null
+                ? $now->setTimestamp($mtime)->locale('id')->translatedFormat('d M Y, H.i').' WIB'
+                : '-';
 
-            if ($umurDetikDump <= 26 * 3600) {
-                $status = self::STATUS_HEALTHY;
-                $kapan = $jam >= 1 ? $this->humanDuration((int) $umurDetikDump).' lalu' : 'baru saja';
-            } elseif ($umurDetikDump <= 48 * 3600) {
-                $status = self::STATUS_WARNING;
-                $kapan = $this->humanDuration((int) $umurDetikDump).' lalu';
-            } else {
-                $status = self::STATUS_FAILED;
-                $kapan = $this->humanDuration((int) $umurDetikDump).' lalu';
-            }
+            $status = $umurDetik !== null && $umurDetik <= 26 * 3600
+                ? self::STATUS_HEALTHY
+                : ($umurDetik !== null && $umurDetik <= 48 * 3600 ? self::STATUS_WARNING : self::STATUS_FAILED);
 
             $items[] = [
-                'key' => 'backup-daily',
-                'label' => 'Dump harian database',
+                'key' => 'backup-harian',
+                'label' => 'Backup harian',
                 'status' => $status,
-                'summary' => 'Terakhir '.$kapan.' · '.number_format($size / 1048576, 1, ',', '.').' MB',
-                'detail' => $status === self::STATUS_HEALTHY
-                    ? 'Tersimpan lokal 7 hari dan diunggah ke R2'
-                    : 'Dump harian macet. Periksa /root/backups/ragil-backup.log',
+                'timestamp' => $timestamp,
+                'hint' => 'Salinan lengkap seluruh data toko dibuat otomatis setiap malam.',
+                'scope' => 'Data pelanggan, pesanan, pembayaran, ulasan, dan pengaturan toko.',
             ];
         } else {
             $items[] = [
-                'key' => 'backup-daily',
-                'label' => 'Dump harian database',
+                'key' => 'backup-harian',
+                'label' => 'Backup harian',
                 'status' => self::STATUS_FAILED,
-                'summary' => 'File dump terbaru tidak ditemukan',
-                'detail' => 'Periksa cron backup harian di server.',
+                'timestamp' => 'Tidak ditemukan',
+                'hint' => 'Salinan lengkap seluruh data toko dibuat otomatis setiap malam.',
+                'scope' => 'Data pelanggan, pesanan, pembayaran, ulasan, dan pengaturan toko.',
             ];
         }
 
-        // 2) Uji restore mingguan: marker last-restore-test-pass.
+        // ===== 2) Backup mingguan (arsip mingguan ke penyimpanan awan) =====
+        $mingguan = $this->arsipTerakhir($dir.'/weekly-archive.log', 'weekly/');
+        $items[] = [
+            'key' => 'backup-mingguan',
+            'label' => 'Backup mingguan',
+            'status' => $mingguan !== null
+                ? ($now->diffInDays($mingguan['at']) <= 10 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
+                : self::STATUS_WARNING,
+            'timestamp' => $mingguan !== null ? 'Pekan '.$mingguan['at']->locale('id')->translatedFormat('W').' '.$mingguan['at']->translatedFormat('Y') : 'Belum pernah',
+            'hint' => 'Salinan cadangan mingguan yang disimpan di luar server, aman bila server bermasalah.',
+            'scope' => 'Sama seperti backup harian, disimpan terpisah di penyimpanan awan.',
+        ];
+
+        // ===== 3) Backup bulanan (arsip bulanan ke penyimpanan awan) =====
+        $bulanan = $this->arsipTerakhir($dir.'/monthly-archive.log', 'monthly/');
+        $items[] = [
+            'key' => 'backup-bulanan',
+            'label' => 'Backup bulanan',
+            'status' => $bulanan !== null
+                ? ($now->diffInDays($bulanan['at']) <= 40 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
+                : self::STATUS_WARNING,
+            'timestamp' => $bulanan !== null ? $bulanan['label'] : 'Belum pernah',
+            'hint' => 'Salinan cadangan bulanan jangka panjang di penyimpanan awan.',
+            'scope' => 'Sama seperti backup harian, disimpan terpisah di penyimpanan awan.',
+        ];
+
+        // ===== 4) Uji pulihkan (cadangan terbukti bisa dipakai) =====
         $markerRestore = $dir.'/last-restore-test-pass';
+        $waktuRestore = null;
+
         if (is_file($markerRestore)) {
             $isi = trim((string) @file_get_contents($markerRestore));
-            $waktu = $isi !== '' ? \Illuminate\Support\Carbon::parse($isi, 'UTC') : null;
-            $umurJam = $waktu !== null ? $waktu->diffInHours($now) : null;
-
-            $status = $umurJam !== null && $umurJam <= 8 * 24
-                ? self::STATUS_HEALTHY
-                : ($umurJam !== null && $umurJam <= 14 * 24 ? self::STATUS_WARNING : self::STATUS_FAILED);
-
-            $items[] = [
-                'key' => 'backup-restore-test',
-                'label' => 'Uji restore mingguan',
-                'status' => $status,
-                'summary' => $waktu !== null
-                    ? 'Lulus '.$this->humanDuration(max(0, $now->getTimestamp() - $waktu->getTimestamp())).' lalu'
-                    : 'Marker uji restore tidak terbaca',
-                'detail' => $status === self::STATUS_HEALTHY
-                    ? 'Dump terakhir terbukti dapat dipulihkan'
-                    : 'Uji restore mingguan macet. Periksa /root/backups/restore-test.log',
-            ];
-        } else {
-            $items[] = [
-                'key' => 'backup-restore-test',
-                'label' => 'Uji restore mingguan',
-                'status' => self::STATUS_FAILED,
-                'summary' => 'Belum pernah diuji',
-                'detail' => 'Tidak ada marker lulus uji restore di server.',
-            ];
-        }
-
-        // 3) PITR binlog: marker binlog-last-run (per jam).
-        $markerBinlog = $dir.'/binlog-last-run';
-        if (is_file($markerBinlog)) {
-            $isi = trim((string) @file_get_contents($markerBinlog));
-            $waktu = $isi !== '' ? \Illuminate\Support\Carbon::parse($isi, 'UTC') : null;
-            $umurDetik = $waktu !== null ? max(0, $now->getTimestamp() - $waktu->getTimestamp()) : null;
-
-            $status = $umurDetik !== null && $umurDetik <= 2 * 3600
-                ? self::STATUS_HEALTHY
-                : ($umurDetik !== null && $umurDetik <= 24 * 3600 ? self::STATUS_WARNING : self::STATUS_FAILED);
-
-            $items[] = [
-                'key' => 'backup-pitr',
-                'label' => 'PITR binlog per jam',
-                'status' => $status,
-                'summary' => $umurDetik !== null
-                    ? 'Terakhir '.$this->humanDuration((int) $umurDetik).' lalu'
-                    : 'Marker PITR tidak terbaca',
-                'detail' => 'Memungkinkan pemulihan ke titik waktu tertentu di antara dump harian.',
-            ];
-        } else {
-            $items[] = [
-                'key' => 'backup-pitr',
-                'label' => 'PITR binlog per jam',
-                'status' => self::STATUS_WARNING,
-                'summary' => 'Belum pernah berjalan',
-                'detail' => 'Pemulihan hanya bisa ke waktu dump harian, bukan per jam.',
-            ];
-        }
-
-        // 4) Upload off-site R2: dump terakhir terunggah?
-        $logR2 = @file($dir.'/ragil/r2-upload.log', FILE_IGNORE_NEW_LINES) ?: [];
-        $namaDump = basename((string) (@readlink($latest) ?: ''));
-        $r2Ok = false;
-
-        foreach (array_slice($logR2, -40) as $baris) {
-            if ($namaDump !== '' && str_contains($baris, $namaDump) && str_contains($baris, ': 200')) {
-                $r2Ok = true;
-                break;
-            }
+            $waktuRestore = $isi !== '' ? \Illuminate\Support\Carbon::parse($isi, 'UTC') : null;
         }
 
         $items[] = [
-            'key' => 'backup-r2',
-            'label' => 'Upload off-site (R2)',
-            'status' => $r2Ok ? self::STATUS_HEALTHY : self::STATUS_WARNING,
-            'summary' => $r2Ok
-                ? 'Sinkron: dump terakhir sudah di R2'
-                : 'Dump terakhir belum terkonfirmasi di R2',
-            'detail' => 'Bucket ra-backup, retensi snapshot harian sekitar 30 hari.',
+            'key' => 'backup-uji-pulihkan',
+            'label' => 'Uji pemulihan',
+            'status' => $waktuRestore !== null
+                ? ($now->diffInDays($waktuRestore) <= 8 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
+                : self::STATUS_FAILED,
+            'timestamp' => $waktuRestore !== null
+                ? $waktuRestore->locale('id')->translatedFormat('d M Y, H.i').' WIB'
+                : 'Belum pernah',
+            'hint' => 'Rutin memastikan cadangan benar-benar bisa dipakai, bukan sekadar ada.',
+            'scope' => 'Salinan terbaru dikembalikan ke server uji lalu dibandingkan dengan data asli.',
         ];
 
-        // 5) Alert aktif: marker ALERT-* dalam 24 jam terakhir.
+        // ===== 5) Alert server 24 jam terakhir =====
         $alertAktif = [];
         foreach (glob($dir.'/ALERT-*') ?: [] as $file) {
             $mtime = @filemtime($file);
@@ -1548,13 +1505,16 @@ final class SystemHealthService
         }
 
         $items[] = [
-            'key' => 'backup-alerts',
-            'label' => 'Alert operasional',
+            'key' => 'backup-alert',
+            'label' => 'Kondisi sistem pendukung',
             'status' => $alertAktif === [] ? self::STATUS_HEALTHY : self::STATUS_WARNING,
-            'summary' => $alertAktif === []
-                ? 'Tidak ada alert dalam 24 jam terakhir'
-                : count($alertAktif).' alert aktif: '.implode(', ', $alertAktif),
-            'detail' => $alertAktif === [] ? null : 'Alert muncul dari skrip pemeriksaan di server; bersihkan setelah penyebabnya ditangani.',
+            'timestamp' => $alertAktif === []
+                ? 'Tidak ada masalah 24 jam terakhir'
+                : 'Cek perlu dilakukan',
+            'hint' => 'Pemeriksaan otomatis server pendukung backup dan situs.',
+            'scope' => $alertAktif === []
+                ? 'Semua pemeriksaan otomatis lulus.'
+                : count($alertAktif).' pemeriksaan perlu ditinjau: '.implode(', ', $alertAktif),
         ];
 
         $terburuk = self::STATUS_HEALTHY;
@@ -1570,11 +1530,46 @@ final class SystemHealthService
 
         return [
             'overall' => $terburuk,
-            'headline' => $terburuk === self::STATUS_HEALTHY
-                ? 'Backup berjalan normal'
-                : ($terburuk === self::STATUS_WARNING ? 'Backup perlu perhatian' : 'Backup bermasalah'),
             'items' => $items,
         ];
+    }
+
+    /**
+     * Periode arsip terakhir yang berhasil diunggah, dari log uploader.
+     * Baris upload tidak memuat timestamp, tetapi nama file memuat periode
+     * arsip: mingguan `YYYY-Www`, bulanan `YYYY-MM`. Keduanya dikonversi
+     * menjadi tanggal representatif di zona waktu aplikasi.
+     *
+     * @return array{label: string, at: \Illuminate\Support\Carbon\CarbonInterface}|null
+     */
+    private function arsipTerakhir(string $logPath, string $prefix): ?array
+    {
+        $baris = @file($logPath, FILE_IGNORE_NEW_LINES) ?: [];
+
+        for ($i = count($baris) - 1; $i >= 0; $i--) {
+            $barisLog = $baris[$i];
+
+            if (! str_contains($barisLog, $prefix) || ! str_contains($barisLog, ': 200')) {
+                continue;
+            }
+
+            $tz = config('app.timezone', 'UTC');
+
+            if (str_contains($prefix, 'weekly') && preg_match('/(\d{4})-W(\d{2})\.sql\.gz/', $barisLog, $m)) {
+                // Senin pekan tersebut sebagai wakil tanggal arsip mingguan.
+                $at = \Illuminate\Support\Carbon::parse($m[1].'W'.$m[2].' 05:00', 'UTC')->setTimezone($tz);
+
+                return ['label' => 'Pekan '.$m[2].' '.$m[1], 'at' => $at];
+            }
+
+            if (str_contains($prefix, 'monthly') && preg_match('/(\d{4})-(\d{2})\.sql\.gz/', $barisLog, $m)) {
+                $at = \Illuminate\Support\Carbon::parse($m[1].'-'.$m[2].'-01 05:00', 'UTC')->setTimezone($tz);
+
+                return ['label' => \Illuminate\Support\Carbon::parse($m[1].'-'.$m[2].'-01')->locale('id')->translatedFormat('F Y'), 'at' => $at];
+            }
+        }
+
+        return null;
     }
 
     private function ms(float $value): string

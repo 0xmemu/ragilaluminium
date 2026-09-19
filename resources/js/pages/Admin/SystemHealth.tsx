@@ -108,13 +108,13 @@ interface BackupItem {
   key: string
   label: string
   status: HealthStatus
-  summary: string
-  detail: string | null
+  timestamp: string
+  hint: string
+  scope: string
 }
 
 interface BackupStatus {
   overall: HealthStatus
-  headline: string
   items: BackupItem[]
 }
 
@@ -606,38 +606,7 @@ export default function SystemHealth({
         {/* 1. Resource server (4 Card) */}
         <ResourceMetricGrid metrics={metrics} />
 
-        {/* 2. Backup & Pemulihan: status lapisan backup dari artefak nyata server */}
-        {backup ? (
-          <section aria-label="Backup dan pemulihan">
-            <Card className="overflow-hidden border border-border bg-card">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">Backup &amp; pemulihan</h2>
-                <StatusBadge status={backup.overall} />
-              </div>
-              <p className="px-4 pt-3 text-sm font-medium text-foreground sm:px-5">{backup.headline}</p>
-              <ul className="divide-y divide-border px-4 pb-2 pt-1 sm:px-5">
-                {backup.items.map((item) => (
-                  <li key={item.key} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-foreground">{item.label}</p>
-                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.summary}</p>
-                      {item.detail ? (
-                        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground/80">{item.detail}</p>
-                      ) : null}
-                    </div>
-                    <StatusBadge status={item.status} />
-                  </li>
-                ))}
-              </ul>
-              <p className="border-t border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] leading-4 text-muted-foreground sm:px-5">
-                Kebijakan: dump database harian diunggah ke R2 (retensi sekitar 30 hari), ditambah arsip mingguan dan
-                bulanan. File media (foto produk, galeri) tidak dibackup; aslinya di bucket ra-media dan komputer admin.
-              </p>
-            </Card>
-          </section>
-        ) : null}
-
-        {/* 3. Tren resource dengan filter periode operasional */}
+        {/* 2. Tren resource dengan filter periode operasional */}
         <section aria-label="Tren resource" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -729,6 +698,34 @@ export default function SystemHealth({
             />
           </div>
         </section>
+
+        {/* 3. Backup & pemulihan: kartu awam, dibaca dari artefak nyata server */}
+        {backup ? (
+          <section aria-label="Backup dan pemulihan">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">Backup &amp; pemulihan data</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Status perlindungan data toko, dicek langsung dari server saat halaman dibuka.
+                </p>
+              </div>
+              <StatusBadge status={backup.overall} />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {backup.items.map((item) => (
+                <Card key={item.key} className="flex flex-col border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <p className="mt-2 text-base font-bold tracking-tight text-foreground">{item.timestamp}</p>
+                  <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">{item.hint}</p>
+                  <p className="mt-auto pt-2 text-[11px] leading-4 text-muted-foreground/80">{item.scope}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </AdminLayout>
   )
