@@ -922,7 +922,7 @@ export default function ProductForm({
                         {def.options.map((option, optionIndex) => (
                           <div
                             key={optionIndex}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card p-1 shadow-xs transition hover:border-foreground/20"
+                            className="flex items-center gap-2"
                           >
                             {/* Gambar opsi 65px x 65px dengan tombol silang X di pojok kanan atas */}
                             <div className="relative size-[65px] shrink-0">
@@ -968,8 +968,8 @@ export default function ProductForm({
                               ) : null}
                             </div>
 
-                            {/* Input nilai opsi (misal Putih, Hitam, Kaca Bening) */}
-                            <input
+                            {/* Input nilai opsi: tinggi mengikuti ukuran form, bukan tinggi thumbnail */}
+                            <Input
                               value={option.value}
                               onChange={(event) =>
                                 setVariantDefs((prev) =>
@@ -987,9 +987,9 @@ export default function ProductForm({
                               }
                               onKeyDown={blockEnter}
                               style={{
-                                width: `${Math.min(18, Math.max(4, (option.value || "Nilai opsi...").length + 0.5))}ch`,
+                                width: `${Math.min(22, Math.max(9, (option.value || "Nilai opsi...").length + 4))}ch`,
                               }}
-                              className="bg-transparent text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground/60"
+                              className="h-9 w-auto text-xs font-medium"
                               aria-label={`Opsi ${optionIndex + 1} dari ${def.name || "varian"}`}
                               placeholder="Nilai opsi..."
                             />
@@ -1024,7 +1024,7 @@ export default function ProductForm({
                               ),
                             )
                           }
-                          className="inline-flex h-[43px] items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                         >
                           <Icon name="plus" className="size-3" aria-hidden="true" />
                           Tambah opsi
