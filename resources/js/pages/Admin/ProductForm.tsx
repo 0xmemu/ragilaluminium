@@ -824,7 +824,6 @@ export default function ProductForm({
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Definisi Varian & Kombinasi</h2>
-                <p className="text-xs text-muted-foreground">Beri nama varian (mis. Warna, Kaca), opsi, serta harga & stok per kombinasi.</p>
               </div>
               {variantDefs.length < 5 ? (
                 <Button
@@ -833,7 +832,8 @@ export default function ProductForm({
                   size="xs"
                   onClick={() => setVariantDefs((prev) => [...prev, { name: "", options: [emptyOption()] }])}
                 >
-                  + Tambah varian
+                  <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                  Tambah
                 </Button>
               ) : null}
             </div>
@@ -1068,7 +1068,6 @@ export default function ProductForm({
                 <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2.5">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Harga &amp; Stok per Kombinasi</h3>
-                    <p className="text-[11px] text-muted-foreground">Isi harga dan stok untuk setiap kombinasi varian di bawah (stok bisa angka atau rentang acak seperti random 8000-9000).</p>
                   </div>
                   <span className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground shadow-sm">
                     {combos.length} kombinasi
@@ -1133,11 +1132,10 @@ export default function ProductForm({
                   variant="secondary"
                   size="xs"
                   onClick={() => setPickerOpen(true)}
-                  className="w-7 px-0"
-                  aria-label="Tambah media"
                   title="Tambah media dari Media Library"
                 >
                   <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                  Tambah
                 </Button>
               </div>
             </div>
@@ -1308,20 +1306,17 @@ export default function ProductForm({
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Hasil Pemasangan ({editing ? instRows.length : pendingInst.length} media)</h2>
-                <p className="text-xs text-muted-foreground">Tampil di seksi Hasil Pemasangan pada halaman produk dan galeri hasil pemasangan.</p>
               </div>
               <Button
                 type="button"
                 variant="secondary"
                 size="xs"
                 onClick={() => setPickerInstOpen(true)}
-                className="w-7 px-0"
-                aria-label="Tambah hasil pemasangan"
                 title="Tambah hasil pemasangan dari Media Library"
               >
                 <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                Tambah
               </Button>
-
             </div>
             <div className="p-4">
               {(editing ? instRows.length : pendingInst.length) ? (
@@ -1443,20 +1438,16 @@ export default function ProductForm({
                   ))}
                 </ul>
               ) : null}
-              {/* Tombol tambah selalu tersedia: sebelumnya hanya tampil saat
-                  daftar kosong, sehingga admin tidak bisa menambah media
-                  hasil pemasangan kedua dan seterusnya. */}
-              <button
-                type="button"
-                onClick={() => setPickerInstOpen(true)}
-                className={cn(
-                  "flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-surface-muted/30 text-muted-foreground transition hover:border-primary/40 hover:text-foreground",
-                  (editing ? instRows.length : pendingInst.length) ? "mt-3 h-20" : "h-28",
-                )}
-              >
+              {!(editing ? instRows.length : pendingInst.length) ? (
+                <button
+                  type="button"
+                  onClick={() => setPickerInstOpen(true)}
+                  className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-surface-muted/30 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                >
                   <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                <span className="text-xs font-medium">Pilih media dari Media Library sebagai hasil pemasangan</span>
-              </button>
+                  <span className="text-xs font-medium">Pilih media dari Media Library sebagai hasil pemasangan</span>
+                </button>
+              ) : null}
             </div>
           </section>
         </form>
@@ -1466,7 +1457,6 @@ export default function ProductForm({
           <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="border-b border-border bg-muted/40 px-4 py-3">
               <h2 className="text-sm font-bold text-foreground">Syarat Publikasi &amp; Aktivasi Produk</h2>
-              <p className="text-xs text-muted-foreground">Periksa kelengkapan syarat berikut sebelum mempublikasikan produk ke katalog aktif.</p>
             </div>
             <div className="divide-y divide-border p-4">
               <StatusCheck label="Nama produk terisi" ready={Boolean(product?.name)} />
