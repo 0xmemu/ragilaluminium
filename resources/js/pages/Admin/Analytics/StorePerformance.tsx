@@ -408,24 +408,6 @@ export default function StorePerformance({
     const k = kpiMap[key]
     return { delta: (k?.value ?? 0) - (k?.previous ?? 0), suffix }
   }
-  // Sumbu Y dibagi antar tab bersatuan uang (Penjualan Gross dan Penjualan
-  // Bersih) supaya selisih keduanya tetap terlihat saat berpindah tab. Tanpa
-  // ini tiap tab menskalakan sumbunya sendiri, sehingga beda beberapa persen
-  // hilang dan kedua garis tampak identik. Tab hitungan tidak ikut dibagi
-  // karena besarannya jauh berbeda (pesanan paling tinggi 2, unit 5,
-  // pengunjung sampai ribuan), sehingga garis kecil akan rata di dasar.
-  const moneyDomain = React.useMemo((): [number, number] | undefined => {
-    const uang = (report.charts ?? []).filter((c) => c.total_format === "currency")
-    if (uang.length < 2) return undefined
-    const nilai: number[] = []
-    for (const c of uang) {
-      for (const p of c.series ?? []) nilai.push(p.value)
-      for (const p of c.previous_series ?? []) nilai.push(p.value)
-    }
-    if (!nilai.length) return undefined
-    return [0, Math.max(...nilai)]
-  }, [report])
-
   const durasiConfirm = durasi("avg_confirm_hours", "jam")
   const durasiProcess = durasi("avg_process_days", "hari")
   const [chartTab, setChartTab] = React.useState(0)
@@ -1292,7 +1274,6 @@ export default function StorePerformance({
                               chartType={chartModel}
                               showChartTypeToggle={false}
                               height={175}
-                              domain={chart.total_format === "currency" ? moneyDomain : undefined}
                             />
                           </React.Suspense>
                         ) : (

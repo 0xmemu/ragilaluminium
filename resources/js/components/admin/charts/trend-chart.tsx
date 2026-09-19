@@ -29,13 +29,6 @@ interface TrendChartProps<T extends TrendChartPoint> {
   chartType?: "line" | "bar"
   showChartTypeToggle?: boolean
   defaultType?: "line" | "bar"
-  /**
-   * Rentang sumbu Y tetap. Dipakai bila beberapa tab mengukur satuan yang sama
-   * dan perbedaannya ingin tetap terlihat saat berpindah tab; tanpa ini setiap
-   * tab menskalakan sumbunya sendiri sehingga dua garis yang mirip tampak
-   * identik. Bila dikosongkan, sumbu mengikuti data tab itu sendiri.
-   */
-  domain?: [number, number]
 }
 
 function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
@@ -62,7 +55,6 @@ export default function TrendChart<T extends TrendChartPoint>({
   chartType: controlledChartType,
   showChartTypeToggle = false,
   defaultType = "line",
-  domain,
 }: TrendChartProps<T>) {
   const [internalChartType, setInternalChartType] = React.useState<"line" | "bar">(defaultType)
   const activeType = controlledChartType ?? internalChartType
@@ -126,7 +118,7 @@ export default function TrendChart<T extends TrendChartPoint>({
                 tickMargin={8}
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
-              <YAxis hide domain={domain ?? ["dataMin - 1", "dataMax + 1"]} />
+              <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
                 cursor={{ fill: "hsl(var(--accent) / 0.4)" }}
                 content={({ active, payload }) => {
@@ -197,7 +189,7 @@ export default function TrendChart<T extends TrendChartPoint>({
                 tickMargin={8}
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               />
-              <YAxis hide domain={domain ?? ["dataMin - 1", "dataMax + 1"]} />
+              <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload || !payload.length) return null
