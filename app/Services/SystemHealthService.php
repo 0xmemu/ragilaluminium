@@ -80,6 +80,7 @@ final class SystemHealthService
             $this->applicationStorage(),
 
             // Kelompok 2: integrasi eksternal.
+            $this->cloudflare($deep),
             $this->mediaStorage(),
             $this->whatsappGateway(),
             $this->jntCargo($deep),
@@ -437,7 +438,7 @@ final class SystemHealthService
             group: 'infrastructure',
             provider: $provider,
             status: self::STATUS_HEALTHY,
-            summary: 'Worker aktif sejak '.$this->humanDuration($ago).' lalu (PID '.$worker['pid'].')',
+            summary: 'Worker aktif selama '.$this->humanDuration($ago).' (PID '.$worker['pid'].')',
             details: ['Perintah: '.$worker['command']],
         );
     }
@@ -983,6 +984,277 @@ final class SystemHealthService
         $scan = $this->lastScan();
 
         return is_array($scan) ? ($scan['checked_at'] ?? null) : null;
+    }
+
+    /**
+     * Cloudflare: pintu masuk seluruh trafik produksi.
+     *
+     * Kesehatannya diperiksa dari dua layer:
+     * 1. Metrics tunnel cloudflared di loopback (jumlah konektor, request, dan laju error).
+     * 2. Cloudflare API (status zona dan verifikasi Edge DNS proxied).
+     *
+     * @return HealthCheck
+     */
+    private function cloudflare(bool $deep): array
+    {
+        $metricsUrl = (string) config('services.cloudflare.tunnel_metrics_url', '');
+        $hostname = (string) config('services.cloudflare.hostname', '');
+
+        if ($hostname === '') {
+            $hostname = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+        }
+
+        $metrik = $this->readTunnelMetrics($metricsUrl);
+
+        // Endpoint metrics tidak terbaca: proses tunnel mati atau metrics
+        // dimatikan. Ini kondisi paling berbahaya karena trafik tidak masuk.
+        if ($metrik === null) {
+            return $this->check(
+                key: 'cloudflare',
+                name: 'Cloudflare',
+                group: 'integration',
+                provider: 'Cloudflare · '.($hostname !== '' ? $hostname : 'tunnel'),
+                status: self::STATUS_OFFLINE,
+                summary: 'Metrics tunnel tidak terbaca. Pastikan proses cloudflared hidup.',
+                details: $metricsUrl !== '' ? ['Endpoint metrics: '.$metricsUrl] : [],
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+
+        $konektor = $metrik['ha_connections'];
+        $total = $metrik['total_requests'];
+        $errors = $metrik['errors'];
+        $rate = $total > 0 ? round(($errors / $total) * 100, 2) : 0.0;
+
+        // Tanpa konektor, tunnel tidak meneruskan apa pun.
+        if ($konektor === 0) {
+            return $this->check(
+                key: 'cloudflare',
+                name: 'Cloudflare',
+                group: 'integration',
+                provider: 'Cloudflare · '.($hostname !== '' ? $hostname : 'tunnel'),
+                status: self::STATUS_FAILED,
+                summary: 'Tidak ada konektor aktif. Situs tidak dapat diakses dari internet.',
+                details: ['Jalankan systemctl restart cloudflared di server.'],
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+
+        $apiToken = (string) config('services.cloudflare.api_token', '');
+        $zoneId = (string) config('services.cloudflare.zone_id', '');
+        $zoneInfo = $this->readCloudflareZone($apiToken, $zoneId, $hostname);
+
+        $zoneDetails = [];
+        if ($zoneInfo !== null) {
+            $zoneDetails[] = 'Zona Cloudflare: '.$zoneInfo['zone_name'].' ('.$zoneInfo['zone_status'].($zoneInfo['plan'] !== '' ? ' · '.$zoneInfo['plan'] : '').')';
+            if ($zoneInfo['proxied'] === true) {
+                $zoneDetails[] = 'Edge DNS: '.($hostname !== '' ? $hostname : 'hostname').' terhubung ke tunnel (proxied)';
+            }
+        } elseif ($apiToken !== '' && $zoneId !== '') {
+            $zoneDetails[] = 'API zona Cloudflare: tidak merespons';
+        }
+
+        $detail = array_merge($zoneDetails, [
+            'Total permintaan: '.number_format($total, 0, ',', '.').' sejak tunnel berjalan.',
+            'Kode respons: '.$this->kodeResponsRingkas($metrik['by_code']),
+        ]);
+
+        // Satu konektor = titik tunggal kegagalan. ADR-003 meminta minimal dua.
+        if ($konektor < 2) {
+            return $this->check(
+                key: 'cloudflare',
+                name: 'Cloudflare',
+                group: 'integration',
+                provider: 'Cloudflare · '.($hostname !== '' ? $hostname : 'tunnel'),
+                status: self::STATUS_WARNING,
+                summary: '1 konektor aktif. Bila konektor ini putus, situs langsung tidak dapat diakses.',
+                details: array_merge($detail, ['ADR-003 meminta minimal dua konektor untuk ketersediaan.']),
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+
+        $status = match (true) {
+            $rate >= 5.0 => self::STATUS_FAILED,
+            $rate >= 1.0 => self::STATUS_WARNING,
+            $metrik['server_errors'] > 0 && $total > 0 && ($metrik['server_errors'] / $total) * 100 >= 1.0 => self::STATUS_WARNING,
+            $zoneInfo !== null && ($zoneInfo['zone_status'] !== 'active' || $zoneInfo['paused']) => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
+
+        $summaryPrefix = $konektor.' konektor aktif';
+        if ($zoneInfo !== null && $zoneInfo['proxied'] === true) {
+            $summaryPrefix .= ' · DNS proxied';
+        }
+
+        return $this->check(
+            key: 'cloudflare',
+            name: 'Cloudflare',
+            group: 'integration',
+            provider: 'Cloudflare · '.($hostname !== '' ? $hostname : 'tunnel'),
+            status: $status,
+            summary: $summaryPrefix.' · error tunnel '.$this->persen($rate),
+            details: $detail,
+            action: $status === self::STATUS_HEALTHY ? null : ['label' => 'Lihat detail'],
+        );
+    }
+
+    /**
+     * Baca status zona dan DNS Cloudflare melalui API.
+     *
+     * @return array{zone_name: string, zone_status: string, plan: string, paused: bool, proxied: ?bool}|null
+     */
+    private function readCloudflareZone(string $apiToken, string $zoneId, string $hostname): ?array
+    {
+        if ($apiToken === '' || $zoneId === '') {
+            return null;
+        }
+
+        return Cache::remember('cf_zone_status_'.$zoneId, 180, function () use ($apiToken, $zoneId, $hostname) {
+            try {
+                $zoneResp = Http::withToken($apiToken)
+                    ->timeout(3)
+                    ->get("https://api.cloudflare.com/client/v4/zones/{$zoneId}");
+
+                if (! $zoneResp->successful()) {
+                    return null;
+                }
+
+                $json = $zoneResp->json();
+                if (! ($json['success'] ?? false) || ! isset($json['result'])) {
+                    return null;
+                }
+
+                $res = $json['result'];
+                $proxied = null;
+
+                if ($hostname !== '') {
+                    $dnsResp = Http::withToken($apiToken)
+                        ->timeout(3)
+                        ->get("https://api.cloudflare.com/client/v4/zones/{$zoneId}/dns_records", [
+                            'name' => $hostname,
+                        ]);
+
+                    if ($dnsResp->successful()) {
+                        $dnsJson = $dnsResp->json();
+                        if (($dnsJson['success'] ?? false) && ! empty($dnsJson['result'][0])) {
+                            $proxied = (bool) ($dnsJson['result'][0]['proxied'] ?? false);
+                        }
+                    }
+                }
+
+                return [
+                    'zone_name' => (string) ($res['name'] ?? ''),
+                    'zone_status' => (string) ($res['status'] ?? 'unknown'),
+                    'plan' => (string) ($res['plan']['name'] ?? ''),
+                    'paused' => (bool) ($res['paused'] ?? false),
+                    'proxied' => $proxied,
+                ];
+            } catch (\Throwable) {
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Baca dan ringkas metrik tunnel cloudflared.
+     *
+     * @return array{ha_connections: int, total_requests: int, errors: int, server_errors: int, by_code: array<string, int>}|null
+     */
+    private function readTunnelMetrics(string $url): ?array
+    {
+        if ($url === '') {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(3)->get($url);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $byCode = [];
+            $total = 0;
+            $ha = 0;
+            $errors = 0;
+
+            foreach (preg_split('/\r?\n/', (string) $response->body()) ?: [] as $baris) {
+                if ($baris === '' || str_starts_with($baris, '#')) {
+                    continue;
+                }
+
+                if (preg_match('/^cloudflared_tunnel_ha_connections\s+([\d.]+)/', $baris, $m)) {
+                    $ha = (int) $m[1];
+                    continue;
+                }
+
+                if (preg_match('/^cloudflared_tunnel_request_errors\s+([\d.]+)/', $baris, $m)) {
+                    $errors = (int) $m[1];
+                    continue;
+                }
+
+                if (preg_match('/^cloudflared_tunnel_response_by_code\{status_code="(\d+)"\}\s+([\d.]+)/', $baris, $m)) {
+                    $kode = $m[1];
+                    $jumlah = (int) $m[2];
+                    $byCode[$kode] = ($byCode[$kode] ?? 0) + $jumlah;
+                    $total += $jumlah;
+                }
+            }
+
+            // Tanpa satu pun deret response_by_code, metrik dianggap tidak valid.
+            if ($byCode === []) {
+                return null;
+            }
+
+            $serverErrors = 0;
+            foreach ($byCode as $kode => $jumlah) {
+                if (str_starts_with($kode, '5')) {
+                    $serverErrors += $jumlah;
+                }
+            }
+
+            return [
+                'ha_connections' => $ha,
+                'total_requests' => $total,
+                'errors' => $errors,
+                'server_errors' => $serverErrors,
+                'by_code' => $byCode,
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Ringkas kode respons menjadi kelompok yang berguna dibaca admin.
+     *
+     * @param  array<string, int>  $byCode
+     */
+    private function kodeResponsRingkas(array $byCode): string
+    {
+        $kelompok = ['2xx' => 0, '3xx' => 0, '4xx' => 0, '5xx' => 0];
+
+        foreach ($byCode as $kode => $jumlah) {
+            $awalan = substr((string) $kode, 0, 1).'xx';
+            if (isset($kelompok[$awalan])) {
+                $kelompok[$awalan] += $jumlah;
+            }
+        }
+
+        $bagian = [];
+        foreach ($kelompok as $label => $jumlah) {
+            if ($jumlah > 0) {
+                $bagian[] = $label.' '.number_format($jumlah, 0, ',', '.');
+            }
+        }
+
+        return $bagian === [] ? 'belum ada data' : implode(' · ', $bagian);
+    }
+
+    /** Persen dengan koma desimal, konsisten dengan format Indonesia. */
+    private function persen(float $value): string
+    {
+        return number_format($value, 2, ',', '.').'%';
     }
 
     private function ms(float $value): string

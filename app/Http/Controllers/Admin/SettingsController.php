@@ -40,6 +40,8 @@ class SettingsController extends Controller
                 'queue_connection' => (string) config('queue.default'),
                 'cache_store' => (string) config('cache.default'),
                 'media_disk' => (string) config('filesystems.disks.media.driver', 'local'),
+                'cloudflare_hostname' => (string) config('services.cloudflare.hostname', 'ra.333labs.tech'),
+                'cloudflare_zone' => '333labs.tech',
             ],
             'runUrl' => route('admin.settings.run'),
         ]);

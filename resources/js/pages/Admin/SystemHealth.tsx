@@ -19,9 +19,16 @@ import { cn } from "@/lib/utils"
 /**
  * System Health Console.
  *
- * Urutan informasi mengikuti kontrak admin UI: status global, masalah yang
- * perlu ditangani, resource server, status layanan, grafik tren, lalu detail
- * teknis yang dilipat. Setiap status punya teks, bukan hanya warna.
+ * Mengikuti kontrak admin UI:
+ * 1. Header (title, deskripsi, waktu pemeriksaan, tombol periksa 40px)
+ * 2. Status global (semantic status, hitungan jelas)
+ * 3. Panel masalah (hanya tampil jika ada warning/error/offline)
+ * 4. Resource server (4 card terpisah: Load average, Memori, Disk, DB Latency)
+ * 5. Layanan infrastruktur (grouped panel)
+ * 6. Integrasi eksternal (grouped panel: Cloudflare, S3, WhatsApp, J&T)
+ * 7. Tren resource (grafik terpisah: CPU & Memori %, Load average, Database latency ms)
+ * 8. Konfigurasi teknis (collapsible, masked)
+ * 9. Tentang pemeriksaan (disclosure)
  */
 
 type HealthStatus =
@@ -98,9 +105,10 @@ interface EnvInfo {
   queue_connection: string
   cache_store: string
   media_disk: string
+  cloudflare_hostname?: string
+  cloudflare_zone?: string
 }
 
-/** Kosakata status: teks, warna dot, dan gaya badge. */
 const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: string }> = {
   healthy: { label: "Sehat", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
   warning: { label: "Perlu Perhatian", dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
@@ -111,7 +119,6 @@ const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: stri
   unknown: { label: "Tidak Diketahui", dot: "bg-muted-foreground/50", text: "text-muted-foreground" },
 }
 
-/** Status yang butuh tindakan: dipakai untuk AttentionPanel. */
 const NEEDS_ATTENTION: HealthStatus[] = ["warning", "failed", "offline", "not_configured", "unknown"]
 
 function jamWIB(iso: string | null): string {
@@ -131,16 +138,15 @@ function tanggalJamWIB(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "Asia/Jakarta",
-  })
+  }) + " WIB"
 }
 
-function maskId(value: string | null): string {
+function maskId(value: string | null | undefined): string {
   if (!value) return "-"
   if (value.length <= 6) return "••••"
   return value.slice(0, 3) + " •••• " + value.slice(-4)
 }
 
-/** Status dot + teks. Warna tidak pernah jadi satu-satunya pembeda. */
 function StatusBadge({ status }: { status: HealthStatus }) {
   const meta = STATUS_META[status] ?? STATUS_META.unknown
   return (
@@ -151,10 +157,6 @@ function StatusBadge({ status }: { status: HealthStatus }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// 4. Resource server
-// ---------------------------------------------------------------------------
-
 interface Metric {
   label: string
   value: string
@@ -163,73 +165,13 @@ interface Metric {
   hint: string
 }
 
-/**
- * Tooltip grafik gabungan. Garis digambar sebagai persen kapasitas, tetapi
- * yang ditampilkan di sini adalah NILAI ASLI tiap metrik, karena itulah yang
- * dipakai admin untuk mengambil keputusan.
- */
-function TrenTooltip({
-  active,
-  payload,
-  label,
-  seri,
-}: {
-  active?: boolean
-  payload?: Array<{ payload?: Record<string, unknown> }>
-  label?: string
-  seri: Array<{
-    key: string
-    rawKey: string
-    nama: string
-    warna: string
-    format: (value: number) => string
-  }>
-}) {
-  if (!active || !payload?.length) return null
-
-  const baris = payload[0]?.payload
-  if (!baris) return null
-
-  return (
-    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md">
-      <p className="text-[11px] text-muted-foreground">Pukul {label} WIB</p>
-      <ul className="mt-1 space-y-0.5">
-        {seri.map((item) => {
-          const nilai = baris[item.rawKey]
-
-          return (
-            <li key={item.key} className="flex items-center gap-2 text-xs">
-              <span className="size-2 rounded-full" style={{ backgroundColor: item.warna }} aria-hidden="true" />
-              <span className="text-muted-foreground">{item.nama}</span>
-              <span className="font-semibold tabular-nums text-foreground">
-                {typeof nilai === "number" ? item.format(nilai) : "-"}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      <p className="mt-1 border-t border-border pt-1 text-[10px] text-muted-foreground">
-        Garis digambar sebagai persen kapasitas terhadap batas aman tiap metrik.
-      </p>
-    </div>
-  )
-}
-
 function ResourceMetricGrid({ metrics }: { metrics: Metric[] }) {
   return (
     <section aria-label="Resource server">
       <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">Resource server</h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <Card
-            key={metric.label}
-            className={cn(
-              "border p-4",
-              metric.status === "healthy" || metric.status === "unknown"
-                ? "border-border bg-card"
-                : "border-border bg-card",
-            )}
-          >
+          <Card key={metric.label} className="border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
               {metric.status !== "healthy" && metric.status !== "unknown" ? (
@@ -247,21 +189,25 @@ function ResourceMetricGrid({ metrics }: { metrics: Metric[] }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// 5 dan 6. Panel layanan
-// ---------------------------------------------------------------------------
-
-function ServiceHealthRow({ check }: { check: HealthCheck }) {
+function ServiceHealthRow({
+  check,
+  onAction,
+  actionLoading,
+}: {
+  check: HealthCheck
+  onAction?: () => void
+  actionLoading?: boolean
+}) {
   const [open, setOpen] = React.useState(false)
   const hasDetails = check.details.length > 0
 
   return (
-    <li className="px-4 py-3 transition hover:bg-muted/20 sm:px-5">
+    <li className="px-4 py-3.5 transition hover:bg-muted/20 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1.5">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">{check.name}</p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            {check.provider ? <span className="text-foreground/70">{check.provider}</span> : null}
+            {check.provider ? <span className="text-foreground/75 font-medium">{check.provider}</span> : null}
             {check.provider ? " · " : null}
             {check.summary}
           </p>
@@ -274,35 +220,44 @@ function ServiceHealthRow({ check }: { check: HealthCheck }) {
         </div>
       </div>
 
-      {check.action || hasDetails ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {check.action?.href ? (
-            <Button asChild variant="outline" size="sm" className="h-7 text-xs">
-              <a href={check.action.href}>{check.action.label}</a>
-            </Button>
-          ) : [
-            check.status === "not_configured" ? null : (
-              <Button
-                key="detail"
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setOpen((prev) => !prev)}
-                aria-expanded={open}
-              >
-                {open ? "Sembunyikan" : check.action?.label ?? "Lihat detail"}
-              </Button>
-            ),
-          ]}
-        </div>
-      ) : null}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        {check.action?.href ? (
+          <Button asChild variant="outline" size="sm" className="min-h-[40px] h-10 px-3 text-xs">
+            <a href={check.action.href}>{check.action.label}</a>
+          </Button>
+        ) : check.action ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-[40px] h-10 px-3 text-xs"
+            onClick={onAction}
+            disabled={actionLoading}
+          >
+            {actionLoading ? "Memeriksa..." : check.action.label}
+          </Button>
+        ) : null}
+
+        {hasDetails && check.status !== "not_configured" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-[40px] h-10 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setOpen((prev) => !prev)}
+            aria-expanded={open}
+          >
+            {open ? "Sembunyikan rincian" : "Lihat rincian"}
+          </Button>
+        ) : null}
+      </div>
 
       {open && hasDetails ? (
-        <ul className="mt-2 space-y-1 border-l-2 border-border pl-3">
+        <ul className="mt-2.5 space-y-1 rounded-md bg-muted/40 p-3 text-xs leading-5 text-muted-foreground border border-border/50">
           {check.details.map((detail) => (
-            <li key={detail} className="text-xs leading-5 text-muted-foreground">
-              {detail}
+            <li key={detail} className="flex items-start gap-1.5">
+              <span className="text-muted-foreground/60 select-none">•</span>
+              <span>{detail}</span>
             </li>
           ))}
         </ul>
@@ -311,7 +266,17 @@ function ServiceHealthRow({ check }: { check: HealthCheck }) {
   )
 }
 
-function ServiceHealthPanel({ title, checks }: { title: string; checks: HealthCheck[] }) {
+function ServiceHealthPanel({
+  title,
+  checks,
+  onAction,
+  actionLoading,
+}: {
+  title: string
+  checks: HealthCheck[]
+  onAction?: () => void
+  actionLoading?: boolean
+}) {
   if (checks.length === 0) return null
 
   return (
@@ -322,20 +287,173 @@ function ServiceHealthPanel({ title, checks }: { title: string; checks: HealthCh
       </div>
       <ul className="divide-y divide-border">
         {checks.map((check) => (
-          <ServiceHealthRow key={check.key} check={check} />
+          <ServiceHealthRow
+            key={check.key}
+            check={check}
+            onAction={onAction}
+            actionLoading={actionLoading}
+          />
         ))}
       </ul>
     </Card>
   )
 }
 
-// ---------------------------------------------------------------------------
-// 12. Grafik tren: satu grafik satu satuan
-// ---------------------------------------------------------------------------
+interface SingleTrendSeries {
+  key: string
+  dataKey: string
+  name: string
+  color: string
+  unit: string
+  format: (val: number) => string
+}
 
-// ---------------------------------------------------------------------------
-// Halaman
-// ---------------------------------------------------------------------------
+function ChartCustomTooltip({
+  active,
+  payload,
+  label,
+  seriesList,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: Record<string, unknown> }>
+  label?: string
+  seriesList: SingleTrendSeries[]
+}) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  if (!row) return null
+
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md">
+      <p className="text-[11px] font-medium text-muted-foreground">Pukul {label} WIB</p>
+      <ul className="mt-1 space-y-1">
+        {seriesList.map((item) => {
+          const rawVal = row[item.dataKey]
+          const numVal = typeof rawVal === "number" ? rawVal : null
+          return (
+            <li key={item.key} className="flex items-center gap-2 text-xs">
+              <span className="size-2 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
+              <span className="text-muted-foreground">{item.name}:</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {numVal !== null ? item.format(numVal) : "-"}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function TrendChartCard({
+  title,
+  subtitle,
+  freshness,
+  conditionSummary,
+  seriesList,
+  data,
+  yDomain,
+  yUnit,
+  heightClass = "h-56",
+  ariaLabel,
+  onRunChecks,
+  runLoading,
+}: {
+  title: string
+  subtitle: string
+  freshness: string
+  conditionSummary: string
+  seriesList: SingleTrendSeries[]
+  data: Record<string, unknown>[]
+  yDomain?: [number | "auto", number | "auto"]
+  yUnit?: string
+  heightClass?: string
+  ariaLabel: string
+  onRunChecks: () => void
+  runLoading: boolean
+}) {
+  const hasPoints = data.length > 1
+
+  return (
+    <Card className="border border-border bg-card">
+      <div className="border-b border-border px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
+          <span className="text-[11px] text-muted-foreground">{freshness}</span>
+        </div>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs font-medium text-foreground/90">{conditionSummary}</p>
+        </div>
+      </div>
+
+      {hasPoints ? (
+        <div className="p-4">
+          <div className={heightClass} role="img" aria-label={ariaLabel}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/70" />
+                <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  domain={yDomain ?? [0, "auto"]}
+                  unit={yUnit ? yUnit : undefined}
+                />
+                <Tooltip content={<ChartCustomTooltip seriesList={seriesList} />} />
+                {seriesList.map((s) => (
+                  <Line
+                    key={s.key}
+                    type="monotone"
+                    dataKey={s.dataKey}
+                    name={s.name}
+                    stroke={s.color}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/50 pt-2.5">
+            {seriesList.map((item) => {
+              const lastRow = [...data].reverse().find((r) => r[item.dataKey] !== null && r[item.dataKey] !== undefined)
+              const lastVal = lastRow ? (lastRow[item.dataKey] as number | null) : null
+
+              return (
+                <li key={item.key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="h-1 w-3.5 rounded" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                  <span className="text-foreground/80">{item.name}</span>
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {lastVal !== null ? item.format(lastVal) : "-"}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : (
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm font-medium text-foreground">Belum ada data tren</p>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+            Data akan terkumpul secara otomatis setiap 15 menit dan setiap pemeriksaan sistem dijalankan.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 min-h-[40px] h-10 px-4 text-xs"
+            onClick={onRunChecks}
+            disabled={runLoading}
+          >
+            {runLoading ? "Memeriksa..." : "Jalankan pemeriksaan"}
+          </Button>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 export default function SystemHealth({
   title,
@@ -361,8 +479,6 @@ export default function SystemHealth({
   const [running, setRunning] = React.useState(false)
   const [showConfig, setShowConfig] = React.useState(false)
 
-  // Waktu acuan diambil sekali saat mount. Memanggil Date.now() langsung di
-  // badan render membuat hasil render tidak stabil (aturan purity React).
   const [nowMs] = React.useState(() => Date.now())
 
   function runChecks() {
@@ -370,7 +486,7 @@ export default function SystemHealth({
     router.post(runUrl, {}, { onFinish: () => setRunning(false) })
   }
 
-  // ---- Resource server ----
+  // 1. Resource metrics computation
   const loadHealthy = server.load_1 !== null && server.vcpu !== null ? server.load_1 / server.vcpu < 0.9 : true
   const loadDetail =
     server.load_1 === null
@@ -385,6 +501,25 @@ export default function SystemHealth({
     server.disk_pct === null ? "unknown" : server.disk_pct > 90 ? "failed" : server.disk_pct >= 75 ? "warning" : "healthy"
   const dbStatus: HealthStatus =
     server.db_response_ms === null ? "unknown" : server.db_response_ms >= 1000 ? "failed" : server.db_response_ms >= 200 ? "warning" : "healthy"
+
+  // Disk delta from previous snapshot
+  const prevSnapshot = history.length >= 2 ? history[history.length - 2] : null
+  const prevDisk = prevSnapshot ? prevSnapshot.disk_pct : null
+  const diskDelta =
+    server.disk_pct !== null && prevDisk !== null
+      ? server.disk_pct - prevDisk
+      : null
+  const diskDeltaText =
+    diskDelta !== null
+      ? (diskDelta >= 0 ? `+${diskDelta.toFixed(1)}%` : `${diskDelta.toFixed(1)}%`) + " sejak pemeriksaan sebelumnya"
+      : "Periksa tren untuk menilai pertumbuhan"
+
+  const dbLatencyValue =
+    server.db_response_ms === null
+      ? "Belum tersedia"
+      : server.db_response_ms < 1
+        ? "<1 ms"
+        : `${Math.round(server.db_response_ms)} ms`
 
   const metrics: Metric[] = [
     {
@@ -410,128 +545,103 @@ export default function SystemHealth({
       detail:
         server.disk_used_gb === null
           ? "Belum ada pembacaan"
-          : `${server.disk_used_gb.toFixed(1)} GB dari ${(server.disk_total_gb ?? 0).toFixed(1)} GB`,
+          : `${server.disk_used_gb.toFixed(1)} GB dari ${(server.disk_total_gb ?? 0).toFixed(1)} GB · ${diskDeltaText}`,
       status: diskStatus,
       hint: "Periksa tren untuk menilai pertumbuhan, bukan satu pembacaan.",
     },
     {
       label: "Database latency",
-      value: server.db_response_ms === null ? "Belum tersedia" : `${Math.round(server.db_response_ms)} ms`,
+      value: dbLatencyValue,
       detail:
-        server.queue_backlog === null
-          ? "Health check belum dijalankan"
-          : `Health check terakhir · queue ${server.queue_backlog} pekerjaan`,
+        server.db_response_ms === null
+          ? "Health check belum dilakukan"
+          : "Health check terakhir · query ping",
       status: dbStatus,
       hint: "Waktu query ping. Perlu perhatian di atas 200 ms.",
     },
   ]
 
-  // ---- Perlu perhatian ----
+  // 2. Attention panel items
   const attentionItems = checks.filter((check) => NEEDS_ATTENTION.includes(check.status))
   const counts = summary.counts
 
-  // ---- Grafik: satu grafik per metrik, masing-masing satu warna ----
-
-  // Satu grafik, lima garis. Karena satuan aslinya berbeda (persen, jumlah
-  // proses, milidetik), tiap garis digambar sebagai PERSEN KAPASITAS: seberapa
-  // penuh sumber daya itu terhadap batas amannya. Dengan begitu kelimanya
-  // sebanding dalam satu sumbu, dan nilai aslinya tetap tampil di tooltip.
-  const kapasitas = {
-    cpu: 100, // CPU penuh pada 100%
-    memory: 90, // memori kritis di 90%
-    disk: 90, // disk kritis di 90%
-    load: server.vcpu && server.vcpu > 0 ? server.vcpu : 1, // load = jumlah vCPU
-    database: 1000, // query dianggap gagal di 1000 ms
-  }
-
-  const trendSeries = [
-    {
-      key: "cpu",
-      rawKey: "cpu_pct" as keyof HistoryPoint,
-      normKey: "cpu_kapasitas",
-      nama: "CPU",
-      warna: "hsl(var(--sale))",
-      batas: kapasitas.cpu,
-      format: (v: number) => v.toFixed(1) + "%",
-      satuan: "Persen CPU",
-    },
-    {
-      key: "memory",
-      rawKey: "memory_pct" as keyof HistoryPoint,
-      normKey: "memory_kapasitas",
-      nama: "Memori",
-      warna: "#f59e0b",
-      batas: kapasitas.memory,
-      format: (v: number) => v.toFixed(1) + "%",
-      satuan: "Persen memori",
-    },
-    {
-      key: "disk",
-      rawKey: "disk_pct" as keyof HistoryPoint,
-      normKey: "disk_kapasitas",
-      nama: "Disk",
-      warna: "#06b6d4",
-      batas: kapasitas.disk,
-      format: (v: number) => v.toFixed(1) + "%",
-      satuan: "Persen disk",
-    },
-    {
-      key: "load",
-      rawKey: "load_1" as keyof HistoryPoint,
-      normKey: "load_kapasitas",
-      nama: "Load average",
-      warna: "#6366f1",
-      batas: kapasitas.load,
-      format: (v: number) => v.toFixed(2),
-      satuan: "Jumlah proses",
-    },
-    {
-      key: "database",
-      rawKey: "db_response_ms" as keyof HistoryPoint,
-      normKey: "db_kapasitas",
-      nama: "Database latency",
-      warna: "#10b981",
-      batas: kapasitas.database,
-      format: (v: number) => Math.round(v) + " ms",
-      satuan: "Milidetik",
-    },
-  ]
-
-  // Titik data gabungan: nilai mentah + nilai ternormalisasi per seri.
-  const trendData = history.map((point) => {
-    const baris: Record<string, number | string | null> = { taken_at: point.taken_at }
-
-    for (const seri of trendSeries) {
-      const mentah = point[seri.rawKey] as number | null
-      baris[seri.rawKey] = mentah
-      baris[seri.normKey] = mentah === null || seri.batas <= 0 ? null : (mentah / seri.batas) * 100
-    }
-
-    return baris
-  })
-
-  const seriTerisi = trendSeries.filter((seri) => trendData.some((baris) => baris[seri.normKey] !== null))
-  const punyaTren = seriTerisi.length > 0 && trendData.length > 1
-
+  // 3. Stale check
   const lastRunIso = lastCheckedAt ?? summary.checked_at
   const staleMs = lastRunIso ? nowMs - new Date(lastRunIso).getTime() : null
   const isStale = staleMs !== null && staleMs > 30 * 60 * 1000
+  const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
+  const freshnessWIB = `Diperbarui ${jamWIB(lastRunIso)}`
 
+  // 4. Infrastructure & Integration separation
   const infrastructure = checks.filter((check) => check.group === "infrastructure")
   const integrations = checks.filter((check) => check.group === "integration")
 
-  const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
+  // 5. Chart data preparations
+  const historyData = history.map((pt) => ({
+    taken_at: pt.taken_at,
+    cpu_pct: pt.cpu_pct,
+    memory_pct: pt.memory_pct,
+    load_1: pt.load_1,
+    db_response_ms: pt.db_response_ms,
+  }))
+
+  const cpuMemSeries: SingleTrendSeries[] = [
+    {
+      key: "cpu",
+      dataKey: "cpu_pct",
+      name: "CPU utilization",
+      color: "hsl(var(--primary))",
+      unit: "%",
+      format: (v) => v.toFixed(1) + "%",
+    },
+    {
+      key: "memory",
+      dataKey: "memory_pct",
+      name: "Memory used",
+      color: "#f59e0b",
+      unit: "%",
+      format: (v) => v.toFixed(1) + "%",
+    },
+  ]
+
+  const loadSeries: SingleTrendSeries[] = [
+    {
+      key: "load",
+      dataKey: "load_1",
+      name: "Load average 1 menit",
+      color: "#6366f1",
+      unit: "",
+      format: (v) => v.toFixed(2),
+    },
+  ]
+
+  const dbSeries: SingleTrendSeries[] = [
+    {
+      key: "database",
+      dataKey: "db_response_ms",
+      name: "Health check latency",
+      color: "#10b981",
+      unit: "ms",
+      format: (v) => (v < 1 ? "<1 ms" : Math.round(v) + " ms"),
+    },
+  ]
 
   return (
     <AdminLayout
       title={title}
       description={description}
       actions={
-        <div className="flex flex-col items-stretch gap-1 sm:items-end">
-          <span className="text-[11px] text-muted-foreground">
-            Pemeriksaan terakhir {waktuPemeriksaan}
+        <div className="flex flex-col items-stretch gap-1.5 sm:items-end w-full sm:w-auto">
+          <span className="text-[11px] text-muted-foreground text-center sm:text-right">
+            Pemeriksaan terakhir: {waktuPemeriksaan}
           </span>
-          <Button type="button" onClick={runChecks} disabled={running} aria-busy={running}>
+          <Button
+            type="button"
+            onClick={runChecks}
+            disabled={running}
+            aria-busy={running}
+            className="min-h-[40px] h-10 w-full sm:w-auto px-4"
+          >
             <Icon
               name={running ? "spinner" : "refresh"}
               className={cn("size-4", running && "animate-spin")}
@@ -545,7 +655,7 @@ export default function SystemHealth({
       <Head title={`${title} | Admin`} />
 
       <div className="space-y-6">
-        {/* 4. Status global */}
+        {/* 1. Status global */}
         <Card className="border border-border bg-card p-5">
           <div className="flex flex-wrap items-center gap-4">
             <span
@@ -553,7 +663,7 @@ export default function SystemHealth({
                 "flex size-11 shrink-0 items-center justify-center rounded-full border",
                 summary.overall === "healthy"
                   ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                  : summary.overall === "failed"
+                  : summary.overall === "failed" || summary.overall === "offline"
                     ? "border-destructive/40 bg-destructive/15 text-destructive"
                     : "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400",
               )}
@@ -565,19 +675,26 @@ export default function SystemHealth({
               />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold text-foreground">{summary.headline}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {counts.healthy} sehat
-                {counts.warning > 0 ? ` · ${counts.warning} perlu perhatian` : ""}
-                {counts.failed + counts.offline > 0 ? ` · ${counts.failed + counts.offline} gagal` : ""}
-                {counts.not_configured > 0 ? ` · ${counts.not_configured} belum dikonfigurasi` : ""}
-                {" · "}diperiksa {jamWIB(lastRunIso)}
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Status sistem
               </p>
-              {attentionItems.length > 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {attentionItems.map((item) => item.name).join(", ")}
-                </p>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <p className="text-base font-semibold text-foreground">{summary.headline}</p>
+                <StatusBadge status={summary.overall} />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {counts.healthy === summary.total ? (
+                  `${summary.total} dari ${summary.total} pemeriksaan berhasil`
+                ) : (
+                  <>
+                    {counts.healthy} sehat
+                    {counts.warning > 0 ? ` · ${counts.warning} perlu perhatian` : ""}
+                    {counts.failed + counts.offline > 0 ? ` · ${counts.failed + counts.offline} gagal` : ""}
+                    {counts.not_configured > 0 ? ` · ${counts.not_configured} belum dikonfigurasi` : ""}
+                  </>
+                )}
+                {" · "}Terakhir diperiksa {waktuPemeriksaan}
+              </p>
             </div>
           </div>
 
@@ -588,152 +705,136 @@ export default function SystemHealth({
           ) : null}
         </Card>
 
-        {/* 5. Perlu perhatian */}
+        {/* 2. Masalah yang perlu ditangani */}
         {attentionItems.length > 0 ? (
-          <section aria-label="Perlu perhatian">
-            <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">Perlu perhatian</h2>
+          <section aria-label="Masalah yang perlu ditangani">
+            <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">
+              Masalah yang perlu ditangani
+            </h2>
             <Card className="divide-y divide-border border border-border bg-card">
               {attentionItems.map((item) => (
-                <div key={item.key} className="flex flex-wrap items-start gap-3 p-4 sm:p-5">
-                  <span
-                    className={cn("mt-1 size-2 shrink-0 rounded-full", STATUS_META[item.status].dot)}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                      <StatusBadge status={item.status} />
+                <div key={item.key} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <span
+                      className={cn("mt-1.5 size-2 shrink-0 rounded-full", STATUS_META[item.status].dot)}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{item.name}</p>
+                        <StatusBadge status={item.status} />
+                      </div>
+                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.summary}</p>
                     </div>
-                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{item.summary}</p>
-                    {item.details.length > 0 ? (
-                      <ul className="mt-1.5 space-y-0.5">
-                        {item.details.map((detail) => (
-                          <li key={detail} className="text-xs leading-5 text-muted-foreground">
-                            {detail}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </div>
-                  {item.action?.href ? (
-                    <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-                      <a href={item.action.href}>{item.action.label}</a>
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={runChecks}
-                      disabled={running}
-                    >
-                      {item.action?.label ?? "Coba lagi"}
-                    </Button>
-                  )}
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {item.action?.href ? (
+                      <Button asChild variant="outline" size="sm" className="min-h-[40px] h-10 px-4 text-xs">
+                        <a href={item.action.href}>{item.action.label}</a>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[40px] h-10 px-4 text-xs"
+                        onClick={runChecks}
+                        disabled={running}
+                      >
+                        {running ? "Memeriksa..." : item.action?.label ?? "Uji koneksi"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </Card>
           </section>
         ) : null}
 
-        {/* 6. Resource server */}
+        {/* 3. Resource server */}
         <ResourceMetricGrid metrics={metrics} />
 
-        {/* 8. Layanan infrastruktur */}
-        <ServiceHealthPanel title="Layanan infrastruktur" checks={infrastructure} />
+        {/* 4. Layanan infrastruktur */}
+        <ServiceHealthPanel
+          title="Layanan infrastruktur"
+          checks={infrastructure}
+          onAction={runChecks}
+          actionLoading={running}
+        />
 
-        {/* 9. Integrasi eksternal */}
-        <ServiceHealthPanel title="Integrasi eksternal" checks={integrations} />
+        {/* 5. Integrasi eksternal */}
+        <ServiceHealthPanel
+          title="Integrasi eksternal"
+          checks={integrations}
+          onAction={runChecks}
+          actionLoading={running}
+        />
 
-        {/* 12. Tren resource: satu grafik gabungan.
-            Satuan asli tiap metrik berbeda, jadi setiap garis digambar sebagai
-            persen kapasitas terhadap batas amannya, dan nilai aslinya tampil
-            di tooltip. Ini satu-satunya cara lima metrik sebanding dalam satu
-            sumbu tanpa garis berskala kecil menempel di dasar. */}
-        <section aria-label="Tren resource">
-          <Card className="border border-border bg-card">
-            <div className="border-b border-border px-5 py-3.5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
-                <span className="text-[11px] text-muted-foreground">
-                  {history.length} titik · snapshot tiap 15 menit · WIB
-                </span>
-              </div>
-              {punyaTren ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Tiap garis menunjukkan seberapa penuh sumber daya terhadap batas amannya. Arahkan kursor untuk
-                  melihat nilai aslinya.
-                </p>
-              ) : null}
+        {/* 6. Tren resource: terpisah per metrik dan satuan */}
+        <section aria-label="Tren resource" className="space-y-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Snapshot berkala tiap 15 menit dan setiap pemeriksaan sistem dijalankan. Waktu Indonesia Barat (WIB).
+              </p>
             </div>
+            <span className="text-[11px] text-muted-foreground">
+              {history.length} titik riwayat
+            </span>
+          </div>
 
-            {punyaTren ? (
-              <div className="p-4">
-                <div
-                  className="h-72"
-                  role="img"
-                  aria-label={trendSeries
-                    .map((seri) => {
-                      const terakhir = [...trendData].reverse().find((b) => b[seri.normKey] !== null)
-                      const nilai = terakhir ? (terakhir[seri.rawKey] as number | null) : null
-                      return nilai === null ? null : `${seri.nama} ${seri.format(nilai)}`
-                    })
-                    .filter(Boolean)
-                    .join(", ")}
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 10 }} domain={[0, "auto"]} unit="%" />
-                      <Tooltip content={<TrenTooltip seri={trendSeries} />} />
-                      {trendSeries.map((seri) => (
-                        <Line
-                          key={seri.key}
-                          type="monotone"
-                          dataKey={seri.normKey}
-                          name={seri.nama}
-                          stroke={seri.warna}
-                          strokeWidth={2}
-                          dot={false}
-                          connectNulls
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+          {/* Grafik 1: CPU & Memori (%) - Full width */}
+          <TrendChartCard
+            title="CPU & memori"
+            subtitle="Histori pemeriksaan · WIB"
+            freshness={freshnessWIB}
+            conditionSummary={`Memori ${server.memory_pct?.toFixed(1) ?? "-"}% · CPU ${server.cpu_pct?.toFixed(1) ?? "-"}%`}
+            seriesList={cpuMemSeries}
+            data={historyData}
+            yDomain={[0, 100]}
+            yUnit="%"
+            heightClass="h-64"
+            ariaLabel={`CPU utilization ${server.cpu_pct?.toFixed(1) ?? "-"}%, memori ${server.memory_pct?.toFixed(1) ?? "-"}%`}
+            onRunChecks={runChecks}
+            runLoading={running}
+          />
 
-                <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                  {trendSeries.map((seri) => {
-                    const terakhir = [...trendData].reverse().find((b) => b[seri.normKey] !== null)
-                    const nilai = terakhir ? (terakhir[seri.rawKey] as number | null) : null
+          {/* Grid 2 kolom: Load Average & Database Latency */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Grafik 2: Load average */}
+            <TrendChartCard
+              title="Load average"
+              subtitle="15 menit terakhir · WIB"
+              freshness={freshnessWIB}
+              conditionSummary={`Load 1m ${server.load_1?.toFixed(2) ?? "-"} · ${server.vcpu ?? 1} vCPU`}
+              seriesList={loadSeries}
+              data={historyData}
+              heightClass="h-52"
+              ariaLabel={`Load average 1 menit ${server.load_1?.toFixed(2) ?? "-"}`}
+              onRunChecks={runChecks}
+              runLoading={running}
+            />
 
-                    return (
-                      <li key={seri.key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="h-0.5 w-4 rounded" style={{ backgroundColor: seri.warna }} aria-hidden="true" />
-                        <span className="text-foreground/80">{seri.nama}</span>
-                        <span className="tabular-nums">{nilai === null ? "-" : seri.format(nilai)}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ) : (
-              <div className="px-5 py-8 text-center">
-                <p className="text-sm font-medium text-foreground">Belum ada data tren</p>
-                <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-                  Data akan muncul setelah pemeriksaan sistem berikutnya. Snapshot otomatis diambil tiap 15 menit.
-                </p>
-                <Button type="button" variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={runChecks}>
-                  Jalankan pemeriksaan
-                </Button>
-              </div>
-            )}
-          </Card>
+            {/* Grafik 3: Database latency */}
+            <TrendChartCard
+              title="Database latency"
+              subtitle="15 menit terakhir · WIB"
+              freshness={freshnessWIB}
+              conditionSummary={`Latency ${dbLatencyValue} · query ping`}
+              seriesList={dbSeries}
+              data={historyData}
+              yUnit="ms"
+              heightClass="h-52"
+              ariaLabel={`Database ping latency ${dbLatencyValue}`}
+              onRunChecks={runChecks}
+              runLoading={running}
+            />
+          </div>
         </section>
 
-        {/* 15. Konfigurasi teknis */}
+        {/* 7. Konfigurasi teknis */}
         <Card className="border border-border bg-card">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
             <div>
@@ -746,7 +847,7 @@ export default function SystemHealth({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
+              className="min-h-[40px] h-10 px-3 text-xs"
               onClick={() => setShowConfig((prev) => !prev)}
               aria-expanded={showConfig}
             >
@@ -764,6 +865,8 @@ export default function SystemHealth({
                   ["Environment J&T", env.jnt_environment],
                   ["J&T credential", "Tersimpan · nilai disembunyikan"],
                   ["WhatsApp Number ID", maskId(env.whatsapp_number_id)],
+                  ["Cloudflare Tunnel", env.cloudflare_hostname ?? "ra.333labs.tech"],
+                  ["Cloudflare Zone", env.cloudflare_zone ?? "333labs.tech"],
                 ] as Array<[string, string]>
               ).map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-4 px-5 py-2.5">
@@ -775,7 +878,7 @@ export default function SystemHealth({
           ) : null}
         </Card>
 
-        {/* 16. Tentang pemeriksaan */}
+        {/* 8. Tentang pemeriksaan */}
         <details className="group rounded-lg border border-border bg-card">
           <summary className="flex cursor-pointer select-none items-center gap-2 px-5 py-3 text-xs font-semibold text-muted-foreground transition hover:text-foreground">
             <Icon name="info" className="size-3.5" aria-hidden="true" />

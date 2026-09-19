@@ -56,6 +56,15 @@ return [
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
         'app_secret' => env('WHATSAPP_APP_SECRET'),
         'business_phone' => env('WHATSAPP_BUSINESS_PHONE'),
+        // Footer otomatis yang ditempelkan ke SEMUA pesan template
+        // (kontrak anti-flag spam 2026-09-03). Teks ini juga ditampilkan
+        // sebagai bacaan di /admin/whatsapp/templates supaya tidak ada
+        // teks pesan yang hanya hidup di kode.
+        'reply_signature' => env(
+            'WHATSAPP_REPLY_SIGNATURE',
+            // Owner 2026-09-15: footer balasan tidak lagi ditambahkan otomatis.
+            '',
+        ),
         'language' => env('WHATSAPP_LANGUAGE', 'id'),
         'timeout' => (int) env('WHATSAPP_TIMEOUT', 15),
         'baileys' => [
@@ -79,6 +88,29 @@ return [
             'api_key' => env('SHIPPING_JNT_API_KEY'),
             'customer_id' => env('SHIPPING_JNT_CUSTOMER_ID'),
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cloudflare
+    |--------------------------------------------------------------------------
+    |
+    | Tunnel adalah pintu masuk seluruh trafik produksi, jadi kesehatannya
+    | diperiksa langsung dari endpoint metrics cloudflared di loopback.
+    | Endpoint metrics sudah tersedia tanpa token karena dijalankan oleh
+    | proses tunnel itu sendiri.
+    |
+    | API zona bersifat opsional: dipakai untuk analitik tingkat zona
+    | (permintaan, cache, ancaman). Bila token belum diisi, pemeriksaan
+    | melaporkan "belum dikonfigurasi" secara jujur, bukan sehat.
+    |
+    */
+
+    'cloudflare' => [
+        'tunnel_metrics_url' => env('CLOUDFLARE_TUNNEL_METRICS_URL', 'http://127.0.0.1:20241/metrics'),
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'zone_id' => env('CLOUDFLARE_ZONE_ID'),
+        'hostname' => env('CLOUDFLARE_TUNNEL_HOSTNAME', 'ra.333labs.tech'),
     ],
 
 ];
