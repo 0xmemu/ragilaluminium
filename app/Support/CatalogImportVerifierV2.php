@@ -13,6 +13,9 @@ namespace App\Support;
  *  V5  Harga wajib lebih dari nol di setiap baris.
  *  V6  Foto utama (Gambar 1 (utama)) wajib ada di grup.
  *  V7  Berat dan dimensi wajib di baris pertama grup (syarat aktivasi).
+ *  V8  Identitas produk (nama + kategori + model + sub-model) belum ada pada
+ *      produk aktif dan tidak dobel dalam berkas (pola Shopee: Mass Upload
+ *      hanya untuk produk baru; perubahan lewat template Update).
  *
  * Perbedaan mendasar dari verifier lama: satu baris = satu varian, sehingga
  * kombinasi terbentuk dari kolom Opsi Variasi 1 dan 2, bukan kolom khusus.
@@ -40,6 +43,15 @@ final class CatalogImportVerifierV2
         }
 
         $groups = self::group($rows);
+
+        // V8: identitas produk aktif yang sudah ada, dikunci dari database
+        // sekali supaya verifikasi berkas besar tetap satu kali query.
+        $existing = [];
+        foreach (\App\Models\Product::query()->where('status', 'active')
+            ->get(['id', 'parent_sku', 'name', 'product_category', 'product_model', 'design_variant']) as $p) {
+            $existing[self::identityKey($p->name, $p->product_category, $p->product_model, $p->design_variant)] = $p->parent_sku;
+        }
+        $seenInFile = [];
 
         foreach ($groups as $noId => $rowIndexes) {
             $label = $noId === '' ? '(NO. ID kosong)' : $noId;
@@ -127,13 +139,49 @@ final class CatalogImportVerifierV2
                     $errors[] = 'Baris '.$firstRowNo.': '.$label2.' wajib diisi lebih dari nol pada baris pertama grup NO. ID "'.$label.'".';
                 }
             }
+
+            // V8: identitas tidak boleh sudah ada aktif dan tidak boleh dobel
+            // dalam berkas. Pesan menyebut SKU existing dan mengarahkan ke
+            // template Update, mengikuti pola Mass Upload Shopee.
+            $groupName = trim((string) ($first['nama_produk'] ?? ''));
+            if ($groupName !== '') {
+                $identity = self::identityKey(
+                    $groupName,
+                    $first['kategori_produk'] ?? null,
+                    $first['model_produk'] ?? null,
+                    $first['sub_model'] ?? null,
+                );
+                if (isset($seenInFile[$identity])) {
+                    $errors[] = 'Baris '.$firstRowNo.': produk "'.$groupName.'" duplikat dengan grup NO. ID "'
+                        .$seenInFile[$identity].'" dalam berkas yang sama. Satu produk hanya boleh muncul sekali.';
+                } else {
+                    $seenInFile[$identity] = $label;
+                    if (isset($existing[$identity])) {
+                        $errors[] = 'Baris '.$firstRowNo.': produk "'.$groupName.'" sudah ada (SKU '.$existing[$identity]
+                            .'). Gunakan template Update Produk atau Update Media untuk mengubahnya, atau hapus baris '
+                            .'ini bila memang mau membuat produk baru bernama sama.';
+                    }
+                }
+            }
         }
 
         return $errors;
     }
 
-    /**
-     * Kelompokkan indeks baris per NO. ID. Grup tanpa NO. ID memakai nama
+    /** Kunci identitas V8: nama + taksonomi ternormalisasi, sama seperti yang disimpan importer. */
+    protected static function identityKey(mixed $name, mixed $kategori, mixed $model, mixed $subModel): string
+    {
+        $kategori = trim((string) $kategori);
+        $model = trim((string) $model);
+        $subModel = trim((string) $subModel);
+
+        return strtolower(trim((string) $name)).'|'
+            .(string) (CatalogLabels::normalizeCategory($kategori) ?? '').'|'
+            .(string) (CatalogLabels::normalizeModel($model) ?? '').'|'
+            .(string) (CatalogLabels::normalizeDesign($subModel !== '' ? $subModel : null) ?? '');
+    }
+
+    /** Kelompokkan indeks baris per NO. ID. Grup tanpa NO. ID memakai nama
      * produk sebagai kunci supaya berkas satu-produk tetap terbaca.
      *
      * @return array<string, list<int>>

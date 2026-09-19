@@ -357,6 +357,84 @@ class CatalogImportV2Test extends TestCase
      * layar gangguan sementara padahal server sukses. Bug seperti ini tidak
      * terlihat dari uji status HTTP saja.
      */
+    public function test_verifier_v2_menolak_baris_produk_yang_sudah_ada(): void
+    {
+        \App\Models\Product::create([
+            "parent_sku" => "RA-EXIST-1",
+            "name" => "Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing",
+            "category_id" => 1,
+            "product_category" => "JENDELA",
+            "product_model" => "KACA_MATI",
+            "design_variant" => "POLOS",
+            "status" => "active",
+        ]);
+
+        $errors = CatalogImportVerifierV2::verify([$this->baris()]);
+
+        $this->assertNotEmpty($errors, "produk existing wajib ditolak (audit P1-1)");
+        $this->assertStringContainsString("sudah ada", $errors[0]);
+        $this->assertStringContainsString("RA-EXIST-1", $errors[0], "pesan wajib menyebut SKU existing");
+        $this->assertStringContainsString("template Update", $errors[0]);
+    }
+
+    public function test_import_v2_gagal_total_bila_produk_sudah_ada(): void
+    {
+        \App\Models\Product::create([
+            "parent_sku" => "RA-EXIST-2",
+            "name" => "Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing",
+            "category_id" => 1,
+            "product_category" => "JENDELA",
+            "product_model" => "KACA_MATI",
+            "design_variant" => "POLOS",
+            "status" => "active",
+        ]);
+
+        $rows = [$this->baris(), $this->baris(["opsi_variasi_1" => "Hitam"])];
+        $job = $this->job();
+        $path = $this->berkas($rows);
+
+        try {
+            Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+            $this->fail("import wajib gagal saat produk sudah ada");
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString("File gagal verifikasi", $e->getMessage());
+        }
+
+        $this->assertSame(1, Product::count(), "all-or-nothing: tidak ada produk tambahan");
+    }
+
+    public function test_verifier_v2_mengabaikan_produk_archived_dengan_nama_sama(): void
+    {
+        \App\Models\Product::create([
+            "parent_sku" => "RA-EXIST-3",
+            "name" => "Tinggi 170cm x Panjang 60cm Jendela Jungkit Satu Daun Swing",
+            "category_id" => 1,
+            "product_category" => "JENDELA",
+            "product_model" => "KACA_MATI",
+            "design_variant" => "POLOS",
+            "status" => "archived",
+        ]);
+
+        $errors = CatalogImportVerifierV2::verify([$this->baris()]);
+
+        $this->assertStringNotContainsString(
+            "sudah ada",
+            implode(" | ", $errors),
+            "produk archived tidak menghalangi pembuatan baru"
+        );
+    }
+
+    public function test_verifier_v2_menolak_dua_grup_identitas_sama_dalam_satu_berkas(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([
+            $this->baris(),
+            $this->baris(["no_id" => 2, "opsi_variasi_1" => "Hitam"]),
+        ]);
+
+        $pesan = implode(" | ", $errors);
+        $this->assertStringContainsString("duplikat dengan grup", $pesan);
+    }
+
     public function test_harga_berformat_ribuan_tersimpan_benar(): void
     {
         $rows = [$this->baris(["harga" => "1.250.000"])];

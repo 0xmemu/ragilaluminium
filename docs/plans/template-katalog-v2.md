@@ -463,3 +463,17 @@ Urutan aman:
 | Unduhan update | kosong | terisi data nyata, tersaring |
 | Contoh | terisi sebagian | terisi lengkap |
 | Panduan | ada | ada per berkas |
+
+---
+
+## Catatan keputusan owner (19 Sep 2026)
+
+- Import Produk hanya membuat produk BARU (pola Shopee Mass Upload). Baris
+  yang identitasnya (nama + kategori + model + sub-model) cocok dengan produk
+  aktif yang sudah ada ditolak saat Periksa file dengan menyebut SKU existing.
+  Duplikat identitas dalam satu berkas juga ditolak (verifier V8).
+- Perubahan isi produk selalu lewat template Update Produk / Update Media
+  yang berbasis SKU Produk dan SKU Varian.
+- Sel angka menerima format ribuan Indonesia (1.250.000) dan desimal koma
+  (1.250,50); harga 0 atau negatif ditolak.
+- Penanda hapus media dihapus dari template; arsip media lewat panel admin.
