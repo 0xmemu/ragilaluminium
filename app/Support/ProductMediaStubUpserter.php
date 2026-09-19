@@ -56,7 +56,9 @@ class ProductMediaStubUpserter
             // diarsip lewat panel admin kembali tampil (audit P1-4).
             'visibility' => 'visible',
             'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
-            'position' => $showInCatalog ? $position : ($media->position ?: $position),
+            // Posisi hanya diset saat baris baru; baris lama tidak digeser
+            // oleh penulisan slot lain yang memakai aset sama (audit P2-7).
+            'position' => $media->exists ? $media->position : $position,
             'is_main_image' => $showInCatalog && $isMain ? true : (bool) $media->is_main_image,
             'show_in_catalog' => $showInCatalog || (bool) $media->show_in_catalog,
             'is_installation' => $isInstallation || (bool) $media->is_installation,

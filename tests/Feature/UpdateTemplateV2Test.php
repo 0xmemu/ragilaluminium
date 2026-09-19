@@ -324,6 +324,22 @@ class UpdateTemplateV2Test extends TestCase
         );
     }
 
+    public function test_url_sama_lintas_slot_tidak_menggeser_posisi(): void
+    {
+        $url = "https://media.333labs.tech/media-assets/varian/pdp.webp";
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Gambar per Varian", "Gambar 1 (utama)", "Gambar 2", "Media Bersama 1", "Media Bersama 2", "Gambar Hasil Pemasangan 1", "Gambar Hasil Pemasangan 2"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "RA-UPD-1-A", "Putih", "", "", $url, $url, "", "", ""],
+        ]);
+
+        Excel::import(new ImportMediaUpdate($this->job("media_update")->id), $path);
+
+        $rows = \App\Models\ProductMedia::where("product_id", $this->product->id)
+            ->whereNull("product_variant_id")->get();
+        $this->assertSame(1, $rows->count(), "URL sama di dua slot katalog = satu baris media");
+        $this->assertSame(2, (int) $rows->first()->position, "posisi baris pertama tidak boleh digeser slot lain (audit P2-7)");
+    }
+
     /**
      * Fitur penanda hapus dihapus (keputusan owner 19 Sep 2026): tidak ada
      * skenario admin yang membutuhkannya, dan arsip media cukup lewat panel

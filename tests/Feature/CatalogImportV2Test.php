@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\CatalogImportVerifierV2;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
@@ -449,6 +450,48 @@ class CatalogImportV2Test extends TestCase
             (float) $product->activeVariants()->first()->price,
             "harga format ribuan Indonesia wajib tersimpan sebagai 1250000"
         );
+    }
+
+    public function test_gambar_per_varian_semua_baris_diproses(): void
+    {
+        $rows = [
+            $this->baris([]),
+            $this->baris(["opsi_variasi_2" => "Kaca Riben", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+        $varianMedia = \App\Models\ProductMedia::where("product_id", $product->id)
+            ->whereNotNull("product_variant_id")->orderBy("position")->get();
+
+        $this->assertSame(2, $varianMedia->count(), "kedua baris wajib diproses, tidak ada baris pertama menang");
+        $this->assertSame([50, 51], $varianMedia->pluck("position")->all());
+        $this->assertSame(
+            [$this->urlMedia("media-assets/varian-putih/pdp.webp"), $this->urlMedia("media-assets/varian-hitam/pdp.webp")],
+            $varianMedia->pluck("source_url")->all()
+        );
+    }
+
+    public function test_preview_memberi_catatan_opsi_multi_url(): void
+    {
+        $path = $this->berkas([
+            $this->baris([]),
+            $this->baris(["opsi_variasi_2" => "Kaca Riben", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
+        ]);
+
+        $upload = UploadedFile::fake()->createWithContent("produk.xlsx", (string) file_get_contents($path));
+
+        $res = $this->actingAs($this->job()->triggeredBy)
+            ->post(route("admin.imports.preview-catalog"), ["file" => $upload]);
+        $res->assertOk();
+
+        $data = json_decode($res->getContent(), true);
+        $this->assertSame(0, count($data["verify_errors"]), "catatan tidak boleh menjadi error pemblokir");
+        $this->assertNotEmpty($data["verify_warnings"] ?? [], "opsi multi URL wajib diberi catatan");
+        $this->assertStringContainsString("Putih", implode(" | ", $data["verify_warnings"]));
     }
 
     public function test_bentuk_respons_preview_v2_dibaca_frontend(): void

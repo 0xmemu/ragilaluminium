@@ -24,9 +24,9 @@ use Maatwebsite\Excel\Row;
  *  - Tidak ada kolom opsi 1..4. Setiap baris mendefinisikan satu varian.
  *  - Kolom identitas cukup di baris pertama grup; baris lanjutan mewarisi
  *    nilai terakhir yang terlihat (perilaku ala marketplace).
- *  - Gambar per varian di-dedupe per nilai opsi karena satu opsi muncul di
- *    beberapa baris kombinasi. Tanpa dedupe, satu opsi melahirkan banyak baris
- *    media kembar.
+ *  - Gambar per varian menempel pada varian barisnya masing-masing; URL
+ *    berbeda untuk opsi yang sama tetap dipasang semua (keputusan owner 19
+ *    Sep 2026), dengan catatan di Periksa file.
  *
  * Kontrak yang dipertahankan dari importer lama:
  *  - Transaksi all-or-nothing (dibungkus DB::transaction di ProcessCatalogImport).
@@ -47,8 +47,8 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
     /** parent_sku per grup NO. ID. */
     protected array $groupParentSkus = [];
 
-    /** Gambar per opsi yang sudah ditulis: [productId][optionKey] => true. */
-    protected array $writtenOptionImages = [];
+    /** Penghitung media varian per produk: [productId] => jumlah ditulis. */
+    protected array $variantMediaCount = [];
 
     /** Media produk umum yang sudah ditulis: [productId][pos] => true. */
     protected array $writtenProductMedia = [];
@@ -401,9 +401,8 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
      * (1 = utama), 50..79 gambar per opsi, 81..82 media bersama, 101..119
      * dokumentasi pemasangan.
      *
-     * Gambar per varian di-dedupe per NILAI OPSI, bukan per baris: satu opsi
-     * (mis. "Putih") muncul di beberapa baris kombinasi, sehingga tanpa dedupe
-     * satu opsi melahirkan belasan baris media kembar.
+     * Gambar per varian menempel pada varian barisnya masing-masing; tidak
+     * ada lagi dedupe "baris pertama menang" (keputusan owner 19 Sep 2026).
      */
     protected function syncMedia(Product $product, ?ProductVariant $variant, array $data): void
     {
@@ -484,34 +483,25 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             );
         }
 
-        // Gambar per varian: menempel pada varian baris ini.
+        // Gambar per varian: menempel pada varian baris ini. Setiap baris
+        // diproses apa adanya (keputusan owner 19 Sep 2026): URL berbeda untuk
+        // opsi yang sama tetap dipasang pada variannya masing-masing, tidak
+        // lagi "baris pertama menang". Upserter idempoten per varian + aset,
+        // jadi tidak ada baris media kembar.
         $variantUrl = trim((string) ($data["gambar_per_varian"] ?? ""));
         if ($variantUrl === "" || $variant === null) {
             return;
         }
 
-        $optionKey = $this->optionKey(trim((string) ($data["opsi_variasi_1"] ?? "")));
-        if ($optionKey === "" || ($this->writtenOptionImages[$product->id][$optionKey] ?? false)) {
-            return;
-        }
-        $this->writtenOptionImages[$product->id][$optionKey] = true;
-
         $upserter->upsert(
             productId: $product->id,
             variantId: $variant->id,
             url: $variantUrl,
-            position: 50 + count($this->writtenOptionImages[$product->id]) - 1,
+            position: 50 + min(29, $this->variantMediaCount[$product->id] ?? 0),
             isMain: false,
             showInCatalog: true,
         );
-    }
-
-    /** Kunci nilai opsi untuk dedupe gambar (huruf kecil, spasi dirapikan). */
-    protected function optionKey(string $option): string
-    {
-        $key = strtolower(trim(preg_replace("/\s+/u", " ", $option) ?? $option));
-
-        return $key;
+        $this->variantMediaCount[$product->id] = ($this->variantMediaCount[$product->id] ?? 0) + 1;
     }
 
     protected function number(mixed $value): ?float

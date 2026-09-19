@@ -644,6 +644,7 @@ class ImportJobController extends Controller
         $cache = [];
         $diffs = [];
         $lastName = '';
+        $warnMap = [];
 
         foreach ($rows as $row) {
             $name = trim((string) ($row['nama_produk'] ?? ''));
@@ -687,6 +688,12 @@ class ImportJobController extends Controller
                 $media[] = ['url' => $url, 'class' => $cache[$url]];
             }
 
+            $opsi1 = trim((string) ($row['opsi_variasi_1'] ?? ''));
+            $varUrl = trim((string) ($row['gambar_per_varian'] ?? ''));
+            if ($opsi1 !== '' && $varUrl !== '' && $name !== '') {
+                $warnMap[$name][$opsi1][$varUrl] = true;
+            }
+
             $diffs[] = [
                 'row' => count($diffs) + 2,
                 'name' => $name,
@@ -696,6 +703,19 @@ class ImportJobController extends Controller
                 'media' => $media,
                 'media_stats' => $stats,
             ];
+        }
+
+        // Catatan non-blocking (audit P3): satu opsi varian dengan beberapa URL
+        // berbeda kini dipasang pada variannya masing-masing, bukan "baris
+        // pertama menang".
+        $warnings = [];
+        foreach ($warnMap as $nama => $opsi) {
+            foreach ($opsi as $opsi1 => $urls) {
+                if (count($urls) > 1) {
+                    $warnings[] = 'Opsi "'.$opsi1.'" pada produk "'.$nama.'" punya '.count($urls)
+                        .' URL berbeda di kolom Gambar per Varian; masing-masing dipasang pada varian barisnya.';
+                }
+            }
         }
 
         $totalProducts = collect($allRows)
@@ -713,6 +733,7 @@ class ImportJobController extends Controller
             'contract' => 'preview-only; tidak menulis data',
             'template' => 'v2',
             'verify_errors' => array_slice($errors, 0, 20),
+            'verify_warnings' => array_slice($warnings, 0, 20),
             'rows' => $diffs,
             'total' => count($terisi),
             'total_products' => $totalProducts,

@@ -60,8 +60,6 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
         if (preg_match('/^\s*(CATATAN|CONTOH)\s*:/i', $firstCell)) {
             return;
         }
-        $job->increment('processed_rows');
-
         try {
             $parentSku = trim((string) ($data['parent_sku'] ?? ''));
             $variantSku = trim((string) ($data['variant_sku'] ?? ''));
@@ -72,6 +70,7 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                 // SKU di sheet data tetap ditandai verifier sebelum eksekusi.
                 return;
             }
+            $job->increment('processed_rows');
 
             $variant = $variantSku === ''
                 ? null

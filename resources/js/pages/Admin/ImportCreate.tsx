@@ -33,6 +33,7 @@ type PreviewPayload = {
   total: number
   total_products?: number
   verify_errors: string[]
+  verify_warnings?: string[];
   skipped_rows?: number
   changes?: string[]
   changed_rows?: number
@@ -334,6 +335,19 @@ export default function ImportCreate({
                     <li key={i} className="flex gap-1.5">
                       <span className="text-destructive">•</span>
                       <span>{err}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {preview && (preview.verify_warnings ?? []).length > 0 ? (
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-sm font-semibold text-foreground">Catatan pemeriksaan:</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {(preview.verify_warnings ?? []).map((w, i) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span>•</span>
+                      <span>{w}</span>
                     </li>
                   ))}
                 </ul>

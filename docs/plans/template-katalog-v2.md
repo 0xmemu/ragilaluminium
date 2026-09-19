@@ -258,9 +258,10 @@ Pekerjaan:
    - Nama, deskripsi, kategori, model, sub model diwarisi dari baris pertama
      grup, mengikuti perilaku marketplace yang sudah dipakai.
    - Harga dan stok dibaca per baris.
-   - `Gambar per Varian` di-dedupe per nilai opsi, baris pertama menang,
-     karena satu opsi muncul di beberapa baris kombinasi. Tanpa dedupe, satu
-     opsi akan melahirkan banyak baris media kembar.
+   - `Gambar per Varian` menempel pada varian barisnya masing-masing. URL
+     berbeda untuk opsi yang sama dipasang semua pada variannya masing-masing
+     (keputusan owner 19 Sep 2026), dengan catatan di Periksa file. Upserter
+     idempoten, jadi tidak ada baris media kembar.
    - SKU induk dan SKU varian di-generate otomatis (awalan `RA` plus 10
      karakter acak), karena template tidak menyediakan kolom SKU.
 2. Verifier disesuaikan ke kolom baru:
@@ -442,7 +443,7 @@ Urutan aman:
 | Kolom identitas diubah di berkas update | Data produk tertukar | Kunci di Excel dan tolak di server |
 | Proteksi dilepas manual | Guard tampak gagal | Validasi server sebagai pertahanan utama |
 | Unduhan penuh 2.138 baris berat | Proses lambat | Filter per model, batas baris, unduhan per bagian |
-| Satu opsi muncul di banyak baris | Gambar opsi menjadi banyak baris kembar | Dedupe per nilai opsi, baris pertama menang |
+| Satu opsi muncul di banyak baris | Gambar opsi menjadi banyak baris kembar | Upserter idempoten per varian + aset; catatan di Periksa file bila URL berbeda antar baris |
 | Template baru belum terbaca importer | Import gagal total | Fase 1 dan 2 rilis bersamaan |
 | Berkas lama sudah beredar di tangan admin | Upload gagal | Pesan galat menunjuk tombol unduh template baru |
 | Contoh kosong ditiru admin | Data tidak lengkap, produk tidak aktif | Contoh terisi lengkap dan verifier menolak yang kosong |
