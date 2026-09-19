@@ -327,7 +327,7 @@ class StorePerformanceService
             $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
             $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
             $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
-            $this->kpi('refused_orders', 'Pesanan Ditolak', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya dikembalikan kurir sebelum diterima dan belum pernah lunas. Barang kembali ke gudang tanpa restore stok.'),
+            $this->kpi('refused_orders', 'Pesanan Retur Paket', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
             $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
             $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
@@ -336,7 +336,7 @@ class StorePerformanceService
         $returnCostKpis = [
             $this->kpi('return_shipping_cost_total', 'Ongkir Retur (Toko)', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Total ongkir retur yang DITANGGUNG TOKO dari kasus retur selesai periode ini (bukan dibayar pembeli).'),
             $this->kpi('return_shipping_cost_cases', 'Kasus Retur (Ongkir Toko)', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang ongkirnya ditanggung toko.'),
-            $this->kpi('refused_borne_cost', 'Ongkir Kirim & COD Ditanggung Toko', $current['refused_borne_cost'], $previous['refused_borne_cost'] ?? 0, 'currency', 'Beban nyata toko atas paket yang tidak diterima pembeli: ongkir KIRIM yang sudah ditagih J&T ditambah biaya layanan COD yang hangus. Pembeli tidak membayar, tetapi kurir tetap menagih keduanya ke toko. Ongkir kaki balik belum termasuk karena tagihannya belum tercatat otomatis.'),
+            $this->kpi('refused_borne_cost', 'Ongkir & COD Ditanggung Toko', $current['refused_borne_cost'], $previous['refused_borne_cost'] ?? 0, 'currency', 'Ongkir kirim dan biaya layanan COD yang tetap ditagih J&T untuk paket yang kembali sebelum diterima pembeli. Pembeli tidak membayar, jadi toko yang menanggung. Ongkir perjalanan balik belum termasuk karena tagihannya belum tercatat otomatis.'),
         ];
 
         return [

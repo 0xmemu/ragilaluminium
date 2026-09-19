@@ -41,7 +41,7 @@ class StorePerformanceRefusedCostTest extends TestCase
     }
 
     /**
-     * Pesanan COD yang paketnya dikembalikan kurir sebelum diterima pembeli.
+     * Pesanan COD yang paketnya kembali sebelum diterima pembeli.
      *
      * @param  array<string, mixed>  $overrides
      */
@@ -210,7 +210,7 @@ class StorePerformanceRefusedCostTest extends TestCase
 
         $this->assertNotNull($kpi, 'KPI beban paket ditolak ada di blok Retur & Pembatalan');
         $this->assertSame(200000.0, (float) $kpi["value"]);
-        $this->assertStringContainsString("ongkir KIRIM", (string) $kpi["detail"]);
-        $this->assertStringContainsString("kaki balik", (string) $kpi["detail"]);
+        $this->assertStringContainsString("Ongkir kirim", (string) $kpi["detail"]);
+        $this->assertStringContainsString("perjalanan balik", (string) $kpi["detail"]);
     }
 }

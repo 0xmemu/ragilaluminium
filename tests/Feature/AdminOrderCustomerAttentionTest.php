@@ -11,7 +11,7 @@ use Tests\TestCase;
 /**
  * Penanda "perlu perhatian" di samping nama pelanggan pada daftar pesanan.
  *
- * Penandanya riwayat penolakan paket (dikembalikan kurir sebelum diterima dan
+ * Penandanya riwayat retur paket (kembali sebelum diterima pembeli dan
  * belum lunas), sama dengan yang dipakai laporan Performa Toko. Sifatnya HANYA
  * penanda visual: tidak memblokir COD, admin tetap yang memutuskan.
  */
@@ -92,8 +92,8 @@ class AdminOrderCustomerAttentionTest extends TestCase
         $this->assertNotNull($card['attention'], 'pelanggan dengan riwayat penolakan ditandai');
         $this->assertSame('refused_package', $card['attention']['kind']);
         $this->assertSame(1, $card['attention']['count']);
-        $this->assertSame('Perlu perhatian', $card['attention']['label']);
-        $this->assertStringContainsString('dikembalikan kurir', $card['attention']['hint']);
+        $this->assertSame('Riwayat Retur', $card['attention']['label']);
+        $this->assertStringContainsString('kembali sebelum diterima', $card['attention']['hint']);
         $this->assertSame('628123456789', $aktif->customer_phone);
     }
 

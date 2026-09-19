@@ -866,7 +866,7 @@ export default function StorePerformance({
                 <p className="text-xs font-semibold text-foreground mb-2">Dikurangkan dari Penjualan Gross (dana titipan, biaya retur, dan barang kembali)</p>
               </div>
               {[
-                { label: "Nilai Barang Pesanan Ditolak", hint: "Nilai barang pesanan yang ditolak/dikembalikan kurir sebelum lunas dan returnya sudah selesai. Barang kembali ke gudang tanpa restore stok.", val: report.financial.refused_goods_value ?? 0 },
+                { label: "Nilai Barang Retur Paket", hint: "Nilai barang pesanan yang paketnya kembali sebelum diterima pembeli dan returnya sudah selesai. Barang kembali ke gudang tanpa menambah stok.", val: report.financial.refused_goods_value ?? 0 },
                 { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dasar yang diteruskan ke J&T Cargo, sudah termasuk subsidi ongkir yang ditanggung toko.", val: report.financial.shipping_raw ?? 0 },
                 { label: "Titipan Biaya Layanan COD J&T", hint: "Biaya administrasi COD yang dipotong oleh pihak kurir J&T Cargo.", val: report.financial.cod_fee ?? 0 },
                 { label: "Refund Retur", hint: "Pengembalian dana kepada pembeli atas kasus retur yang selesai.", val: report.financial.refund_adjustments ?? 0 },
@@ -984,8 +984,8 @@ export default function StorePerformance({
               <div className="rounded-md border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <HoverHint
-                    label="Paket Ditolak Kurir"
-                    hint="Pesanan yang paketnya dikembalikan kurir sebelum diterima pembeli dan returnya sudah selesai pada periode ini. Pembeli tidak membayar, barang kembali ke gudang tanpa restore stok."
+                    label="Retur Paket"
+                    hint="Pesanan yang paketnya kembali sebelum diterima pembeli dan returnya sudah selesai pada periode ini. Pembeli tidak membayar, barang kembali ke gudang tanpa menambah stok."
                     className="text-xs font-semibold text-foreground"
                   />
                   <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive">
@@ -996,8 +996,8 @@ export default function StorePerformance({
                 <div className="mt-2 space-y-1 text-xs">
                   <div className="flex items-center justify-between">
                     <HoverHint
-                      label="Ongkir Kirim Hangus"
-                      hint="Ongkir yang sudah ditagih J&T ke toko untuk mengantar paket yang akhirnya dikembalikan. Pembeli tidak menanggungnya, jadi toko yang membayar."
+                      label="Ongkir Kirim"
+                      hint="Ongkir yang sudah ditagih J&T untuk mengantar paket ini. Pembeli tidak menanggungnya, jadi toko yang membayar."
                       className="text-muted-foreground"
                     />
                     <span className="tabular-nums text-destructive">
@@ -1008,8 +1008,8 @@ export default function StorePerformance({
                   </div>
                   <div className="flex items-center justify-between">
                     <HoverHint
-                      label="Biaya Layanan COD Hangus"
-                      hint="Biaya layanan COD J&T yang hangus karena tidak ada uang COD pembeli untuk dipotong, sehingga ditagihkan ke toko."
+                      label="Biaya Layanan COD"
+                      hint="Biaya layanan COD J&T yang tetap ditagih karena tidak ada uang COD pembeli untuk dipotong."
                       className="text-muted-foreground"
                     />
                     <span className="tabular-nums text-destructive">
@@ -1022,8 +1022,8 @@ export default function StorePerformance({
 
                 <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
                   <HoverHint
-                    label="Beban Nyata Toko"
-                    hint="Ongkir kirim hangus ditambah biaya layanan COD hangus: inilah kas yang benar-benar keluar dari toko untuk paket yang tidak diterima pembeli. Ongkir kaki balik belum ikut dihitung karena tagihannya belum tercatat otomatis."
+                    label="Ditanggung Toko"
+                    hint="Ongkir kirim dan biaya layanan COD yang ditanggung toko untuk paket ini. Ongkir perjalanan balik belum ikut dihitung karena tagihannya belum tercatat otomatis."
                     className="font-semibold text-foreground"
                   />
                   <span className="tabular-nums font-bold text-destructive">
@@ -1181,7 +1181,7 @@ export default function StorePerformance({
                   </li>
                   <li className="flex justify-between">
                     <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["refused_orders"]?.label ?? "Pesanan Ditolak"}:</span>
+                      <span>{kpiMap["refused_orders"]?.label ?? "Pesanan Retur Paket"}:</span>
                       <DeltaBadge percent={kpiMap["refused_orders"]?.change_percent} upIsBad />
                     </span>
                     <span className="font-semibold text-foreground tabular-nums">{formatNumber(kpiMap["refused_orders"]?.value ?? 0)}</span>

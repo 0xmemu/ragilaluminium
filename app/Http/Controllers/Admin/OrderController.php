@@ -1125,10 +1125,10 @@ class OrderController extends Controller
         return [
             'kind' => 'refused_package',
             'count' => $count,
-            'label' => 'Perlu perhatian',
+            'label' => 'Riwayat Retur',
             'hint' => $count === 1
-                ? 'Pelanggan ini punya 1 paket yang dikembalikan kurir sebelum diterima dan belum lunas. Pertimbangkan konfirmasi ulang sebelum mengirim pesanan COD berikutnya.'
-                : 'Pelanggan ini punya '.$count.' paket yang dikembalikan kurir sebelum diterima dan belum lunas. Pertimbangkan konfirmasi ulang sebelum mengirim pesanan COD berikutnya.',
+                ? 'Pelanggan ini punya 1 paket yang kembali sebelum diterima dan belum lunas. Sebaiknya konfirmasi ulang sebelum mengirim pesanan COD berikutnya.'
+                : 'Pelanggan ini punya '.$count.' paket yang kembali sebelum diterima dan belum lunas. Sebaiknya konfirmasi ulang sebelum mengirim pesanan COD berikutnya.',
         ];
     }
 
@@ -1136,7 +1136,7 @@ class OrderController extends Controller
      * Riwayat penolakan paket per pelanggan, dikunci per nomor telepon.
      *
      * Penandanya SENGAJA sama dengan yang dipakai laporan Performa Toko: paket
-     * yang dikembalikan kurir sebelum diterima pembeli dan belum pernah lunas.
+     * yang kembali sebelum diterima pembeli dan belum pernah lunas.
      * Nomor sudah dinormalisasi sejak checkout (PhoneNumber::normalize), jadi
      * pelanggan yang sama selalu terbaca sebagai satu orang.
      *
