@@ -41,11 +41,44 @@ menyesatkan:
 
 ### 2. Penjualan Bersih
 
-- `Gross - SUM(order_return_cases.refund_amount)` untuk return case yang `status='completed'`.
+Formula yang berlaku sejak 2026-09-20 (revisi: sebelumnya hanya menyebut refund):
+
+```
+Net = Gross
+      - ongkir_raw        (tagihan J&T, atau asumsi checkout bila J&T belum melapor)
+      - biaya_cod         (biaya layanan COD yang diteruskan ke J&T)
+      - refund            (SEMUA refund, lihat aturan di bawah)
+      - ongkir_retur      (ongkir retur yang ditanggung toko)
+      - nilai_barang_retur (nilai barang paket yang kembali sebelum diterima pembeli)
+```
+
+Terverifikasi cocok dengan kode dan dengan angka produksi 2026-09-20
+(`gross - potongan = net`).
+
+**Refund memakai SEMUA refund, termasuk goodwill** (keputusan owner 2026-09-20):
+refund yang uangnya kembali ke pembeli walau barangnya tidak dikembalikan tetap
+mengurangi penjualan, dan KPI `refund_given` memakai basis yang sama sehingga angka
+di layar bisa direkonsiliasi. Sebelumnya penjualan memakai refund yang barangnya
+kembali saja, sementara KPI menampilkan semua refund, sehingga dua angka berbeda
+untuk hal yang sama.
+
+- Sumber refund: `order_return_cases.refund_amount` (bukan payment ledger).
 - Sumber refund: `order_return_cases.refund_amount` (bukan payment ledger).
 - Basis waktu refund: `completed_at`.
 - **Refund tidak boleh dihitung dua kali** dari payment ledger (payment `refunded` tidak dikurangi
   lagi dari net; `payments_received` hanya status `completed`).
+
+### 2b. Lingkup periode vs kondisi saat ini
+
+Setiap metrik wajib jelas lingkupnya, karena mencampur keduanya membuat angka
+periode tidak bisa dijumlahkan:
+
+- **Periode**: dihitung dari tanggal dalam rentang terpilih (omzet, pesanan, unit,
+  pembayaran diterima, retur selesai, pembatalan).
+- **Kondisi saat ini (snapshot)**: dihitung dari keadaan sekarang tanpa batas tanggal
+  (`payment_pending_count`, `returns_open`, `cod_pending_count`). Labelnya wajib
+  menyebut "kondisi saat ini" atau "semua waktu", dan tidak diberi pembanding
+  persen karena pembandingnya adalah snapshot yang sama sehingga selalu 0.
 
 ### 3. Pembayaran Diterima
 
@@ -95,6 +128,25 @@ menyesatkan:
 - Repeat customers = phone dgn order prior (valid); new = phone pertama kali di periode.
 - `repeat_order_rate` = `repeat / (new + repeat) × 100`.
 
+### 7b. Pengunjung (Kunjungan)
+
+- Sumber: `performance_metrics.storefront_unique_visitors` (+ `performance_visitor_events`
+  sebagai penyimpan unik per hari), dicatat middleware `TrackStorefrontPageView`.
+- Satu pengunjung = satu sesi browser per hari (hash sesi), dihitung pada navigasi dokumen
+  pertama; navigasi Inertia/partial reload tidak dihitung.
+- **Batasan kontrak 2026-09-18:** kunjungan hanya dicatat bila permintaannya menyerupai
+  navigasi browser manusia, yaitu User-Agent bukan bot/crawler/skrip, `Accept` memuat
+  `text/html`, dan permintaan membawa cookie sesi atau header navigasi `Sec-Fetch`.
+  Sebelumnya setiap permintaan tanpa cookie dihitung sebagai pengunjung baru, sehingga
+  angka pengunjung membengkak (tinjauan 18 Sep 2026: sekitar 96% permintaan halaman depan
+  berasal dari curl dan Python-urllib).
+- **`Pengunjung yang Membeli` adalah rasio, bukan penautan sesi ke order:**
+  `pembeli unik / pengunjung × 100`. Sistem tidak menyimpan relasi antara sesi kunjungan
+  dan pesanan (pengunjung dikenali dari hash sesi, pembeli dari `customer_phone`), sehingga
+  metrik ini TIDAK berarti "orang yang mengunjungi lalu membeli".
+- Periode pembanding tanpa data (denominator 0) tidak menghasilkan persentase pertumbuhan;
+  tampilkan "tanpa pembanding" alih-alih nilai pertumbuhan.
+
 ### 8. Produk
 
 - `top_products` legacy dipertahankan utk compatibility
@@ -132,7 +184,10 @@ menyesatkan:
 - Tidak ada tabel `product_views` per event (tetap agregat harian `performance_metrics`).
 - Tidak ada settlement bank otomatis.
 - Tidak ada nominal ongkir retur otomatis.
-- Tidak ada `payment_pending_amount` sampai ada snapshot yang reliable.
+- ~~Tidak ada `payment_pending_amount` sampai ada snapshot yang reliable.~~
+  DICABUT 2026-09-20: `cod_pending_amount`/`cod_pending_count` sudah dipakai di
+  halaman dan di ekspor, dengan label lingkup "semua waktu". Snapshot dari
+  `payments.status='pending'` diterima sebagai indikasi, bukan angka kas pasti.
 - Tidak ada perubahan schema payment hanya untuk KPI.
 - Tidak ada perubahan lifecycle retur/order dari ADR ini.
 
@@ -153,6 +208,27 @@ Implementasi saat ini menjaga:
 
 ---
 
+### 10. Cakupan data kunjungan
+
+Pengunjung unik dihitung dari `sha1(session id)`, sehingga klien tanpa cookie
+mendapat sesi baru pada setiap permintaan dan satu crawler terhitung banyak
+pengunjung. Penyaring `isHumanBrowserVisit()` dipasang 2026-09-19 15:34 dan data
+sebelum tanggal itu tercemar (audit menemukan 60 permintaan per jam rata sepanjang
+24 jam, rasio halaman per pengunjung 1,08).
+
+Konsekuensi yang mengikat:
+
+- Data kunjungan yang layak dipercaya hanya sejak **2026-09-19**.
+- Periode yang mulai sebelum tanggal itu **tidak boleh menampilkan** angka kunjungan
+  dan konversi; tampilkan "Belum tersedia" beserta tanggal mulainya. Kalau dipaksa
+  tampil, 7 pembeli dibagi 7 pengunjung terbaca konversi 100 persen.
+- Pengunjung unik dihitung sebagai **jumlah harian**, bukan distinct sepanjang rentang,
+  supaya angka kartu sama dengan total grafik tren.
+- Tabel `performance_visitor_events` tidak boleh dikosongkan seluruhnya: bila kosong,
+  `visitorsBetween()` jatuh ke jalur cadangan `performance_metrics`.
+
+---
+
 ## Open items
 
 Hanya:
@@ -161,6 +237,25 @@ Hanya:
   ke "Penjualan (Gross)/Penjualan Bersih")? Ini butuh keputusan pemilik; bukan perubahan ADR ini.
 - Apakah key `most_popular` (views + clicks) akan ditambahkan utk tab "Produk Terpopuler"?
 - Apakah `ProductEngagementContractTest` diperbaiki dalam task terpisah (pre-existing failure)?
+
+### Tindak lanjut audit metrik 2026-09-20
+
+Sudah dikerjakan: harga rata-rata per unit memakai nilai produk, refund disamakan
+ke semua refund, ekspor berhenti mengurangi ongkir dan biaya COD paket ditolak dua
+kali, pengunjung unik satu definisi, label snapshot dan konversi diperjelas, alamat
+halaman tidak lagi membawa tanggal basi.
+
+Belum dikerjakan, tercatat supaya tidak hilang:
+
+- Rentang kustom terbalik ditukar diam-diam tanpa pemberitahuan ke pengguna.
+- `products` hanya menghitung baris yang punya SKU varian, sehingga produk tanpa
+  varian tidak terhitung; ada tiga ukuran berbeda (model, produk, unit) berdampingan.
+- Rasio pembatalan dan rasio retur memakai pembilang dari tanggal kejadian sementara
+  penyebut dari tanggal pesanan dibuat, sehingga rasionya bisa melewati 100 persen.
+- `models` dan beberapa KPI lain ada di payload tetapi tidak dirender di halaman.
+- Kunci bucket mingguan memakai tahun kalender di PHP dan tahun ISO di SQL, sehingga
+  pekan di peralihan tahun bisa terbaca nol pada grafik.
+- Halaman belum punya navigasi anchor meski terdiri dari enam bagian.
 
 Tidak ada keputusan baru lain yang ditambahkan di draft ini.
 
