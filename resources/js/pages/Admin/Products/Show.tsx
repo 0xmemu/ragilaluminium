@@ -133,32 +133,67 @@ export default function ProductShow({
     </div>
   )
 
-  const renderRow = (section: DetailSection, row: DetailSection["rows"][number], index: number) => {
-    const hasThumbs = section.rows.some((item) => Boolean(item.thumb_url))
+  /** Judul kolom per seksi: turunan judul seksi, bukan aturan bisnis. */
+  const sectionColumns = (sectionTitle: string) => {
+    const normalized = sectionTitle.toLowerCase()
+    if (normalized.includes("media")) {
+      return { item: "Foto", note: "Status media", code: "Berkas" }
+    }
+    if (normalized.includes("varian")) {
+      return { item: "Varian", note: "Status, harga, stok", code: "SKU" }
+    }
+    if (normalized.includes("spesifikasi")) {
+      return { item: "Nama", note: "Nilai", code: "Kode" }
+    }
+
+    return { item: "Item", note: "Keterangan", code: "Kode" }
+  }
+
+  /** Satu seksi data terkait sebagai tabel membentang penuh (Table-First). */
+  const renderSectionTable = (section: DetailSection) => {
+    const rows = section.rows
+    const hasThumbs = rows.some((row) => Boolean(row.thumb_url))
+    const hasMeta = rows.some((row) => Boolean(row.meta))
+    const columns = sectionColumns(section.title)
 
     return (
-      <div key={`${row.label}-${index}`} className="flex items-start gap-3 px-5 py-3">
-        {hasThumbs ? (
-          <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
-            {row.thumb_url ? (
-              <img src={row.thumb_url} alt="" className="size-full object-cover" loading="lazy" />
-            ) : (
-              <Icon name="image" className="size-4 text-muted-foreground/70" aria-hidden="true" />
-            )}
-          </span>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <dt className="truncate text-sm font-medium text-foreground">{row.label}</dt>
-          <dd
-            className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground"
-            title={row.value ? String(row.value) : undefined}
-          >
-            {String(row.value ?? "Belum tersedia")}
-          </dd>
-          {row.meta ? (
-            <dd className="mt-0.5 font-mono text-[11px] text-muted-foreground">{row.meta}</dd>
-          ) : null}
-        </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
+              {hasThumbs ? <th className="w-[1%] px-4 py-3 text-left">Media</th> : null}
+              <th className="px-4 py-3 text-left">{columns.item}</th>
+              <th className="px-4 py-3 text-left">{columns.note}</th>
+              {hasMeta ? <th className="px-4 py-3 text-left">{columns.code}</th> : null}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row, index) => (
+              <tr key={row.label + "-" + index} className="transition-colors hover:bg-muted/40">
+                {hasThumbs ? (
+                  <td className="w-[1%] px-4 py-2.5 align-middle">
+                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                      {row.thumb_url ? (
+                        <img src={row.thumb_url} alt="" className="size-full object-cover" loading="lazy" />
+                      ) : (
+                        <Icon name="image" className="size-4 text-muted-foreground/70" aria-hidden="true" />
+                      )}
+                    </span>
+                  </td>
+                ) : null}
+                <td className="px-4 py-2.5 align-middle font-medium text-foreground">{row.label}</td>
+                <td className="px-4 py-2.5 align-middle text-muted-foreground">
+                  {String(row.value ?? "Belum tersedia")}
+                </td>
+                {hasMeta ? (
+                  <td className="px-4 py-2.5 align-middle font-mono text-[11px] text-muted-foreground">
+                    {row.meta}
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -234,37 +269,33 @@ export default function ProductShow({
           </div>
         </SectionCard>
 
-        <div className="grid items-start gap-4 xl:grid-cols-3">
-          {sections.map((section) => {
-            const rows = section.rows
+        {sections.map((section) => {
+          const rows = section.rows
 
-            return (
-              <SectionCard
-                key={section.title}
-                title={section.title}
-                description={rows.length ? `${rows.length} entri` : undefined}
-                icon={sectionIcon(section.title)}
-                contentClassName="p-0"
-                className="overflow-hidden"
-              >
-                {rows.length ? (
-                  <dl className="divide-y divide-border">
-                    {rows.map((row, index) => renderRow(section, row, index))}
-                  </dl>
-                ) : (
-                  <div className="px-5 py-10 text-center">
-                    <Icon
-                      name={sectionIcon(section.title)}
-                      className="mx-auto size-6 text-muted-foreground/70"
-                      aria-hidden="true"
-                    />
-                    <p className="mt-2 text-xs text-muted-foreground">Belum ada data.</p>
-                  </div>
-                )}
-              </SectionCard>
-            )
-          })}
-        </div>
+          return (
+            <SectionCard
+              key={section.title}
+              title={section.title}
+              description={rows.length ? rows.length + " entri" : undefined}
+              icon={sectionIcon(section.title)}
+              contentClassName="p-0"
+              className="overflow-hidden"
+            >
+              {rows.length ? (
+                renderSectionTable(section)
+              ) : (
+                <div className="px-5 py-10 text-center">
+                  <Icon
+                    name={sectionIcon(section.title)}
+                    className="mx-auto size-6 text-muted-foreground/70"
+                    aria-hidden="true"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">Belum ada data.</p>
+                </div>
+              )}
+            </SectionCard>
+          )
+        })}
       </div>
     </AdminLayout>
   )
