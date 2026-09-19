@@ -265,7 +265,7 @@ class ProductController extends Controller
                 'parent_sku' => ShopeeStyleSku::nextParentSku(),
             ]);
 
-            // Template atribut: isi otomatis dari sub model (tidak menimpa atribut
+            // Template spesifikasi: isi otomatis dari sub model (tidak menimpa spesifikasi
             // yang sudah ada). Aturan lengkap di docs/decisions/ADR-019.
             app(\App\Services\AttributeTemplateService::class)->applyToProduct($product);
 
@@ -499,7 +499,7 @@ class ProductController extends Controller
                     })->values()->all(),
                 ],
                 [
-                    'title' => 'Atribut',
+                    'title' => 'Spesifikasi',
                     'rows' => $product->attributes->map(fn ($a) => [
                         'label' => $a->attribute_name,
                         'value' => (string) $a->attribute_value,
@@ -535,7 +535,7 @@ class ProductController extends Controller
             'productHref' => route('product.show', $product->parent_sku, absolute: false),
             'managementLinks' => [
                 ['label' => 'Kelola varian', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']), 'kind' => 'variants'],
-                ['label' => 'Kelola atribut', 'href' => route('admin.products.attributes.index', $product), 'kind' => 'attributes'],
+                ['label' => 'Kelola spesifikasi', 'href' => route('admin.products.attributes.index', $product), 'kind' => 'attributes'],
                 ['label' => 'Kelola media', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']), 'kind' => 'media'],
                 ['label' => 'Bulk via Import', 'href' => route('admin.imports.index'), 'kind' => 'import'],
             ],

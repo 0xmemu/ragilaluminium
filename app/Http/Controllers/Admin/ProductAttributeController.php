@@ -47,7 +47,7 @@ class ProductAttributeController extends Controller
         ProductAttribute::create($validated);
 
         return redirect()->route('admin.products.attributes.index', $product)
-            ->with('success', 'Atribut ditambahkan.');
+            ->with('success', 'Spesifikasi ditambahkan.');
     }
 
     public function update(Request $request, ProductAttribute $attribute): RedirectResponse
@@ -60,6 +60,6 @@ class ProductAttributeController extends Controller
         $validated['updated_by_user_id'] = $request->user()->id;
         $attribute->update($validated);
 
-        return redirect()->back()->with('success', 'Atribut diperbarui.');
+        return redirect()->back()->with('success', 'Spesifikasi diperbarui.');
     }
 }

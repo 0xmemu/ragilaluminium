@@ -74,7 +74,7 @@ export default function Attributes({
 
   return (
     <AdminLayout
-      title={`Atribut ${product.parent_sku}`}
+      title={`Spesifikasi ${product.parent_sku}`}
       description={product.name}
       actions={
         <div className="flex flex-wrap gap-2">
@@ -87,13 +87,13 @@ export default function Attributes({
         </div>
       }
     >
-      <Head title={`Atribut ${product.parent_sku} | Admin`} />
+      <Head title={`Spesifikasi ${product.parent_sku} | Admin`} />
 
       <section className="rounded-xl border border-border bg-card shadow-soft">
         <div className="border-b border-border p-5">
-          <h2 className="text-xl font-semibold">Atribut produk</h2>
+          <h2 className="text-xl font-semibold">Spesifikasi produk</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Atribut publik dan internal yang melekat ke parent product.
+            Spesifikasi publik dan internal yang melekat ke parent product.
           </p>
         </div>
         {attributes.length ? (
@@ -103,12 +103,12 @@ export default function Attributes({
             ))}
           </div>
         ) : (
-          <p className="p-8 text-sm text-muted-foreground">Belum ada atribut.</p>
+          <p className="p-8 text-sm text-muted-foreground">Belum ada spesifikasi.</p>
         )}
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-semibold">Tambah atribut</h2>
+        <h2 className="text-xl font-semibold">Tambah spesifikasi</h2>
         <form id="attribute-create-form" onSubmit={submit} className="mt-4 grid gap-4 md:grid-cols-[1fr_1.3fr_10rem_auto] md:items-end">
           <FormErrorSummary errors={form.errors} className="md:col-span-4" />
           <Field id="new-attribute-name" label="Nama" required error={form.errors.attribute_name}>

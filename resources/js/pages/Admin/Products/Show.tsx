@@ -23,7 +23,7 @@ const managementLinkIcon: Record<string, string> = {
 function sectionIcon(title: string): string {
   const normalized = title.toLowerCase()
   if (normalized.includes("media")) return "image"
-  if (normalized.includes("atribut")) return "sliders"
+  if (normalized.includes("spesifikasi")) return "sliders"
   return "package"
 }
 
