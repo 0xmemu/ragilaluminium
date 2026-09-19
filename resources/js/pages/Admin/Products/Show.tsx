@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from "@inertiajs/react"
+import * as React from "react"
 
 import { SectionCard } from "@/components/admin/section-card"
 import { ResourceValue } from "@/components/admin/resource-value"
@@ -59,6 +60,10 @@ export default function ProductShow({
   const status = String(fields.find((field) => field.label === "Status")?.value ?? "")
   const archiveForm = useForm({})
   const archived = status === "archived"
+  const [descriptionExpanded, setDescriptionExpanded] = React.useState(false)
+  // Deskripsi import bisa sangat panjang (ratusan baris teks promosi), jadi
+  // kartu ringkasan tidak boleh ikut memanjang karenanya.
+  const descriptionIsLong = (description ?? "").length > 240
 
   const actions = (
     <>
@@ -144,7 +149,10 @@ export default function ProductShow({
         ) : null}
         <div className="min-w-0 flex-1">
           <dt className="truncate text-sm font-medium text-foreground">{row.label}</dt>
-          <dd className="mt-0.5 text-xs leading-5 text-muted-foreground">
+          <dd
+            className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground"
+            title={row.value ? String(row.value) : undefined}
+          >
             {String(row.value ?? "Belum tersedia")}
           </dd>
           {row.meta ? (
@@ -169,20 +177,40 @@ export default function ProductShow({
         <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
           {fields.map((field, index) => renderField(field, index))}
 
-          <div className="bg-card p-5 sm:col-span-2 xl:col-span-4">
-            <p className="text-xs font-medium text-muted-foreground">Deskripsi</p>
-            {description ? (
-              <p className="mt-1.5 whitespace-pre-line text-sm leading-6 text-foreground">
-                {description}
-              </p>
-            ) : (
-              <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Icon name="warning" className="size-4 text-destructive" aria-hidden="true" />
-                Belum diisi. Deskripsi wajib sebelum produk bisa diaktifkan.
-              </p>
-            )}
-          </div>
         </Card>
+
+        <SectionCard
+          title="Deskripsi"
+          icon="notes"
+          action={
+            descriptionIsLong ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDescriptionExpanded((value) => !value)}
+              >
+                {descriptionExpanded ? "Sembunyikan" : "Lihat selengkapnya"}
+              </Button>
+            ) : null
+          }
+        >
+          {description ? (
+            <p
+              className={cn(
+                "whitespace-pre-line text-sm leading-6 text-foreground",
+                descriptionIsLong && !descriptionExpanded && "line-clamp-3",
+              )}
+            >
+              {description}
+            </p>
+          ) : (
+            <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Icon name="warning" className="size-4 text-destructive" aria-hidden="true" />
+              Belum diisi. Deskripsi wajib sebelum produk bisa diaktifkan.
+            </p>
+          )}
+        </SectionCard>
 
         <SectionCard title="Kelola data terkait" contentClassName="p-0" className="overflow-hidden">
           <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
