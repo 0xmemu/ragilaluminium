@@ -39,6 +39,7 @@ class SettingsController extends Controller
                 return $summary;
             }),
             'server' => $this->health->serverMetrics(),
+            'backup' => $this->health->backupStatus(),
             'history' => $this->health->recentSnapshots($period),
             'period' => $period,
             'periodOptions' => [

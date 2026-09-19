@@ -1392,6 +1392,191 @@ final class SystemHealthService
         return number_format($value, 2, ',', '.').'%';
     }
 
+    /**
+     * Status backup & pemulihan untuk panel admin (kontrak owner 2026-09-20).
+     *
+     * Sumber data = artefak nyata di server: dump terbaru, marker uji restore
+     * mingguan, marker PITR binlog, log upload R2, dan marker ALERT. Semua
+     * dibaca read-only oleh www-data tanpa sudo. Bila direktori backup tidak
+     * ada (mis. lingkungan lokal), return null supaya UI menyembunyikan
+     * panel, bukan mengarang status.
+     *
+     * @return array{overall: string, headline: string, items: list<array{key: string, label: string, status: string, summary: string, detail: string|null}>}|null
+     */
+    public function backupStatus(): ?array
+    {
+        $dir = '/root/backups';
+
+        if (! is_dir($dir)) {
+            return null;
+        }
+
+        $now = now();
+        $items = [];
+
+        // 1) Dump harian: symlink -latest.sql.gz.
+        $latest = $dir.'/ragil/ragil_aluminium-latest.sql.gz';
+        $umurDetikDump = null;
+
+        if (is_file($latest)) {
+            $mtime = @filemtime($latest);
+            $size = (int) @filesize($latest);
+            $umurDetikDump = $mtime !== null ? max(0, $now->getTimestamp() - $mtime) : null;
+            $jam = intdiv((int) $umurDetikDump, 3600);
+
+            if ($umurDetikDump <= 26 * 3600) {
+                $status = self::STATUS_HEALTHY;
+                $kapan = $jam >= 1 ? $this->humanDuration((int) $umurDetikDump).' lalu' : 'baru saja';
+            } elseif ($umurDetikDump <= 48 * 3600) {
+                $status = self::STATUS_WARNING;
+                $kapan = $this->humanDuration((int) $umurDetikDump).' lalu';
+            } else {
+                $status = self::STATUS_FAILED;
+                $kapan = $this->humanDuration((int) $umurDetikDump).' lalu';
+            }
+
+            $items[] = [
+                'key' => 'backup-daily',
+                'label' => 'Dump harian database',
+                'status' => $status,
+                'summary' => 'Terakhir '.$kapan.' · '.number_format($size / 1048576, 1, ',', '.').' MB',
+                'detail' => $status === self::STATUS_HEALTHY
+                    ? 'Tersimpan lokal 7 hari dan diunggah ke R2'
+                    : 'Dump harian macet. Periksa /root/backups/ragil-backup.log',
+            ];
+        } else {
+            $items[] = [
+                'key' => 'backup-daily',
+                'label' => 'Dump harian database',
+                'status' => self::STATUS_FAILED,
+                'summary' => 'File dump terbaru tidak ditemukan',
+                'detail' => 'Periksa cron backup harian di server.',
+            ];
+        }
+
+        // 2) Uji restore mingguan: marker last-restore-test-pass.
+        $markerRestore = $dir.'/last-restore-test-pass';
+        if (is_file($markerRestore)) {
+            $isi = trim((string) @file_get_contents($markerRestore));
+            $waktu = $isi !== '' ? \Illuminate\Support\Carbon::parse($isi, 'UTC') : null;
+            $umurJam = $waktu !== null ? $waktu->diffInHours($now) : null;
+
+            $status = $umurJam !== null && $umurJam <= 8 * 24
+                ? self::STATUS_HEALTHY
+                : ($umurJam !== null && $umurJam <= 14 * 24 ? self::STATUS_WARNING : self::STATUS_FAILED);
+
+            $items[] = [
+                'key' => 'backup-restore-test',
+                'label' => 'Uji restore mingguan',
+                'status' => $status,
+                'summary' => $waktu !== null
+                    ? 'Lulus '.$this->humanDuration(max(0, $now->getTimestamp() - $waktu->getTimestamp())).' lalu'
+                    : 'Marker uji restore tidak terbaca',
+                'detail' => $status === self::STATUS_HEALTHY
+                    ? 'Dump terakhir terbukti dapat dipulihkan'
+                    : 'Uji restore mingguan macet. Periksa /root/backups/restore-test.log',
+            ];
+        } else {
+            $items[] = [
+                'key' => 'backup-restore-test',
+                'label' => 'Uji restore mingguan',
+                'status' => self::STATUS_FAILED,
+                'summary' => 'Belum pernah diuji',
+                'detail' => 'Tidak ada marker lulus uji restore di server.',
+            ];
+        }
+
+        // 3) PITR binlog: marker binlog-last-run (per jam).
+        $markerBinlog = $dir.'/binlog-last-run';
+        if (is_file($markerBinlog)) {
+            $isi = trim((string) @file_get_contents($markerBinlog));
+            $waktu = $isi !== '' ? \Illuminate\Support\Carbon::parse($isi, 'UTC') : null;
+            $umurDetik = $waktu !== null ? max(0, $now->getTimestamp() - $waktu->getTimestamp()) : null;
+
+            $status = $umurDetik !== null && $umurDetik <= 2 * 3600
+                ? self::STATUS_HEALTHY
+                : ($umurDetik !== null && $umurDetik <= 24 * 3600 ? self::STATUS_WARNING : self::STATUS_FAILED);
+
+            $items[] = [
+                'key' => 'backup-pitr',
+                'label' => 'PITR binlog per jam',
+                'status' => $status,
+                'summary' => $umurDetik !== null
+                    ? 'Terakhir '.$this->humanDuration((int) $umurDetik).' lalu'
+                    : 'Marker PITR tidak terbaca',
+                'detail' => 'Memungkinkan pemulihan ke titik waktu tertentu di antara dump harian.',
+            ];
+        } else {
+            $items[] = [
+                'key' => 'backup-pitr',
+                'label' => 'PITR binlog per jam',
+                'status' => self::STATUS_WARNING,
+                'summary' => 'Belum pernah berjalan',
+                'detail' => 'Pemulihan hanya bisa ke waktu dump harian, bukan per jam.',
+            ];
+        }
+
+        // 4) Upload off-site R2: dump terakhir terunggah?
+        $logR2 = @file($dir.'/ragil/r2-upload.log', FILE_IGNORE_NEW_LINES) ?: [];
+        $namaDump = basename((string) (@readlink($latest) ?: ''));
+        $r2Ok = false;
+
+        foreach (array_slice($logR2, -40) as $baris) {
+            if ($namaDump !== '' && str_contains($baris, $namaDump) && str_contains($baris, ': 200')) {
+                $r2Ok = true;
+                break;
+            }
+        }
+
+        $items[] = [
+            'key' => 'backup-r2',
+            'label' => 'Upload off-site (R2)',
+            'status' => $r2Ok ? self::STATUS_HEALTHY : self::STATUS_WARNING,
+            'summary' => $r2Ok
+                ? 'Sinkron: dump terakhir sudah di R2'
+                : 'Dump terakhir belum terkonfirmasi di R2',
+            'detail' => 'Bucket ra-backup, retensi snapshot harian sekitar 30 hari.',
+        ];
+
+        // 5) Alert aktif: marker ALERT-* dalam 24 jam terakhir.
+        $alertAktif = [];
+        foreach (glob($dir.'/ALERT-*') ?: [] as $file) {
+            $mtime = @filemtime($file);
+            if ($mtime !== null && ($now->getTimestamp() - $mtime) <= 24 * 3600) {
+                $alertAktif[] = basename($file);
+            }
+        }
+
+        $items[] = [
+            'key' => 'backup-alerts',
+            'label' => 'Alert operasional',
+            'status' => $alertAktif === [] ? self::STATUS_HEALTHY : self::STATUS_WARNING,
+            'summary' => $alertAktif === []
+                ? 'Tidak ada alert dalam 24 jam terakhir'
+                : count($alertAktif).' alert aktif: '.implode(', ', $alertAktif),
+            'detail' => $alertAktif === [] ? null : 'Alert muncul dari skrip pemeriksaan di server; bersihkan setelah penyebabnya ditangani.',
+        ];
+
+        $terburuk = self::STATUS_HEALTHY;
+        foreach ($items as $item) {
+            if ($item['status'] === self::STATUS_FAILED) {
+                $terburuk = self::STATUS_FAILED;
+                break;
+            }
+            if ($item['status'] === self::STATUS_WARNING) {
+                $terburuk = self::STATUS_WARNING;
+            }
+        }
+
+        return [
+            'overall' => $terburuk,
+            'headline' => $terburuk === self::STATUS_HEALTHY
+                ? 'Backup berjalan normal'
+                : ($terburuk === self::STATUS_WARNING ? 'Backup perlu perhatian' : 'Backup bermasalah'),
+            'items' => $items,
+        ];
+    }
+
     private function ms(float $value): string
     {
         return $value >= 100 ? round($value).' ms' : number_format($value, 1, ',', '.').' ms';
