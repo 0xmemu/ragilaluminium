@@ -310,7 +310,7 @@ class StorePerformanceService
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
             $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
-            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada order aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
+            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending (kondisi saat ini)', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada order aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
 
         $cancellationsKpis = [
@@ -325,7 +325,7 @@ class StorePerformanceService
             $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
             $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
             $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
-            $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
+            $this->kpi('returns_open', 'Retur Aktif (kondisi saat ini)', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
             $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
             $this->kpi('refused_orders', 'Pesanan Retur Paket', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
@@ -382,6 +382,7 @@ class StorePerformanceService
                 'net_revenue' => $current['net_revenue'],
                 'buyer_orders' => $current['orders'],
                 'visitors' => $current['visitors'],
+                'visitors_available_from' => $current['visitors_available_from'],
                 'payments_received' => $current['payments_received'],
                 'cod_paid' => $current['cod_paid'],
                 'cod_pending_amount' => $current['cod_pending_amount'],
@@ -519,7 +520,10 @@ class StorePerformanceService
                 ->distinct('variant_sku')
                 ->count('variant_sku');
 
-        $avgUnitPrice = $units > 0 ? round($revenue / $units, 2) : 0.0;
+        // Harga rata-rata per unit memakai NILAI PRODUK saja, bukan penjualan
+        // gross: gross memuat ongkir, biaya COD, dan asuransi sehingga angkanya
+        // jadi nilai tagihan per unit, bukan harga produk. Temuan audit 2026-09-20.
+        $avgUnitPrice = $units > 0 ? round($itemsBeforeDiscount / $units, 2) : 0.0;
 
         $completedOrders = (clone $base)->whereIn('order_status', self::COMPLETED_STATUSES)->count();
         $openOrders = (clone $base)->whereIn('order_status', self::OPEN_STATUSES)->count();
@@ -538,7 +542,16 @@ class StorePerformanceService
                 fn ($item): float => (float) $item->returned_quantity * (float) optional($item->orderItem)->unit_price
             )
         );
-        $refundAdjustments = (float) $returnCases->sum('refund_amount');
+        // Refund mencakup SEMUA refund termasuk goodwill, yaitu uang yang
+        // kembali ke pembeli walau barangnya tidak dikembalikan. Sengaja tidak
+        // memakai filter returned_quantity seperti $returnCases, supaya angka
+        // "Refund Diberikan" yang tampil sama dengan pengurang Penjualan
+        // Bersih. Keputusan owner 2026-09-20.
+        $refundAdjustments = (float) OrderReturnCase::query()
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$from, $to])
+            ->sum('refund_amount');
         $returnShippingStore = (float) OrderReturnCase::query()
             ->where('status', 'completed')
             ->whereNotNull('completed_at')
@@ -643,6 +656,9 @@ class StorePerformanceService
             'products_sold' => $productsSold,
             'avg_unit_price' => $avgUnitPrice,
             'visitors' => $visitors,
+            // Tanggal paling awal data kunjungan yang bisa dipercaya, supaya
+            // halaman bisa menandai rentang yang mencampur data lama tercemar.
+            'visitors_available_from' => $this->visitorsAvailableFrom(),
             'buyers' => $buyers,
             'conversion_rate' => $conversionRate,
             'new_customers' => $newCustomers,
@@ -1211,6 +1227,35 @@ class StorePerformanceService
         }
     }
 
+    /**
+     * Tanggal paling awal data kunjungan yang layak dipercaya, atau null bila
+     * belum ada sama sekali. Dipakai halaman untuk menandai cakupan periode.
+     */
+    protected function visitorsAvailableFrom(): ?string
+    {
+        $awal = PerformanceVisitorEvent::query()->min('visited_at');
+
+        return $awal === null ? null : Carbon::parse($awal)->toDateString();
+    }
+
+    /**
+     * Pengunjung unik sebagai JUMLAH harian, bukan distinct sepanjang rentang.
+     *
+     * ADR-015 menetapkan satu pengunjung = satu sesi per hari, jadi rentang
+     * dihitung sebagai penjumlahan pengunjung unik tiap hari. Memakai distinct
+     * sepanjang rentang membuat angka kartu tidak pernah sama dengan total
+     * grafik tren yang menjumlah per titik (temuan audit 2026-09-20).
+     */
+    protected function dailyUniqueVisitors(Carbon $from, Carbon $to): int
+    {
+        return (int) PerformanceVisitorEvent::query()
+            ->whereBetween('visited_at', [$from, $to])
+            ->selectRaw('COUNT(DISTINCT visitor_hash) as total')
+            ->groupByRaw('DATE(visited_at)')
+            ->pluck('total')
+            ->sum();
+    }
+
     protected function visitorsBetween(Carbon $from, Carbon $to): int
     {
         // Era event dimulai dari scan pertama pada tabel visitor events.
@@ -1239,10 +1284,7 @@ class StorePerformanceService
 
         // Rentang sepenuhnya di dalam era event: events saja.
         if (! $from->lt($firstEventDay)) {
-            return (int) PerformanceVisitorEvent::query()
-                ->whereBetween('visited_at', [$from, $to])
-                ->distinct()
-                ->count('visitor_hash');
+            return $this->dailyUniqueVisitors($from, $to);
         }
 
         // Rentang menyeberang: pengunjung sebelum batas dihitung dari metrik
@@ -1253,10 +1295,7 @@ class StorePerformanceService
             ->whereDate('metric_date', '>=', $from->toDateString())
             ->whereDate('metric_date', '<', $firstEventDay->toDateString())
             ->sum('metric_value');
-        $eventVisitors = (int) PerformanceVisitorEvent::query()
-            ->whereBetween('visited_at', [$firstEventDay, $to])
-            ->distinct()
-            ->count('visitor_hash');
+        $eventVisitors = $this->dailyUniqueVisitors($firstEventDay, $to);
 
         return $legacyDays + $eventVisitors;
     }

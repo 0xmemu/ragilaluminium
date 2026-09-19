@@ -441,9 +441,15 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // Beban nyata paket yang tidak diterima pembeli: ongkir kirim yang
         // sudah ditagih J&T dan biaya layanan COD yang hangus. Pembeli tidak
         // membayar, jadi keduanya keluar dari kas toko.
+        // Baris keterangan saja, TIDAK dijumlahkan ke JUMLAH BEBAN TOKO.
         $rowRefusedShip = $money('Ongkir Kirim Ditanggung Toko', -1 * $num($fin['refused_shipping_cost'] ?? 0));
+        // Baris keterangan saja, TIDAK dijumlahkan ke JUMLAH BEBAN TOKO.
         $rowRefusedCod = $money('Biaya Layanan COD Ditanggung Toko', -1 * $num($fin['refused_cod_fee'] ?? 0));
-        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak.'+B'.$rowRefusedShip.'+B'.$rowRefusedCod, 'Tidak ada data', '-']);
+        // HANYA baris refund, ongkir J&T, dan retur yang dijumlahkan. Dua baris
+        // paket ditolak di atas sengaja TIDAK ikut: keduanya bagian dari Ongkir
+        // ke J&T dan Biaya COD, jadi menjumlahkannya lagi membuat Penjualan
+        // Bersih di Excel lebih kecil daripada di layar (temuan audit 2026-09-20).
+        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak, 'Tidak ada data', '-']);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 2, '#,##0');
 

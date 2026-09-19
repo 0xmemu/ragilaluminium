@@ -81,6 +81,8 @@ interface Report {
     net_revenue: number
     buyer_orders?: number
     visitors?: number
+    /** Tanggal paling awal data kunjungan yang layak dipercaya. */
+    visitors_available_from?: string | null
     payments_received?: number
     cod_paid?: number
     cod_pending_amount?: number
@@ -402,6 +404,13 @@ export default function StorePerformance({
     (report.financial.refused_goods_value ?? 0)
   const refusedBorne = report.financial.refused_borne_cost ?? 0
 
+  // Data kunjungan hanya layak sejak penyaring bot aktif. Periode yang mulai
+  // sebelum tanggal itu mencampur data tercemar, jadi angka kunjungan dan
+  // konversinya tidak ditampilkan: 7 pembeli dibagi 7 pengunjung akan terbaca
+  // konversi 100%, padahal artinya bukan begitu.
+  const tersediaSejak = report.financial.visitors_available_from ?? null
+  const kunjunganTidakLengkap = Boolean(tersediaSejak) && report.range.from_date < tersediaSejak!
+
   // Selisih durasi ditampilkan dalam satuannya sendiri (jam / hari) supaya
   // pembaca tidak perlu menafsirkan persen dari basis yang nyaris nol.
   const durasi = (key: string, suffix: string) => {
@@ -451,10 +460,15 @@ export default function StorePerformance({
       period: nextPeriod,
     }
 
-    const nextFrom = next?.from ?? from
-    const nextTo = next?.to ?? to
-    if (nextFrom) payload.from = nextFrom
-    if (nextTo) payload.to = nextTo
+    // Tanggal hanya dikirim untuk periode kustom. Kalau ikut dikirim pada
+    // periode lain, URL membawa tanggal basi dari pilihan sebelumnya (mis.
+    // period=last_7 dengan tanggal milik last_30) dan menyesatkan kalau dibagikan.
+    if (nextPeriod === "custom") {
+      const nextFrom = next?.from ?? from
+      const nextTo = next?.to ?? to
+      if (nextFrom) payload.from = nextFrom
+      if (nextTo) payload.to = nextTo
+    }
 
     // Jika ganti periode, jangan bawa granularitas lama agar backend memilihkan granularitas kanonik
     if (next?.granularity !== undefined) {
@@ -765,24 +779,30 @@ export default function StorePerformance({
             <div>
               <HoverHint
                 label={kpiMap["conversion"]?.label ?? "Pengunjung yang Membeli"}
-                hint="Persentase pengunjung unik yang menyelesaikan pembelian pada periode ini."
+                hint="Jumlah pembeli unik dibanding pengunjung unik pada periode ini. Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak melacak pengunjung mana yang membeli."
                 className="text-xs font-medium text-muted-foreground"
               />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
+              {kunjunganTidakLengkap
+                ? "Belum tersedia"
+                : formatNumber(kpiMap["conversion"]?.value ?? 0) + "%"}
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">{compareLabel}</span>
-            <span className={cn(
-              "font-semibold",
-              (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["conversion"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["conversion"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-            )}>
-              <DeltaBadge percent={kpiMap["conversion"]?.change_percent} />
+            <span className="text-xs text-muted-foreground">
+              {kunjunganTidakLengkap ? "Data kunjungan baru andal sejak " + tersediaSejak : compareLabel}
             </span>
+            {kunjunganTidakLengkap ? null : (
+              <span className={cn(
+                "font-semibold",
+                (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
+                (kpiMap["conversion"]?.change_percent ?? 0) < 0 && "text-destructive",
+                (kpiMap["conversion"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+              )}>
+                <DeltaBadge percent={kpiMap["conversion"]?.change_percent} />
+              </span>
+            )}
           </div>
         </div>
         {/* KARTU 3: Rata-rata Nilai Pesanan */}
@@ -965,13 +985,13 @@ export default function StorePerformance({
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Link
-            href={`${routeUrl("admin.orders.index")}?order_status=processing`}
+            href={routeUrl("admin.orders.index")}
             className="group rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
           >
             <div className="flex items-center justify-between">
               <HoverHint
                 label={kpiMap["open_orders"]?.label ?? "Pesanan Belum Selesai"}
-                hint="Pesanan aktif menunggu diproses dan disiapkan workshop."
+                hint="Pesanan yang belum selesai: menunggu konfirmasi, sedang diproses, atau sudah dikirim. Ketiganya dihitung, jadi daftar yang terbuka menampilkan seluruh antrean."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
               <Icon name="package" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
@@ -1307,10 +1327,18 @@ export default function StorePerformance({
                   hint="Jumlah pengunjung unik berdasarkan id sesi per hari yang membuka halaman toko."
                   className="text-xs font-medium text-muted-foreground"
                 />
-                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
-                <div className="mt-1">
-                  <DeltaBadge percent={kpiMap["visitors"]?.change_percent} />
-                </div>
+                {kunjunganTidakLengkap ? (
+                  <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+                    Belum tersedia, data kunjungan baru andal sejak {tersediaSejak}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
+                    <div className="mt-1">
+                      <DeltaBadge percent={kpiMap["visitors"]?.change_percent} />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
