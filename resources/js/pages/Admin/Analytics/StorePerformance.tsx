@@ -26,7 +26,6 @@ interface Kpi {
   value: number
   previous: number
   change_percent: number | null
-  sparkline?: number[]
   format: "currency" | "number" | "percent" | "hours" | "days"
   detail?: string | null
 }
@@ -381,28 +380,13 @@ export default function StorePerformance({
   const [searchQueryInteraction, setSearchQueryInteraction] = React.useState("")
   const [modalInteractionTab, setModalInteractionTab] = React.useState<"viewed" | "clicked">("viewed")
 
-  const sparklineBy = React.useMemo(() => {
-    const byKey: Record<string, number[]> = {}
-    for (const chart of report.charts ?? []) {
-      byKey[chart.key] = (chart.series ?? []).map((point) => point.value)
-    }
-    return {
-      omzet: byKey["revenue"] ?? [],
-      net_revenue: byKey["net_revenue"] ?? byKey["revenue"] ?? [],
-      payments_received: byKey["net_revenue"] ?? byKey["revenue"] ?? [],
-      orders: byKey["units"] ?? [],
-      units: byKey["units"] ?? [],
-      conversion: byKey["conversion_rate"] ?? [],
-    } as Record<string, number[]>
-  }, [report])
-
   const kpiMap = React.useMemo(() => {
-    const map: Record<string, (typeof report)["sections"][number]["kpis"][number] & { sparkline?: number[] }> = {}
+    const map: Record<string, (typeof report)["sections"][number]["kpis"][number]> = {}
     for (const sec of report.sections) for (const k of sec.kpis) {
-      map[k.key] = { ...k, sparkline: sparklineBy[k.key] ?? [] }
+      map[k.key] = k
     }
     return map
-  }, [report, sparklineBy])
+  }, [report])
 
   // Tampilkan "vs <rentang>" utuh sesuai owner 2026-09-15 (jangan buang prefiks "vs").
   const compareLabel = report.range.compare_label || "vs periode lalu"
@@ -417,6 +401,15 @@ export default function StorePerformance({
     (report.financial.return_shipping_store ?? 0) +
     (report.financial.refused_goods_value ?? 0)
   const refusedBorne = report.financial.refused_borne_cost ?? 0
+
+  // Selisih durasi ditampilkan dalam satuannya sendiri (jam / hari) supaya
+  // pembaca tidak perlu menafsirkan persen dari basis yang nyaris nol.
+  const durasi = (key: string, suffix: string) => {
+    const k = kpiMap[key]
+    return { delta: (k?.value ?? 0) - (k?.previous ?? 0), suffix }
+  }
+  const durasiConfirm = durasi("avg_confirm_hours", "jam")
+  const durasiProcess = durasi("avg_process_days", "hari")
   const [chartTab, setChartTab] = React.useState(0)
   const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
@@ -1044,7 +1037,15 @@ export default function StorePerformance({
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
             </p>
             <div className="mt-1.5">
-              <DeltaBadge percent={kpiMap["avg_confirm_hours"]?.change_percent} upIsBad />
+              {/* Metrik durasi memakai selisih satuan, bukan persen: kenaikan
+                  waktu dari basis beberapa menit menghasilkan persen tak berarti. */}
+              <DeltaBadge
+                percent={null}
+                absolute={durasiConfirm.delta}
+                absoluteSuffix={durasiConfirm.suffix}
+                absoluteFormat="number"
+                upIsBad
+              />
             </div>
           </div>
 
@@ -1061,7 +1062,13 @@ export default function StorePerformance({
               {formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}
             </p>
             <div className="mt-1.5">
-              <DeltaBadge percent={kpiMap["avg_process_days"]?.change_percent} upIsBad />
+              <DeltaBadge
+                percent={null}
+                absolute={durasiProcess.delta}
+                absoluteSuffix={durasiProcess.suffix}
+                absoluteFormat="number"
+                upIsBad
+              />
             </div>
           </div>
         </div>
@@ -1259,14 +1266,32 @@ export default function StorePerformance({
                           previous_value: prev[idx]?.value,
                           previous_label: prev[idx]?.label,
                         }))
-                        return combinedSeries.length ? (
+                        // Tab Gross menampilkan Penjualan Bersih sebagai garis
+                        // pembanding dalam skala yang sama, supaya selisih keduanya
+                        // terlihat. Tanpa ini, tiap tab menskalakan sumbunya sendiri
+                        // sehingga kedua garis tampak identik.
+                        const netChart = report.charts.find((c) => c.key === "net_revenue")
+                        const banding =
+                          chart.key === "revenue" && netChart
+                            ? netChart.series.map((p) => p.value)
+                            : null
+                        const denganBanding = banding
+                          ? combinedSeries.map((item, idx) => ({
+                              ...item,
+                              net_value: banding[idx],
+                            }))
+                          : combinedSeries
+
+                        return denganBanding.length ? (
                           <React.Suspense fallback={<div className="h-[175px] w-full animate-pulse rounded-md bg-muted/40" />}>
                             <TrendChart
-                              series={combinedSeries}
-                            format={chart.key === "conversion_rate" ? "percent" : chart.total_format === "currency" ? "currency" : "number"}
-                            chartType={chartModel}
-                            showChartTypeToggle={false}
-                            height={175}
+                              series={denganBanding}
+                              format={chart.key === "conversion_rate" ? "percent" : chart.total_format === "currency" ? "currency" : "number"}
+                              chartType={chartModel}
+                              showChartTypeToggle={false}
+                              height={175}
+                              secondarySeriesKey={banding ? "net_value" : undefined}
+                              secondaryLabel="Penjualan Bersih"
                             />
                           </React.Suspense>
                         ) : (

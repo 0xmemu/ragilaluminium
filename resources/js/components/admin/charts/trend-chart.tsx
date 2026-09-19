@@ -29,6 +29,14 @@ interface TrendChartProps<T extends TrendChartPoint> {
   chartType?: "line" | "bar"
   showChartTypeToggle?: boolean
   defaultType?: "line" | "bar"
+  /**
+   * Nama field angka pada tiap titik seri untuk garis pembanding kedua,
+   * misalnya Penjualan Bersih di samping Penjualan Gross. Bila dikosongkan,
+   * grafik berperilaku persis seperti sebelumnya (satu garis).
+   */
+  secondarySeriesKey?: string
+  /** Label garis pembanding kedua pada tooltip. */
+  secondaryLabel?: string
 }
 
 function getCleanTicks<T extends { label: string }>(series: T[]): string[] {
@@ -55,6 +63,8 @@ export default function TrendChart<T extends TrendChartPoint>({
   chartType: controlledChartType,
   showChartTypeToggle = false,
   defaultType = "line",
+  secondarySeriesKey,
+  secondaryLabel,
 }: TrendChartProps<T>) {
   const [internalChartType, setInternalChartType] = React.useState<"line" | "bar">(defaultType)
   const activeType = controlledChartType ?? internalChartType
@@ -72,6 +82,13 @@ export default function TrendChart<T extends TrendChartPoint>({
     if (format === "currency") return formatCurrency(v)
     if (format === "percent") return `${formatNumber(v)}%`
     return formatNumber(v)
+  }
+
+  // Garis pembanding kedua dibaca lewat kunci dinamis, jadi tipenya dilebarkan.
+  const secondaryVal = (item: T): number | undefined => {
+    if (!secondarySeriesKey) return undefined
+    const raw = (item as unknown as Record<string, unknown>)[secondarySeriesKey]
+    return typeof raw === "number" ? raw : undefined
   }
 
   return (
@@ -141,6 +158,17 @@ export default function TrendChart<T extends TrendChartPoint>({
                           {formatVal(currentVal)}
                         </span>
                       </div>
+                      {secondarySeriesKey ? (
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--copper))" }} />
+                            {secondaryLabel ?? "Pembanding"}:
+                          </span>
+                          <span className="tabular-nums font-semibold text-foreground">
+                            {formatVal(Number(secondaryVal(item) ?? 0))}
+                          </span>
+                        </div>
+                      ) : null}
                       {hasPrev ? (
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -174,6 +202,19 @@ export default function TrendChart<T extends TrendChartPoint>({
                 isAnimationActive={true}
                 animationDuration={500}
               />
+              {secondarySeriesKey ? (
+                <Line
+                  type="monotone"
+                  dataKey={secondarySeriesKey}
+                  name={secondaryLabel ?? "Pembanding"}
+                  stroke="hsl(var(--copper))"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, stroke: "hsl(var(--background))", strokeWidth: 2, fill: "hsl(var(--copper))" }}
+                  isAnimationActive={true}
+                  animationDuration={600}
+                />
+              ) : null}
             </BarChart>
           ) : (
             <LineChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -211,6 +252,17 @@ export default function TrendChart<T extends TrendChartPoint>({
                           {formatVal(currentVal)}
                         </span>
                       </div>
+                      {secondarySeriesKey ? (
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                            <span className="size-2 rounded-full inline-block" style={{ backgroundColor: "hsl(var(--copper))" }} />
+                            {secondaryLabel ?? "Pembanding"}:
+                          </span>
+                          <span className="tabular-nums font-semibold text-foreground">
+                            {formatVal(Number(secondaryVal(item) ?? 0))}
+                          </span>
+                        </div>
+                      ) : null}
                       {hasPrev ? (
                         <div className="flex items-center justify-between gap-3 text-xs">
                           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -226,6 +278,19 @@ export default function TrendChart<T extends TrendChartPoint>({
                   )
                 }}
               />
+              {secondarySeriesKey ? (
+                <Line
+                  type="monotone"
+                  dataKey={secondarySeriesKey}
+                  name={secondaryLabel ?? "Pembanding"}
+                  stroke="hsl(var(--copper))"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, stroke: "hsl(var(--background))", strokeWidth: 2, fill: "hsl(var(--copper))" }}
+                  isAnimationActive={true}
+                  animationDuration={600}
+                />
+              ) : null}
               <Line
                 type="monotone"
                 dataKey="previous_value"

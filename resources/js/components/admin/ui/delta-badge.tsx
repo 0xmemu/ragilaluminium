@@ -1,5 +1,5 @@
 import { Icon } from "@/components/shared/icon"
-import { formatNumber } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 const MINUS = "\u2212" // U+2212: minus tipografis, bukan hyphen
@@ -30,11 +30,14 @@ export function DeltaBadge({
   percent,
   absolute,
   absoluteSuffix,
+  absoluteFormat = "number",
   upIsBad = false,
 }: {
   percent?: number | null
   absolute?: number
   absoluteSuffix?: string
+  /** Bentuk selisih absolut: uang (Rp 1.000) atau angka polos (1.000). */
+  absoluteFormat?: "number" | "currency"
   /** Benar untuk metrik yang kenaikannya buruk: warna dibalik, ikon tetap mengikuti arah. */
   upIsBad?: boolean
 }) {
@@ -58,8 +61,10 @@ export function DeltaBadge({
           )}
         >
           <Icon name={grew ? "trend-up" : "trend-down"} className="size-3.5" aria-hidden="true" />
-          {grew ? "+" : MINUS}
-          {formatNumber(Math.abs(absolute))}
+          {grew ? "+" : MINUS}{absoluteFormat === "currency" ? " " : ""}
+          {absoluteFormat === "currency"
+            ? formatCurrency(Math.abs(absolute))
+            : formatNumber(Math.abs(absolute))}
           {absoluteSuffix ? " " + absoluteSuffix : ""}
         </span>
       )
