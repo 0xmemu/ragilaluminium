@@ -1,7 +1,6 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import {
@@ -82,8 +81,8 @@ const TAB_LABELS: Record<TabKey, string> = {
   media: "Media",
 }
 
-/** Tabel Varian: tiap kolom berdiri sendiri, angka rata kanan dengan tabular-nums. */
-function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref: string }) {
+/** Tabel Varian: murni tabel inspeksi data (read-only), tanpa tombol kelola atau kolom aksi. */
+function VariantTable({ rows }: { rows: VariantRowData[] }) {
   const [query, setQuery] = React.useState("")
   const [status, setStatus] = React.useState("")
   const [sort, setSort] = React.useState("sku")
@@ -114,22 +113,11 @@ function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-            <Icon name="package" className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Varian</h2>
-            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-              <span className="tabular-nums">{formatNumber(tersaring.length)}</span>
-              {tersaring.length === rows.length ? "" : " dari " + formatNumber(rows.length)} entri
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="secondary" size="sm">
-          <Link href={manageHref}>Kelola varian</Link>
-        </Button>
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <Icon name="package" className="size-3.5" aria-hidden="true" />
+        </span>
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">Varian</h2>
       </div>
 
       <div className="px-4 sm:px-5">
@@ -178,7 +166,7 @@ function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref
           <p className="mt-1 text-xs text-muted-foreground">
             {adaFilter
               ? "Ubah kata kunci atau kosongkan filter untuk melihat semua varian."
-              : "Varian dibuat dari tab Varian di halaman edit produk."}
+              : "Varian dibuat dan dikelola dari form edit produk."}
           </p>
           {adaFilter ? (
             <Button
@@ -204,8 +192,7 @@ function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref
                 <TableHead className="px-4">Status</TableHead>
                 <TableHead className="px-4 text-right">Harga</TableHead>
                 <TableHead className="px-4 text-right">Stok</TableHead>
-                <TableHead className="px-4">SKU</TableHead>
-                <TableHead className="w-[1%] px-4 text-right sm:px-5">Aksi</TableHead>
+                <TableHead className="px-4 sm:px-5">SKU</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -221,15 +208,8 @@ function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref
                   <TableCell className="whitespace-nowrap px-4 text-right tabular-nums">
                     {formatNumber(row.stock)}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 font-mono text-[11px] text-muted-foreground">
+                  <TableCell className="whitespace-nowrap px-4 font-mono text-[11px] text-muted-foreground sm:px-5">
                     {row.sku}
-                  </TableCell>
-                  <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
-                    <RowActions>
-                      <Button asChild variant="secondary" size="xs">
-                        <Link href={row.edit_url}>Edit</Link>
-                      </Button>
-                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))}
@@ -241,43 +221,25 @@ function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref
   )
 }
 
-/** Tabel Spesifikasi: nama, nilai, waktu ubah. */
-function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; manageHref: string }) {
+/** Tabel Spesifikasi: murni tabel inspeksi data (read-only), tanpa tombol kelola atau kolom aksi. */
+function SpecificationTable({ rows }: { rows: AttributeRowData[] }) {
   if (rows.length === 0) {
     return (
       <EmptyState
         icon="sliders"
         title="Belum ada spesifikasi untuk produk ini"
-        description="Spesifikasi tampil di halaman produk sebagai bagian Informasi produk, misalnya Bahan, Kusen, Ketebalan Aluminium, atau Merek."
-        action={
-          <Button asChild size="sm">
-            <Link href={manageHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah spesifikasi
-            </Link>
-          </Button>
-        }
+        description="Spesifikasi material dan detail teknis produk dapat ditambahkan melalui tombol Edit produk di atas."
       />
     )
   }
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-            <Icon name="sliders" className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Spesifikasi</h2>
-            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-              <span className="tabular-nums">{formatNumber(rows.length)}</span> entri
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="secondary" size="sm">
-          <Link href={manageHref}>Kelola spesifikasi</Link>
-        </Button>
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <Icon name="sliders" className="size-3.5" aria-hidden="true" />
+        </span>
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">Spesifikasi</h2>
       </div>
 
       <div className="overflow-x-auto">
@@ -286,8 +248,7 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
             <TableRow className="bg-surface/80">
               <TableHead className="px-4 sm:px-5">Nama</TableHead>
               <TableHead className="px-4">Nilai</TableHead>
-              <TableHead className="px-4">Diperbarui</TableHead>
-              <TableHead className="w-[1%] px-4 text-right sm:px-5">Aksi</TableHead>
+              <TableHead className="px-4 sm:px-5">Diperbarui</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -295,15 +256,8 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
               <TableRow key={row.id} className="hover:bg-muted/40">
                 <TableCell className="px-4 font-medium sm:px-5">{row.name}</TableCell>
                 <TableCell className="px-4 text-muted-foreground">{row.value}</TableCell>
-                <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground">
+                <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground sm:px-5">
                   {row.updated_at ?? "-"}
-                </TableCell>
-                <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
-                  <RowActions>
-                    <Button asChild variant="secondary" size="xs">
-                      <Link href={manageHref}>Edit</Link>
-                    </Button>
-                  </RowActions>
                 </TableCell>
               </TableRow>
             ))}
@@ -314,7 +268,7 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
   )
 }
 
-/** Tabel Media: thumbnail baris besar setinggi row, preview modal, tautan ke media library. */
+/** Tabel Media: thumbnail besar setinggi baris, preview modal saat diklik, tautan ke media library. */
 function MediaTable({
   rows,
   manageHref,
@@ -350,13 +304,7 @@ function MediaTable({
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
               <Icon name="image" className="size-3.5" aria-hidden="true" />
             </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">Media</h2>
-              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-                <span className="tabular-nums">{formatNumber(tersaring.length)}</span>
-                {tersaring.length === rows.length ? "" : " dari " + formatNumber(rows.length)} entri
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Media</h2>
           </div>
           <Button asChild variant="secondary" size="sm">
             <Link href={manageHref}>Kelola media</Link>
@@ -484,16 +432,14 @@ function MediaTable({
                       {row.updated_at ?? "-"}
                     </TableCell>
                     <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
-                      <RowActions>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => setPreviewItem(row)}
-                        >
-                          Preview
-                        </Button>
-                      </RowActions>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => setPreviewItem(row)}
+                      >
+                        Preview
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -833,51 +779,54 @@ export default function ProductShow({
           })}
         </div>
 
-        {tab === "varian" ? (
-          <VariantTable rows={variants} manageHref={links.variants} />
-        ) : null}
+        {tab === "varian" ? <VariantTable rows={variants} /> : null}
 
         {tab === "spesifikasi" ? (
           <div className="space-y-4">
             <section className="rounded-lg border border-border bg-card">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Icon name="notes" className="size-3.5" aria-hidden="true" />
-                  </span>
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground">Deskripsi</h2>
-                </div>
-                {descriptionIsLong ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDescriptionExpanded((value) => !value)}
-                  >
-                    {descriptionExpanded ? "Sembunyikan" : "Lihat selengkapnya"}
-                  </Button>
-                ) : null}
+              <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Icon name="notes" className="size-3.5" aria-hidden="true" />
+                </span>
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">Deskripsi</h2>
               </div>
               <div className="px-4 py-3.5 sm:px-5">
                 {description ? (
-                  <p
-                    className={cn(
-                      "whitespace-pre-line text-[13px] leading-6 text-foreground",
-                      descriptionIsLong && !descriptionExpanded && "line-clamp-4",
-                    )}
-                  >
-                    {description}
-                  </p>
+                  descriptionIsLong && !descriptionExpanded ? (
+                    <p className="whitespace-pre-line text-[13px] leading-6 text-foreground">
+                      {description.slice(0, 240)}…
+                      <button
+                        type="button"
+                        onClick={() => setDescriptionExpanded(true)}
+                        className="ml-1.5 font-semibold text-primary hover:underline focus:outline-none"
+                      >
+                        Lihat selengkapnya
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="whitespace-pre-line text-[13px] leading-6 text-foreground">
+                      {description}
+                      {descriptionIsLong ? (
+                        <button
+                          type="button"
+                          onClick={() => setDescriptionExpanded(false)}
+                          className="ml-2 font-semibold text-primary hover:underline focus:outline-none"
+                        >
+                          Sembunyikan
+                        </button>
+                      ) : null}
+                    </p>
+                  )
                 ) : (
                   <p className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
                     <Icon name="warning" className="size-4 text-destructive" aria-hidden="true" />
-                    Belum diisi. Deskripsi wajib sebelum produk bisa diaktifkan.
+                    Belum diisi. Deskripsi dapat ditambahkan melalui tombol Edit produk di atas.
                   </p>
                 )}
               </div>
             </section>
 
-            <SpecificationTable rows={attributes} manageHref={links.attributes} />
+            <SpecificationTable rows={attributes} />
           </div>
         ) : null}
 

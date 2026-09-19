@@ -58,6 +58,7 @@ interface ProductFormData {
   width_cm?: string
   height_cm?: string
   depth_cm?: string
+  attributes?: Array<{ name: string; value: string }>
 }
 
 interface ProductRecord extends Omit<ProductFormData, "workflow" | "wizard_step"> {
@@ -127,7 +128,9 @@ export default function ProductForm({
   installationMedia = [],
   mediaHref,
   mediaActionUrls,
+  attributes = [],
 }: {
+  attributes?: Array<{ id?: number; name: string; value: string }>
   backUrl?: string | null
   product: ProductRecord | null
   /** Definisi varian dari controller (hasil reconstruct import). */
@@ -178,6 +181,7 @@ export default function ProductForm({
     width_cm: (product as unknown as Record<string, unknown> & { width_cm?: string })?.width_cm as string ?? "",
     height_cm: (product as unknown as Record<string, unknown> & { height_cm?: string })?.height_cm as string ?? "",
     depth_cm: (product as unknown as Record<string, unknown> & { depth_cm?: string })?.depth_cm as string ?? "",
+    attributes: (attributes ?? []).map((a) => ({ name: a.name, value: a.value })),
   })
 
   // ADR-021: media dipilih/diunggah langsung di form (upload atau Media Library),
@@ -201,6 +205,18 @@ export default function ProductForm({
   // Mode create: hasil pemasangan dibuffer lokal dulu (produk belum ada),
   // ditempel ke database saat form disimpan via installation_media_asset_ids.
   const [pendingInst, setPendingInst] = React.useState<PickedMedia[]>([])
+
+  function addAttribute() {
+    form.setData("attributes", [...(form.data.attributes ?? []), { name: "", value: "" }])
+  }
+  function removeAttribute(index: number) {
+    form.setData("attributes", (form.data.attributes ?? []).filter((_, i) => i !== index))
+  }
+  function updateAttribute(index: number, key: "name" | "value", val: string) {
+    const next = [...(form.data.attributes ?? [])]
+    next[index] = { ...next[index], [key]: val }
+    form.setData("attributes", next)
+  }
 
   function moveInst(from: number, to: number) {
     if (to < 0 || to >= instRows.length || from === to) return
@@ -733,6 +749,80 @@ export default function ProductForm({
                 </tr>
               </tbody>
             </table>
+          </section>
+
+          {/* 1.5 SPESIFIKASI PRODUK (Table-First) */}
+          <section className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Spesifikasi Produk</h2>
+                <p className="text-xs text-muted-foreground">
+                  Spesifikasi material dan detail teknis produk untuk etalase pembeli (mis. Bahan, Kusen, Ketebalan Kaca).
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={addAttribute}
+              >
+                <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                Tambah spesifikasi
+              </Button>
+            </div>
+            {(form.data.attributes ?? []).length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Belum ada spesifikasi khusus. Klik tombol "Tambah spesifikasi" di atas untuk menambahkan.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/20 text-left text-[11px] font-semibold text-muted-foreground">
+                      <th className="w-1/3 px-4 py-2.5">Nama Spesifikasi</th>
+                      <th className="px-4 py-2.5">Nilai Spesifikasi</th>
+                      <th className="w-[1%] px-4 py-2.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(form.data.attributes ?? []).map((attr, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30">
+                        <td className="px-4 py-2">
+                          <Input
+                            value={attr.name}
+                            onChange={(e) => updateAttribute(idx, "name", e.target.value)}
+                            placeholder="mis. Bahan, Kusen"
+                            className="h-8 text-xs font-normal"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <Input
+                            value={attr.value}
+                            onChange={(e) => updateAttribute(idx, "value", e.target.value)}
+                            placeholder="mis. Aluminium, 3 inch"
+                            className="h-8 text-xs font-normal"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => removeAttribute(idx)}
+                            className="text-destructive hover:bg-destructive/10"
+                            aria-label="Hapus spesifikasi"
+                          >
+                            <Icon name="trash" className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           {/* 2. DEFINISI VARIAN & MATRIKS KOMBINASI (Table-First) */}

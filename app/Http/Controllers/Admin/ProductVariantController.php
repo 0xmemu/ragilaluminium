@@ -125,36 +125,13 @@ class ProductVariantController extends Controller
         ])->with('success', count($validated['variants']).' varian disimpan.');
     }
 
-    public function edit(ProductVariant $variant): Response
+    public function edit(ProductVariant $variant): RedirectResponse
     {
-        $variant->load(['media' => fn ($q) => $q->orderBy('position')]);
-
-        return Inertia::render('Admin/VariantEdit', [
-            'variant' => [
-                'id' => $variant->id,
-                'product_id' => $variant->product_id,
-                'variant_sku' => $variant->variant_sku,
-                'variation_1_name' => $variant->variation_1_name,
-                'variation_1_option' => $variant->variation_1_option,
-                'variation_2_name' => $variant->variation_2_name,
-                'variation_2_option' => $variant->variation_2_option,
-                'price' => $variant->price,
-                'stock' => $variant->stock,
-                'status' => $variant->status,
-            ],
-            'media' => $variant->media->map(fn ($m) => [
-                'id' => $m->id,
-                'position' => $m->position,
-                'visibility' => $m->visibility,
-                'status' => $m->status,
-                'is_main_image' => (bool) $m->is_main_image,
-                'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
-                'update_url' => route('admin.media.update', $m),
-                'set_main_url' => route('admin.media.set-main', $m),
-                'archive_url' => route('admin.media.archive', $m),
-            ])->values()->all(),
-            'submitUrl' => route('admin.variants.update', $variant),
-            'backUrl' => route('admin.products.show', ['product' => $variant->product_id, 'tab' => 'varian']),
+        // Penggabungan form edit terpusat (single source of truth): edit varian
+        // dilakukan di tab Varian pada form edit produk utama.
+        return redirect()->route('admin.products.edit', [
+            'product' => $variant->product_id,
+            'tab' => 'varian',
         ]);
     }
 

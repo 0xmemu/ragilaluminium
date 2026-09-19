@@ -108,7 +108,7 @@ class FrontendPageContractTest extends TestCase
             ['admin.testimonials.index', 'Admin/Testimonials/Index'],
             ['admin.users.index', 'Admin/Users/Index'],
             ['admin.profile.edit', 'Admin/Profile/Edit'],
-            ['admin.settings.index', 'Admin/ResourceShow'],
+            ['admin.settings.index', 'Admin/SystemHealth'],
             ['admin.products.create', 'Admin/ProductForm'],
             ['admin.imports.create', 'Admin/ImportCreate'],
             ['admin.pages.create', 'Admin/CmsPageForm'],
@@ -154,11 +154,9 @@ class FrontendPageContractTest extends TestCase
         $this->get(route('admin.products.variants.index', $product))
             ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
         $this->get(route('admin.variants.edit', $variant))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/VariantEdit'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
         $this->get(route('admin.products.attributes.index', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Attributes'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'spesifikasi']));
         $this->get(route('admin.products.media.byProduct', $product))
             ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'media']));
     }

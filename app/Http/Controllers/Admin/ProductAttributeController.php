@@ -12,24 +12,13 @@ use Inertia\Response;
 
 class ProductAttributeController extends Controller
 {
-    public function index(Product $product): Response
+    public function index(Product $product): RedirectResponse
     {
-        $product->load('attributes');
-
-        return Inertia::render('Admin/Attributes', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'parent_sku' => $product->parent_sku,
-            ],
-            'attributes' => $product->attributes->map(fn (ProductAttribute $attribute) => [
-                'id' => $attribute->id,
-                'attribute_name' => $attribute->attribute_name,
-                'attribute_value' => $attribute->attribute_value,
-                'source' => $attribute->source,
-                'updateUrl' => route('admin.attributes.update', $attribute),
-            ])->values()->all(),
-            'submitUrl' => route('admin.products.attributes.store', $product),
+        // Penggabungan form edit terpusat (single source of truth): kelola spesifikasi
+        // dilakukan langsung di form edit produk utama.
+        return redirect()->route('admin.products.edit', [
+            'product' => $product,
+            'tab' => 'spesifikasi',
         ]);
     }
 

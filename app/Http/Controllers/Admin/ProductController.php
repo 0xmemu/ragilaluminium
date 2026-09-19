@@ -166,6 +166,7 @@ class ProductController extends Controller
         return Inertia::render('Admin/ProductForm', [
             'backUrl' => route('admin.products.index'),
             'product' => null,
+            'attributes' => [],
             'submitUrl' => route('admin.products.store'),
             'options' => $this->formOptions(),
         ]);
@@ -198,6 +199,9 @@ class ProductController extends Controller
             // Hasil pemasangan dari form create: ditempel sebagai media is_installation.
             'installation_media_asset_ids' => ['nullable', 'array', 'max:20'],
             'installation_media_asset_ids.*' => ['integer', Rule::exists('media_assets', 'id')->where('status', 'ready')],
+            'attributes' => ['nullable', 'array'],
+            'attributes.*.name' => ['nullable', 'string', 'max:255'],
+            'attributes.*.value' => ['nullable', 'string', 'max:255'],
             // ADR-021: dimensi/berat milik produk (kontrak J&T: kg + cm kubikasi).
             'weight_kg' => ['nullable', 'numeric', 'min:0'],
             'width_cm' => ['nullable', 'numeric', 'min:0'],
@@ -268,6 +272,21 @@ class ProductController extends Controller
             // Template spesifikasi: isi otomatis dari sub model (tidak menimpa spesifikasi
             // yang sudah ada). Aturan lengkap di docs/decisions/ADR-019.
             app(\App\Services\AttributeTemplateService::class)->applyToProduct($product);
+
+            // Simpan spesifikasi manual dari formulir create
+            if ($request->filled('attributes')) {
+                foreach ($request->input('attributes', []) as $attr) {
+                    if (filled($attr['name'] ?? null) && filled($attr['value'] ?? null)) {
+                        $product->attributes()->create([
+                            'attribute_name' => trim((string) $attr['name']),
+                            'attribute_value' => trim((string) $attr['value']),
+                            'source' => 'internal',
+                            'created_by_user_id' => $request->user()->id,
+                            'updated_by_user_id' => $request->user()->id,
+                        ]);
+                    }
+                }
+            }
 
             if ($createInitialVariant) {
                 ProductVariant::create([
@@ -707,6 +726,14 @@ class ProductController extends Controller
                             : null,
                     ])->values()->all(),
             ],
+            'attributes' => $product->attributes
+                ->filter(fn ($a) => !in_array($a->attribute_name, ['promo_compare_price', 'compare_price', 'harga_asli', 'harga_sebelum_diskon']))
+                ->values()
+                ->map(fn ($a) => [
+                    'id' => $a->id,
+                    'name' => $a->attribute_name,
+                    'value' => $a->attribute_value,
+                ])->all(),
             'submitUrl' => route('admin.products.update', $product),
             'publishUrl' => route('admin.products.publish', $product),
             'variantBulkUrl' => route('admin.products.variants.bulk', $product),
@@ -835,6 +862,9 @@ class ProductController extends Controller
             'homepage_popular' => ['sometimes', 'boolean'],
             'homepage_popular_sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'wizard_step' => ['nullable', 'in:identity,variants,media,review'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.*.name' => ['nullable', 'string', 'max:255'],
+            'attributes.*.value' => ['nullable', 'string', 'max:255'],
             // ADR-020/021: edit form satu halaman mengirim media & varian juga.
             'media_asset_ids' => ['nullable', 'array', 'max:20'],
             'media_asset_ids.*' => ['integer'],
@@ -874,6 +904,27 @@ class ProductController extends Controller
         $validated['updated_by_user_id'] = $request->user()->id;
         $validated['design_variant'] = \App\Support\CatalogLabels::normalizeDesign($validated['design_variant'] ?? null);
         $product->update($validated);
+
+        if ($request->has('attributes')) {
+            $inputAttrs = collect($request->input('attributes', []))
+                ->filter(fn ($item) => filled($item['name'] ?? null) && filled($item['value'] ?? null))
+                ->values();
+
+            $product->attributes()
+                ->whereNull('product_variant_id')
+                ->whereNotIn('attribute_name', ['promo_compare_price', 'compare_price', 'harga_asli', 'harga_sebelum_diskon'])
+                ->delete();
+
+            foreach ($inputAttrs as $attr) {
+                $product->attributes()->create([
+                    'attribute_name' => trim((string) $attr['name']),
+                    'attribute_value' => trim((string) $attr['value']),
+                    'source' => 'internal',
+                    'created_by_user_id' => $request->user()->id,
+                    'updated_by_user_id' => $request->user()->id,
+                ]);
+            }
+        }
 
         // ADR-020: sinkronkan media katalog dari urutan form.
         if ($request->filled('media_asset_ids')) {

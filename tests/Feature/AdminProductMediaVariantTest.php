@@ -85,10 +85,6 @@ class AdminProductMediaVariantTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.variants.edit', $hitam))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/VariantEdit')
-                ->has('media', 1)
-                ->where('media.0.id', $media->id));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product->id, 'tab' => 'varian']));
     }
 }
