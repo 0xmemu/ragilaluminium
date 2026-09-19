@@ -37,6 +37,7 @@ alur data, integrasi, trade-off performa, dan kebijakan dicatat di sini.
 - **ADR-012** — Arsitektur produksi: tetap Inertia, bukan SPA+API terpisah.
 - **ADR-013** — Performa pindah menu & api. subdomain: cache Redis Lapis A, satu origin, tanpa API subdomain.
 - **ADR-022** - Kontrak alignment form admin: primitif Field/FieldGrid/CheckboxField/FieldAction, padding section seragam, verifikasi center Y.
+- **ADR-023** - Halaman pengaturan dibuka mode RINGKASAN read-only, form aktif setelah tombol ubah, dan Simpan sukses kembali ke ringkasan.
 
 
 ---

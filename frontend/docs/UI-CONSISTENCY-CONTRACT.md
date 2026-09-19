@@ -160,6 +160,25 @@ Pemakai saat ini:
 | Public CMS | reading column plus optional 4-column supporting media/grid | content empty, media missing, WhatsApp fallback |
 | Admin index | heading/actions, filter row, full-width data region | loading, empty, error, pagination |
 | Admin detail/form | primary form/detail column plus secondary summary/action column | dirty, validation, disabled, saved/error |
+| Admin pengaturan (edit nilai) | lihat ADR-023: dibuka MODE RINGKASAN read-only, form aktif setelah tombol ubah | ringkasan nilai efektif, saved/error |
+
+## Mode ringkasan halaman pengaturan (ADR-023)
+
+Halaman pengaturan TIDAK membuka form yang langsung aktif. Aturannya:
+
+- Halaman dibuka menampilkan nilai yang berlaku sebagai bacaan (mode ringkasan), termasuk nilai
+  bawaan yang belum pernah disimpan admin.
+- Tombol aksi utama di header berlabel kerja ("Ubah teks CTA", "Edit profil"), bukan "Simpan".
+- Setelah menekan tombol itu baru form aktif, dengan "Batal" dan "Simpan".
+- Simpan sukses WAJIB kembali ke ringkasan. Form tidak boleh tetap terbuka.
+- Ringkasan bukan input `readOnly`: itu tampilan berbeda (kartu bacaan, pratinjau), bukan kontrol
+  yang dikunci.
+
+Pengecualian: halaman dashboard/beranda yang tugasnya menampilkan data, dan alur pembuatan entitas
+baru (create) yang memang mengisi form dari nol.
+
+Acuan implementasi: `resources/js/pages/Admin/TentangKami/Edit.tsx` dan
+`resources/js/pages/Admin/CtaStorefront/Edit.tsx`.
 
 ## QA gate
 

@@ -2351,3 +2351,47 @@ Verifikasi:
   Pesanan (x 381 vs 253) dengan naskah order_created sesuai status COD.
 - tsc bersih, eslint tidak menambah peringatan (1 warning `visit` di useMemo sudah ada sebelumnya),
   build Vite PASS.
+
+### 2026-09-19 - Aturan "halaman pengaturan dibuka mode RINGKASAN" naik jadi ADR-023
+Konteks: owner membuka /admin/cta-storefront dan bertanya kenapa form edit langsung aktif, dengan
+catatan penting: "ini sering terjadi, logika editing halaman atau membuat fitur baru harus di
+perbaiki untuk kontrak kerja atau aturan desain". Jadi keluhannya bukan halaman itu saja, tapi pola
+yang berulang.
+
+TEMUAN AKAR MASALAH: aturan ini sebenarnya sudah pernah ditetapkan di MEMORY 2026-09-16 ("menu
+Tentang Kami dibuka mode RINGKASAN read-only, form aktif setelah tombol Edit profil, Simpan sukses
+kembali ke ringkasan, jangan ulangi form-langsung-aktif"). Tapi aturan itu HANYA hidup di log sesi,
+tidak pernah masuk kontrak desain, sehingga halaman yang dibuat sesudahnya tidak mewarisinya.
+Bukti: dari 27 halaman admin ber-nama Form/Edit, hanya TentangKami/Edit yang menerapkan mode
+ringkasan. CTA Storefront dibuat 2026-09-18, dua hari setelah kontrak itu dicatat, dan membuka form
+langsung. Ini contoh nyata aturan yang hilang karena tempatnya salah.
+
+YANG DIKERJAKAN:
+1. CtaStorefront/Edit.tsx kini dibuka mode RINGKASAN: kartu "Status CTA penutup" dengan lencana
+   StatusBadge, dan kartu "Teks CTA per halaman" berisi pratinjau banner merah per halaman
+   (memakai warna CTA publik rgb(194,0,0), bukan token admin). Tombol header berubah sesuai mode:
+   ringkasan menampilkan lencana + "Ubah teks CTA"; mode edit menampilkan "Batal" + "Simpan".
+   `onSuccess: () => setMode("view")` mengembalikan ke ringkasan.
+2. Tombol back memakai prop `backUrl` AdminLayout (pola 24 halaman admin lain: link "Kembali" kecil
+   di atas judul), menggantikan tombol besar "Kembali ke dashboard" di bawah halaman.
+3. Kontrak ditulis permanen di dua tempat supaya tidak hilang lagi:
+   - `docs/decisions/ADR-023-halaman-pengaturan-mode-ringkasan.md` (aturan lengkap, pengecualian,
+     daftar halaman yang menunggu).
+   - `frontend/docs/UI-CONSISTENCY-CONTRACT.md` bagian "Mode ringkasan halaman pengaturan (ADR-023)"
+     plus baris baru di tabel Page family templates.
+   - `docs/decisions/MASTER-ADR.md` didaftarkan.
+
+VERIFIKASI LIVE:
+- Mode ringkasan: jumlah input 0, lencana "Aktif" tampil, judul "Status CTA penutup" dan
+  "Teks CTA per halaman" ada, 6 pratinjau banner, tombol "Ubah teks CTA" ada.
+- Mode edit: 12 input muncul, "Batal" ada, 2 tombol Simpan (header + bawah), tombol ubah hilang.
+- Simpan: input kembali 0, ringkasan kembali, tombol ubah muncul lagi.
+- DATA TIDAK BERUBAH karena uji simpan: hash CtaSettings identik sebelum dan sesudah
+  (8b8c429019efc6c458121344b4017b12). Uji memakai nilai yang sama supaya tidak mengubah isi.
+- Tombol back: link "Kembali" 11,99px di atas judul, tombol besar di bawah sudah 0.
+
+CATATAN: 7 halaman pengaturan lain masih membuka form langsung dan dicatat sebagai utang di
+ADR-023 (CodSettings, ShippingSubsidy, StorefrontPlatforms, CaraPemesanan, CmsDocument,
+Beranda/HowToOrderForm, Beranda/KontakForm, CmsPageForm).
+
+tsc bersih, build Vite PASS.
