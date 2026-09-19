@@ -425,7 +425,13 @@ class ProductController extends Controller
         return str_replace('.', ',', $s);
     }
 
-    public function show(Product $product): Response
+    /**
+     * Detail produk - table-first: header ringkas, tabel metadata, lalu tab
+     * (Ringkasan | Varian | Spesifikasi | Media). Hanya isi tab aktif yang
+     * dirender, dan tab aktif tercermin di URL lewat ?tab= agar reload serta
+     * tombol back/forward browser tetap konsisten.
+     */
+    public function show(Request $request, Product $product): Response
     {
         $product->load(['variants', 'attributes', 'media.mediaAsset', 'media.productVariant', 'mainImage']);
 
@@ -434,110 +440,130 @@ class ProductController extends Controller
         // (sebelumnya menghasilkan 404 saat diklik).
         $publicVisible = $product->status === 'active' && $product->variants->contains(fn ($v) => $v->status === 'active');
 
+        $requestedTab = (string) $request->query('tab', 'ringkasan');
+        $activeTab = in_array($requestedTab, ['ringkasan', 'varian', 'spesifikasi', 'media'], true)
+            ? $requestedTab
+            : 'ringkasan';
+
         $formatDimension = fn ($value) => $value === null || (float) $value <= 0
             ? null
             : self::cleanDimension($value);
 
+        // Berat dan dimensi dipecah jadi dua baris metadata supaya kolom tabel
+        // tetap sempit (sebelumnya digabung "100 kg · T 100 × P 100 cm × L 5 cm").
+        $dimensiParts = array_filter([
+            $formatDimension($product->height_cm) !== null ? 'T '.$formatDimension($product->height_cm) : null,
+            $formatDimension($product->width_cm) !== null ? 'P '.$formatDimension($product->width_cm) : null,
+            $formatDimension($product->depth_cm) !== null ? 'L '.$formatDimension($product->depth_cm) : null,
+        ]);
+        $berat = $formatDimension($product->weight_kg);
+
+        $metadata = array_values(array_filter([
+            ['label' => 'Parent SKU', 'value' => $product->parent_sku],
+            ['label' => 'Kategori', 'value' => CatalogLabels::category($product->product_category)],
+            ['label' => 'Model', 'value' => CatalogLabels::model($product->product_model)],
+            ['label' => 'Sub Model', 'value' => CatalogLabels::design($product->design_variant) ?: null],
+            ['label' => 'Status', 'value' => $product->status],
+            ['label' => 'Berat paket', 'format' => 'text', 'value' => $berat !== null ? $berat.' kg' : null],
+            [
+                'label' => 'Dimensi paket',
+                'format' => 'text',
+                'value' => $dimensiParts !== [] ? implode(' × ', $dimensiParts).' cm' : null,
+            ],
+        ]));
+
+        $variants = $product->variants
+            ->sortBy('variant_sku')
+            ->values()
+            ->map(function ($v) {
+                $label = trim(implode(' · ', array_filter([
+                    $v->variation_1_option,
+                    $v->variation_2_option,
+                ])));
+
+                return [
+                    'id' => $v->id,
+                    'label' => $label !== '' ? $label : $v->variant_sku,
+                    'status' => $v->status,
+                    'price' => (float) $v->price,
+                    'stock' => (int) $v->stock,
+                    'sku' => $v->variant_sku,
+                    'edit_url' => route('admin.variants.edit', $v),
+                ];
+            })
+            ->all();
+
+        $attributes = $product->attributes
+            ->sortBy('attribute_name')
+            ->values()
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'name' => $a->attribute_name,
+                'value' => (string) $a->attribute_value,
+                'updated_at' => $a->updated_at?->translatedFormat('d M Y'),
+            ])
+            ->all();
+
+        $media = $product->media
+            ->filter(fn ($m) => ! $m->is_installation)
+            ->sortBy([['position', 'asc'], ['id', 'asc']])
+            ->values()
+            ->map(function ($m) {
+                // Foto opsi varian (posisi 50+) diberi label varian pemiliknya;
+                // posisi mentah tidak informatif karena banyak baris berbagi band.
+                $owner = $m->productVariant
+                    ? trim(implode(' / ', array_filter([
+                        $m->productVariant->variation_1_option,
+                        $m->productVariant->variation_2_option,
+                    ])))
+                    : null;
+
+                $nama = $owner !== '' && $owner !== null
+                    ? 'Foto varian: '.$owner
+                    : ($m->is_main_image ? 'Foto utama katalog' : 'Foto katalog');
+
+                $sumber = $m->mediaAsset?->label
+                    ?: ($m->source_url ? basename((string) parse_url($m->source_url, PHP_URL_PATH)) : null);
+
+                return [
+                    'id' => $m->id,
+                    'name' => $nama,
+                    'kind' => $m->mediaAsset?->kind === 'video' ? 'video' : 'foto',
+                    'status' => $m->status,
+                    'visibility' => $m->visibility,
+                    'file' => $sumber,
+                    'updated_at' => $m->updated_at?->translatedFormat('d M Y'),
+                    'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->urlFor('thumb') ?? $m->stored_url,
+                ];
+            })
+            ->all();
+
         return Inertia::render('Admin/Products/Show', [
-            'title' => $product->name,
-            'subtitle' => $product->parent_sku,
-            'description' => $product->description,
-            'publicVisible' => $publicVisible,
-            'fields' => [
-                ['label' => 'Parent SKU', 'value' => $product->parent_sku],
-                ['label' => 'Nama', 'format' => 'text', 'value' => $product->name],
-                ['label' => 'Kategori', 'value' => CatalogLabels::category($product->product_category)],
-                ['label' => 'Model', 'value' => CatalogLabels::model($product->product_model)],
-                ['label' => 'Sub Model', 'value' => CatalogLabels::design($product->design_variant) ?: null],
-                ['label' => 'Status', 'value' => $product->status],
-                [
-                    'label' => 'Berat & Dimensi Paket',
-                    'format' => 'text',
-                    'value' => (function () use ($product, $formatDimension): ?string {
-                        $weight = $formatDimension($product->weight_kg);
-                        $height = $formatDimension($product->height_cm);
-                        $width = $formatDimension($product->width_cm);
-                        $depth = $formatDimension($product->depth_cm);
-
-                        // Rakit hanya bagian yang terisi supaya tidak muncul
-                        // label menggantung seperti "L  cm" saat lebarnya kosong.
-                        $dims = [];
-                        if ($height !== null && $width !== null) {
-                            $dims[] = 'T '.$height.' × P '.$width.' cm';
-                        }
-                        if ($depth !== null) {
-                            $dims[] = 'L '.$depth.' cm';
-                        }
-
-                        $parts = array_filter([
-                            $weight !== null ? $weight.' kg' : null,
-                            $dims !== [] ? implode(' × ', $dims) : null,
-                        ]);
-
-                        return $parts !== [] ? implode(' · ', $parts) : null;
-                    })(),
-                ],
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'parent_sku' => $product->parent_sku,
+                'status' => $product->status,
+                'description' => $product->description,
+                'public_visible' => $publicVisible,
+                'edit_href' => route('admin.products.edit', $product),
+                'product_href' => route('product.show', $product->parent_sku, absolute: false),
             ],
-            'sections' => [
-                [
-                    'title' => 'Varian',
-                    'rows' => $product->variants->map(function ($v) {
-                        // Opsi varian + stok supaya baris bisa diidentifikasi
-                        // (sebelumnya hanya SKU acak dengan harga kembar).
-                        $label = trim(implode(' · ', array_filter([
-                            $v->variation_1_option,
-                            $v->variation_2_option,
-                        ])));
-
-                        return [
-                            'label' => $label !== '' ? $label : $v->variant_sku,
-                            'value' => ($v->status ?? '-')
-                                .' · Rp '.number_format((float) $v->price, 0, ',', '.')
-                                .' · stok '.number_format((int) $v->stock, 0, ',', '.'),
-                            'meta' => $v->variant_sku,
-                        ];
-                    })->values()->all(),
-                ],
-                [
-                    'title' => 'Spesifikasi',
-                    'rows' => $product->attributes->map(fn ($a) => [
-                        'label' => $a->attribute_name,
-                        'value' => (string) $a->attribute_value,
-                    ])->values()->all(),
-                ],
-                [
-                    'title' => 'Media',
-                    'rows' => $product->media
-                        ->sortBy([['position', 'asc'], ['id', 'asc']])
-                        ->map(function ($m) {
-                            // Foto opsi varian (posisi 50+) diberi label varian
-                            // pemiliknya; posisi mentah tidak informatif karena
-                            // banyak baris berbagi band yang sama.
-                            $owner = $m->productVariant
-                                ? trim(implode(' / ', array_filter([
-                                    $m->productVariant->variation_1_option,
-                                    $m->productVariant->variation_2_option,
-                                ])))
-                                : null;
-
-                            return [
-                                'label' => $owner !== '' && $owner !== null
-                                    ? 'Foto varian: '.$owner
-                                    : ($m->is_main_image ? 'Foto utama katalog' : 'Foto katalog'),
-                                'value' => ($m->status ?? '-').' · '.($m->visibility ?? '-')
-                                    .($m->mediaAsset?->label ? ' · '.$m->mediaAsset->label : ''),
-                                'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->urlFor('thumb') ?? $m->stored_url,
-                            ];
-                        })->values()->all(),
-                ],
+            'metadata' => $metadata,
+            'activeTab' => $activeTab,
+            'counts' => [
+                'varian' => count($variants),
+                'spesifikasi' => count($attributes),
+                'media' => count($media),
             ],
-            'editHref' => route('admin.products.edit', $product),
-            'productHref' => route('product.show', $product->parent_sku, absolute: false),
-            'managementLinks' => [
-                ['label' => 'Kelola varian', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']), 'kind' => 'variants'],
-                ['label' => 'Kelola spesifikasi', 'href' => route('admin.products.attributes.index', $product), 'kind' => 'attributes'],
-                ['label' => 'Kelola media', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']), 'kind' => 'media'],
-                ['label' => 'Bulk via Import', 'href' => route('admin.imports.index'), 'kind' => 'import'],
+            'variants' => $variants,
+            'attributes' => $attributes,
+            'media' => $media,
+            'links' => [
+                'variants' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']),
+                'attributes' => route('admin.products.attributes.index', $product),
+                'media' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']),
+                'import' => route('admin.imports.index'),
             ],
         ]);
     }

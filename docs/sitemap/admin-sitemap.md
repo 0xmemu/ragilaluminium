@@ -33,7 +33,15 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
 
 - **Produk** (Tipe: `Operational` & `Content`) — `/admin/kelola/produk`
   - Daftar SKU Induk, status aktif/arsip.
-  - Sub-view: Product Detail (Overview, Variants, Attributes, Media per produk).
+  - Sub-view: Product Detail (tab Ringkasan, Varian, Spesifikasi, Media per produk).
+    Table-first: header ringkas (nama + Parent SKU + status badge), tabel metadata
+    (Parent SKU, Kategori, Model, Sub Model, Status, Berat paket, Dimensi paket),
+    lalu satu tabel utama per tab. Tab aktif tercermin di URL lewat `?tab=`
+    (`ringkasan` | `varian` | `spesifikasi` | `media`) sehingga reload dan
+    tombol back/forward browser tetap konsisten. Varian memakai kolom terpisah
+    Varian | Status | Harga | Stok | SKU | Aksi; Media memakai Preview | Nama media
+    | Tipe | Status | Publikasi | Berkas | Diperbarui | Aksi. Tautan lama
+    (`?tab=media` / `?tab=varian` ke halaman edit) tetap valid.
   - Urutan daftar: Baru saja diubah (default, memakai updated_at sehingga hasil import dan hasil edit sama-sama terangkat), Paling lama tidak diubah, Terlaris, Paling sedikit terjual, Terbaru ditambahkan, Terlama ditambahkan. Tiap opsi punya pasangan arah naik/turun lewat parameter `sort`, dan urutan yang sama dipakai file Export CSV.
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
 - **Kategori** (Tipe: Operational) — `/admin/kelola/kategori`
