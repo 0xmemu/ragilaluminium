@@ -28,10 +28,11 @@ function sectionIcon(title: string): string {
 }
 
 /**
- * Field dengan nilai panjang (stok agregat, posisi carousel) memakai dua
- * kolom di grid ringkasan supaya tiap baris grid penuh tanpa sel kosong.
+ * Nilai berat dan dimensi panjang (mis. "100 kg · T 100 × P 100 cm × L 100 cm"),
+ * jadi selnya membentang dua kolom supaya tidak terpotong dan baris grid
+ * tetap penuh tanpa sel kosong.
  */
-const wideFieldLabels = new Set(["Stok Total", "Paling Banyak Dipesan (Carousel)"])
+const wideFieldLabels = new Set(["Berat & Dimensi Paket"])
 
 export default function ProductShow({
   title,

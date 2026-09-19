@@ -43,6 +43,7 @@ class ProductController extends Controller
     ];
 
     private const DEFAULT_SORT = 'updated_desc';
+
     public function index(Request $request): Response
     {
         $view = 'list';
@@ -426,29 +427,76 @@ class ProductController extends Controller
 
     public function show(Product $product): Response
     {
-        $product->load(['variants', 'attributes', 'media']);
+        $product->load(['variants', 'attributes', 'media.mediaAsset', 'media.productVariant', 'mainImage']);
+
+        // Storefront hanya melayani produk aktif yang punya varian aktif, jadi
+        // tombol "Lihat publik" tidak boleh dirender untuk produk arsip
+        // (sebelumnya menghasilkan 404 saat diklik).
+        $publicVisible = $product->status === 'active' && $product->variants->contains(fn ($v) => $v->status === 'active');
+
+        $formatDimension = fn ($value) => $value === null || (float) $value <= 0
+            ? null
+            : self::cleanDimension($value);
 
         return Inertia::render('Admin/Products/Show', [
             'title' => $product->name,
             'subtitle' => $product->parent_sku,
+            'description' => $product->description,
+            'publicVisible' => $publicVisible,
             'fields' => [
                 ['label' => 'Parent SKU', 'value' => $product->parent_sku],
-                ['label' => 'Nama', 'value' => $product->name],
-                ['label' => 'Nama Pendek', 'value' => $product->short_name],
-                ['label' => 'Kategori', 'value' => $product->product_category],
-                ['label' => 'Model', 'value' => $product->product_model],
-                ['label' => 'Sub Model', 'value' => $product->design_variant],
+                ['label' => 'Nama', 'format' => 'text', 'value' => $product->name],
+                ['label' => 'Kategori', 'value' => CatalogLabels::category($product->product_category)],
+                ['label' => 'Model', 'value' => CatalogLabels::model($product->product_model)],
+                ['label' => 'Sub Model', 'value' => CatalogLabels::design($product->design_variant) ?: null],
                 ['label' => 'Status', 'value' => $product->status],
-                ['label' => 'Home Paling Banyak Dipesan', 'value' => $product->homepage_popular ? 'Ya (urut '.$product->homepage_popular_sort.')' : 'Tidak'],
-                ['label' => 'Harga Min', 'value' => $product->min_price !== null ? number_format($product->min_price, 0, ',', '.') : null],
+                [
+                    'label' => 'Berat & Dimensi Paket',
+                    'format' => 'text',
+                    'value' => (function () use ($product, $formatDimension): ?string {
+                        $weight = $formatDimension($product->weight_kg);
+                        $height = $formatDimension($product->height_cm);
+                        $width = $formatDimension($product->width_cm);
+                        $depth = $formatDimension($product->depth_cm);
+
+                        // Rakit hanya bagian yang terisi supaya tidak muncul
+                        // label menggantung seperti "L  cm" saat lebarnya kosong.
+                        $dims = [];
+                        if ($height !== null && $width !== null) {
+                            $dims[] = 'T '.$height.' × P '.$width.' cm';
+                        }
+                        if ($depth !== null) {
+                            $dims[] = 'L '.$depth.' cm';
+                        }
+
+                        $parts = array_filter([
+                            $weight !== null ? $weight.' kg' : null,
+                            $dims !== [] ? implode(' × ', $dims) : null,
+                        ]);
+
+                        return $parts !== [] ? implode(' · ', $parts) : null;
+                    })(),
+                ],
             ],
             'sections' => [
                 [
                     'title' => 'Varian',
-                    'rows' => $product->variants->map(fn ($v) => [
-                        'label' => $v->variant_sku,
-                        'value' => ($v->status ?? '-').' · Rp '.number_format((float) $v->price, 0, ',', '.'),
-                    ])->values()->all(),
+                    'rows' => $product->variants->map(function ($v) {
+                        // Opsi varian + stok supaya baris bisa diidentifikasi
+                        // (sebelumnya hanya SKU acak dengan harga kembar).
+                        $label = trim(implode(' · ', array_filter([
+                            $v->variation_1_option,
+                            $v->variation_2_option,
+                        ])));
+
+                        return [
+                            'label' => $label !== '' ? $label : $v->variant_sku,
+                            'value' => ($v->status ?? '-')
+                                .' · Rp '.number_format((float) $v->price, 0, ',', '.')
+                                .' · stok '.number_format((int) $v->stock, 0, ',', '.'),
+                            'meta' => $v->variant_sku,
+                        ];
+                    })->values()->all(),
                 ],
                 [
                     'title' => 'Atribut',
@@ -459,17 +507,36 @@ class ProductController extends Controller
                 ],
                 [
                     'title' => 'Media',
-                    'rows' => $product->media->map(fn ($m) => [
-                        'label' => '#'.$m->position.($m->is_main_image ? ' (utama)' : ''),
-                        'value' => ($m->status ?? '-').' · '.($m->visibility ?? '-'),
-                    ])->values()->all(),
+                    'rows' => $product->media
+                        ->sortBy([['position', 'asc'], ['id', 'asc']])
+                        ->map(function ($m) {
+                            // Foto opsi varian (posisi 50+) diberi label varian
+                            // pemiliknya; posisi mentah tidak informatif karena
+                            // banyak baris berbagi band yang sama.
+                            $owner = $m->productVariant
+                                ? trim(implode(' / ', array_filter([
+                                    $m->productVariant->variation_1_option,
+                                    $m->productVariant->variation_2_option,
+                                ])))
+                                : null;
+
+                            return [
+                                'label' => $owner !== '' && $owner !== null
+                                    ? 'Foto varian: '.$owner
+                                    : ($m->is_main_image ? 'Foto utama katalog' : 'Foto katalog'),
+                                'value' => ($m->status ?? '-').' · '.($m->visibility ?? '-')
+                                    .($m->mediaAsset?->label ? ' · '.$m->mediaAsset->label : ''),
+                                'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->urlFor('thumb') ?? $m->stored_url,
+                            ];
+                        })->values()->all(),
                 ],
             ],
             'editHref' => route('admin.products.edit', $product),
+            'productHref' => route('product.show', $product->parent_sku, absolute: false),
             'managementLinks' => [
-                ['label' => 'Kelola varian', 'href' => route('admin.products.variants.index', $product), 'kind' => 'variants'],
+                ['label' => 'Kelola varian', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']), 'kind' => 'variants'],
                 ['label' => 'Kelola atribut', 'href' => route('admin.products.attributes.index', $product), 'kind' => 'attributes'],
-                ['label' => 'Kelola media', 'href' => route('admin.products.media.byProduct', $product), 'kind' => 'media'],
+                ['label' => 'Kelola media', 'href' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']), 'kind' => 'media'],
                 ['label' => 'Bulk via Import', 'href' => route('admin.imports.index'), 'kind' => 'import'],
             ],
         ]);
@@ -568,12 +635,10 @@ class ProductController extends Controller
                 // Media; media per-varian (posisi 50+) ada di formulir varian.
                 'media' => $product->media
                     ->filter(fn ($m) => $m->show_in_catalog && ! $m->is_installation)
-                    // Foto katalog (tanpa varian) tampil lebih dulu agar slot
-                    // pertama di form = gambar utama; tiebreak id supaya urutan
-                    // tidak acak saat position seri (bug 2026-09-17).
+                    // Urut sesuai position form: foto non-varian seperti shared media
+                    // bebas diletakkan di belakang varian di etalase toko.
                     ->sortBy(fn ($m) => sprintf(
-                        '%d-%06d-%06d',
-                        $m->product_variant_id === null ? 0 : 1,
+                        '%06d-%06d',
                         (int) $m->position,
                         (int) $m->id,
                     ))
@@ -618,14 +683,43 @@ class ProductController extends Controller
             ])->values()->all(),
             'completion' => app(ProductPublicationService::class)->completion($product),
             'options' => $this->formOptions(),
+            // Daftar media hasil pemasangan (is_installation) milik produk ini.
+            // Sebelumnya prop ini tidak pernah dikirim, sehingga section
+            // "Hasil Pemasangan" selalu 0 dan media yang baru dipilih lewat
+            // MediaPicker tidak muncul (meski tersimpan di database).
+            'installationMedia' => $product->installationMedia()
+                ->visible()
+                ->with('mediaAsset')
+                ->orderBy('position')
+                ->orderBy('id')
+                ->get()
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'media_asset_id' => $m->media_asset_id,
+                    'label' => $m->mediaAsset?->label,
+                    'url' => $m->mediaAsset?->urlFor('thumb') ?? $m->mediaAsset?->urlFor('card'),
+                    'kind' => $m->mediaAsset?->kind ?? 'image',
+                    'position' => (int) $m->position,
+                    'show_in_catalog' => (bool) $m->show_in_catalog,
+                    'installation_caption' => $m->installation_caption,
+                    'update_url' => route('admin.media.update', ['media' => $m->id]),
+                    'archive_url' => route('admin.media.archive', ['media' => $m->id]),
+                ])
+                ->values()
+                ->all(),
+            // Key harus sejajar dengan kontrak MediaPanelUrls di
+            // resources/js/components/admin/product-edit/types.ts.
+            // Sebelumnya dikirim tanpa akhiran "Url" sehingga frontend membaca
+            // mediaActionUrls.storeUrl = undefined -> router.post(undefined) crash
+            // dan tombol "Gunakan media" tidak berfungsi.
             'mediaActionUrls' => [
-                'store' => route('admin.products.media.store', $product),
-                'bulk' => route('admin.products.media.bulk', $product),
-                'presign' => route('admin.media.presign'),
-                'finalize' => route('admin.media.finalize'),
-                'status' => route('admin.media.status'),
-                'picker' => route('admin.media.picker'),
-                'upload' => route('admin.media.upload'),
+                'storeUrl' => route('admin.products.media.store', $product),
+                'bulkUrl' => route('admin.products.media.bulk', $product),
+                'presignUrl' => route('admin.media.presign'),
+                'finalizeUrl' => route('admin.media.finalize'),
+                'statusUrl' => route('admin.media.status'),
+                'pickerUrl' => route('admin.media.picker'),
+                'uploadUrl' => route('admin.media.upload'),
             ],
             'productLibrary' => \App\Models\MediaAsset::query()
                 ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
@@ -1193,10 +1287,12 @@ class ProductController extends Controller
             'sold_count' => (int) ($product->sold_count ?? 0),
             'image' => $product->mainImage?->urlFor('card'),
             'updated_at' => optional($product->updated_at)?->toIso8601String(),
-            'href' => route('admin.products.edit', $product),
+            // Klik nama produk = buka halaman DETAIL (bukan langsung ke form edit).
+            // Form edit tetap terjangkau lewat aksi "Edit" per baris.
+            'href' => route('admin.products.show', $product),
             'edit_href' => route('admin.products.edit', $product),
             'variants_href' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']),
-            'media_href' => route('admin.products.media.byProduct', $product),
+            'media_href' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']),
             'archive_url' => route('admin.products.archive', $product),
             'unarchive_url' => route('admin.products.unarchive', $product),
             'duplicate_url' => route('admin.products.duplicate', $product),
