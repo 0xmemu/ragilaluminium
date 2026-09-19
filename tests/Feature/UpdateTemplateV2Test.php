@@ -340,6 +340,51 @@ class UpdateTemplateV2Test extends TestCase
         $this->assertSame(2, (int) $rows->first()->position, "posisi baris pertama tidak boleh digeser slot lain (audit P2-7)");
     }
 
+    public function test_update_produk_tunggal_tanpa_sku_varian(): void
+    {
+        $produk = Product::create([
+            "parent_sku" => "RA-UPD-S1", "name" => "Produk Tunggal", "category_id" => 1,
+            "product_category" => "JENDELA", "product_model" => "KACA_MATI",
+            "design_variant" => "POLOS", "status" => "active",
+        ]);
+        $varian = ProductVariant::create([
+            "product_id" => $produk->id, "variant_sku" => "RA-UPD-S1-A",
+            "price" => 500000, "stock" => 3, "status" => "active",
+        ]);
+
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-S1", "Produk Tunggal", "", "", 900000, 11],
+        ]);
+
+        Excel::import(new ImportStockPriceUpdate($this->job("stock_price_update")->id), $path);
+
+        $varian = $varian->fresh();
+        $this->assertEquals(900000.0, (float) $varian->price, "produk tunggal: harga terupdate tanpa SKU Varian");
+        $this->assertSame(11, (int) $varian->stock);
+    }
+
+    public function test_update_produk_multi_varian_tanpa_sku_varian_gagal(): void
+    {
+        ProductVariant::create([
+            "product_id" => $this->product->id, "variant_sku" => "RA-UPD-1-B",
+            "variation_1_name" => "Warna", "variation_1_option" => "Hitam",
+            "price" => 2000000, "stock" => 6, "status" => "active",
+        ]);
+
+        $headers = ["SKU Produk", "Nama Produk", "SKU Varian", "Variasi", "Harga", "Stok"];
+        $path = $this->berkas($headers, [
+            ["RA-UPD-1", "Produk Update Uji", "", "", 888888, 88],
+        ]);
+
+        $job = $this->job("stock_price_update");
+        Excel::import(new ImportStockPriceUpdate($job->id), $path);
+        $job->refresh();
+
+        $this->assertSame(1, (int) $job->failed_rows, "multi-varian tanpa SKU Varian wajib gagal per baris");
+        $this->assertEquals(1000000.0, (float) $this->variant->fresh()->price, "harga tidak berubah saat baris gagal");
+    }
+
     /**
      * Fitur penanda hapus dihapus (keputusan owner 19 Sep 2026): tidak ada
      * skenario admin yang membutuhkannya, dan arsip media cukup lewat panel

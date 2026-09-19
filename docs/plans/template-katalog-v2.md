@@ -478,3 +478,9 @@ Urutan aman:
 - Sel angka menerima format ribuan Indonesia (1.250.000) dan desimal koma
   (1.250,50); harga 0 atau negatif ditolak.
 - Penanda hapus media dihapus dari template; arsip media lewat panel admin.
+- Produk TUNGGAL (semua kolom opsi dikosongkan) dibuat dengan satu varian
+  default yang membawa harga dan stok, mengikuti pola produk single Shopee;
+  beberapa baris tanpa opsi pada grup yang sama menggabung ke varian default
+  yang sama. Pada template Update Produk, baris tanpa SKU Varian hanya sah
+  untuk produk tunggal; produk multi-varian wajib menyebut SKU Varian
+  (keputusan owner 19 Sep 2026).

@@ -317,15 +317,19 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
         $v2Name = trim((string) ($data["nama_variasi_2"] ?? ""));
         $v2Option = trim((string) ($data["opsi_variasi_2"] ?? ""));
 
+        // Produk tunggal (kedua opsi kosong): satu varian default tanpa opsi
+        // yang membawa harga dan stok, pola produk single Shopee (keputusan
+        // owner 19 Sep 2026). Baris tanpa opsi berikutnya pada grup yang sama
+        // menggabung diri ke varian default tersebut.
+        $existingQuery = ProductVariant::query()->where("product_id", $product->id);
         if ($v1Option === "" && $v2Option === "") {
-            return null;
+            $existingQuery->whereNull("variation_1_option")->whereNull("variation_2_option");
+        } else {
+            $existingQuery
+                ->when($v1Option !== "", fn ($q) => $q->where("variation_1_option", $v1Option))
+                ->when($v2Option !== "", fn ($q) => $q->where("variation_2_option", $v2Option));
         }
-
-        $existing = ProductVariant::query()
-            ->where("product_id", $product->id)
-            ->when($v1Option !== "", fn ($q) => $q->where("variation_1_option", $v1Option))
-            ->when($v2Option !== "", fn ($q) => $q->where("variation_2_option", $v2Option))
-            ->first();
+        $existing = $existingQuery->first();
 
         $variantSku = $existing?->variant_sku ?? ShopeeStyleSku::nextVariantSku($product);
 

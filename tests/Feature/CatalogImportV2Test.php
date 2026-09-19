@@ -494,6 +494,43 @@ class CatalogImportV2Test extends TestCase
         $this->assertStringContainsString("Putih", implode(" | ", $data["verify_warnings"]));
     }
 
+    public function test_baris_tanpa_variasi_membuat_varian_default(): void
+    {
+        $rows = [$this->baris([
+            "nama_variasi_1" => "", "opsi_variasi_1" => "",
+            "nama_variasi_2" => "", "opsi_variasi_2" => "",
+            "deskripsi_produk" => "Produk tunggal uji.", "harga" => 1500000, "stok" => 7,
+        ])];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+        $this->assertSame("active", $product->status, "produk tunggal lengkap wajib aktif");
+        $this->assertSame(1, ProductVariant::where("product_id", $product->id)->count());
+        $varian = ProductVariant::where("product_id", $product->id)->first();
+        $this->assertNull($varian->variation_1_option, "varian default tanpa opsi");
+        $this->assertEquals(1500000.0, (float) $varian->price, "varian default membawa harga");
+        $this->assertSame(7, (int) $varian->stock, "varian default membawa stok");
+    }
+
+    public function test_dua_baris_tanpa_variasi_menggabung_ke_satu_varian(): void
+    {
+        $rows = [
+            $this->baris(["nama_variasi_1" => "", "opsi_variasi_1" => "", "nama_variasi_2" => "", "opsi_variasi_2" => "", "deskripsi_produk" => "Tunggal.", "harga" => 1500000]),
+            $this->baris(["nama_variasi_1" => "", "opsi_variasi_1" => "", "nama_variasi_2" => "", "opsi_variasi_2" => "", "deskripsi_produk" => "Tunggal.", "harga" => 2000000]),
+        ];
+
+        $job = $this->job();
+        $path = $this->berkas($rows);
+        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+
+        $product = Product::firstOrFail();
+        $this->assertSame(1, ProductVariant::where("product_id", $product->id)->count(), "baris tanpa opsi menggabung ke varian default");
+        $this->assertEquals(2000000.0, (float) ProductVariant::where("product_id", $product->id)->first()->price);
+    }
+
     public function test_bentuk_respons_preview_v2_dibaca_frontend(): void
     {
         $path = $this->berkas([$this->baris([])]);

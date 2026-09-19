@@ -79,6 +79,12 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
                 ? null
                 : ProductVariant::where('variant_sku', $variantSku)->first();
 
+            if ($variantSku !== '' && ! $variant) {
+                // SKU diketik tapi tidak ada di sistem mana pun: gagal, supaya
+                // harga tidak nyasar (selaras ImportMediaUpdate).
+                throw new \RuntimeException('SKU tidak ditemukan: '.$variantSku);
+            }
+
             $product = $variant?->product
                 ?? ($parentSku === '' ? null : Product::where('parent_sku', $parentSku)->first());
 
@@ -95,11 +101,14 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             }
 
             if (! $variant && $product) {
-                // Tanpa variant_sku: target varian default bila ada, kalau tidak
-                // produk single (harga/stok di level produk).
-                $variant = $product->variants()
-                    ->orderByRaw('is_default DESC, id ASC')
-                    ->first();
+                // Tanpa SKU Varian: hanya untuk produk TUNGGAL (satu varian,
+                // pola produk single Shopee). Produk multi-varian wajib
+                // menyebut SKU Varian agar tidak salah sasaran.
+                $variants = $product->variants()->orderBy('id')->get();
+                if ($variants->count() > 1) {
+                    throw new \RuntimeException('SKU Varian wajib diisi: produk memiliki lebih dari satu varian.');
+                }
+                $variant = $variants->first();
             }
 
             $stockRaw = $data['stock'] ?? null;
