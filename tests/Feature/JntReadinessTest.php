@@ -70,12 +70,26 @@ class JntReadinessTest extends TestCase
             ->get(route('admin.settings.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Admin/ResourceShow')
-                ->where('fields', function ($fields) {
-                    $labels = collect($fields)->pluck('label')->all();
+                // Halaman Pengaturan Sistem kini Admin/SystemHealth (kesehatan
+                // sistem aktif); status J&T tetap tampil via props env + check.
+                ->component('Admin/SystemHealth')
+                ->where('env.jnt_environment', 'sandbox')
+                // Bentuk check mengikuti kontrak HealthCheckResult: nama, status,
+                // ringkasan, waktu periksa. Status credential J&T dipisah dari
+                // status konektivitas API, jadi env kosong berarti
+                // not_configured dan nama variabel yang kurang disebut di ringkasan.
+                ->where('checks', function ($checks) {
+                    $jnt = collect($checks)->firstWhere('key', 'jnt');
 
-                    return in_array('Shipping Provider', $labels, true)
-                        && in_array('J&T Client Ready', $labels, true);
+                    if ($jnt === null) {
+                        return false;
+                    }
+
+                    $teks = (string) $jnt['summary'].' '.implode(' ', $jnt['details'] ?? []);
+
+                    return $jnt['group'] === 'integration'
+                        && in_array($jnt['status'], ['not_configured', 'warning'], true)
+                        && str_contains($teks, 'JNT_ENABLED');
                 }));
     }
 }

@@ -14,19 +14,25 @@ class SettingsController extends Controller
 
     public function index(): Response
     {
-        $checks = $this->health->checks();
+        // Pemeriksaan halaman: layanan lokal dan konfigurasi. Uji koneksi ke
+        // API eksternal hanya dijalankan dari tombol periksa (lihat run()).
+        $checks = $this->health->checks(false);
 
         // Snapshot performa server diambil setiap halaman dibuka supaya grafik
         // punya titik terbaru. Penjadwal 15 menit mengisi sisanya.
         $this->health->storeSnapshot();
 
+        $summary = $this->health->summary($checks);
+        $this->health->rememberScan($summary);
+
         return Inertia::render('Admin/SystemHealth', [
             'title' => 'Pengaturan Sistem',
-            'description' => 'Kesehatan layanan dan performa server: database, cache, storage, gateway WhatsApp, kredensial J&T, beban CPU, memori, dan disk.',
+            'description' => 'Pantau kesehatan layanan, resource server, dan koneksi integrasi.',
             'checks' => $checks,
-            'summary' => $this->health->summary($checks),
+            'summary' => $summary,
             'server' => $this->health->serverMetrics(),
             'history' => $this->health->recentSnapshots(96),
+            'lastCheckedAt' => $summary['checked_at'],
             'env' => [
                 'app_env' => config('app.env'),
                 'whatsapp_number_id' => config('services.whatsapp.number_id') ?: null,
@@ -40,20 +46,29 @@ class SettingsController extends Controller
     }
 
     /**
-     * Jalankan ulang seluruh pemeriksaan. Check yang menyentuh layanan luar
-     * dibatasi timeout pendek, jadi tombol ini aman dipakai kapan pun.
+     * Jalankan pemeriksaan lengkap termasuk uji konektivitas nyata ke API
+     * eksternal. Semua check memakai timeout pendek, jadi tombol ini aman
+     * dipakai kapan pun tanpa mengganggu pengunjung.
      */
     public function run(): RedirectResponse
     {
-        $checks = $this->health->checks();
+        $checks = $this->health->checks(deep: true);
         $summary = $this->health->summary($checks);
+        $this->health->rememberScan($summary);
 
-        $message = $summary['all_ok']
-            ? 'Semua '.$summary['total'].' pemeriksaan sehat.'
-            : $summary['failed'].' dari '.$summary['total'].' pemeriksaan bermasalah. Lihat rinciannya di bawah.';
+        $counts = $summary['counts'];
+        $bermasalah = ($counts['warning'] ?? 0)
+            + ($counts['failed'] ?? 0)
+            + ($counts['offline'] ?? 0)
+            + ($counts['not_configured'] ?? 0)
+            + ($counts['unknown'] ?? 0);
+
+        $message = $bermasalah === 0
+            ? 'Semua '.$summary['total'].' layanan sehat.'
+            : $bermasalah.' dari '.$summary['total'].' layanan perlu perhatian. Lihat rinciannya di bawah.';
 
         return redirect()
             ->route('admin.settings.index')
-            ->with($summary['all_ok'] ? 'success' : 'error', $message);
+            ->with($bermasalah === 0 ? 'success' : 'error', $message);
     }
 }

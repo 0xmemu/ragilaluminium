@@ -3,248 +3,283 @@
 namespace App\Services;
 
 use App\Models\SystemHealthSnapshot;
-use App\Models\Payment;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
- * Pemeriksaan kesehatan sistem untuk halaman Pengaturan Sistem.
+ * Kesehatan sistem untuk halaman Pengaturan Sistem (System Health Console).
  *
- * Setiap check benar-benar menyentuh komponennya (query ping, Redis ping,
- * put-hapus objek kecil di storage, HTTP ke gateway) sehingga hasilnya
- * mencerminkan kondisi saat ditekan, bukan sekadar membaca config.
- * Semua check aman-gagal: satu layanan mati tidak menjatuhkan halaman.
+ * Setiap check menyentuh komponennya secara nyata (query ping, read/write
+ * cache dan storage, HTTP ke gateway) sehingga hasilnya mencerminkan kondisi
+ * saat diperiksa, bukan sekadar membaca config. Semua check aman-gagal: satu
+ * layanan mati tidak menjatuhkan halaman.
  *
- * @phpstan-type Check array{key: string, label: string, ok: bool, detail: string, group: string}
+ * Status memakai kosakata kontrak integrasi: healthy, warning, failed,
+ * offline, not_configured, checking, unknown. Status TIDAK PERNAH diturunkan
+ * dari Boolean(config) - harus dari pemeriksaan nyata.
+ *
+ * @phpstan-type HealthAction array{label: string, href?: string}
+ * @phpstan-type HealthCheck array{
+ *   key: string,
+ *   name: string,
+ *   group: string,
+ *   provider: string|null,
+ *   status: string,
+ *   summary: string,
+ *   checked_at: string,
+ *   latency_ms: float|null,
+ *   action: HealthAction|null,
+ *   details: list<string>
+ * }
  */
 final class SystemHealthService
 {
     /** Timeout HTTP singkat: halaman admin tidak boleh menggantung lama. */
     private const HTTP_TIMEOUT = 4;
 
-    /** @return list<Check> */
-    public function checks(): array
+    /** State cache untuk menyimpan hasil pemeriksaan terakhir antar request. */
+    private const CACHE_KEY = 'system-health:last-scan';
+
+    /** Hasil uji konektivitas API eksternal terakhir (hanya dari tombol periksa). */
+    private const DEEP_CACHE_KEY = 'system-health:last-deep-scan';
+
+    /** Umur maksimum hasil uji konektivitas sebelum dianggap kedaluwarsa. */
+    private const DEEP_TTL_MINUTES = 30;
+
+    public const STATUS_HEALTHY = 'healthy';
+
+    public const STATUS_WARNING = 'warning';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_OFFLINE = 'offline';
+
+    public const STATUS_NOT_CONFIGURED = 'not_configured';
+
+    public const STATUS_UNKNOWN = 'unknown';
+
+    /**
+     * Jalankan seluruh pemeriksaan.
+     *
+     * @param  bool  $deep  true = uji konektivitas nyata ke API eksternal
+     *                      (hanya saat admin menekan tombol periksa).
+     *                      false = periksa konfigurasi dan layanan lokal saja.
+     * @return list<HealthCheck>
+     */
+    public function checks(bool $deep = false): array
     {
         return [
+            // Kelompok 1: layanan infrastruktur (milik sendiri).
             $this->database(),
             $this->cacheStore(),
+            $this->queueWorker(),
+            $this->applicationStorage(),
+
+            // Kelompok 2: integrasi eksternal.
             $this->mediaStorage(),
             $this->whatsappGateway(),
-            $this->jntCredentials(),
-            $this->queueConnection(),
-            $this->storageWritable(),
+            $this->jntCargo($deep),
         ];
     }
 
-    /** Ringkasan: ok total, jumlah gagal, dan waktu pemeriksaan. */
+    /**
+     * Ringkasan status global. Hitungan per status supaya UI bisa menampilkan
+     * "6 sehat, 1 perlu perhatian" seperti kontrak, bukan kalimat umum.
+     *
+     * @param  list<HealthCheck>  $checks
+     * @return array{total: int, counts: array<string, int>, overall: string, headline: string, failed_names: list<string>, checked_at: string|null}
+     */
     public function summary(array $checks): array
     {
-        $failed = count(array_filter($checks, fn (array $check) => ! $check['ok']));
+        $counts = [
+            self::STATUS_HEALTHY => 0,
+            self::STATUS_WARNING => 0,
+            self::STATUS_FAILED => 0,
+            self::STATUS_OFFLINE => 0,
+            self::STATUS_NOT_CONFIGURED => 0,
+            self::STATUS_UNKNOWN => 0,
+        ];
+
+        $attention = [];
+
+        foreach ($checks as $check) {
+            $counts[$check['status']] = ($counts[$check['status']] ?? 0) + 1;
+            if ($check['status'] !== self::STATUS_HEALTHY) {
+                $attention[] = $check;
+            }
+        }
+
+        // Prioritas keparahan: gagal/offline mengalahkan perhatian.
+        $overall = match (true) {
+            $counts[self::STATUS_FAILED] > 0 || $counts[self::STATUS_OFFLINE] > 0 => self::STATUS_FAILED,
+            $counts[self::STATUS_WARNING] > 0 => self::STATUS_WARNING,
+            $counts[self::STATUS_NOT_CONFIGURED] > 0 => self::STATUS_WARNING,
+            $counts[self::STATUS_UNKNOWN] > 0 => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
 
         return [
             'total' => count($checks),
-            'failed' => $failed,
-            'all_ok' => $failed === 0,
-            'checked_at' => now()->timezone(config('app.timezone'))->format('d M Y, H.i').' WIB',
+            'counts' => $counts,
+            'overall' => $overall,
+            'headline' => $this->headline($overall),
+            'failed_names' => array_map(fn (array $c) => $c['name'], $attention),
+            'checked_at' => $checks === [] ? null : $checks[0]['checked_at'],
         ];
     }
 
-    private function database(): array
+    /** Nama kondisi global dalam bahasa manusia. */
+    public function headline(string $overall): string
     {
-        try {
-            $start = microtime(true);
-            $value = DB::selectOne('select 1 as ping');
-            $ms = (int) round((microtime(true) - $start) * 1000);
-
-            return $this->check('database', 'Database', $value !== null, 'Koneksi MySQL normal (ping '.$ms.' ms).');
-        } catch (\Throwable $e) {
-            return $this->check('database', 'Database', false, 'Koneksi gagal: '.$this->brief($e));
-        }
+        return match ($overall) {
+            self::STATUS_HEALTHY => 'Sistem sehat',
+            self::STATUS_WARNING => 'Perlu perhatian',
+            self::STATUS_FAILED => 'Gangguan sistem',
+            self::STATUS_NOT_CONFIGURED => 'Sebagian belum dikonfigurasi',
+            default => 'Belum diperiksa',
+        };
     }
 
-    private function cacheStore(): array
+    /** Simpan hasil pemeriksaan supaya timestamp bertahan antar request. */
+    public function rememberScan(array $summary): void
     {
-        $driver = (string) config('cache.default');
-
-        try {
-            $token = 'health-'.bin2hex(random_bytes(6));
-            \Illuminate\Support\Facades\Cache::put($token, '1', 30);
-            $ok = \Illuminate\Support\Facades\Cache::get($token) === '1';
-            \Illuminate\Support\Facades\Cache::forget($token);
-
-            return $this->check('cache', 'Cache ('.$driver.')', $ok, $ok ? 'Tulis-baca cache normal.' : 'Nilai cache tidak terbaca kembali.');
-        } catch (\Throwable $e) {
-            return $this->check('cache', 'Cache ('.$driver.')', false, 'Gagal: '.$this->brief($e));
-        }
+        Cache::put(self::CACHE_KEY, [
+            'checked_at' => now()->timezone(config('app.timezone'))->toIso8601String(),
+            'summary' => $summary,
+        ], now()->addHours(6));
     }
 
-    private function mediaStorage(): array
+    /** Hasil pemeriksaan terakhir yang tersimpan (null bila belum pernah). */
+    public function lastScan(): ?array
     {
-        $diskName = (string) config('filesystems.disks.media.driver', 'local');
-        $label = 'Media storage ('.$diskName.')';
-
-        try {
-            $disk = \Illuminate\Support\Facades\Storage::disk('media');
-            $path = 'health/'.bin2hex(random_bytes(6)).'.txt';
-            $disk->put($path, 'health-check');
-            $ok = trim((string) $disk->get($path)) === 'health-check';
-            $disk->delete($path);
-
-            return $this->check('media_storage', $label, $ok, $ok ? 'Tulis-baca-hapus objek normal.' : 'Objek tidak terbaca kembali.');
-        } catch (\Throwable $e) {
-            return $this->check('media_storage', $label, false, 'Gagal: '.$this->brief($e));
-        }
+        return Cache::get(self::CACHE_KEY);
     }
 
-    private function whatsappGateway(): array
-    {
-        $baseUrl = rtrim((string) config('services.whatsapp.baileys.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp.baileys.api_key');
-
-        if ($baseUrl === '') {
-            return $this->check('whatsapp', 'Gateway WhatsApp', false, 'WHATSAPP_BAILEYS_BASE_URL belum diisi.');
-        }
-
-        try {
-            $response = Http::timeout(self::HTTP_TIMEOUT)
-                ->withHeaders($apiKey !== '' ? ['X-Api-Key' => $apiKey] : [])
-                ->get($baseUrl.'/status');
-            $status = (string) $response->json('status');
-            $phone = (string) ($response->json('connected_phone') ?? $response->json('phone') ?? '');
-            $phone = $phone !== '' ? preg_replace('/[:@].*$/', '', $phone) : '';
-
-            if (! $response->successful()) {
-                return $this->check('whatsapp', 'Gateway WhatsApp', false, 'HTTP '.$response->status().' dari gateway.');
-            }
-
-            return $this->check(
-                'whatsapp',
-                'Gateway WhatsApp',
-                $status === 'open',
-                $status === 'open'
-                    ? 'Sesi terhubung ('.$phone.').'
-                    : 'Gateway hidup tapi sesi tidak terhubung (status: '.$status.').',
-            );
-        } catch (\Throwable $e) {
-            return $this->check('whatsapp', 'Gateway WhatsApp', false, 'Tidak terjangkau: '.$this->brief($e));
-        }
-    }
-
-    private function jntCredentials(): array
-    {
-        $report = \App\Support\JntReadiness::report();
-        $missing = $report['missing'];
-
-        return $this->check(
-            'jnt',
-            'Kredensial J&T Cargo',
-            $missing === [],
-            $missing === []
-                ? 'Semua env J&T lengkap ('.$report['environment'].').'
-                : 'Env belum lengkap: '.implode(', ', $missing).'.',
-        );
-    }
-
-    private function queueConnection(): array
-    {
-        $driver = (string) config('queue.default');
-
-        return $this->check(
-            'queue',
-            'Queue ('.$driver.')',
-            true,
-            $driver === 'sync'
-                ? 'Driver sync: pekerjaan jalan langsung tanpa worker.'
-                : 'Antrian aktif di driver '.$driver.'. Pastikan worker systemd berjalan.',
-        );
-    }
-
-    private function storageWritable(): array
-    {
-        try {
-            $ok = is_writable(storage_path());
-
-            return $this->check(
-                'storage_writable',
-                'Folder storage writable',
-                $ok,
-                $ok
-                    ? 'storage/ dapat ditulis (insiden permission 2026-09-15 tidak berulang).'
-                    : 'storage/ TIDAK dapat ditulis: situs berisiko 500. Jalankan scripts/prod/fix-storage-perms.sh.',
-            );
-        } catch (\Throwable $e) {
-            return $this->check('storage_writable', 'Folder storage writable', false, 'Gagal: '.$this->brief($e));
-        }
-    }
+    // =====================================================================
+    // METRIK RESOURCE SERVER
+    // =====================================================================
 
     /**
-     * @return Check
-     */
-    private function check(string $key, string $label, bool $ok, string $detail): array
-    {
-        return [
-            'key' => $key,
-            'label' => $label,
-            'ok' => $ok,
-            'detail' => $detail,
-            'group' => 'sistem',
-        ];
-    }
-
-    private function brief(\Throwable $e): string
-    {
-        return \Illuminate\Support\Str::limit($e->getMessage(), 120);
-    }
-
-    /**
-     * Metrik performa server saat ini. Semua dibaca dari file sistem dan
-     * query internal, tanpa dependensi eksternal.
+     * Metrik performa server. Dibaca dari file sistem dan query internal,
+     * tanpa dependensi eksternal.
      *
-     * @return array<string, float|int|null>
+     * @return array<string, mixed>
      */
     public function serverMetrics(): array
     {
-        $load = sys_getloadavg();
+        $load = sys_getloadavg() ?: [null, null, null];
         $mem = $this->readMemInfo();
         $disk = $this->readDisk();
 
         $dbStart = microtime(true);
+        $dbMs = null;
         try {
             DB::selectOne('select 1 as ping');
-            $dbMs = round((microtime(true) - $dbStart) * 100, 2);
+            $dbMs = round((microtime(true) - $dbStart) * 1000, 2);
         } catch (\Throwable) {
             $dbMs = null;
         }
 
-        $queueBacklog = 0;
+        $backlog = null;
         try {
-            $queueBacklog = (int) \Illuminate\Support\Facades\Queue::size('default')
-                + (int) \Illuminate\Support\Facades\Queue::size('imports')
-                + (int) \Illuminate\Support\Facades\Queue::size('media');
+            $backlog = (int) Queue::size('default')
+                + (int) Queue::size('imports')
+                + (int) Queue::size('media');
         } catch (\Throwable) {
-            $queueBacklog = null;
+            $backlog = null;
         }
 
         return [
             'taken_at' => now()->timezone(config('app.timezone'))->toIso8601String(),
-            'load_1' => $load[0] ?? null,
-            'load_5' => $load[1] ?? null,
-            'load_15' => $load[2] ?? null,
-            'memory_used_mb' => $mem['used'] ?? null,
-            'memory_total_mb' => $mem['total'] ?? null,
-            'memory_pct' => $mem['pct'] ?? null,
-            'disk_used_gb' => $disk['used'] ?? null,
-            'disk_total_gb' => $disk['total'] ?? null,
-            'disk_pct' => $disk['pct'] ?? null,
+            'load_1' => $load[0] !== null ? round((float) $load[0], 2) : null,
+            'load_5' => $load[1] !== null ? round((float) $load[1], 2) : null,
+            'load_15' => $load[2] !== null ? round((float) $load[2], 2) : null,
+            'vcpu' => $this->vcpuCount(),
+            'cpu_pct' => $this->cpuUtilization(),
+            'memory_used_mb' => $mem['used'],
+            'memory_total_mb' => $mem['total'],
+            'memory_pct' => $mem['pct'],
+            'disk_used_gb' => $disk['used'],
+            'disk_total_gb' => $disk['total'],
+            'disk_pct' => $disk['pct'],
+            'disk_mount' => $disk['mount'],
             'db_response_ms' => $dbMs,
-            'queue_backlog' => $queueBacklog,
+            'queue_backlog' => $backlog,
             'php_memory_mb' => round(memory_get_usage(true) / 1048576, 2),
             'php_peak_mb' => round(memory_get_peak_usage(true) / 1048576, 2),
         ];
     }
 
-    /** Simpan snapshot performa server ke database. */
+    /**
+     * Ambang status resource. Ditentukan di logic aplikasi, bukan hanya warna
+     * di UI (kontrak: threshold harus punya dasar, bukan kosmetik).
+     */
+    public function memoryStatus(?float $pct): string
+    {
+        if ($pct === null) {
+            return self::STATUS_UNKNOWN;
+        }
+
+        return match (true) {
+            $pct > 90 => self::STATUS_FAILED,
+            $pct >= 75 => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
+    }
+
+    public function diskStatus(?float $pct): string
+    {
+        if ($pct === null) {
+            return self::STATUS_UNKNOWN;
+        }
+
+        return match (true) {
+            $pct > 90 => self::STATUS_FAILED,
+            $pct >= 75 => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
+    }
+
+    /**
+     * Status load average dinilai terhadap jumlah vCPU, bukan angka mentah.
+     * Load 4 pada mesin 1 core adalah kritis; pada 8 core adalah sepertiga.
+     */
+    public function loadStatus(?float $load, ?int $vcpu): string
+    {
+        if ($load === null || $vcpu === null || $vcpu <= 0) {
+            return self::STATUS_UNKNOWN;
+        }
+
+        $ratio = $load / $vcpu;
+
+        return match (true) {
+            $ratio >= 1.5 => self::STATUS_FAILED,
+            $ratio >= 0.9 => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
+    }
+
+    public function dbStatus(?float $ms): string
+    {
+        if ($ms === null) {
+            return self::STATUS_UNKNOWN;
+        }
+
+        return match (true) {
+            $ms >= 1000 => self::STATUS_FAILED,
+            $ms >= 200 => self::STATUS_WARNING,
+            default => self::STATUS_HEALTHY,
+        };
+    }
+
+    // =====================================================================
+    // SNAPSHOT UNTUK GRAFIK
+    // =====================================================================
+
     public function storeSnapshot(): SystemHealthSnapshot
     {
         $m = $this->serverMetrics();
@@ -254,12 +289,15 @@ final class SystemHealthService
             'load_1' => $m['load_1'],
             'load_5' => $m['load_5'],
             'load_15' => $m['load_15'],
+            'cpu_pct' => $m['cpu_pct'],
+            'vcpu' => $m['vcpu'],
             'memory_used_mb' => $m['memory_used_mb'],
             'memory_total_mb' => $m['memory_total_mb'],
             'memory_pct' => $m['memory_pct'],
             'disk_used_gb' => $m['disk_used_gb'],
             'disk_total_gb' => $m['disk_total_gb'],
             'disk_pct' => $m['disk_pct'],
+            'disk_mount' => $m['disk_mount'],
             'db_response_ms' => $m['db_response_ms'],
             'queue_backlog' => $m['queue_backlog'],
             'php_memory_mb' => $m['php_memory_mb'],
@@ -267,7 +305,12 @@ final class SystemHealthService
         ]);
     }
 
-    /** Snapshot terakhir (maks N baris, terlama lebih dulu) untuk grafik. */
+    /**
+     * Riwayat snapshot untuk grafik. Nilai null dibiarkan null supaya grafik
+     * tidak menggambar garis dari angka 0 palsu.
+     *
+     * @return list<array<string, mixed>>
+     */
     public function recentSnapshots(int $limit = 96): array
     {
         return SystemHealthSnapshot::query()
@@ -277,43 +320,605 @@ final class SystemHealthService
             ->reverse()
             ->values()
             ->map(fn (SystemHealthSnapshot $s) => [
-                'taken_at' => $s->taken_at->format('H:i'),
-                'load_1' => (float) $s->load_1,
-                'memory_pct' => (float) $s->memory_pct,
-                'disk_pct' => (float) $s->disk_pct,
-                'db_response_ms' => (float) $s->db_response_ms,
-                'queue_backlog' => (int) $s->queue_backlog,
+                'taken_at' => $s->taken_at->timezone(config('app.timezone'))->format('H:i'),
+                'taken_iso' => $s->taken_at->timezone(config('app.timezone'))->toIso8601String(),
+                'load_1' => $s->load_1 !== null ? (float) $s->load_1 : null,
+                'cpu_pct' => $s->cpu_pct !== null ? (float) $s->cpu_pct : null,
+                'memory_pct' => $s->memory_pct !== null ? (float) $s->memory_pct : null,
+                'disk_pct' => $s->disk_pct !== null ? (float) $s->disk_pct : null,
+                'db_response_ms' => $s->db_response_ms !== null ? (float) $s->db_response_ms : null,
+                'queue_backlog' => $s->queue_backlog !== null ? (int) $s->queue_backlog : null,
             ])
             ->all();
     }
 
-    /** @return array{total: float|null, used: float|null, pct: float|null} */
+    // =====================================================================
+    // PEMERIKSAAN
+    // =====================================================================
+
+    /** @return HealthCheck */
+    private function database(): array
+    {
+        $start = microtime(true);
+
+        try {
+            $ok = DB::selectOne('select 1 as ping') !== null;
+            $ms = round((microtime(true) - $start) * 1000, 2);
+
+            return $this->check(
+                key: 'database',
+                name: 'Database',
+                group: 'infrastructure',
+                provider: 'MySQL',
+                status: $ok ? ($this->dbStatus($ms) === self::STATUS_HEALTHY ? self::STATUS_HEALTHY : $this->dbStatus($ms)) : self::STATUS_FAILED,
+                summary: $ok ? 'Ping '.$this->ms($ms) : 'Query ping gagal dijalankan.',
+                latencyMs: $ms,
+            );
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'database',
+                name: 'Database',
+                group: 'infrastructure',
+                provider: 'MySQL',
+                status: self::STATUS_OFFLINE,
+                summary: 'Tidak dapat dihubungi: '.$this->brief($e),
+                action: ['label' => 'Lihat log server'],
+            );
+        }
+    }
+
+    /** @return HealthCheck */
+    private function cacheStore(): array
+    {
+        $driver = (string) config('cache.default');
+        $provider = Str::headline($driver);
+
+        try {
+            $token = 'health-'.bin2hex(random_bytes(6));
+            $start = microtime(true);
+            Cache::put($token, '1', 30);
+            $ok = Cache::get($token) === '1';
+            Cache::forget($token);
+            $ms = round((microtime(true) - $start) * 1000, 2);
+
+            return $this->check(
+                key: 'cache',
+                name: 'Redis cache',
+                group: 'infrastructure',
+                provider: $provider.' · read/write',
+                status: $ok ? self::STATUS_HEALTHY : self::STATUS_FAILED,
+                summary: $ok ? 'Read/write cache berhasil' : 'Nilai cache tidak terbaca kembali',
+                latencyMs: $ms,
+            );
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'cache',
+                name: 'Redis cache',
+                group: 'infrastructure',
+                provider: $provider,
+                status: self::STATUS_OFFLINE,
+                summary: 'Tidak dapat dihubungi: '.$this->brief($e),
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+    }
+
+    /**
+     * Queue worker DIPISAH dari Redis. Redis adalah backend antrean; worker
+     * adalah proses yang menjalankan pekerjaan. Redis hidup tanpa worker
+     * berarti pekerjaan menumpuk tanpa yang mengerjakan.
+     *
+     * @return HealthCheck
+     */
+    private function queueWorker(): array
+    {
+        $driver = (string) config('queue.default');
+        $provider = Str::headline($driver).' queue';
+        $worker = $this->findQueueWorker();
+
+        if ($worker === null) {
+            return $this->check(
+                key: 'queue-worker',
+                name: 'Queue worker',
+                group: 'infrastructure',
+                provider: $provider,
+                status: self::STATUS_WARNING,
+                summary: 'Proses worker tidak ditemukan. Pekerjaan menumpuk tanpa dikerjakan.',
+                details: ['Jalankan systemctl start ragil-queue di server.'],
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+
+        $ago = $worker['started_ago_seconds'];
+
+        return $this->check(
+            key: 'queue-worker',
+            name: 'Queue worker',
+            group: 'infrastructure',
+            provider: $provider,
+            status: self::STATUS_HEALTHY,
+            summary: 'Worker aktif sejak '.$this->humanDuration($ago).' lalu (PID '.$worker['pid'].')',
+            details: ['Perintah: '.$worker['command']],
+        );
+    }
+
+    /** @return HealthCheck */
+    private function applicationStorage(): array
+    {
+        $path = storage_path();
+
+        try {
+            $file = $path.'/health-'.bin2hex(random_bytes(6)).'.txt';
+            $written = @file_put_contents($file, 'health-check') !== false;
+            $read = $written ? trim((string) @file_get_contents($file)) === 'health-check' : false;
+            if ($written) {
+                @unlink($file);
+            }
+
+            $ok = $written && $read;
+
+            return $this->check(
+                key: 'storage-app',
+                name: 'Storage aplikasi',
+                group: 'infrastructure',
+                provider: 'Filesystem',
+                status: $ok ? self::STATUS_HEALTHY : self::STATUS_FAILED,
+                summary: $ok
+                    ? 'Read/write berhasil di storage/'
+                    : 'storage/ tidak dapat ditulis. Situs berisiko error 500.',
+                details: $ok ? [] : ['Jalankan scripts/prod/fix-storage-perms.sh di server.'],
+                action: $ok ? null : ['label' => 'Lihat detail'],
+            );
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'storage-app',
+                name: 'Storage aplikasi',
+                group: 'infrastructure',
+                provider: 'Filesystem',
+                status: self::STATUS_FAILED,
+                summary: 'Gagal: '.$this->brief($e),
+            );
+        }
+    }
+
+    /** @return HealthCheck */
+    private function mediaStorage(): array
+    {
+        $driver = (string) config('filesystems.disks.media.driver', 'local');
+        $provider = match ($driver) {
+            's3' => 'S3',
+            'local' => 'Filesystem lokal',
+            default => Str::headline($driver),
+        };
+
+        try {
+            $disk = Storage::disk('media');
+            $path = 'health/'.bin2hex(random_bytes(6)).'.txt';
+            $start = microtime(true);
+            $disk->put($path, 'health-check');
+            $ok = trim((string) $disk->get($path)) === 'health-check';
+            $disk->delete($path);
+            $ms = round((microtime(true) - $start) * 1000, 2);
+
+            return $this->check(
+                key: 'media-storage',
+                name: 'Media storage',
+                group: 'integration',
+                provider: $provider,
+                status: $ok ? self::STATUS_HEALTHY : self::STATUS_FAILED,
+                summary: $ok ? 'Upload, baca, dan hapus objek berhasil' : 'Objek tidak terbaca kembali',
+                latencyMs: $ms,
+            );
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'media-storage',
+                name: 'Media storage',
+                group: 'integration',
+                provider: $provider,
+                status: self::STATUS_OFFLINE,
+                summary: 'Tidak dapat dihubungi: '.$this->brief($e),
+                action: ['label' => 'Lihat detail'],
+            );
+        }
+    }
+
+    /** @return HealthCheck */
+    private function whatsappGateway(): array
+    {
+        $baseUrl = rtrim((string) config('services.whatsapp.baileys.base_url'), '');
+        $apiKey = (string) config('services.whatsapp.baileys.api_key');
+
+        if ($baseUrl === '') {
+            return $this->check(
+                key: 'whatsapp',
+                name: 'Gateway WhatsApp',
+                group: 'integration',
+                provider: 'WhatsApp',
+                status: self::STATUS_NOT_CONFIGURED,
+                summary: 'URL gateway belum diisi di environment server',
+                action: ['label' => 'Konfigurasi'],
+            );
+        }
+
+        try {
+            $start = microtime(true);
+            $response = Http::timeout(self::HTTP_TIMEOUT)
+                ->withHeaders($apiKey !== '' ? ['X-Api-Key' => $apiKey] : [])
+                ->get($baseUrl.'/status');
+            $ms = round((microtime(true) - $start) * 1000, 2);
+
+            $payload = $response->json() ?? [];
+            $status = (string) ($payload['status'] ?? '');
+            $rawPhone = (string) ($payload['connected_phone'] ?? ($payload['phone'] ?? ''));
+            $phone = $rawPhone !== '' ? (string) preg_replace('/[:@].*/', '', $rawPhone) : '';
+
+            if (! $response->successful()) {
+                return $this->check(
+                    key: 'whatsapp',
+                    name: 'Gateway WhatsApp',
+                    group: 'integration',
+                    provider: 'WhatsApp',
+                    status: self::STATUS_FAILED,
+                    summary: 'Gateway membalas HTTP '.$response->status(),
+                    latencyMs: $ms,
+                    action: ['label' => 'Coba lagi'],
+                );
+            }
+
+            if ($status === 'open') {
+                return $this->check(
+                    key: 'whatsapp',
+                    name: 'Gateway WhatsApp',
+                    group: 'integration',
+                    provider: 'WhatsApp',
+                    status: self::STATUS_HEALTHY,
+                    summary: 'Sesi terhubung'.($phone !== '' ? ' · '.$this->maskPhone($phone) : ''),
+                    latencyMs: $ms,
+                );
+            }
+
+            return $this->check(
+                key: 'whatsapp',
+                name: 'Gateway WhatsApp',
+                group: 'integration',
+                provider: 'WhatsApp',
+                status: self::STATUS_WARNING,
+                summary: 'Gateway hidup, tetapi sesi belum terhubung'.($status !== '' ? ' ('.$status.')' : ''),
+                latencyMs: $ms,
+                details: ['Pindai ulang QR pada perangkat gateway.'],
+                action: ['label' => 'Lihat detail'],
+            );
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'whatsapp',
+                name: 'Gateway WhatsApp',
+                group: 'integration',
+                provider: 'WhatsApp',
+                status: self::STATUS_OFFLINE,
+                summary: 'Tidak dapat dihubungi: '.$this->brief($e),
+                action: ['label' => 'Coba lagi'],
+            );
+        }
+    }
+
+    /**
+     * J&T: bedakan "credential tersedia" dari "API dapat digunakan".
+     *
+     * Tanpa $deep kita hanya memeriksa kelengkapan env dan menyatakan jujur
+     * bahwa koneksi belum diuji. Dengan $deep kita benar-benar memanggil API
+     * ringan (ambil bill code) sehingga status Sehat berarti API merespons.
+     *
+     * @return HealthCheck
+     */
+    private function jntCargo(bool $deep): array
+    {
+        $report = \App\Support\JntReadiness::report();
+        $missing = $report['missing'];
+        $environment = (string) $report['environment'];
+
+        if ($missing !== []) {
+            return $this->check(
+                key: 'jnt',
+                name: 'J&T Cargo',
+                group: 'integration',
+                provider: 'J&T API',
+                status: self::STATUS_NOT_CONFIGURED,
+                summary: 'Credential belum lengkap: '.implode(', ', $missing),
+                action: ['label' => 'Konfigurasi'],
+            );
+        }
+
+        if (! $deep) {
+            // Hasil uji konektivitas terakhir dipakai kembali selama masih
+            // segar, supaya status tidak berubah jadi "belum diuji" hanya
+            // karena halaman dimuat ulang.
+            $cached = Cache::get(self::DEEP_CACHE_KEY);
+
+            if (is_array($cached) && isset($cached['at'], $cached['check'])) {
+                $ageMinutes = now()->diffInMinutes(\Illuminate\Support\Carbon::parse($cached['at']));
+
+                if ($ageMinutes <= self::DEEP_TTL_MINUTES) {
+                    return $cached['check'];
+                }
+            }
+
+            return $this->check(
+                key: 'jnt',
+                name: 'J&T Cargo',
+                group: 'integration',
+                provider: 'J&T API · '.$environment,
+                status: self::STATUS_WARNING,
+                summary: 'Credential tersedia · koneksi API belum diuji',
+                details: ['Tekan Jalankan pemeriksaan untuk menguji koneksi API.'],
+                action: ['label' => 'Uji koneksi'],
+            );
+        }
+
+        try {
+            $client = app(\App\Services\Shipping\JntCargoClient::class);
+
+            if (! $client->isEnabled()) {
+                return $this->check(
+                    key: 'jnt',
+                    name: 'J&T Cargo',
+                    group: 'integration',
+                    provider: 'J&T API · '.$environment,
+                    status: self::STATUS_WARNING,
+                    summary: 'Integrasi dimatikan (JNT_ENABLED=false)',
+                    action: ['label' => 'Konfigurasi'],
+                );
+            }
+
+            $start = microtime(true);
+            $response = $client->getBatchBillCode(1);
+            $ms = round((microtime(true) - $start) * 1000, 2);
+
+            if ($response->ok) {
+                return $this->rememberDeep($this->check(
+                    key: 'jnt',
+                    name: 'J&T Cargo',
+                    group: 'integration',
+                    provider: 'J&T API · '.$environment,
+                    status: self::STATUS_HEALTHY,
+                    summary: 'Credential valid dan API merespons',
+                    latencyMs: $ms,
+                ));
+            }
+
+            return $this->rememberDeep($this->check(
+                key: 'jnt',
+                name: 'J&T Cargo',
+                group: 'integration',
+                provider: 'J&T API · '.$environment,
+                status: self::STATUS_FAILED,
+                summary: 'API menolak permintaan: '.Str::limit((string) $response->message(), 100),
+                latencyMs: $ms,
+                action: ['label' => 'Coba lagi'],
+            ));
+        } catch (\Throwable $e) {
+            return $this->check(
+                key: 'jnt',
+                name: 'J&T Cargo',
+                group: 'integration',
+                provider: 'J&T API · '.$environment,
+                status: self::STATUS_OFFLINE,
+                summary: 'Tidak dapat dihubungi: '.$this->brief($e),
+                action: ['label' => 'Coba lagi'],
+            );
+        }
+    }
+
+    // =====================================================================
+    // PEMBANTU
+    // =====================================================================
+
+    /**
+     * @param  list<string>  $details
+     * @param  HealthAction|null  $action
+     * @return HealthCheck
+     */
+    private function check(
+        string $key,
+        string $name,
+        string $group,
+        ?string $provider,
+        string $status,
+        string $summary,
+        ?float $latencyMs = null,
+        ?array $action = null,
+        array $details = [],
+    ): array {
+        return [
+            'key' => $key,
+            'name' => $name,
+            'group' => $group,
+            'provider' => $provider,
+            'status' => $status,
+            'summary' => $summary,
+            'checked_at' => now()->timezone(config('app.timezone'))->toIso8601String(),
+            'latency_ms' => $latencyMs,
+            'action' => $action,
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * Jumlah CPU yang terlihat sistem, dipakai sebagai konteks load average.
+     * Load tanpa pembanding jumlah core tidak bermakna.
+     */
+    private function vcpuCount(): ?int
+    {
+        if (! is_readable('/proc/cpuinfo')) {
+            return null;
+        }
+
+        $count = substr_count((string) file_get_contents('/proc/cpuinfo'), 'processor');
+
+        return $count > 0 ? $count : null;
+    }
+
+    /**
+     * Utilisasi CPU dari dua cuplikan /proc/stat. Bukan persentase sejak boot
+     * (angka itu tidak berguna), melainkan beban sesaat saat diperiksa.
+     */
+    private function cpuUtilization(): ?float
+    {
+        $first = $this->readCpuStat();
+        if ($first === null) {
+            return null;
+        }
+
+        usleep(150_000);
+        $second = $this->readCpuStat();
+        if ($second === null) {
+            return null;
+        }
+
+        $totalDelta = $second['total'] - $first['total'];
+        $idleDelta = $second['idle'] - $first['idle'];
+
+        if ($totalDelta <= 0) {
+            return null;
+        }
+
+        $busy = max(0, $totalDelta - $idleDelta);
+
+        return round(($busy / $totalDelta) * 100, 1);
+    }
+
+    /** @return array{total: int, idle: int}|null */
+    private function readCpuStat(): ?array
+    {
+        if (! is_readable('/proc/stat')) {
+            return null;
+        }
+
+        $lines = @file('/proc/stat');
+        if ($lines === false || ! isset($lines[0])) {
+            return null;
+        }
+
+        $parts = preg_split('/\s+/', trim((string) $lines[0]));
+        if ($parts === false || ($parts[0] ?? '') !== 'cpu') {
+            return null;
+        }
+
+        $values = array_map('intval', array_slice($parts, 1));
+        // user, nice, system, idle, iowait, irq, softirq, steal
+        $idle = ($values[3] ?? 0) + ($values[4] ?? 0);
+
+        return ['total' => array_sum($values), 'idle' => $idle];
+    }
+
+    /**
+     * Cari proses queue worker lewat /proc. Bukti nyata bahwa ada yang
+     * mengerjakan antrean, bukan sekadar config queue terisi.
+     *
+     * @return array{pid: int, command: string, started_ago_seconds: int}|null
+     */
+    private function findQueueWorker(): ?array
+    {
+        if (! is_dir('/proc')) {
+            return null;
+        }
+
+        $uptime = $this->systemUptimeSeconds();
+        $ticks = 100; // CLK_TCK standar pada Linux x86_64.
+
+        foreach (glob('/proc/[0-9]*') ?: [] as $dir) {
+            $cmdline = @file_get_contents($dir.'/cmdline');
+            if ($cmdline === false || $cmdline === '') {
+                continue;
+            }
+
+            $command = trim(str_replace("\0", ' ', $cmdline));
+
+            // Batasi pada proses PHP yang benar-benar menjalankan artisan
+            // queue, supaya perintah pencarian lain tidak ikut cocok.
+            if (! preg_match('#\bphp\b.*artisan\s+queue:(work|listen)\b#', $command)) {
+                continue;
+            }
+
+            $pid = (int) basename($dir);
+            $startedAgo = null;
+
+            $stat = @file_get_contents($dir.'/stat');
+            if ($stat !== false && $uptime !== null) {
+                // Field 22 = starttime (dalam tick sejak boot). Nama proses bisa
+                // memuat spasi, jadi hitung dari penutup kurung terakhir.
+                $close = strrpos($stat, ')');
+                if ($close !== false) {
+                    $fields = preg_split('/\s+/', trim(substr($stat, $close + 1)));
+                    $startTicks = isset($fields[19]) ? (int) $fields[19] : null;
+                    if ($startTicks !== null) {
+                        $startedAgo = max(0, (int) ($uptime - ($startTicks / $ticks)));
+                    }
+                }
+            }
+
+            return [
+                'pid' => $pid,
+                'command' => Str::limit($command, 120),
+                'started_ago_seconds' => $startedAgo ?? 0,
+            ];
+        }
+
+        return null;
+    }
+
+    private function systemUptimeSeconds(): ?float
+    {
+        if (! is_readable('/proc/uptime')) {
+            return null;
+        }
+
+        $raw = @file_get_contents('/proc/uptime');
+
+        return $raw === false ? null : (float) explode(' ', trim($raw))[0];
+    }
+
+    /** @return array{total: float|null, used: float|null, pct: float|null, mount: string|null} */
     private function readMemInfo(): array
     {
         if (! is_readable('/proc/meminfo')) {
-            return ['total' => null, 'used' => null, 'pct' => null];
+            return ['total' => null, 'used' => null, 'pct' => null, 'mount' => null];
         }
 
-        $lines = file_get_contents('/proc/meminfo');
-        $total = $free = $available = null;
+        $raw = (string) file_get_contents('/proc/meminfo');
+        $total = $available = null;
 
-        if (preg_match('/MemTotal:\s+(\d+)/', $lines, $m)) $total = (int) $m[1];
-        if (preg_match('/MemFree:\s+(\d+)/', $lines, $m)) $free = (int) $m[1];
-        if (preg_match('/MemAvailable:\s+(\d+)/', $lines, $m)) $available = (int) $m[1];
+        if (preg_match('/MemTotal:\s+(\d+)/', $raw, $m)) {
+            $total = (int) $m[1];
+        }
+        if (preg_match('/MemAvailable:\s+(\d+)/', $raw, $m)) {
+            $available = (int) $m[1];
+        }
 
-        if ($total === null) return ['total' => null, 'used' => null, 'pct' => null];
+        if ($total === null) {
+            return ['total' => null, 'used' => null, 'pct' => null, 'mount' => null];
+        }
 
-        $avail = $available ?? $free ?? 0;
+        $avail = $available ?? 0;
         $used = $total - $avail;
 
         return [
             'total' => round($total / 1024, 2),
             'used' => round($used / 1024, 2),
             'pct' => $total > 0 ? round(($used / $total) * 100, 2) : null,
+            'mount' => null,
         ];
     }
 
-    /** @return array{total: float|null, used: float|null, pct: float|null} */
+    /**
+     * Disk tempat storage aplikasi berada.
+     *
+     * Catatan angka: disk_free_space() mengembalikan ruang yang tersedia untuk
+     * pengguna biasa, sehingga blok cadangan root ikut terhitung terpakai.
+     * Karena itu persentasenya sedikit lebih tinggi daripada df. Angkanya tetap
+     * konsisten dengan dirinya sendiri antar waktu, jadi trennya sahih.
+     *
+     * @return array{total: float|null, used: float|null, pct: float|null, mount: string|null}
+     */
     private function readDisk(): array
     {
         $path = storage_path();
@@ -321,7 +926,7 @@ final class SystemHealthService
         $free = @disk_free_space($path);
 
         if ($total === false || $free === false || $total <= 0) {
-            return ['total' => null, 'used' => null, 'pct' => null];
+            return ['total' => null, 'used' => null, 'pct' => null, 'mount' => null];
         }
 
         $used = $total - $free;
@@ -330,6 +935,86 @@ final class SystemHealthService
             'total' => round($total / 1073741824, 2),
             'used' => round($used / 1073741824, 2),
             'pct' => round(($used / $total) * 100, 2),
+            'mount' => $this->mountPointFor($path),
         ];
+    }
+
+    /** Mount point yang menaungi sebuah path, dibaca dari /proc/mounts. */
+    private function mountPointFor(string $path): ?string
+    {
+        if (! is_readable('/proc/mounts')) {
+            return null;
+        }
+
+        $real = realpath($path) ?: $path;
+        $best = null;
+        $bestLength = -1;
+
+        foreach (explode("\n", (string) file_get_contents('/proc/mounts')) as $line) {
+            $parts = preg_split('/\s+/', trim($line));
+            if ($parts === false || count($parts) < 2 || ! str_starts_with($parts[1], '/')) {
+                continue;
+            }
+
+            $mount = $parts[1];
+            if (str_starts_with($real, $mount) && strlen($mount) > $bestLength) {
+                $best = $mount;
+                $bestLength = strlen($mount);
+            }
+        }
+
+        return $best;
+    }
+
+    /** Simpan hasil uji konektivitas API eksternal supaya bisa dipakai ulang. */
+    private function rememberDeep(array $check): array
+    {
+        Cache::put(self::DEEP_CACHE_KEY, [
+            'at' => now()->toIso8601String(),
+            'check' => $check,
+        ], now()->addMinutes(self::DEEP_TTL_MINUTES * 2));
+
+        return $check;
+    }
+
+    /** Waktu pemeriksaan lokal terakhir (bukan uji API) untuk label header. */
+    public function lastLocalScanAt(): ?string
+    {
+        $scan = $this->lastScan();
+
+        return is_array($scan) ? ($scan['checked_at'] ?? null) : null;
+    }
+
+    private function ms(float $value): string
+    {
+        return $value >= 100 ? round($value).' ms' : number_format($value, 1, ',', '.').' ms';
+    }
+
+    /** Durasi dalam bahasa manusia: 12 detik lalu, 8 menit lalu, 3 jam lalu. */
+    private function humanDuration(int $seconds): string
+    {
+        return match (true) {
+            $seconds < 60 => $seconds.' detik',
+            $seconds < 3600 => intdiv($seconds, 60).' menit',
+            $seconds < 86400 => intdiv($seconds, 3600).' jam',
+            default => intdiv($seconds, 86400).' hari',
+        };
+    }
+
+    /** Masking nomor: hanya 4 digit akhir yang tampak. */
+    private function maskPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+        if (strlen($digits) < 6) {
+            return '••••';
+        }
+
+        return '+'.substr($digits, 0, 2).' '.substr($digits, 2, 3).' •••• '.substr($digits, -4);
+    }
+
+    private function brief(\Throwable $e): string
+    {
+        return Str::limit($e->getMessage(), 120);
     }
 }
