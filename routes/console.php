@@ -43,7 +43,37 @@ Schedule::call(function () {
     app(\App\Services\StockReservationService::class)->releaseExpired();
 })->name('stock-reservations:release-expired')->everyFiveMinutes()->withoutOverlapping();
 
+// Evaluasi ambang notifikasi Teruskan Popularitas. Dipindah dari GET halaman
+// admin agar operasi baca bebas efek samping; notifikasi tetap sekali per boost.
+Schedule::command('popularity:evaluate-thresholds')
+    ->dailyAt('04:00')->withoutOverlapping();
+
+// Sinkronkan nomor WhatsApp toko dari gateway Baileys (owner 2026-09-17).
+// Nomor baru tersambung -> seluruh tampilan nomor di website ikut berganti.
+// Perangkat terputus TIDAK menghapus nomor: website tetap memakai nomor terakhir.
+Schedule::call(fn () => \App\Support\WhatsAppSessionPhone::sync())
+    ->name('whatsapp-session-phone:sync')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
 // Audit keamanan dependency bulanan (composer). Hasil JSON tersimpan di storage.
 Schedule::exec(
     'cd '.base_path().' && composer audit --format=json > storage/logs/composer-audit-$(date +%Y%m).json 2>&1',
 )->monthlyOn(1, '03:45')->withoutOverlapping();
+
+// Snapshot kesehatan sistem tiap 15 menit untuk grafik performa server.
+// Halaman Pengaturan Sistem juga mengambil snapshot setiap kali dibuka,
+// jadi grafik tetap terisi walau cron sempat mati.
+Schedule::call(fn () => app(\App\Services\SystemHealthService::class)->storeSnapshot())
+    ->name('system-health-snapshot')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
+// Pangkas snapshot lama (di atas 30 hari) supaya tabel tidak membengkak.
+Schedule::call(function (): void {
+    \App\Models\SystemHealthSnapshot::query()
+        ->where('taken_at', '<', now()->subDays(30))
+        ->delete();
+})->name('system-health-prune')
+    ->dailyAt('03:15')
+    ->withoutOverlapping();
