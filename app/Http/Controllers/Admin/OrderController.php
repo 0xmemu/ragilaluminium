@@ -650,7 +650,7 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'reason' => ['required', 'in:rusak,pecah,salah_ukuran,salah_produk,kurang,lainnya'],
+            'reason' => ['required', 'in:rusak,pecah,salah_ukuran,salah_produk,kurang,ditolak,lainnya'],
             'reason_detail' => ['nullable', 'string', 'max:500'],
             'customer_notes' => ['required', 'string', 'max:5000'],
             'admin_notes' => ['nullable', 'string', 'max:5000'],

@@ -252,12 +252,17 @@ class StorePerformanceService
         $range = $this->resolveRange($period, $from, $to, $granularity);
         // KPI-002: saat periode masih berjalan, bandingkan current sampai 'sekarang' (elapsed sama),
         // bukan endOfDay penuh, agar setara dgn previous yang dipotong di jam yang sama.
-        $currentTo = ($range['is_running'] ?? false) && $range['to']->gt(now())
+        // KPI-002: periode berjalan dibandingkan sampai 'sekarang'. Namun
+        // rentang yang BELUM dimulai (masa depan) tidak boleh dikepal:
+        // memutasi range.to ke now() membuat tanggal tampil terbalik.
+        $periodStarted = $range['from']->lte(now());
+        $currentTo = ($range['is_running'] ?? false) && $periodStarted && $range['to']->gt(now())
             ? now()
             : $range['to'];
         $current = $this->metricsFor($range['from'], $currentTo);
-        // Sinkronkan portabel current utk grafik/label bila running.
-        if ($range['is_running'] ?? false) {
+        // Sinkronkan portabel current utk grafik/label bila running dan
+        // periode memang sudah dimulai.
+        if (($range['is_running'] ?? false) && $periodStarted) {
             $range['to'] = $currentTo;
         }
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
@@ -304,7 +309,7 @@ class StorePerformanceService
         $paymentsKpis = [
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
-            $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
+            $this->kpi('cod_paid', 'COD Selesai (uang masuk)', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
             $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada order aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
 
@@ -380,6 +385,8 @@ class StorePerformanceService
                 'cod_paid' => $current['cod_paid'],
                 'cod_pending_amount' => $current['cod_pending_amount'],
                 'cod_pending_count' => $current['cod_pending_count'],
+                'cod_pending_in_period_amount' => $current['cod_pending_in_period_amount'],
+                'cod_pending_in_period_count' => $current['cod_pending_in_period_count'],
                 'payment_pending_count' => $current['payment_pending_count'],
                 'refused_goods_value' => round($current['refused_goods_value'], 2),
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
@@ -635,6 +642,8 @@ class StorePerformanceService
             'payment_pending_count' => $paymentCounts['pending_count'],
             'cod_pending_amount' => round($paymentCounts['cod_pending_amount'] ?? 0, 2),
             'cod_pending_count' => (int) ($paymentCounts['cod_pending_count'] ?? 0),
+            'cod_pending_in_period_amount' => round($paymentCounts['cod_pending_in_period_amount'] ?? 0, 2),
+            'cod_pending_in_period_count' => (int) ($paymentCounts['cod_pending_in_period_count'] ?? 0),
             'cancelled_orders' => $cancellationCounts['total'],
             'cancelled_value' => $cancellationCounts['value'],
             'cancelled_by_customer' => $cancellationCounts['customer'],
@@ -720,12 +729,24 @@ class StorePerformanceService
         $codPendingAmount = (float) (clone $codPendingQuery)->sum('amount');
         $codPendingCount = (int) (clone $codPendingQuery)->count();
 
+        // Versi terbatas periode: order COD yang dibuat dalam rentang dan
+        // uangnya belum cair. Dipisah dari snapshot semua waktu supaya tidak
+        // dicampur dengan angka periode di panel arus kas.
+        $codPendingInPeriod = (float) (clone $codPendingQuery)
+            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to]))
+            ->sum('amount');
+        $codPendingInPeriodCount = (int) (clone $codPendingQuery)
+            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to]))
+            ->count();
+
         return [
             'received' => $received,
             'cod' => $cod,
             'pending_count' => $pendingCount,
             'cod_pending_amount' => $codPendingAmount,
             'cod_pending_count' => $codPendingCount,
+            'cod_pending_in_period_amount' => $codPendingInPeriod,
+            'cod_pending_in_period_count' => $codPendingInPeriodCount,
         ];
     }
 
@@ -1182,19 +1203,52 @@ class StorePerformanceService
 
     protected function visitorsBetween(Carbon $from, Carbon $to): int
     {
-        $visitors = PerformanceVisitorEvent::query()
-            ->whereBetween('visited_at', [$from, $to])
+        // Era event dimulai dari scan pertama pada tabel visitor events.
+        // Sebelum tanggal itu satu-satunya sumber adalah metrik harian
+        // (storefront_unique_visitors), jadi rentang yang menyeberang batas
+        // era harus menggabungkan keduanya, bukan membuang salah satu.
+        $firstEventDate = PerformanceVisitorEvent::query()
+            ->min('visited_at');
+
+        if ($firstEventDate === null) {
+            return (int) PerformanceMetric::query()
+                ->where('metric_name', 'storefront_unique_visitors')
+                ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
+                ->sum('metric_value');
+        }
+
+        $firstEventDay = Carbon::parse($firstEventDate)->startOfDay();
+
+        // Rentang sepenuhnya sebelum era event: metrik harian saja.
+        if ($to->lt($firstEventDay)) {
+            return (int) PerformanceMetric::query()
+                ->where('metric_name', 'storefront_unique_visitors')
+                ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
+                ->sum('metric_value');
+        }
+
+        // Rentang sepenuhnya di dalam era event: events saja.
+        if (! $from->lt($firstEventDay)) {
+            return (int) PerformanceVisitorEvent::query()
+                ->whereBetween('visited_at', [$from, $to])
+                ->distinct()
+                ->count('visitor_hash');
+        }
+
+        // Rentang menyeberang: pengunjung sebelum batas dihitung dari metrik
+        // harian (identitas lintas sumber tidak dapat digabung), sesudahnya
+        // dari event. Disediakan sebagai angka gabungan dua sumber.
+        $legacyDays = (int) PerformanceMetric::query()
+            ->where('metric_name', 'storefront_unique_visitors')
+            ->whereDate('metric_date', '>=', $from->toDateString())
+            ->whereDate('metric_date', '<', $firstEventDay->toDateString())
+            ->sum('metric_value');
+        $eventVisitors = (int) PerformanceVisitorEvent::query()
+            ->whereBetween('visited_at', [$firstEventDay, $to])
             ->distinct()
             ->count('visitor_hash');
 
-        if ($visitors > 0) {
-            return (int) $visitors;
-        }
-
-        return (int) PerformanceMetric::query()
-            ->where('metric_name', 'storefront_unique_visitors')
-            ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
-            ->sum('metric_value');
+        return $legacyDays + $eventVisitors;
     }
 
     /**

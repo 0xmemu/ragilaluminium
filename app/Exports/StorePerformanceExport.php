@@ -458,8 +458,8 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->groupRows[] = $r - 1;
         $money('Transfer Bank Lunas', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0));
         $money('COD Selesai (barang sudah sampai)', $fin['cod_paid'] ?? null);
-        $money('Total Pembayaran Sudah Diterima', $fin['payments_received'] ?? null, true);
-        $money('COD (barang belum sampai), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
+        $money('Pembayaran Diterima', $fin['payments_received'] ?? null, true);
+        $money('COD (barang belum sampai, kondisi saat ini), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
 
         return $rows;
     }
@@ -1090,7 +1090,7 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             [''],
             ['ISI BERKAS', 'Berkas terdiri dari 6 sheet terintegrasi. Ringkasan Finansial: laba rugi bertingkat dan status arus kas, angkanya rumus yang menunjuk Tabel Pesanan. KPI Operasional Toko: metrik penjualan, kunjungan, operasional, pembayaran, retur, dan pembatalan. Tabel Pesanan dan Tabel Item: mesin hitung sekaligus basis Pivot Table (1 baris = 1 pesanan / 1 item). Analisis: agregat yang tidak bisa diturunkan dari dua tabel. Panduan: halaman ini.'],
             ['PERAN DUA TABEL', 'Tabel Pesanan dan Tabel Item bukan duplikat laporan pesanan: keduanya sumber rumus Ringkasan Finansial dan Analisis, dan siap dipakai Pivot Table. Ubah satu sel di tabel, seluruh laporan ikut menyesuaikan.'],
-            ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Setiap angka pendapatan dan beban adalah rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
+            ['CARA MEMBACA', 'Mulai dari Ringkasan Finansial. Angka pendapatan dan beban umumnya rumus SUM kolom Tabel Pesanan; klik selnya untuk melihat asalnya. Dua pengecualian: baris arus kas dihitung dari tanggal pembayaran (paid_at), dan baris Nilai Barang Retur Ditolak dihitung dari pesanan yang retur selesai tanpa pernah lunas. Baris JUMLAH di kedua tabel adalah Total Row bawaan Excel: nilai ikut menyesuaikan bila tabel difilter.'],
             ['ALUR UANG', 'Nilai produk terjual dikurangi voucher, ditambah ongkir, asuransi, dan biaya COD yang dibayar pelanggan menghasilkan Penjualan Gross. Dari situ dikurangi ongkir ke J&T, biaya COD ke J&T, refund retur, dan ongkir retur (toko) menghasilkan Penjualan Bersih. Kolom Penjualan Bersih di Tabel Pesanan juga berupa rumus dengan urutan yang sama.'],
             ['DISKON PRODUK', "Kolom 'Hemat Pembeli vs Harga Normal' adalah selisih harga normal dengan harga jual, bukan pengurang tagihan. Nilai produk terjual sudah memakai harga promo yang berlaku."],
             ['SUBSIDI ONGKIR', 'Subsidi ongkir sudah termasuk di dalam Ongkir ke J&T, jadi tidak dikurangkan lagi secara terpisah.'],

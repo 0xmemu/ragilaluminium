@@ -571,6 +571,9 @@ export default function StorePerformance({
             <span className="text-xs text-muted-foreground" aria-live="polite">
               {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}`}
             </span>
+            <span className="text-xs text-muted-foreground" title="Waktu laporan dibangun (WIB)">
+              · Diperbarui {new Date(report.generated_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
+            </span>
           </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-4">
@@ -787,7 +790,7 @@ export default function StorePerformance({
               {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              AOV {formatCurrency(kpiMap["aov"]?.value ?? 0)} per pesanan
+              {kpiMap["aov"]?.label ?? "Rata-rata Nilai Pesanan"} {formatCurrency(kpiMap["aov"]?.value ?? 0)}
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
@@ -949,7 +952,7 @@ export default function StorePerformance({
                 <div className="rounded-md border border-border bg-card p-2.5">
                   <HoverHint
                     label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Transfer Pending"}
-                    hint="Pesanan metode transfer yang belum lunas dan masih menunggu verifikasi admin."
+                    hint="Pesanan metode transfer yang belum lunas dan masih menunggu verifikasi admin. Dihitung dari kondisi saat ini (semua waktu)."
                     className="text-xs text-muted-foreground"
                   />
                   <p className="mt-1 font-bold tabular-nums text-foreground">
@@ -960,8 +963,8 @@ export default function StorePerformance({
 
                 <div className="rounded-md border border-border bg-card p-2.5">
                   <HoverHint
-                    label="COD Belum Selesai"
-                    hint="Pesanan COD yang masih berjalan dan uangnya belum masuk, karena baru cair setelah barang diterima pembeli."
+                    label="COD Belum Selesai (semua waktu)"
+                    hint="Seluruh pesanan COD yang uangnya belum cair, dihitung dari kondisi saat ini (semua waktu, bukan hanya periode terpilih). Uang baru cair setelah barang diterima pembeli."
                     className="text-xs text-muted-foreground"
                   />
                   <p className="mt-1 font-bold tabular-nums text-foreground">
@@ -1224,7 +1227,7 @@ export default function StorePerformance({
                           kartu ringkasannya sendiri di halaman ini. */}
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-2">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs text-muted-foreground">Pembanding:</span>
+                          <span className="text-xs text-muted-foreground">Periode Lalu:</span>
                           <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                             {chart.total_format === "currency"
                               ? formatCurrency(chart.previous_total)
@@ -1374,7 +1377,9 @@ export default function StorePerformance({
                     return (
                       <div key={row.method} className="rounded-lg border border-border bg-surface p-3">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-foreground">{methodLabel}</span>
+                          <span className="font-bold text-xs text-foreground">
+                            {methodLabel === "COD" ? "COD (nilai pesanan)" : methodLabel}
+                          </span>
                           <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                             {pct}% dari {kpiMap["omzet"]?.label ?? "Penjualan Gross"}
                           </span>

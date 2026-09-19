@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * ReturnService — service & validasi bisnis retur (Sprint 2, blueprint
+ * ReturnService - service & validasi bisnis retur (Sprint 2, blueprint
  * docs/desain-teknis-retur-sprint2.md).
  *
  * Paket 2 fokus service & validasi (tanpa endpoint HTTP). Mencakup:
@@ -69,7 +69,7 @@ class ReturnService
             $case = OrderReturnCase::create([
                 'order_id' => $locked->id,
                 'status' => 'open',
-                'reason' => 'lainnya',
+                'reason' => 'ditolak',
                 'reason_detail' => 'Otomatis: paket dikembalikan kurir sebelum diterima pembeli (scan returned J&T).',
                 'fault_party' => 'other',
                 'shipping_cost_borne_by_store' => true,
