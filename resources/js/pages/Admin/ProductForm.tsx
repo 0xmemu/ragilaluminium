@@ -920,12 +920,12 @@ export default function ProductForm({
                             key={optionIndex}
                             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card p-1.5 shadow-xs transition hover:border-foreground/20"
                           >
-                            {/* Gambar opsi 35px x 35px dengan tombol silang X di pojok kanan atas */}
-                            <div className="relative size-[35px] shrink-0">
+                            {/* Gambar opsi 65px x 65px dengan tombol silang X di pojok kanan atas */}
+                            <div className="relative size-[65px] shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setOptionPicker({ defIndex, optionIndex })}
-                                className="relative size-[35px] overflow-hidden rounded border border-border bg-muted/40 transition hover:ring-2 hover:ring-primary/40 focus:outline-none"
+                                className="relative size-[65px] overflow-hidden rounded border border-border bg-muted/40 transition hover:ring-2 hover:ring-primary/40 focus:outline-none"
                                 aria-label={`Gambar untuk ${option.value || "opsi " + (optionIndex + 1)}`}
                                 title={option.thumb_url ? "Ganti foto opsi" : "Pilih foto opsi dari Media Library"}
                               >
@@ -933,7 +933,7 @@ export default function ProductForm({
                                   <img src={option.thumb_url} alt="" className="size-full object-cover" />
                                 ) : (
                                   <div className="flex size-full items-center justify-center text-muted-foreground/60">
-                                    <Icon name="image" className="size-3.5" aria-hidden="true" />
+                                    <Icon name="image" className="size-6" aria-hidden="true" />
                                   </div>
                                 )}
                               </button>
