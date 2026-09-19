@@ -20,15 +20,13 @@ import { cn } from "@/lib/utils"
  * System Health Console.
  *
  * Mengikuti kontrak admin UI:
- * 1. Header (title, deskripsi, waktu pemeriksaan, tombol periksa 40px)
- * 2. Status global (semantic status, hitungan jelas)
- * 3. Panel masalah (hanya tampil jika ada warning/error/offline)
- * 4. Resource server (4 card terpisah: Load average, Memori, Disk, DB Latency)
- * 5. Layanan infrastruktur (grouped panel)
- * 6. Integrasi eksternal (grouped panel: Cloudflare, S3, WhatsApp, J&T)
- * 7. Tren resource (grafik terpisah: CPU & Memori %, Load average, Database latency ms)
- * 8. Konfigurasi teknis (collapsible, masked)
- * 9. Tentang pemeriksaan (disclosure)
+ * 1. Header (title, deskripsi, status ringkas, waktu pemeriksaan, tombol periksa 40px)
+ * 2. Panel masalah (hanya tampil jika ada warning/error/offline)
+ * 3. Resource server (4 card terpisah: Load average, Memori, Disk, DB Latency)
+ * 4. Tren resource (diletakkan tepat di bawah Resource server: CPU & Memori %, Load average, Database latency ms)
+ * 5. Layanan infrastruktur (Database, Storage aplikasi)
+ * 6. Integrasi eksternal (Cloudflare, Media storage / R2 dengan kapasitas GB, Gateway WhatsApp, J&T Cargo)
+ * 7. Tentang pemeriksaan (disclosure)
  */
 
 type HealthStatus =
@@ -139,12 +137,6 @@ function tanggalJamWIB(iso: string | null): string {
     minute: "2-digit",
     timeZone: "Asia/Jakarta",
   }) + " WIB"
-}
-
-function maskId(value: string | null | undefined): string {
-  if (!value) return "-"
-  if (value.length <= 6) return "••••"
-  return value.slice(0, 3) + " •••• " + value.slice(-4)
 }
 
 function StatusBadge({ status }: { status: HealthStatus }) {
@@ -460,7 +452,6 @@ export default function SystemHealth({
   description,
   checks = [],
   summary,
-  env,
   runUrl,
   server,
   history = [],
@@ -477,8 +468,6 @@ export default function SystemHealth({
   lastCheckedAt: string | null
 }) {
   const [running, setRunning] = React.useState(false)
-  const [showConfig, setShowConfig] = React.useState(false)
-
   const [nowMs] = React.useState(() => Date.now())
 
   function runChecks() {
@@ -561,19 +550,23 @@ export default function SystemHealth({
     },
   ]
 
-  // 2. Attention panel items
-  const attentionItems = checks.filter((check) => NEEDS_ATTENTION.includes(check.status))
-  const counts = summary.counts
+  // 2. Filter item: Hapus item yang ditandai user (cache, queue-worker)
+  const ignoredKeys = ["cache", "queue-worker"]
+  const attentionItems = checks.filter(
+    (check) => NEEDS_ATTENTION.includes(check.status) && !ignoredKeys.includes(check.key)
+  )
 
-  // 3. Stale check
+  // 3. Stale check & timestamp
   const lastRunIso = lastCheckedAt ?? summary.checked_at
   const staleMs = lastRunIso ? nowMs - new Date(lastRunIso).getTime() : null
   const isStale = staleMs !== null && staleMs > 30 * 60 * 1000
   const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
   const freshnessWIB = `Diperbarui ${jamWIB(lastRunIso)}`
 
-  // 4. Infrastructure & Integration separation
-  const infrastructure = checks.filter((check) => check.group === "infrastructure")
+  // 4. Filter layanan: infrastruktur (hanya database dan storage, tanpa cache & queue-worker)
+  const infrastructure = checks.filter(
+    (check) => check.group === "infrastructure" && !ignoredKeys.includes(check.key)
+  )
   const integrations = checks.filter((check) => check.group === "integration")
 
   // 5. Chart data preparations
@@ -632,9 +625,12 @@ export default function SystemHealth({
       description={description}
       actions={
         <div className="flex flex-col items-stretch gap-1.5 sm:items-end w-full sm:w-auto">
-          <span className="text-[11px] text-muted-foreground text-center sm:text-right">
-            Pemeriksaan terakhir: {waktuPemeriksaan}
-          </span>
+          <div className="flex items-center justify-end gap-2">
+            <StatusBadge status={summary.overall} />
+            <span className="text-[11px] text-muted-foreground text-center sm:text-right">
+              Pemeriksaan terakhir: {waktuPemeriksaan}
+            </span>
+          </div>
           <Button
             type="button"
             onClick={runChecks}
@@ -655,57 +651,14 @@ export default function SystemHealth({
       <Head title={`${title} | Admin`} />
 
       <div className="space-y-6">
-        {/* 1. Status global */}
-        <Card className="border border-border bg-card p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            <span
-              className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-full border",
-                summary.overall === "healthy"
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                  : summary.overall === "failed" || summary.overall === "offline"
-                    ? "border-destructive/40 bg-destructive/15 text-destructive"
-                    : "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400",
-              )}
-            >
-              <Icon
-                name={summary.overall === "healthy" ? "check-circle" : "warning"}
-                className="size-5"
-                aria-hidden="true"
-              />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Status sistem
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                <p className="text-base font-semibold text-foreground">{summary.headline}</p>
-                <StatusBadge status={summary.overall} />
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {counts.healthy === summary.total ? (
-                  `${summary.total} dari ${summary.total} pemeriksaan berhasil`
-                ) : (
-                  <>
-                    {counts.healthy} sehat
-                    {counts.warning > 0 ? ` · ${counts.warning} perlu perhatian` : ""}
-                    {counts.failed + counts.offline > 0 ? ` · ${counts.failed + counts.offline} gagal` : ""}
-                    {counts.not_configured > 0 ? ` · ${counts.not_configured} belum dikonfigurasi` : ""}
-                  </>
-                )}
-                {" · "}Terakhir diperiksa {waktuPemeriksaan}
-              </p>
-            </div>
-          </div>
+        {/* Warning jika data stale */}
+        {isStale ? (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            Data mungkin sudah lama. Pemeriksaan terakhir {Math.round((staleMs ?? 0) / 60000)} menit lalu.
+          </p>
+        ) : null}
 
-          {isStale ? (
-            <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-              Data mungkin sudah lama. Pemeriksaan terakhir {Math.round((staleMs ?? 0) / 60000)} menit lalu.
-            </p>
-          ) : null}
-        </Card>
-
-        {/* 2. Masalah yang perlu ditangani */}
+        {/* 1. Masalah yang perlu ditangani (Attention Panel) */}
         {attentionItems.length > 0 ? (
           <section aria-label="Masalah yang perlu ditangani">
             <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">
@@ -752,26 +705,10 @@ export default function SystemHealth({
           </section>
         ) : null}
 
-        {/* 3. Resource server */}
+        {/* 2. Resource server */}
         <ResourceMetricGrid metrics={metrics} />
 
-        {/* 4. Layanan infrastruktur */}
-        <ServiceHealthPanel
-          title="Layanan infrastruktur"
-          checks={infrastructure}
-          onAction={runChecks}
-          actionLoading={running}
-        />
-
-        {/* 5. Integrasi eksternal */}
-        <ServiceHealthPanel
-          title="Integrasi eksternal"
-          checks={integrations}
-          onAction={runChecks}
-          actionLoading={running}
-        />
-
-        {/* 6. Tren resource: terpisah per metrik dan satuan */}
+        {/* 3. Tren resource: Diletakkan tepat di bawah Resource server */}
         <section aria-label="Tren resource" className="space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
@@ -834,51 +771,23 @@ export default function SystemHealth({
           </div>
         </section>
 
-        {/* 7. Konfigurasi teknis */}
-        <Card className="border border-border bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">Konfigurasi teknis</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Read-only · perubahan dilakukan melalui environment server
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-[40px] h-10 px-3 text-xs"
-              onClick={() => setShowConfig((prev) => !prev)}
-              aria-expanded={showConfig}
-            >
-              {showConfig ? "Sembunyikan konfigurasi" : "Tampilkan konfigurasi"}
-            </Button>
-          </div>
-          {showConfig ? (
-            <dl className="divide-y divide-border border-t border-border">
-              {(
-                [
-                  ["Environment", env.app_env],
-                  ["Queue connection", env.queue_connection],
-                  ["Cache store", env.cache_store],
-                  ["Media disk", env.media_disk],
-                  ["Environment J&T", env.jnt_environment],
-                  ["J&T credential", "Tersimpan · nilai disembunyikan"],
-                  ["WhatsApp Number ID", maskId(env.whatsapp_number_id)],
-                  ["Cloudflare Tunnel", env.cloudflare_hostname ?? "ra.333labs.tech"],
-                  ["Cloudflare Zone", env.cloudflare_zone ?? "333labs.tech"],
-                ] as Array<[string, string]>
-              ).map(([label, value]) => (
-                <div key={label} className="flex items-center justify-between gap-4 px-5 py-2.5">
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="font-mono text-xs text-foreground">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </Card>
+        {/* 4. Layanan infrastruktur (Database & Storage aplikasi) */}
+        <ServiceHealthPanel
+          title="Layanan infrastruktur"
+          checks={infrastructure}
+          onAction={runChecks}
+          actionLoading={running}
+        />
 
-        {/* 8. Tentang pemeriksaan */}
+        {/* 5. Integrasi eksternal (Cloudflare, Media storage / R2, WhatsApp, J&T Cargo) */}
+        <ServiceHealthPanel
+          title="Integrasi eksternal"
+          checks={integrations}
+          onAction={runChecks}
+          actionLoading={running}
+        />
+
+        {/* 6. Tentang pemeriksaan */}
         <details className="group rounded-lg border border-border bg-card">
           <summary className="flex cursor-pointer select-none items-center gap-2 px-5 py-3 text-xs font-semibold text-muted-foreground transition hover:text-foreground">
             <Icon name="info" className="size-3.5" aria-hidden="true" />

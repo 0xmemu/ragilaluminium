@@ -501,13 +501,38 @@ final class SystemHealthService
             $disk->delete($path);
             $ms = round((microtime(true) - $start) * 1000, 2);
 
+            $r2 = $this->readR2Usage();
+            $details = [];
+
+            if ($r2 !== null) {
+                $usedGbFormatted = number_format($r2['used_gb'], 2, ',', '.');
+                $limitGbFormatted = number_format($r2['limit_gb'], 0, ',', '.');
+                $pctFormatted = number_format($r2['pct'], 1, ',', '.');
+                $objectCountFormatted = number_format($r2['object_count'], 0, ',', '.');
+
+                $provider = 'Cloudflare R2 · '.config('filesystems.disks.media.bucket', 'ra-media');
+                $summary = $ok
+                    ? $usedGbFormatted.' GB dari '.$limitGbFormatted.' GB terpakai ('.$pctFormatted.'%) · '.$objectCountFormatted.' objek'
+                    : 'Objek tidak terbaca kembali';
+
+                $details = [
+                    'Kapasitas: '.$usedGbFormatted.' GB dari '.$limitGbFormatted.' GB kuota tier ('.$pctFormatted.'% terpakai)',
+                    'Jumlah objek: '.$objectCountFormatted.' file media tersimpan',
+                    'Operasi I/O: Upload, baca, dan hapus objek berhasil ('.$this->ms($ms).')',
+                    'URL publik: '.config('filesystems.disks.media.url', 'https://media.333labs.tech'),
+                ];
+            } else {
+                $summary = $ok ? 'Upload, baca, dan hapus objek berhasil' : 'Objek tidak terbaca kembali';
+            }
+
             return $this->check(
                 key: 'media-storage',
                 name: 'Media storage',
                 group: 'integration',
                 provider: $provider,
                 status: $ok ? self::STATUS_HEALTHY : self::STATUS_FAILED,
-                summary: $ok ? 'Upload, baca, dan hapus objek berhasil' : 'Objek tidak terbaca kembali',
+                summary: $summary,
+                details: $details,
                 latencyMs: $ms,
             );
         } catch (\Throwable $e) {
@@ -521,6 +546,56 @@ final class SystemHealthService
                 action: ['label' => 'Lihat detail'],
             );
         }
+    }
+
+    /**
+     * Baca penggunaan penyimpanan Cloudflare R2 via API.
+     *
+     * @return array{bytes: float, used_gb: float, limit_gb: float, pct: float, object_count: int}|null
+     */
+    private function readR2Usage(): ?array
+    {
+        $apiToken = (string) config('services.cloudflare.api_token', '');
+        $accountId = (string) config('services.cloudflare.account_id', '474a54069f4a16c84c33c26d012bfe6a');
+        $bucket = (string) config('filesystems.disks.media.bucket', 'ra-media');
+
+        if ($apiToken === '' || $accountId === '' || $bucket === '') {
+            return null;
+        }
+
+        return Cache::remember('cf_r2_usage_'.$bucket, 180, function () use ($apiToken, $accountId, $bucket) {
+            try {
+                $resp = Http::withToken($apiToken)
+                    ->timeout(4)
+                    ->get("https://api.cloudflare.com/client/v4/accounts/{$accountId}/r2/buckets/{$bucket}/usage");
+
+                if (! $resp->successful()) {
+                    return null;
+                }
+
+                $json = $resp->json();
+                if (! ($json['success'] ?? false) || ! isset($json['result'])) {
+                    return null;
+                }
+
+                $res = $json['result'];
+                $bytes = (float) ($res['payloadSize'] ?? 0);
+                $usedGb = round($bytes / (1024 * 1024 * 1024), 2);
+                $limitGb = (float) config('services.cloudflare.r2_quota_gb', 10.0);
+                $pct = $limitGb > 0 ? round(($usedGb / $limitGb) * 100, 1) : 0.0;
+                $objectCount = (int) ($res['objectCount'] ?? 0);
+
+                return [
+                    'bytes' => $bytes,
+                    'used_gb' => $usedGb,
+                    'limit_gb' => $limitGb,
+                    'pct' => $pct,
+                    'object_count' => $objectCount,
+                ];
+            } catch (\Throwable) {
+                return null;
+            }
+        });
     }
 
     /** @return HealthCheck */

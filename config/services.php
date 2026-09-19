@@ -109,6 +109,8 @@ return [
     'cloudflare' => [
         'tunnel_metrics_url' => env('CLOUDFLARE_TUNNEL_METRICS_URL', 'http://127.0.0.1:20241/metrics'),
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'account_id' => env('CLOUDFLARE_ACCOUNT_ID', '474a54069f4a16c84c33c26d012bfe6a'),
+        'r2_quota_gb' => (float) env('CLOUDFLARE_R2_QUOTA_GB', 10.0),
         'zone_id' => env('CLOUDFLARE_ZONE_ID'),
         'hostname' => env('CLOUDFLARE_TUNNEL_HOSTNAME', 'ra.333labs.tech'),
     ],
