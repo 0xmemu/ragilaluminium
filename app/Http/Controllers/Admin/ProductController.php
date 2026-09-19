@@ -449,8 +449,10 @@ class ProductController extends Controller
             ? null
             : self::cleanDimension($value);
 
-        // Berat dan dimensi dipecah jadi dua baris metadata supaya kolom tabel
-        // tetap sempit (sebelumnya digabung "100 kg · T 100 × P 100 cm × L 5 cm").
+        // Detail produk dipisah dari identitas: nama, Parent SKU, dan status
+        // tampil di kartu identitas; sisanya jadi daftar detail di kartu sebelah.
+        // Berat dan dimensi dipecah dari satu string gabungan jadi dua baris
+        // supaya tiap baris tetap ringkas.
         $dimensiParts = array_filter([
             $formatDimension($product->height_cm) !== null ? 'T '.$formatDimension($product->height_cm) : null,
             $formatDimension($product->width_cm) !== null ? 'P '.$formatDimension($product->width_cm) : null,
@@ -458,12 +460,10 @@ class ProductController extends Controller
         ]);
         $berat = $formatDimension($product->weight_kg);
 
-        $metadata = array_values(array_filter([
-            ['label' => 'Parent SKU', 'value' => $product->parent_sku],
+        $details = array_values(array_filter([
             ['label' => 'Kategori', 'value' => CatalogLabels::category($product->product_category)],
             ['label' => 'Model', 'value' => CatalogLabels::model($product->product_model)],
             ['label' => 'Sub Model', 'value' => CatalogLabels::design($product->design_variant) ?: null],
-            ['label' => 'Status', 'value' => $product->status],
             ['label' => 'Berat paket', 'format' => 'text', 'value' => $berat !== null ? $berat.' kg' : null],
             [
                 'label' => 'Dimensi paket',
@@ -549,7 +549,7 @@ class ProductController extends Controller
                 'edit_href' => route('admin.products.edit', $product),
                 'product_href' => route('product.show', $product->parent_sku, absolute: false),
             ],
-            'metadata' => $metadata,
+            'details' => $details,
             'activeTab' => $activeTab,
             'counts' => [
                 'varian' => count($variants),

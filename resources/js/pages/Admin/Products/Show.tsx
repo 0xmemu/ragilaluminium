@@ -477,7 +477,7 @@ function MediaTable({
 
 export default function ProductShow({
   product,
-  metadata,
+  details,
   activeTab = "ringkasan",
   counts,
   variants = [],
@@ -486,7 +486,7 @@ export default function ProductShow({
   links,
 }: {
   product: ProductHeader
-  metadata: DetailField[]
+  details: DetailField[]
   activeTab?: string
   counts: { varian: number; spesifikasi: number; media: number }
   variants: VariantRowData[]
@@ -616,34 +616,51 @@ export default function ProductShow({
       <Head title={`${product.name} | Admin`} />
 
       <div className="space-y-4">
-        {/* Metadata produk: grid tanpa kartu per field, garis pemisah saja */}
-        <section className="border-y border-border bg-card" aria-label="Metadata produk">
-          <div className="grid grid-cols-2 lg:grid-cols-4">
-            {metadata.map((field, index) => (
-              <div
-                key={`${field.label}-${index}`}
-                className="border-b border-r border-border px-4 py-3 last:border-r-0"
-              >
-                <p className="text-xs font-medium text-muted-foreground">{field.label}</p>
-                <div className="mt-1 text-[13px] font-medium leading-5 text-foreground">
-                  {field.label === "Status" ? (
-                    <StatusBadge status={field.value} />
-                  ) : field.value ? (
-                    String(field.value)
-                  ) : (
-                    <span className="font-normal text-muted-foreground">Belum tersedia</span>
-                  )}
+        {/* Identitas di kiri, daftar detail di kanan: dua kartu berdampingan */}
+        <div className="grid items-start gap-4 lg:grid-cols-3">
+          <section
+            className="rounded-lg border border-border bg-card p-5"
+            aria-label="Identitas produk"
+          >
+            <h2 className="text-base font-semibold leading-6 text-foreground">{product.name}</h2>
+            <p className="mt-1 font-mono text-xs text-muted-foreground">{product.parent_sku}</p>
+            <div className="mt-3">
+              <StatusBadge status={product.status} />
+            </div>
+          </section>
+
+          <section
+            className="rounded-lg border border-border bg-card lg:col-span-2"
+            aria-label="Detail produk"
+          >
+            <div className="border-b border-border px-5 py-3.5">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">Detail produk</h2>
+            </div>
+            <dl className="divide-y divide-border">
+              {details.map((field, index) => (
+                <div
+                  key={`${field.label}-${index}`}
+                  className="flex items-start justify-between gap-4 px-5 py-2.5"
+                >
+                  <dt className="text-[13px] text-muted-foreground">{field.label}</dt>
+                  <dd className="text-right text-[13px] font-medium text-foreground">
+                    {field.value ? (
+                      String(field.value)
+                    ) : (
+                      <span className="font-normal text-muted-foreground">Belum tersedia</span>
+                    )}
+                  </dd>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </dl>
+          </section>
+        </div>
 
         {/* Tab utama: hanya isi tab aktif yang dirender */}
         <div
           role="tablist"
           aria-label="Bagian detail produk"
-          className="-mx-1 flex items-center gap-1 overflow-x-auto pb-1"
+          className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto pb-1"
         >
           {TAB_KEYS.map((key) => {
             const isActive = key === tab
