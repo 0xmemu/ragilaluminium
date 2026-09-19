@@ -2,6 +2,7 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { DeltaBadge } from "@/components/admin/ui/delta-badge"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -242,7 +243,7 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
   const previewRows = data.slice(0, 6)
 
   return (
-    <section className="flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+    <section className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card shadow-soft">
       <div className="p-5 pb-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <HoverHint
@@ -405,6 +406,17 @@ export default function StorePerformance({
 
   // Tampilkan "vs <rentang>" utuh sesuai owner 2026-09-15 (jangan buang prefiks "vs").
   const compareLabel = report.range.compare_label || "vs periode lalu"
+
+  // Blok Alur Uang menampilkan tiga kelompok, bukan belasan baris. Jumlah
+  // kelompoknya persis sama dengan pengurangan di server (netRevenue), jadi
+  // tidak ada angka yang hilang: Gross - Potongan J&T - Retur = Bersih.
+  const potonganJnt =
+    (report.financial.shipping_raw ?? 0) + (report.financial.cod_fee ?? 0)
+  const potonganRetur =
+    (report.financial.refund_adjustments ?? 0) +
+    (report.financial.return_shipping_store ?? 0) +
+    (report.financial.refused_goods_value ?? 0)
+  const refusedBorne = report.financial.refused_borne_cost ?? 0
   const [chartTab, setChartTab] = React.useState(0)
   const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
@@ -564,7 +576,7 @@ export default function StorePerformance({
       <Head title={`${title} | Admin`} />
 
       {/* FILTER PERIODE & BANNER KONTROL */}
-      <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <section className="mb-5 rounded-xl border border-border bg-card p-4 shadow-soft">
         {/* Identitas periode di kiri, kontrol di kanan (owner 2026-09-18). */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -645,9 +657,9 @@ export default function StorePerformance({
       </section>
 
       {/* LAYER 1: HEADLINE METRICS (4 KARTU EKSEKUTIF BERPRIORITAS TINGGI) */}
-      <section aria-label="Ringkasan utama" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section aria-label="Ringkasan utama" className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {/* KARTU 1: Penjualan Gross (nilai utama) */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -674,7 +686,7 @@ export default function StorePerformance({
         </div>
 
         {/* KARTU 2: Jumlah Pesanan */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -701,7 +713,7 @@ export default function StorePerformance({
         </div>
 
         {/* KARTU 3c: Jumlah Produk Terjual */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -728,7 +740,7 @@ export default function StorePerformance({
         </div>
 
         {/* KARTU 3b: Jumlah Unit Terjual */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -755,7 +767,7 @@ export default function StorePerformance({
         </div>
 
         {/* KARTU 4: Tingkat Konversi Toko */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -781,7 +793,7 @@ export default function StorePerformance({
           </div>
         </div>
         {/* KARTU 3: Rata-rata Nilai Pesanan */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div>
               <HoverHint
@@ -812,270 +824,153 @@ export default function StorePerformance({
 
       </section>
 
-      {/* LAYER 2: REKONSILIASI KEUANGAN & LIKUIDITAS KAS (TABLE-FIRST ACCOUNTING) */}
-      <section className="mb-6 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-        <header className="border-b border-border bg-muted/30 px-5 py-3">
-          <HoverHint
-            label="Rekonsiliasi Keuangan & Arus Kas"
-            hint="Penjabaran transparan dari total nilai transaksi pembeli hingga pendapatan bersih dan status kas."
-            className="text-sm font-bold text-foreground"
-          />
-        </header>
-
-        <div className="grid gap-0 lg:grid-cols-[1.25fr_1fr]">
-          {/* Kolom Kiri: Laporan Laba/Rugi Penjualan */}
-          <div className="p-5 border-b lg:border-b-0 lg:border-r border-border">
-            <p className="text-xs font-medium text-muted-foreground">
-              Dari Penjualan Gross ke Penjualan Bersih
+      {/* ALUR UANG (ringkas). Sebelumnya blok ini membeberkan belasan baris
+          rincian kas, terlalu detail untuk dibaca cepat. Sekarang tinggal tiga
+          kelompok, dan jumlahnya TIDAK menghilangkan angka: di server
+          Penjualan Bersih = Gross dikurangi (ongkir + biaya COD), lalu dikurangi
+          (refund + ongkir retur + nilai barang retur). Rincian penuh tetap ada di
+          ekspor XLSX sheet Ringkasan Finansial. */}
+      <SectionCard
+        title="Alur Uang"
+        icon="money"
+        description="Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas."
+        className="mb-5"
+        contentClassName="p-0"
+      >
+        <div className="grid divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="p-5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Hak Toko
             </p>
-
-            <div className="mt-3 space-y-2 text-xs">
-              <div className="flex items-center justify-between py-1.5 border-b border-border/60">
-                <HoverHint
-                  label={kpiMap["omzet"]?.label ?? "Penjualan Gross"}
-                  hint="Total nilai transaksi kotor pembeli termasuk nilai produk, ongkir, dan biaya COD."
-                  className="font-semibold text-foreground"
-                />
-                <span className="font-bold tabular-nums text-foreground">{formatCurrency(report.financial.gross_revenue)}</span>
-              </div>
-
-              {/* Promo ditanggung toko: SUDAH tercakup dalam Penjualan Gross (pelanggan
-                  membayar lebih murah), jadi TIDAK dikurangkan lagi di sini -
-                  ditampilkan agar beban promo toko tetap terdata. */}
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-semibold text-foreground mb-2">Promo Ditanggung Toko (tercakup dalam Penjualan Gross)</p>
-                <div className="space-y-1">
-                  {[
-                    { label: "Potongan Harga Produk", hint: "Diskon harga produk yang ditanggung toko.", val: report.financial.product_discount ?? 0 },
-                    { label: "Potongan Voucher", hint: "Potongan voucher yang ditanggung toko.", val: report.financial.voucher_discount ?? 0 },
-                    { label: "Subsidi Ongkir", hint: "Ongkir yang disubsidi toko; sudah masuk dalam Titipan Ongkir J&T di bawah, tidak dihitung dua kali.", val: report.financial.shipping_subsidy ?? 0 },
-                  ].map((row, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1.5 text-muted-foreground">
-                      <span className="pl-2">
-                        <HoverHint label={row.label} hint={row.hint} className="text-muted-foreground" />
-                      </span>
-                      <span className={cn("tabular-nums", row.val > 0 ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {formatCurrency(row.val)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-semibold text-foreground mb-2">Dikurangkan dari Penjualan Gross (dana titipan, biaya retur, dan barang kembali)</p>
-              </div>
-              {[
-                { label: "Nilai Barang Retur Paket", hint: "Nilai barang pesanan yang paketnya kembali sebelum diterima pembeli dan returnya sudah selesai. Barang kembali ke gudang tanpa menambah stok.", val: report.financial.refused_goods_value ?? 0 },
-                { label: "Titipan Ongkir J&T Cargo", hint: "Ongkir dasar yang diteruskan ke J&T Cargo, sudah termasuk subsidi ongkir yang ditanggung toko.", val: report.financial.shipping_raw ?? 0 },
-                { label: "Titipan Biaya Layanan COD J&T", hint: "Biaya administrasi COD yang dipotong oleh pihak kurir J&T Cargo.", val: report.financial.cod_fee ?? 0 },
-                { label: "Refund Retur", hint: "Pengembalian dana kepada pembeli atas kasus retur yang selesai.", val: report.financial.refund_adjustments ?? 0 },
-                { label: "Ongkir Retur (Toko)", hint: "Biaya pengiriman barang retur yang ditanggung oleh pihak toko.", val: report.financial.return_shipping_store ?? 0 },
-              ].map((row, idx) => (
-                <div key={idx} className="flex items-center justify-between py-1.5 text-muted-foreground">
-                  <span className="pl-2">
-                    <HoverHint label={row.label} hint={row.hint} className="text-muted-foreground" />
-                  </span>
-                  <span className={cn("tabular-nums", row.val > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    {row.val > 0 ? `− ${formatCurrency(row.val)}` : formatCurrency(0)}
-                  </span>
-                </div>
-              ))}
-
-              <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-muted/40 p-2.5 border border-border">
-                <span className="flex items-center gap-2">
+            <dl className="mt-3 divide-y divide-border/70 text-[13px]">
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
                   <HoverHint
-                    label={kpiMap["net_revenue"]?.label ?? "Penjualan Bersih"}
-                    hint="Hak pendapatan bersih toko setelah dikurangi ongkir, fee COD, subsidi, dan retur."
-                    className="text-xs font-bold text-foreground"
+                    label="Penjualan Gross"
+                    hint="Nilai transaksi pembeli, termasuk ongkir dan biaya COD."
+                    className="text-muted-foreground"
                   />
-                  <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
-                </span>
-                <span className="text-sm font-bold tabular-nums text-primary">{formatCurrency(report.financial.net_revenue)}</span>
+                </dt>
+                <dd className="tabular-nums font-medium text-foreground">
+                  {formatCurrency(report.financial.gross_revenue)}
+                </dd>
               </div>
-            </div>
-          </div>
-
-          {/* Kolom Kanan: Status Kas & Likuiditas */}
-          <div className="p-5 bg-surface-muted/20">
-            <p className="text-xs font-medium text-muted-foreground">
-              Arus Kas & Likuiditas
-            </p>
-
-            <div className="mt-3 space-y-3">
-              {/* Box 1: Pembayaran Diterima (Total Kas Masuk) */}
-              <div className="rounded-md border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
                   <HoverHint
-                    label={kpiMap["payments_received"]?.label ?? "Pembayaran Diterima"}
-                    hint="Total dana riil dari transaksi transfer lunas dan COD yang selesai pada periode ini."
-                    className="text-xs font-semibold text-foreground"
+                    label="Potongan J&T"
+                    hint="Ongkir dan biaya layanan COD yang diteruskan ke J&T Cargo."
+                    className="text-muted-foreground"
                   />
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">Lunas</span>
-                </div>
-                <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
-                  {formatCurrency(report.financial.payments_received ?? 0)}
-                </p>
-                <div className="mt-1">
-                  <DeltaBadge percent={kpiMap["payments_received"]?.change_percent} />
-                </div>
+                </dt>
+                <dd className="tabular-nums text-muted-foreground">
+                  {potonganJnt > 0 ? "− " + formatCurrency(potonganJnt) : formatCurrency(0)}
+                </dd>
               </div>
-
-              {/* Rincian Komposisi Kas Masuk */}
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="rounded-md border border-border bg-card p-2.5">
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
                   <HoverHint
-                    label="Transfer Bank"
-                    hint="Pembayaran transfer yang lunas di muka langsung ke rekening toko."
-                    className="text-xs text-muted-foreground"
+                    label="Retur & Biaya Retur"
+                    hint="Refund pembeli, ongkir retur yang ditanggung toko, dan nilai barang yang kembali."
+                    className="text-muted-foreground"
                   />
-                  <p className="mt-1 font-bold tabular-nums text-foreground">
-                    {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))}
-                  </p>
-                </div>
-
-                <div className="rounded-md border border-border bg-card p-2.5">
-                  <HoverHint
-                    label={kpiMap["cod_paid"]?.label ?? "COD Selesai"}
-                    hint="Pesanan COD yang barangnya sudah sampai ke pembeli. Sistem tidak melacak setoran uang dari kurir."
-                    className="text-xs text-muted-foreground"
-                  />
-                  <p className="mt-1 font-bold tabular-nums text-foreground">
-                    {formatCurrency(report.financial.cod_paid ?? 0)}
-                  </p>
-                  <div className="mt-1">
-                    <DeltaBadge percent={kpiMap["cod_paid"]?.change_percent} />
-                  </div>
-                </div>
+                </dt>
+                <dd className="tabular-nums text-muted-foreground">
+                  {potonganRetur > 0 ? "− " + formatCurrency(potonganRetur) : formatCurrency(0)}
+                </dd>
               </div>
-
-              {/* Dua yang masih tertahan: transfer menunggu verifikasi admin,
-                  COD menunggu barang sampai. Keduanya kondisi saat ini, bukan
-                  tren periode, jadi tanpa badge pembanding. */}
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="rounded-md border border-border bg-card p-2.5">
+              <div className="flex items-start justify-between gap-3 border-t-2 border-border py-2.5">
+                <dt>
                   <HoverHint
-                    label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Transfer Pending"}
-                    hint="Pesanan metode transfer yang belum lunas dan masih menunggu verifikasi admin. Dihitung dari kondisi saat ini (semua waktu)."
-                    className="text-xs text-muted-foreground"
-                  />
-                  <p className="mt-1 font-bold tabular-nums text-foreground">
-                    {formatNumber(report.financial.payment_pending_count ?? 0)}{" "}
-                    <span className="text-xs font-normal text-muted-foreground">pesanan</span>
-                  </p>
-                </div>
-
-                <div className="rounded-md border border-border bg-card p-2.5">
-                  <HoverHint
-                    label="COD Belum Selesai (semua waktu)"
-                    hint="Seluruh pesanan COD yang uangnya belum cair, dihitung dari kondisi saat ini (semua waktu, bukan hanya periode terpilih). Uang baru cair setelah barang diterima pembeli."
-                    className="text-xs text-muted-foreground"
-                  />
-                  <p className="mt-1 font-bold tabular-nums text-foreground">
-                    {formatNumber(report.financial.cod_pending_count ?? 0)}{" "}
-                    <span className="text-xs font-normal text-muted-foreground">pesanan</span>
-                  </p>
-                </div>
-              </div>
-              {/* Paket tidak diterima pembeli: pembeli tidak membayar sepeser pun,
-                  tetapi J&T tetap menagih ongkir kirim dan biaya layanan COD ke
-                  toko. Kas yang tadinya tertahan jadi batal, dan beban nyatanya
-                  muncul di sini supaya alur kasnya utuh. */}
-              <div className="rounded-md border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
-                  <HoverHint
-                    label="Retur Paket"
-                    hint="Pesanan yang paketnya kembali sebelum diterima pembeli dan returnya sudah selesai pada periode ini. Pembeli tidak membayar, barang kembali ke gudang tanpa menambah stok."
-                    className="text-xs font-semibold text-foreground"
-                  />
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-bold",
-                      (report.financial.refused_borne_count ?? 0) > 0
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {formatNumber(report.financial.refused_borne_count ?? 0)} pesanan
-                  </span>
-                </div>
-
-                <div className="mt-2 space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <HoverHint
-                      label="Ongkir Kirim"
-                      hint="Ongkir yang sudah ditagih J&T untuk mengantar paket ini. Pembeli tidak menanggungnya, jadi toko yang membayar."
-                      className="text-muted-foreground"
-                    />
-                    <span
-                      className={cn(
-                        "tabular-nums",
-                        (report.financial.refused_shipping_cost ?? 0) > 0 ? "text-destructive font-medium" : "text-muted-foreground",
-                      )}
-                    >
-                      {(report.financial.refused_shipping_cost ?? 0) > 0
-                        ? "− " + formatCurrency(report.financial.refused_shipping_cost ?? 0)
-                        : formatCurrency(0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <HoverHint
-                      label="Biaya Layanan COD"
-                      hint="Biaya layanan COD J&T yang tetap ditagih karena tidak ada uang COD pembeli untuk dipotong."
-                      className="text-muted-foreground"
-                    />
-                    <span
-                      className={cn(
-                        "tabular-nums",
-                        (report.financial.refused_cod_fee ?? 0) > 0 ? "text-destructive font-medium" : "text-muted-foreground",
-                      )}
-                    >
-                      {(report.financial.refused_cod_fee ?? 0) > 0
-                        ? "− " + formatCurrency(report.financial.refused_cod_fee ?? 0)
-                        : formatCurrency(0)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
-                  <HoverHint
-                    label="Ditanggung Toko"
-                    hint="Ongkir kirim dan biaya layanan COD yang ditanggung toko untuk paket ini. Ongkir perjalanan balik belum ikut dihitung karena tagihannya belum tercatat otomatis."
+                    label="Penjualan Bersih"
+                    hint="Hak pendapatan toko setelah dikurangi biaya kurir dan retur."
                     className="font-semibold text-foreground"
                   />
-                  <span
-                    className={cn(
-                      "tabular-nums font-bold",
-                      (report.financial.refused_borne_cost ?? 0) > 0 ? "text-destructive" : "text-muted-foreground",
-                    )}
-                  >
-                    {(report.financial.refused_borne_cost ?? 0) > 0
-                      ? "− " + formatCurrency(report.financial.refused_borne_cost ?? 0)
-                      : formatCurrency(0)}
-                  </span>
-                </div>
+                  <div className="mt-1">
+                    <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
+                  </div>
+                </dt>
+                <dd className="tabular-nums text-sm font-bold text-primary">
+                  {formatCurrency(report.financial.net_revenue)}
+                </dd>
               </div>
-            </div>
+            </dl>
+          </div>
+          <div className="p-5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Kas
+            </p>
+            <dl className="mt-3 divide-y divide-border/70 text-[13px]">
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
+                  <HoverHint
+                    label="Kas Diterima"
+                    hint="Dana yang benar-benar masuk: transfer lunas dan COD yang barangnya sudah sampai."
+                    className="text-muted-foreground"
+                  />
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Transfer {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))} {'\u00b7'} COD Selesai {formatCurrency(report.financial.cod_paid ?? 0)}
+                  </p>
+                </dt>
+                <dd className="tabular-nums font-medium text-foreground">
+                  {formatCurrency(report.financial.payments_received ?? 0)}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
+                  <HoverHint
+                    label="Belum Masuk (semua waktu)"
+                    hint="COD yang uangnya belum cair. Dihitung dari kondisi saat ini, bukan periode terpilih."
+                    className="text-muted-foreground"
+                  />
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {formatNumber(report.financial.cod_pending_count ?? 0)} pesanan COD
+                  </p>
+                </dt>
+                <dd className="tabular-nums font-medium text-foreground">
+                  {formatCurrency(report.financial.cod_pending_amount ?? 0)}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt>
+                  <HoverHint
+                    label="Retur Paket Ditanggung Toko"
+                    hint="Ongkir kirim dan biaya layanan COD untuk paket yang kembali sebelum diterima pembeli."
+                    className="text-muted-foreground"
+                  />
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {formatNumber(report.financial.refused_borne_count ?? 0)} pesanan
+                  </p>
+                </dt>
+                <dd
+                  className={cn(
+                    "tabular-nums font-medium",
+                    refusedBorne > 0 ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {refusedBorne > 0 ? "− " + formatCurrency(refusedBorne) : formatCurrency(0)}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
-      </section>
+      </SectionCard>
 
       {/* LAYER 3: KESEHATAN OPERASIONAL & PIPELINE FULFILLMENT */}
-      <section className="mb-6 rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-          <HoverHint
-            label="Kesehatan Operasional & Logistik Toko"
-            hint="Pantau antrean fulfillment pesanan agar tidak terjadi bottleneck pengiriman."
-            className="text-sm font-semibold tracking-tight text-foreground"
-          />
+      <SectionCard
+        title="Kesehatan Operasional & Logistik Toko"
+        icon="truck"
+        description="Pantau antrean fulfillment pesanan agar tidak terjadi bottleneck pengiriman."
+        className="mb-5"
+        action={
           <Button asChild variant="outline" size="sm">
             <Link href={routeUrl("admin.orders.index")}>
               Ke Daftar Pesanan <Icon name="arrow-right" className="ml-1 size-3.5" aria-hidden="true" />
             </Link>
           </Button>
-        </div>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Link
             href={`${routeUrl("admin.orders.index")}?order_status=processing`}
             className="group rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
@@ -1264,12 +1159,12 @@ export default function StorePerformance({
             </div>
           </details>
         ) : null}
-      </section>
+      </SectionCard>
 
       {/* LAYER 4: TREN BISNIS & KUNJUNGAN / METODE BAYAR (2 KOLOM BERIMBANG) */}
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-6 xl:grid-cols-2">
         {/* Kolom Kiri: Tren Bisnis Interaktif */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             {(() => {
               const chart = report.charts[chartTab] ?? report.charts[0]
@@ -1387,7 +1282,7 @@ export default function StorePerformance({
         </div>
 
         {/* Kolom Kanan: Kunjungan, Retensi & Bauran Pembayaran (DIGABUNG) */}
-        <div className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
           <div>
             <div className="border-b border-border pb-3">
               <HoverHint
@@ -1480,9 +1375,9 @@ export default function StorePerformance({
       </div>
 
       {/* LAYER 5: ANALISIS KATALOG PRODUK (PRODUK TERLARIS & INTERAKSI DI PALING BAWAH) */}
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-6 xl:grid-cols-2">
         {/* Kolom Kiri: Produk Terlaris - TAMPIL 6 PRODUK */}
-        <div className="flex flex-col justify-between overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           <div>
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
               <HoverHint
