@@ -33,15 +33,17 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
 
 - **Produk** (Tipe: `Operational` & `Content`) — `/admin/kelola/produk`
   - Daftar SKU Induk, status aktif/arsip.
-  - Sub-view: Product Detail (tab Ringkasan, Varian, Spesifikasi, Media per produk).
-    Table-first: header ringkas (nama + Parent SKU + status badge), tabel metadata
-    (Parent SKU, Kategori, Model, Sub Model, Status, Berat paket, Dimensi paket),
-    lalu satu tabel utama per tab. Tab aktif tercermin di URL lewat `?tab=`
-    (`ringkasan` | `varian` | `spesifikasi` | `media`) sehingga reload dan
-    tombol back/forward browser tetap konsisten. Varian memakai kolom terpisah
-    Varian | Status | Harga | Stok | SKU | Aksi; Media memakai Preview | Nama media
-    | Tipe | Status | Publikasi | Berkas | Diperbarui | Aksi. Tautan lama
-    (`?tab=media` / `?tab=varian` ke halaman edit) tetap valid.
+  - Sub-view: Product Detail (tab Varian, Spesifikasi & Deskripsi, Media per produk).
+    Table-first: dua kartu seimbang 50-50 di atas (kartu identitas foto 1:1 full-height
+    + nama, SKU, status di kiri; kartu detail 2 kolom di kanan: Kategori, Model, Sub Model,
+    Berat paket, Dimensi paket, Pengiriman), lalu tabel utama per tab aktif. Tab aktif tercermin
+    di URL lewat `?tab=` (`varian` [default] | `spesifikasi` | `media`).
+    Varian: kolom Varian | Status | Harga | Stok | SKU | Aksi + tombol Kelola varian;
+    Spesifikasi & Deskripsi: gabungan deskripsi produk (collapsible) + tabel spesifikasi;
+    Media: thumbnail besar setinggi baris dengan modal preview saat diklik, kolom Status File,
+    Publikasi, Berkas (tautan ke Media Library), dan tombol Kelola media ke Media Library.
+    Form Edit Varian fokus pada opsi, harga, stok, status (foto dan berat/dimensi dihapus).
+    Form Kelola Spesifikasi fokus pada nama dan nilai (pilihan sumber internal/shopee dihapus).
   - Urutan daftar: Baru saja diubah (default, memakai updated_at sehingga hasil import dan hasil edit sama-sama terangkat), Paling lama tidak diubah, Terlaris, Paling sedikit terjual, Terbaru ditambahkan, Terlama ditambahkan. Tiap opsi punya pasangan arah naik/turun lewat parameter `sort`, dan urutan yang sama dipakai file Export CSV.
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
 - **Kategori** (Tipe: Operational) — `/admin/kelola/kategori`

@@ -440,10 +440,12 @@ class ProductController extends Controller
         // (sebelumnya menghasilkan 404 saat diklik).
         $publicVisible = $product->status === 'active' && $product->variants->contains(fn ($v) => $v->status === 'active');
 
-        $requestedTab = (string) $request->query('tab', 'ringkasan');
-        $activeTab = in_array($requestedTab, ['ringkasan', 'varian', 'spesifikasi', 'media'], true)
+        // Tab Ringkasan ditiadakan (deskripsi bergabung ke tab Spesifikasi).
+        // Default tab aktif adalah Varian.
+        $requestedTab = (string) $request->query('tab', 'varian');
+        $activeTab = in_array($requestedTab, ['varian', 'spesifikasi', 'media'], true)
             ? $requestedTab
-            : 'ringkasan';
+            : 'varian';
 
         $formatDimension = fn ($value) => $value === null || (float) $value <= 0
             ? null
@@ -470,6 +472,7 @@ class ProductController extends Controller
                 'format' => 'text',
                 'value' => $dimensiParts !== [] ? implode(' × ', $dimensiParts).' cm' : null,
             ],
+            ['label' => 'Pengiriman', 'value' => 'J&T Cargo'],
         ]));
 
         $variants = $product->variants
@@ -525,8 +528,18 @@ class ProductController extends Controller
                 $sumber = $m->mediaAsset?->label
                     ?: ($m->source_url ? basename((string) parse_url($m->source_url, PHP_URL_PATH)) : null);
 
+                $previewUrl = $m->mediaAsset?->publicUrlForPath((string) $m->mediaAsset->object_key)
+                    ?? $m->urlFor('pdp')
+                    ?? $m->urlFor('thumb')
+                    ?? $m->stored_url;
+
+                $libraryUrl = $m->media_asset_id
+                    ? route('admin.media.library', ['q' => $m->mediaAsset?->label ?: ($sumber ?: '')])
+                    : ($sumber ? route('admin.media.library', ['q' => $sumber]) : route('admin.media.library'));
+
                 return [
                     'id' => $m->id,
+                    'media_asset_id' => $m->media_asset_id,
                     'name' => $nama,
                     'kind' => $m->mediaAsset?->kind === 'video' ? 'video' : 'foto',
                     'status' => $m->status,
@@ -534,6 +547,8 @@ class ProductController extends Controller
                     'file' => $sumber,
                     'updated_at' => $m->updated_at?->translatedFormat('d M Y'),
                     'thumb_url' => $m->mediaAsset?->urlFor('thumb') ?? $m->urlFor('thumb') ?? $m->stored_url,
+                    'preview_url' => $previewUrl,
+                    'library_url' => $libraryUrl,
                 ];
             })
             ->all();
@@ -566,7 +581,8 @@ class ProductController extends Controller
             'links' => [
                 'variants' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']),
                 'attributes' => route('admin.products.attributes.index', $product),
-                'media' => route('admin.products.edit', ['product' => $product, 'tab' => 'media']),
+                // Tombol kelola media mengarah ke Media Library pusat
+                'media' => route('admin.media.library'),
                 'import' => route('admin.imports.index'),
             ],
         ]);

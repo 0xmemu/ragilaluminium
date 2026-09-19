@@ -38,8 +38,9 @@ class ProductAttributeController extends Controller
         $validated = $request->validate([
             'attribute_name' => ['required', 'string', 'max:255'],
             'attribute_value' => ['required', 'string', 'max:255'],
-            'source' => ['required', 'in:shopee,internal'],
+            'source' => ['sometimes', 'in:shopee,internal'],
         ]);
+        $validated['source'] = $validated['source'] ?? 'internal';
         $validated['product_id'] = $product->id;
         $validated['created_by_user_id'] = $request->user()->id;
         $validated['updated_by_user_id'] = $request->user()->id;
@@ -55,8 +56,9 @@ class ProductAttributeController extends Controller
         $validated = $request->validate([
             'attribute_name' => ['required', 'string', 'max:255'],
             'attribute_value' => ['required', 'string', 'max:255'],
-            'source' => ['required', 'in:shopee,internal'],
+            'source' => ['sometimes', 'in:shopee,internal'],
         ]);
+        $validated['source'] = $validated['source'] ?? $attribute->source ?? 'internal';
         $validated['updated_by_user_id'] = $request->user()->id;
         $attribute->update($validated);
 

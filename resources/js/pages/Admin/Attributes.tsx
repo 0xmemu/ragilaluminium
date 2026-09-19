@@ -1,9 +1,11 @@
 import { Head, Link, useForm } from "@inertiajs/react"
+import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
+import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
-import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -19,7 +21,6 @@ function AttributeRow({ attribute }: { attribute: AttributeRowData }) {
   const form = useForm({
     attribute_name: attribute.attribute_name,
     attribute_value: attribute.attribute_value,
-    source: attribute.source,
   })
 
   return (
@@ -28,22 +29,32 @@ function AttributeRow({ attribute }: { attribute: AttributeRowData }) {
         event.preventDefault()
         form.put(attribute.updateUrl, { preserveScroll: true })
       }}
-      className="grid gap-3 border-b border-border p-4 md:grid-cols-[1fr_1.3fr_8rem_auto] md:items-end"
+      className="grid gap-3 border-b border-border p-4 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end"
     >
-      <Field id={`attribute-name-${attribute.id}`} label="Nama" error={form.errors.attribute_name}>
-        <Input value={form.data.attribute_name} onChange={(event) => form.setData("attribute_name", event.target.value)} />
+      <Field
+        id={`attribute-name-${attribute.id}`}
+        label="Nama spesifikasi"
+        error={form.errors.attribute_name}
+      >
+        <Input
+          value={form.data.attribute_name}
+          onChange={(event) => form.setData("attribute_name", event.target.value)}
+          placeholder="mis. Bahan, Kusen"
+        />
       </Field>
-      <Field id={`attribute-value-${attribute.id}`} label="Nilai" error={form.errors.attribute_value}>
-        <Input value={form.data.attribute_value} onChange={(event) => form.setData("attribute_value", event.target.value)} />
+      <Field
+        id={`attribute-value-${attribute.id}`}
+        label="Nilai spesifikasi"
+        error={form.errors.attribute_value}
+      >
+        <Input
+          value={form.data.attribute_value}
+          onChange={(event) => form.setData("attribute_value", event.target.value)}
+          placeholder="mis. Aluminium, 3 inch"
+        />
       </Field>
-      <Field id={`attribute-source-${attribute.id}`} label="Sumber" error={form.errors.source}>
-        <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
-          <option value="internal">Internal</option>
-          <option value="shopee">Shopee</option>
-        </Select>
-      </Field>
-      <Button type="submit" variant="secondary" disabled={form.processing}>
-        {form.processing ? "..." : "Simpan"}
+      <Button type="submit" variant="secondary" size="sm" disabled={form.processing}>
+        {form.processing ? "Menyimpan..." : "Simpan"}
       </Button>
     </form>
   )
@@ -61,7 +72,6 @@ export default function Attributes({
   const form = useForm({
     attribute_name: "",
     attribute_value: "",
-    source: "internal",
   })
 
   function submit(event: React.FormEvent) {
@@ -72,59 +82,95 @@ export default function Attributes({
     })
   }
 
+  const backUrl = routeUrl("admin.products.show", { product: product.id, tab: "spesifikasi" })
+
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="submit" form="attribute-create-form" disabled={form.processing}>
+        {form.processing ? "Menyimpan..." : "Tambah spesifikasi"}
+      </Button>
+      <Button asChild variant="secondary">
+        <Link href={backUrl}>Kembali ke produk</Link>
+      </Button>
+    </div>
+  )
+
   return (
     <AdminLayout
       title={`Spesifikasi ${product.parent_sku}`}
       description={product.name}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="attribute-create-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Tambah"}
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={routeUrl("admin.products.show", { product: product.id })}>Kembali ke produk</Link>
-          </Button>
-        </div>
-      }
+      actions={actions}
+      backUrl={backUrl}
     >
       <Head title={`Spesifikasi ${product.parent_sku} | Admin`} />
 
-      <section className="rounded-xl border border-border bg-card shadow-soft">
-        <div className="border-b border-border p-5">
-          <h2 className="text-xl font-semibold">Spesifikasi produk</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Spesifikasi publik dan internal yang melekat ke parent product.
-          </p>
-        </div>
-        {attributes.length ? (
-          <div>
-            {attributes.map((attribute) => (
-              <AttributeRow key={attribute.id} attribute={attribute} />
-            ))}
-          </div>
-        ) : (
-          <p className="p-8 text-sm text-muted-foreground">Belum ada spesifikasi.</p>
-        )}
-      </section>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <SectionCard
+          title="Tambah spesifikasi baru"
+          description="Spesifikasi tampil di etalase produk pada bagian Informasi produk pembeli."
+          icon="plus"
+        >
+          <form id="attribute-create-form" onSubmit={submit} className="space-y-4">
+            <FormErrorSummary errors={form.errors} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                id="new-attribute-name"
+                label="Nama spesifikasi"
+                required
+                error={form.errors.attribute_name}
+                hint="mis. Bahan, Kusen, Ketebalan Kaca, Merek"
+              >
+                <Input
+                  value={form.data.attribute_name}
+                  onChange={(event) => form.setData("attribute_name", event.target.value)}
+                  placeholder="mis. Bahan"
+                />
+              </Field>
+              <Field
+                id="new-attribute-value"
+                label="Nilai spesifikasi"
+                required
+                error={form.errors.attribute_value}
+                hint="mis. Aluminium, 3 inch, 5mm, Inkalum"
+              >
+                <Input
+                  value={form.data.attribute_value}
+                  onChange={(event) => form.setData("attribute_value", event.target.value)}
+                  placeholder="mis. Aluminium"
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={form.processing}>
+                {form.processing ? "Menyimpan..." : "Tambah spesifikasi"}
+              </Button>
+            </div>
+          </form>
+        </SectionCard>
 
-      <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-semibold">Tambah spesifikasi</h2>
-        <form id="attribute-create-form" onSubmit={submit} className="mt-4 grid gap-4 md:grid-cols-[1fr_1.3fr_10rem_auto] md:items-end">
-          <FormErrorSummary errors={form.errors} className="md:col-span-4" />
-          <Field id="new-attribute-name" label="Nama" required error={form.errors.attribute_name}>
-            <Input value={form.data.attribute_name} onChange={(event) => form.setData("attribute_name", event.target.value)} />
-          </Field>
-          <Field id="new-attribute-value" label="Nilai" required error={form.errors.attribute_value}>
-            <Input value={form.data.attribute_value} onChange={(event) => form.setData("attribute_value", event.target.value)} />
-          </Field>
-          <Field id="new-attribute-source" label="Sumber" required error={form.errors.source}>
-            <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
-              <option value="internal">Internal</option>
-              <option value="shopee">Shopee</option>
-            </Select>
-          </Field>
-        </form>
-      </section>
+        <SectionCard
+          title="Daftar spesifikasi produk"
+          description={`${attributes.length} spesifikasi tersimpan untuk produk ini. Ubah langsung pada baris dan klik Simpan.`}
+          icon="sliders"
+          contentClassName="p-0"
+        >
+          {attributes.length ? (
+            <div className="divide-y divide-border">
+              {attributes.map((attribute) => (
+                <AttributeRow key={attribute.id} attribute={attribute} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-8">
+              <EmptyState
+                icon="sliders"
+                title="Belum ada spesifikasi"
+                description="Tambahkan spesifikasi di atas untuk melengkapi informasi produk ini."
+              />
+            </div>
+          )}
+        </SectionCard>
+      </div>
     </AdminLayout>
   )
 }

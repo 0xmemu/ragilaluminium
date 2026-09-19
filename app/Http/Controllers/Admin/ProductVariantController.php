@@ -15,42 +15,11 @@ use Inertia\Response;
 
 class ProductVariantController extends Controller
 {
-    public function index(Request $request, Product $product): \Illuminate\Http\RedirectResponse|Response
+    public function index(Request $request, Product $product): \Illuminate\Http\RedirectResponse
     {
-        // GET dialihkan ke tab Varian di halaman edit (penggabungan e2e).
-        if (! $request->inertia()) {
-            return redirect()->route('admin.products.edit', ['product' => $product, 'tab' => 'varian']);
-        }
-
-        $product->load(['variants' => fn ($q) => $q->withCount([
-            'media as media_count' => fn ($mq) => $mq->where('visibility', '!=', 'archived'),
-        ])]);
-
-        return Inertia::render('Admin/Variants', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'parent_sku' => $product->parent_sku,
-                'media_href' => route('admin.products.media.byProduct', $product),
-            ],
-            'variants' => $product->variants->map(fn (ProductVariant $variant) => [
-                'id' => $variant->id,
-                'variant_sku' => $variant->variant_sku,
-                'variation_1_option' => $variant->variation_1_option,
-                'variation_2_option' => $variant->variation_2_option,
-                'price' => $variant->price,
-                'stock' => $variant->stock,
-                'status' => $variant->status,
-                'media_count' => (int) ($variant->media_count ?? 0),
-                'editUrl' => route('admin.variants.edit', $variant),
-                'archiveUrl' => route('admin.variants.archive', $variant),
-                'mediaUrl' => route('admin.products.media.byProduct', [
-                    'product' => $product,
-                    'variant' => $variant->id,
-                ]),
-            ])->values()->all(),
-            'submitUrl' => route('admin.products.variants.store', $product),
-        ]);
+        // Halaman varian khusus dihapus (redundan dgn tab Varian di halaman edit).
+        // GET browser dan Inertia sama-sama dialihkan ke tab Varian.
+        return redirect()->route('admin.products.edit', ['product' => $product, 'tab' => 'varian']);
     }
 
     public function store(Request $request, Product $product): RedirectResponse
@@ -169,18 +138,8 @@ class ProductVariantController extends Controller
                 'variation_1_option' => $variant->variation_1_option,
                 'variation_2_name' => $variant->variation_2_name,
                 'variation_2_option' => $variant->variation_2_option,
-                'variation_3_name' => $variant->variation_3_name,
-                'variation_3_option' => $variant->variation_3_option,
-                'variation_4_name' => $variant->variation_4_name,
-                'variation_4_option' => $variant->variation_4_option,
-                'variation_5_name' => $variant->variation_5_name,
-                'variation_5_option' => $variant->variation_5_option,
                 'price' => $variant->price,
                 'stock' => $variant->stock,
-                'weight_kg' => $variant->weight_kg,
-                'width_cm' => $variant->width_cm,
-                'height_cm' => $variant->height_cm,
-                'depth_cm' => $variant->depth_cm,
                 'status' => $variant->status,
             ],
             'media' => $variant->media->map(fn ($m) => [
@@ -194,13 +153,8 @@ class ProductVariantController extends Controller
                 'set_main_url' => route('admin.media.set-main', $m),
                 'archive_url' => route('admin.media.archive', $m),
             ])->values()->all(),
-            'mediaStoreUrl' => route('admin.products.media.store', $variant->product_id),
-            'mediaManageUrl' => route('admin.products.media.byProduct', [
-                'product' => $variant->product_id,
-                'variant' => $variant->id,
-            ]),
             'submitUrl' => route('admin.variants.update', $variant),
-            'backUrl' => route('admin.products.variants.index', $variant->product_id),
+            'backUrl' => route('admin.products.show', ['product' => $variant->product_id, 'tab' => 'varian']),
         ]);
     }
 
@@ -232,7 +186,7 @@ class ProductVariantController extends Controller
         $variant->update($validated);
         $this->syncPromoPrice($variant, $promoPrice);
 
-        return redirect()->route('admin.products.edit', ['product' => $variant->product_id, 'tab' => 'varian'])
+        return redirect()->route('admin.products.show', ['product' => $variant->product_id, 'tab' => 'varian'])
             ->with('success', 'Varian diperbarui.');
     }
 

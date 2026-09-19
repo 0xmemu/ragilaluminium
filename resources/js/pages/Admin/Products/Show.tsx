@@ -1,10 +1,15 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { RowActions } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/admin/ui/dialog"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Select } from "@/components/admin/ui/select"
@@ -56,6 +61,7 @@ interface AttributeRowData {
 
 interface MediaRowData {
   id: number
+  media_asset_id?: number | null
   name: string
   kind: string
   status: string
@@ -63,20 +69,21 @@ interface MediaRowData {
   file?: string | null
   updated_at?: string | null
   thumb_url?: string | null
+  preview_url?: string | null
+  library_url?: string | null
 }
 
-const TAB_KEYS = ["ringkasan", "varian", "spesifikasi", "media"] as const
+const TAB_KEYS = ["varian", "spesifikasi", "media"] as const
 type TabKey = (typeof TAB_KEYS)[number]
 
 const TAB_LABELS: Record<TabKey, string> = {
-  ringkasan: "Ringkasan",
   varian: "Varian",
-  spesifikasi: "Spesifikasi",
+  spesifikasi: "Spesifikasi & Deskripsi",
   media: "Media",
 }
 
 /** Tabel Varian: tiap kolom berdiri sendiri, angka rata kanan dengan tabular-nums. */
-function VariantTable({ rows }: { rows: VariantRowData[] }) {
+function VariantTable({ rows, manageHref }: { rows: VariantRowData[]; manageHref: string }) {
   const [query, setQuery] = React.useState("")
   const [status, setStatus] = React.useState("")
   const [sort, setSort] = React.useState("sku")
@@ -107,7 +114,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Icon name="package" className="size-3.5" aria-hidden="true" />
@@ -116,13 +123,16 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
             <h2 className="text-sm font-semibold tracking-tight text-foreground">Varian</h2>
             <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
               <span className="tabular-nums">{formatNumber(tersaring.length)}</span>
-              {tersaring.length === rows.length ? "" : ` dari ${formatNumber(rows.length)}`} entri
+              {tersaring.length === rows.length ? "" : " dari " + formatNumber(rows.length)} entri
             </p>
           </div>
         </div>
+        <Button asChild variant="secondary" size="sm">
+          <Link href={manageHref}>Kelola varian</Link>
+        </Button>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 sm:px-5">
         <ListToolbar
           className="mt-0"
           search={{
@@ -160,7 +170,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
       </div>
 
       {tersaring.length === 0 ? (
-        <div className="px-4 py-12 text-center">
+        <div className="px-4 py-12 text-center sm:px-5">
           <Icon name="package" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
           <p className="mt-2 text-sm font-semibold text-foreground">
             {adaFilter ? "Tidak ada varian yang cocok" : "Belum ada varian"}
@@ -190,18 +200,18 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
           <Table>
             <TableHeader>
               <TableRow className="bg-surface/80">
-                <TableHead className="px-4">Varian</TableHead>
+                <TableHead className="px-4 sm:px-5">Varian</TableHead>
                 <TableHead className="px-4">Status</TableHead>
                 <TableHead className="px-4 text-right">Harga</TableHead>
                 <TableHead className="px-4 text-right">Stok</TableHead>
                 <TableHead className="px-4">SKU</TableHead>
-                <TableHead className="w-[1%] px-4 text-right">Aksi</TableHead>
+                <TableHead className="w-[1%] px-4 text-right sm:px-5">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tersaring.map((row) => (
                 <TableRow key={row.id} className="hover:bg-muted/40">
-                  <TableCell className="px-4 font-medium">{row.label}</TableCell>
+                  <TableCell className="px-4 font-medium sm:px-5">{row.label}</TableCell>
                   <TableCell className="px-4">
                     <StatusBadge status={row.status} />
                   </TableCell>
@@ -214,7 +224,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
                   <TableCell className="whitespace-nowrap px-4 font-mono text-[11px] text-muted-foreground">
                     {row.sku}
                   </TableCell>
-                  <TableCell className="w-[1%] whitespace-nowrap px-4 text-right">
+                  <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
                     <RowActions>
                       <Button asChild variant="secondary" size="xs">
                         <Link href={row.edit_url}>Edit</Link>
@@ -231,7 +241,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
   )
 }
 
-/** Tabel Spesifikasi: nama, nilai, waktu ubah. Satuan tidak ada di schema. */
+/** Tabel Spesifikasi: nama, nilai, waktu ubah. */
 function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; manageHref: string }) {
   if (rows.length === 0) {
     return (
@@ -253,7 +263,7 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Icon name="sliders" className="size-3.5" aria-hidden="true" />
@@ -274,21 +284,21 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
         <Table>
           <TableHeader>
             <TableRow className="bg-surface/80">
-              <TableHead className="px-4">Nama</TableHead>
+              <TableHead className="px-4 sm:px-5">Nama</TableHead>
               <TableHead className="px-4">Nilai</TableHead>
               <TableHead className="px-4">Diperbarui</TableHead>
-              <TableHead className="w-[1%] px-4 text-right">Aksi</TableHead>
+              <TableHead className="w-[1%] px-4 text-right sm:px-5">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id} className="hover:bg-muted/40">
-                <TableCell className="px-4 font-medium">{row.name}</TableCell>
+                <TableCell className="px-4 font-medium sm:px-5">{row.name}</TableCell>
                 <TableCell className="px-4 text-muted-foreground">{row.value}</TableCell>
                 <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground">
                   {row.updated_at ?? "-"}
                 </TableCell>
-                <TableCell className="w-[1%] whitespace-nowrap px-4 text-right">
+                <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
                   <RowActions>
                     <Button asChild variant="secondary" size="xs">
                       <Link href={manageHref}>Edit</Link>
@@ -304,18 +314,17 @@ function SpecificationTable({ rows, manageHref }: { rows: AttributeRowData[]; ma
   )
 }
 
-/** Tabel Media: thumbnail kecil, tipe, status, publikasi, dan berkas dipisah. */
+/** Tabel Media: thumbnail baris besar setinggi row, preview modal, tautan ke media library. */
 function MediaTable({
   rows,
-  editHref,
-  importHref,
+  manageHref,
 }: {
   rows: MediaRowData[]
-  editHref: string
-  importHref: string
+  manageHref: string
 }) {
   const [publikasi, setPublikasi] = React.useState("")
   const [query, setQuery] = React.useState("")
+  const [previewItem, setPreviewItem] = React.useState<MediaRowData | null>(null)
 
   const tersaring = React.useMemo(() => {
     const kata = query.trim().toLowerCase()
@@ -334,152 +343,230 @@ function MediaTable({
   const adaFilter = publikasi !== "" || query.trim() !== ""
 
   return (
-    <section className="rounded-lg border border-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-            <Icon name="image" className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Media</h2>
-            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-              <span className="tabular-nums">{formatNumber(tersaring.length)}</span>
-              {tersaring.length === rows.length ? "" : ` dari ${formatNumber(rows.length)}`} entri
-            </p>
+    <>
+      <section className="rounded-lg border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Icon name="image" className="size-3.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">Media</h2>
+              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+                <span className="tabular-nums">{formatNumber(tersaring.length)}</span>
+                {tersaring.length === rows.length ? "" : " dari " + formatNumber(rows.length)} entri
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary" size="sm">
-            <Link href={editHref}>Kelola media</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href={importHref}>Import</Link>
+            <Link href={manageHref}>Kelola media</Link>
           </Button>
         </div>
-      </div>
 
-      <div className="px-4">
-        <ListToolbar
-          className="mt-0"
-          search={{
-            value: query,
-            onChange: setQuery,
-            placeholder: "Cari nama media atau berkas…",
-          }}
-        >
-          <Select
-            className="flex-1 min-w-0"
-            value={publikasi}
-            onChange={(event) => setPublikasi(event.target.value)}
-            aria-label="Filter publikasi media"
+        <div className="px-4 sm:px-5">
+          <ListToolbar
+            className="mt-0"
+            search={{
+              value: query,
+              onChange: setQuery,
+              placeholder: "Cari nama media atau berkas…",
+            }}
           >
-            <option value="">Semua publikasi</option>
-            <option value="visible">Tampil</option>
-            <option value="hidden">Disembunyikan</option>
-            <option value="archived">Diarsipkan</option>
-          </Select>
-        </ListToolbar>
-      </div>
+            <Select
+              className="flex-1 min-w-0"
+              value={publikasi}
+              onChange={(event) => setPublikasi(event.target.value)}
+              aria-label="Filter publikasi media"
+            >
+              <option value="">Semua publikasi</option>
+              <option value="visible">Tampil</option>
+              <option value="hidden">Disembunyikan</option>
+              <option value="archived">Diarsipkan</option>
+            </Select>
+          </ListToolbar>
+        </div>
 
-      {tersaring.length === 0 ? (
-        <div className="px-4 py-12 text-center">
-          <Icon name="image" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
-          <p className="mt-2 text-sm font-semibold text-foreground">
-            {adaFilter ? "Tidak ada media yang cocok" : "Belum ada media"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {adaFilter
-              ? "Ubah kata kunci atau kosongkan filter untuk melihat semua media."
-              : "Media ditambahkan dari tab Media di halaman edit produk atau lewat import."}
-          </p>
-          {adaFilter ? (
+        {tersaring.length === 0 ? (
+          <div className="px-4 py-12 text-center sm:px-5">
+            <Icon name="image" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {adaFilter ? "Tidak ada media yang cocok" : "Belum ada media"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {adaFilter
+                ? "Ubah kata kunci atau kosongkan filter untuk melihat semua media."
+                : "Media dikelola dari Media Library atau tab Media di form edit produk."}
+            </p>
+            {adaFilter ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  setQuery("")
+                  setPublikasi("")
+                }}
+              >
+                Reset filter
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-surface/80">
+                  <TableHead className="w-[1%] px-4 sm:px-5">Preview</TableHead>
+                  <TableHead className="px-4">Nama media</TableHead>
+                  <TableHead className="px-4">Tipe</TableHead>
+                  <TableHead className="px-4">Status File</TableHead>
+                  <TableHead className="px-4">Publikasi</TableHead>
+                  <TableHead className="px-4">Berkas</TableHead>
+                  <TableHead className="px-4">Diperbarui</TableHead>
+                  <TableHead className="w-[1%] px-4 text-right sm:px-5">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tersaring.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-muted/40">
+                    <TableCell className="w-[1%] px-4 py-2 sm:px-5">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewItem(row)}
+                        className="group relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted transition hover:ring-2 hover:ring-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                        title="Klik untuk melihat preview ukuran penuh"
+                        aria-label={"Preview " + row.name}
+                      >
+                        {row.thumb_url ? (
+                          <img
+                            src={row.thumb_url}
+                            alt=""
+                            className="size-full object-cover transition duration-150 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Icon
+                            name={row.kind === "video" ? "video-camera" : "image"}
+                            className="size-5 text-muted-foreground/70"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition duration-150 group-hover:opacity-100">
+                          <Icon name="eye" className="size-4 text-white" aria-hidden="true" />
+                        </span>
+                      </button>
+                    </TableCell>
+                    <TableCell className="px-4 font-medium">{row.name}</TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {row.kind === "video" ? "Video" : "Foto"}
+                    </TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {statusMeta(row.status).label}
+                    </TableCell>
+                    <TableCell className="px-4">
+                      <StatusBadge status={row.visibility} />
+                    </TableCell>
+                    <TableCell className="max-w-[16rem] truncate px-4 font-mono text-[11px]">
+                      {row.file ? (
+                        <Link
+                          href={row.library_url ?? routeUrl("admin.media.library")}
+                          className="text-primary transition hover:underline"
+                          title="Buka asal media di Media Library"
+                        >
+                          {row.file}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground">
+                      {row.updated_at ?? "-"}
+                    </TableCell>
+                    <TableCell className="w-[1%] whitespace-nowrap px-4 text-right sm:px-5">
+                      <RowActions>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => setPreviewItem(row)}
+                        >
+                          Preview
+                        </Button>
+                      </RowActions>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
+      {/* Modal Preview Media */}
+      <Dialog open={Boolean(previewItem)} onOpenChange={(open) => !open && setPreviewItem(null)}>
+        <DialogContent className="max-w-3xl overflow-hidden p-0">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <div>
+              <DialogTitle className="text-base font-semibold text-foreground">
+                {previewItem?.name}
+              </DialogTitle>
+              {previewItem?.file ? (
+                <DialogDescription className="font-mono text-xs text-muted-foreground">
+                  {previewItem.file}
+                </DialogDescription>
+              ) : null}
+            </div>
+            {previewItem?.library_url ? (
+              <Button asChild variant="secondary" size="xs">
+                <Link href={previewItem.library_url} target="_blank">
+                  <Icon name="arrow-up-right" className="size-3.5" aria-hidden="true" />
+                  Buka di Library
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="flex max-h-[65vh] items-center justify-center bg-black/90 p-4">
+            {previewItem?.kind === "video" ? (
+              <video
+                src={previewItem.preview_url || previewItem.thumb_url || ""}
+                controls
+                className="max-h-[60vh] w-auto max-w-full rounded"
+              />
+            ) : (
+              <img
+                src={previewItem?.preview_url || previewItem?.thumb_url || ""}
+                alt={previewItem?.name || ""}
+                className="max-h-[60vh] w-auto max-w-full object-contain"
+              />
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-5 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Publikasi:</span>
+              {previewItem ? <StatusBadge status={previewItem.visibility} /> : null}
+            </div>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="mt-3"
-              onClick={() => {
-                setQuery("")
-                setPublikasi("")
-              }}
+              onClick={() => setPreviewItem(null)}
             >
-              Reset filter
+              Tutup
             </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="mt-4 overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-surface/80">
-                <TableHead className="w-[1%] px-4">Preview</TableHead>
-                <TableHead className="px-4">Nama media</TableHead>
-                <TableHead className="px-4">Tipe</TableHead>
-                <TableHead className="px-4">Status</TableHead>
-                <TableHead className="px-4">Publikasi</TableHead>
-                <TableHead className="px-4">Berkas</TableHead>
-                <TableHead className="px-4">Diperbarui</TableHead>
-                <TableHead className="w-[1%] px-4 text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tersaring.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/40">
-                  <TableCell className="w-[1%] px-4">
-                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                      {row.thumb_url ? (
-                        <img
-                          src={row.thumb_url}
-                          alt=""
-                          className="size-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Icon
-                          name={row.kind === "video" ? "video-camera" : "image"}
-                          className="size-4 text-muted-foreground/70"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-4 font-medium">{row.name}</TableCell>
-                  <TableCell className="px-4 text-muted-foreground">
-                    {row.kind === "video" ? "Video" : "Foto"}
-                  </TableCell>
-                  <TableCell className="px-4 text-muted-foreground">
-                    {statusMeta(row.status).label}
-                  </TableCell>
-                  <TableCell className="px-4">
-                    <StatusBadge status={row.visibility === "visible" ? "active" : "archived"} />
-                  </TableCell>
-                  <TableCell className="max-w-[16rem] truncate px-4 font-mono text-[11px] text-muted-foreground">
-                    {row.file ?? "-"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground">
-                    {row.updated_at ?? "-"}
-                  </TableCell>
-                  <TableCell className="w-[1%] whitespace-nowrap px-4 text-right">
-                    <RowActions>
-                      <Button asChild variant="secondary" size="xs">
-                        <Link href={editHref}>Kelola</Link>
-                      </Button>
-                    </RowActions>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </section>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
 export default function ProductShow({
   product,
   details,
-  activeTab = "ringkasan",
+  activeTab = "varian",
   counts,
   variants = [],
   attributes = [],
@@ -498,20 +585,21 @@ export default function ProductShow({
   const archiveForm = useForm({})
   const archived = product.status === "archived"
   const [descriptionExpanded, setDescriptionExpanded] = React.useState(false)
+  const [copiedSku, setCopiedSku] = React.useState(false)
 
   const propTab: TabKey = (TAB_KEYS as readonly string[]).includes(activeTab)
     ? (activeTab as TabKey)
-    : "ringkasan"
+    : "varian"
 
-  // Tab aktif disimpan lokal supaya perpindahan tab instan (tanpa muat ulang),
-  // sementara URL tetap mencatat tab aktif agar reload dan back/forward konsisten.
+  // Tab aktif disimpan lokal agar perpindahan tab instan tanpa reload,
+  // dan URL tetap dicatat (?tab=) untuk reload serta tombol back/forward.
   const [tab, setTab] = React.useState<TabKey>(propTab)
 
   const description = (product.description ?? "").trim()
   const descriptionIsLong = description.length > 240
 
   React.useEffect(() => {
-    // Tab awal datang dari server lewat prop saat pindah produk via Inertia.
+    // Tab awal datang dari server lewat prop saat navigasi produk Inertia.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTab(propTab)
   }, [propTab])
@@ -520,7 +608,7 @@ export default function ProductShow({
     if (typeof window === "undefined" || next === tab) return
 
     const url = new URL(window.location.href)
-    if (next === "ringkasan") {
+    if (next === "varian") {
       url.searchParams.delete("tab")
     } else {
       url.searchParams.set("tab", next)
@@ -530,11 +618,11 @@ export default function ProductShow({
     setTab(next)
   }
 
-  // Back/forward browser mengembalikan tab sesuai URL, tanpa memuat ulang halaman.
+  // Back/forward browser mengembalikan tab sesuai URL.
   React.useEffect(() => {
     function onPopState() {
-      const dari = new URL(window.location.href).searchParams.get("tab") ?? "ringkasan"
-      setTab((TAB_KEYS as readonly string[]).includes(dari) ? (dari as TabKey) : "ringkasan")
+      const dari = new URL(window.location.href).searchParams.get("tab") ?? "varian"
+      setTab((TAB_KEYS as readonly string[]).includes(dari) ? (dari as TabKey) : "varian")
     }
 
     window.addEventListener("popstate", onPopState)
@@ -543,11 +631,16 @@ export default function ProductShow({
   }, [])
 
   const tabBadge: Record<TabKey, number | null> = {
-    ringkasan: null,
     varian: counts.varian,
     spesifikasi: counts.spesifikasi,
     media: counts.media,
   }
+
+  // Bagi detail produk menjadi dua kelompok kolom seimbang:
+  // Kolom 1 (katalog): Kategori, Model, Sub Model
+  // Kolom 2 (paket & kirim): Berat paket, Dimensi paket, Pengiriman
+  const col1 = details.filter((d) => ["Kategori", "Model", "Sub Model"].includes(d.label))
+  const col2 = details.filter((d) => !["Kategori", "Model", "Sub Model"].includes(d.label))
 
   const actions = (
     <>
@@ -570,108 +663,144 @@ export default function ProductShow({
           Edit produk
         </Link>
       </Button>
-      <RowActionsMenu label="Lainnya">
-        <DropdownMenuItem asChild>
-          <Link href={links.import}>Import data</Link>
-        </DropdownMenuItem>
-        <ConfirmAction
-          trigger={
-            <button
-              type="button"
-              className={cn(
-                "w-full px-2 py-1.5 text-left text-xs",
-                archived ? "text-foreground hover:bg-muted" : "text-destructive hover:bg-destructive/10",
-              )}
-            >
-              {archived ? "Pulihkan produk" : "Arsipkan produk"}
-            </button>
-          }
-          title={archived ? "Pulihkan produk?" : "Arsipkan produk?"}
-          description={
-            archived
-              ? "Produk akan kembali aktif dan dapat digunakan sesuai visibility yang berlaku."
-              : "Produk tidak dihapus, tetapi dipindahkan ke status archived."
-          }
-          confirmLabel={archived ? "Pulihkan" : "Arsipkan"}
-          variant={archived ? "primary" : "destructive"}
-          processing={archiveForm.processing}
-          onConfirm={() =>
-            archiveForm.post(
-              routeUrl(archived ? "admin.products.unarchive" : "admin.products.archive", {
-                product: product.id,
-              }),
-            )
-          }
-        />
-      </RowActionsMenu>
+      <ConfirmAction
+        trigger={
+          <Button variant={archived ? "secondary" : "destructive"}>
+            <Icon name={archived ? "refresh" : "archive"} className="h-4 w-4" aria-hidden="true" />
+            {archived ? "Pulihkan" : "Arsipkan"}
+          </Button>
+        }
+        title={archived ? "Pulihkan produk?" : "Arsipkan produk?"}
+        description={
+          archived
+            ? "Produk akan kembali aktif dan dapat digunakan sesuai visibility yang berlaku."
+            : "Produk tidak dihapus, tetapi dipindahkan ke status archived."
+        }
+        confirmLabel={archived ? "Pulihkan" : "Arsipkan"}
+        variant={archived ? "primary" : "destructive"}
+        processing={archiveForm.processing}
+        onConfirm={() =>
+          archiveForm.post(
+            routeUrl(archived ? "admin.products.unarchive" : "admin.products.archive", {
+              product: product.id,
+            }),
+          )
+        }
+      />
     </>
   )
 
   return (
     <AdminLayout
       title={product.name}
-      description={`Parent SKU · ${product.parent_sku}`}
+      description={"Parent SKU · " + product.parent_sku}
       actions={actions}
       backUrl={routeUrl("admin.products.index")}
     >
-      <Head title={`${product.name} | Admin`} />
+      <Head title={product.name + " | Admin"} />
 
       <div className="space-y-4">
-        {/* Identitas di kiri, daftar detail di kanan: dua kartu berdampingan */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* Dua kartu seimbang 50-50: identitas (foto 1:1 full-height) di kiri, detail 2 kolom di kanan */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <section
-            className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
+            className="flex overflow-hidden rounded-lg border border-border bg-card"
             aria-label="Identitas produk"
           >
-            {/* Foto utama persegi di kiri nama produk: tingginya mengikuti
-                tinggi kartu sehingga rasionya tetap 1:1 tanpa mendikte tinggi. */}
-            {product.image_url ? (
-              <div className="size-36 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+            {/* Foto utama 1:1 persegi mengisi penuh tinggi kartu */}
+            <div
+              style={{ width: "202px" }}
+              className="relative flex h-full shrink-0 items-center justify-center overflow-hidden border-r border-border bg-muted"
+            >
+              {product.image_url ? (
                 <img
                   src={product.image_url}
                   alt={"Foto utama " + product.name}
                   className="size-full object-cover"
                   loading="lazy"
                 />
+              ) : (
+                <Icon name="image" className="size-8 text-muted-foreground/50" aria-hidden="true" />
+              )}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-between p-4 sm:p-5">
+              <div>
+                <h2
+                  className="text-lg font-bold leading-snug text-foreground line-clamp-2 sm:text-xl"
+                  title={product.name}
+                >
+                  {product.name}
+                </h2>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className="font-mono text-sm font-medium text-muted-foreground">
+                    Parent SKU · {product.parent_sku}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== "undefined" && navigator.clipboard) {
+                        navigator.clipboard.writeText(product.parent_sku)
+                        setCopiedSku(true)
+                        setTimeout(() => setCopiedSku(false), 2000)
+                      }
+                    }}
+                    className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Salin Parent SKU"
+                    title={copiedSku ? "Tersalin!" : "Salin Parent SKU"}
+                  >
+                    <Icon name={copiedSku ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
-            ) : null}
-            <div className="flex min-w-0 flex-1 flex-col justify-center">
-              <h2 className="text-base font-semibold leading-6 text-foreground">{product.name}</h2>
-              <p className="mt-1.5 font-mono text-sm text-muted-foreground">{product.parent_sku}</p>
-              <div className="mt-3">
+              <div className="mt-4 flex items-center gap-2">
                 <StatusBadge status={product.status} />
+                {product.public_visible ? (
+                  <span className="text-xs text-muted-foreground">· Tayang di toko</span>
+                ) : null}
               </div>
             </div>
           </section>
 
           <section
-            className="rounded-lg border border-border bg-card lg:col-span-2"
+            className="flex flex-col overflow-hidden rounded-lg border border-border bg-card"
             aria-label="Detail produk"
           >
-            <div className="border-b border-border px-5 py-3.5">
+            <div className="border-b border-border px-4 py-2.5 sm:px-5">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">Detail produk</h2>
             </div>
-            <dl className="divide-y divide-border">
-              {details.map((field, index) => (
-                <div
-                  key={`${field.label}-${index}`}
-                  className="flex items-start justify-between gap-4 px-5 py-2.5"
-                >
-                  <dt className="text-[13px] text-muted-foreground">{field.label}</dt>
-                  <dd className="text-right text-[13px] font-medium text-foreground">
-                    {field.value ? (
-                      String(field.value)
-                    ) : (
-                      <span className="font-normal text-muted-foreground">Belum tersedia</span>
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <div className="grid flex-1 grid-cols-1 gap-x-6 gap-y-3 p-4 sm:grid-cols-2 sm:p-5">
+              <div className="space-y-2.5">
+                {col1.map((field, index) => (
+                  <div key={field.label + "-" + index}>
+                    <dt className="text-[11px] font-medium text-muted-foreground">{field.label}</dt>
+                    <dd className="mt-0.5 text-[13px] font-medium text-foreground">
+                      {field.value ? (
+                        String(field.value)
+                      ) : (
+                        <span className="font-normal text-muted-foreground">Belum tersedia</span>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2.5">
+                {col2.map((field, index) => (
+                  <div key={field.label + "-" + index}>
+                    <dt className="text-[11px] font-medium text-muted-foreground">{field.label}</dt>
+                    <dd className="mt-0.5 text-[13px] font-medium text-foreground">
+                      {field.value ? (
+                        String(field.value)
+                      ) : (
+                        <span className="font-normal text-muted-foreground">Belum tersedia</span>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
         </div>
 
-        {/* Tab utama: hanya isi tab aktif yang dirender */}
+        {/* Tab utama: Varian, Spesifikasi & Deskripsi, Media */}
         <div
           role="tablist"
           aria-label="Bagian detail produk"
@@ -689,14 +818,14 @@ export default function ProductShow({
                 aria-selected={isActive}
                 onClick={() => pilihTab(key)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-[13px] font-medium transition",
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3.5 py-2 text-[13px] font-medium transition",
                   isActive
-                    ? "bg-card text-foreground shadow-xs border border-border"
+                    ? "bg-card text-foreground shadow-xs border border-border font-semibold"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
                 )}
               >
                 {TAB_LABELS[key]}
-                {jumlah ? (
+                {jumlah !== null && jumlah !== undefined ? (
                   <span className="tabular-nums text-[11px] text-muted-foreground">{jumlah}</span>
                 ) : null}
               </button>
@@ -704,11 +833,20 @@ export default function ProductShow({
           })}
         </div>
 
-        {tab === "ringkasan" ? (
+        {tab === "varian" ? (
+          <VariantTable rows={variants} manageHref={links.variants} />
+        ) : null}
+
+        {tab === "spesifikasi" ? (
           <div className="space-y-4">
             <section className="rounded-lg border border-border bg-card">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">Deskripsi</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Icon name="notes" className="size-3.5" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground">Deskripsi</h2>
+                </div>
                 {descriptionIsLong ? (
                   <Button
                     type="button"
@@ -720,7 +858,7 @@ export default function ProductShow({
                   </Button>
                 ) : null}
               </div>
-              <div className="px-4 py-3.5">
+              <div className="px-4 py-3.5 sm:px-5">
                 {description ? (
                   <p
                     className={cn(
@@ -739,56 +877,12 @@ export default function ProductShow({
               </div>
             </section>
 
-            <section className="rounded-lg border border-border bg-card">
-              <div className="border-b border-border px-4 py-3.5">
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">Data katalog</h2>
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-surface/80">
-                    <TableHead className="px-4">Jenis data</TableHead>
-                    <TableHead className="px-4 text-right">Jumlah</TableHead>
-                    <TableHead className="px-4">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="px-4 font-medium">Varian</TableCell>
-                    <TableCell className="px-4 text-right tabular-nums">{formatNumber(counts.varian)}</TableCell>
-                    <TableCell className="px-4 text-muted-foreground">
-                      {counts.varian ? "Tersedia" : "Belum ada data"}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="px-4 font-medium">Spesifikasi</TableCell>
-                    <TableCell className="px-4 text-right tabular-nums">
-                      {formatNumber(counts.spesifikasi)}
-                    </TableCell>
-                    <TableCell className="px-4 text-muted-foreground">
-                      {counts.spesifikasi ? "Tersedia" : "Belum ada data"}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="px-4 font-medium">Media</TableCell>
-                    <TableCell className="px-4 text-right tabular-nums">{formatNumber(counts.media)}</TableCell>
-                    <TableCell className="px-4 text-muted-foreground">
-                      {counts.media ? "Tersedia" : "Belum ada data"}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </section>
+            <SpecificationTable rows={attributes} manageHref={links.attributes} />
           </div>
         ) : null}
 
-        {tab === "varian" ? <VariantTable rows={variants} /> : null}
-
-        {tab === "spesifikasi" ? (
-          <SpecificationTable rows={attributes} manageHref={links.attributes} />
-        ) : null}
-
         {tab === "media" ? (
-          <MediaTable rows={media} editHref={links.media} importHref={links.import} />
+          <MediaTable rows={media} manageHref={links.media} />
         ) : null}
       </div>
     </AdminLayout>

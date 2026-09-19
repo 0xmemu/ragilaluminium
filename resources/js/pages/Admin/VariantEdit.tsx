@@ -1,13 +1,11 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { Icon } from "@/components/shared/icon"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusSelect } from "@/components/admin/ui/status-select"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 
 const VARIANT_STATUSES = ["active", "inactive", "archived"] as const
@@ -19,37 +17,15 @@ interface VariantEditData {
   variation_2_option: string
   price: number | string
   stock: number | string
-  weight_kg: number | string
-  width_cm: number | string
-  height_cm: number | string
-  depth_cm: number | string
   status: string
-}
-
-interface MediaItem {
-  id: number
-  position: number
-  visibility: string
-  status: string
-  is_main_image: boolean
-  thumb_url?: string | null
-  update_url: string
-  set_main_url: string
-  archive_url: string
 }
 
 export default function VariantEdit({
   variant,
-  media = [],
-  mediaStoreUrl,
-  mediaManageUrl,
   submitUrl,
   backUrl,
 }: {
   variant: VariantEditData & { id: number; product_id: number; variant_sku: string }
-  media?: MediaItem[]
-  mediaStoreUrl: string
-  mediaManageUrl: string
   submitUrl: string
   backUrl: string
 }) {
@@ -60,233 +36,166 @@ export default function VariantEdit({
     variation_2_option: variant.variation_2_option ?? "",
     price: variant.price,
     stock: variant.stock,
-    weight_kg: variant.weight_kg ?? "",
-    width_cm: variant.width_cm ?? "",
-    height_cm: variant.height_cm ?? "",
-    depth_cm: variant.depth_cm ?? "",
     status: variant.status,
   })
-  const mediaForm = useForm<{
-    source_url: string
-    position: number
-    is_main_image: boolean
-    visibility: string
-    product_variant_id: number
-    upload: File | null
-  }>({
-    source_url: "",
-    position: Math.min(9, (media?.length ?? 0) + 1),
-    is_main_image: false,
-    visibility: "visible",
-    product_variant_id: variant.id,
-    upload: null,
-  })
-  const actionForm = useForm({})
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
     form.put(submitUrl)
   }
 
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="submit" form="variant-form" disabled={form.processing}>
+        {form.processing ? "Menyimpan..." : "Simpan varian"}
+      </Button>
+      <Button asChild variant="secondary">
+        <Link href={backUrl}>Batal</Link>
+      </Button>
+    </div>
+  )
+
   return (
     <AdminLayout
-      title="Edit varian"
-      description={`${variant.variant_sku} - atur opsi, harga, dan foto khusus kombinasi ini.`}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="variant-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan varian"}
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={mediaManageUrl}>
-              <Icon name="image" className="h-4 w-4" aria-hidden="true" />
-              Semua media produk
-            </Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={backUrl}>Batal</Link>
-          </Button>
-        </div>
-      }
+      title={`Edit Varian ${variant.variant_sku}`}
+      description="Atur nama opsi, nilai kombinasi, harga, stok, dan status varian."
+      actions={actions}
+      backUrl={backUrl}
     >
       <Head title={`Edit ${variant.variant_sku} | Admin`} />
+
       <form id="variant-form" onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
         <FormErrorSummary errors={form.errors} />
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <h2 className="text-xl font-semibold">Identitas dan opsi</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+
+        <SectionCard
+          title="Identitas & Opsi Kombinasi"
+          description="Opsi varian menentukan kombinasi yang dipilih pembeli di etalase toko (misal Warna dan Kaca)."
+          icon="package"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field
               id="edit-variant-sku"
               label="Variant SKU"
-              hint="Dibuat otomatis; tidak dapat diubah."
+              hint="Dibuat otomatis dari SKU produk; tidak dapat diubah."
               className="sm:col-span-2"
             >
-              <Input value={variant.variant_sku} readOnly disabled className="font-mono" />
+              <Input value={variant.variant_sku} readOnly disabled className="font-mono bg-muted/40" />
             </Field>
-            {[
-              ["variation_1_name", "Nama opsi 1"],
-              ["variation_1_option", "Nilai opsi 1"],
-              ["variation_2_name", "Nama opsi 2"],
-              ["variation_2_option", "Nilai opsi 2"],
-            ].map(([key, label]) => (
-              <Field key={key} id={`edit-${key}`} label={label} error={form.errors[key as keyof VariantEditData]}>
-                <Input
-                  value={form.data[key as keyof VariantEditData] as string}
-                  onChange={(event) => form.setData(key as keyof VariantEditData, event.target.value)}
-                />
-              </Field>
-            ))}
-          </div>
-        </section>
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <h2 className="text-xl font-semibold">Harga, stok, dan dimensi</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {[
-              ["price", "Harga", true],
-              ["stock", "Stok", true],
-              ["weight_kg", "Berat (kg)", false],
-              ["width_cm", "Lebar (cm)", false],
-              ["height_cm", "Tinggi (cm)", false],
-              ["depth_cm", "Tebal (cm)", false],
-            ].map(([key, label, required]) => (
-              <Field
-                key={String(key)}
-                id={`edit-${key}`}
-                label={String(label)}
-                required={Boolean(required)}
-                error={form.errors[key as keyof VariantEditData]}
-              >
-                <Input
-                  type="number"
-                  min="0"
-                  step={key === "stock" ? "1" : "0.01"}
-                  value={form.data[key as keyof VariantEditData] as string | number}
-                  onChange={(event) => form.setData(key as keyof VariantEditData, event.target.value)}
-                />
-              </Field>
-            ))}
-            <Field id="edit-variant-status" label="Status" required error={form.errors.status} className="sm:col-span-2">
-              <StatusSelect statuses={VARIANT_STATUSES} value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} />
+            <Field
+              id="edit-variation_1_name"
+              label="Nama Opsi 1 (mis. Warna)"
+              error={form.errors.variation_1_name}
+            >
+              <Input
+                value={form.data.variation_1_name}
+                onChange={(event) => form.setData("variation_1_name", event.target.value)}
+                placeholder="mis. Warna"
+              />
+            </Field>
+
+            <Field
+              id="edit-variation_1_option"
+              label="Nilai Opsi 1 (mis. Putih)"
+              error={form.errors.variation_1_option}
+            >
+              <Input
+                value={form.data.variation_1_option}
+                onChange={(event) => form.setData("variation_1_option", event.target.value)}
+                placeholder="mis. Putih"
+              />
+            </Field>
+
+            <Field
+              id="edit-variation_2_name"
+              label="Nama Opsi 2 (mis. Kaca)"
+              error={form.errors.variation_2_name}
+            >
+              <Input
+                value={form.data.variation_2_name}
+                onChange={(event) => form.setData("variation_2_name", event.target.value)}
+                placeholder="mis. Kaca"
+              />
+            </Field>
+
+            <Field
+              id="edit-variation_2_option"
+              label="Nilai Opsi 2 (mis. Bening)"
+              error={form.errors.variation_2_option}
+            >
+              <Input
+                value={form.data.variation_2_option}
+                onChange={(event) => form.setData("variation_2_option", event.target.value)}
+                placeholder="mis. Bening"
+              />
             </Field>
           </div>
-        </section>
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={backUrl}>Batal</Link></Button>
-</div>
-      </form>
+        </SectionCard>
 
-      <section className="mx-auto mt-8 max-w-3xl space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <h2 className="text-xl font-semibold">Foto khusus varian ini</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Gambar di sini hanya tampil di toko saat pelanggan memilih kombinasi opsi ini (mis. warna + kaca).
-          </p>
-
-          {media.length ? (
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {media.map((item) => (
-                <li key={item.id} className="overflow-hidden rounded-md border border-border">
-                  {item.thumb_url ? (
-                    <img src={item.thumb_url} alt="" className="aspect-[4/5] w-full object-cover" />
-                  ) : (
-                    <div className="flex aspect-[4/5] items-center justify-center bg-muted/40 text-xs text-muted-foreground">
-                      Belum ada preview
-                    </div>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border p-3">
-                    <StatusBadge status={item.visibility} />
-                    <span className="text-xs text-muted-foreground">Posisi {item.position}</span>
-                    {item.is_main_image ? <StatusBadge status="active" label="Utama" /> : null}
-                    {!item.is_main_image ? (
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => actionForm.post(item.set_main_url, { preserveScroll: true })}
-                        disabled={actionForm.processing}
-                      >
-                        Jadikan utama
-                      </Button>
-                    ) : null}
-                    {item.visibility !== "archived" ? (
-                      <ConfirmAction
-                        trigger={<Button variant="ghost" size="xs">Arsipkan</Button>}
-                        title="Arsipkan foto?"
-                        description={`Media #${item.id} disembunyikan dari storefront.`}
-                        confirmLabel="Arsipkan"
-                        processing={actionForm.processing}
-                        onConfirm={() => actionForm.post(item.archive_url, { preserveScroll: true })}
-                      />
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-4 text-sm text-muted-foreground">
-              Belum ada foto untuk varian ini. Unggah di bawah atau lewat halaman media produk.
-            </p>
-          )}
-        </div>
-
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            mediaForm.post(mediaStoreUrl, {
-              forceFormData: true,
-              preserveScroll: true,
-              onSuccess: () => {
-                mediaForm.reset("source_url", "upload", "is_main_image")
-                mediaForm.setData("product_variant_id", variant.id)
-              },
-            })
-          }}
-          className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7"
+        <SectionCard
+          title="Harga, Stok & Status"
+          description="Harga satuan dan stok tersedia untuk kombinasi varian ini."
+          icon="hand-coins"
         >
-          <h3 className="text-base font-semibold">Tambah foto untuk {variant.variant_sku}</h3>
-          <FormErrorSummary errors={mediaForm.errors} className="mt-3" />
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field id="variant-media-upload" label="File gambar" error={mediaForm.errors.upload} className="sm:col-span-2">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(event) => mediaForm.setData("upload", event.target.files?.[0] ?? null)}
-              />
-            </Field>
-            <Field id="variant-media-url" label="URL sumber" error={mediaForm.errors.source_url} className="sm:col-span-2">
-              <Input
-                type="url"
-                value={mediaForm.data.source_url}
-                onChange={(event) => mediaForm.setData("source_url", event.target.value)}
-              />
-            </Field>
-            <Field id="variant-media-position" label="Posisi" required error={mediaForm.errors.position}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              id="edit-price"
+              label="Harga Satuan (Rp)"
+              required
+              error={form.errors.price}
+            >
               <Input
                 type="number"
-                min="1"
-                max="9"
-                value={mediaForm.data.position}
-                onChange={(event) => mediaForm.setData("position", Number(event.target.value))}
+                min="0"
+                step="100"
+                value={form.data.price}
+                onChange={(event) => form.setData("price", event.target.value)}
+                placeholder="0"
               />
             </Field>
-            <Field id="variant-media-visibility" label="Visibilitas" required error={mediaForm.errors.visibility}>
+
+            <Field
+              id="edit-stock"
+              label="Stok Tersedia (unit)"
+              required
+              error={form.errors.stock}
+            >
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={form.data.stock}
+                onChange={(event) => form.setData("stock", event.target.value)}
+                placeholder="0"
+              />
+            </Field>
+
+            <Field
+              id="edit-variant-status"
+              label="Status Varian"
+              required
+              error={form.errors.status}
+              className="sm:col-span-2"
+              hint="Varian Aktif tampil di etalase pembeli; Tidak Aktif atau Diarsipkan disembunyikan."
+            >
               <StatusSelect
-                statuses={["visible", "hidden", "archived"] as const}
-                value={mediaForm.data.visibility}
-                onChange={(event) => mediaForm.setData("visibility", event.target.value)}
+                statuses={VARIANT_STATUSES}
+                value={form.data.status}
+                onChange={(event) => form.setData("status", event.target.value)}
               />
             </Field>
           </div>
-          <Button
-            type="submit"
-            className="mt-4"
-            disabled={mediaForm.processing || (!mediaForm.data.upload && !mediaForm.data.source_url)}
-          >
-            <Icon name="upload" className="h-4 w-4" aria-hidden="true" />
-            {mediaForm.processing ? "Mengunggah..." : "Tambah foto varian"}
+        </SectionCard>
+
+        <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+          <Button asChild variant="secondary">
+            <Link href={backUrl}>Batal</Link>
           </Button>
-        </form>
-      </section>
+          <Button type="submit" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : "Simpan varian"}
+          </Button>
+        </div>
+      </form>
     </AdminLayout>
   )
 }
