@@ -577,6 +577,13 @@ For each: purpose · consumes · key actions.
   dan checkout tidak bisa rusak. Blok tanpa tombol sah otomatis kembali ke tombol live
   (`INITIAL_ACTIONS`), dan warna banner diatur sekali untuk semua blok via `color` (hex 6 digit,
   bawaan `#C00000`).
+  Selain enam banner penutup dan dua kartu transaksi, ada EMPAT blok reusable lain yang
+  semuanya ditemukan saat penyisiran ulang: `home-help` (Beranda bagian Kami bantu),
+  `pdp-benefits` (poin alasan belanja di PDP), `catalog-empty` (keterangan + tombol saat
+  pencarian katalog kosong), dan `about-contact` (judul panel toko & workshop di Tentang
+  Kami beserta tombolnya). Blok berbentuk daftar memakai `items` (maksimal 6 baris) alih-alih
+  `actions`. Teks lencana hero SENGAJA tidak didaftarkan karena sumbernya (PromoSlider) sudah
+  tidak dirender, jadi blok itu tidak akan tampil di storefront.
 - **Subsidi Ongkir (`admin.shipping-subsidy.*`)** — enable shipping subsidy (%/Rp) + J&T carrier toggle; stored on `cms_pages.checkout.content.shipping_subsidy`; checkout uses net shipping; snapshot `orders.shipping_subsidy_amount`.
 - **Users (`admin.users.*`)** — Manajemen Admin: list/filter + CRUD `users` + activate/deactivate; equal-admin (no role picker); guard self-deactivate & last active admin.
 - **Profil Saya (`admin.profile.*`)** — edit nama/email/password akun yang sedang login.

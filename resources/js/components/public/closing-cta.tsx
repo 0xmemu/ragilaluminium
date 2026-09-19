@@ -2,6 +2,7 @@ import { Link, usePage } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
+import { resolveCtaActions } from "@/lib/cta-actions"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -30,8 +31,6 @@ type CtaAction = {
   external?: boolean
 }
 
-/** Tipe tombol dari pengaturan admin (CtaSettings). */
-type CtaSettingsAction = { label: string; destination: string; variant: string }
 
 export function ClosingCTASection({
   pageKey,
@@ -60,11 +59,6 @@ export function ClosingCTASection({
   // 6 digit, diverifikasi server).
   const bannerColor = ctaSettings?.color || "#C00000"
 
-  // Nilai destination -> href. `whatsapp` memakai nomor toko yang
-  // terverifikasi; kunci lain dipetakan ke rute internal.
-  const destinationHref = (destination: string): string =>
-    destination === "whatsapp" ? whatsappUrl : routeUrl(destination as Parameters<typeof routeUrl>[0])
-
   // Teks & tombol dari pengaturan admin menang; props halaman dipakai sebagai
   // cadangan bila pengaturan belum tersedia.
   const configured = pageKey ? ctaSettings?.pages?.[pageKey] : undefined
@@ -72,15 +66,9 @@ export function ClosingCTASection({
   const resolvedHeading =
     configured?.heading || heading || "Konsultasi gratis via WhatsApp, admin balas cepat"
 
-  // Tombol dari pengaturan (dengan href hasil resolve destination); bila tidak
-  // ada, jatuh ke props halaman, lalu ke tombol default.
-  const settingsActions: CtaAction[] = (configured?.actions ?? []).map((a) => ({
-    label: a.label,
-    href: destinationHref(a.destination),
-    variant: a.variant === "secondary" ? "secondary" : "primary",
-    whatsappIcon: a.destination === "whatsapp",
-    external: a.destination === "whatsapp",
-  }))
+  // Tombol dari pengaturan (href hasil resolve destination); bila tidak ada,
+  // jatuh ke props halaman, lalu ke tombol default.
+  const settingsActions: CtaAction[] = resolveCtaActions(configured?.actions, whatsappUrl)
 
   // Admin bisa mematikan seluruh CTA penutup dari pengaturan.
   if (ctaSettings && ctaSettings.enabled === false) {

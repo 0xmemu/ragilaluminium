@@ -483,21 +483,27 @@ const HELP_STEPS = [
 export { ClosingCTASection } from "./closing-cta"
 
 export function KamiBantuSection() {
+  // Kop & judul diatur admin lewat CTA Storefront, blok "Beranda: Kami bantu".
+  const { ctaSettings } = usePage<SharedPageProps>().props
+  const configured = ctaSettings?.pages?.["home-help"]
+
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold text-primary sm:text-sm">
-            Masih Bingung?
+            {configured?.eyebrow || "Masih Bingung?"}
           </p>
           <SectionHeading
             size="display"
             fitHeading={false}
             headingClassName="!text-[18px]"
             title={
-              <>
-                Kami bantu dari <span>awal sampai jadi</span>
-              </>
+              configured?.heading || (
+                <>
+                  Kami bantu dari <span>awal sampai jadi</span>
+                </>
+              )
             }
           />
         </div>

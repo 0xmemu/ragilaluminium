@@ -23,6 +23,7 @@ import { ProductListingFrame } from "@/components/public/product-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { catalogPageSizeParam, clampCatalogPage, resolveCatalogPageSize, type CatalogPageSizes } from "@/lib/catalog-page-size"
 import { useCatalogViewportWidth } from "@/hooks/use-catalog-viewport-width"
+import { resolveCtaActions } from "@/lib/cta-actions"
 import { routeUrl } from "@/lib/routes"
 import type {
   FlashSalePeriod,
@@ -78,25 +79,40 @@ function SearchFallbackEmpty({
   nearbySizes: ProductCardData[]
   relatedModels: Array<{ label: string; href: string }>
 }) {
-  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+  const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
+  // Teks & tombol diatur admin lewat CTA Storefront, blok
+  // "Katalog: saat pencarian kosong". Judul pertama tetap memuat kata kunci
+  // pencarian, jadi hanya keterangan & tombolnya yang dapat diubah.
+  const configured = ctaSettings?.pages?.["catalog-empty"]
+  const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
+  const configuredActions = resolveCtaActions(configured?.actions, whatsappUrl)
 
   return (
     <div className="space-y-8">
       <div className="rounded-lg border border-border bg-surface p-5">
         <p className="text-sm font-bold text-foreground">Tidak ada hasil untuk “{query}”</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan
-          kebutuhan Anda.
+          {configured?.heading ||
+            "Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan kebutuhan Anda."}
         </p>
-        {consultationWhatsApp?.directUrl ? (
-          <Button asChild className="mt-4">
-            <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-              Konsultasi via WhatsApp
-            </a>
-          </Button>
-        ) : null}
-        {nearbySizes.length === 0 && relatedModels.length === 0 ? (
+        {configuredActions.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {configuredActions.map((action) => (
+              <Button
+                key={action.label}
+                asChild
+                variant={action.variant === "secondary" ? "secondary" : undefined}
+              >
+                <a href={action.href} {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}>
+                  {action.whatsappIcon ? (
+                    <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+                  ) : null}
+                  {action.label}
+                </a>
+              </Button>
+            ))}
+          </div>
+        ) : nearbySizes.length === 0 && relatedModels.length === 0 ? (
           <Button asChild variant="secondary" className="mt-3">
             <Link href={routeUrl("catalog.all")}>Lihat semua model</Link>
           </Button>

@@ -6,6 +6,7 @@ import { PageTopBar } from "@/components/public/page-top-bar"
 import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
+import { resolveCtaActions } from "@/lib/cta-actions"
 import { routeUrl } from "@/lib/routes"
 import { telephoneHref } from "@/lib/format"
 import type { SharedPageProps, SocialLink } from "@/types"
@@ -194,7 +195,13 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
 }
 
 export default function About({ page, stats }: { page: PageData; stats?: AboutStats }) {
-  const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
+  const { brand, consultationWhatsApp, platforms = [], ctaSettings } = usePage<SharedPageProps>().props
+  // Tombol panel kontak diatur admin lewat CTA Storefront,
+  // blok "Tentang Kami: panel toko & workshop".
+  const aboutContactActions = resolveCtaActions(
+    ctaSettings?.pages?.["about-contact"]?.actions,
+    consultationWhatsApp?.directUrl ?? routeUrl("contact"),
+  )
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
   const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat WhatsApp"
   const phoneHref = telephoneHref(brand.phone)
@@ -347,7 +354,9 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
         <section aria-labelledby="store-contact">
           <div className="mt-3 grid gap-3 lg:grid-cols-1">
             <div className="surface-panel overflow-hidden p-5 sm:p-6">
-              <p className="text-sm font-bold tracking-tight text-foreground">Toko & Workshop Ragil Aluminium</p>
+              <p className="text-sm font-bold tracking-tight text-foreground">
+                {ctaSettings?.pages?.["about-contact"]?.heading || "Toko & Workshop Ragil Aluminium"}
+              </p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
 
               <div className="mt-4 space-y-2 text-sm">
@@ -381,12 +390,28 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               </div>
 
               <div className="mt-4">
-                <Button asChild>
-                  <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                    {whatsappLabel}
-                  </a>
-                </Button>
+                {aboutContactActions.length > 0 ? (
+                  aboutContactActions.map((action) => (
+                    <Button key={action.label} asChild>
+                      <a
+                        href={action.href}
+                        {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                      >
+                        {action.whatsappIcon ? (
+                          <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                        ) : null}
+                        {action.label}
+                      </a>
+                    </Button>
+                  ))
+                ) : (
+                  <Button asChild>
+                    <a href={whatsappUrl ?? routeUrl("contact")} target="_blank" rel="noreferrer">
+                      <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
+                      {whatsappLabel}
+                    </a>
+                  </Button>
+                )}
               </div>
 
               {/* Maps di urutan paling akhir card (di bawah tombol chat whatsapp) */}

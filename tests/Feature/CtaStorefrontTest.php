@@ -272,6 +272,113 @@ class CtaStorefrontTest extends \Tests\TestCase
         $this->assertSame(CtaSettings::DEFAULT_COLOR, CtaSettings::get()['color']);
     }
 
+    public function test_lima_blok_baru_terdaftar_dengan_isi_live(): void
+    {
+        // Blok yang ditemukan saat penyisiran ulang: semuanya teks persuasi yang
+        // tampil di storefront tetapi dulu keras di kode.
+        $settings = CtaSettings::get();
+
+        foreach (['home-help', 'pdp-benefits', 'catalog-empty', 'about-contact'] as $key) {
+            $this->assertArrayHasKey($key, $settings['pages'], "Blok {$key} harus terdaftar.");
+        }
+
+        // `hero-trust` SENGAJA tidak terdaftar: teks lencana hero ditampilkan
+        // PromoSlider yang sudah tidak dirender, jadi blok itu tidak akan
+        // tampil di storefront dan hanya menyesatkan admin.
+        $this->assertArrayNotHasKey('hero-trust', $settings['pages']);
+
+        // Poin alasan belanja PDP: 3 poin live.
+        $this->assertSame(
+            ['Garansi 100%', 'Bayar di tempat (COD)', 'Kirim ke seluruh Indonesia'],
+            $settings['pages']['pdp-benefits']['items'],
+        );
+
+        // Judul & tombol blok yang bukan berbentuk lencana.
+        $this->assertSame('Masih Bingung?', $settings['pages']['home-help']['eyebrow']);
+        $this->assertSame('Toko & Workshop Ragil Aluminium', $settings['pages']['about-contact']['heading']);
+        $this->assertSame(
+            ['whatsapp', 'catalog.all'],
+            collect($settings['pages']['catalog-empty']['actions'])->pluck('destination')->all(),
+        );
+    }
+
+    public function test_poin_pdp_terkirim_ke_halaman_publik(): void
+    {
+        $this->setBlocks([
+            'pdp-benefits' => ['items' => ['POIN-UJI-A']],
+        ]);
+
+        $product = \App\Models\Product::create([
+            'parent_sku' => 'RA-CTATEST-1',
+            'name' => 'Produk Uji CTA',
+            'short_name' => 'Produk Uji',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'status' => 'active',
+        ]);
+        \App\Models\ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'RA-CTATEST-1-A',
+            'price' => 900000,
+            'stock' => 3,
+            'status' => 'active',
+        ]);
+
+        $this->get('/product/RA-CTATEST-1')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('ctaSettings.pages.pdp-benefits.items', ['POIN-UJI-A'])
+            );
+    }
+
+    public function test_admin_dapat_mengubah_poin_pdp(): void
+    {
+        $payload = $this->formPayload([
+            'pdp-benefits' => ['items' => ['Hanya satu poin']],
+        ]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.cta-settings.update'), $payload)
+            ->assertRedirect(route('admin.cta-settings.edit'));
+
+        $this->assertSame(['Hanya satu poin'], CtaSettings::get()['pages']['pdp-benefits']['items']);
+    }
+
+    public function test_poin_kosong_kembali_ke_daftar_live(): void
+    {
+        $payload = $this->formPayload(['pdp-benefits' => ['items' => ['   ', '']]]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.cta-settings.update'), $payload)
+            ->assertRedirect(route('admin.cta-settings.edit'));
+
+        $this->assertSame(
+            CtaSettings::INITIAL_ITEMS['pdp-benefits'],
+            CtaSettings::get()['pages']['pdp-benefits']['items'],
+        );
+    }
+
+    /**
+     * Ubah sebagian saja dari satu blok: override digabung PER BLOK, bukan
+     * mengganti seluruh entry (array_replace akan membuang field yang tidak
+     * disebut sehingga blok jadi tidak lengkap).
+     */
+    private function setBlocks(array $overrides): void
+    {
+        $current = CtaSettings::get();
+        $pages = [];
+        foreach ($current['pages'] as $key => $page) {
+            $pages[$key] = array_merge($page, $overrides[$key] ?? []);
+        }
+
+        CtaSettings::update([
+            'enabled' => $current['enabled'],
+            'color' => $current['color'],
+            'pages' => $pages,
+        ], null);
+    }
+
     private function formPayload(array $overrides = [], ?bool $enabled = null): array
     {
         $settings = CtaSettings::get();
@@ -285,6 +392,7 @@ class CtaStorefrontTest extends \Tests\TestCase
                     'eyebrow' => $overrides[$key]['eyebrow'] ?? $text['eyebrow'],
                     'heading' => $overrides[$key]['heading'] ?? $text['heading'],
                     'actions' => $overrides[$key]['actions'] ?? $text['actions'],
+                    'items' => $overrides[$key]['items'] ?? $text['items'],
                 ])
                 ->values()
                 ->all(),

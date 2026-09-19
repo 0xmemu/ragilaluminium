@@ -39,6 +39,8 @@ class CtaSettingsController extends Controller
                     'heading' => $settings['pages'][$key]['heading'],
                     // Tombol yang benar-benar dirender storefront saat ini.
                     'actions' => $settings['pages'][$key]['actions'],
+                    // Lencana/poin untuk blok berbentuk daftar.
+                    'items' => $settings['pages'][$key]['items'],
                     'preview_url' => $this->previewUrl($key),
                 ])
                 ->values()
@@ -60,6 +62,9 @@ class CtaSettingsController extends Controller
             'blocks.*.actions.*.label' => ['nullable', 'string', 'max:40'],
             'blocks.*.actions.*.destination' => ['nullable', 'string', 'max:40'],
             'blocks.*.actions.*.variant' => ['nullable', 'string', 'in:primary,secondary'],
+            // Lencana/poin: daftar teks pendek, maksimal 6 baris.
+            'blocks.*.items' => ['nullable', 'array', 'max:6'],
+            'blocks.*.items.*' => ['nullable', 'string', 'max:120'],
         ]);
 
         $pages = [];
@@ -75,6 +80,7 @@ class CtaSettingsController extends Controller
                 // sah, membatasi dua per blok, dan mengembalikan tombol live
                 // bila daftarnya kosong.
                 'actions' => $block['actions'] ?? [],
+                'items' => $block['items'] ?? [],
             ];
         }
 

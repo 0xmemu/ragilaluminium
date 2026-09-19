@@ -1,4 +1,4 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
@@ -10,7 +10,7 @@ import { QuantityControl } from "@/components/ui/quantity-control"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import type { ProductDetailData, ProductMedia } from "@/types"
+import type { ProductDetailData, ProductMedia, SharedPageProps } from "@/types"
 
 import type { ProductPurchase } from "@/hooks/use-product-purchase"
 
@@ -55,6 +55,20 @@ export function ProductBuyBox({
     benefits,
     promo,
   } = purchase
+
+  // Alasan belanja diatur admin lewat CTA Storefront, blok
+  // "Detail Produk: alasan belanja". Ikon tetap dari kode dan dipakai
+  // bergiliran sesuai urutan, jadi admin hanya mengurus kalimatnya.
+  const { ctaSettings } = usePage<SharedPageProps>().props
+  const pdpConfigured = ctaSettings?.pages?.["pdp-benefits"]
+  const configuredBenefits = pdpConfigured?.items
+  const resolvedBenefits =
+    configuredBenefits && configuredBenefits.length > 0
+      ? configuredBenefits.map((label, index) => ({
+          icon: benefits[index % benefits.length].icon,
+          label,
+        }))
+      : benefits
 
   const ctaDisabled = (selectedVariant?.stock != null && selectedVariant.stock < 1) || form.processing
 
@@ -234,6 +248,7 @@ export function ProductBuyBox({
             <Icon name="credit-card" className="size-4" aria-hidden="true" />
             {form.processing && submitIntent === "checkout" ? "..." : "Beli Sekarang"}
           </Button>
+
           <Button
             type="submit"
             className="!rounded-md h-10 min-h-10 flex-1 text-xs font-semibold"
@@ -333,10 +348,10 @@ export function ProductBuyBox({
       {/* Benefit belanja */}
       <div className="mt-4">
         <h2 className="truncate text-sm font-bold text-foreground">
-          Alasan harus belanja di Ragil Aluminium
+          {pdpConfigured?.heading || "Alasan harus belanja di Ragil Aluminium"}
         </h2>
         <div className="mt-3 flex gap-2.5">
-          {benefits.map((benefit, index) => (
+          {resolvedBenefits.map((benefit, index) => (
             <div
               key={benefit.label}
               className={cn(

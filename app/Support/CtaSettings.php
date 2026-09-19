@@ -40,6 +40,13 @@ class CtaSettings
         // reusable juga harus bisa diatur dari halaman ini.
         'trust' => 'Kartu Jaminan (semua halaman)',
         'order-help' => 'Bantuan di halaman Pesanan',
+        // Blok di bawah ini ditemukan saat penyisiran ulang 2026-09-19: semuanya
+        // teks persuasi yang tampil berulang di storefront tetapi masih keras
+        // di kode, jadi admin tidak bisa mengubahnya sama sekali.
+        'home-help' => 'Beranda: bagian "Kami bantu"',
+        'pdp-benefits' => 'Detail Produk: alasan belanja',
+        'catalog-empty' => 'Katalog: saat pencarian kosong',
+        'about-contact' => 'Tentang Kami: panel toko & workshop',
     ];
 
     /**
@@ -95,6 +102,31 @@ class CtaSettings
         'order-help' => [
             ['label' => 'Hubungi Kami', 'destination' => 'contact', 'variant' => 'secondary'],
         ],
+        // Blok baru: hanya yang benar-benar punya tombol di storefront.
+        'home-help' => [],
+        'pdp-benefits' => [],
+        'catalog-empty' => [
+            ['label' => 'Konsultasi via WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+            ['label' => 'Lihat semua model', 'destination' => 'catalog.all', 'variant' => 'secondary'],
+        ],
+        'about-contact' => [
+            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+        ],
+    ];
+
+    /**
+     * Daftar teks bawaan untuk blok berbentuk LENCANA/POIN, bukan satu kalimat.
+     * Dikumpulkan dari kode storefront (bukan tebakan).
+     *
+     * @var array<string, list<string>>
+     */
+    public const INITIAL_ITEMS = [
+        // use-product-purchase.ts `benefits`, tampil 3 kartu di kolom beli PDP.
+        'pdp-benefits' => [
+            'Garansi 100%',
+            'Bayar di tempat (COD)',
+            'Kirim ke seluruh Indonesia',
+        ],
     ];
 
     /** Warna banner CTA bawaan (merah brand storefront). */
@@ -145,6 +177,26 @@ class CtaSettings
             'eyebrow' => 'Butuh bantuan dengan pesanan ini?',
             'heading' => 'Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.',
         ],
+        // home-sections.tsx KamiBantuSection.
+        'home-help' => [
+            'eyebrow' => 'Masih Bingung?',
+            'heading' => 'Kami bantu dari awal sampai jadi',
+        ],
+        // product-buy-box.tsx "Alasan harus belanja di Ragil Aluminium".
+        'pdp-benefits' => [
+            'eyebrow' => '',
+            'heading' => 'Alasan harus belanja di Ragil Aluminium',
+        ],
+        // Catalog.tsx empty state saat pencarian tidak menemukan hasil.
+        'catalog-empty' => [
+            'eyebrow' => 'Tidak ada hasil untuk pencarian Anda',
+            'heading' => 'Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan kebutuhan Anda.',
+        ],
+        // About.tsx panel "Toko & Workshop Ragil Aluminium".
+        'about-contact' => [
+            'eyebrow' => '',
+            'heading' => 'Toko & Workshop Ragil Aluminium',
+        ],
     ];
 
     /**
@@ -163,6 +215,8 @@ class CtaSettings
                 // Tombol: kunci yang belum tersimpan diisi dari tombol live
                 // supaya halaman admin selalu menggambarkan CTA sebenarnya.
                 'actions' => self::actions($row['actions'] ?? null, $key),
+                // Lencana/poin: hanya blok berbentuk daftar yang punya isi.
+                'items' => self::items($row['items'] ?? null, $key),
             ];
         }
 
@@ -240,6 +294,7 @@ class CtaSettings
                 'eyebrow' => self::text($row['eyebrow'] ?? null, $initial['eyebrow'], 120),
                 'heading' => self::text($row['heading'] ?? null, $initial['heading'], 240),
                 'actions' => self::actions($row['actions'] ?? [], $key),
+                'items' => self::items($row['items'] ?? [], $key),
             ];
         }
 
@@ -267,6 +322,33 @@ class CtaSettings
         CmsSettings::forgetPage(self::PAGE_SLUG);
 
         return self::get();
+    }
+
+    /**
+     * Rapikan daftar teks satu blok: buang yang kosong, batasi 6 baris, dan
+     * kembalikan daftar live bila hasilnya kosong supaya blok tidak pernah
+     * tampil tanpa isi.
+     *
+     * @return list<string>
+     */
+    private static function items(mixed $incoming, string $key): array
+    {
+        $clean = [];
+        foreach ((array) ($incoming ?? []) as $item) {
+            if (! is_string($item) || count($clean) >= 6) {
+                continue;
+            }
+            $text = self::text($item, '', 120);
+            if ($text !== '') {
+                $clean[] = $text;
+            }
+        }
+
+        if ($clean === []) {
+            $clean = self::INITIAL_ITEMS[$key] ?? [];
+        }
+
+        return $clean;
     }
 
     /** @return array<string, mixed> */

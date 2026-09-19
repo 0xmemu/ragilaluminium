@@ -2482,3 +2482,46 @@ VERIFIKASI:
   dan warna tidak sah ditolak. Regresi CTA + kontrak halaman 45 passed (835 assertions).
 
 tsc bersih, build Vite PASS.
+
+### 2026-09-19 - Penyisiran ulang CTA: 4 blok reusable baru, 1 blok dibatalkan karena dead code
+Owner menegaskan keyakinannya: "saya yakin masih ada cta reusable lainnya, belum di masukkan?"
+Saya menyisir ulang seluruh komponen dan halaman publik dengan pola kata persuasi (Butuh bantuan,
+Masih ragu, Konsultasi, Hubungi, Chat WhatsApp, Garansi, Aman, Terpercaya) plus pemindaian DOM di
+14 halaman storefront. Owner benar: masih ada yang terlewat.
+
+HASIL PEMINDAIAN:
+1. home-sections.tsx `KamiBantuSection` ("Masih Bingung?" + "Kami bantu dari awal sampai jadi")
+   -> blok `home-help`.
+2. product-buy-box.tsx "Alasan harus belanja di Ragil Aluminium" + 3 poin (Garansi 100%, Bayar di
+   tempat (COD), Kirim ke seluruh Indonesia) -> blok `pdp-benefits`, berbentuk DAFTAR.
+3. Catalog.tsx empty state saat pencarian kosong (keterangan + tombol Konsultasi via WhatsApp)
+   -> blok `catalog-empty`.
+4. About.tsx panel "Toko & Workshop Ragil Aluminium" + tombol WhatsApp -> blok `about-contact`.
+5. home-hero.tsx PROMO_ITEMS (4 lencana kepercayaan) -> DIBATALKAN, lihat temuan di bawah.
+
+TEMUAN PENTING (koreksi diri): blok lencana hero sempat saya tambahkan sebagai `hero-trust` dan
+disambungkan ke `PromoSlider`, TAPI `PromoSlider` sudah TIDAK dirender di mana pun. Dibuktikan
+dengan `grep PromoSlider` (hanya definisinya, nol pemakai) dan pemindaian DOM beranda: keempat
+teks lencana itu tidak ada di halaman. Jadi blok itu mengatur teks yang tidak akan pernah tampil.
+Saya mencabutnya dari CtaSettings, dari peta ITEM_BLOCKS, dan mengembalikan home-hero.tsx seperti
+semula. Aturan turunannya ditulis di UI-CONSISTENCY-CONTRACT: hanya blok yang benar-benar tampil
+boleh didaftarkan.
+
+Dukungan teknis yang ditambahkan:
+- CtaSettings `INITIAL_ITEMS` + `items()` untuk blok berbentuk daftar (maksimal 6 baris, teks
+  kosong dibuang, daftar kosong kembali ke daftar live).
+- `resources/js/lib/cta-actions.ts` berisi `resolveCtaActions()`: satu tempat yang menerjemahkan
+  `destination` menjadi href. Sebelumnya logika ini disalin di closing-cta; sekarang dipakai
+  bersama oleh closing-cta, empty state katalog, dan panel kontak Tentang Kami.
+- Halaman admin: blok berbentuk daftar memakai editor baris (tambah/hapus) dan pratinjau daftar,
+  bukan editor kop/judul.
+
+VERIFIKASI LIVE:
+- Uji end-to-end dengan teks UJI: `KOP-UJI` tampil di section kami-bantu, `JUDUL-PANEL-UJI` tampil
+  di /about, `POIN-UJI-1` tampil di PDP. Ketiganya membuktikan teks dari pengaturan benar-benar
+  dirender storefront.
+- Data dipulihkan tepat: nol sisa teks uji, 12 blok terdaftar.
+- Test CtaStorefrontTest + CtaReusableBlockTest 25 passed (164 assertions).
+
+Total blok kini 12: 6 banner penutup + trust + order-help + home-help + pdp-benefits +
+catalog-empty + about-contact.

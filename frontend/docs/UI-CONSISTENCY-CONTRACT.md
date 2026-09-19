@@ -208,6 +208,13 @@ prop bersama `ctaSettings`. Mencakup banner penutup per halaman DAN kartu reusab
   tombol LIVE (`INITIAL_ACTIONS`), bukan berarti CTA tanpa tombol.
 - **Warna:** satu `color` global (hex 6 digit, bawaan `#C00000`) dipakai semua banner. Server
   memvalidasi format; nilai tidak sah ditolak validasi, bukan disimpan.
+- **Blok berbentuk daftar memakai `items`, bukan `actions`.** Sebagian CTA berupa kumpulan
+  lencana/poin (mis. alasan belanja di PDP), bukan satu kop + judul. Untuk blok itu admin
+  mengelola daftar baris teks (maksimal 6) dan pratinjau admin menampilkan daftarnya, bukan
+  banner merah.
+- **Hanya blok yang BENAR-BENAR tampil di storefront boleh didaftarkan.** Blok yang sumbernya
+  komponen mati (tidak dirender) tidak didaftarkan: mengatur teks yang tidak pernah tampil
+  hanya menyesatkan admin. Sebelum menambah kunci blok, buktikan komponennya dirender.
 - **Pratinjau admin wajib mencerminkan CTA asli:** halaman pengaturan menampilkan pratinjau
   memakai WARNA dan TOMBOL yang sedang diatur, sehingga yang dilihat admin sama dengan yang
   tampil di storefront.

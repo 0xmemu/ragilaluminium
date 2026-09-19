@@ -25,6 +25,8 @@ interface CtaBlock {
   eyebrow: string
   heading: string
   actions: CtaAction[]
+  /** Lencana/poin untuk blok berbentuk daftar (mis. hero-trust, pdp-benefits). */
+  items: string[]
   preview_url: string | null
 }
 
@@ -52,7 +54,17 @@ const REUSABLE_BLOCKS: Record<string, { judul: string; isi: string; hintIsi: str
 }
 
 const MAX_ACTIONS = 2
+const MAX_ITEMS = 6
 const DEFAULT_COLOR = "#C00000"
+
+/**
+ * Blok berbentuk DAFTAR LENCANA, bukan satu kop + judul. Untuk blok ini editor
+ * menampilkan daftar baris teks yang bisa ditambah dan dihapus, bukan kolom
+ * kop/judul.
+ */
+const ITEM_BLOCKS: Record<string, string> = {
+  "pdp-benefits": "Poin alasan belanja di bawah tombol beli.",
+}
 
 /**
  * Editor CTA storefront.
@@ -98,6 +110,7 @@ export default function CtaStorefrontEdit({
       eyebrow: block.eyebrow,
       heading: block.heading,
       actions: block.actions.map((a) => ({ ...a })),
+      items: [...block.items],
     })),
   })
 
@@ -108,7 +121,10 @@ export default function CtaStorefrontEdit({
     })
   }
 
-  function setBlock(index: number, patch: Partial<{ eyebrow: string; heading: string; actions: CtaAction[] }>) {
+  function setBlock(
+    index: number,
+    patch: Partial<{ eyebrow: string; heading: string; actions: CtaAction[]; items: string[] }>,
+  ) {
     form.setData(
       "blocks",
       form.data.blocks.map((block, i) => (i === index ? { ...block, ...patch } : block)),
@@ -141,6 +157,24 @@ export default function CtaStorefrontEdit({
         },
       ],
     })
+  }
+
+  function setItem(blockIndex: number, itemIndex: number, value: string) {
+    setBlock(blockIndex, {
+      items: form.data.blocks[blockIndex].items.map((item, i) => (i === itemIndex ? value : item)),
+    })
+  }
+
+  function removeItem(blockIndex: number, itemIndex: number) {
+    setBlock(blockIndex, {
+      items: form.data.blocks[blockIndex].items.filter((_, i) => i !== itemIndex),
+    })
+  }
+
+  function addItem(blockIndex: number) {
+    const block = form.data.blocks[blockIndex]
+    if (block.items.length >= MAX_ITEMS) return
+    setBlock(blockIndex, { items: [...block.items, ""] })
   }
 
   const namaTujuan = (value: string) =>
@@ -234,6 +268,7 @@ export default function CtaStorefrontEdit({
           {form.data.blocks.map((block, index) => {
             const meta = blocks.find((b) => b.key === block.key)
             const reusable = REUSABLE_BLOCKS[block.key]
+            const itemBlock = ITEM_BLOCKS[block.key]
             const labelJudul = reusable?.judul ?? "Kop kecil"
             const labelIsi = reusable?.isi ?? "Judul ajakan"
 
@@ -266,7 +301,56 @@ export default function CtaStorefrontEdit({
                 {/* BARIS 2 - isi: kolom teks/tombol di kiri, pratinjau asli di kanan */}
                 <div className="mt-2.5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
                   <div className="space-y-2.5">
-                    {mode === "view" ? (
+                    {itemBlock ? (
+                      /* Blok berbentuk daftar lencana: editor baris, tanpa kop/judul. */
+                      mode === "view" ? (
+                        <ol className="list-decimal space-y-0.5 pl-4 text-xs text-foreground">
+                          {block.items.map((item, ii) => (
+                            <li key={`${block.key}-lihat-${ii}`}>{item}</li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <div>
+                          <p className="text-[11px] font-semibold text-muted-foreground">
+                            {itemBlock}
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {block.items.map((item, ii) => (
+                              <div key={`${block.key}-item-${ii}`} className="flex items-center gap-2">
+                                <Input
+                                  value={item}
+                                  onChange={(event) => setItem(index, ii, event.target.value)}
+                                  maxLength={120}
+                                  aria-label={`Teks ${ii + 1} pada ${block.key}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => removeItem(index, ii)}
+                                  aria-label={`Hapus teks ${ii + 1} pada ${block.key}`}
+                                  title="Hapus baris"
+                                >
+                                  <Icon name="trash" className="size-3.5 text-destructive" aria-hidden="true" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          {block.items.length < MAX_ITEMS ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              className="mt-2"
+                              onClick={() => addItem(index)}
+                            >
+                              <Icon name="plus" className="size-3" aria-hidden="true" />
+                              Tambah baris
+                            </Button>
+                          ) : null}
+                        </div>
+                      )
+                    ) : mode === "view" ? (
                       <div className="grid gap-1 text-xs sm:grid-cols-[5.5rem_minmax(0,1fr)]">
                         <span className="text-[11px] font-semibold text-muted-foreground">
                           {labelJudul}
@@ -410,6 +494,19 @@ export default function CtaStorefrontEdit({
 
                   {/* Pratinjau memakai warna dan tombol yang sedang diatur,
                       jadi yang dilihat admin = yang tampil di storefront. */}
+                  {itemBlock ? (
+                    <div className="self-start rounded-lg border border-border bg-surface-muted/40 px-4 py-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground">Pratinjau lencana</p>
+                      <ul className="mt-1.5 space-y-1">
+                        {block.items.map((item, ii) => (
+                          <li key={`${block.key}-pl-${ii}`} className="flex items-center gap-1.5 text-xs text-foreground">
+                            <Icon name="check-circle" className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                            {item || "-"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
                   <div
                     className={cn(
                       "flex flex-col items-center justify-center gap-1 rounded-lg px-4 py-3 text-center",
@@ -444,6 +541,7 @@ export default function CtaStorefrontEdit({
                       </div>
                     ) : null}
                   </div>
+                  )}
                 </div>
               </Card>
             )

@@ -171,6 +171,8 @@ export interface SharedPageProps extends Record<string, unknown> {
         eyebrow: string
         heading: string
         actions: Array<{ label: string; destination: string; variant: string }>
+        /** Lencana/poin untuk blok berbentuk daftar (mis. pdp-benefits). */
+        items: string[]
       }
     >
   } | null
