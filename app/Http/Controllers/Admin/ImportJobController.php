@@ -655,21 +655,22 @@ class ImportJobController extends Controller
                 $lastName = $name;
             }
 
-            $urls = [];
-            foreach ([
-                'gambar_per_varian', 'gambar_1_utama', 'gambar_2', 'gambar_3',
-                'media_bersama_1', 'media_bersama_2',
-                'gambar_hasil_pemasangan_1', 'gambar_hasil_pemasangan_2',
-            ] as $key) {
-                $url = trim((string) ($row[$key] ?? ''));
-                if ($url !== '') {
-                    $urls[] = $url;
-                }
-            }
-
             $stats = ['internal' => 0, 'external' => 0, 'invalid' => 0];
             $media = [];
-            foreach ($urls as $url) {
+            foreach ([
+                'gambar_per_varian' => 'Gambar per Varian',
+                'gambar_1_utama' => 'Gambar 1 (utama)',
+                'gambar_2' => 'Gambar 2',
+                'gambar_3' => 'Gambar 3',
+                'media_bersama_1' => 'Media Bersama 1',
+                'media_bersama_2' => 'Media Bersama 2',
+                'gambar_hasil_pemasangan_1' => 'Hasil Pemasangan 1',
+                'gambar_hasil_pemasangan_2' => 'Hasil Pemasangan 2',
+            ] as $key => $label) {
+                $url = trim((string) ($row[$key] ?? ''));
+                if ($url === '') {
+                    continue;
+                }
                 if (! isset($cache[$url])) {
                     $objectKey = null;
                     try {
@@ -685,7 +686,7 @@ class ImportJobController extends Controller
                     }
                 }
                 $stats[$cache[$url]]++;
-                $media[] = ['url' => $url, 'class' => $cache[$url]];
+                $media[] = ['kolom' => $label, 'url' => $url, 'class' => $cache[$url]];
             }
 
             $opsi1 = trim((string) ($row['opsi_variasi_1'] ?? ''));

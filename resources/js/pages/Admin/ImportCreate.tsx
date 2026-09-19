@@ -14,6 +14,7 @@ import type { SelectOption } from "@/types"
 type MediaClass = "internal" | "external" | "invalid"
 
 type PreviewMedia = {
+  kolom?: string
   url: string
   class: MediaClass
 }
@@ -410,9 +411,10 @@ export default function ImportCreate({
                               {row.media.map((m, i) => (
                                 <span
                                   key={`${row.row}-${i}`}
-                                  title={m.url}
+                                  title={m.kolom ? `${m.kolom} - ${m.url}` : m.url}
                                   className={MEDIA_CLASS_STYLES[m.class]}
                                 >
+                                  {m.kolom ? `${m.kolom}: ` : ""}
                                   {MEDIA_LABEL[m.class]}
                                 </span>
                               ))}
