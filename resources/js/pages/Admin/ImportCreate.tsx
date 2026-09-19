@@ -314,7 +314,7 @@ export default function ImportCreate({
                     onFileChange={setFile}
                     error={form.errors.file}
                     title="Pilih file katalog"
-                    hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB."
+                    hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB atau 50.000 baris per berkas. Batas praktis sekitar 30.000 baris (proses sekitar 30 menit), lebih dari itu pecah menjadi beberapa berkas."
                     maxMb={50}
                   />
                 </td>
