@@ -1401,7 +1401,10 @@ final class SystemHealthService
      * (mis. lingkungan lokal), return null supaya UI menyembunyikan panel,
      * bukan mengarang status. Copy ditulis awam, tanpa istilah teknis.
      *
-     * @return array{overall: string, items: list<array{key: string, label: string, status: string, timestamp: string, hint: string, scope: string}>}|null
+     * Setiap item memuat waktu terakhir berjalan dan jadwal berikutnya
+     * (sampai menit) supaya admin tahu kapan backup lalu dan kapan lagi.
+     *
+     * @return array{overall: string, items: list<array{key: string, label: string, status: string, last: string, next: string, hint: string, scope: string}>}|null
      */
     public function backupStatus(): ?array
     {
@@ -1412,42 +1415,38 @@ final class SystemHealthService
         }
 
         $now = now();
+        $wib = ' WIB';
+        $format = 'd M Y, H.i';
         $items = [];
 
-        // ===== 1) Backup harian (dump penuh database setiap malam) =====
+        // ===== 1) Backup harian: dump penuh tiap malam 03.17 UTC (10.17 WIB) =====
         $latest = $dir.'/ragil/ragil_aluminium-latest.sql.gz';
 
         if (is_file($latest)) {
             $mtime = @filemtime($latest);
             $umurDetik = $mtime !== null ? max(0, $now->getTimestamp() - $mtime) : null;
-            $timestamp = $mtime !== null
-                ? $now->setTimestamp($mtime)->locale('id')->translatedFormat('d M Y, H.i').' WIB'
-                : '-';
-
+            $last = $mtime !== null
+                ? \Illuminate\Support\Carbon::createFromTimestampUTC($mtime)->setTimezone(config('app.timezone', 'UTC'))->locale('id')->translatedFormat($format).$wib
+                : 'Tidak ditemukan';
             $status = $umurDetik !== null && $umurDetik <= 26 * 3600
                 ? self::STATUS_HEALTHY
                 : ($umurDetik !== null && $umurDetik <= 48 * 3600 ? self::STATUS_WARNING : self::STATUS_FAILED);
-
-            $items[] = [
-                'key' => 'backup-harian',
-                'label' => 'Backup harian',
-                'status' => $status,
-                'timestamp' => $timestamp,
-                'hint' => 'Salinan lengkap seluruh data toko dibuat otomatis setiap malam.',
-                'scope' => 'Data pelanggan, pesanan, pembayaran, ulasan, dan pengaturan toko.',
-            ];
         } else {
-            $items[] = [
-                'key' => 'backup-harian',
-                'label' => 'Backup harian',
-                'status' => self::STATUS_FAILED,
-                'timestamp' => 'Tidak ditemukan',
-                'hint' => 'Salinan lengkap seluruh data toko dibuat otomatis setiap malam.',
-                'scope' => 'Data pelanggan, pesanan, pembayaran, ulasan, dan pengaturan toko.',
-            ];
+            $last = 'Tidak ditemukan';
+            $status = self::STATUS_FAILED;
         }
 
-        // ===== 2) Backup mingguan (arsip mingguan ke penyimpanan awan) =====
+        $items[] = [
+            'key' => 'backup-harian',
+            'label' => 'Backup harian',
+            'status' => $status,
+            'last' => $last,
+            'next' => $this->nextUtcRun(3, 17)->locale('id')->translatedFormat($format).$wib,
+            'hint' => 'Salinan lengkap seluruh data toko dibuat otomatis setiap malam.',
+            'scope' => 'Data pelanggan, pesanan, pembayaran, ulasan, dan pengaturan toko.',
+        ];
+
+        // ===== 2) Backup mingguan: arsip tiap Senin 05.00 UTC (12.00 WIB) =====
         $mingguan = $this->arsipTerakhir($dir.'/weekly-archive.log', 'weekly/');
         $items[] = [
             'key' => 'backup-mingguan',
@@ -1455,12 +1454,15 @@ final class SystemHealthService
             'status' => $mingguan !== null
                 ? ($now->diffInDays($mingguan['at']) <= 10 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
                 : self::STATUS_WARNING,
-            'timestamp' => $mingguan !== null ? 'Pekan '.$mingguan['at']->locale('id')->translatedFormat('W').' '.$mingguan['at']->translatedFormat('Y') : 'Belum pernah',
+            'last' => $mingguan !== null
+                ? $mingguan['at']->locale('id')->translatedFormat($format).$wib
+                : 'Belum pernah',
+            'next' => $this->nextUtcRun(5, 0, 1)->locale('id')->translatedFormat($format).$wib,
             'hint' => 'Salinan cadangan mingguan yang disimpan di luar server, aman bila server bermasalah.',
             'scope' => 'Sama seperti backup harian, disimpan terpisah di penyimpanan awan.',
         ];
 
-        // ===== 3) Backup bulanan (arsip bulanan ke penyimpanan awan) =====
+        // ===== 3) Backup bulanan: arsip tanggal 1, 05.00 UTC (12.00 WIB) =====
         $bulanan = $this->arsipTerakhir($dir.'/monthly-archive.log', 'monthly/');
         $items[] = [
             'key' => 'backup-bulanan',
@@ -1468,12 +1470,15 @@ final class SystemHealthService
             'status' => $bulanan !== null
                 ? ($now->diffInDays($bulanan['at']) <= 40 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
                 : self::STATUS_WARNING,
-            'timestamp' => $bulanan !== null ? $bulanan['label'] : 'Belum pernah',
+            'last' => $bulanan !== null
+                ? $bulanan['at']->locale('id')->translatedFormat($format).$wib.' ('.$bulanan['label'].')'
+                : 'Belum pernah',
+            'next' => \Illuminate\Support\Carbon::now('UTC')->startOfMonth()->addMonth()->setTime(5, 0, 0)->setTimezone(config('app.timezone', 'UTC'))->locale('id')->translatedFormat($format).$wib,
             'hint' => 'Salinan cadangan bulanan jangka panjang di penyimpanan awan.',
             'scope' => 'Sama seperti backup harian, disimpan terpisah di penyimpanan awan.',
         ];
 
-        // ===== 4) Uji pulihkan (cadangan terbukti bisa dipakai) =====
+        // ===== 4) Uji pemulihan: Senin 04.30 UTC (11.30 WIB) =====
         $markerRestore = $dir.'/last-restore-test-pass';
         $waktuRestore = null;
 
@@ -1488,19 +1493,25 @@ final class SystemHealthService
             'status' => $waktuRestore !== null
                 ? ($now->diffInDays($waktuRestore) <= 8 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
                 : self::STATUS_FAILED,
-            'timestamp' => $waktuRestore !== null
-                ? $waktuRestore->locale('id')->translatedFormat('d M Y, H.i').' WIB'
+            'last' => $waktuRestore !== null
+                ? $waktuRestore->setTimezone(config('app.timezone', 'UTC'))->locale('id')->translatedFormat($format).$wib
                 : 'Belum pernah',
+            'next' => $this->nextUtcRun(4, 30, 1)->locale('id')->translatedFormat($format).$wib,
             'hint' => 'Rutin memastikan cadangan benar-benar bisa dipakai, bukan sekadar ada.',
             'scope' => 'Salinan terbaru dikembalikan ke server uji lalu dibandingkan dengan data asli.',
         ];
 
-        // ===== 5) Alert server 24 jam terakhir =====
+        // ===== 5) Pemeriksaan pendukung: tiap 5 menit, tanpa jadwal tetap =====
         $alertAktif = [];
+        $alertTerbaru = 0;
         foreach (glob($dir.'/ALERT-*') ?: [] as $file) {
             $mtime = @filemtime($file);
-            if ($mtime !== null && ($now->getTimestamp() - $mtime) <= 24 * 3600) {
+            if ($mtime === null) {
+                continue;
+            }
+            if (($now->getTimestamp() - $mtime) <= 24 * 3600) {
                 $alertAktif[] = basename($file);
+                $alertTerbaru = max($alertTerbaru, $mtime);
             }
         }
 
@@ -1508,9 +1519,10 @@ final class SystemHealthService
             'key' => 'backup-alert',
             'label' => 'Kondisi sistem pendukung',
             'status' => $alertAktif === [] ? self::STATUS_HEALTHY : self::STATUS_WARNING,
-            'timestamp' => $alertAktif === []
-                ? 'Tidak ada masalah 24 jam terakhir'
-                : 'Cek perlu dilakukan',
+            'last' => $alertAktif === []
+                ? 'Tidak ada masalah dalam 24 jam terakhir'
+                : 'Terakhir menandai masalah '.$now->setTimestamp($alertTerbaru)->locale('id')->translatedFormat($format).$wib,
+            'next' => 'Berjalan terus, tiap 5 menit',
             'hint' => 'Pemeriksaan otomatis server pendukung backup dan situs.',
             'scope' => $alertAktif === []
                 ? 'Semua pemeriksaan otomatis lulus.'
@@ -1532,6 +1544,28 @@ final class SystemHealthService
             'overall' => $terburuk,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Jadwal berikutnya dari cron server (zona UTC), dikonversi ke zona
+     * waktu aplikasi. $dayOfWeek ISO 1-7 (Senin = 1); null = setiap hari.
+     */
+    private function nextUtcRun(int $hour, int $minute, ?int $dayOfWeek = null): \Illuminate\Support\Carbon
+    {
+        $nowUtc = \Illuminate\Support\Carbon::now('UTC');
+        $candidate = $nowUtc->copy()->setTime($hour, $minute, 0);
+
+        if ($dayOfWeek !== null) {
+            while ((int) $candidate->format('N') !== $dayOfWeek) {
+                $candidate->addDay();
+            }
+        }
+
+        if ($candidate->lessThanOrEqualTo($nowUtc)) {
+            $candidate->addDays($dayOfWeek !== null ? 7 : 1);
+        }
+
+        return $candidate->setTimezone(config('app.timezone', 'UTC'));
     }
 
     /**

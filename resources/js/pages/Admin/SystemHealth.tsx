@@ -108,7 +108,8 @@ interface BackupItem {
   key: string
   label: string
   status: HealthStatus
-  timestamp: string
+  last: string
+  next: string
   hint: string
   scope: string
 }
@@ -713,14 +714,34 @@ export default function SystemHealth({
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {backup.items.map((item) => (
-                <Card key={item.key} className="flex flex-col border border-border bg-card p-4">
+                <Card
+                  key={item.key}
+                  className="flex flex-col border border-border bg-card p-4"
+                  title={`${item.hint}${item.scope ? " Cakupan: " + item.scope : ""}`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-                    <StatusBadge status={item.status} />
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span
+                        title={`${item.hint}${item.scope ? " Cakupan: " + item.scope : ""}`}
+                        className="cursor-help text-muted-foreground/70"
+                        aria-label={`${item.hint} Cakupan: ${item.scope}`}
+                      >
+                        <Icon name="info" className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <StatusBadge status={item.status} />
+                    </div>
                   </div>
-                  <p className="mt-2 text-base font-bold tracking-tight text-foreground">{item.timestamp}</p>
-                  <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">{item.hint}</p>
-                  <p className="mt-auto pt-2 text-[11px] leading-4 text-muted-foreground/80">{item.scope}</p>
+                  <dl className="mt-2 space-y-1.5 text-xs">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="shrink-0 text-muted-foreground">Terakhir</dt>
+                      <dd className="text-right font-semibold tabular-nums text-foreground">{item.last}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2 border-t border-border/40 pt-1.5">
+                      <dt className="shrink-0 text-muted-foreground">Berikutnya</dt>
+                      <dd className="text-right tabular-nums text-foreground/90">{item.next}</dd>
+                    </div>
+                  </dl>
                 </Card>
               ))}
             </div>
