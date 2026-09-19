@@ -419,6 +419,10 @@ class OrderController extends Controller
                 'created_at' => optional($order->created_at)?->toIso8601String(),
                 'updated_at' => optional($order->updated_at)?->toIso8601String(),
                 'whatsapp_url' => $phone ? 'https://wa.me/'.$phone : null,
+                // Naskah WA sesuai status pesanan (permintaan owner 2026-09-19):
+                // tombol chat memakai template otomatis yang sama dengan pesan
+                // yang dikirim sistem untuk status tersebut.
+                'whatsapp_status_url' => $this->whatsapp->statusMessageUrl($order),
                 'items' => $order->items->map(fn ($item) => $this->orderItemRow($item))->values()->all(),
                 'payments' => $order->payments->map(fn ($p) => [
                     'id' => $p->id,
@@ -1239,6 +1243,7 @@ class OrderController extends Controller
             'updated_at' => optional($order->updated_at)?->toIso8601String(),
             'href' => route('admin.orders.show', $order),
             'whatsapp_url' => $phone ? 'https://wa.me/'.$phone : null,
+            'whatsapp_status_url' => $this->whatsapp->statusMessageUrl($order),
             'primary_action' => $this->primaryActionFor($order),
             'secondary_action' => $this->secondaryActionFor($order),
             'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),

@@ -699,6 +699,110 @@ class WhatsAppService
         );
     }
 
+    /** @var array<string, WhatsAppTemplate|null> Template aktif per kunci, sekali per request. */
+    protected array $templateCache = [];
+
+    /**
+     * Kunci template otomatis untuk STATUS pesanan saat ini.
+     *
+     * Dipetakan dari perilaku pengiriman otomatis yang sudah ada supaya tombol
+     * "Chat WA" di panel admin menghasilkan naskah yang SAMA dengan pesan yang
+     * dikirim sistem pada status tersebut (permintaan owner 2026-09-19).
+     *
+     * Status tanpa template otomatis (completed, cancelled) mengembalikan null:
+     * admin tetap bisa membuka WhatsApp, hanya tanpa naskah terisi.
+     */
+    public function templateKeyForOrderStatus(Order $order): ?string
+    {
+        return match ($order->order_status) {
+            'awaiting_confirmation' => ($order->cod_flag || $order->payment_method === 'cod')
+                ? 'order_created'
+                : 'payment_instructions',
+            'processing' => 'payment_confirmed',
+            'shipped' => 'order_shipped',
+            'delivered' => 'order_delivered',
+            'issue', 'return_in_process' => 'order_issue_followup',
+            'return_completed' => 'order_returned',
+            default => null,
+        };
+    }
+
+    /**
+     * Tautan wa.me berisi naskah template sesuai status pesanan.
+     *
+     * Mengembalikan null bila status tidak punya template otomatis, template
+     * itu tidak aktif di katalog, atau datanya belum cukup (mis. status dikirim
+     * tapi belum ada resi). Pemanggil memakai tautan WhatsApp biasa sebagai
+     * gantinya, sehingga tombol chat tetap bisa dipakai kapan pun.
+     */
+    public function statusMessageUrl(Order $order): ?string
+    {
+        $key = $this->templateKeyForOrderStatus($order);
+        if ($key === null) {
+            return null;
+        }
+
+        $phone = PhoneNumber::normalize($order->customer_phone);
+        if ($phone === null) {
+            return null;
+        }
+
+        $record = $order->relationLoaded('shippingRecords')
+            ? $order->shippingRecords->first()
+            : $order->shippingRecords()->latest('id')->first();
+
+        // Template resi butuh nomor resi; tanpa resi naskahnya belum bermakna.
+        if ($key === 'order_shipped' && ($record === null || trim((string) $record->waybill_number) === '')) {
+            return null;
+        }
+
+        $variables = match ($key) {
+            'order_created' => $this->variablesForOrderCreatedCod($order),
+            'payment_instructions' => $this->variablesForPaymentInstructions($order),
+            'payment_confirmed' => $this->variablesForPaymentConfirmed($order),
+            'order_shipped' => $this->variablesForOrderShipped($order, $record),
+            'order_delivered' => $this->variablesForOrderDelivered($order),
+            'order_issue_followup' => [$this->customerName($order), $order->order_number],
+            // Retur bisa terjadi tanpa record pengiriman (mis. retur dicatat
+            // sebelum resi pernah diinput). Naskahnya tetap dikirim dengan tanda
+            // "-" pada slot resi, sama seperti jalur update status.
+            'order_returned' => $record === null
+                ? [$this->customerName($order), $order->order_number, '-']
+                : $this->variablesForOrderReturned($order, $record),
+            default => null,
+        };
+
+        if ($variables === null) {
+            return null;
+        }
+
+        $template = $this->activeTemplate($key);
+        if ($template === null) {
+            return null;
+        }
+
+        return 'https://wa.me/'.$phone.'?text='.rawurlencode(
+            $this->renderTemplateBody($template, $variables),
+        );
+    }
+
+    /**
+     * Template aktif per kunci, dimuat sekali per request.
+     *
+     * Daftar pesanan memanggil statusMessageUrl() untuk setiap baris; tanpa
+     * memo ini satu halaman menghasilkan belasan query yang isinya sama.
+     */
+    protected function activeTemplate(string $internalKey): ?WhatsAppTemplate
+    {
+        if (! isset($this->templateCache[$internalKey])) {
+            $this->templateCache[$internalKey] = WhatsAppTemplate::active()
+                ->where('internal_key', $internalKey)
+                ->first();
+        }
+
+        return $this->templateCache[$internalKey];
+    }
+
     public function handleShippingStatus(Order $order, ShippingRecord $record, string $templateKey): void
     {
         $variables = match ($templateKey) {

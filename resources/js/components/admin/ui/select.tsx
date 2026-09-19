@@ -19,6 +19,15 @@ import { cn } from "@/lib/utils"
  * Dropdown menampilkan kotak pencarian bila jumlah opsi melebihi
  * SEARCH_THRESHOLD; di bawah itu tampil sebagai daftar biasa karena
  * pencarian tidak berguna untuk opsi yang sedikit.
+ *
+ * `popoverFooter` menaruh panel tambahan DI DALAM popover, di bawah daftar
+ * opsi. Dipakai filter yang butuh input lanjutan tanpa keluar dari dropdown
+ * (mis. rentang tanggal pada daftar pesanan). Panel itu wajib menahan
+ * keydown-nya sendiri supaya cmdk tidak menelan tombol panah dan Enter.
+ *
+ * `keepOpenOnSelect` mencegah popover menutup untuk opsi tertentu, sehingga
+ * opsi yang membuka panel lanjutan tidak menutup dropdown sebelum panelnya
+ * sempat dipakai.
  */
 
 interface OptionItem {
@@ -72,10 +81,35 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
    * memang harus persis selebar sel induknya.
    */
   matchOptionWidth?: boolean
+  /**
+   * Panel tambahan DI DALAM popover, di bawah daftar opsi. Dipakai filter yang
+   * butuh input lanjutan tanpa keluar dari dropdown (mis. rentang tanggal).
+   */
+  popoverFooter?: React.ReactNode
+  /**
+   * Kembalikan true untuk opsi yang TIDAK boleh menutup popover, mis. opsi
+   * yang membuka panel lanjutan di `popoverFooter`.
+   */
+  keepOpenOnSelect?: (value: string) => boolean
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ className, children, value, onChange, name, id, disabled, matchOptionWidth = true, ...props }, ref) => {
+  (
+    {
+      className,
+      children,
+      value,
+      onChange,
+      name,
+      id,
+      disabled,
+      matchOptionWidth = true,
+      popoverFooter,
+      keepOpenOnSelect,
+      ...props
+    },
+    ref,
+  ) => {
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement>(null)
     const triggerRef = React.useRef<HTMLButtonElement | null>(null)
@@ -190,7 +224,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
     function selectOption(option: OptionItem) {
       if (option.disabled) return
-      setOpen(false)
+      // Opsi yang membuka panel lanjutan (mis. Rentang tanggal) dibiarkan
+      // terbuka supaya panelnya bisa langsung dipakai.
+      if (!keepOpenOnSelect?.(String(option.value))) setOpen(false)
       if (String(option.value) === String(value ?? "")) return
       // Event sintetis: seluruh pemanggil hanya membaca event.target.value.
       onChange?.({
@@ -302,6 +338,17 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   )
                 })}
               </CommandList>
+              {popoverFooter ? (
+                <div
+                  // stopPropagation: panel lanjutan tidak boleh diurus cmdk,
+                  // supaya tombol panah tetap memindah kursor di input tanggal
+                  // dan Enter tetap mengaktifkan tombol Terapkan.
+                  onKeyDown={(event) => event.stopPropagation()}
+                  className="border-t border-border bg-popover p-2"
+                >
+                  {popoverFooter}
+                </div>
+              ) : null}
             </Command>
           </div>,
           document.body,

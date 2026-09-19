@@ -2295,3 +2295,59 @@ Verifikasi terukur di halaman admin (root font 14px):
 - Sesudah: warna ikon `rgb(55,190,125)`, latar `rgba(55,190,125,0.15)`.
 - Tangkapan layar menunjukkan ikon keranjang hijau dengan animasi ping, ikon WhatsApp tetap
   emerald, dan badge bell tetap netral.
+
+### 2026-09-19 - Halaman pesanan: 6 penyempurnaan sesuai audit manual owner
+Owner mengaudit panel admin manual lalu melaporkan enam temuan pada halaman daftar dan detail
+pesanan, dengan catatan eksplisit: "analisa instruksiku dulu baru eksekusi".
+
+1. RENTANG TANGGAL KELUAR DARI FILTER. Akar masalah: komponen Select admin hanya mengumpulkan anak
+   `<option>`, jadi input tanggal dirender di LUAR popover sebagai form terpisah di baris filter.
+   Perbaikan: `Select` (admin/ui/select.tsx) mendapat dua prop baru, `popoverFooter` (panel tambahan
+   di dalam popover, di bawah daftar opsi) dan `keepOpenOnSelect` (opsi yang membuka panel lanjutan
+   tidak menutup popover). Di Orders/Index.tsx, input tanggal pindah ke `popoverFooter`, dan memilih
+   "Rentang tanggal" membuka panel tanpa langsung memindahkan halaman (`dateDraft`), lalu tombol
+   Terapkan yang menjalankan filter. Label trigger menampilkan rentangnya, mis. "1 September 2026 -
+   19 September 2026". Panel menahan keydown sendiri supaya panah dan Enter tidak ditelan cmdk.
+   CATATAN BUG yang ketahuan saat verifikasi: `activeDatePreset` dari controller berupa string KOSONG
+   saat filter tidak aktif, sehingga menghapus fallback `|| "all"` sempat membuat label trigger
+   tampil "Pilih...". Fallback dikembalikan.
+2. LABEL COD "LUNAS SAAT TIBA" menjadi "DIBAYAR SAAT TIBA" (hanya di Orders/Index.tsx; label pasangan
+   "Bayar saat tiba" untuk yang belum dibayar sudah benar, dan PaymentController tidak menyentuhnya).
+3. SUBTITLE PENGIRIMAN DIHAPUS dari kartu daftar (baris `latest_message`: "Produk masuk antrean
+   produksi...", "Terima kasih, pesanan Anda telah selesai."). Hanya dirender di daftar; dashboard
+   menyimpannya di tipe tapi tidak menampilkannya.
+4. CHAT WA PINDAH ke header kartu, tepat di kiri tombol Cetak, dan diberi ikon whatsapp. Di bawah xl
+   hanya ikon (mengikuti pola tombol Cetak), di xl ke atas ikon + teks. Tombol Chat WA di kolom AKSI
+   dihapus supaya tidak ada dua tombol berfungsi sama.
+5. POPUP BATALKAN DISAMAKAN. Sebelumnya daftar dan detail berbeda: daftar berjudul "Batalkan
+   Pesanan" dengan deskripsi menyebut stok dikembalikan dan TANPA alasan, detail berjudul "Batalkan
+   pesanan?" dengan alasan opsional. Sesuai instruksi owner, versi DETAIL dijadikan acuan, dan copy
+   diekstrak ke satu modul `resources/js/lib/order-cancel-dialog.ts` (`ORDER_CANCEL_DIALOG`) yang
+   dipakai kedua halaman. Efek sampingnya daftar kini juga bisa mengirim alasan (controller sudah
+   menerima `cancel_reason`).
+6. TOMBOL CHAT WA DI HALAMAN DETAIL, di kanan "Proses Pesanan", dengan naskah sesuai template
+   otomatis status pesanan. Backend: `WhatsAppService::templateKeyForOrderStatus()` memetakan status
+   ke kunci template (COD awaiting_confirmation -> order_created, transfer -> payment_instructions,
+   processing -> payment_confirmed, shipped -> order_shipped, delivered -> order_delivered,
+   issue/return_in_process -> order_issue_followup, return_completed -> order_returned, completed dan
+   cancelled -> null), dan `statusMessageUrl()` merender naskahnya menjadi tautan wa.me. Template
+   aktif dimemo per request (daftar memanggilnya per baris). Controller mengirim prop baru
+   `whatsapp_status_url` di daftar dan detail.
+
+BUG YANG DITEMUKAN TEST: `statusMessageUrl()` sempat melempar TypeError
+("variablesForOrderReturned(): Argument #2 must be of type ShippingRecord, null given") untuk pesanan
+berstatus retur yang belum pernah punya record pengiriman. Lima test lama langsung menangkapnya.
+Diperbaiki dengan mengisi slot resi "-" seperti jalur update status, plus test regresi khusus.
+
+Verifikasi:
+- 9 test baru di `tests/Feature/AdminOrderWhatsAppLinkTest.php` (44 assertions) lolos, termasuk
+  kasus retur tanpa record pengiriman dan template nonaktif.
+- Regresi pesanan + WhatsApp: 108 test lolos (845 assertions); lima test lama yang sempat gagal
+  kembali hijau setelah perbaikan bug di atas.
+- Live: daftar menampilkan urutan header [Chat WA][Cetak][nomor order], kolom AKSI hanya
+  [Proses Pesanan][Batalkan]; "Lunas saat tiba" tidak ada lagi; subtitle pengiriman hilang;
+  `?date_preset=range` tidak menghasilkan input tanggal di luar filter dan label berisi rentang;
+  popup batalkan di daftar identik dengan detail; tombol Chat WA detail berada di kanan Proses
+  Pesanan (x 381 vs 253) dengan naskah order_created sesuai status COD.
+- tsc bersih, eslint tidak menambah peringatan (1 warning `visit` di useMemo sudah ada sebelumnya),
+  build Vite PASS.

@@ -18,7 +18,8 @@ import {
   usePrintOrder,
 } from "@/components/shared/print-order-customer"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { formatCurrency, formatDate, formatNumber, humanize } from "@/lib/format"
+import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { routeUrl } from "@/lib/routes"
 // import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
@@ -85,6 +86,8 @@ interface OrderCard {
   updated_at: string | null
   href: string
   whatsapp_url?: string | null
+    /** Tautan chat WA berisi naskah template sesuai status pesanan. */
+    whatsapp_status_url?: string | null
   primary_action: PrimaryAction | null
   secondary_action?: PrimaryAction | null
   shipping_track?: {
@@ -322,6 +325,19 @@ function OrderCardRow({
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {order.whatsapp_status_url || order.whatsapp_url ? (
+            <a
+              href={order.whatsapp_status_url || order.whatsapp_url || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label={`Chat WhatsApp ${order.customer_name}`}
+              title="Chat WhatsApp pelanggan"
+            >
+              <Icon name="whatsapp" className="size-3.5 text-success" aria-hidden="true" />
+              <span className="hidden xl:inline">Chat WA</span>
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={handlePrint}
@@ -442,7 +458,7 @@ function OrderCardRow({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {order.flow === "cod" || (order.payment_method || "").toLowerCase() === "cod" ? (
               order.order_status === "completed" || order.payment_status === "paid" ? (
-                <span className="font-medium text-success">Lunas saat tiba</span>
+                <span className="font-medium text-success">Dibayar saat tiba</span>
               ) : (
                 <span>Bayar saat tiba</span>
               )
@@ -472,11 +488,6 @@ function OrderCardRow({
           ) : (
             <p className="mt-0.5 text-xs text-muted-foreground">Belum ada resi</p>
           )}
-          {order.shipping_track?.latest_message ? (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground max-w-[14rem]">
-              {order.shipping_track.latest_message}
-            </p>
-          ) : null}
           {order.shipping_track?.tracking_url ? (
             <a
               href={order.shipping_track.tracking_url}
@@ -562,14 +573,6 @@ function OrderCardRow({
 
 
 
-          {order.whatsapp_url ? (
-            <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
-              <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-                Chat WA
-              </a>
-            </Button>
-          ) : null}
-
           {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
             <ConfirmAction
               trigger={
@@ -580,11 +583,14 @@ function OrderCardRow({
                   Batalkan
                 </button>
               }
-              title="Batalkan Pesanan"
-              description={`Apakah Anda yakin ingin membatalkan pesanan ${order.order_number}? Stok produk akan dikembalikan dan pesanan tidak dapat diubah lagi.`}
-              confirmLabel="Ya, batalkan pesanan"
+              title={ORDER_CANCEL_DIALOG.title}
+              description={ORDER_CANCEL_DIALOG.description}
+              confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
+              processing={busy}
+              reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
+              reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
               variant="destructive"
-              onConfirm={() => applyStatus("cancelled")}
+              onConfirm={(reason) => applyStatus("cancelled", reason)}
             />
           ) : null}
 
@@ -637,6 +643,14 @@ export default function OrdersIndex({
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(dateFrom)
   const [rangeTo, setRangeTo] = React.useState(dateTo)
+  // Pilihan preset yang belum diterapkan. Dipakai supaya memilih "Rentang
+  // tanggal" membuka panel tanggal DI DALAM dropdown tanpa langsung
+  // memindahkan halaman dengan rentang kosong.
+  const [dateDraft, setDateDraft] = React.useState<string | null>(null)
+  // Controller mengirim string kosong saat filter tidak aktif, jadi fallback
+  // ke "all" wajib supaya label trigger tidak jatuh ke placeholder.
+  const pendingDatePreset = dateDraft ?? (activeDatePreset || "all")
+  const rangePanelOpen = pendingDatePreset === "range"
   const queryState = {
     order_status: activeStatus,
     q: searchQuery,
@@ -660,6 +674,8 @@ export default function OrdersIndex({
   })
 
   function visit(params: Record<string, string | undefined>) {
+    // Setiap navigasi filter membatalkan pilihan preset yang masih menggantung.
+    setDateDraft(null)
     const next: Record<string, string> = {}
     const merged = {
       order_status: activeStatus,
@@ -1016,55 +1032,62 @@ export default function OrdersIndex({
           <option value="7d">Status &gt; 7 hari</option>
         </Select>
         <Select
-          value={activeDatePreset || "all"}
+          // Remount saat rentang diterapkan supaya popover ikut tertutup.
+          key={`date-${activeDatePreset}-${dateFrom}-${dateTo}`}
+          value={pendingDatePreset}
+          keepOpenOnSelect={(value) => value === "range"}
           onChange={(event) => {
             const value = event.target.value
-            if (value === "all") {
-              visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
-              return
-            }
             if (value === "range") {
-              visit({
-                date_preset: "range",
-                date_from: rangeFrom || undefined,
-                date_to: rangeTo || undefined,
-              })
+              // Buka panel tanggal di dalam dropdown, jangan pindah halaman
+              // sebelum admin menekan Terapkan.
+              setDateDraft("range")
               return
             }
-            visit({ date_preset: value, date_from: undefined, date_to: undefined })
+            setDateDraft(null)
+            visit({ date_preset: value === "all" ? undefined : value, date_from: undefined, date_to: undefined })
           }}
           className="w-auto"
           aria-label="Filter waktu"
+          popoverFooter={
+            rangePanelOpen ? (
+              <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
+                <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                  Dari tanggal
+                  <Input
+                    type="date"
+                    value={rangeFrom}
+                    onChange={(event) => setRangeFrom(event.target.value)}
+                    className="h-8 w-36 min-h-8 text-xs"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                  Sampai tanggal
+                  <Input
+                    type="date"
+                    value={rangeTo}
+                    onChange={(event) => setRangeTo(event.target.value)}
+                    className="h-8 w-36 min-h-8 text-xs"
+                  />
+                </label>
+                <Button type="submit" variant="secondary" size="sm" className="h-8 min-h-8">
+                  Terapkan
+                </Button>
+              </form>
+            ) : null
+          }
         >
           <option value="all">Semua waktu</option>
           <option value="today">Hari ini</option>
           <option value="3d">3 hari terakhir</option>
           <option value="7d">7 hari terakhir</option>
           <option value="30d">30 hari terakhir</option>
-          <option value="range">Rentang tanggal</option>
+          <option value="range">
+            {activeDatePreset === "range" && dateFrom && dateTo
+              ? `${formatDate(dateFrom)} - ${formatDate(dateTo)}`
+              : "Rentang tanggal"}
+          </option>
         </Select>
-        {activeDatePreset === "range" ? (
-          <form onSubmit={applyDateRange} className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
-              value={rangeFrom}
-              onChange={(event) => setRangeFrom(event.target.value)}
-              className="w-36"
-              aria-label="Dari tanggal"
-            />
-            <span className="text-xs text-muted-foreground">-</span>
-            <Input
-              type="date"
-              value={rangeTo}
-              onChange={(event) => setRangeTo(event.target.value)}
-              className="w-36"
-              aria-label="Sampai tanggal"
-            />
-            <Button type="submit" variant="secondary" size="sm">
-              Terapkan
-            </Button>
-          </form>
-        ) : null}
       </ListToolbar>
 
       {/* Daftar pesanan */}

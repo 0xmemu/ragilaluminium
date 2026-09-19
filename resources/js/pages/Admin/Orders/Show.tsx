@@ -10,6 +10,7 @@ import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { Checkbox } from "@/components/admin/ui/checkbox"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
@@ -91,6 +92,8 @@ interface OrderDetail {
   created_at: string | null
   updated_at: string | null
   whatsapp_url?: string | null
+  /** Tautan chat WA berisi naskah template sesuai status pesanan. */
+  whatsapp_status_url?: string | null
   items: OrderItemRow[]
   payments: Array<{
     id: number
@@ -1355,6 +1358,20 @@ export default function OrderShow({
           </Button>
         ) : null}
 
+        {order.whatsapp_status_url || order.whatsapp_url ? (
+          <Button asChild variant="secondary" className="shrink-0">
+            <a
+              href={order.whatsapp_status_url || order.whatsapp_url || "#"}
+              target="_blank"
+              rel="noreferrer"
+              title="Chat WhatsApp pelanggan dengan naskah sesuai status pesanan"
+            >
+              <Icon name="whatsapp" className="size-4 text-success" aria-hidden="true" />
+              Chat WA
+            </a>
+          </Button>
+        ) : null}
+
         {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
           can("orders.cancel", capabilities) ? (
             <ConfirmAction
@@ -1363,12 +1380,12 @@ export default function OrderShow({
                   Batalkan pesanan
                 </Button>
               }
-              title="Batalkan pesanan?"
-              description="Status akan berubah menjadi dibatalkan dan tercatat di log."
-              confirmLabel="Batalkan"
+              title={ORDER_CANCEL_DIALOG.title}
+              description={ORDER_CANCEL_DIALOG.description}
+              confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
               processing={statusBusy}
-              reasonLabel="Alasan (opsional)"
-              reasonPlaceholder="Misalnya: pelanggan meminta pembatalan"
+              reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
+              reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
               onConfirm={(reason) => updateStatus("cancelled", reason)}
             />
           ) : null

@@ -425,6 +425,25 @@ OrderCreated       → template key order_created
 PaymentConfirmed   → template key payment_confirmed
 ShippingStatusUpdated → order_shipped | order_delivered | order_returned
 
+Pemetaan status -> template juga dipakai TOMBOL CHAT MANUAL admin
+(WhatsAppService::templateKeyForOrderStatus + statusMessageUrl, kontrak owner
+2026-09-19). Tautannya adalah wa.me ke nomor pelanggan dengan naskah template
+yang sudah dirender, sehingga admin tidak menulis ulang pesan baku:
+  awaiting_confirmation + COD  → order_created
+  awaiting_confirmation + transfer → payment_instructions
+  processing                   → payment_confirmed
+  shipped                      → order_shipped (butuh nomor resi; tanpa resi
+                                 tautan naskah kosong)
+  delivered                    → order_delivered
+  issue | return_in_process    → order_issue_followup
+  return_completed             → order_returned
+  completed | cancelled        → tanpa naskah (tombol memakai tautan WhatsApp
+                                 biasa tanpa isi pesan)
+
+Halaman daftar dan detail pesanan mengirim prop `whatsapp_status_url` (naskah
+siap kirim) di samping `whatsapp_url` (tautan polos). Tombol Chat WA memakai
+`whatsapp_status_url` bila ada, jika tidak jatuh ke `whatsapp_url`.
+
 WhatsAppService::sendTemplateMessage
   → look up active WhatsAppTemplate by internal_key
   → create WhatsAppMessage (pending)
