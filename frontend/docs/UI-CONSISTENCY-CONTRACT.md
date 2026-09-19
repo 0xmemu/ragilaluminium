@@ -126,6 +126,20 @@ Acuan tampilannya notifikasi langsung admin (`live-notification-manager.tsx`).
   dalam pembungkus `max-w-lg` (768px), notifikasi langsung admin lebar `max-w-sm`.
 - Bentuk: kartu notifikasi boleh punya slot ikon, judul, isi, tautan tindakan,
   dan tombol tutup, mengikuti struktur notifikasi langsung admin.
+- **Ikon nada 20px dan sejajar TENGAH dengan garis pertama teks.** Ikon dibungkus
+  `<span className="flex h-5 shrink-0 items-center">` supaya pusatnya sama dengan
+  pusat baris pertama (line-height `text-sm` = 20px), baik pesan satu baris maupun
+  banyak baris. Jangan memakai margin atas manual seperti `mt-0.5`: pengukuran
+  menunjukkan itu membuat ikon 2px terlalu rendah. Ukuran 20px berlaku sama di
+  storefront dan admin.
+- **Tombol tutup rata tengah kartu**, bukan dipatok dari atas: pakai
+  `absolute right-2 top-1/2 -translate-y-1/2`. Ukuran dan bentuknya sama di kedua
+  tema: `size-8 rounded-full`. Sebelumnya admin memakai `h-7 w-7 rounded-md`
+  dengan `top-2`, sehingga pusatnya 2px terlalu tinggi dan gayanya berbeda.
+- Teks diberi `pr-9` saat tombol tutup ada, supaya tidak bertabrakan dengan tombol.
+- Semua ukuran di atas memakai SPACING, bukan ukuran tetap: root `font-size` admin
+  14px sedangkan storefront 16px, jadi ikon 20px menjadi 17,5px di admin. Itu
+  memang diinginkan supaya ikon tetap sebanding dengan teks di temanya masing-masing.
 
 Pemakai saat ini:
 

@@ -2249,3 +2249,32 @@ Verifikasi terukur (lebar kartu, bukan lebar kontainer):
 
 Catatan: untuk menguji notifikasi langsung admin saya menyisipkan notifikasi uji dan sudah
 menghapusnya. Jumlah notifikasi kembali 30 dengan id tertinggi 52, nol sisa baris uji.
+
+### 2026-09-19 - Alert/toast: ikon diperbesar dan alignment dirapikan
+Arahan owner sambil menunjukkan tangkapan toast admin: "ikon toast sepertinya bisa di perbesar lagi
+dan aligment harus rapi".
+
+Tiga masalah terukur pada komponen Alert:
+1. Ikon memakai `mt-0.5`, sehingga pusat vertikalnya 2px TERLALU RENDAH dari pusat teks.
+2. Tombol tutup dipatok `top-2`, sehingga pusatnya 2px TERLALU TINGGI.
+3. Ikon admin hanya `h-4 w-4`, sedangkan storefront `h-5 w-5`. Teks `text-sm` 14px berarti ikon
+   admin lebih kecil dari teksnya; ini bagian yang owner sebut "bisa diperbesar lagi".
+
+Perubahan pada `components/ui/alert.tsx` dan `components/admin/ui/alert.tsx`:
+- Ikon dibungkus `<span className="flex h-5 shrink-0 items-center">`. Kotak setinggi line-height
+  membuat ikon tepat sejajar garis pertama teks, satu baris maupun banyak baris.
+- Ukuran ikon diseragamkan `size-5` (20px di storefront, 17,5px di admin karena root font 14px).
+- Tombol tutup memakai `absolute right-2 top-1/2 -translate-y-1/2 size-8 rounded-full`. Admin ikut
+  diseragamkan (sebelumnya `h-7 w-7 rounded-md`).
+- Padding kanan teks `pr-8` menjadi `pr-9`.
+
+Verifikasi dengan mengukur pusat vertikal elemen terhadap pusat teks:
+- Storefront sebelum: ikon +2px, tombol -2px. Sesudah: ikon 0px, tombol 0px.
+- Admin sesudah: ikon 0px, tombol 0px; ikon 17,5px.
+- Toast undo keranjang juga diperiksa: ikon 20px, selisih 0px. Toast ini memakai markup sendiri
+  dengan `items-center` sehingga sudah sejajar sejak awal, dan sengaja TIDAK diubah.
+
+Catatan proses: beberapa percobaan pertama gagal menangkap gambar karena saya salah menghitung area
+potret (klip `y=40..130` sedangkan toast admin berada di `y=96..142`, jadi terpotong), dan karena
+`router.post` pada tombol admin memicu kilat yang mudah terlewat. Verifikasi akhir memakai POST form
+penuh plus klip yang dihitung dari posisi elemen.
