@@ -178,27 +178,49 @@ class SystemHealthContractTest extends TestCase
         $this->assertNotContains('jnt', $keys, 'J&T tidak boleh ada di Pengaturan Sistem (kontrak owner 2026-09-20).');
     }
 
-    /** Halaman menampilkan server metrics dan riwayat untuk grafik. */
+    /**
+     * Halaman menampilkan server metrics dan riwayat untuk grafik.
+     * Kontrak audit 2026-09-20 (P2-4): checks dan summary bersifat lazy
+     * (Inertia::optional), jadi props itu baru ada pada partial reload yang
+     * memintanya. Load awal halaman wajib tanpa keduanya supaya buka halaman
+     * tidak memicu pemeriksaan API eksternal 3 detik.
+     */
     public function test_halaman_mengirim_metrik_server_dan_riwayat(): void
     {
         config(['cache.default' => 'array']);
 
         $admin = \App\Models\User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
+        // Load awal: tanpa checks/summary (lazy), metrik server dan histori wajib ada.
         $this->actingAs($admin)
             ->get(route('admin.settings.index'))
             ->assertOk()
             ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
                 ->component('Admin/SystemHealth')
-                ->has('checks')
-                ->has('summary.overall')
-                ->has('summary.counts')
+                ->missing('checks')
+                ->missing('summary')
                 ->has('server.vcpu')
                 ->has('server.load_1')
                 ->has('server.memory_pct')
                 ->has('server.disk_pct')
                 ->has('server.disk_mount')
+                ->has('server.r2_used_gb')
                 ->has('history')
-                ->has('lastCheckedAt'));
+                ->has('lastCheckedAt')
+                ->has('period')
+                ->has('periodOptions'));
+
+        // Partial reload yang meminta checks/summary: props lazy terisi.
+        // Header VERSION wajib cocok dengan versi asset agar middleware
+        // tidak membalas 409 (konflik versi Inertia).
+        $this->actingAs($admin)
+            ->get(route('admin.settings.index'), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => \Inertia\Inertia::getVersion(),
+                'X-Inertia-Partial-Component' => 'Admin/SystemHealth',
+                'X-Inertia-Partial-Data' => 'checks,summary',
+            ])
+            ->assertOk()
+            ->assertJsonPath('props.checks.0.key', 'database');
     }
 }

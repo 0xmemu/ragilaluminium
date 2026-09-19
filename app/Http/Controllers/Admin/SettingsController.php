@@ -19,22 +19,25 @@ class SettingsController extends Controller
             $period = '24h';
         }
 
-        // Pemeriksaan halaman: layanan lokal dan konfigurasi. Uji koneksi ke
-        // API eksternal hanya dijalankan dari tombol periksa (lihat run()).
-        $checks = $this->health->checks(false);
-
         // Snapshot performa server diambil setiap halaman dibuka supaya grafik
-        // punya titik terbaru. Penjadwal 15 menit mengisi sisanya.
+        // punya titik terbaru. Penjadwal 15 menit mengisi sisanya. Throttle
+        // 5 menit di dalam storeSnapshot mencegah page-load membanjiri tabel.
         $this->health->storeSnapshot();
 
-        $summary = $this->health->summary($checks);
-        $this->health->rememberScan($summary);
-
+        // Temuan audit 2026-09-20 (P2-4): props berat dibungkus Inertia::lazy
+        // supaya partial reload (klik periode, only: history/period/server)
+        // tidak lagi mengeksekusi checks() 3 detik + API eksternal di server.
         return Inertia::render('Admin/SystemHealth', [
             'title' => 'Pengaturan Sistem',
             'description' => 'Pantau kesehatan layanan, resource server, dan koneksi integrasi.',
-            'checks' => $checks,
-            'summary' => $summary,
+            'checks' => Inertia::optional(fn () => $this->health->checks(false)),
+            'summary' => Inertia::optional(function (): array {
+                $checks = $this->health->checks(false);
+                $summary = $this->health->summary($checks);
+                $this->health->rememberScan($summary);
+
+                return $summary;
+            }),
             'server' => $this->health->serverMetrics(),
             'history' => $this->health->recentSnapshots($period),
             'period' => $period,
@@ -45,7 +48,7 @@ class SettingsController extends Controller
                 ['value' => '3d', 'label' => '3 Hari'],
                 ['value' => '7d', 'label' => '7 Hari'],
             ],
-            'lastCheckedAt' => $summary['checked_at'],
+            'lastCheckedAt' => $this->health->lastLocalScanAt(),
             'env' => [
                 'app_env' => config('app.env'),
                 'whatsapp_number_id' => config('services.whatsapp.number_id') ?: null,

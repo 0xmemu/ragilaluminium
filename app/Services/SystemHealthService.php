@@ -290,8 +290,21 @@ final class SystemHealthService
     // SNAPSHOT UNTUK GRAFIK
     // =====================================================================
 
-    public function storeSnapshot(): SystemHealthSnapshot
+    public function storeSnapshot(bool $force = false): ?SystemHealthSnapshot
     {
+        // Temuan audit 2026-09-20 (P1-1): snapshot yang diambil di setiap GET
+        // halaman membuat kepadatan titik grafik mengikuti kunjungan admin,
+        // bukan interval 15 menit (bukti: 25 snapshot dalam satu jam).
+        // Page-load hanya menyimpan bila snapshot terakhir sudah berumur
+        // lebih dari 5 menit; cron tetap menyimpan tiap 15 menit.
+        if (! $force) {
+            $latest = SystemHealthSnapshot::query()->latest('taken_at')->first();
+
+            if ($latest !== null && $latest->taken_at->gt(now()->subMinutes(5))) {
+                return null;
+            }
+        }
+
         $m = $this->serverMetrics();
 
         return SystemHealthSnapshot::create([
@@ -879,21 +892,28 @@ final class SystemHealthService
      */
     private function cpuUtilization(): ?float
     {
-        $first = $this->readCpuStat();
-        if ($first === null) {
+        // Temuan audit 2026-09-20 (P1-2): sampel dua cuplikan /proc/stat
+        // berjarak 150 ms selalu berada di ujung distribusi (0% atau 100%)
+        // sehingga garis CPU di grafik menjadi noise yang mengcontradiksi
+        // load average. Sekarang utilitas dihitung dari delta sejak
+        // pembacaan terakhir yang di-cache: jendela waktunya mengikuti
+        // jarak antar snapshot (5-15 menit), hasilnya rata-rata nyata.
+        $current = $this->readCpuStat();
+        if ($current === null) {
             return null;
         }
 
-        usleep(150_000);
-        $second = $this->readCpuStat();
-        if ($second === null) {
+        $previous = Cache::get('system-health:cpu-stat');
+        Cache::put('system-health:cpu-stat', $current, now()->addHours(2));
+
+        if (! is_array($previous)) {
             return null;
         }
 
-        $totalDelta = $second['total'] - $first['total'];
-        $idleDelta = $second['idle'] - $first['idle'];
+        $totalDelta = $current['total'] - $previous['total'];
+        $idleDelta = $current['idle'] - $previous['idle'];
 
-        if ($totalDelta <= 0) {
+        if ($totalDelta <= 0 || $idleDelta < 0) {
             return null;
         }
 

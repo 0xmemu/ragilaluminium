@@ -64,7 +64,7 @@ Schedule::exec(
 // Snapshot kesehatan sistem tiap 15 menit untuk grafik performa server.
 // Halaman Pengaturan Sistem juga mengambil snapshot setiap kali dibuka,
 // jadi grafik tetap terisi walau cron sempat mati.
-Schedule::call(fn () => app(\App\Services\SystemHealthService::class)->storeSnapshot())
+Schedule::call(fn () => app(\App\Services\SystemHealthService::class)->storeSnapshot(force: true))
     ->name('system-health-snapshot')
     ->everyFifteenMinutes()
     ->withoutOverlapping();

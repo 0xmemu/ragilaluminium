@@ -376,6 +376,11 @@ export default function SystemHealth({
     if (newPeriod === period || periodLoading) return
     setPeriodLoading(true)
 
+    // P2-4 (audit 2026-09-20): only[] membatasi reload ke data histori saja,
+    // sehingga pergantian periode tidak lagi menjalankan ulang checks()
+    // (sebelumnya 3,7 detik + panggilan API eksternal tiap klik).
+    // P2-5: query period selalu eksplisit di URL sejak klik pertama supaya
+    // tampilan bisa dibagikan dan refresh tetap pada periode terpilih.
     router.get(
       routeUrl("admin.settings.index"),
       { period: newPeriod },
@@ -383,6 +388,7 @@ export default function SystemHealth({
         preserveState: true,
         preserveScroll: true,
         replace: true,
+        only: ["history", "period", "server"],
         onFinish: () => setPeriodLoading(false),
       },
     )
@@ -479,6 +485,21 @@ export default function SystemHealth({
   const isStale = staleMs !== null && staleMs > 30 * 60 * 1000
   const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
   const freshnessWIB = `Diperbarui ${jamWIB(lastRunIso)}`
+
+  // P2-7 (audit 2026-09-20): bila data yang ada lebih pendek dari rentang
+  // periode terpilih, katakan jujur berapa rentang efektifnya supaya admin
+  // tidak mengira grafik 8 jam itu gambaran 7 hari.
+  const periodHours: Record<string, number> = { "6h": 6, "12h": 12, "24h": 24, "3d": 72, "7d": 168 }
+  let effectiveRangeNote: string | null = null
+  if (history.length >= 2) {
+    const oldestIso = history[0]?.taken_iso
+    const spanHours = oldestIso ? (nowMs - new Date(oldestIso).getTime()) / 3_600_000 : 0
+    const wanted = periodHours[period] ?? 24
+    if (spanHours < wanted * 0.75) {
+      const jamTersisa = Math.max(1, Math.round(spanHours))
+      effectiveRangeNote = `Data baru lengkap sebagian: baru tersedia sekitar ${jamTersisa} jam terakhir, bukan ${wanted >= 24 ? (wanted / 24) + " hari" : wanted + " jam"}.`
+    }
+  }
 
   // 3. Chart data preparations
   const historyData = history.map((pt) => ({
@@ -582,18 +603,26 @@ export default function SystemHealth({
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Snapshot berkala tiap 15 menit dan setiap pemeriksaan sistem dijalankan. Waktu Indonesia Barat (WIB).
               </p>
+              {effectiveRangeNote ? (
+                <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">{effectiveRangeNote}</p>
+              ) : null}
             </div>
 
             {/* Filter periode operasional server */}
-            <div className="flex items-center gap-1 self-start rounded-lg border border-border bg-surface p-1 shadow-sm sm:self-auto">
+            <div
+              className="flex items-center gap-1 self-start rounded-lg border border-border bg-surface p-1 shadow-sm sm:self-auto"
+              role="group"
+              aria-label="Pilih periode tren resource"
+            >
               {periodOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => handlePeriodChange(opt.value)}
                   disabled={periodLoading}
+                  aria-pressed={period === opt.value}
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150 active:scale-[0.97]",
+                    "min-h-[40px] rounded-md px-3 text-xs font-medium transition-all duration-150 active:scale-[0.97]",
                     period === opt.value
                       ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
