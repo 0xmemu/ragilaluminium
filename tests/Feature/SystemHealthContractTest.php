@@ -166,6 +166,18 @@ class SystemHealthContractTest extends TestCase
         }
     }
 
+    /**
+     * Kontrak owner 2026-09-20: J&T keluar dari Pengaturan Sistem karena
+     * integrasinya berisiko disentuh; dicek manual lewat backend. Test ini
+     * menjaga agar J&T tidak pernah kembali masuk daftar check tanpa
+     * keputusan owner yang eksplisit.
+     */
+    public function test_jnt_tidak_masuk_daftar_pemeriksaan(): void
+    {
+        $keys = collect($this->service()->checks(false))->pluck('key')->all();
+        $this->assertNotContains('jnt', $keys, 'J&T tidak boleh ada di Pengaturan Sistem (kontrak owner 2026-09-20).');
+    }
+
     /** Halaman menampilkan server metrics dan riwayat untuk grafik. */
     public function test_halaman_mengirim_metrik_server_dan_riwayat(): void
     {

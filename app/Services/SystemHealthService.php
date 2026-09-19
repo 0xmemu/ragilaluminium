@@ -80,10 +80,12 @@ final class SystemHealthService
             $this->applicationStorage(),
 
             // Kelompok 2: integrasi eksternal.
+            // J&T sengaja tidak diikutkan (owner 2026-09-20): integrasinya
+            // berisiko disentuh, dicek manual lewat backend, bukan lewat
+            // halaman ini. Tidak ada tombol di UI yang memicu API J&T.
             $this->cloudflare($deep),
             $this->mediaStorage(),
             $this->whatsappGateway(),
-            $this->jntCargo($deep),
         ];
     }
 
@@ -724,6 +726,8 @@ final class SystemHealthService
      */
     private function jntCargo(bool $deep): array
     {
+        // Tidak dipanggil lagi dari checks() (owner 2026-09-20). Method ini
+        // dibiarkan sebagai referensi, bukan jalur aktif halaman.
         $report = \App\Support\JntReadiness::report();
         $missing = $report['missing'];
         $environment = (string) $report['environment'];

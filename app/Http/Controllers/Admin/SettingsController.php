@@ -49,7 +49,8 @@ class SettingsController extends Controller
             'env' => [
                 'app_env' => config('app.env'),
                 'whatsapp_number_id' => config('services.whatsapp.number_id') ?: null,
-                'jnt_environment' => \App\Support\JntReadiness::report()['environment'],
+                // jnt_environment tidak lagi dikirim (owner 2026-09-20):
+                // J&T keluar dari halaman ini, dicek manual lewat backend.
                 'queue_connection' => (string) config('queue.default'),
                 'cache_store' => (string) config('cache.default'),
                 'media_disk' => (string) config('filesystems.disks.media.driver', 'local'),
