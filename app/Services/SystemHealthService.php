@@ -194,6 +194,8 @@ final class SystemHealthService
             $backlog = null;
         }
 
+        $r2 = $this->readR2Usage();
+
         return [
             'taken_at' => now()->timezone(config('app.timezone'))->toIso8601String(),
             'load_1' => $load[0] !== null ? round((float) $load[0], 2) : null,
@@ -212,6 +214,11 @@ final class SystemHealthService
             'queue_backlog' => $backlog,
             'php_memory_mb' => round(memory_get_usage(true) / 1048576, 2),
             'php_peak_mb' => round(memory_get_peak_usage(true) / 1048576, 2),
+            'r2_used_gb' => $r2['used_gb'] ?? null,
+            'r2_limit_gb' => $r2['limit_gb'] ?? null,
+            'r2_pct' => $r2['pct'] ?? null,
+            'r2_object_count' => $r2['object_count'] ?? null,
+            'r2_bucket' => (string) config('filesystems.disks.media.bucket', 'ra-media'),
         ];
     }
 

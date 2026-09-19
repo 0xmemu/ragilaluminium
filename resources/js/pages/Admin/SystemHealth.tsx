@@ -83,6 +83,11 @@ interface ServerMetrics {
   queue_backlog: number | null
   php_memory_mb: number | null
   php_peak_mb: number | null
+  r2_used_gb?: number | null
+  r2_limit_gb?: number | null
+  r2_pct?: number | null
+  r2_object_count?: number | null
+  r2_bucket?: string | null
 }
 
 interface HistoryPoint {
@@ -488,8 +493,6 @@ export default function SystemHealth({
     server.memory_pct === null ? "unknown" : server.memory_pct > 90 ? "failed" : server.memory_pct >= 75 ? "warning" : "healthy"
   const diskStatus: HealthStatus =
     server.disk_pct === null ? "unknown" : server.disk_pct > 90 ? "failed" : server.disk_pct >= 75 ? "warning" : "healthy"
-  const dbStatus: HealthStatus =
-    server.db_response_ms === null ? "unknown" : server.db_response_ms >= 1000 ? "failed" : server.db_response_ms >= 200 ? "warning" : "healthy"
 
   // Disk delta from previous snapshot
   const prevSnapshot = history.length >= 2 ? history[history.length - 2] : null
@@ -541,14 +544,24 @@ export default function SystemHealth({
       hint: "Periksa tren untuk menilai pertumbuhan, bukan satu pembacaan.",
     },
     {
-      label: "Database latency",
-      value: dbLatencyValue,
+      label: "Media storage · Cloudflare R2",
+      value:
+        server.r2_used_gb !== null && server.r2_used_gb !== undefined
+          ? `${server.r2_used_gb.toFixed(2)} GB`
+          : "Belum tersedia",
       detail:
-        server.db_response_ms === null
-          ? "Health check belum dilakukan"
-          : "Health check terakhir · query ping",
-      status: dbStatus,
-      hint: "Waktu query ping. Perlu perhatian di atas 200 ms.",
+        server.r2_used_gb !== null && server.r2_used_gb !== undefined
+          ? `${server.r2_used_gb.toFixed(2)} GB dari ${(server.r2_limit_gb ?? 10).toFixed(0)} GB (${(server.r2_pct ?? 0).toFixed(1)}%) · ${(server.r2_object_count ?? 0).toLocaleString("id-ID")} objek`
+          : "Penyimpanan media di Cloudflare R2",
+      status:
+        server.r2_pct === null || server.r2_pct === undefined
+          ? "unknown"
+          : server.r2_pct > 90
+            ? "failed"
+            : server.r2_pct >= 75
+              ? "warning"
+              : "healthy",
+      hint: "Kapasitas terpakai pada bucket Cloudflare R2 untuk media gambar dan katalog.",
     },
   ]
 
