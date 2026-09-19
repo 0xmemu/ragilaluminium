@@ -163,6 +163,58 @@ interface Metric {
   hint: string
 }
 
+/**
+ * Tooltip grafik gabungan. Garis digambar sebagai persen kapasitas, tetapi
+ * yang ditampilkan di sini adalah NILAI ASLI tiap metrik, karena itulah yang
+ * dipakai admin untuk mengambil keputusan.
+ */
+function TrenTooltip({
+  active,
+  payload,
+  label,
+  seri,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: Record<string, unknown> }>
+  label?: string
+  seri: Array<{
+    key: string
+    rawKey: string
+    nama: string
+    warna: string
+    format: (value: number) => string
+  }>
+}) {
+  if (!active || !payload?.length) return null
+
+  const baris = payload[0]?.payload
+  if (!baris) return null
+
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md">
+      <p className="text-[11px] text-muted-foreground">Pukul {label} WIB</p>
+      <ul className="mt-1 space-y-0.5">
+        {seri.map((item) => {
+          const nilai = baris[item.rawKey]
+
+          return (
+            <li key={item.key} className="flex items-center gap-2 text-xs">
+              <span className="size-2 rounded-full" style={{ backgroundColor: item.warna }} aria-hidden="true" />
+              <span className="text-muted-foreground">{item.nama}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {typeof nilai === "number" ? item.format(nilai) : "-"}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="mt-1 border-t border-border pt-1 text-[10px] text-muted-foreground">
+        Garis digambar sebagai persen kapasitas terhadap batas aman tiap metrik.
+      </p>
+    </div>
+  )
+}
+
 function ResourceMetricGrid({ metrics }: { metrics: Metric[] }) {
   return (
     <section aria-label="Resource server">
@@ -281,101 +333,6 @@ function ServiceHealthPanel({ title, checks }: { title: string; checks: HealthCh
 // 12. Grafik tren: satu grafik satu satuan
 // ---------------------------------------------------------------------------
 
-function TrendTooltip({
-  active,
-  payload,
-  label,
-  format,
-  unitLabel,
-}: {
-  active?: boolean
-  payload?: Array<{ name?: string; value?: number | null; color?: string; dataKey?: string }>
-  label?: string
-  format: (value: number) => string
-  unitLabel: string
-}) {
-  if (!active || !payload?.length) return null
-
-  return (
-    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md">
-      <p className="text-[11px] text-muted-foreground">Pukul {label} WIB</p>
-      <ul className="mt-1 space-y-0.5">
-        {payload
-          .filter((entry) => entry.value !== null && entry.value !== undefined)
-          .map((entry) => (
-            <li key={entry.dataKey} className="flex items-center gap-2 text-xs">
-              <span className="size-2 rounded-full" style={{ backgroundColor: entry.color }} aria-hidden="true" />
-              <span className="text-muted-foreground">{entry.name}</span>
-              <span className="font-semibold tabular-nums text-foreground">{format(Number(entry.value))}</span>
-            </li>
-          ))}
-      </ul>
-      <p className="mt-1 text-[10px] text-muted-foreground">{unitLabel}</p>
-    </div>
-  )
-}
-
-function ChartFrame({
-  title,
-  subtitle,
-  summaryText,
-  warna,
-  nama,
-  satuan,
-  hasData,
-  onRun,
-  children,
-}: {
-  title: string
-  subtitle: string
-  summaryText: string
-  /** Satu warna per metrik, dipakai juga di legenda supaya terbaca tanpa warna. */
-  warna: string
-  nama: string
-  satuan: string
-  hasData: boolean
-  onRun: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="border border-border bg-card">
-      <div className="border-b border-border px-5 py-3.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
-          <span className="text-[11px] text-muted-foreground">{subtitle}</span>
-        </div>
-        {hasData ? (
-          <p className="mt-0.5 text-xs text-muted-foreground">{summaryText}</p>
-        ) : null}
-      </div>
-
-      {hasData ? (
-        <div className="p-4">
-          <div className="h-48" role="img" aria-label={summaryText}>
-            {children}
-          </div>
-          <ul className="mt-2 flex flex-wrap items-center gap-3">
-            <li className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="h-0.5 w-4 rounded" style={{ backgroundColor: warna }} aria-hidden="true" />
-              {nama} · {satuan}
-            </li>
-          </ul>
-        </div>
-      ) : (
-        <div className="px-5 py-8 text-center">
-          <p className="text-sm font-medium text-foreground">Belum ada data tren</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-            Data akan muncul setelah pemeriksaan sistem berikutnya. Snapshot otomatis diambil tiap 15 menit.
-          </p>
-          <Button type="button" variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={onRun}>
-            Jalankan pemeriksaan
-          </Button>
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Halaman
 // ---------------------------------------------------------------------------
@@ -474,114 +431,87 @@ export default function SystemHealth({
   const counts = summary.counts
 
   // ---- Grafik: satu grafik per metrik, masing-masing satu warna ----
-  const lastPoint = history.length > 0 ? history[history.length - 1] : null
 
-  const titik = (ambil: (p: HistoryPoint) => number | null) => history.filter((p) => ambil(p) !== null)
+  // Satu grafik, lima garis. Karena satuan aslinya berbeda (persen, jumlah
+  // proses, milidetik), tiap garis digambar sebagai PERSEN KAPASITAS: seberapa
+  // penuh sumber daya itu terhadap batas amannya. Dengan begitu kelimanya
+  // sebanding dalam satu sumbu, dan nilai aslinya tetap tampil di tooltip.
+  const kapasitas = {
+    cpu: 100, // CPU penuh pada 100%
+    memory: 90, // memori kritis di 90%
+    disk: 90, // disk kritis di 90%
+    load: server.vcpu && server.vcpu > 0 ? server.vcpu : 1, // load = jumlah vCPU
+    database: 1000, // query dianggap gagal di 1000 ms
+  }
 
-  const cpuPoints = titik((p) => p.cpu_pct)
-  const memPoints = titik((p) => p.memory_pct)
-  const loadPoints = titik((p) => p.load_1)
-  const dbPoints = titik((p) => p.db_response_ms)
-  const diskPoints = titik((p) => p.disk_pct)
-
-  const cpuNow = lastPoint?.cpu_pct ?? server.cpu_pct
-  const memNow = lastPoint?.memory_pct ?? server.memory_pct
-  const diskNow = lastPoint?.disk_pct ?? server.disk_pct
-
-  const trendMetrics: Array<{
-    key: string
-    title: string
-    subtitle: string
-    dataKey: keyof HistoryPoint
-    nama: string
-    warna: string
-    satuan: string
-    format: (value: number) => string
-    domain: [number, number | "auto"]
-    points: HistoryPoint[]
-    summary: string
-  }> = [
+  const trendSeries = [
     {
       key: "cpu",
-      title: "CPU",
-      subtitle: `${cpuPoints.length} titik · WIB`,
-      dataKey: "cpu_pct",
+      rawKey: "cpu_pct" as keyof HistoryPoint,
+      normKey: "cpu_kapasitas",
       nama: "CPU",
       warna: "hsl(var(--sale))",
-      satuan: "Persen",
-      format: (v) => v.toFixed(1) + "%",
-      domain: [0, 100],
-      points: cpuPoints,
-      summary:
-        cpuNow !== null
-          ? `Terakhir ${cpuNow.toFixed(1)}%. Persentase pemakaian CPU pada saat snapshot diambil.`
-          : "Belum ada pembacaan CPU.",
+      batas: kapasitas.cpu,
+      format: (v: number) => v.toFixed(1) + "%",
+      satuan: "Persen CPU",
     },
     {
       key: "memory",
-      title: "Memori",
-      subtitle: `${memPoints.length} titik · WIB`,
-      dataKey: "memory_pct",
+      rawKey: "memory_pct" as keyof HistoryPoint,
+      normKey: "memory_kapasitas",
       nama: "Memori",
       warna: "#f59e0b",
-      satuan: "Persen",
-      format: (v) => v.toFixed(1) + "%",
-      domain: [0, 100],
-      points: memPoints,
-      summary:
-        memNow !== null
-          ? `Terakhir ${memNow.toFixed(1)}%. Perlu perhatian di atas 75%, kritis di atas 90%.`
-          : "Belum ada pembacaan memori.",
-    },
-    {
-      key: "load",
-      title: "Load average",
-      subtitle: `${loadPoints.length} titik · WIB`,
-      dataKey: "load_1",
-      nama: "Load 1 menit",
-      warna: "#6366f1",
-      satuan: "Jumlah proses",
-      format: (v) => v.toFixed(2),
-      domain: [0, "auto"],
-      points: loadPoints,
-      summary:
-        server.load_1 !== null
-          ? `Terakhir ${server.load_1.toFixed(2)} · ${loadHealthy ? "normal" : "tinggi"} untuk ${server.vcpu ?? "-"} vCPU.`
-          : "Belum ada pembacaan load.",
-    },
-    {
-      key: "database",
-      title: "Database latency",
-      subtitle: `${dbPoints.length} titik · WIB`,
-      dataKey: "db_response_ms",
-      nama: "Respons query",
-      warna: "#10b981",
-      satuan: "Milidetik",
-      format: (v) => Math.round(v) + " ms",
-      domain: [0, "auto"],
-      points: dbPoints,
-      summary:
-        server.db_response_ms !== null
-          ? `Terakhir ${Math.round(server.db_response_ms)} ms. Perlu perhatian di atas 200 ms.`
-          : "Belum ada pengukuran.",
+      batas: kapasitas.memory,
+      format: (v: number) => v.toFixed(1) + "%",
+      satuan: "Persen memori",
     },
     {
       key: "disk",
-      title: "Disk",
-      subtitle: `${diskPoints.length} titik · WIB`,
-      dataKey: "disk_pct",
-      nama: "Disk terpakai",
+      rawKey: "disk_pct" as keyof HistoryPoint,
+      normKey: "disk_kapasitas",
+      nama: "Disk",
       warna: "#06b6d4",
-      satuan: "Persen",
-      format: (v) => v.toFixed(1) + "%",
-      domain: [0, 100],
-      points: diskPoints,
-      summary:
-        diskNow !== null
-          ? `Terakhir ${diskNow.toFixed(1)}%${server.disk_mount ? " pada " + server.disk_mount : ""}. Perubahannya lambat, yang perlu diwaspadai adalah pertumbuhan yang tidak pernah turun.`
-          : "Belum ada pembacaan disk.",
+      batas: kapasitas.disk,
+      format: (v: number) => v.toFixed(1) + "%",
+      satuan: "Persen disk",
+    },
+    {
+      key: "load",
+      rawKey: "load_1" as keyof HistoryPoint,
+      normKey: "load_kapasitas",
+      nama: "Load average",
+      warna: "#6366f1",
+      batas: kapasitas.load,
+      format: (v: number) => v.toFixed(2),
+      satuan: "Jumlah proses",
+    },
+    {
+      key: "database",
+      rawKey: "db_response_ms" as keyof HistoryPoint,
+      normKey: "db_kapasitas",
+      nama: "Database latency",
+      warna: "#10b981",
+      batas: kapasitas.database,
+      format: (v: number) => Math.round(v) + " ms",
+      satuan: "Milidetik",
     },
   ]
+
+  // Titik data gabungan: nilai mentah + nilai ternormalisasi per seri.
+  const trendData = history.map((point) => {
+    const baris: Record<string, number | string | null> = { taken_at: point.taken_at }
+
+    for (const seri of trendSeries) {
+      const mentah = point[seri.rawKey] as number | null
+      baris[seri.rawKey] = mentah
+      baris[seri.normKey] = mentah === null || seri.batas <= 0 ? null : (mentah / seri.batas) * 100
+    }
+
+    return baris
+  })
+
+  const seriTerisi = trendSeries.filter((seri) => trendData.some((baris) => baris[seri.normKey] !== null))
+  const punyaTren = seriTerisi.length > 0 && trendData.length > 1
 
   const lastRunIso = lastCheckedAt ?? summary.checked_at
   const staleMs = lastRunIso ? nowMs - new Date(lastRunIso).getTime() : null
@@ -716,52 +646,91 @@ export default function SystemHealth({
         {/* 9. Integrasi eksternal */}
         <ServiceHealthPanel title="Integrasi eksternal" checks={integrations} />
 
-        {/* 12. Tren resource: satu grafik per metrik, masing-masing satu warna.
-            Menggabungkan beberapa metrik dalam satu sumbu membuat garis
-            berskala kecil menempel di dasar dan terbaca seolah nol, jadi setiap
-            metrik punya grafik dan skalanya sendiri. */}
-        <section aria-label="Tren resource" className="space-y-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
-            <span className="text-[11px] text-muted-foreground">
-              {history.length} titik · snapshot tiap 15 menit · WIB
-            </span>
-          </div>
+        {/* 12. Tren resource: satu grafik gabungan.
+            Satuan asli tiap metrik berbeda, jadi setiap garis digambar sebagai
+            persen kapasitas terhadap batas amannya, dan nilai aslinya tampil
+            di tooltip. Ini satu-satunya cara lima metrik sebanding dalam satu
+            sumbu tanpa garis berskala kecil menempel di dasar. */}
+        <section aria-label="Tren resource">
+          <Card className="border border-border bg-card">
+            <div className="border-b border-border px-5 py-3.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+                <span className="text-[11px] text-muted-foreground">
+                  {history.length} titik · snapshot tiap 15 menit · WIB
+                </span>
+              </div>
+              {punyaTren ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Tiap garis menunjukkan seberapa penuh sumber daya terhadap batas amannya. Arahkan kursor untuk
+                  melihat nilai aslinya.
+                </p>
+              ) : null}
+            </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            {trendMetrics.map((metrik) => (
-              <ChartFrame
-                key={metrik.key}
-                title={metrik.title}
-                subtitle={metrik.subtitle}
-                summaryText={metrik.summary}
-                warna={metrik.warna}
-                nama={metrik.nama}
-                satuan={metrik.satuan}
-                hasData={metrik.points.length > 1}
-                onRun={runChecks}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={metrik.points} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 10 }} domain={metrik.domain} />
-                    <Tooltip
-                      content={<TrendTooltip format={metrik.format} unitLabel={metrik.satuan} />}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey={metrik.dataKey}
-                      name={metrik.nama}
-                      stroke={metrik.warna}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartFrame>
-            ))}
-          </div>
+            {punyaTren ? (
+              <div className="p-4">
+                <div
+                  className="h-72"
+                  role="img"
+                  aria-label={trendSeries
+                    .map((seri) => {
+                      const terakhir = [...trendData].reverse().find((b) => b[seri.normKey] !== null)
+                      const nilai = terakhir ? (terakhir[seri.rawKey] as number | null) : null
+                      return nilai === null ? null : `${seri.nama} ${seri.format(nilai)}`
+                    })
+                    .filter(Boolean)
+                    .join(", ")}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="taken_at" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 10 }} domain={[0, "auto"]} unit="%" />
+                      <Tooltip content={<TrenTooltip seri={trendSeries} />} />
+                      {trendSeries.map((seri) => (
+                        <Line
+                          key={seri.key}
+                          type="monotone"
+                          dataKey={seri.normKey}
+                          name={seri.nama}
+                          stroke={seri.warna}
+                          strokeWidth={2}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {trendSeries.map((seri) => {
+                    const terakhir = [...trendData].reverse().find((b) => b[seri.normKey] !== null)
+                    const nilai = terakhir ? (terakhir[seri.rawKey] as number | null) : null
+
+                    return (
+                      <li key={seri.key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="h-0.5 w-4 rounded" style={{ backgroundColor: seri.warna }} aria-hidden="true" />
+                        <span className="text-foreground/80">{seri.nama}</span>
+                        <span className="tabular-nums">{nilai === null ? "-" : seri.format(nilai)}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ) : (
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm font-medium text-foreground">Belum ada data tren</p>
+                <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+                  Data akan muncul setelah pemeriksaan sistem berikutnya. Snapshot otomatis diambil tiap 15 menit.
+                </p>
+                <Button type="button" variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={runChecks}>
+                  Jalankan pemeriksaan
+                </Button>
+              </div>
+            )}
+          </Card>
         </section>
 
         {/* 15. Konfigurasi teknis */}

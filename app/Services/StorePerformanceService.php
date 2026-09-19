@@ -416,15 +416,6 @@ class StorePerformanceService
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'revenue'),
                 ],
                 [
-                    'key' => 'net_revenue',
-                    'title' => 'Tren Penjualan Bersih',
-                    'total' => $current['net_revenue'],
-                    'previous_total' => $previous['net_revenue'] ?? 0.0,
-                    'total_format' => 'currency',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'net_revenue'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'net_revenue'),
-                ],
-                [
                     'key' => 'orders',
                     'title' => 'Tren Pesanan',
                     'total' => $current['orders'],
@@ -858,36 +849,6 @@ class StorePerformanceService
         }
 
         $buckets = $this->emptyBuckets($from, $to, $granularity);
-
-        if ($metric === 'net_revenue') {
-            $orderRows = Order::query()
-                ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
-                ->selectRaw('SUM(total_amount - COALESCE(shipping_amount, 0) - COALESCE(shipping_subsidy_amount, 0) - COALESCE(shipping_insurance_amount, 0) - COALESCE(cod_fee_amount, 0)) as value')
-                ->whereBetween('created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql())
-                ->groupBy('bucket')
-                ->pluck('value', 'bucket');
-
-            $returnRows = OrderReturnCase::query()
-                ->selectRaw($this->bucketSelect('completed_at', $granularity).' as bucket')
-                ->selectRaw('SUM(COALESCE(refund_amount, 0) + COALESCE(return_shipping_cost, 0)) as value')
-                ->where('status', 'completed')
-                ->whereNotNull('completed_at')
-                ->whereBetween('completed_at', [$from, $to])
-                ->groupBy('bucket')
-                ->pluck('value', 'bucket');
-
-            return collect($buckets)->map(function (array $bucket) use ($orderRows, $returnRows) {
-                $gross = (float) ($orderRows[$bucket['key']] ?? 0);
-                $deductions = (float) ($returnRows[$bucket['key']] ?? 0);
-
-                return [
-                    'bucket' => $bucket['key'],
-                    'label' => $bucket['label'],
-                    'value' => round(max(0, $gross - $deductions), 2),
-                ];
-            })->values()->all();
-        }
 
         if ($metric === 'conversion_rate') {
             // Rasio pesanan (paid/COD lunas) dibanding pengunjung unik per bucket, dalam %.
