@@ -216,9 +216,9 @@ export default function SubModelForm({
           <>
           <section className="rounded-lg border border-border bg-card">
             <div className="border-b border-border p-5">
-              <h2 className="text-base font-semibold">Template atribut produk</h2>
+              <h2 className="text-base font-semibold">Template spesifikasi produk</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Atribut ini otomatis terpasang ke produk baru (atau import tanpa kolom spesifikasi) yang memakai sub model ini. Ditambahkan hanya bila produk belum punya atribut. Kosongkan untuk mematikan.
+                Spesifikasi ini otomatis terpasang ke produk baru (atau import tanpa kolom Spesifikasi) yang memakai sub model ini. Ditambahkan hanya bila produk belum punya spesifikasi. Kosongkan untuk mematikan.
               </p>
             </div>
             <div className="p-5">

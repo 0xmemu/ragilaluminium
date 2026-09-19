@@ -143,7 +143,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
   },
   "admin.products.show": {
     title: "Detail Produk",
-    summary: "Kelola satu produk: varian, harga, media, atribut, dan publikasi.",
+    summary: "Kelola satu produk: varian, harga, media, spesifikasi, dan publikasi.",
     steps: [
       "Lengkapi varian dan harga terlebih dahulu.",
       "Unggah atau tautkan media di tab media, tautkan minimal satu gambar ke varian.",
