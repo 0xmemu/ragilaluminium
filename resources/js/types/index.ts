@@ -154,12 +154,25 @@ export interface SharedPageProps extends Record<string, unknown> {
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
   /**
-   * Teks CTA penutup storefront dari Pengaturan Website > CTA Storefront.
-   * Null di halaman admin. Bila `enabled` false, seluruh CTA penutup disembunyikan.
+   * CTA storefront dari Pengaturan Website > CTA Storefront: teks, tombol, dan
+   * warna banner. Null di halaman admin. Bila `enabled` false, seluruh CTA
+   * penutup disembunyikan.
+   *
+   * `pages` memuat dua jenis blok: banner penutup per halaman publik dan kartu
+   * reusable (trust, order-help). `actions` berisi tombol dengan `destination`
+   * berupa kunci CtaSettings::DESTINATIONS, bukan URL bebas.
    */
   ctaSettings?: {
     enabled: boolean
-    pages: Record<string, { eyebrow: string; heading: string }>
+    color: string
+    pages: Record<
+      string,
+      {
+        eyebrow: string
+        heading: string
+        actions: Array<{ label: string; destination: string; variant: string }>
+      }
+    >
   } | null
   announcements: Announcement[]
   announcementSlide?: { enabled: boolean; interval: number }

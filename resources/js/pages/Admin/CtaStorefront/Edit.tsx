@@ -3,8 +3,9 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
-import { Field, FieldGrid } from "@/components/admin/ui/field"
+import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Switch } from "@/components/admin/ui/switch"
 import { Icon } from "@/components/shared/icon"
@@ -12,10 +13,30 @@ import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
+interface CtaAction {
+  label: string
+  destination: string
+  variant: string
+}
+
+interface CtaBlock {
+  key: string
+  label: string
+  eyebrow: string
+  heading: string
+  actions: CtaAction[]
+  preview_url: string | null
+}
+
+interface DestinationOption {
+  value: string
+  label: string
+}
+
 /**
  * Blok yang BUKAN banner penutup: kartu reusable di halaman transaksi.
  * Label kolomnya berbeda karena isinya judul + keterangan, bukan kop + judul
- * ajakan.
+ * ajakan. Blok ini juga umumnya tanpa tombol.
  */
 const REUSABLE_BLOCKS: Record<string, { judul: string; isi: string; hintIsi: string }> = {
   trust: {
@@ -30,45 +51,53 @@ const REUSABLE_BLOCKS: Record<string, { judul: string; isi: string; hintIsi: str
   },
 }
 
-interface CtaBlock {
-  key: string
-  label: string
-  eyebrow: string
-  heading: string
-  preview_url: string | null
-}
+const MAX_ACTIONS = 2
+const DEFAULT_COLOR = "#C00000"
 
 /**
- * Editor teks CTA penutup storefront.
+ * Editor CTA storefront.
  *
- * Hanya kop (eyebrow) dan judul (heading) yang dapat diubah. Tombol aksi
- * ("Chat WhatsApp" dan tombol halaman) tetap mengikuti alur sistem, karena
- * terikat rute internal dan tautan WhatsApp yang terverifikasi.
+ * Dua mode (kontrak ADR-023): halaman dibuka dalam mode RINGKASAN read-only,
+ * form aktif setelah admin menekan "Ubah teks CTA", dan Simpan kembali ke
+ * ringkasan.
+ *
+ * Setiap blok diringkas menjadi DUA BARIS supaya delapan blok tetap terbaca
+ * tanpa menggulir panjang:
+ *   Baris 1 (kepala): label, kunci, tautan pratinjau.
+ *   Baris 2 (isi):    kolom teks di kiri, pratinjau CTA asli di kanan.
+ * Di mode edit, baris 2 memuat editor tombol (tambah/hapus) di bawah kolom teks.
+ *
+ * Yang dapat diubah hanya teks, tombol, dan warna. Tujuan tombol dipilih dari
+ * daftar preset, bukan URL bebas, supaya jalur konsultasi dan checkout tidak
+ * bisa rusak karena salah menyalin tautan.
  */
 export default function CtaStorefrontEdit({
   title,
   description,
   submitUrl,
   enabled,
+  color,
+  destinations,
   blocks,
 }: {
   title: string
   description: string
   submitUrl: string
   enabled: boolean
+  color: string
+  destinations: DestinationOption[]
   blocks: CtaBlock[]
 }) {
-  // Kontrak UX (ADR-023): halaman pengaturan dibuka dalam mode RINGKASAN
-  // read-only. Form baru aktif setelah admin menekan tombol "Ubah teks CTA",
-  // dan kembali ke ringkasan setelah simpan berhasil.
   const [mode, setMode] = React.useState<"view" | "edit">("view")
 
   const form = useForm({
     enabled,
+    color: color || DEFAULT_COLOR,
     blocks: blocks.map((block) => ({
       key: block.key,
       eyebrow: block.eyebrow,
       heading: block.heading,
+      actions: block.actions.map((a) => ({ ...a })),
     })),
   })
 
@@ -79,12 +108,43 @@ export default function CtaStorefrontEdit({
     })
   }
 
-  function setBlock(index: number, patch: Partial<{ eyebrow: string; heading: string }>) {
+  function setBlock(index: number, patch: Partial<{ eyebrow: string; heading: string; actions: CtaAction[] }>) {
     form.setData(
       "blocks",
       form.data.blocks.map((block, i) => (i === index ? { ...block, ...patch } : block)),
     )
   }
+
+  function setAction(blockIndex: number, actionIndex: number, patch: Partial<CtaAction>) {
+    const block = form.data.blocks[blockIndex]
+    setBlock(blockIndex, {
+      actions: block.actions.map((a, i) => (i === actionIndex ? { ...a, ...patch } : a)),
+    })
+  }
+
+  function removeAction(blockIndex: number, actionIndex: number) {
+    const block = form.data.blocks[blockIndex]
+    setBlock(blockIndex, { actions: block.actions.filter((_, i) => i !== actionIndex) })
+  }
+
+  function addAction(blockIndex: number) {
+    const block = form.data.blocks[blockIndex]
+    if (block.actions.length >= MAX_ACTIONS) return
+    setBlock(blockIndex, {
+      actions: [
+        ...block.actions,
+        {
+          label: "",
+          destination: destinations[0]?.value ?? "whatsapp",
+          // Tombol pertama = aksi utama; tombol tambahan otomatis sekunder.
+          variant: block.actions.length === 0 ? "primary" : "secondary",
+        },
+      ],
+    })
+  }
+
+  const namaTujuan = (value: string) =>
+    destinations.find((d) => d.value === value)?.label ?? value
 
   return (
     <AdminLayout
@@ -114,163 +174,284 @@ export default function CtaStorefrontEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      {mode === "view" ? (
-        <div className="space-y-4">
-          <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-foreground">Status CTA penutup</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {form.data.enabled
-                  ? "Banner ajakan tampil di bagian bawah seluruh halaman publik."
-                  : "Banner ajakan disembunyikan dari seluruh halaman publik."}
-              </p>
-            </div>
-            <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
-          </Card>
+      <form
+        id="cta-storefront-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          simpan()
+        }}
+      >
+        {/* Baris kendali: status, warna, dan tombol simpan cepat. Semua yang
+            berlaku global untuk seluruh CTA dikumpulkan di satu tempat. */}
+        <Card className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Switch
+              checked={form.data.enabled}
+              onCheckedChange={(checked) => {
+                form.setData("enabled", checked)
+                if (mode === "view") setMode("edit")
+              }}
+              label="Tampilkan CTA penutup"
+              disabled={mode === "view"}
+            />
+            <span className="text-xs text-muted-foreground">
+              {form.data.enabled
+                ? "Banner tampil di seluruh halaman publik."
+                : "Banner disembunyikan dari seluruh halaman publik."}
+            </span>
+          </div>
 
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold text-foreground">Teks CTA per halaman</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Kop kecil dan judul ajakan yang tampil di bagian bawah tiap halaman publik.
-            </p>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="cta-color"
+              className="text-[11px] font-semibold text-muted-foreground"
+            >
+              Warna banner
+            </label>
+            <input
+              id="cta-color"
+              type="color"
+              value={form.data.color}
+              disabled={mode === "view"}
+              onChange={(event) => form.setData("color", event.target.value.toUpperCase())}
+              className="h-8 w-10 cursor-pointer rounded border border-border bg-surface p-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Warna banner CTA"
+            />
+            <span className="font-mono text-[11px] text-muted-foreground">{form.data.color}</span>
+            {mode === "edit" && form.data.color.toUpperCase() !== DEFAULT_COLOR ? (
+              <button
+                type="button"
+                onClick={() => form.setData("color", DEFAULT_COLOR)}
+                className="text-[11px] font-semibold text-primary hover:underline"
+              >
+                Kembalikan
+              </button>
+            ) : null}
+          </div>
+        </Card>
 
-            <div className="mt-4 space-y-3">
-              {form.data.blocks.map((block) => {
-                const meta = blocks.find((b) => b.key === block.key)
-                return (
-                  <div key={block.key} className="rounded-lg border border-border p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground">
-                          {meta?.label ?? block.key}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                          {block.key}
-                        </p>
-                      </div>
-                      {meta?.preview_url ? (
-                        <a
-                          href={meta.preview_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                        >
-                          <Icon name="eye" className="size-3.5" aria-hidden="true" />
-                          Lihat halaman
-                        </a>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">
-                          Pratinjau tidak tersedia
-                        </span>
-                      )}
-                    </div>
+        <div className="space-y-2">
+          {form.data.blocks.map((block, index) => {
+            const meta = blocks.find((b) => b.key === block.key)
+            const reusable = REUSABLE_BLOCKS[block.key]
+            const labelJudul = reusable?.judul ?? "Kop kecil"
+            const labelIsi = reusable?.isi ?? "Judul ajakan"
 
-                    {/* Pratinjau banner memakai warna CTA publik (bukan token
-                        admin, yang temanya berbeda). */}
-                    <div className="mt-3 rounded-lg bg-[rgb(194,0,0)] px-4 py-3 text-center">
-                      <p className="text-[11px] font-semibold text-white/90">
-                        {block.eyebrow || meta?.eyebrow || "-"}
-                      </p>
-                      <p className="mt-0.5 text-sm font-bold text-white">
-                        {block.heading || meta?.heading || "-"}
-                      </p>
-                    </div>
+            return (
+              <Card key={block.key} className="px-4 py-3">
+                {/* BARIS 1 - kepala: identitas blok + tautan pratinjau */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h2 className="text-xs font-semibold text-foreground">{meta?.label ?? block.key}</h2>
+                    <span className="font-mono text-[11px] text-muted-foreground">{block.key}</span>
                   </div>
-                )
-              })}
-            </div>
-          </Card>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {block.actions.length} tombol
+                    </span>
+                    {meta?.preview_url ? (
+                      <a
+                        href={meta.preview_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        <Icon name="eye" className="size-3" aria-hidden="true" />
+                        Lihat halaman
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* BARIS 2 - isi: kolom teks/tombol di kiri, pratinjau asli di kanan */}
+                <div className="mt-2.5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+                  <div className="space-y-2.5">
+                    {mode === "view" ? (
+                      <div className="grid gap-1 text-xs sm:grid-cols-[5.5rem_minmax(0,1fr)]">
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          {labelJudul}
+                        </span>
+                        <span className="font-medium text-foreground">{block.eyebrow || "-"}</span>
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          {labelIsi}
+                        </span>
+                        <span className="text-foreground">{block.heading || "-"}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Field
+                          id={`eyebrow-${block.key}`}
+                          label={labelJudul}
+                          hint={
+                            reusable
+                              ? undefined
+                              : "Baris kecil di atas judul. Kosongkan untuk memakai teks bawaan."
+                          }
+                          error={form.errors[`blocks.${index}.eyebrow`]}
+                        >
+                          <Input
+                            id={`eyebrow-${block.key}`}
+                            value={block.eyebrow}
+                            onChange={(event) => setBlock(index, { eyebrow: event.target.value })}
+                            placeholder="cth. Masih punya pertanyaan?"
+                            maxLength={120}
+                          />
+                        </Field>
+                        <Field
+                          id={`heading-${block.key}`}
+                          label={labelIsi}
+                          hint={
+                            reusable ? reusable.hintIsi : "Kalimat utama yang dibaca pengunjung."
+                          }
+                          error={form.errors[`blocks.${index}.heading`]}
+                        >
+                          <Input
+                            id={`heading-${block.key}`}
+                            value={block.heading}
+                            onChange={(event) => setBlock(index, { heading: event.target.value })}
+                            placeholder="cth. Tim kami siap membantu lewat WhatsApp"
+                            maxLength={240}
+                          />
+                        </Field>
+                      </>
+                    )}
+
+                    {/* Editor tombol: hanya di mode edit, supaya ringkasan tetap ringkas. */}
+                    {mode === "edit" ? (
+                      <div className="rounded-md border border-border bg-surface-muted/40 p-2.5">
+                        <p className="text-[11px] font-semibold text-muted-foreground">
+                          Tombol (maksimal {MAX_ACTIONS})
+                        </p>
+
+                        {block.actions.length === 0 ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Blok ini tanpa tombol.
+                          </p>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            {block.actions.map((action, ai) => (
+                              <div
+                                key={`${block.key}-${ai}`}
+                                className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_6.5rem_2rem]"
+                              >
+                                <Input
+                                  value={action.label}
+                                  onChange={(event) =>
+                                    setAction(index, ai, { label: event.target.value })
+                                  }
+                                  placeholder="Label tombol"
+                                  maxLength={40}
+                                  aria-label={`Label tombol ${ai + 1} pada ${block.key}`}
+                                />
+                                <Select
+                                  value={action.destination}
+                                  onChange={(event) =>
+                                    setAction(index, ai, { destination: event.target.value })
+                                  }
+                                  matchOptionWidth={false}
+                                  aria-label={`Tujuan tombol ${ai + 1} pada ${block.key}`}
+                                >
+                                  {destinations.map((d) => (
+                                    <option key={d.value} value={d.value}>
+                                      {d.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <Select
+                                  value={action.variant}
+                                  onChange={(event) =>
+                                    setAction(index, ai, { variant: event.target.value })
+                                  }
+                                  matchOptionWidth={false}
+                                  aria-label={`Gaya tombol ${ai + 1} pada ${block.key}`}
+                                >
+                                  <option value="primary">Utama</option>
+                                  <option value="secondary">Sekunder</option>
+                                </Select>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => removeAction(index, ai)}
+                                  aria-label={`Hapus tombol ${ai + 1} pada ${block.key}`}
+                                  title="Hapus tombol"
+                                >
+                                  <Icon name="trash" className="size-3.5 text-destructive" aria-hidden="true" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {block.actions.length < MAX_ACTIONS ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="xs"
+                            className="mt-2"
+                            onClick={() => addAction(index)}
+                          >
+                            <Icon name="plus" className="size-3" aria-hidden="true" />
+                            Tambah
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : block.actions.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                        {block.actions.map((action, ai) => (
+                          <span key={`${block.key}-lihat-${ai}`} className="inline-flex items-center gap-1">
+                            <span className="font-semibold text-foreground">{action.label}</span>
+                            <span>ke {namaTujuan(action.destination)}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Pratinjau memakai warna dan tombol yang sedang diatur,
+                      jadi yang dilihat admin = yang tampil di storefront. */}
+                  <div
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 rounded-lg px-4 py-3 text-center",
+                      reusable ? "self-start" : undefined,
+                    )}
+                    style={{ backgroundColor: form.data.color }}
+                  >
+                    <p className="text-[11px] font-semibold text-white/90">
+                      {block.eyebrow || "-"}
+                    </p>
+                    <p className="text-balance text-xs font-bold leading-snug text-white">
+                      {block.heading || "-"}
+                    </p>
+                    {block.actions.length > 0 ? (
+                      <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+                        {block.actions.map((action, ai) => (
+                          <span
+                            key={`${block.key}-prev-${ai}`}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                              action.variant === "secondary"
+                                ? "border border-white/30 text-white"
+                                : "bg-white text-[rgb(194,0,0)]",
+                            )}
+                          >
+                            {action.destination === "whatsapp" ? (
+                              <Icon name="whatsapp" className="size-3" aria-hidden="true" />
+                            ) : null}
+                            {action.label || "Tanpa label"}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
         </div>
-      ) : (
-        <form id="cta-storefront-form" onSubmit={(event) => { event.preventDefault(); simpan() }}>
-      <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-5">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">Tampilkan CTA penutup</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Bila dimatikan, banner ajakan di bagian bawah seluruh halaman publik tidak ditampilkan.
-          </p>
-        </div>
-        <Switch
-          checked={form.data.enabled}
-          onCheckedChange={(checked) => form.setData("enabled", checked)}
-          label="Tampilkan CTA penutup"
-        />
-      </Card>
 
-      <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Tombol aksi pada CTA tetap mengikuti sistem dan tidak dapat diubah dari sini. Kosongkan
-        sebuah kolom untuk memakai teks bawaannya.
-      </p>
-
-      <div className="space-y-4">
-        {blocks.map((block, index) => (
-          <Card key={block.key} className="p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-foreground">{block.label}</h2>
-                <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{block.key}</p>
-              </div>
-              {block.preview_url ? (
-                <Button asChild variant="secondary" size="sm">
-                  <a href={block.preview_url} target="_blank" rel="noreferrer">
-                    <Icon name="eye" className="size-3.5" aria-hidden="true" />
-                    Lihat halaman
-                  </a>
-                </Button>
-              ) : (
-                <span className="text-[11px] text-muted-foreground">Pratinjau tidak tersedia</span>
-              )}
-            </div>
-
-            <FieldGrid className="mt-4">
-              <Field
-                id={`eyebrow-${block.key}`}
-                label={REUSABLE_BLOCKS[block.key]?.judul ?? "Kop kecil"}
-                hint={REUSABLE_BLOCKS[block.key] ? undefined : "Baris kecil di atas judul."}
-                error={form.errors[`blocks.${index}.eyebrow`]}
-              >
-                <Input
-                  id={`eyebrow-${block.key}`}
-                  value={form.data.blocks[index].eyebrow}
-                  onChange={(event) => setBlock(index, { eyebrow: event.target.value })}
-                  placeholder="cth. Masih punya pertanyaan?"
-                  maxLength={120}
-                />
-              </Field>
-              <Field
-                id={`heading-${block.key}`}
-                label={REUSABLE_BLOCKS[block.key]?.isi ?? "Judul ajakan"}
-                hint={REUSABLE_BLOCKS[block.key]?.hintIsi ?? "Kalimat utama yang dibaca pengunjung."}
-                error={form.errors[`blocks.${index}.heading`]}
-              >
-                <Input
-                  id={`heading-${block.key}`}
-                  value={form.data.blocks[index].heading}
-                  onChange={(event) => setBlock(index, { heading: event.target.value })}
-                  placeholder="cth. Tim kami siap membantu lewat WhatsApp"
-                  maxLength={240}
-                />
-              </Field>
-            </FieldGrid>
-
-            {/* Warna disalin dari CTA storefront (--primary tema publik,
-                rgb(194,0,0)); token tema admin berbeda sehingga tidak bisa
-                memakai bg-primary di sini. */}
-            <div className="mt-3 rounded-lg border border-border bg-[rgb(194,0,0)] px-4 py-3 text-center">
-              <p className="text-[11px] font-semibold text-white/90">
-                {form.data.blocks[index].eyebrow || block.eyebrow}
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-white">
-                {form.data.blocks[index].heading || block.heading}
-              </p>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-          {/* Tombol bawah khusus mode edit: aksi utama tetap di header,
-              ini jalan pintas setelah selesai mengubah kolom terakhir. */}
-          <div className="mt-4 flex items-center justify-end gap-2">
+        {mode === "edit" ? (
+          <div className="mt-3 flex items-center justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setMode("view")}>
               Batal
             </Button>
@@ -278,8 +459,8 @@ export default function CtaStorefrontEdit({
               {form.processing ? "Menyimpan..." : "Simpan"}
             </Button>
           </div>
-        </form>
-      )}
+        ) : null}
+      </form>
     </AdminLayout>
   )
 }

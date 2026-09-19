@@ -194,6 +194,28 @@ Pemakai saat ini:
 | Admin detail/form | primary form/detail column plus secondary summary/action column | dirty, validation, disabled, saved/error |
 | Admin pengaturan (edit nilai) | lihat ADR-023: dibuka MODE RINGKASAN read-only, form aktif setelah tombol ubah | ringkasan nilai efektif, saved/error |
 
+## CTA storefront (teks, tombol, warna)
+
+Semua CTA storefront diatur dari satu tempat: Pengaturan Website > CTA Storefront, dibaca lewat
+prop bersama `ctaSettings`. Mencakup banner penutup per halaman DAN kartu reusable.
+
+- **Tekstur data:** tiap blok punya `eyebrow`, `heading`, dan `actions`. Tombol berbentuk
+  `{ label, destination, variant }` dengan `destination` dari `CtaSettings::DESTINATIONS`
+  (kunci `whatsapp` atau nama route internal). DILARANG menyimpan URL bebas: jalur konsultasi dan
+  checkout harus tetap utuh walau admin salah mengisi.
+- **Batas tombol:** maksimal 2 per blok (kontrak owner 2026-09-02). Tombol tanpa label atau
+  bertujuan tidak dikenal dibuang server. Daftar tombol kosong berarti blok itu kembali memakai
+  tombol LIVE (`INITIAL_ACTIONS`), bukan berarti CTA tanpa tombol.
+- **Warna:** satu `color` global (hex 6 digit, bawaan `#C00000`) dipakai semua banner. Server
+  memvalidasi format; nilai tidak sah ditolak validasi, bukan disimpan.
+- **Pratinjau admin wajib mencerminkan CTA asli:** halaman pengaturan menampilkan pratinjau
+  memakai WARNA dan TOMBOL yang sedang diatur, sehingga yang dilihat admin sama dengan yang
+  tampil di storefront.
+
+Komponen yang dipakai BERULANG tidak boleh menyimpan copy-nya sendiri bila isinya kalimat yang
+mungkin berubah. Tambahkan kunci di `CtaSettings::PAGES` + `INITIAL_TEXT` + `INITIAL_ACTIONS`, lalu
+baca lewat prop `ctaSettings` dengan teks kode sebagai cadangan.
+
 ## Teks komponen reusable storefront
 
 Komponen yang dipakai BERULANG di beberapa halaman tidak boleh menyimpan copy-nya sendiri di kode

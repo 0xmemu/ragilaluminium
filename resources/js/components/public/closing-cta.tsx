@@ -20,33 +20,80 @@ import type { SharedPageProps } from "@/types"
  */
 type CtaAction = {
   label: string
-  href: string
+  /** Tautan langsung; dipakai bila props lama dipakai tanpa pengaturan. */
+  href?: string
+  /** Kunci tujuan dari CtaSettings::DESTINATIONS; `whatsapp` diselesaikan
+   *  runtime ke nomor toko. */
+  destination?: string
   variant?: "primary" | "secondary"
   whatsappIcon?: boolean
   external?: boolean
 }
 
+/** Tipe tombol dari pengaturan admin (CtaSettings). */
+type CtaSettingsAction = { label: string; destination: string; variant: string }
+
 export function ClosingCTASection({
-  eyebrow = "Butuh bantuan pilih jendela?",
-  heading = "Konsultasi gratis via WhatsApp, admin balas cepat",
+  pageKey,
+  eyebrow,
+  heading,
   actions,
   compact = true,
   id = "closing-cta",
 }: {
+  /**
+   * Kunci halaman di CtaSettings (mis. "faq"). Bila diisi, kop & judul diambil
+   * dari pengaturan admin; props eyebrow/heading jadi cadangan saat settings
+   * belum tersedia.
+   */
+  pageKey?: string
   eyebrow?: string
   heading?: string
   actions?: CtaAction[]
   compact?: boolean
   id?: string
 }) {
-  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+  const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
+
+  // Warna banner dari pengaturan; token CSS diteruskan apa adanya (harus hex
+  // 6 digit, diverifikasi server).
+  const bannerColor = ctaSettings?.color || "#C00000"
+
+  // Nilai destination -> href. `whatsapp` memakai nomor toko yang
+  // terverifikasi; kunci lain dipetakan ke rute internal.
+  const destinationHref = (destination: string): string =>
+    destination === "whatsapp" ? whatsappUrl : routeUrl(destination as Parameters<typeof routeUrl>[0])
+
+  // Teks & tombol dari pengaturan admin menang; props halaman dipakai sebagai
+  // cadangan bila pengaturan belum tersedia.
+  const configured = pageKey ? ctaSettings?.pages?.[pageKey] : undefined
+  const resolvedEyebrow = configured?.eyebrow || eyebrow || "Butuh bantuan pilih jendela?"
+  const resolvedHeading =
+    configured?.heading || heading || "Konsultasi gratis via WhatsApp, admin balas cepat"
+
+  // Tombol dari pengaturan (dengan href hasil resolve destination); bila tidak
+  // ada, jatuh ke props halaman, lalu ke tombol default.
+  const settingsActions: CtaAction[] = (configured?.actions ?? []).map((a) => ({
+    label: a.label,
+    href: destinationHref(a.destination),
+    variant: a.variant === "secondary" ? "secondary" : "primary",
+    whatsappIcon: a.destination === "whatsapp",
+    external: a.destination === "whatsapp",
+  }))
+
+  // Admin bisa mematikan seluruh CTA penutup dari pengaturan.
+  if (ctaSettings && ctaSettings.enabled === false) {
+    return null
+  }
 
   const MAX_ACTIONS = 2
   const effectiveActions: CtaAction[] =
-    actions && actions.length > 0
-      ? actions.slice(0, MAX_ACTIONS)
-      : [
+    settingsActions.length > 0
+      ? settingsActions
+      : actions && actions.length > 0
+        ? actions.slice(0, MAX_ACTIONS)
+        : [
           {
             label: "Chat WhatsApp",
             href: whatsappUrl,
@@ -59,12 +106,15 @@ export function ClosingCTASection({
   return (
     <section id={id} className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
+        <div
+          className="flex flex-col items-center gap-1 rounded-xl px-5 py-5 text-center shadow-sm sm:px-8"
+          style={{ backgroundColor: bannerColor }}
+        >
           <p className="text-xs font-semibold tracking-tight text-primary-foreground/90">
-            {eyebrow}
+            {resolvedEyebrow}
           </p>
           <h2 className="text-balance text-sm font-bold leading-snug tracking-tight text-primary-foreground ![text-transform:none]">
-            {heading}
+            {resolvedHeading}
           </h2>
 
           <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2">

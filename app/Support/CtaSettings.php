@@ -42,6 +42,64 @@ class CtaSettings
         'order-help' => 'Bantuan di halaman Pesanan',
     ];
 
+    /**
+     * Tujuan tombol yang diizinkan. Tombol CTA tidak menerima tautan bebas:
+     * admin memilih dari daftar ini supaya jalur konsultasi/checkout tidak
+     * bisa rusak karena salah menyalin URL.
+     *
+     * @var array<string, string>
+     */
+    public const DESTINATIONS = [
+        'whatsapp' => 'Chat WhatsApp (nomor toko)',
+        'home' => 'Beranda',
+        'catalog.index' => 'Pilih Model Produk (/products)',
+        'catalog.all' => 'Semua Produk (/products/all)',
+        'faq' => 'Sering Ditanyakan (/faq)',
+        'cara-pemesanan' => 'Cara Pemesanan (/cara-pemesanan)',
+        'masalah-dan-solusi' => 'Masalah & Solusi (/masalah-dan-solusi)',
+        'about' => 'Tentang Kami (/about)',
+        'contact' => 'Hubungi Kami (/contact)',
+    ];
+
+    /**
+     * Tombol bawaan per blok = tombol yang benar-benar dirender storefront
+     * saat ini (dikumpulkan dari call site ClosingCTASection, 2026-09-19).
+     * Destination `whatsapp` diselesaikan runtime ke nomor toko.
+     *
+     * @var array<string, list<array{label: string, destination: string, variant: string}>>
+     */
+    public const INITIAL_ACTIONS = [
+        'home' => [
+            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+        ],
+        'model-detail' => [
+            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+        ],
+        'about' => [
+            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+            ['label' => 'Lihat Produk', 'destination' => 'catalog.index', 'variant' => 'secondary'],
+        ],
+        'faq' => [
+            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+            ['label' => 'Cara pemesanan', 'destination' => 'cara-pemesanan', 'variant' => 'secondary'],
+        ],
+        'cara-pemesanan' => [
+            ['label' => 'Pilih Model Produk', 'destination' => 'catalog.index', 'variant' => 'primary'],
+            ['label' => 'Konsultasi Sekarang', 'destination' => 'whatsapp', 'variant' => 'secondary'],
+        ],
+        'masalah-solusi' => [
+            ['label' => 'Konsultasi WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
+            ['label' => 'Lihat FAQ', 'destination' => 'faq', 'variant' => 'secondary'],
+        ],
+        'trust' => [],
+        'order-help' => [
+            ['label' => 'Hubungi Kami', 'destination' => 'contact', 'variant' => 'secondary'],
+        ],
+    ];
+
+    /** Warna banner CTA bawaan (merah brand storefront). */
+    public const DEFAULT_COLOR = '#C00000';
+
     /** Dipakai bila kunci halaman tidak dikenal (mis. halaman baru). */
     public const DEFAULT_TEXT = [
         'eyebrow' => 'Butuh bantuan pilih jendela?',
@@ -102,13 +160,55 @@ class CtaSettings
             $pages[$key] = [
                 'eyebrow' => self::text($row['eyebrow'] ?? null, $initial['eyebrow'], 120),
                 'heading' => self::text($row['heading'] ?? null, $initial['heading'], 240),
+                // Tombol: kunci yang belum tersimpan diisi dari tombol live
+                // supaya halaman admin selalu menggambarkan CTA sebenarnya.
+                'actions' => self::actions($row['actions'] ?? null, $key),
             ];
+        }
+
+        $color = trim((string) ($stored['color'] ?? ''));
+        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+            $color = self::DEFAULT_COLOR;
         }
 
         return [
             'enabled' => $stored === [] ? true : (bool) ($stored['enabled'] ?? true),
+            'color' => $color,
             'pages' => $pages,
         ];
+    }
+
+    /**
+     * Rapikan daftar tombol satu blok: buang yang tidak lengkap / tujuan tidak
+     * dikenal / lebih dari dua (kontrak owner 2026-09-02: maksimal 2 tombol),
+     * lalu lengkapi dari tombol live bila kosong.
+     *
+     * @return list<array{label: string, destination: string, variant: string}>
+     */
+    private static function actions(mixed $incoming, string $key): array
+    {
+        $clean = [];
+        foreach ((array) ($incoming ?? []) as $action) {
+            if (! is_array($action) || count($clean) >= 2) {
+                break;
+            }
+            $label = self::text($action['label'] ?? null, '', 40);
+            $destination = trim((string) ($action['destination'] ?? ''));
+            if ($label === '' || ! isset(self::DESTINATIONS[$destination])) {
+                continue;
+            }
+            $clean[] = [
+                'label' => $label,
+                'destination' => $destination,
+                'variant' => ($action['variant'] ?? 'primary') === 'secondary' ? 'secondary' : 'primary',
+            ];
+        }
+
+        if ($clean === []) {
+            $clean = self::INITIAL_ACTIONS[$key] ?? [];
+        }
+
+        return $clean;
     }
 
     /**
@@ -139,11 +239,18 @@ class CtaSettings
             $pages[$key] = [
                 'eyebrow' => self::text($row['eyebrow'] ?? null, $initial['eyebrow'], 120),
                 'heading' => self::text($row['heading'] ?? null, $initial['heading'], 240),
+                'actions' => self::actions($row['actions'] ?? [], $key),
             ];
+        }
+
+        $color = trim((string) ($incoming['color'] ?? ''));
+        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+            $color = self::DEFAULT_COLOR;
         }
 
         $content[self::CONTENT_KEY] = [
             'enabled' => (bool) ($incoming['enabled'] ?? true),
+            'color' => $color,
             'pages' => $pages,
         ];
 

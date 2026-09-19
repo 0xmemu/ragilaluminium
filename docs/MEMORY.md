@@ -2434,3 +2434,51 @@ VERIFIKASI:
   lookup pesanan bersesi; pembuktian lewat test feature (prop `ctaSettings` terkirim ke halaman).
 
 tsc bersih, build Vite PASS.
+
+### 2026-09-19 - CTA Storefront: layout 2 baris, tombol bisa diubah, warna bisa diubah
+Permintaan owner: "ukuran card cta terlalu masif, buat jadi 2 row, lalu buat agar bisa merubah
+warna card cta, ubah tombol cta, tambah tombol hapus tombol, dll. kumpulkan dan data semua cta yg
+live ke halaman ini dan buat agar cta disini menggambarkan cta yang live sebenarnya."
+
+DATA CTA LIVE yang dikumpulkan dari call site ClosingCTASection (bukan tebakan):
+  home            -> Chat WhatsApp (WA)
+  model-detail    -> Chat WhatsApp (WA)
+  about           -> Chat WhatsApp (WA) + Lihat Produk (/products)
+  faq             -> Chat WhatsApp (WA) + Cara pemesanan (/cara-pemesanan)
+  cara-pemesanan  -> Pilih Model Produk (/products) + Konsultasi Sekarang (WA)
+  masalah-solusi  -> Konsultasi WhatsApp (WA) + Lihat FAQ (/faq)
+  trust           -> tanpa tombol
+  order-help      -> Hubungi Kami (/contact)
+Data ini menjadi INITIAL_ACTIONS, sehingga halaman admin menggambarkan CTA sebenarnya sejak awal.
+
+TEMUAN PENTING: tombol CTA sebelumnya TIDAK BISA diubah admin sama sekali, dan halaman pengaturan
+hanya menampilkan teks. Admin yang ingin mengganti tujuan tombol harus ubah kode.
+
+YANG DIKERJAKAN:
+1. CtaSettings: `DESTINATIONS` (daftar tujuan yang diizinkan: whatsapp + 8 route internal),
+   `INITIAL_ACTIONS` (tombol live per blok), `DEFAULT_COLOR` (#C00000), dan `color` di get().
+   Tombol disimpan sebagai {label, destination, variant}; URL bebas DITOLAK karena bisa merusak
+   jalur konsultasi/checkout. Daftar tombol kosong/tidak sah dikembalikan ke INITIAL_ACTIONS.
+2. ClosingCTASection: tombol dan warna dirender dari pengaturan; props kode jadi cadangan. Kunci
+   `whatsapp` diselesaikan runtime ke nomor toko (nomor bisa berubah tanpa mengedit blok).
+3. Halaman admin ditulis ulang:
+   - Tiap blok diringkas jadi DUA BARIS: baris kepala (label, kunci, jumlah tombol, tautan
+     pratinjau) dan baris isi (kolom teks/tombol kiri, pratinjau banner kanan). Sebelumnya tiap
+     blok adalah kartu bertumpuk yang masif.
+   - Editor tombol: label, dropdown tujuan, dropdown gaya, tombol hapus per tombol, dan tombol
+     "+ Tambah tombol" (maksimal 2). Di mode ringkasan tombol diringkas jadi "Chat WhatsApp ke ...".
+   - Pemilih warna banner di baris kendali atas + tombol "Kembalikan" ke warna bawaan.
+   - Pratinjau memakai warna dan tombol yang sedang diatur, jadi WYSIWYG dengan storefront.
+
+VERIFIKASI:
+- Live: warna diubah ke #1D4ED8 dan tombol FAQ diganti ke /contact; storefront /faq menampilkan
+  banner rgb(29,78,216) dengan tombol "Tanya via kontak" ke /contact, dan tombol lama hilang.
+- Data dipulihkan tepat: hash CtaSettings identik sebelum/sesudah (e7f5a7db877240f36264ddc24bda3ce8),
+  nol sisa teks uji.
+- Halaman admin: 8 blok, mode ringkasan 1 input (pemilih warna di baris kendali), mode edit 28 input
+  dengan 11 tombol hapus dan dropdown tujuan/gaya per tombol.
+- Test CtaStorefrontTest 15 passed (95 assertions), termasuk tombol live terkirim, tombol bisa
+  diubah, tombol kosong kembali ke live, tujuan tidak sah dibuang, batas 2 tombol, warna berubah,
+  dan warna tidak sah ditolak. Regresi CTA + kontrak halaman 45 passed (835 assertions).
+
+tsc bersih, build Vite PASS.

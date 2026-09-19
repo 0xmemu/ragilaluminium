@@ -21,15 +21,24 @@ class CtaSettingsController extends Controller
 
         return Inertia::render('Admin/CtaStorefront/Edit', [
             'title' => 'CTA Storefront',
-            'description' => 'Atur kop dan judul ajakan (CTA) di bagian bawah halaman publik. Tombol aksi tetap mengikuti alur sistem.',
+            'description' => 'Atur teks, tombol, dan warna banner ajakan di bagian bawah halaman publik.',
             'submitUrl' => route('admin.cta-settings.update'),
             'enabled' => $settings['enabled'],
+            'color' => $settings['color'],
+            // Daftar tujuan tombol: admin memilih dari sini, bukan menyalin URL,
+            // supaya jalur konsultasi dan checkout tidak bisa rusak.
+            'destinations' => collect(CtaSettings::DESTINATIONS)
+                ->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $label])
+                ->values()
+                ->all(),
             'blocks' => collect(CtaSettings::PAGES)
                 ->map(fn (string $label, string $key): array => [
                     'key' => $key,
                     'label' => $label,
                     'eyebrow' => $settings['pages'][$key]['eyebrow'],
                     'heading' => $settings['pages'][$key]['heading'],
+                    // Tombol yang benar-benar dirender storefront saat ini.
+                    'actions' => $settings['pages'][$key]['actions'],
                     'preview_url' => $this->previewUrl($key),
                 ])
                 ->values()
@@ -41,10 +50,16 @@ class CtaSettingsController extends Controller
     {
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'blocks' => ['required', 'array', 'min:1'],
             'blocks.*.key' => ['required', 'string', 'max:40'],
             'blocks.*.eyebrow' => ['nullable', 'string', 'max:120'],
             'blocks.*.heading' => ['nullable', 'string', 'max:240'],
+            // Kontrak owner 2026-09-02: maksimal 2 tombol per CTA.
+            'blocks.*.actions' => ['nullable', 'array', 'max:2'],
+            'blocks.*.actions.*.label' => ['nullable', 'string', 'max:40'],
+            'blocks.*.actions.*.destination' => ['nullable', 'string', 'max:40'],
+            'blocks.*.actions.*.variant' => ['nullable', 'string', 'in:primary,secondary'],
         ]);
 
         $pages = [];
@@ -56,11 +71,16 @@ class CtaSettingsController extends Controller
             $pages[$key] = [
                 'eyebrow' => $block['eyebrow'] ?? null,
                 'heading' => $block['heading'] ?? null,
+                // CtaSettings membuang tombol tanpa label atau bertujuan tidak
+                // sah, membatasi dua per blok, dan mengembalikan tombol live
+                // bila daftarnya kosong.
+                'actions' => $block['actions'] ?? [],
             ];
         }
 
         CtaSettings::update([
             'enabled' => $validated['enabled'],
+            'color' => $validated['color'] ?? CtaSettings::DEFAULT_COLOR,
             'pages' => $pages,
         ], $request->user()?->id);
 
@@ -68,7 +88,11 @@ class CtaSettingsController extends Controller
             'cms.cta_storefront_updated',
             'cms_page',
             (int) (\App\Models\CmsPage::query()->where('slug', CtaSettings::PAGE_SLUG)->value('id') ?? 0),
-            ['blocks' => array_keys($pages), 'enabled' => $validated['enabled']],
+            [
+                'blocks' => array_keys($pages),
+                'enabled' => $validated['enabled'],
+                'color' => $validated['color'] ?? CtaSettings::DEFAULT_COLOR,
+            ],
             $request->user()?->id,
         );
 
