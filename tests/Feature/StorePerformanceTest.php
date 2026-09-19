@@ -137,9 +137,24 @@ class StorePerformanceTest extends TestCase
         $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
     }
 
+    /**
+     * Header yang dikirim browser saat membuka dokumen storefront.
+     *
+     * @return array<string, string>
+     */
+    private function browserHeaders(): array
+    {
+        return [
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Sec-Fetch-Mode' => 'navigate',
+            'Sec-Fetch-Dest' => 'document',
+        ];
+    }
+
     public function test_storefront_visit_increments_unique_visitors(): void
     {
-        $this->get('/')->assertOk();
+        $this->get('/', $this->browserHeaders())->assertOk();
 
         $this->assertDatabaseHas('performance_metrics', [
             'metric_name' => 'storefront_unique_visitors',
@@ -147,6 +162,58 @@ class StorePerformanceTest extends TestCase
         ]);
         $this->assertDatabaseHas('performance_metrics', [
             'metric_name' => 'storefront_page_views',
+        ]);
+    }
+
+    /**
+     * Kunjungan non-browser tidak boleh dihitung sebagai pengunjung.
+     *
+     * Temuan 2026-09-18: sekitar 96% permintaan halaman depan berasal dari curl
+     * dan Python-urllib, sehingga angka "Pengunjung Unik" dan persentase
+     * "Pengunjung yang Membeli" menjadi tidak bermakna.
+     */
+    public function test_kunjungan_bot_dan_skrip_tidak_dihitung_sebagai_pengunjung(): void
+    {
+        $cases = [
+            'curl tanpa cookie' => ['User-Agent' => 'curl/8.5.0', 'Accept' => '*/*'],
+            'python urllib tanpa cookie' => ['User-Agent' => 'Python-urllib/3.12', 'Accept' => '*/*'],
+            'googlebot' => ['User-Agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'Accept' => 'text/html'],
+            'headless chrome' => ['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36', 'Accept' => 'text/html'],
+            'user agent kosong' => ['User-Agent' => '', 'Accept' => 'text/html'],
+            'browser tanpa html dan tanpa cookie' => [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152.0.0.0 Safari/537.36',
+                'Accept' => 'application/json',
+            ],
+        ];
+
+        foreach ($cases as $label => $headers) {
+            $this->get('/', $headers)->assertOk();
+            // assertDatabaseMissing argumen ketiga = nama koneksi, jadi label
+            // kasus dipakai sebagai prefiks pesan kegagalan lewat count().
+            $this->assertSame(
+                0,
+                \App\Models\PerformanceMetric::query()
+                    ->where('metric_name', 'storefront_unique_visitors')
+                    ->count(),
+                'Kunjungan ('.$label.') seharusnya tidak dihitung sebagai pengunjung.'
+            );
+        }
+    }
+
+    public function test_browser_dengan_cookie_sesi_dihitung_walau_tanpa_header_sec_fetch(): void
+    {
+        $cookie = (string) config('session.cookie');
+
+        $this->withUnencryptedCookie($cookie, 'sesi-lama')
+            ->get('/', [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('performance_metrics', [
+            'metric_name' => 'storefront_unique_visitors',
+            'metric_value' => 1,
         ]);
     }
 
