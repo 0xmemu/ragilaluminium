@@ -503,21 +503,6 @@ export default function SystemHealth({
   const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
   const freshnessWIB = `Diperbarui ${jamWIB(lastRunIso)}`
 
-  // P2-7 (audit 2026-09-20): bila data yang ada lebih pendek dari rentang
-  // periode terpilih, katakan jujur berapa rentang efektifnya supaya admin
-  // tidak mengira grafik 8 jam itu gambaran 7 hari.
-  const periodHours: Record<string, number> = { "6h": 6, "12h": 12, "24h": 24, "3d": 72, "7d": 168 }
-  let effectiveRangeNote: string | null = null
-  if (history.length >= 2) {
-    const oldestIso = history[0]?.taken_iso
-    const spanHours = oldestIso ? (nowMs - new Date(oldestIso).getTime()) / 3_600_000 : 0
-    const wanted = periodHours[period] ?? 24
-    if (spanHours < wanted * 0.75) {
-      const jamTersisa = Math.max(1, Math.round(spanHours))
-      effectiveRangeNote = `Data baru lengkap sebagian: baru tersedia sekitar ${jamTersisa} jam terakhir, bukan ${wanted >= 24 ? (wanted / 24) + " hari" : wanted + " jam"}.`
-    }
-  }
-
   // 3. Chart data preparations
   const historyData = history.map((pt) => ({
     taken_at: pt.taken_at,
@@ -620,9 +605,6 @@ export default function SystemHealth({
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Snapshot berkala tiap 15 menit dan setiap pemeriksaan sistem dijalankan. Waktu Indonesia Barat (WIB).
               </p>
-              {effectiveRangeNote ? (
-                <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">{effectiveRangeNote}</p>
-              ) : null}
             </div>
 
             {/* Filter periode operasional server */}
