@@ -15,18 +15,16 @@ import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 
 /**
  * System Health Console.
  *
- * Mengikuti kontrak admin UI & design engineering standards:
- * 1. Header (title, deskripsi, status semantik ringkas, waktu pemeriksaan WIB, primary action 40px)
- * 2. Panel masalah (hanya muncul saat ada kendala/warning, tombol aksi langsung)
- * 3. Resource server (4 card metrik: Load average, Memori, Disk, DB Latency)
- * 4. Tren resource (diletakkan tepat di bawah Resource server: CPU & Memori %, Load average 1m, Database latency ms)
- * 5. Layanan infrastruktur (Database, Storage aplikasi)
- * 6. Integrasi eksternal (Cloudflare, Media storage / R2 kuota riil, Gateway WhatsApp, J&T Cargo)
- * 7. Tentang pemeriksaan (disclosure informasi yang dapat dilipat)
+ * Fokus pemantauan resource server dan tren metrik operasional:
+ * 1. Header (title, deskripsi, waktu pemeriksaan WIB, primary action 40px)
+ * 2. Resource server (4 card metrik: Load average, Memori, Disk, Media storage R2)
+ * 3. Tren resource (CPU & Memori %, Load average 1m, Database latency ms)
+ *    dilengkapi filter periode operasional server (6 Jam, 12 Jam, 24 Jam, 3 Hari, 7 Hari).
  */
 
 type HealthStatus =
@@ -101,6 +99,11 @@ interface HistoryPoint {
   queue_backlog: number | null
 }
 
+interface PeriodOption {
+  value: string
+  label: string
+}
+
 const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: string }> = {
   healthy: { label: "Sehat", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
   warning: { label: "Perlu Perhatian", dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
@@ -110,8 +113,6 @@ const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: stri
   checking: { label: "Memeriksa", dot: "bg-primary animate-pulse", text: "text-muted-foreground" },
   unknown: { label: "Tidak Diketahui", dot: "bg-muted-foreground/50", text: "text-muted-foreground" },
 }
-
-const NEEDS_ATTENTION: HealthStatus[] = ["warning", "failed", "offline", "not_configured", "unknown"]
 
 function jamWIB(iso: string | null): string {
   if (!iso) return "-"
@@ -175,126 +176,6 @@ function ResourceMetricGrid({ metrics }: { metrics: Metric[] }) {
   )
 }
 
-function ServiceHealthRow({
-  check,
-  onAction,
-  actionLoading,
-}: {
-  check: HealthCheck
-  onAction?: () => void
-  actionLoading?: boolean
-}) {
-  const [open, setOpen] = React.useState(false)
-  const hasDetails = check.details.length > 0
-
-  return (
-    <li className="px-4 py-3.5 transition hover:bg-muted/20 sm:px-5">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1.5">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">{check.name}</p>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            {check.provider ? <span className="text-foreground/75 font-medium">{check.provider}</span> : null}
-            {check.provider ? " · " : null}
-            {check.summary}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[11px] tabular-nums text-muted-foreground">
-            {jamWIB(check.checked_at)}
-          </span>
-          <StatusBadge status={check.status} />
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        {check.action?.href ? (
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="min-h-[40px] h-10 px-3.5 text-xs active:scale-[0.98] transition-transform duration-150"
-          >
-            <a href={check.action.href}>{check.action.label}</a>
-          </Button>
-        ) : check.action ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-[40px] h-10 px-3.5 text-xs active:scale-[0.98] transition-transform duration-150"
-            onClick={onAction}
-            disabled={actionLoading}
-          >
-            {actionLoading ? "Memeriksa..." : check.action.label}
-          </Button>
-        ) : null}
-
-        {hasDetails && check.status !== "not_configured" ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-[40px] h-10 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.98] transition-transform duration-150"
-            onClick={() => setOpen((prev) => !prev)}
-            aria-expanded={open}
-          >
-            <Icon
-              name="caret-down"
-              className={cn("size-3.5 transition-transform duration-200", open && "rotate-180")}
-              aria-hidden="true"
-            />
-            {open ? "Sembunyikan rincian" : "Lihat rincian"}
-          </Button>
-        ) : null}
-      </div>
-
-      {open && hasDetails ? (
-        <ul className="mt-3 space-y-1.5 rounded-lg bg-muted/40 p-3.5 text-xs leading-relaxed text-muted-foreground border border-border/60">
-          {check.details.map((detail) => (
-            <li key={detail} className="flex items-start gap-2">
-              <span className="text-primary/70 select-none mt-0.5">•</span>
-              <span className="text-foreground/80">{detail}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  )
-}
-
-function ServiceHealthPanel({
-  title,
-  checks,
-  onAction,
-  actionLoading,
-}: {
-  title: string
-  checks: HealthCheck[]
-  onAction?: () => void
-  actionLoading?: boolean
-}) {
-  if (checks.length === 0) return null
-
-  return (
-    <Card className="overflow-hidden border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">{title}</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">{checks.length} layanan diperiksa</span>
-      </div>
-      <ul className="divide-y divide-border">
-        {checks.map((check) => (
-          <ServiceHealthRow
-            key={check.key}
-            check={check}
-            onAction={onAction}
-            actionLoading={actionLoading}
-          />
-        ))}
-      </ul>
-    </Card>
-  )
-}
-
 interface SingleTrendSeries {
   key: string
   dataKey: string
@@ -321,7 +202,7 @@ function ChartCustomTooltip({
 
   return (
     <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm px-3.5 py-2.5 shadow-lg">
-      <p className="text-[11px] font-medium text-muted-foreground">Pukul {label} WIB</p>
+      <p className="text-[11px] font-medium text-muted-foreground">Waktu: {label} WIB</p>
       <ul className="mt-1.5 space-y-1">
         {seriesList.map((item) => {
           const rawVal = row[item.dataKey]
@@ -453,31 +334,58 @@ function TrendChartCard({
   )
 }
 
+const DEFAULT_PERIOD_OPTIONS: PeriodOption[] = [
+  { value: "6h", label: "6 Jam" },
+  { value: "12h", label: "12 Jam" },
+  { value: "24h", label: "24 Jam" },
+  { value: "3d", label: "3 Hari" },
+  { value: "7d", label: "7 Hari" },
+]
+
 export default function SystemHealth({
   title,
   description,
-  checks = [],
-  summary,
   runUrl,
   server,
   history = [],
   lastCheckedAt,
+  period = "24h",
+  periodOptions = DEFAULT_PERIOD_OPTIONS,
 }: {
   title: string
   description: string
-  checks: HealthCheck[]
-  summary: HealthSummary
+  checks?: HealthCheck[]
+  summary?: HealthSummary
   runUrl: string
   server: ServerMetrics
   history: HistoryPoint[]
   lastCheckedAt: string | null
+  period?: string
+  periodOptions?: PeriodOption[]
 }) {
   const [running, setRunning] = React.useState(false)
+  const [periodLoading, setPeriodLoading] = React.useState(false)
   const [nowMs] = React.useState(() => Date.now())
 
   function runChecks() {
     setRunning(true)
     router.post(runUrl, {}, { onFinish: () => setRunning(false) })
+  }
+
+  function handlePeriodChange(newPeriod: string) {
+    if (newPeriod === period || periodLoading) return
+    setPeriodLoading(true)
+
+    router.get(
+      routeUrl("admin.settings.index"),
+      { period: newPeriod },
+      {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onFinish: () => setPeriodLoading(false),
+      },
+    )
   }
 
   // 1. Resource metrics computation
@@ -565,26 +473,14 @@ export default function SystemHealth({
     },
   ]
 
-  // 2. Filter item: Hapus item yang ditandai user (cache, queue-worker)
-  const ignoredKeys = ["cache", "queue-worker"]
-  const attentionItems = checks.filter(
-    (check) => NEEDS_ATTENTION.includes(check.status) && !ignoredKeys.includes(check.key)
-  )
-
-  // 3. Stale check & timestamp
-  const lastRunIso = lastCheckedAt ?? summary.checked_at
+  // 2. Stale check & timestamp
+  const lastRunIso = lastCheckedAt
   const staleMs = lastRunIso ? nowMs - new Date(lastRunIso).getTime() : null
   const isStale = staleMs !== null && staleMs > 30 * 60 * 1000
   const waktuPemeriksaan = tanggalJamWIB(lastRunIso)
   const freshnessWIB = `Diperbarui ${jamWIB(lastRunIso)}`
 
-  // 4. Filter layanan: infrastruktur (hanya database dan storage, tanpa cache & queue-worker)
-  const infrastructure = checks.filter(
-    (check) => check.group === "infrastructure" && !ignoredKeys.includes(check.key)
-  )
-  const integrations = checks.filter((check) => check.group === "integration")
-
-  // 5. Chart data preparations
+  // 3. Chart data preparations
   const historyData = history.map((pt) => ({
     taken_at: pt.taken_at,
     cpu_pct: pt.cpu_pct,
@@ -640,13 +536,9 @@ export default function SystemHealth({
       description={description}
       actions={
         <div className="flex flex-col items-stretch gap-2 sm:items-end w-full sm:w-auto">
-          <div className="flex items-center justify-end gap-2 text-xs">
-            <StatusBadge status={summary.overall} />
-            <span className="text-muted-foreground/40 select-none">•</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground text-center sm:text-right">
-              Pemeriksaan terakhir: {waktuPemeriksaan}
-            </span>
-          </div>
+          <span className="text-[11px] tabular-nums text-muted-foreground text-center sm:text-right">
+            Pemeriksaan terakhir: {waktuPemeriksaan}
+          </span>
           <Button
             type="button"
             onClick={runChecks}
@@ -674,73 +566,43 @@ export default function SystemHealth({
           </p>
         ) : null}
 
-        {/* 1. Masalah yang perlu ditangani (Attention Panel) */}
-        {attentionItems.length > 0 ? (
-          <section aria-label="Masalah yang perlu ditangani">
-            <h2 className="mb-2.5 text-sm font-semibold tracking-tight text-foreground">
-              Masalah yang perlu ditangani
-            </h2>
-            <Card className="divide-y divide-border border border-amber-500/30 bg-card">
-              {attentionItems.map((item) => (
-                <div key={item.key} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <span
-                      className={cn("mt-1.5 size-2 shrink-0 rounded-full", STATUS_META[item.status].dot)}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                        <StatusBadge status={item.status} />
-                      </div>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.summary}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    {item.action?.href ? (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="min-h-[40px] h-10 px-4 text-xs active:scale-[0.98] transition-transform duration-150"
-                      >
-                        <a href={item.action.href}>{item.action.label}</a>
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="min-h-[40px] h-10 px-4 text-xs active:scale-[0.98] transition-transform duration-150"
-                        onClick={runChecks}
-                        disabled={running}
-                      >
-                        {running ? "Memeriksa..." : item.action?.label ?? "Uji koneksi"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </Card>
-          </section>
-        ) : null}
-
-        {/* 2. Resource server */}
+        {/* 1. Resource server (4 Card) */}
         <ResourceMetricGrid metrics={metrics} />
 
-        {/* 3. Tren resource: Diletakkan tepat di bawah Resource server */}
+        {/* 2. Tren resource dengan filter periode operasional */}
         <section aria-label="Tren resource" className="space-y-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">Tren resource</h2>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  ({history.length} titik riwayat)
+                </span>
+              </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Snapshot berkala tiap 15 menit dan setiap pemeriksaan sistem dijalankan. Waktu Indonesia Barat (WIB).
               </p>
             </div>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {history.length} titik riwayat
-            </span>
+
+            {/* Filter periode operasional server */}
+            <div className="flex items-center gap-1 self-start rounded-lg border border-border bg-surface p-1 shadow-sm sm:self-auto">
+              {periodOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handlePeriodChange(opt.value)}
+                  disabled={periodLoading}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150 active:scale-[0.97]",
+                    period === opt.value
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Grafik 1: CPU & Memori (%) - Full width */}
@@ -764,7 +626,7 @@ export default function SystemHealth({
             {/* Grafik 2: Load average */}
             <TrendChartCard
               title="Load average"
-              subtitle="15 menit terakhir · WIB"
+              subtitle="Rata-rata beban proses · WIB"
               freshness={freshnessWIB}
               conditionSummary={`Load 1m ${server.load_1?.toFixed(2) ?? "-"} · ${server.vcpu ?? 1} vCPU`}
               seriesList={loadSeries}
@@ -778,7 +640,7 @@ export default function SystemHealth({
             {/* Grafik 3: Database latency */}
             <TrendChartCard
               title="Database latency"
-              subtitle="15 menit terakhir · WIB"
+              subtitle="Waktu respon query ping · WIB"
               freshness={freshnessWIB}
               conditionSummary={`Latency ${dbLatencyValue} · query ping`}
               seriesList={dbSeries}
@@ -791,42 +653,6 @@ export default function SystemHealth({
             />
           </div>
         </section>
-
-        {/* 4. Layanan infrastruktur (Database & Storage aplikasi) */}
-        <ServiceHealthPanel
-          title="Layanan infrastruktur"
-          checks={infrastructure}
-          onAction={runChecks}
-          actionLoading={running}
-        />
-
-        {/* 5. Integrasi eksternal (Cloudflare, Media storage / R2, WhatsApp, J&T Cargo) */}
-        <ServiceHealthPanel
-          title="Integrasi eksternal"
-          checks={integrations}
-          onAction={runChecks}
-          actionLoading={running}
-        />
-
-        {/* 6. Tentang pemeriksaan */}
-        <details className="group rounded-xl border border-border bg-card overflow-hidden">
-          <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-3.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground">
-            <div className="flex items-center gap-2">
-              <Icon name="info" className="size-3.5 text-primary" aria-hidden="true" />
-              <span>Tentang pemeriksaan sistem</span>
-            </div>
-            <Icon
-              name="caret-down"
-              className="size-3.5 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </summary>
-          <div className="border-t border-border bg-muted/20 px-5 py-3.5 text-xs leading-relaxed text-muted-foreground">
-            Pemeriksaan melakukan query database, read/write cache dan storage, serta permintaan ke gateway dan API
-            dengan timeout pendek. Pemeriksaan dapat dijalankan kapan pun tanpa mengganggu pengunjung. Uji koneksi ke
-            API eksternal hanya dijalankan saat Anda menekan tombol periksa.
-          </div>
-        </details>
       </div>
     </AdminLayout>
   )

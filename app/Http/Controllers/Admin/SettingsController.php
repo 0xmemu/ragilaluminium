@@ -14,6 +14,11 @@ class SettingsController extends Controller
 
     public function index(): Response
     {
+        $period = (string) request()->query('period', '24h');
+        if (! in_array($period, ['6h', '12h', '24h', '3d', '7d'], true)) {
+            $period = '24h';
+        }
+
         // Pemeriksaan halaman: layanan lokal dan konfigurasi. Uji koneksi ke
         // API eksternal hanya dijalankan dari tombol periksa (lihat run()).
         $checks = $this->health->checks(false);
@@ -31,7 +36,15 @@ class SettingsController extends Controller
             'checks' => $checks,
             'summary' => $summary,
             'server' => $this->health->serverMetrics(),
-            'history' => $this->health->recentSnapshots(96),
+            'history' => $this->health->recentSnapshots($period),
+            'period' => $period,
+            'periodOptions' => [
+                ['value' => '6h', 'label' => '6 Jam'],
+                ['value' => '12h', 'label' => '12 Jam'],
+                ['value' => '24h', 'label' => '24 Jam'],
+                ['value' => '3d', 'label' => '3 Hari'],
+                ['value' => '7d', 'label' => '7 Hari'],
+            ],
             'lastCheckedAt' => $summary['checked_at'],
             'env' => [
                 'app_env' => config('app.env'),

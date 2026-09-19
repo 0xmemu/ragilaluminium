@@ -315,20 +315,49 @@ final class SystemHealthService
 
     /**
      * Riwayat snapshot untuk grafik. Nilai null dibiarkan null supaya grafik
-     * tidak menggambar garis dari angka 0 palsu.
+     * tidak menggambar garis dari angka 0 palsu. Mendukung filter periode
+     * operasional server: 6h, 12h, 24h, 3d, 7d.
      *
+     * @param int|string $period
      * @return list<array<string, mixed>>
      */
-    public function recentSnapshots(int $limit = 96): array
+    public function recentSnapshots(int|string $period = '24h'): array
     {
-        return SystemHealthSnapshot::query()
-            ->orderByDesc('taken_at')
+        $since = null;
+        if (is_numeric($period)) {
+            $limit = (int) $period;
+        } else {
+            $hours = match ($period) {
+                '6h' => 6,
+                '12h' => 12,
+                '3d' => 72,
+                '7d' => 168,
+                default => 24,
+            };
+            $since = now()->subHours($hours);
+            $limit = match ($period) {
+                '6h' => 30,
+                '12h' => 60,
+                '3d' => 320,
+                '7d' => 720,
+                default => 110,
+            };
+        }
+
+        $query = SystemHealthSnapshot::query()->orderByDesc('taken_at');
+        if ($since !== null) {
+            $query->where('taken_at', '>=', $since);
+        }
+
+        $isMultiDay = $since !== null && $since->diffInHours(now()) > 24;
+
+        return $query
             ->limit($limit)
             ->get()
             ->reverse()
             ->values()
             ->map(fn (SystemHealthSnapshot $s) => [
-                'taken_at' => $s->taken_at->timezone(config('app.timezone'))->format('H:i'),
+                'taken_at' => $s->taken_at->timezone(config('app.timezone'))->format($isMultiDay ? 'd/m H:i' : 'H:i'),
                 'taken_iso' => $s->taken_at->timezone(config('app.timezone'))->toIso8601String(),
                 'load_1' => $s->load_1 !== null ? (float) $s->load_1 : null,
                 'cpu_pct' => $s->cpu_pct !== null ? (float) $s->cpu_pct : null,
