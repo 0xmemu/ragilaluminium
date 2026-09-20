@@ -210,7 +210,7 @@ export function TestimonialCard({
       ) : null}
 
       {adminReply ? (
-        <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
+        <div className="mt-2 rounded-lg border border-border/70 bg-surface-muted p-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Balasan {storeName}
           </p>
@@ -219,6 +219,9 @@ export function TestimonialCard({
             insideLink={Boolean(reviewSectionHref)}
             clampClassName="line-clamp-3"
             className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90"
+            // Balasan berada di atas blok berlatar surface-muted, jadi tombol
+            // yang menempel di ujung teks memakai latar yang sama.
+            surfaceClassName="bg-surface-muted"
           />
         </div>
       ) : null}

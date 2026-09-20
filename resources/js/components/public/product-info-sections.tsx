@@ -354,7 +354,7 @@ export function ProductInfoSections({
                     </div>
                   ) : null}
                   {adminReply ? (
-                    <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
+                    <div className="mt-2 rounded-lg border border-border/70 bg-surface-muted p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         Balasan {storeName}
                       </p>
@@ -362,6 +362,7 @@ export function ProductInfoSections({
                         text={adminReply}
                         clampClassName="line-clamp-2"
                         className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90"
+                        surfaceClassName="bg-surface-muted"
                       />
                     </div>
                   ) : null}
