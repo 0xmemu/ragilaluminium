@@ -23,7 +23,11 @@ export function ReorderDragHandle({
     <span
       className={cn(
         "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground",
-        enabled ? "bg-muted hover:text-foreground" : "opacity-30",
+        // Kursor tarik duduk di handle, bukan di seluruh baris: di dalam baris ada
+        // tombol dan dropdown yang akan salah tampil kalau barisnya ikut "grab".
+        enabled
+          ? "cursor-grab bg-muted hover:text-foreground active:cursor-grabbing"
+          : "opacity-30",
         className,
       )}
       aria-hidden="true"

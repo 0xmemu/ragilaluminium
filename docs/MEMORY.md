@@ -2879,3 +2879,27 @@ grid 13 kartu, Beranda 2 bagian). Perubahan uji pada data produksi dibatalkan ta
 
 Spec tidak berubah: tanpa route, schema, enum, atau bentuk JSON baru. Yang berubah hanya cara
 menggeser dan susunan kolom tampilan.
+
+### 2026-09-20 - Kursor tarik pada handle geser (laporan owner: "ikon mousenya tetap panah")
+Owner melaporkan kursor mouse tidak berubah saat diarahkan ke ikon tarik, tetap panah. Benar: baik
+komponen handle maupun baris tidak memasang kelas kursor sama sekali.
+
+Perbaikan:
+1. `reorder-drag-handle.tsx` sekarang memasang `cursor-grab` saat handle aktif dan
+   `active:cursor-grabbing` saat ditekan.
+2. Kelas `cursor-grab active:cursor-grabbing` yang dulu menempel di SELURUH baris dihapus dari
+   MasalahSolusi, InstallationGallery, dan Beranda/Popular. Kursor tarik duduk di handle saja,
+   supaya tombol Edit/Aksi di dalam baris tidak ikut menampilkan kursor tarik yang menyesatkan
+   (terverifikasi: baris `auto`, tombol Edit `pointer`, handle `grab`).
+3. Tiga halaman masih punya handle inline buatan sendiri tanpa kursor, dan ikut dimigrasikan ke
+   komponen bersama: MasalahSolusi/Index, Beranda/Popular (dua tempat: carousel dan lainnya), serta
+   InstallationGallery/Index. Kolom handle Hasil Pemasangan sekaligus diubah selalu tampil (dulu
+   hanya saat mode geser) supaya lebar kolom tidak bergeser saat mode urut dinyalakan.
+
+Verifikasi: tsc bersih, eslint 0 warning, build Vite PASS, 151 vitest PASS. Live lewat browser,
+sembilan halaman diaktifkan mode urutnya dan diperiksa `getComputedStyle`: seluruh handle aktif
+bercursor `grab` (MasalahSolusi 4, Faq 7, ApaKata 54, Ulasan eksternal 54, Beranda 2, Paling Banyak
+Dipesan 183, Hasil Pemasangan 14, ModelProduk list 13 dan grid 13, SubModel 2), handle redup
+bercursor `auto`. Tidak ada perubahan data: setiap uji dibatalkan tanpa disimpan.
+
+Spec tidak berubah.

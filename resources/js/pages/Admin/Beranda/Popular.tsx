@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Card } from "@/components/admin/ui/card"
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
@@ -325,21 +326,11 @@ export default function BerandaPopular({
                       "border-b border-border last:border-0",
                       dnd.draggingIndex === index && "opacity-40",
                       dnd.targetIndex === index && canReorder && "bg-muted/50",
-                      canReorder && "cursor-grab active:cursor-grabbing",
                     )}
                     {...(canReorder ? dnd.rowProps(index) : {})}
                   >
                     <td className="px-3 py-2.5 align-middle">
-                      <span
-                        className={cn(
-                          "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground",
-                          canReorder ? "bg-muted hover:text-foreground" : "opacity-30",
-                        )}
-                        aria-hidden="true"
-                        title={canReorder ? "Tarik untuk memindahkan" : "Aktifkan mode urutkan untuk memindahkan"}
-                      >
-                        <Icon name="dots-six-vertical" className="size-4" />
-                      </span>
+                      <ReorderDragHandle enabled={canReorder} />
                     </td>
                     <td className="px-3 py-2.5 align-middle">
                       <ProductCell row={row} />
@@ -396,21 +387,11 @@ export default function BerandaPopular({
                     "border-b border-border last:border-0",
                     dnd.draggingIndex === index && "opacity-40",
                     dnd.targetIndex === index && canReorder && "bg-muted/50",
-                    canReorder && "cursor-grab active:cursor-grabbing",
                   )}
                   {...(canReorder ? dnd.rowProps(index) : {})}
                 >
                   <td className="px-3 py-2 align-middle">
-                    <span
-                      className={cn(
-                        "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground",
-                        canReorder ? "bg-muted hover:text-foreground" : "opacity-30",
-                      )}
-                      aria-hidden="true"
-                      title={canReorder ? "Tarik untuk memindahkan" : "Aktifkan mode urutkan untuk memindahkan"}
-                    >
-                      <Icon name="dots-six-vertical" className="size-4" />
-                    </span>
+                    <ReorderDragHandle enabled={canReorder} />
                   </td>
                   <td className="px-3 py-2 align-middle">
                     <ProductCell row={row} />

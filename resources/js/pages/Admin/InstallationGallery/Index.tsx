@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -340,7 +341,7 @@ export default function InstallationGalleryIndex({
                 </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
-                    {reorderMode ? <th className="px-1 py-3" aria-label="Seret" /> : null}
+                    <th className="w-12 px-3 py-3" aria-label="Seret" />
                     <th className="px-3 py-3">Cover</th>
                     <th className="px-3 py-3">Grup</th>
                     <th className="px-3 py-3 text-center">Media</th>
@@ -378,22 +379,13 @@ export default function InstallationGalleryIndex({
                       }}
                       className={cn(
                         "transition-colors hover:bg-muted/30",
-                        reorderMode && !listTersaring && "cursor-grab active:cursor-grabbing",
                         dragIndex === index && "opacity-40",
                         dragTarget === index && dragIndex !== index && "border-t-2 border-primary bg-primary/5",
                       )}
                     >
-                      {reorderMode ? (
-                        <td className="px-1 py-3">
-                          <span
-                            className="flex size-6 items-center justify-center rounded text-muted-foreground"
-                            title="Seret untuk mengubah urutan"
-                            aria-hidden="true"
-                          >
-                            <Icon name="dots-six-vertical" className="size-4" />
-                          </span>
-                        </td>
-                      ) : null}
+                      <td className="w-12 px-3 py-3">
+                        <ReorderDragHandle enabled={reorderMode && !listTersaring} />
+                      </td>
                       {/* Cover */}
                       <td className="px-3 py-3">
                         <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
