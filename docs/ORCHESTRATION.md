@@ -56,19 +56,22 @@ sehingga satu panggilan tool memakan 13 sampai 24 detik ujung ke ujung
 setelah perjalanan model berikutnya ikut dihitung. Jumlah langkah, bukan
 pilihan model, adalah pengungkit utama waktu.
 
-| Tier | Kriteria | Fase wajib | Anggaran panggilan tool |
-|------|----------|------------|-------------------------|
+| Tier | Kriteria | Yang dijalankan | Anggaran panggilan tool |
+|------|----------|-----------------|-------------------------|
 | Trivial | 1-2 berkas, tanpa perubahan perilaku | plan ringkas di chat, lalu work | 15 |
-| Standard | satu bidang, ada test, tanpa kontrak eksternal | plan, lalu work | 60 |
-| Deep | lintas modul, atau menyentuh auth, pembayaran, migrasi, kontrak eksternal | brainstorm, plan, work, review, compound | 150 |
+| Standard | satu bidang, ada test, tanpa kontrak eksternal | plan ringkas di chat, lalu work | 60 |
+| Deep | lintas modul, atau menyentuh auth, pembayaran, migrasi, kontrak eksternal | ce-brainstorm, ce-plan, ce-work, review, ce-compound | 270 |
 
 Aturan tier:
 
 1. Tier ditetapkan di awal dan ditulis di laporan. Bila ragu, ambil tier yang lebih berat.
-2. Pada Trivial dan Standard, fase brainstorm dan compound DILEWATI, bukan dijalankan dalam bentuk ringkas. Fase review cukup berupa diff dan test evidence di laporan.
-3. Track wajib A-E dan daftar baca di §4 tetap berlaku di semua tier. Tier memangkas fase, bukan bukti kontrak.
-4. Lewat anggaran berarti berhenti dan lapor, bukan lanjut diam diam.
-5. Deep tidak boleh diturunkan tiernya dengan alasan waktu.
+2. **Skill ce-* hanya dipanggil penuh di tier Deep.** Pada Trivial dan Standard, agen TIDAK memanggil `ce-brainstorm`, `ce-plan`, `ce-compound`, maupun `ce-doc-review`. Alasannya aritmetika, bukan selera: ce-plan sendiri 40-70 panggilan tool dan ce-work 50-80, jadi invokasi utuh keduanya 90-150 panggilan, sudah di atas anggaran Standard 60.
+3. **"Plan ringkas" punya bentuk tetap**, supaya tidak berkembang jadi skill mini. Tulis di chat saja, isinya: tujuan satu paragraf, berkas yang akan disentuh, cara verifikasi, dan risiko bila ada. Tanpa berkas plan, tanpa membaca belasan rujukan, tanpa menu pertanyaan. Anggaran 15 dan 60 dihitung untuk bentuk ini.
+4. Pada Trivial dan Standard, fase review cukup berupa diff dan test evidence di laporan, bukan invokasi `ce-code-review`.
+5. Anggaran Deep 270 dipakai karena rantai lima fase penuh terukur 162-267 panggilan tool, sehingga 150 terlalu kecil untuk menampungnya.
+6. Track wajib A-E dan daftar baca di §4 tetap berlaku di semua tier. Tier memangkas fase, bukan bukti kontrak.
+7. Lewat anggaran berarti berhenti dan lapor, bukan lanjut diam diam.
+8. Deep tidak boleh diturunkan tiernya dengan alasan waktu.
 
 Tier tidak pernah melonggarkan Non-negotiables: larangan destruktif DB, format
 laporan wajib, pembaruan dokumen kanonik saat spec berubah, dan bukti verifikasi
