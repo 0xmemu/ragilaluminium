@@ -310,8 +310,8 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
             </ul>
           ) : (
             <EmptyState
-              title="Konten segera hadir"
-              description="Tim kami sedang menyusun panduan masalah & solusi. Sementara itu, chat WhatsApp untuk konsultasi."
+              title="Panduan belum tersedia"
+              description="Panduan masalah dan solusi belum diisi. Sementara itu, chat WhatsApp untuk konsultasi."
               className="mx-auto max-w-lg"
             />
           )}

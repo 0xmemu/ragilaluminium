@@ -28,7 +28,8 @@ export function channelOf(item: SocialLink): "marketplace" | "social" {
 
 /**
  * Tautan dianggap hidup bila terisi dan bukan placeholder "#".
- * Platform tanpa tautan hidup ditampilkan sebagai chip "Segera hadir".
+ * Platform tanpa tautan hidup tidak ditampilkan sama sekali, jadi nama platform
+ * tidak pernah dikarang di kode saat admin belum mengisinya.
  */
 export function isLiveHref(href?: string | null): boolean {
   return Boolean(href && href !== "#")

@@ -1,5 +1,4 @@
 import { Head, usePage } from "@inertiajs/react"
-import * as React from "react"
 
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
@@ -27,7 +26,10 @@ interface WorkStep {
 interface PageData {
   title: string
   heading?: string
+  subtitle?: string
   tagline?: string
+  headline?: string
+  description?: string
   why_points?: WhyPoint[]
   work_steps?: WorkStep[]
   trust_rows?: string[]
@@ -122,63 +124,19 @@ function PlatformChip({ item }: { item: SocialLink }) {
   )
 }
 
-function PlatformGroup({
-  title,
-  items,
-  iconByKey,
-}: {
-  title: string
-  items: SocialLink[]
-  /** Peta key -> ikon dari data platform (server), bukan daftar di kode. */
-  iconByKey: Record<string, string>
-}) {
+function PlatformGroup({ title, items }: { title: string; items: SocialLink[] }) {
   const live = items.filter((item) => isLiveHref(item.href))
+  // Panel hanya berisi kanal yang benar-benar diisi admin. Nama platform tidak
+  // dikarang di kode: bila semua tautan masih kosong, panelnya tidak dirender.
+  if (live.length === 0) return null
   return (
-    <div className="surface-panel p-5">
+    <div className="surface-panel p-5 sm:p-6">
       <h3 className="text-sm font-bold tracking-tight text-foreground">{title}</h3>
-      {live.length ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {live.map((item) => (
-            <PlatformChip key={item.key} item={item} />
-          ))}
-        </ul>
-      ) : (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {(title === "Ikuti kami"
-            ? [
-                { name: "Instagram", key: "instagram" },
-                { name: "Facebook", key: "facebook" },
-                { name: "TikTok", key: "tiktok" },
-              ]
-            : [
-                { name: "Shopee", key: "shopee" },
-                { name: "Tokopedia", key: "tokopedia" },
-              ]
-          ).map((platform) => {
-            const iconSrc = iconByKey[platform.key]
-            return (
-              <li key={platform.name}>
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1.5 opacity-80">
-                  {iconSrc ? (
-                    <img
-                      src={iconSrc}
-                      alt=""
-                      className="size-5 shrink-0 object-contain"
-                      width={20}
-                      height={20}
-                    />
-                  ) : (
-                    <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
-                      <Icon name="storefront" className="size-4" aria-hidden="true" />
-                    </span>
-                  )}
-                  <span className="text-xs font-semibold tracking-tight text-foreground">{platform.name}</span>
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {live.map((item) => (
+          <PlatformChip key={item.key} item={item} />
+        ))}
+      </ul>
     </div>
   )
 }
@@ -195,7 +153,10 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
   const whatsappLabel = consultationWhatsApp?.directLabel ?? "Chat WhatsApp"
   const phoneHref = telephoneHref(brand.phone)
   const heading = page.heading?.trim() || "Tentang Kami"
+  const subtitle = page.subtitle?.trim() || "Sejak 2008"
   const tagline = page.tagline?.trim() ?? ""
+  const headline = page.headline?.trim() || "Spesialis Jendela & Pintu Aluminium Siap Pasang Berkualitas"
+  const description = page.description?.trim() || "Ragil Aluminium memproduksi berbagai model jendela dan pintu aluminium dengan standar presisi tinggi, material pilihan, dan pengerjaan oleh tenaga berpengalaman. Kami melayani kebutuhan rumah tinggal maupun proyek ke seluruh wilayah Indonesia."
   const whyPoints = page.why_points?.length ? page.why_points : WHY_POINTS
   const workSteps = page.work_steps?.length ? page.work_steps : WORK_STEPS
   const trustRows = page.trust_rows?.length ? page.trust_rows : TRUST_ROWS
@@ -215,18 +176,6 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
 
   const marketplaces = platforms.filter((item) => channelOf(item) === "marketplace")
   const socials = platforms.filter((item) => channelOf(item) === "social")
-  // Peta ikon dari data platform (server mengirim icon untuk SEMUA platform,
-  // termasuk yang belum punya tautan), supaya chip "Segera hadir" memakai ikon
-  // yang sama dengan yang aktif dan ikut bila admin mengganti ikon.
-  const platformIconByKey = React.useMemo(
-    () =>
-      Object.fromEntries(
-        platforms
-          .filter((item) => Boolean(item.icon))
-          .map((item) => [item.key, item.icon as string]),
-      ),
-    [platforms],
-  )
   const unitsRow = unitStat.value ? `${unitStat.value} unit terpasang` : null
 
   return (
@@ -252,7 +201,20 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
         <section aria-label="Tentang Ragil Aluminium" className="surface-panel mt-4 px-5 py-8 text-center sm:px-10 sm:py-10">
           <BrandWordmark className="mx-auto [&_img]:h-12 [&_img]:w-auto [&_img]:max-w-[min(100%,17rem)] sm:[&_img]:h-14" />
-          <h2 className="mx-auto mt-2 max-w-xl text-base font-bold leading-snug tracking-tight text-foreground ![text-transform:none]">
+
+          {subtitle ? (
+            <p className="mx-auto mt-4 text-xs font-bold uppercase tracking-[0.08em] text-primary">{subtitle}</p>
+          ) : null}
+
+          <h1 className="mx-auto mt-2 max-w-xl text-lg font-bold leading-snug tracking-tight text-foreground ![text-transform:none] sm:text-xl">
+            {headline}
+          </h1>
+
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {description}
+          </p>
+
+          <h2 className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-snug text-muted-foreground ![text-transform:none]">
             {tagline || (
               <>
                 <span className="text-primary">Sejak 2008</span> memproduksi jendela &amp; pintu aluminium
@@ -268,7 +230,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
           <div className="surface-panel grid grid-cols-2 divide-x divide-border lg:grid-cols-4">
             {trustStats.map((stat, index) => (
               <div key={stat.caption || index} className="px-4 py-5 text-center sm:px-6">
-                <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{stat.value}</p>
+                <p className="text-xl font-bold tracking-tight text-foreground tabular-nums">{stat.value}</p>
                 <p className="mt-1 text-xs font-medium text-muted-foreground">{stat.caption}</p>
               </div>
             ))}
@@ -277,14 +239,14 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       </div>
 
       {/* Kenapa memilih: 4 card kompak */}
-      <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
+      <div className="container-page mt-6 sm:mt-8 !px-2.5 md:!px-8 lg:!px-12">
         <section aria-labelledby="why-ragil">
           <h2 id="why-ragil" className="text-sm font-bold tracking-tight text-foreground ![text-transform:none]">
             Kenapa memilih Ragil Aluminium?
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {whyPoints.map((item) => (
-              <div key={item.title} className="surface-panel p-4">
+              <div key={item.title} className="surface-panel p-5">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon name={item.icon} className="size-5" weight="bold" aria-hidden="true" />
                 </span>
@@ -297,14 +259,14 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       </div>
 
       {/* Cara kami bekerja: 3 langkah bernomor */}
-      <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
+      <div className="container-page mt-6 sm:mt-8 !px-2.5 md:!px-8 lg:!px-12">
         <section aria-labelledby="process-ragil">
           <h2 id="process-ragil" className="text-sm font-bold tracking-tight text-foreground ![text-transform:none]">
             Cara kami bekerja
           </h2>
           <ol className="mt-3 grid gap-3 sm:grid-cols-3">
             {workSteps.map((step, index) => (
-              <li key={index} className="surface-panel p-5">
+              <li key={index} className="surface-panel p-5 sm:p-6">
                 <span className="text-2xl font-bold tabular-nums text-primary">{String(index + 1).padStart(2, "0")}</span>
                 <p className="mt-3 text-sm font-bold tracking-tight text-foreground">{step.title}</p>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{step.body}</p>
@@ -315,8 +277,8 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       </div>
 
       {/* Dipercaya untuk rumah dan proyek: bukti sosial + CTA hasil pemasangan */}
-      <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
-        <section aria-labelledby="trust-ragil" className="surface-panel grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.2fr_1fr]">
+      <div className="container-page mt-6 sm:mt-8 !px-2.5 md:!px-8 lg:!px-12">
+        <section aria-labelledby="trust-ragil" className="surface-panel grid gap-6 p-6 sm:gap-8 sm:p-8 lg:grid-cols-[1.2fr_1fr]">
           <div>
             <h2 id="trust-ragil" className="text-sm font-bold tracking-tight text-foreground ![text-transform:none]">
               Dipercaya untuk rumah dan proyek
@@ -336,22 +298,23 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               ))}
             </ul>
           </div>
-          <div className="flex flex-col justify-center gap-3 rounded-lg border border-border bg-surface-muted p-5">
-            <p className="text-sm leading-6 text-muted-foreground">
+          <div className="flex flex-col justify-center gap-4 rounded-lg bg-[#333333] p-6 sm:p-7">
+            <p className="text-sm leading-6 text-white/85">
               Lihat foto produk yang sudah terpasang di rumah dan proyek pelanggan kami.
             </p>
-            <Button asChild variant="secondary">
-              <a href={routeUrl("installation.index")}>
-                Lihat Hasil Pemasangan
-                <Icon name="arrow-up-right" className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </Button>
+            <a
+              href={routeUrl("installation.index")}
+              className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-bold tracking-tight text-white transition duration-200 hover:bg-white/20"
+            >
+              Lihat Hasil Pemasangan
+              <Icon name="arrow-up-right" className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </section>
       </div>
 
       {/* Kontak: WhatsApp utama, kontak sekunder, alamat + peta */}
-      <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
+      <div className="container-page mt-6 sm:mt-8 !px-2.5 md:!px-8 lg:!px-12">
         <section aria-labelledby="store-contact">
           <div className="mt-3 grid gap-3 lg:grid-cols-1">
             <div className="surface-panel overflow-hidden p-5 sm:p-6">
@@ -360,34 +323,28 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
               </p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
 
-              <div className="mt-4 space-y-2 text-sm">
+              <div className="mt-4 space-y-2.5 text-sm">
                 {phoneHref ? (
-                  <div className="flex items-center gap-2">
+                  <a href={phoneHref} className="flex items-center gap-2.5 font-medium text-foreground hover:text-primary hover:underline">
                     <Icon name="headset" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <span className="text-muted-foreground">Telepon:</span>
-                    <a href={phoneHref} className="font-medium text-foreground hover:text-primary hover:underline">
-                      {brand.phone}
-                    </a>
-                  </div>
+                    {brand.phone}
+                  </a>
                 ) : null}
 
                 {brand.email ? (
-                  <div className="flex items-center gap-2">
+                  <a
+                    href={`mailto:${brand.email}`}
+                    className="flex items-center gap-2.5 font-medium text-foreground hover:text-primary hover:underline"
+                  >
                     <Icon name="envelope" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <span className="text-muted-foreground">Email:</span>
-                    <a href={`mailto:${brand.email}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                      {brand.email}
-                    </a>
-                  </div>
+                    {brand.email}
+                  </a>
                 ) : null}
 
-                <div className="flex items-center gap-2">
-                  <Icon name="clock" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="text-muted-foreground">Jam Buka:</span>
-                  <span className="font-medium text-foreground">
-                    {(brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB").replace(/[–—]/g, "-")}
-                  </span>
-                </div>
+                <p className="flex items-start gap-2.5 font-medium text-foreground">
+                  <Icon name="clock" className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {(brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB").replace(/[–—]/g, "-")}
+                </p>
               </div>
 
               <div className="mt-4">
@@ -428,44 +385,25 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
                 />
               </div>
 
-              {brand.maps_url ? (
-                <div className="mt-2 flex justify-end">
-                  <a
-                    href={brand.maps_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <Icon name="map-pin" className="size-3.5" aria-hidden="true" />
-                    <span>Buka di Google Maps</span>
-                  </a>
-                </div>
-              ) : null}
+
             </div>
           </div>
         </section>
       </div>
 
-      {/* Sosial dan marketplace: hanya channel aktif, sisanya Segera hadir */}
-      <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
+      {/* Sosial dan marketplace: hanya kanal yang benar-benar diisi admin. */}
+      <div className="container-page mt-6 sm:mt-8 !px-2.5 md:!px-8 lg:!px-12">
         {(socials.length || marketplaces.length) ? (
           <section aria-label="Sosial dan marketplace" className="grid gap-3 md:grid-cols-2">
-            {socials.length ? (
-              <PlatformGroup title="Ikuti kami" items={socials} iconByKey={platformIconByKey} />
-            ) : null}
-            {marketplaces.length ? (
-              <PlatformGroup
-                title="Belanja di marketplace"
-                items={marketplaces}
-                iconByKey={platformIconByKey}
-              />
-            ) : null}
+            {socials.length ? <PlatformGroup title="Ikuti kami" items={socials} /> : null}
+            {marketplaces.length ? <PlatformGroup title="Belanja di marketplace" items={marketplaces} /> : null}
           </section>
         ) : null}
       </div>
 
       {/* CTA penutup seragam (reusable) */}
       <ClosingCTASection
+        pageKey="about"
         compact={false}
         eyebrow="Butuh bantuan memilih produk?"
         heading="Konsultasi gratis untuk menentukan model dan ukuran yang sesuai"

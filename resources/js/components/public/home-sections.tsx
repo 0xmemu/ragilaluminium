@@ -369,8 +369,8 @@ export function HasilPemasanganSection({
         ) : (
           <EmptyState
             icon="image"
-            title="Dokumentasi segera hadir"
-            description="Foto pemasangan sedang dikumpulkan. Sementara itu, chat kami untuk melihat contoh di kota Anda."
+            title="Belum ada foto pemasangan"
+            description="Contoh pemasangan di kota Anda bisa ditanyakan langsung lewat WhatsApp."
           />
         )}
       </div>
