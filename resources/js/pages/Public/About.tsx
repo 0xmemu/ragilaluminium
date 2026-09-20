@@ -1,4 +1,5 @@
 import { Head, usePage } from "@inertiajs/react"
+import * as React from "react"
 
 import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
@@ -131,18 +132,16 @@ function PlatformChip({ item }: { item: SocialLink }) {
   )
 }
 
-const PLATFORM_ICONS: Record<string, string> = {
-  shopee: "/images/icons/social/shopee.svg",
-  tokopedia: "/images/icons/social/tokopedia.png",
-  lazada: "/images/icons/social/lazada.png",
-  tiktok_shop: "/images/icons/social/tiktok.svg?v=2",
-  instagram: "/images/icons/social/instagram.svg",
-  tiktok: "/images/icons/social/tiktok.svg?v=2",
-  youtube: "/images/icons/social/youtube.svg",
-  facebook: "/images/icons/social/facebook.svg",
-}
-
-function PlatformGroup({ title, items }: { title: string; items: SocialLink[] }) {
+function PlatformGroup({
+  title,
+  items,
+  iconByKey,
+}: {
+  title: string
+  items: SocialLink[]
+  /** Peta key -> ikon dari data platform (server), bukan daftar di kode. */
+  iconByKey: Record<string, string>
+}) {
   const live = items.filter((item) => isLiveHref(item.href))
   return (
     <div className="surface-panel p-5">
@@ -166,7 +165,7 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
                 { name: "Tokopedia", key: "tokopedia" },
               ]
           ).map((platform) => {
-            const iconSrc = PLATFORM_ICONS[platform.key]
+            const iconSrc = iconByKey[platform.key]
             return (
               <li key={platform.name}>
                 <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1.5 opacity-80">
@@ -226,6 +225,18 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
 
   const marketplaces = platforms.filter((item) => channelOf(item) === "marketplace")
   const socials = platforms.filter((item) => channelOf(item) === "social")
+  // Peta ikon dari data platform (server mengirim icon untuk SEMUA platform,
+  // termasuk yang belum punya tautan), supaya chip "Segera hadir" memakai ikon
+  // yang sama dengan yang aktif dan ikut bila admin mengganti ikon.
+  const platformIconByKey = React.useMemo(
+    () =>
+      Object.fromEntries(
+        platforms
+          .filter((item) => Boolean(item.icon))
+          .map((item) => [item.key, item.icon as string]),
+      ),
+    [platforms],
+  )
   const unitsRow = unitStat.value ? `${unitStat.value} unit terpasang` : null
 
   return (
@@ -449,8 +460,16 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
       <div className="container-page mt-8 !px-2.5 md:!px-8 lg:!px-12">
         {(socials.length || marketplaces.length) ? (
           <section aria-label="Sosial dan marketplace" className="grid gap-3 md:grid-cols-2">
-            {socials.length ? <PlatformGroup title="Ikuti kami" items={socials} /> : null}
-            {marketplaces.length ? <PlatformGroup title="Belanja di marketplace" items={marketplaces} /> : null}
+            {socials.length ? (
+              <PlatformGroup title="Ikuti kami" items={socials} iconByKey={platformIconByKey} />
+            ) : null}
+            {marketplaces.length ? (
+              <PlatformGroup
+                title="Belanja di marketplace"
+                items={marketplaces}
+                iconByKey={platformIconByKey}
+              />
+            ) : null}
           </section>
         ) : null}
       </div>

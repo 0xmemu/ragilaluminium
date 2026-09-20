@@ -2525,3 +2525,43 @@ VERIFIKASI LIVE:
 
 Total blok kini 12: 6 banner penutup + trust + order-help + home-help + pdp-benefits +
 catalog-empty + about-contact.
+
+### 2026-09-19 - Penutup non-CTA About: ikon platform diambil dari data (bukan hardcode)
+Pertanyaan owner: "closing non cta apakah reusable?" Setelah ditelusuri jawabannya terbelah.
+
+REUSABLE (sudah benar):
+- `ClosingCTASection` (banner penutup): satu komponen, dipakai 6 halaman.
+- `HelpPageFrame`: pembungkus halaman bantuan (FAQ, Masalah & Solusi) dengan slot `footer` untuk CTA.
+- `TrustAssuranceCard`: dipakai 5 halaman transaksi.
+- `StorefrontPlatforms`: dipakai footer dengan prop layout/variant/align/iconsOnly.
+
+TIDAK REUSABLE (temuan): penutup halaman Tentang Kami (section "Sosial dan marketplace") ditulis
+LOKAL di About.tsx, bukan memakai StorefrontPlatforms. Bukti duplikasi: `function channelOf` ada di
+DUA berkas dengan logika identik, dan About mendefinisikan sendiri PlatformChip + PlatformGroup +
+PLATFORM_ICONS.
+
+BUG NYATA yang diperbaiki: `PLATFORM_ICONS` di About adalah SALINAN HARDCODE dari
+`config/sitemap.php` (8 entri: shopee, tokopedia, lazada, tiktok_shop, instagram, tiktok, youtube,
+facebook). Karena disalin, daftar itu tidak ikut berubah saat admin mengganti ikon platform,
+sehingga ikon chip "Segera hadir" bisa berbeda dari yang aktif. Sekarang ikon diambil dari
+`platforms` (data server yang sudah memuat icon untuk SEMUA platform, termasuk yang belum punya
+tautan) lewat prop `iconByKey`. Tampilan TIDAK berubah (pilihan aman karena owner tidak menjawab
+pertanyaan opsi).
+
+TIDAK dikerjakan (dicatat sebagai utang di UI-CONSISTENCY-CONTRACT): menyatukan penutup About ke
+StorefrontPlatforms. Alasannya presentasinya beda: About = dua kartu panel berdampingan + chip
+"Segera hadir"; komponen bersama = satu kolom bertingkat. Menyatukan berarti mengubah tampilan,
+dan itu keputusan owner. Selain itu About.tsx sedang dipegang agent lain (55 baris perubahan belum
+commit, bukan milik saya), jadi pengubahan besar berisiko bentrok.
+
+CATATAN LAIN dari penyisiran:
+- 13 halaman publik tidak punya CTA penutup (Cart, Checkout, Catalog, CmsPage, Error, Hasil
+  Pemasangan, ModelProduk, OrderConfirmation, OrderList, OrderStatus, ProductDetail, Reviews,
+  InstallationDetail). Dinilai wajar: halaman transaksi punya penutup sendiri dan halaman legal
+  tidak lazim diberi ajakan jualan.
+- `components/public/value-propositions-card.tsx` ada di folder publik dengan NOL pemakai; salinan
+  arsipnya sudah ada di `components/_archive/value-propositions-card/`. Kandidat dibuang, belum
+  dikerjakan karena di luar lingkup pertanyaan.
+
+Verifikasi: 8 chip platform di /about semuanya bertautan dan 8 gambarnya termuat
+(`semuaTermuat: true`), ikon dilayani 200 OK. tsc bersih untuk berkas yang diubah, build Vite PASS.
