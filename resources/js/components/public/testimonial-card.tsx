@@ -154,6 +154,19 @@ export function TestimonialCard({
           </p>
         ) : null}
       </div>
+      {rating > 0 ? (
+        <div className="mt-2 flex gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Icon
+              name="star"
+              key={index}
+              weight={index < rating ? "fill" : "regular"}
+              className="size-3"
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      ) : null}
       {productLabel || variantLabel ? (
         <div className="mt-1.5 min-w-0">
           {productLabel ? (
@@ -167,19 +180,6 @@ export function TestimonialCard({
           {variantLabel ? (
             <p className="truncate text-[11px] leading-tight text-muted-foreground">{variantLabel}</p>
           ) : null}
-        </div>
-      ) : null}
-      {rating > 0 ? (
-        <div className="mt-2 flex gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Icon
-              name="star"
-              key={index}
-              weight={index < rating ? "fill" : "regular"}
-              className="size-3"
-              aria-hidden="true"
-            />
-          ))}
         </div>
       ) : null}
       {message ? (

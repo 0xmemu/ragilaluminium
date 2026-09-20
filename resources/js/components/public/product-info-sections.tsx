@@ -293,15 +293,15 @@ export function ProductInfoSections({
                       </p>
                     ) : null}
                   </div>
-                  {(review.variant_label ?? "").trim() ? (
-                    <p className="mt-1.5 truncate text-[11px] leading-tight text-muted-foreground">
-                      {review.variant_label}
-                    </p>
-                  ) : null}
                   {(review.rating ?? 0) > 0 ? (
                     <div className="mt-2 flex text-warning" aria-label={`${review.rating} dari 5 bintang`}>
                       <StarRow value={review.rating ?? 0} size="size-3" />
                     </div>
+                  ) : null}
+                  {(review.variant_label ?? "").trim() ? (
+                    <p className="mt-1.5 truncate text-[11px] leading-tight text-muted-foreground">
+                      {review.variant_label}
+                    </p>
                   ) : null}
                   <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground line-clamp-3">
                     {review.message}
