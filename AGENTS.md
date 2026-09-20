@@ -18,6 +18,16 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
   `--env=testing` in `Artisan::call` does NOT switch the DB connection. Incident 2026-07-27:
   `migrate:fresh` wiped `ragil`, catalog/orders lost, recovery needed re-import.
 - **Report format below is mandatory** for every code change or error fix.
+- **WORK TIER AND STEP BUDGET (contract 2026-09-21).** Before starting, pick a tier
+  and state it in the report. Trivial (1-2 files, no behavioral change) is capped at
+  15 tool calls, Standard (one area, has tests) at 60, Deep (cross-module, or touching
+  auth, payments, migrations, external contracts) at 270. On Trivial and Standard,
+  do NOT invoke the `ce-brainstorm`, `ce-plan`, `ce-compound`, or `ce-doc-review`
+  skills; use a short plan in chat instead (goal, files, how to verify, risks).
+  Reason: `ce-plan` costs 40-70 tool calls and `ce-work` 50-80, so invoking both is
+  90-150 and already exceeds the Standard budget. Full rules live in
+  `docs/ORCHESTRATION.md` under "Tier kerja dan anggaran langkah" and in
+  `docs/decisions/ADR-002`. Exceeding the budget means stop and report.
 - No new route / URL / schema field / enum / status / JSON shape without updating the
   canonical docs (`docs/database-schema-ragil-aluminium.md`,
   `docs/api-and-routes-ragil-aluminium.md`, `docs/sitemap/*` + `config/sitemap.php`,
