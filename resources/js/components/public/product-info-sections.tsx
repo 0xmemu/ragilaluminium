@@ -7,7 +7,7 @@ import {
   ReviewFilterPills,
   type ReviewSortValue,
 } from "@/components/public/review-filter-pills"
-import { filterReviews, reviewRatingCounts } from "@/lib/review-filters"
+import { filterReviews, reviewMediaItems, reviewRatingCounts } from "@/lib/review-filters"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -39,12 +39,6 @@ function StarRow({
       ))}
     </span>
   )
-}
-
-/** Semua foto satu ulasan - `images` multi-gambar, fallback ke `image_url`. */
-function reviewImages(review: Testimonial): string[] {
-  const images = (review.images ?? []).filter((url): url is string => Boolean(url))
-  return images.length ? images : review.image_url ? [review.image_url] : []
 }
 
 
@@ -276,7 +270,9 @@ export function ProductInfoSections({
             className="scrollbar-none mt-4 flex flex-col gap-3 lg:flex-row lg:overflow-x-auto lg:scroll-smooth lg:pb-2"
           >
             {filteredReviews.map((review) => {
-              const photos = reviewImages(review)
+              const media = reviewMediaItems(review)
+              const previews = media.slice(0, 3)
+              const extraMedia = media.length - previews.length
               return (
                 <li
                   key={review.id}
@@ -310,13 +306,14 @@ export function ProductInfoSections({
                       </p>
                     </div>
                   ) : null}
-                  {photos.length ? (
+                  {media.length ? (
                     <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
-                      {photos.slice(0, 3).map((src, index) => (
+                      {previews.map((item, index) => (
                         <ReviewPhotoThumb
-                          key={`${src}-${index}`}
-                          src={src}
-                          alt={`Foto ulasan ${review.customer_name} ${index + 1}`}
+                          key={`${item.src}-${index}`}
+                          src={item.src}
+                          isVideo={item.isVideo}
+                          alt={`${item.isVideo ? "Video" : "Foto"} ulasan ${review.customer_name} ${index + 1}`}
                           asButton
                           onButtonClick={() => {
                             setPreviewReview(review)
@@ -325,11 +322,12 @@ export function ProductInfoSections({
                           buttonClassName="bg-surface-muted"
                         />
                       ))}
-                      {photos.length > 3 ? (
+                      {extraMedia > 0 ? (
                         <ReviewPhotoThumb
-                          src={photos[2] ?? ""}
+                          src={previews[previews.length - 1].src}
+                          isVideo={previews[previews.length - 1].isVideo}
                           alt=""
-                          overlayCount={photos.length - 3}
+                          overlayCount={extraMedia}
                         />
                       ) : null}
                     </div>
@@ -487,10 +485,11 @@ export function ProductInfoSections({
 
       {showReviewsAndInstallation && previewReview ? (
         <GalleryLightbox
-          items={reviewImages(previewReview).map((src) => ({
-            src,
-            alt: `Foto ulasan ${previewReview.customer_name}`,
+          items={reviewMediaItems(previewReview).map((item) => ({
+            src: item.src,
+            alt: `${item.isVideo ? "Video" : "Foto"} ulasan ${previewReview.customer_name}`,
             name: previewReview.customer_name,
+            is_video: item.isVideo,
           }))}
           index={previewIndex}
           onOpenChange={(open) => {

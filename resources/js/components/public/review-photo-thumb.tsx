@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
 
@@ -9,10 +10,12 @@ import { cn } from "@/lib/utils"
  * - Ukuran & radius konsisten (size-14, radius 3px) sesuai DS v2.
  * - Mode "button": bisa diklik (buka preview) dengan hover zoom halus.
  * - Mode "static": hanya gambar, opsional overlay +N (badge count).
+ * - Video ulasan dirender sebagai elemen video dengan lencana putar.
  */
 export function ReviewPhotoThumb({
   src,
   alt,
+  isVideo = false,
   asButton = false,
   onButtonClick,
   buttonClassName,
@@ -21,6 +24,8 @@ export function ReviewPhotoThumb({
 }: {
   src: string
   alt: string
+  /** Pratinjau video ulasan: memakai elemen video, bukan gambar. */
+  isVideo?: boolean
   asButton?: boolean
   onButtonClick?: () => void
   buttonClassName?: string
@@ -29,15 +34,33 @@ export function ReviewPhotoThumb({
 }) {
   const body = (
     <>
-      <ResponsiveImage
-        src={src}
-        alt={alt}
-        wrapperClassName="size-full bg-surface-muted"
-        className={cn(
-          "size-full object-cover",
-          asButton && "transition duration-300 group-hover/img:scale-[1.03]",
-        )}
-      />
+      {isVideo ? (
+        <video
+          src={src}
+          muted
+          playsInline
+          preload="metadata"
+          className={cn(
+            "size-full object-cover",
+            asButton && "transition duration-300 group-hover/img:scale-[1.03]",
+          )}
+        />
+      ) : (
+        <ResponsiveImage
+          src={src}
+          alt={alt}
+          wrapperClassName="size-full bg-surface-muted"
+          className={cn(
+            "size-full object-cover",
+            asButton && "transition duration-300 group-hover/img:scale-[1.03]",
+          )}
+        />
+      )}
+      {isVideo ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+          <Icon name="play" weight="fill" className="size-5 drop-shadow" aria-hidden="true" />
+        </span>
+      ) : null}
       {typeof overlayCount === "number" ? (
         <span className="absolute inset-0 flex items-center justify-center bg-black/50">
           <span className="text-base font-semibold leading-none tabular-nums text-white">

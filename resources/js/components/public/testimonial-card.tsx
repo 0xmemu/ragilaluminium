@@ -7,6 +7,7 @@ import { Icon } from "@/components/shared/icon"
 import type { SharedPageProps } from "@/types"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { reviewMediaItems } from "@/lib/review-filters"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
 import { formatDate, productName } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -42,6 +43,9 @@ export function TestimonialCard({
   const imageUrl = testimonial.image_url ?? null
   const photos = (testimonial.images ?? []).filter((url): url is string => Boolean(url))
   if (!photos.length && imageUrl) photos.push(imageUrl)
+  // Foto lalu video, memakai helper bersama supaya video tidak ikut terhitung
+  // sebagai foto (server juga menaruh URL video di `images`).
+  const mediaItems = reviewMediaItems(testimonial)
   const imageAlt = isScreenshot
     ? `Screenshot ulasan ${testimonial.customer_name}`
     : `Hasil pemasangan dari ${testimonial.customer_name}`
@@ -51,18 +55,18 @@ export function TestimonialCard({
   // pada foto terakhir yang ditampilkan (overlay gelap) - bukan scroll.
   React.useEffect(() => {
     const el = photoRowRef.current
-    if (!el || photos.length === 0) return
+    if (!el || mediaItems.length === 0) return
     const CELL = 56 + 6
     const compute = () => {
       const width = el.clientWidth
       const count = Math.max(1, Math.floor((width + 6) / CELL))
-      setVisiblePhotos(Math.min(photos.length, count))
+      setVisiblePhotos(Math.min(mediaItems.length, count))
     }
     compute()
     const ro = new ResizeObserver(compute)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [photos.length])
+  }, [mediaItems.length])
 
   if (isScreenshot) {
     return (
@@ -118,8 +122,8 @@ export function TestimonialCard({
     ? `${testimonial.product.href}#penilaian-ulasan`
     : cardHref
 
-  const shown = visiblePhotos > 0 ? visiblePhotos : Math.min(photos.length, 3)
-  const extra = photos.length - shown
+  const shown = visiblePhotos > 0 ? visiblePhotos : Math.min(mediaItems.length, 3)
+  const extra = mediaItems.length - shown
   const showOverlay = extra > 0
 
   const cardClassName = cn(
@@ -194,15 +198,16 @@ export function TestimonialCard({
         </div>
       ) : null}
 
-      {photos.length ? (
+      {mediaItems.length ? (
         <div ref={photoRowRef} className="mt-2.5 flex items-center gap-1.5">
-          {photos.slice(0, shown).map((src, index) => {
+          {mediaItems.slice(0, shown).map((item, index) => {
             const isBadge = showOverlay && index === shown - 1
             return (
               <ReviewPhotoThumb
-                key={src + "-" + index}
-                src={src}
-                alt={imageAlt}
+                key={item.src + "-" + index}
+                src={item.src}
+                isVideo={item.isVideo}
+                alt={item.isVideo ? `Video ulasan ${testimonial.customer_name}` : imageAlt}
                 overlayCount={isBadge ? extra : undefined}
               />
             )

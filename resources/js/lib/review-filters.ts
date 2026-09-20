@@ -11,17 +11,46 @@ export interface ReviewRatingCount {
 
 /**
  * Apakah ulasan ini punya foto atau video.
- *
- * `media` belum ada di tipe Testimonial (dipakai untuk video), jadi dibaca
- * lewat cast sempit. Foto dibaca dari `images` dengan fallback `image_url`.
+ * Foto dibaca dari `images` dengan fallback `image_url`, video dari `media`.
  */
 export function reviewHasMedia(review: Testimonial): boolean {
   const images = (review.images ?? []).filter((url): url is string => Boolean(url))
   if (images.length || review.image_url) return true
 
-  const media = (review as { media?: Array<{ type?: string }> }).media
+  return (review.media ?? []).some((item) => Boolean(item?.url))
+}
 
-  return Array.isArray(media) && media.length > 0
+/** Satu ubin media ulasan: foto atau video. */
+export interface ReviewMediaItem {
+  src: string
+  isVideo: boolean
+}
+
+/**
+ * Foto lalu video satu ulasan, tanpa duplikat.
+ *
+ * Server memasukkan URL video ke dalam `images` juga (imagesPayload
+ * menggabungkan seluruh media_items), jadi URL yang sudah muncul sebagai video
+ * dibuang dari daftar foto. Tanpa itu, video akan tampil dua kali: sekali
+ * sebagai ubin gambar rusak (mp4 dimuat sebagai gambar) dan sekali sebagai video.
+ */
+export function reviewMediaItems(review: Testimonial): ReviewMediaItem[] {
+  const videos = (review.media ?? []).filter(
+    (item): item is { type: "video"; url: string } => item?.type === "video" && Boolean(item.url),
+  )
+  const videoUrls = new Set(videos.map((item) => item.url))
+
+  const photos = (review.images ?? []).filter(
+    (url): url is string => Boolean(url) && !videoUrls.has(url),
+  )
+  if (!photos.length && review.image_url && !videoUrls.has(review.image_url)) {
+    photos.push(review.image_url)
+  }
+
+  return [
+    ...photos.map((src) => ({ src, isVideo: false })),
+    ...videos.map((item) => ({ src: item.url, isVideo: true })),
+  ]
 }
 
 /**

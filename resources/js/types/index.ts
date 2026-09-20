@@ -317,6 +317,11 @@ export interface Testimonial {
   image_url?: string | null
   /** Semua foto ulasan (multi-gambar); fallback ke [image_url] bila kosong. */
   images?: string[] | null
+  /**
+   * Foto dan video ulasan apa adanya dari server. `images` hanya memuat foto,
+   * jadi video dibaca dari sini.
+   */
+  media?: Array<{ type: "image" | "video"; url: string; source?: string }> | null
   /** Waktu ulasan dikirim (ISO 8601); null pada baris lama tanpa tanggal. */
   created_at?: string | null
   /** Varian yang dipilih pembeli, mis. "Warna: Putih · Kaca: Bening". */
