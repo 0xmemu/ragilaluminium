@@ -144,16 +144,18 @@ class ProductReviewDemoSeeder extends Seeder
     }
 
     /**
-     * Rancangan dua belas ulasan, urut tampil (sort_order 1 tampil paling awal).
+     * Rancangan empat belas ulasan, urut tampil (sort_order 1 tampil paling awal).
      *
-     * Sebaran rating: bintang 5 lima baris, bintang 4 empat baris, lalu
+     * Sebaran rating: bintang 5 tujuh baris, bintang 4 empat baris, lalu
      * bintang 3, 2, dan 1 masing-masing satu baris.
      *
      * Bentuk ulasan sengaja diragamkan supaya seluruh keadaan tampilan ikut
      * terperiksa:
      * - ulasan berteks, sebagian berfoto dan sebagian bervideo;
      * - ulasan berfoto tanpa teks sama sekali (kolom `message` null);
-     * - ulasan hanya bintang, tanpa teks dan tanpa media.
+     * - ulasan hanya bintang, tanpa teks dan tanpa media;
+     * - ulasan yang teksnya murni dari chip saran di form pelanggan, tanpa
+     *   kalimat tambahan yang diketik sendiri.
      *
      * Dua bentuk terakhir tidak bisa dibuat lewat form mana pun saat ini:
      * form pelanggan mewajibkan teks minimal 3 karakter, dan form admin
@@ -245,6 +247,22 @@ class ProductReviewDemoSeeder extends Seeder
                 'days_ago' => 70, 'verified' => true, 'video' => false, 'reply' => null,
                 'photos' => [],
                 'message' => null,
+            ],
+            [
+                // Teks murni dari satu chip saran pada form ulasan pelanggan.
+                'customer_name' => 'Maya Puspita', 'location' => 'Pontianak', 'rating' => 5,
+                'days_ago' => 77, 'verified' => true, 'video' => false, 'reply' => null,
+                'photos' => [],
+                'message' => 'Pengiriman cepat',
+            ],
+            [
+                // Tiga chip berturut-turut: chip pertama apa adanya, chip
+                // berikutnya dihuruf-kecilkan dan dipisah koma, sama seperti
+                // hasil toggleSuggestion di form pelanggan.
+                'customer_name' => 'Gilang Ramadhan', 'location' => 'Pekanbaru', 'rating' => 5,
+                'days_ago' => 84, 'verified' => true, 'video' => false, 'reply' => null,
+                'photos' => [],
+                'message' => 'Pengiriman cepat, barang berkualitas, pelayanan ramah',
             ],
         ];
     }
