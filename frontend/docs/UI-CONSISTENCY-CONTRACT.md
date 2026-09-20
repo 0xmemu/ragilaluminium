@@ -241,29 +241,49 @@ banner penutup sudah sesuai ketentuan di atas.
 Semua CTA storefront diatur dari satu tempat: Pengaturan Website > CTA Storefront, dibaca lewat
 prop bersama `ctaSettings`. Mencakup banner penutup per halaman DAN kartu reusable.
 
-- **Tekstur data:** tiap blok punya `eyebrow`, `heading`, dan `actions`. Tombol berbentuk
+**ATURAN UTAMA (owner 2026-09-20): pengaturan ini LAPISAN PEMBANDING, bukan sumber teks.**
+Selama admin belum menyimpan sebuah kolom, `CtaSettings::get()` mengembalikan `null` (atau daftar
+kosong) untuk kolom itu, dan komponen storefront memakai teksnya sendiri. Konsekuensinya:
+memasang atau membuka halaman ini TIDAK PERNAH mengubah tampilan storefront, dan teks yang
+diperbarui di kode tidak ikut membeku di DB. DILARANG menyalin teks live ke `cms_pages` pada saat
+baca atau simpan.
+
+- **Sumber teks live:** `resources/js/lib/cta-live.json`, satu berkas yang dibaca PHP (untuk
+  halaman admin) DAN diimpor React. Ini satu-satunya tempat teks CTA storefront didefinisikan,
+  supaya halaman admin tidak mungkin menampilkan teks yang berbeda dari yang dirender storefront.
+  Menambah atau mengubah blok berarti mengubah berkas itu, bukan menulis konstanta baru di PHP.
+- **Tekstur data:** tiap blok punya `eyebrow`, `heading`, `actions`, dan `items`. Tombol berbentuk
   `{ label, destination, variant }` dengan `destination` dari `CtaSettings::DESTINATIONS`
   (kunci `whatsapp` atau nama route internal). DILARANG menyimpan URL bebas: jalur konsultasi dan
-  checkout harus tetap utuh walau admin salah mengisi.
-- **Batas tombol:** maksimal 2 per blok (kontrak owner 2026-09-02). Tombol tanpa label atau
-  bertujuan tidak dikenal dibuang server. Daftar tombol kosong berarti blok itu kembali memakai
-  tombol LIVE (`INITIAL_ACTIONS`), bukan berarti CTA tanpa tombol.
-- **Warna:** satu `color` global (hex 6 digit, bawaan `#C00000`) dipakai semua banner. Server
-  memvalidasi format; nilai tidak sah ditolak validasi, bukan disimpan.
-- **Blok berbentuk daftar memakai `items`, bukan `actions`.** Sebagian CTA berupa kumpulan
-  lencana/poin (mis. alasan belanja di PDP), bukan satu kop + judul. Untuk blok itu admin
-  mengelola daftar baris teks (maksimal 6) dan pratinjau admin menampilkan daftarnya, bukan
-  banner merah.
+  checkout harus tetap utuh walau admin salah mengisi. Baris daftar berbentuk
+  `{ label, description }`.
+- **Batas:** maksimal 2 tombol dan 6 baris per blok (kontrak owner 2026-09-02). Tombol tanpa label
+  atau bertujuan tidak dikenal dibuang server. Daftar kosong berarti blok itu memakai tombol atau
+  baris storefront, bukan berarti CTA tanpa tombol.
+- **Blok `section` (tombol di samping judul section) hanya menyimpan LABEL.** Tautannya menempel
+  pada tata letak section, jadi server mengabaikan `destination` untuk jenis blok ini.
+- **Blok `dynamic` tidak boleh punya nilai awal yang dikarang.** Daftar alasan belanja PDP dihitung
+  per produk (label garansi ikut promo, baris COD bisa hilang saat produk tidak mendukung COD).
+  Daftar di registry hanya contoh; komponen tetap memakai hasil hitungannya sampai admin menyimpan.
+- **Warna:** `color` global hex 6 digit. `null` berarti banner memakai warna brand storefront
+  (`bg-primary`), bukan dipaksa ke satu nilai. Server memvalidasi format; nilai tidak sah ditolak.
+- **Jenis blok:** `banner` (banner penutup halaman), `card` (kartu reusable halaman transaksi),
+  `section` (tombol judul section beranda), `empty` (tampilan saat belum ada isi), `list` (blok
+  berisi beberapa baris). Halaman admin mengelompokkan blok menurut jenis ini.
 - **Hanya blok yang BENAR-BENAR tampil di storefront boleh didaftarkan.** Blok yang sumbernya
   komponen mati (tidak dirender) tidak didaftarkan: mengatur teks yang tidak pernah tampil
   hanya menyesatkan admin. Sebelum menambah kunci blok, buktikan komponennya dirender.
-- **Pratinjau admin wajib mencerminkan CTA asli:** halaman pengaturan menampilkan pratinjau
-  memakai WARNA dan TOMBOL yang sedang diatur, sehingga yang dilihat admin sama dengan yang
-  tampil di storefront.
+- **Halaman admin menampilkan teks storefront sebagai acuan**, bukan kolom kosong, dan menandai
+  tiap blok "Teks storefront" atau "Diatur admin". Tombol "Salin teks storefront" mengisi form dari
+  keadaan nyata supaya admin menyunting dari nilai sebenarnya; "Pakai teks storefront" membatalkan
+  perubahan satu blok.
+- **Pratinjau admin wajib mencerminkan CTA asli:** pratinjau memakai WARNA dan TOMBOL yang sedang
+  diatur, dan jatuh ke teks storefront selama blok belum disimpan.
 
 Komponen yang dipakai BERULANG tidak boleh menyimpan copy-nya sendiri bila isinya kalimat yang
-mungkin berubah. Tambahkan kunci di `CtaSettings::PAGES` + `INITIAL_TEXT` + `INITIAL_ACTIONS`, lalu
-baca lewat prop `ctaSettings` dengan teks kode sebagai cadangan.
+mungkin berubah. Tambahkan blok di `resources/js/lib/cta-live.json`, lalu baca lewat helper
+`useCtaBlock`/`useCtaActions`/`ctaActionLabel` di `lib/cta-actions.ts` dengan teks kode sebagai
+cadangan.
 
 ## Teks komponen reusable storefront
 
@@ -279,17 +299,23 @@ Pemakai saat ini:
 | `TrustAssuranceCard` | `trust` | keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan |
 | `SupportAction` (pelacakan) | `order-help` | halaman pelacakan pesanan |
 | `ClosingCTASection` | nama halaman publik | beranda, detail model, tentang kami, FAQ, cara pemesanan, masalah & solusi |
+| panel kontak `About` | `about-contact` | tentang kami |
+| tombol judul section beranda | `home-model`, `home-popular`, `home-howto`, `home-installation`, `home-testimonial`, `home-review-website` | beranda |
+| kondisi kosong beranda | `home-empty-model`, `home-empty-popular`, `home-empty-installation`, `home-empty-testimonial`, `home-empty-review` | beranda |
+| `KamiBantuSection` | `home-help` | beranda |
+| `SearchFallbackEmpty` | `catalog-empty` | katalog |
+| daftar alasan belanja PDP | `pdp-benefits` (dinamis) | detail produk |
 
-Aturannya: menambah komponen reusable baru yang copy-nya berubah-ubah wajib menambah kuncinya di
-`CtaSettings::PAGES` + `INITIAL_TEXT` dan memakainya lewat `forPage(<kunci>)`, bukan menulis
-kalimat baru di komponen.
+Aturannya: menambah komponen reusable baru yang copy-nya berubah-ubah wajib menambah bloknya di
+`resources/js/lib/cta-live.json` dan memakainya lewat helper di `lib/cta-actions.ts`, bukan
+menulis kalimat baru di komponen.
 
 ## Mode ringkasan halaman pengaturan (ADR-023)
 
 Halaman pengaturan TIDAK membuka form yang langsung aktif. Aturannya:
 
 - Halaman dibuka menampilkan nilai yang berlaku sebagai bacaan (mode ringkasan), termasuk nilai
-  bawaan yang belum pernah disimpan admin.
+  yang benar-benar dipakai storefront saat ini, bukan kolom kosong.
 - Tombol aksi utama di header berlabel kerja ("Ubah teks CTA", "Edit profil"), bukan "Simpan".
 - Setelah menekan tombol itu baru form aktif, dengan "Batal" dan "Simpan".
 - Simpan sukses WAJIB kembali ke ringkasan. Form tidak boleh tetap terbuka.

@@ -38,6 +38,7 @@ alur data, integrasi, trade-off performa, dan kebijakan dicatat di sini.
 - **ADR-013** — Performa pindah menu & api. subdomain: cache Redis Lapis A, satu origin, tanpa API subdomain.
 - **ADR-022** - Kontrak alignment form admin: primitif Field/FieldGrid/CheckboxField/FieldAction, padding section seragam, verifikasi center Y.
 - **ADR-023** - Halaman pengaturan dibuka mode RINGKASAN read-only, form aktif setelah tombol ubah, dan Simpan sukses kembali ke ringkasan.
+- **ADR-024** - Pengaturan teks storefront adalah lapisan PEMBANDING, bukan sumber teks: kolom kosong berarti storefront memakai teksnya sendiri, dan teks live dibaca dari satu berkas bersama PHP dan React.
 
 
 ---
