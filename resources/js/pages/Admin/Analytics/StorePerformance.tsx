@@ -209,7 +209,7 @@ function HoverHint({
           <span
             tabIndex={0}
             className={cn(
-              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               className,
             )}
           >
@@ -535,6 +535,14 @@ function kpiRows(
   return keys
     .map((key) => kpiRow(kpiMap, key, sign))
     .filter((row): row is DetailRow => row !== null)
+}
+
+/**
+ * Apakah kolom daftar berisi teks, bukan angka. Dipakai kepala dan isi tabel
+ * sekaligus supaya perataannya tidak pernah berbeda.
+ */
+function isKolomTeks(judul: string): boolean {
+  return /nama|sku|metode|penanggung|keterangan|uraian|produk/i.test(judul)
 }
 
 /** Potong daftar dan sertakan jumlah totalnya supaya sisanya tidak disembunyikan. */
@@ -1167,7 +1175,10 @@ function CategoryDetailPanel({
 }) {
   return (
     <div className="pb-6">
-      <header className="border-b border-border px-5 py-4 pr-12">
+      {/* Padding tidak ditambah di sini: SheetContent sudah memberi p-5, jadi
+          menambah px-5 lagi hanya mempersempit tabel dan membuat tepi kiri
+          tidak sejajar dengan tombol tutup. */}
+      <header className="border-b border-border pb-4 pr-10">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold tracking-tight text-foreground">{detail.title}</h3>
           <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -1179,8 +1190,10 @@ function CategoryDetailPanel({
         ) : null}
       </header>
 
-      <div className="border-b border-border px-5 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kategori</p>
+      {/* Pil kategori menempel di atas: isinya bisa panjang, dan tanpa ini
+          berpindah kategori menuntut menggulir balik ke atas dulu. */}
+      <div className="sticky -top-5 z-10 -mx-5 border-b border-border bg-surface px-5 py-3">
+        <p className="text-[11px] font-semibold text-muted-foreground">Kategori</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {DETAIL_CATEGORIES.map((item) => {
             const aktif = item.key === category
@@ -1204,10 +1217,10 @@ function CategoryDetailPanel({
         </div>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 pt-4">
         {detail.formula ? (
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rumus</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">Rumus</p>
             <div className="mt-1.5 rounded-lg bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
               {detail.formula}
             </div>
@@ -1224,51 +1237,75 @@ function CategoryDetailPanel({
 
             {block.kind === "rows" ? (
               <table className="w-full text-xs">
-                <tbody className="divide-y divide-border/60">
-                  {block.rows.map((row, rowIndex) => (
-                    <React.Fragment key={"baris-" + blockIndex + "-" + rowIndex}>
-                      <tr
-                        className={cn(
-                          "align-top",
-                          row.sign === "=" ? "bg-muted/20 font-semibold text-foreground" : "text-muted-foreground",
-                        )}
-                      >
-                        <td className="px-4 py-2">{row.label}</td>
-                        <td className="w-8 py-2 text-right font-mono font-bold tabular-nums text-foreground">
-                          {row.sign}
-                        </td>
-                        <td
-                          className={cn(
-                            "whitespace-nowrap px-4 py-2 text-right font-mono tabular-nums",
-                            row.sign === "="
-                              ? "font-semibold text-primary"
-                              : row.tone === "destructive"
-                                ? "text-destructive"
-                                : "text-foreground",
-                          )}
-                        >
-                          {row.value}
-                        </td>
-                        <td className="w-8 px-2 py-2 text-right">
-                          {row.delta === undefined ? null : <DeltaBadge percent={row.delta} />}
-                        </td>
-                      </tr>
-                      {row.sub ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
-                            {row.sub}
+                {/* Empat kolom ini punya arti berbeda, jadi diberi kepala.
+                    Sebelumnya tanpa kepala, sehingga pembaca tidak bisa tahu
+                    kolom mana uraian, operasi, nilai, dan perubahan. */}
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="py-2 pr-4 text-left font-medium">Uraian</th>
+                    <th className="w-6 py-2 text-center font-medium" aria-label="Operasi">
+                      <span aria-hidden="true">±</span>
+                    </th>
+                    <th className="py-2 pl-4 text-right font-medium">Nilai</th>
+                    <th className="w-24 py-2 pl-3 text-right font-medium">Perubahan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => {
+                    // Nilai yang berisi kalimat tidak boleh dipaksa satu baris
+                    // rata kanan dengan huruf monospace: itu merusak tabel dan
+                    // membuat prosanya terpotong. Angka tetap satu baris.
+                    const nilaiProsa = !/^[\d\s.,%+\-−Rprp·=]*$/.test(row.value)
+                    const barisPenjelas = [row.sub, row.note].filter(Boolean).join(" ")
+                    const total = row.sign === "="
+                    return (
+                      <React.Fragment key={"baris-" + blockIndex + "-" + rowIndex}>
+                        <tr className={cn("border-t border-border/60 align-top", total ? "font-semibold" : "")}>
+                          <td
+                            className={cn(
+                              "break-words py-2 pr-4",
+                              total ? "font-semibold text-foreground" : "text-muted-foreground",
+                            )}
+                          >
+                            {row.label}
+                          </td>
+                          <td className="w-6 py-2 text-center font-mono text-muted-foreground">
+                            {row.sign}
+                          </td>
+                          <td
+                            className={cn(
+                              "py-2 pl-4",
+                              nilaiProsa
+                                ? "text-left text-muted-foreground"
+                                : "whitespace-nowrap text-right font-mono tabular-nums",
+                              !nilaiProsa
+                                ? total
+                                  ? "font-semibold text-primary"
+                                  : row.tone === "destructive"
+                                    ? "text-destructive"
+                                    : "text-foreground"
+                                : "",
+                            )}
+                          >
+                            {row.value}
+                          </td>
+                          <td className="w-24 py-2 pl-3 text-right">
+                            {row.delta === undefined ? null : <DeltaBadge percent={row.delta} />}
                           </td>
                         </tr>
-                      ) : null}
-                      {row.note ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
-                            {row.note}
-                          </td>
-                        </tr>
-                      ) : null}
-                    </React.Fragment>
-                  ))}
+                        {barisPenjelas ? (
+                          <tr className={cn(total ? "bg-muted/20" : "")}>
+                            <td
+                              colSpan={4}
+                              className="border-l-2 border-border/60 py-1.5 pl-3 pr-4 text-[11px] leading-relaxed text-muted-foreground"
+                            >
+                              {barisPenjelas}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             ) : null}
@@ -1291,60 +1328,73 @@ function CategoryDetailPanel({
             ) : null}
 
             {block.kind === "list" ? (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      {block.head.map((judul, headIndex) => (
-                        <th
-                          key={"kepala-" + blockIndex + "-" + headIndex}
-                          className={cn("px-4 py-2 font-medium", headIndex > 0 ? "text-right" : "")}
-                        >
-                          {judul}
-                        </th>
-                      ))}
+                    <tr className="border-b border-border text-muted-foreground">
+                      {block.head.map((judul, headIndex) => {
+                        // Satu predikat untuk kepala dan isi, supaya keduanya
+                        // tidak pernah berbeda perataan. Sebelumnya kepala
+                        // memakai nomor kolom dan isi memakai nama kolom,
+                        // sehingga terbukti tidak cocok di beberapa daftar.
+                        const kolomTeks = isKolomTeks(judul)
+                        return (
+                          <th
+                            key={"kepala-" + blockIndex + "-" + headIndex}
+                            className={cn(
+                              "px-4 py-2 font-medium",
+                              kolomTeks || headIndex === 0 ? "text-left" : "text-right",
+                            )}
+                          >
+                            {judul}
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {block.rows.map((row, rowIndex) => (
                       <tr key={"daftar-" + blockIndex + "-" + rowIndex}>
                         {row.map((sel, cellIndex) => {
-                          const isKolomTeks =
-                            cellIndex > 0 &&
-                            /nama|sku|metode|penanggung|selesai/i.test(block.head[cellIndex] ?? "")
+                          const kolomTeks = isKolomTeks(block.head[cellIndex] ?? "")
+                          const kolomPertama = cellIndex === 0
                           return (
-                          <td
-                            key={"sel-" + blockIndex + "-" + rowIndex + "-" + cellIndex}
-                            className={cn(
-                              "px-4 py-2",
-                              cellIndex === 0
-                                ? "text-foreground"
-                                : isKolomTeks
-                                  ? "font-mono text-muted-foreground"
-                                  : "text-right font-mono tabular-nums text-muted-foreground",
-                            )}
-                          >
-                            {sel}
-                          </td>
+                            <td
+                              key={"sel-" + blockIndex + "-" + rowIndex + "-" + cellIndex}
+                              className={cn(
+                                "px-4 py-2",
+                                kolomPertama
+                                  ? "text-foreground"
+                                  : kolomTeks
+                                    ? "font-mono text-muted-foreground"
+                                    : "whitespace-nowrap text-right font-mono tabular-nums text-muted-foreground",
+                              )}
+                            >
+                              {sel}
+                            </td>
                           )
                         })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {block.total > block.rows.length ? (
-                  <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
-                    Menampilkan {block.rows.length} dari {block.total} baris. Daftar penuh ada di ekspor XLSX.
-                  </p>
-                ) : null}
               </div>
+              {/* Keterangan jumlah diletakkan di luar area gulir supaya tidak
+                  ikut tergeser saat tabel digulir ke kanan. */}
+              {block.total > block.rows.length ? (
+                <p className="border-t border-border py-2 text-[11px] text-muted-foreground">
+                  Menampilkan {block.rows.length} dari {block.total} baris. Daftar penuh ada di ekspor XLSX.
+                </p>
+              ) : null}
+              </>
             ) : null}
           </div>
         ))}
 
         {detail.source ? (
           <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Data</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">Sumber Data</p>
             <p className="mt-1 font-mono text-[11px] text-foreground">{detail.source}</p>
           </div>
         ) : null}
@@ -1862,7 +1912,7 @@ export default function StorePerformance({
                     }
                   }}
                   className={cn(
-                    "group flex min-w-0 cursor-pointer flex-col justify-between p-4 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+                    "flex min-w-0 cursor-pointer flex-col justify-between p-4 transition focus-visible:ring-2 focus-visible:ring-ring/40",
                     // Pemisah grid: garis kanan antar kolom, garis bawah antar
                     // baris. Grid boleh membungkus di lebar menengah, jadi
                     // keduanya dibiarkan aktif.
@@ -2288,7 +2338,7 @@ export default function StorePerformance({
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div
-            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+            className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4"
           >
             <div className="flex items-center justify-between">
               <HoverHint
@@ -2327,7 +2377,7 @@ export default function StorePerformance({
           </div>
 
           <div
-            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+            className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4"
           >
             <div className="flex items-center justify-between">
               <HoverHint
@@ -2345,7 +2395,7 @@ export default function StorePerformance({
           </div>
 
           <div
-            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+            className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4"
           >
             <div className="flex items-center justify-between">
               <HoverHint
