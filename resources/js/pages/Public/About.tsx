@@ -206,21 +206,21 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
             <p className="mx-auto mt-4 text-xs font-bold uppercase tracking-[0.08em] text-primary">{subtitle}</p>
           ) : null}
 
-          <h1 className="mx-auto mt-2 max-w-xl text-lg font-bold leading-snug tracking-tight text-foreground ![text-transform:none] sm:text-xl">
+          <h2 className="mx-auto mt-2 max-w-xl text-lg font-bold leading-snug tracking-tight text-foreground ![text-transform:none] sm:text-xl">
             {headline}
-          </h1>
+          </h2>
 
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             {description}
           </p>
 
-          <h2 className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-snug text-muted-foreground ![text-transform:none]">
+          <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-snug text-muted-foreground ![text-transform:none]">
             {tagline || (
               <>
                 <span className="text-primary">Sejak 2008</span> memproduksi jendela &amp; pintu aluminium
               </>
             )}
-          </h2>
+          </p>
         </section>
       </div>
 
