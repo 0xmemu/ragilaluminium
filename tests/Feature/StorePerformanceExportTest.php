@@ -46,6 +46,23 @@ class StorePerformanceExportTest extends TestCase
                 'cod_pending_amount' => 25000000.0,
                 'cod_pending_count' => 3,
             ],
+            'financial_previous' => [
+                'gross_revenue' => 62500000.0,
+                'items_before_discount' => 60000000.0,
+                'voucher_discount' => 500000.0,
+                'insurance' => 250000.0,
+                'shipping_paid_by_customer' => 2000000.0,
+                'shipping_raw' => 2500000.0,
+                'cod_fee' => 750000.0,
+                'refund_adjustments' => 1250000.0,
+                'return_shipping_store' => 37500.0,
+                'refused_goods_value' => 0.0,
+                'refused_shipping_cost' => 0.0,
+                'refused_cod_fee' => 0.0,
+                'net_revenue' => 57962500.0,
+                'payments_received' => 30000000.0,
+                'cod_paid' => 20000000.0,
+            ],
             'sections' => [
                 [
                     'key' => 'sales',
@@ -328,7 +345,7 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringContainsString('BIAYA RETUR DITANGGUNG TOKO', $anText);
 
         // Data yang dulu dihitung tetapi tidak pernah diekspor.
-        $this->assertStringContainsString('Transfer bank', $anText, 'bauran pembayaran wajib ada');
+        $this->assertStringContainsString('Transfer Bank', $anText, 'bauran pembayaran wajib ada');
         $this->assertStringContainsString('535', $anText, 'jumlah dilihat wajib ada');
 
         // Biaya retur terender lengkap dengan label pihak penyebab.
@@ -394,6 +411,284 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringContainsString('Tidak ada biaya retur', $text);
     }
 
+    /**
+     * Temuan audit P1 (docs/audit-performa-toko-e2e.md bagian 15): sheet
+     * Ringkasan Finansial menulis "Tidak ada data" di seluruh kolom pembanding,
+     * sedangkan sheet KPI Operasional di berkas yang sama mengisi 37 angka,
+     * sehingga dua halaman dalam satu berkas saling bertentangan.
+     */
+    public function test_ringkasan_finansial_mengisi_kolom_pembanding(): void
+    {
+        Excel::store(new StorePerformanceExport($this->payload()), 'perf-prev.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('perf-prev.xlsx'));
+
+        // formatData=false supaya yang dibaca nilai mentah, bukan hasil format
+        // ("60.000.000" atau "100.0%").
+        $rows = $ss->getSheetByName('Ringkasan Finansial')->toArray(null, false, false, true);
+
+        $cari = function (string $label) use ($rows): array {
+            foreach ($rows as $row) {
+                if (($row['A'] ?? null) === $label) {
+                    return $row;
+                }
+            }
+            $this->fail('Baris tidak ditemukan: '.$label);
+        };
+
+        // Baris pendapatan: pembanding 60 jt terhadap 120 jt periode ini.
+        $nilai = $cari('Nilai Produk Terjual');
+        $this->assertEquals(60000000, $nilai['C']);
+        $this->assertEquals(100.0, $nilai['D']);
+
+        // Baris beban: ongkir J&T dibalik negatif, pembandingnya ikut negatif.
+        $ongkirJnt = $cari('Ongkir Dibayarkan ke J&T');
+        $this->assertEquals(-2500000, $ongkirJnt['C']);
+
+        // Baris jumlah dan hasil bersih tidak lagi berupa keterangan.
+        $beban = $cari('JUMLAH BEBAN TOKO');
+        $this->assertNotSame('Tidak ada data', $beban['C']);
+
+        $net = $cari('PENJUALAN BERSIH');
+        $this->assertEquals(57962500, $net['C']);
+        $this->assertEquals(100.0, $net['D']);
+
+        // Arus kas juga terisi, termasuk penurunan yang dihitung dari selisih.
+        $kas = $cari('Pembayaran Diterima');
+        $this->assertEquals(30000000, $kas['C']);
+    }
+
+    public function test_ringkasan_finansial_tanpa_pembanding_tetap_memberi_keterangan(): void
+    {
+        $payload = $this->payload();
+        $payload['previous_has_data'] = false;
+
+        Excel::store(new StorePerformanceExport($payload), 'perf-noprev2.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('perf-noprev2.xlsx'));
+
+        $rows = $ss->getSheetByName('Ringkasan Finansial')->toArray(null, false, false, true);
+
+        $diperiksa = 0;
+        foreach ($rows as $row) {
+            $label = $row['A'] ?? null;
+            if (in_array($label, ['PENJUALAN BERSIH', 'PENJUALAN GROSS', 'Nilai Produk Terjual'], true)) {
+                $this->assertSame('Tidak ada data', $row['C'], 'Kolom C baris '.$label);
+                $this->assertSame('-', $row['D'], 'Kolom D baris '.$label);
+                $diperiksa++;
+            }
+        }
+
+        $this->assertSame(3, $diperiksa, 'Tiga baris Ringkasan harus diperiksa');
+    }
+
+    /**
+     * Regresi 2026-09-21: kolom Metode di Tabel Pesanan berisi "Transfer",
+     * sedangkan kriteria COUNTIFS memakai "Transfer bank", sehingga baris
+     * Transfer di blok bauran selalu nol tanpa gejala apa pun di layar.
+     * Test ini memastikan setiap nilai yang benar benar muncul di kolom Metode
+     * punya kriteria yang cocok.
+     */
+    public function test_metode_di_tabel_pesanan_selalu_punya_kriteria_bauran(): void
+    {
+        $payload = $this->payload();
+        $payload['income_detail'] = [
+            [
+                'order_number' => 'RA-TRF-1',
+                'created_at' => '2026-08-27T10:00:00+07:00',
+                'paid_at' => '2026-08-27T11:00:00+07:00',
+                'payment_method' => 'transfer',
+                'order_status' => 'delivered',
+                'payment_status' => 'paid',
+                'subtotal_before_discount' => 1000000.0,
+                'discount' => 0.0,
+                'voucher_discount' => 0.0,
+                'gross_revenue' => 1000000.0,
+                'shipping_raw' => 0.0,
+                'shipping_subsidy' => 0.0,
+                'shipping_net_paid_by_customer' => 0.0,
+                'cod_fee' => 0.0,
+                'refund_amount' => 0.0,
+                'return_shipping_store' => 0.0,
+                'net_revenue' => 1000000.0,
+                'insurance' => 0.0,
+                'total_paid_by_customer' => 1000000.0,
+                'paid_amount' => 1000000.0,
+                'outstanding' => 0.0,
+                'items_count' => 1,
+                'total_qty' => 1,
+                'sku_count' => 1,
+                'customer_name' => 'Sari',
+                'customer_phone' => '081111111113',
+                'customer_city' => 'Bandung',
+            ],
+            [
+                'order_number' => 'RA-COD-1',
+                'created_at' => '2026-08-28T10:00:00+07:00',
+                'paid_at' => null,
+                'payment_method' => 'cod',
+                'order_status' => 'shipped',
+                'payment_status' => 'unpaid',
+                'subtotal_before_discount' => 2000000.0,
+                'discount' => 0.0,
+                'voucher_discount' => 0.0,
+                'gross_revenue' => 2000000.0,
+                'shipping_raw' => 0.0,
+                'shipping_subsidy' => 0.0,
+                'shipping_net_paid_by_customer' => 0.0,
+                'cod_fee' => 0.0,
+                'refund_amount' => 0.0,
+                'return_shipping_store' => 0.0,
+                'net_revenue' => 2000000.0,
+                'insurance' => 0.0,
+                'total_paid_by_customer' => 2000000.0,
+                'paid_amount' => 0.0,
+                'outstanding' => 2000000.0,
+                'items_count' => 1,
+                'total_qty' => 1,
+                'sku_count' => 1,
+                'customer_name' => 'Tono',
+                'customer_phone' => '081111111114',
+                'customer_city' => 'Surabaya',
+            ],
+        ];
+        $payload['sold_items'] = [];
+
+        Excel::store(new StorePerformanceExport($payload), 'perf-metode.xlsx', 'imports');
+        $ss = IOFactory::load(Storage::disk('imports')->path('perf-metode.xlsx'));
+
+        // 1. Nilai yang benar benar tertulis di kolom Metode.
+        $tabel = $ss->getSheetByName('Tabel Pesanan')->toArray(null, false, false, true);
+        $metode = [];
+        foreach (array_slice($tabel, 1) as $row) {
+            $nilai = (string) ($row['D'] ?? '');
+            if ($nilai !== '') {
+                $metode[$nilai] = true;
+            }
+        }
+        $this->assertArrayHasKey('Transfer Bank', $metode, 'metode transfer harus berlabel Transfer Bank');
+        $this->assertArrayHasKey('COD', $metode, 'metode COD harus berlabel COD');
+
+        // 2. Kriteria COUNTIFS yang benar benar tertulis di sheet Analisis.
+        $analisis = $ss->getSheetByName('Analisis')->toArray(null, false, false, true);
+        $kriteria = [];
+        foreach ($analisis as $row) {
+            foreach ($row as $sel) {
+                if (is_string($sel) && preg_match('/COUNTIFS\(.*\[Metode\],"([^"]+)"\)/i', $sel, $m)) {
+                    $kriteria[$m[1]] = true;
+                }
+            }
+        }
+        $this->assertNotEmpty($kriteria, 'kriteria bauran wajib ditemukan');
+
+        // 3. Setiap label yang muncul harus punya kriteria yang cocok.
+        foreach (array_keys($metode) as $label) {
+            $this->assertArrayHasKey(
+                $label,
+                $kriteria,
+                'label "'.$label.'" muncul di kolom Metode tetapi tidak punya kriteria COUNTIFS, jadi barisnya akan selalu nol'
+            );
+        }
+
+        // 4. Kriteria tidak boleh mencari teks yang tidak pernah ada di kolom.
+        foreach (array_keys($kriteria) as $kunci) {
+            $this->assertArrayHasKey(
+                $kunci,
+                $metode,
+                'kriteria "'.$kunci.'" mencari teks yang tidak ada di kolom Metode'
+            );
+        }
+    }
+    /**
+     * Regresi 2026-09-21: pemecahan per bulan kalender memakai startOfMonth
+     * tanpa memotong ke batas rentang, sehingga rentang yang mulai di tengah
+     * bulan ikut memuat pesanan di luar rentang yang diminta, dan subjudul
+     * periode di sheet tidak sama dengan rentang unduhan.
+     */
+    public function test_ekspor_multi_bulan_tidak_melebar_di_luar_rentang(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $product = Product::create([
+            'parent_sku' => 'WIN-BATAS-1',
+            'name' => 'Jendela Batas',
+            'category_id' => 1,
+            'product_category' => 'WINDOW',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $buat = function (string $nomor, string $tanggal) use ($product): void {
+            $order = Order::create([
+                'order_number' => $nomor,
+                'customer_name' => 'Batas',
+                'customer_phone' => '081111111198',
+                'shipping_address_line1' => 'Jl Batas',
+                'shipping_city' => 'Semarang',
+                'shipping_province' => 'Jawa Tengah',
+                'shipping_postal_code' => '50254',
+                'shipping_country' => 'Indonesia',
+                'order_status' => 'processing',
+                'payment_status' => 'paid',
+                'shipping_status' => 'pending_pickup',
+                'subtotal_amount' => 1000000,
+                'shipping_amount' => 0,
+                'discount_amount' => 0,
+                'total_amount' => 1000000,
+                'payment_method' => 'transfer',
+                'cod_flag' => false,
+            ]);
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'parent_sku' => 'WIN-BATAS-1',
+                'name' => 'Jendela Batas',
+                'unit_price' => 1000000,
+                'quantity' => 1,
+                'line_subtotal' => 1000000,
+                'line_discount' => 0,
+                'line_total' => 1000000,
+            ]);
+            Order::whereKey($order->id)->update([
+                'created_at' => $tanggal,
+                'updated_at' => $tanggal,
+            ]);
+        };
+
+        // Di luar rentang yang akan diminta (rentang mulai 5 Agustus).
+        $buat('RA-BATAS-LUAR', '2026-08-02 10:00:00');
+        // Tepat di dalam rentang.
+        $buat('RA-BATAS-DALAM', '2026-08-20 10:00:00');
+
+        $response = $this->actingAs($admin)->get(route('admin.analytics.store-performance.export', [
+            'period' => 'custom',
+            'export_from' => '2026-08-05',
+            'export_to' => '2026-09-15',
+        ]));
+        $response->assertOk();
+        $ss = IOFactory::load($response->getFile()->getPathname());
+
+        // Subjudul periode bulan pertama wajib mulai 5 Agustus, bukan 1 Agustus.
+        $subjudul = (string) $ss->getSheetByName('Ringkasan Finansial (Agt 2026)')->getCell('A2')->getValue();
+        $this->assertStringContainsString('05 Agt 2026', $subjudul, 'periode bulan pertama ikut batas rentang');
+
+        // Pesanan di luar rentang tidak boleh muncul di Tabel Pesanan mana pun.
+        $nomor = [];
+        foreach ($ss->getSheetNames() as $nama) {
+            if (! str_starts_with($nama, 'Tabel Pesanan')) {
+                continue;
+            }
+            $sheet = $ss->getSheetByName($nama);
+            for ($r = 2; $r <= $sheet->getHighestRow(); $r++) {
+                $isi = (string) $sheet->getCell('A'.$r)->getValue();
+                if ($isi !== '' && $isi !== 'JUMLAH') {
+                    $nomor[] = $isi;
+                }
+            }
+        }
+
+        $this->assertContains('RA-BATAS-DALAM', $nomor, 'pesanan di dalam rentang wajib terekspor');
+        $this->assertNotContains('RA-BATAS-LUAR', $nomor, 'pesanan di luar rentang tidak boleh terekspor');
+    }
     public function test_periode_pembanding_kosong_tidak_menghasilkan_persen_palsu(): void
     {
         $payload = $this->payload();

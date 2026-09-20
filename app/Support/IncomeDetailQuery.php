@@ -82,7 +82,10 @@ class IncomeDetailQuery
                     'order_number' => $order->order_number,
                     'created_at' => $order->created_at?->toIso8601String(),
                     'paid_at' => $latestPaidAt?->toIso8601String(),
-                    'payment_method' => $order->payment_method === 'cod' ? 'COD' : 'Transfer',
+                    // Metode mentah dari database. Pemberian label dilakukan
+                    // oleh pemakainya, supaya angka COUNTIFS tidak pernah
+                    // berbeda dengan teks yang ditampilkan.
+                    'payment_method' => $order->payment_method,
                     'order_status' => $order->order_status,
                     'payment_status' => $order->payment_status,
                     'subtotal_before_discount' => (float) $order->subtotal_amount,

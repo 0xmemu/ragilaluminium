@@ -129,7 +129,11 @@ class AnalyticsController extends Controller
             $sheets = [];
             $cursor = $fromDate->copy()->startOfDay();
             while ($cursor->lte($toDate)) {
-                $monthFrom = $cursor->copy()->startOfMonth();
+                // Potong ke batas rentang yang diminta. Tanpa ini bulan
+                // pertama dan terakhir melebar ke bulan kalender penuh,
+                // sehingga baris di luar rentang ikut terekspor dan subjudul
+                // periode di sheet tidak sama dengan rentang unduhan.
+                $monthFrom = $cursor->copy()->startOfMonth()->max($fromDate);
                 $monthTo = $cursor->copy()->endOfMonth()->min($toDate)->endOfDay();
                 $monthPayload = $this->performance->build(
                     period: 'custom',

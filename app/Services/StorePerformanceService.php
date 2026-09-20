@@ -410,6 +410,28 @@ class StorePerformanceService
                 'refused_borne_cost' => $current['refused_borne_cost'],
                 'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
+            // Nilai periode pembanding untuk sheet Ringkasan Finansial di
+            // ekspor. Layar dan sheet KPI sudah memakai pembanding, sedangkan
+            // sheet Ringkasan sebelumnya menulis "Tidak ada data" tetap
+            // sehingga dua sheet dalam satu berkas saling bertentangan
+            // (temuan audit 2026-09-21).
+            'financial_previous' => [
+                'gross_revenue' => $previous['gross_revenue'] ?? 0.0,
+                'items_before_discount' => $previous['items_before_discount'] ?? 0.0,
+                'voucher_discount' => $previous['voucher_discount'] ?? 0.0,
+                'insurance' => $previous['insurance'] ?? 0.0,
+                'shipping_paid_by_customer' => $previous['shipping_paid_by_customer'] ?? 0.0,
+                'cod_fee' => $previous['cod_fee'] ?? 0.0,
+                'shipping_raw' => $previous['shipping_raw'] ?? 0.0,
+                'refund_adjustments' => $previous['refund_adjustments'] ?? 0.0,
+                'return_shipping_store' => $previous['return_shipping_store'] ?? 0.0,
+                'refused_goods_value' => $previous['refused_goods_value'] ?? 0.0,
+                'refused_shipping_cost' => $previous['refused_shipping_cost'] ?? 0.0,
+                'refused_cod_fee' => $previous['refused_cod_fee'] ?? 0.0,
+                'net_revenue' => $previous['net_revenue'] ?? 0.0,
+                'payments_received' => $previous['payments_received'] ?? 0.0,
+                'cod_paid' => $previous['cod_paid'] ?? 0.0,
+            ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],

@@ -281,13 +281,29 @@ abstract class StorePerformanceTableSheet extends RagilStyledExport implements F
         ][$status ?? ''] ?? ($status ?? '-');
     }
 
+    /**
+     * Label metode pembayaran, sama dengan labelMetodeBayar di layar
+     * Performa Toko. Nilai mentah dari database dibandingkan tanpa
+     * membedakan huruf besar kecil. Nilai yang tidak dikenal ditampilkan
+     * apa adanya supaya tidak ada metode yang hilang dari laporan.
+     */
+    /** Satu sumber teks untuk metode transfer, dipakai label dan kriteria. */
+    public const LABEL_TRANSFER = 'Transfer Bank';
+
     protected function paymentMethodLabel(?string $method): string
     {
+        $kunci = strtolower(trim((string) $method));
+        if ($kunci === '') {
+            return '-';
+        }
+
         return [
             'cod' => 'COD',
-            'transfer' => 'Transfer bank',
-            'bank_transfer' => 'Transfer bank',
-        ][$method ?? ''] ?? ($method ?? '-');
+            'transfer' => self::LABEL_TRANSFER,
+            'bank_transfer' => self::LABEL_TRANSFER,
+            'gateway' => 'Pembayaran Online',
+            'other' => 'Lainnya',
+        ][$kunci] ?? (string) $method;
     }
 
     protected function kpiNumberFormat(string $kpiFormat): string
@@ -348,8 +364,44 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
     {
         $guard = static fn ($value) => ExportSafety::cell($value);
         $fin = $this->payload['financial'] ?? [];
+        $finPrev = $this->payload['financial_previous'] ?? [];
         $range = $this->payload['range'] ?? [];
         $num = static fn ($v) => (float) ($v ?? 0);
+
+        // Kolom pembanding Ringkasan Finansial. Sebelumnya kedua kolom ini
+        // selalu "Tidak ada data" dan "-", bahkan ketika periode pembandingnya
+        // berisi, sehingga sheet ini bertentangan dengan sheet KPI di berkas
+        // yang sama (temuan audit 2026-09-21).
+        $prevHasData = (bool) ($this->payload['previous_has_data'] ?? true);
+
+        // Aturan persentase disamakan dengan StorePerformanceService::kpi()
+        // supaya angka di dua sheet tidak pernah berbeda.
+        $persenPerubahan = static function ($current, $previous): ?float {
+            $c = (float) $current;
+            $p = (float) $previous;
+            if ($p > 0) {
+                return round((($c - $p) / $p) * 100, 1);
+            }
+            if ($c > 0) {
+                return 100.0;
+            }
+            if ($c === 0.0 && $p === 0.0) {
+                return 0.0;
+            }
+
+            return null;
+        };
+
+        // Baris snapshot (tanpa periode pembanding) memanggil ini dengan
+        // $previous null, jadi kolomnya tetap keterangan, bukan persen palsu.
+        $pasangan = static function ($current, $previous) use ($prevHasData, $persenPerubahan): array {
+            if (! $prevHasData || $previous === null) {
+                return ['Tidak ada data', '-'];
+            }
+            $persen = $persenPerubahan($current, $previous);
+
+            return [$previous, $persen === null ? 'Baru pada periode ini' : $persen];
+        };
 
         $rows = [];
         $r = 1;
@@ -375,9 +427,16 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $head = $push(['Keterangan Akun', 'Periode Ini', 'Periode Sebelumnya', 'Perubahan']);
         $this->columnLabelRows[] = $head;
 
-        $moneyF = function (string $label, string $formula, bool $isTotal = false) use ($push, $guard, &$r) {
-            $line = $push([$guard($label), $formula, 'Tidak ada data', '-']);
+        $moneyF = function (string $label, string $formula, bool $isTotal = false, $current = null, $previous = null) use ($push, $guard, $pasangan, $prevHasData, &$r) {
+            [$kolomC, $kolomD] = $pasangan($current, $previous);
+            $line = $push([$guard($label), $formula, $kolomC, $kolomD]);
             $this->registerNumber($line, 2, '#,##0');
+            if ($prevHasData && $previous !== null) {
+                $this->registerNumber($line, 3, '#,##0');
+                if (is_float($kolomD) || is_int($kolomD)) {
+                    $this->registerNumber($line, 4, '0.0"%"');
+                }
+            }
             if ($isTotal) {
                 $this->totalRows[] = $line;
             }
@@ -386,9 +445,16 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         };
 
         // Arus kas: angka payload (ledger pembayaran), bukan kolom tabel.
-        $money = function (string $label, $value, bool $isTotal = false) use ($push, $guard, $num, &$r) {
-            $line = $push([$guard($label), $num($value), 'Tidak ada data', '-']);
+        $money = function (string $label, $value, bool $isTotal = false, $previous = null) use ($push, $guard, $num, $pasangan, $prevHasData, &$r) {
+            [$kolomC, $kolomD] = $pasangan($num($value), $previous);
+            $line = $push([$guard($label), $num($value), $kolomC, $kolomD]);
             $this->registerNumber($line, 2, '#,##0');
+            if ($prevHasData && $previous !== null) {
+                $this->registerNumber($line, 3, '#,##0');
+                if (is_float($kolomD) || is_int($kolomD)) {
+                    $this->registerNumber($line, 4, '0.0"%"');
+                }
+            }
             if ($isTotal) {
                 $this->totalRows[] = $line;
             }
@@ -400,23 +466,24 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // sehingga rumus kolom terstruktur akan menjadi nama yang menggantung
         // (#NAME?). Untuk keadaan itu angka diambil dari payload (nol).
         $hasRows = ($this->payload['income_detail'] ?? []) !== [];
-        $moneyRow = function (string $label, string $formula, $static, bool $isTotal = false) use ($hasRows, $moneyF, $money) {
+        $moneyRow = function (string $label, string $formula, $static, bool $isTotal = false, $current = null, $previous = null) use ($hasRows, $moneyF, $money) {
             return $hasRows
-                ? $moneyF($label, $formula, $isTotal)
-                : $money($label, $static, $isTotal);
+                ? $moneyF($label, $formula, $isTotal, $current, $previous)
+                : $money($label, $static, $isTotal, $previous);
         };
 
         // ---- I. PENDAPATAN PENJUALAN ----
         $push(['I. PENDAPATAN PENJUALAN']);
         $this->groupRows[] = $r - 1;
 
-        $rowNilai = $moneyRow('Nilai Produk Terjual', $sum('Nilai Produk Terjual'), $fin['items_before_discount'] ?? null);
+        $rowNilai = $moneyRow('Nilai Produk Terjual', $sum('Nilai Produk Terjual'), $fin['items_before_discount'] ?? null, false, $num($fin['items_before_discount'] ?? 0), $num($finPrev['items_before_discount'] ?? 0));
         // Kolom Voucher di tabel sudah negatif; jangan dibalik lagi.
-        $rowVoucher = $moneyRow('Potongan Voucher Toko', $sum('Voucher'), -1 * $num($fin['voucher_discount'] ?? 0));
-        $rowOngkir = $moneyRow('Ongkir Dibayar Pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null);
-        $rowAsuransi = $moneyRow('Asuransi Dibayar Pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null);
-        $rowCod = $moneyRow('Biaya COD Dibayar Pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null);
-        $rowGross = $push(['PENJUALAN GROSS', '=SUM(B'.$rowNilai.':B'.$rowCod.')', 'Tidak ada data', '-']);
+        $rowVoucher = $moneyRow('Potongan Voucher Toko', $sum('Voucher'), -1 * $num($fin['voucher_discount'] ?? 0), false, -1 * $num($fin['voucher_discount'] ?? 0), -1 * $num($finPrev['voucher_discount'] ?? 0));
+        $rowOngkir = $moneyRow('Ongkir Dibayar Pelanggan', $sum('Ongkir Dibayar Pelanggan'), $fin['shipping_paid_by_customer'] ?? null, false, $num($fin['shipping_paid_by_customer'] ?? 0), $num($finPrev['shipping_paid_by_customer'] ?? 0));
+        $rowAsuransi = $moneyRow('Asuransi Dibayar Pelanggan', $sum('Asuransi'), $fin['insurance'] ?? null, false, $num($fin['insurance'] ?? 0), $num($finPrev['insurance'] ?? 0));
+        $rowCod = $moneyRow('Biaya COD Dibayar Pelanggan', $sum('Biaya COD'), $fin['cod_fee'] ?? null, false, $num($fin['cod_fee'] ?? 0), $num($finPrev['cod_fee'] ?? 0));
+        [$grossKolomC, $grossKolomD] = $pasangan($num($fin['gross_revenue'] ?? 0), $num($finPrev['gross_revenue'] ?? 0));
+        $rowGross = $push(['PENJUALAN GROSS', '=SUM(B'.$rowNilai.':B'.$rowCod.')', $grossKolomC, $grossKolomD]);
         $this->totalRows[] = $rowGross;
         $this->registerNumber($rowGross, 2, '#,##0');
         $this->noteRows[] = $push(['* Nilai produk terjual sudah memakai harga promo (setelah diskon produk). Koreksi nilai di Tabel Pesanan akan mengubah baris ini.']);
@@ -426,30 +493,42 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $this->groupRows[] = $r - 1;
 
         // Tiga kolom beban di tabel sudah bernilai negatif.
-        $rowOngkirJnt = $moneyRow('Ongkir Dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0));
+        $rowOngkirJnt = $moneyRow('Ongkir Dibayarkan ke J&T', $sum('Ongkir ke J&T'), -1 * $num($fin['shipping_raw'] ?? 0), false, -1 * $num($fin['shipping_raw'] ?? 0), -1 * $num($finPrev['shipping_raw'] ?? 0));
         // Kolom Biaya COD positif (uang diterima pembeli), jadi beban
         // ke J&T memang dibalik di sini. Negasi rumus: '=' harus tetap di
         // depan, jika tidak Excel menyimpan sel sebagai teks dan COD hilang
         // dari jumlah beban (bug 2026-09-12).
-        $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0));
-        $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0));
-        $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0));
+        $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0), false, -1 * $num($fin['cod_fee'] ?? 0), -1 * $num($finPrev['cod_fee'] ?? 0));
+        $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0), false, -1 * $num($fin['refund_adjustments'] ?? 0), -1 * $num($finPrev['refund_adjustments'] ?? 0));
+        $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0), false, -1 * $num($fin['return_shipping_store'] ?? 0), -1 * $num($finPrev['return_shipping_store'] ?? 0));
         // Nilai barang pesanan yang ditolak kurir sebelum lunas: pengurang
         // penjualan (barang kembali, transaksi batal). Selalu dari payload
         // karena tidak ada kolom tabel untuknya.
-        $rowRetDitolak = $money('Nilai Barang Retur Paket', -1 * $num($fin['refused_goods_value'] ?? 0));
+        $rowRetDitolak = $money('Nilai Barang Retur Paket', -1 * $num($fin['refused_goods_value'] ?? 0), false, -1 * $num($finPrev['refused_goods_value'] ?? 0));
         // Beban nyata paket yang tidak diterima pembeli: ongkir kirim yang
         // sudah ditagih J&T dan biaya layanan COD yang hangus. Pembeli tidak
         // membayar, jadi keduanya keluar dari kas toko.
         // Baris keterangan saja, TIDAK dijumlahkan ke JUMLAH BEBAN TOKO.
-        $rowRefusedShip = $money('Ongkir Kirim Ditanggung Toko', -1 * $num($fin['refused_shipping_cost'] ?? 0));
+        $rowRefusedShip = $money('Ongkir Kirim Ditanggung Toko', -1 * $num($fin['refused_shipping_cost'] ?? 0), false, -1 * $num($finPrev['refused_shipping_cost'] ?? 0));
         // Baris keterangan saja, TIDAK dijumlahkan ke JUMLAH BEBAN TOKO.
-        $rowRefusedCod = $money('Biaya Layanan COD Ditanggung Toko', -1 * $num($fin['refused_cod_fee'] ?? 0));
+        $rowRefusedCod = $money('Biaya Layanan COD Ditanggung Toko', -1 * $num($fin['refused_cod_fee'] ?? 0), false, -1 * $num($finPrev['refused_cod_fee'] ?? 0));
         // HANYA baris refund, ongkir J&T, dan retur yang dijumlahkan. Dua baris
         // paket ditolak di atas sengaja TIDAK ikut: keduanya bagian dari Ongkir
         // ke J&T dan Biaya COD, jadi menjumlahkannya lagi membuat Penjualan
         // Bersih di Excel lebih kecil daripada di layar (temuan audit 2026-09-20).
-        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak, 'Tidak ada data', '-']);
+        // Jumlah beban dibaca dari komponen payload yang sama dengan rumus
+        // kolom B, supaya kolom C sebanding dengan kolom B.
+        $bebanDari = static function (array $f) use ($num): float {
+            return -1 * (
+                $num($f['shipping_raw'] ?? 0)
+                + $num($f['cod_fee'] ?? 0)
+                + $num($f['refund_adjustments'] ?? 0)
+                + $num($f['return_shipping_store'] ?? 0)
+                + $num($f['refused_goods_value'] ?? 0)
+            );
+        };
+        [$bebanKolomC, $bebanKolomD] = $pasangan($bebanDari($fin), $bebanDari($finPrev));
+        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak, $bebanKolomC, $bebanKolomD]);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 2, '#,##0');
 
@@ -459,7 +538,8 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // Penjualan bersih = total dibayar + jumlah beban (beban sudah negatif).
         // Referensi WAJIB baris Jumlah beban yang ditangkap di atas; kalkulasi
         // offset manual pernah menunjuk baris pemisah kosong.
-        $rowNet = $push(['PENJUALAN BERSIH', '=B'.$rowGross.'+B'.$rowBeban, 'Tidak ada data', '-']);
+        [$netKolomC, $netKolomD] = $pasangan($num($fin['net_revenue'] ?? 0), $num($finPrev['net_revenue'] ?? 0));
+        $rowNet = $push(['PENJUALAN BERSIH', '=B'.$rowGross.'+B'.$rowBeban, $netKolomC, $netKolomD]);
         $this->grandTotalRows[] = $rowNet;
         $this->registerNumber($rowNet, 2, '#,##0');
         $this->noteRows[] = $push(['* Subsidi ongkir sudah termasuk dalam Ongkir ke J&T, tidak dikurangkan dua kali.']);
@@ -467,9 +547,9 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         // ---- IV. STATUS ARUS KAS ----
         $push(['IV. STATUS ARUS KAS']);
         $this->groupRows[] = $r - 1;
-        $money('Transfer Bank Lunas', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0));
-        $money('COD Selesai (barang sudah sampai)', $fin['cod_paid'] ?? null);
-        $money('Pembayaran Diterima', $fin['payments_received'] ?? null, true);
+        $money('Transfer Bank Lunas', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), false, max($num($finPrev['payments_received'] ?? 0) - $num($finPrev['cod_paid'] ?? 0), 0.0));
+        $money('COD Selesai (barang sudah sampai)', $fin['cod_paid'] ?? null, false, $num($finPrev['cod_paid'] ?? 0));
+        $money('Pembayaran Diterima', $fin['payments_received'] ?? null, true, $num($finPrev['payments_received'] ?? 0));
         $money('COD (barang belum sampai, kondisi saat ini), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
 
         return $rows;
@@ -989,9 +1069,11 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
 
         // ---- IV. BAURAN METODE PEMBAYARAN (COUNTIFS/SUMIFS kolom Metode) ----
         $block('IV. BAURAN METODE PEMBAYARAN', ['Metode', 'Jumlah Pesanan', 'Nilai Penjualan', 'Porsi Nilai'], 'D');
+        // Kriteria disamakan dengan label kolom Metode di Tabel Pesanan
+        // supaya COUNTIFS tidak pernah mencari teks yang tidak ada.
         $methods = [
             'COD' => 'COD',
-            'Transfer bank' => 'Transfer bank',
+            self::LABEL_TRANSFER => self::LABEL_TRANSFER,
         ];
         $rowFirst = null;
         foreach ($methods as $label => $needle) {
@@ -1110,7 +1192,7 @@ class StorePerformanceGuideSheet implements FromArray, WithEvents, WithTitle
             ['PERIODE PEMBANDING', 'Kolom Periode Sebelumnya membandingkan rentang sepanjang periode ini tepat sebelumnya. Bila rentang itu belum ada datanya, kolom berisi keterangan Tidak ada data.'],
             ['PESANAN DIBATALKAN', 'Pesanan yang dibatalkan tetap tampil di Tabel Pesanan dengan seluruh nilai uang dan jumlah 0 (nomor pesanan, tanggal, metode, status, dan pelanggan tetap terdata) supaya konteks pembatalan terlihat tanpa mengubah total. Jumlah, nilai, dan rasio pembatalan ada di KPI seksi Retur & Pembatalan; rincian transaksinya ada di Laporan Pesanan.'],
             ['DETAIL PELANGGAN', 'Identitas pembeli (nama, nomor HP atau WhatsApp, kota) tersedia di Tabel Pesanan pada kolom Detail Pelanggan, dan ringkasan per pelanggan ada di bagian Pelanggan Terbaik pada Analisis. Nomor HP disimpan sebagai teks agar digitnya tidak berubah.'],
-            ['BAURAN PEMBAYARAN', 'Metode pembayaran ditampilkan sebagai COD dan Transfer Bank. Porsi nilai dihitung dari nilai penjualan tiap metode dibagi total seluruh metode.'],
+            ['BAURAN PEMBAYARAN', 'Metode pembayaran ditampilkan sebagai COD dan Transfer Bank, sama dengan kolom Metode di Tabel Pesanan. Porsi nilai dihitung dari nilai penjualan tiap metode dibagi total seluruh metode.'],
             ['ANALISIS', 'Bagian Produk Terlaris menghitung Unit Terjual, Nilai Produk Terjual, dan Jumlah Pesanan langsung dari Tabel Item, dikelompokkan menurut SKU Induk sehingga tetap benar bila barisnya diubah. Untuk menyusun data menurut SKU, metode pembayaran, atau status, gunakan fitur tabel dinamis milik Excel dengan sumber Tabel Pesanan atau Tabel Item.'],
             ['FORMAT ANGKA', 'Semua kolom uang berupa angka polos tanpa Rp sehingga aman dijumlahkan. Sel yang memang tidak punya nilai dibiarkan kosong.'],
         ];
