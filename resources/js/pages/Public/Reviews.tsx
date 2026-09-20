@@ -1,23 +1,16 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import {
-  AppliedFiltersCard,
-  FilterSidebar,
-  FilterSidebarSection,
-} from "@/components/public/filter-sidebar"
+  ReviewFilterPills,
+  type ReviewRatingCount,
+  type ReviewSortValue,
+} from "@/components/public/review-filter-pills"
 import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
-import { Icon } from "@/components/shared/icon"
-import { PageTopBar } from "@/components/public/page-top-bar"
-import { Button } from "@/components/ui/button"
-import { Radio } from "@/components/ui/radio"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Pagination } from "@/components/ui/pagination"
 import { ReviewListingFrame } from "@/components/public/review-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
-import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { Testimonial } from "@/types"
 
@@ -35,12 +28,12 @@ export default function Reviews({
   type = "ss",
   pageMeta,
   testimonials = [],
-  modelNav = [],
   activeModel = null,
   ratingNav = [],
   activeRating = null,
+  activeMediaOnly = false,
+  activeSort = "all",
   stats,
-  installationsHref,
 }: {
   type?: "ss" | "web"
   pageMeta?: { title: string; heading: string; subtitle: string } | null
@@ -55,13 +48,13 @@ export default function Reviews({
         prev_page_url: string | null
         links?: Array<{ url: string | null; label: string; active: boolean }>
       }
-  modelNav?: ModelNavOption[]
   activeModel?: string | null
   /** Opsi filter rating (mis. "5 bintang") beserta jumlah ulasannya. */
   ratingNav?: ModelNavOption[]
   activeRating?: string | null
+  activeMediaOnly?: boolean
+  activeSort?: string
   stats?: { website_total?: number; average_rating?: number | null }
-  installationsHref?: string
 }) {
   const isSs = type === "ss"
   const heading =
@@ -95,48 +88,61 @@ export default function Reviews({
     [testimonialList],
   )
 
-  // Ulasan website: terbaru (default), terlama, atau terbaik (rating 4-5).
-  const [sortFilter, setSortFilter] = React.useState("")
-  const websiteFiltered = React.useMemo(() => {
-    if (sortFilter === "oldest") {
-      return [...website].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
-    }
-    const sorted = [...website].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
-    if (sortFilter === "best") {
-      return sorted.filter((testimonial) => (testimonial.rating ?? 0) >= 4)
-    }
-    return sorted
-  }, [sortFilter, website])
-
-  const sortOptions = React.useMemo(
-    () => [
-      { value: "", label: "Ulasan terbaru" },
-      { value: "oldest", label: "Ulasan terlama" },
-      { value: "best", label: "Ulasan terbaik" },
-    ],
-    [],
-  )
-
   const total = isSs ? marketplace.length : (stats?.website_total ?? website.length)
-  const averageRating = stats?.average_rating ?? null
 
   const galleryItems = React.useMemo(() => toGalleryItems(testimonialList), [testimonialList])
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
 
-  const activeModelLabel =
-    modelNav.find((option) => option.value === activeModel)?.label ?? null
+  /** Rating terpilih dari query param, mis. "4,5" -> [4, 5]. */
+  const selectedRatings = React.useMemo(
+    () =>
+      (activeRating ?? "")
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5)
+        .sort((a, b) => a - b),
+    [activeRating],
+  )
+
+  const sortValue: ReviewSortValue =
+    activeSort === "newest" || activeSort === "oldest" ? activeSort : "all"
+
+  // Daftar ulasan halaman ini sudah disaring dan diurutkan oleh server, jadi
+  // grid hanya merender apa adanya. Grid di halaman /reviews/ss menampilkan
+  // item marketplace, sehingga daftar dari server dipakai apa adanya juga.
+  const visibleItems = React.useMemo(
+    () => (isSs ? testimonialList : website),
+    [isSs, testimonialList, website],
+  )
+
+  const ratingCounts: ReviewRatingCount[] = React.useMemo(
+    () =>
+      ratingNav
+        .map((option) => ({ value: option.value, count: option.count }))
+        .sort((a, b) => Number(a.value) - Number(b.value)),
+    [ratingNav],
+  )
 
   /**
-   * Filter model dan rating dikirim sebagai query param dan SALING menjaga:
-   * memilih salah satu tidak menghapus pilihan yang lain, sehingga keduanya
-   * bisa dipakai bersamaan.
+   * Semua filter dikirim sebagai query param dan SALING menjaga: memilih satu
+   * filter tidak menghapus filter lain, sehingga bisa dipakai bersamaan.
    */
-  function applyFilters(next: { model?: string | null; rating?: string | null }) {
+  function applyFilters(next: {
+    model?: string | null
+    ratings?: number[]
+    mediaOnly?: boolean
+    sort?: ReviewSortValue
+  }) {
     const model = next.model !== undefined ? next.model : activeModel
-    const rating = next.rating !== undefined ? next.rating : activeRating
+    const ratings = next.ratings !== undefined ? next.ratings : selectedRatings
+    const mediaOnly = next.mediaOnly !== undefined ? next.mediaOnly : activeMediaOnly
+    const sort = next.sort !== undefined ? next.sort : sortValue
+
     const params: Record<string, string> = {}
     if (model) params.model = model
-    if (rating) params.rating = rating
+    if (ratings.length) params.rating = ratings.join(",")
+    if (mediaOnly) params.media_only = "1"
+    if (sort !== "all") params.sort = sort
 
     router.get(
       routeUrl(isSs ? "reviews.screenshots" : "reviews.website"),
@@ -145,35 +151,6 @@ export default function Reviews({
     )
   }
 
-  function selectModel(value: string | null) {
-    applyFilters({ model: value })
-  }
-
-  function selectRating(value: string | null) {
-    applyFilters({ rating: value })
-  }
-
-  const modelOptions = React.useMemo(
-    () => [
-      { value: "", label: "Semua Model" },
-      ...modelNav.map((option) => ({ value: option.value, label: option.label })),
-    ],
-    [modelNav],
-  )
-
-  // Filter rating hanya berguna bila ada lebih dari satu nilai rating, supaya
-  // pilihannya tidak menawarkan hal yang sama.
-  const showRatingFilter = ratingNav.length > 1
-  const ratingOptions = React.useMemo(
-    () => [
-      { value: "", label: "Semua rating" },
-      ...ratingNav.map((option) => ({
-        value: option.value,
-        label: `${option.label} (${formatNumber(option.count)})`,
-      })),
-    ],
-    [ratingNav],
-  )
 
   function renderGrid(
     items: Testimonial[],
@@ -215,74 +192,47 @@ export default function Reviews({
         <meta name="description" content={subtitle} />
       </Head>
 
+      {/* Ringkasan jumlah ulasan dan rating rata-rata sengaja tidak
+          ditampilkan: jumlahnya sudah ada di pill filter, dan rating
+          rata-rata mudah menyesatkan karena saat ini seluruh ulasan
+          berating 4 sampai 5. */}
       <ReviewListingFrame
         title={heading}
         breadcrumbs={[
           { label: "Beranda", href: routeUrl("home") },
           { label: heading, href: null },
         ]}
-        summary={total ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
-              {averageRating ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="mx-1.5 text-muted-foreground">·</span>
-                  <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
-                  <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
-                </span>
-              ) : null}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              {showRatingFilter ? (
-                <FilterBerdasarkanControl
-                  id="reviews-rating"
-                  variant="plain"
-                  value={activeRating ?? ""}
-                  options={ratingOptions}
-                  onChange={(value) => selectRating(value || null)}
-                  ariaLabel="Filter rating ulasan"
-                  menuLabel="Rating"
-                />
-              ) : null}
-              <FilterBerdasarkanControl
-                id="reviews-sort"
-                variant="plain"
-                value={sortFilter}
-                options={sortOptions}
-                onChange={setSortFilter}
-                ariaLabel="Urutkan ulasan"
-                menuLabel="Urutkan"
-              />
-            </div>
-          </div>
-        ) : null}
+        summary={
+          <ReviewFilterPills
+            idPrefix={isSs ? "reviews-ss" : "reviews-web"}
+            totalCount={total}
+            sort={sortValue}
+            onSortChange={(value) => applyFilters({ sort: value })}
+            mediaOnly={activeMediaOnly}
+            onMediaOnlyChange={(value) => applyFilters({ mediaOnly: value })}
+            ratings={ratingCounts}
+            selectedRatings={selectedRatings}
+            onRatingsChange={(value) => applyFilters({ ratings: value })}
+          />
+        }
         pagination={pagination}
       >
         {isSs ? (
           <section id="apa-kata-pelanggan" className="scroll-mt-20">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
-              <span className="tabular-nums text-sm text-muted-foreground">
-                {formatNumber(marketplace.length)}
-              </span>
-            </div>
             {renderGrid(
-              marketplace,
+              visibleItems,
               "screenshot",
               "Belum ada screenshot pelanggan",
-              "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
+              "Coba ubah filter, atau bukti percakapan Shopee/WhatsApp akan tampil di sini.",
             )}
           </section>
         ) : (
           <section id="ulasan-website" className="scroll-mt-20">
             {renderGrid(
-              websiteFiltered,
+              visibleItems,
               "review",
-              sortFilter === "best" ? "Belum ada ulasan terbaik" : "Belum ada ulasan website",
-              sortFilter === "best"
-                ? "Ulasan dengan rating 4-5 belum tersedia. Coba urutan lain."
-                : "Ulasan dari pembeli website akan tampil di sini.",
+              "Belum ada ulasan sesuai filter",
+              "Coba ubah atau hapus filter untuk melihat ulasan lainnya.",
             )}
           </section>
         )}

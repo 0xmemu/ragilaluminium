@@ -3,6 +3,11 @@ import * as React from "react"
 
 import { InstallationLightbox } from "@/components/public/installation-lightbox"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
+import {
+  ReviewFilterPills,
+  type ReviewSortValue,
+} from "@/components/public/review-filter-pills"
+import { filterReviews, reviewRatingCounts } from "@/lib/review-filters"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -41,6 +46,7 @@ function reviewImages(review: Testimonial): string[] {
   const images = (review.images ?? []).filter((url): url is string => Boolean(url))
   return images.length ? images : review.image_url ? [review.image_url] : []
 }
+
 
 function AccordionSection({
   title,
@@ -111,6 +117,36 @@ export function ProductInfoSections({
   const [reviewsOpen, setReviewsOpen] = React.useState(false)
   const [installationOpen, setInstallationOpen] = React.useState(false)
   const [installationIndex, setInstallationIndex] = React.useState(0)
+
+  // Filter ulasan di section ini dan di popup "Semua Ulasan". Dijalankan di
+  // browser karena seluruh ulasan produk sudah tersedia sebagai data halaman,
+  // jadi tidak perlu memuat ulang apa pun saat filter diubah.
+  const [reviewSort, setReviewSort] = React.useState<ReviewSortValue>("all")
+  const [reviewMediaOnly, setReviewMediaOnly] = React.useState(false)
+  const [reviewRatings, setReviewRatings] = React.useState<number[]>([])
+
+  /** Jumlah tiap rating, dihitung SEBELUM filter rating supaya tidak hilang. */
+  const ratingCounts = React.useMemo(() => reviewRatingCounts(reviews), [reviews])
+
+  const filteredReviews = React.useMemo(
+    () => filterReviews(reviews, { ratings: reviewRatings, mediaOnly: reviewMediaOnly, sort: reviewSort }),
+    [reviews, reviewRatings, reviewMediaOnly, reviewSort],
+  )
+
+  const reviewPills = (
+    <ReviewFilterPills
+      idPrefix={`product-reviews-${product.parent_sku}`}
+      totalCount={reviews.length}
+      sort={reviewSort}
+      onSortChange={setReviewSort}
+      mediaOnly={reviewMediaOnly}
+      onMediaOnlyChange={setReviewMediaOnly}
+      ratings={ratingCounts}
+      selectedRatings={reviewRatings}
+      onRatingsChange={setReviewRatings}
+      className="mt-3"
+    />
+  )
 
   const reviewsScrollRef = React.useRef<HTMLUListElement>(null)
   const [canScrollLeft, setCanScrollLeft] = React.useState(false)
@@ -231,13 +267,15 @@ export function ProductInfoSections({
           </div>
         </div>
 
-        {reviews.length ? (
+        {reviewPills}
+
+        {filteredReviews.length ? (
           <ul
             ref={reviewsScrollRef}
             onScroll={checkScroll}
             className="scrollbar-none mt-4 flex flex-col gap-3 lg:flex-row lg:overflow-x-auto lg:scroll-smooth lg:pb-2"
           >
-            {reviews.map((review) => {
+            {filteredReviews.map((review) => {
               const photos = reviewImages(review)
               return (
                 <li
@@ -302,18 +340,18 @@ export function ProductInfoSections({
           </ul>
         ) : (
           <p className="mt-3 border-t border-border pt-4 text-sm text-muted-foreground">
-            Belum ada ulasan untuk produk ini. Lihat ulasan pelanggan lain di halaman Ulasan
-            atau tanya detail pemasangan via WhatsApp.
+            Belum ada ulasan yang cocok dengan filter. Coba ubah atau hapus filternya,
+            atau tanyakan detail pemasangan via WhatsApp.
           </p>
         )}
-        {reviews.length ? (
+        {filteredReviews.length ? (
           <div className="mt-4 border-t border-b border-border lg:hidden">
             <button
               type="button"
               onClick={() => setReviewsOpen(true)}
               className="flex w-full cursor-pointer items-center justify-between gap-1.5 py-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
-              <span>Lihat Semua Ulasan ({reviews.length})</span>
+              <span>Lihat Semua Ulasan ({filteredReviews.length})</span>
               <Icon name="arrow-right" className="size-4 -rotate-90 transition-transform md:rotate-0" weight="regular" aria-hidden="true" />
             </button>
           </div>
@@ -404,7 +442,9 @@ export function ProductInfoSections({
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-foreground">
                   Semua Ulasan{" "}
-                  <span className="font-normal text-muted-foreground">({reviews.length})</span>
+                  <span className="font-normal text-muted-foreground">
+                    ({filteredReviews.length})
+                  </span>
                 </h3>
                 {averageRating !== null ? (
                   <div className="mt-1 flex items-center gap-1.5">
@@ -424,9 +464,12 @@ export function ProductInfoSections({
                 <Icon name="x" className="size-4" aria-hidden="true" />
               </button>
             </div>
+            {/* Pill filter yang sama seperti di section, supaya pembeli bisa
+                menyaring tanpa menutup popup. */}
+            <div className="px-5 pb-1">{reviewPills}</div>
             <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3">
               <ul className="flex flex-col gap-3">
-                {reviews.map((review) => (
+                {filteredReviews.map((review) => (
                   <li key={review.id} className="min-w-0">
                     <TestimonialCard
                       testimonial={{ ...review, product: undefined as Testimonial["product"] }}

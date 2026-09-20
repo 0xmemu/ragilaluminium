@@ -74,11 +74,12 @@ class ReviewsRatingFilterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $assert) => $assert
                 ->component('Public/Reviews')
+                // Urut menaik: bintang terendah paling atas.
                 ->has('ratingNav', 2)
-                ->where('ratingNav.0.value', '5')
-                ->where('ratingNav.0.count', 2)
-                ->where('ratingNav.1.value', '3')
-                ->where('ratingNav.1.count', 1)
+                ->where('ratingNav.0.value', '3')
+                ->where('ratingNav.0.count', 1)
+                ->where('ratingNav.1.value', '5')
+                ->where('ratingNav.1.count', 2)
                 ->where('activeRating', null));
     }
 
@@ -101,7 +102,7 @@ class ReviewsRatingFilterTest extends TestCase
                 // Jumlah tiap rating tetap dihitung dari seluruh ulasan,
                 // bukan dari hasil filter.
                 ->has('ratingNav', 3)
-                ->where('ratingNav.0.value', '5')
+                ->where('ratingNav.0.value', '3')
                 ->where('ratingNav.0.count', 1));
     }
 

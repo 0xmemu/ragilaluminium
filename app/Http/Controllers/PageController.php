@@ -128,27 +128,24 @@ class PageController extends Controller
     {
         [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
         $activeRating = $this->reviewRatingFilter($request);
+        $mediaOnly = $this->reviewMediaOnlyFilter($request);
+        $sort = $this->reviewSortFilter($request);
 
-        // Basis SEBELUM filter rating: dipakai untuk menghitung jumlah tiap
-        // rating, supaya angkanya tidak mengecil menjadi hanya rating terpilih.
+        // Basis untuk menghitung jumlah tiap rating: SESUDAH filter model dan
+        // media, tetapi SEBELUM filter rating. Dengan begitu jumlah tiap
+        // rating tetap terbaca saat salah satu rating dipilih.
         $base = CmsTestimonial::query()->published()->website();
         $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
-        $ratingNav = $this->reviewRatingNav($base);
+        $ratingNav = $this->reviewRatingNav($base, $mediaOnly, $sort);
 
-        // Statistik mengikuti filter aktif, sehingga angka di header konsisten
-        // dengan daftar yang benar-benar tampil.
-        $filtered = (clone $base)->when($activeRating !== null, fn ($q) => $q->where('rating', $activeRating));
+        // Daftar memakai SELURUH filter, sehingga angka yang tampil selalu
+        // cocok dengan kartu yang dilihat pembeli.
+        $filtered = $this->applyReviewListingFilters(clone $base, $activeRating, $mediaOnly, $sort);
 
-        $websiteTotal = (clone $filtered)->count();
+        $websiteTotal = $filtered->count();
         $avgRating = (clone $filtered)->whereNotNull('rating')->avg('rating');
 
-        $testimonials = (clone $filtered)
-            ->with('product:id,parent_sku,name,short_name')
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->paginate(12)
-            ->withQueryString()
-            ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
+        $testimonials = $this->paginateReviews($filtered);
 
         return Inertia::render('Public/Reviews', [
             'type' => 'web',
@@ -158,15 +155,18 @@ class PageController extends Controller
                 'subtitle' => 'Ulasan pelanggan yang memesan lewat website.',
             ],
             'testimonials' => $testimonials,
-            'modelNav' => $this->reviewModelNav(),
+            // activeModel tetap dikirim supaya param `model` pada URL lama
+            // tidak hilang saat pembeli mengganti filter lain, walaupun
+            // kontrolnya sudah tidak ditampilkan (diganti tiga pill filter).
             'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
             'ratingNav' => $ratingNav,
-            'activeRating' => $activeRating !== null ? (string) $activeRating : null,
+            'activeRating' => $activeRating !== [] ? implode(',', $activeRating) : null,
+            'activeMediaOnly' => $mediaOnly,
+            'activeSort' => $sort,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
             ],
-            'installationsHref' => route('installation.index'),
         ]);
     }
 
@@ -178,35 +178,34 @@ class PageController extends Controller
     {
         [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
         $activeRating = $this->reviewRatingFilter($request);
+        $mediaOnly = $this->reviewMediaOnlyFilter($request);
+        $sort = $this->reviewSortFilter($request);
 
+        // Halaman ini memang hanya memuat ulasan berscreenshot, jadi filter
+        // "Foto/Video" tidak menambah penyaringan di sini.
         $base = CmsTestimonial::query()->published()->withScreenshot();
         $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
-        $ratingNav = $this->reviewRatingNav($base);
+        $ratingNav = $this->reviewRatingNav($base, $mediaOnly, $sort);
 
-        $filtered = (clone $base)->when($activeRating !== null, fn ($q) => $q->where('rating', $activeRating));
+        $filtered = $this->applyReviewListingFilters(clone $base, $activeRating, $mediaOnly, $sort);
 
-        $testimonials = (clone $filtered)->with('product:id,parent_sku,name,short_name')
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
-            ->paginate(12)
-            ->withQueryString()
-            ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
+        $testimonials = $this->paginateReviews($filtered, includeProduct: true);
 
-        $websiteTotal = (clone $filtered)->website()->count();
+        $websiteTotal = $filtered->where('source', 'website')->count();
 
         return Inertia::render('Public/Reviews', [
             'type' => 'ss',
             'pageMeta' => TestimonialPageSettings::forStorefront(),
             'testimonials' => $testimonials,
-            'modelNav' => $this->reviewModelNav(),
             'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
             'ratingNav' => $ratingNav,
-            'activeRating' => $activeRating !== null ? (string) $activeRating : null,
+            'activeRating' => $activeRating !== [] ? implode(',', $activeRating) : null,
+            'activeMediaOnly' => $mediaOnly,
+            'activeSort' => $sort,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => null,
             ],
-            'installationsHref' => route('installation.index'),
         ]);
     }
 
@@ -222,18 +221,131 @@ class PageController extends Controller
     }
 
     /**
-     * Filter rating dari query string. Hanya menerima 1..5; nilai lain
-     * dianggap tidak memfilter, sama seperti perilaku filter model.
+     * Filter rating dari query string.
+     *
+     * Menerima SATU nilai ("4") atau DAFTAR dipisah koma ("4,5"), karena
+     * dropdown bintang boleh memilih lebih dari satu rating. Hanya 1..5 yang
+     * diterima; nilai lain dibuang. Bila tidak ada yang valid, filter dianggap
+     * tidak aktif, sama seperti perilaku filter model.
+     *
+     * @return list<int>
      */
-    private function reviewRatingFilter(Request $request): ?int
+    private function reviewRatingFilter(Request $request): array
     {
-        $raw = trim((string) $request->input('rating', ''));
-        if (! ctype_digit($raw)) {
-            return null;
-        }
-        $rating = (int) $raw;
+        $raw = (string) $request->input('rating', '');
 
-        return $rating >= 1 && $rating <= 5 ? $rating : null;
+        $ratings = collect(explode(',', $raw))
+            ->map(fn ($part) => trim($part))
+            ->filter(fn ($part) => ctype_digit($part))
+            ->map(fn ($part) => (int) $part)
+            ->filter(fn (int $value) => $value >= 1 && $value <= 5)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return $ratings;
+    }
+
+    /**
+     * Urutan ulasan dari query string: "all" (bawaan halaman), "newest", atau
+     * "oldest". Nilai lain dianggap "all".
+     */
+    private function reviewSortFilter(Request $request): string
+    {
+        $sort = (string) $request->input('sort', '');
+
+        return in_array($sort, ['newest', 'oldest'], true) ? $sort : 'all';
+    }
+
+    /**
+     * Filter "hanya ulasan berfoto atau bervideo".
+     *
+     * Sengaja TIDAK memakai klausa JSON pada SQL: kolom media bertipe json dan
+     * perilakunya berbeda antara MySQL dan SQLite (driver test). Penyaringan
+     * dilakukan di PHP, dan paginasi daftar memakai paginator manual supaya
+     * batas 12 per halaman tetap berlaku.
+     */
+    private function reviewMediaOnlyFilter(Request $request): bool
+    {
+        return $request->boolean('media_only');
+    }
+
+    /** Apakah ulasan ini punya foto atau video. */
+    private function reviewHasMedia(CmsTestimonial $testimonial): bool
+    {
+        if (filled($testimonial->image_url)) {
+            return true;
+        }
+        if ($testimonial->imagesPayload() !== []) {
+            return true;
+        }
+
+        return $testimonial->mediaPayload() !== [];
+    }
+
+    /**
+     * Susun daftar ulasan yang sudah tayang untuk storefront: filter rating,
+     * filter media, lalu pengurutan.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<CmsTestimonial>  $query
+     * @param  list<int>  $activeRatings  kosong berarti tanpa filter rating
+     * @return \Illuminate\Support\Collection<int, CmsTestimonial>
+     */
+    private function reviewListingCollection($query, array $activeRatings, bool $mediaOnly, string $sort)
+    {
+        $items = $query
+            ->when($activeRatings !== [], fn ($q) => $q->whereIn('rating', $activeRatings))
+            ->get();
+
+        if ($mediaOnly) {
+            $items = $items->filter(fn (CmsTestimonial $t) => $this->reviewHasMedia($t))->values();
+        }
+
+        if ($sort === 'newest') {
+            $items = $items->sortByDesc('id')->values();
+        } elseif ($sort === 'oldest') {
+            $items = $items->sortBy('id')->values();
+        } else {
+            // Urutan bawaan halaman: sort_order admin, lalu terbaru.
+            $items = $items
+                ->sortBy([['sort_order', 'asc'], ['id', 'desc']])
+                ->values();
+        }
+
+        return $items;
+    }
+
+    /** @param \Illuminate\Database\Eloquent\Builder<CmsTestimonial> $base */
+    private function applyReviewListingFilters($base, array $activeRatings, bool $mediaOnly, string $sort)
+    {
+        return $this->reviewListingCollection($base, $activeRatings, $mediaOnly, $sort);
+    }
+
+    /**
+     * Ubah koleksi ulasan menjadi paginator 12 per halaman supaya bentuk props
+     * storefront tetap sama (data, links, total, dan seterusnya).
+     *
+     * @param  \Illuminate\Support\Collection<int, CmsTestimonial>  $items
+     */
+    private function paginateReviews($items, bool $includeProduct = true): \Illuminate\Pagination\LengthAwarePaginator
+    {
+        // Ketika pemanggil mengirim builder, ambil koleksinya lebih dulu.
+        if (! $items instanceof \Illuminate\Support\Collection) {
+            $items = collect($items);
+        }
+
+        $perPage = 12;
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        $slice = $items->forPage($page, $perPage)->values();
+
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $slice->map(fn (CmsTestimonial $t) => $t->toPublicArray($includeProduct))->all(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()],
+        );
     }
 
     /** @param \Illuminate\Database\Eloquent\Builder<CmsTestimonial> $query */
@@ -257,17 +369,20 @@ class PageController extends Controller
      * @param  \Illuminate\Database\Eloquent\Builder<CmsTestimonial>  $base
      * @return list<array{value: string, label: string, count: int}>
      */
-    private function reviewRatingNav($base): array
+    private function reviewRatingNav($base, bool $mediaOnly = false, string $sort = 'all'): array
     {
-        $counts = (clone $base)
-            ->whereNotNull('rating')
-            ->selectRaw('rating, count(*) as total')
-            ->groupBy('rating')
-            ->pluck('total', 'rating');
+        // Hitungan memakai filter media + urutan yang sama dengan daftar,
+        // tetapi TANPA filter rating, supaya jumlah tiap rating tidak hilang
+        // saat salah satu rating sedang dipilih.
+        $items = $this->reviewListingCollection($base, [], $mediaOnly, $sort);
+
+        $counts = $items->whereNotNull('rating')->countBy('rating');
 
         $options = [];
 
-        for ($rating = 5; $rating >= 1; $rating--) {
+        // Urut dari 1 ke 5: bintang terendah di paling atas, sesuai kontrak
+        // tampilan dropdown filter.
+        for ($rating = 1; $rating <= 5; $rating++) {
             $count = (int) ($counts[$rating] ?? 0);
             if ($count < 1) {
                 continue;

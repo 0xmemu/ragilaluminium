@@ -145,8 +145,6 @@ class ProductReviewsTest extends TestCase
                 ->has('testimonials.links')
                 ->has('pageMeta')
                 ->where('pageMeta.heading', 'Apa kata pelanggan kami')
-                ->has('modelNav', 1)
-                ->has('installationsHref')
             );
     }
 
@@ -208,7 +206,6 @@ class ProductReviewsTest extends TestCase
                 ->component('Public/Reviews')
                 ->missing('installations')
                 ->missing('installationMeta')
-                ->has('installationsHref')
             );
 
         $this->get(route('installation.index'))
@@ -276,9 +273,7 @@ class ProductReviewsTest extends TestCase
                 ->component('Public/Reviews')
                 ->has('testimonials.data', 2)
                 ->where('stats.website_total', 0)
-                ->has('modelNav')
                 ->has('pageMeta')
-                ->has('installationsHref')
             );
 
         $this->get(route('reviews.screenshots'))
@@ -392,8 +387,6 @@ class ProductReviewsTest extends TestCase
                 ->has('testimonials.data', 2)
                 ->where('stats.website_total', 2)
                 ->where('stats.average_rating', 4.5)
-                ->has('modelNav')
-                ->has('installationsHref')
             );
 
         // Filter model produk (web).

@@ -86,11 +86,14 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /promo` -> `CatalogController@promo`  (name: `catalog.promo`)
 - `GET /reviews/web` -> `PageController@reviewsWebsite`  (name: `reviews.website`)
 - `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
-  - Query param filter (keduanya bisa dipakai bersamaan):
-    - `model` = `KATEGORI|MODEL` (mis. `WINDOW|JUNGKIT`). Format salah diabaikan, tidak memfilter.
-    - `rating` = `1`..`5`. Nilai di luar rentang atau bukan angka diabaikan, tidak memfilter.
-  - Opsi filter rating (`ratingNav`) dihitung dari basis TANPA filter rating tetapi SESUDAH filter model, sehingga jumlah tiap rating tetap terbaca saat salah satu rating dipilih. Hanya rating yang punya ulasan tayang yang ditawarkan.
-  - Statistik `stats.website_total` dan `stats.average_rating` MENGIKUTI filter rating yang aktif, supaya angka di header konsisten dengan daftar yang tampil.
+  - Query param filter (semuanya bisa dipakai bersamaan):
+    - `model` = `KATEGORI|MODEL` (mis. `WINDOW|JUNGKIT`). Format salah diabaikan, tidak memfilter. Tidak ada kontrol UI untuk ini; parameternya tetap dibawa agar URL lama tidak kehilangan filter saat pembeli mengganti filter lain.
+    - `rating` = satu nilai (`4`) atau daftar dipisah koma (`4,5`). Hanya `1`..`5` yang diterima; nilai lain, duplikat, dan nilai kosong dibuang. Tanpa nilai sah berarti tanpa filter rating.
+    - `media_only` = `1` untuk hanya ulasan yang punya foto atau video.
+    - `sort` = `newest` atau `oldest`. Selain itu (termasuk kosong) berarti urutan bawaan halaman, yaitu `sort_order` admin lalu terbaru.
+  - Opsi filter rating (`ratingNav`) dihitung dari basis SESUDAH filter model dan filter media, tetapi TANPA filter rating, sehingga jumlah tiap rating tetap terbaca saat salah satu rating dipilih. Hanya rating yang punya ulasan tayang yang ditawarkan, urut menaik dari 1 bintang.
+  - Statistik `stats.website_total` dan `stats.average_rating` MENGIKUTI filter yang aktif, supaya angka pada pill filter konsisten dengan daftar yang tampil.
+  - Pemakaian `media_only` disaring di PHP, bukan dengan klausa JSON pada SQL: kolom media bertipe json dan perilakunya berbeda antara MySQL (produksi) dan SQLite (test). Karena itu daftar dibentuk sebagai koleksi lalu dipaginasi manual 12 per halaman.
 - `GET /reviews` -> `Closure`  (301 redirect ke `/reviews/web`, query diteruskan)
 - `GET /sanctum/csrf-cookie` -> `Laravel\Sanctum\Http\Controllers\CsrfCookieController@show`  (name: `sanctum.csrf-cookie`)
 - `GET /search` -> `Closure`  (name: `search`)
@@ -275,8 +278,6 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 
 - `GET /admin/shipping` -> `Admin\ShippingRecordController@index`  (name: `admin.shipping.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@edit`  (name: `admin.shipping-subsidy.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `GET /admin/cta-storefront` -> `Admin\CtaSettingsController@edit`  (name: `admin.cta-settings.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `PUT /admin/cta-storefront` -> `Admin\CtaSettingsController@update`  (name: `admin.cta-settings.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]  Payload `enabled` + `blocks[]{key,eyebrow,heading}`; teks CTA penutup storefront (dibagikan ke publik sebagai shared prop `ctaSettings`).
 - `PUT /admin/shipping-subsidy` -> `Admin\ShippingSubsidyController@update`  (name: `admin.shipping-subsidy.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/shipping/{shipping_record}/refresh` -> `Admin\ShippingRecordController@refreshStatus`  (name: `admin.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/shipping/{shipping}` -> `Admin\ShippingRecordController@show`  (name: `admin.shipping.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
