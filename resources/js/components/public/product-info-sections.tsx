@@ -283,7 +283,11 @@ export function ProductInfoSections({
               return (
                 <li
                   key={review.id}
-                  className="flex flex-col rounded-xl border border-border bg-white p-4 shrink-0 lg:w-[320px] lg:max-w-[320px]"
+                  // Lebar kartu = (100% - 2 jarak) / 2.5 supaya tepat 2,5 kartu terlihat
+                  // di lebar layar mana pun. Jarak antar kartu 12px (gap-3), jadi dua jarak
+                  // = 24px = 1.5rem. Sebelumnya 320px tetap, sehingga jumlah kartu yang
+                  // terlihat berubah mengikuti lebar layar (3,5 kartu pada kontainer 1169px).
+                  className="flex flex-col rounded-xl border border-border bg-white p-4 shrink-0 lg:w-[calc((100%_-_1.5rem)/2.5)]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
