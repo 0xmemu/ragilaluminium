@@ -83,9 +83,20 @@ export function ReviewCollapsibleText({
 
   const showToggle = truncated && !expanded
 
-  // `pl-1` memberi jarak agar label tidak menempel pada huruf terakhir yang
-  // masih tampak; latarnya menutupi sisa baris yang terpotong.
-  const toggleClass = cn(TOGGLE_CLASS, "absolute bottom-0 right-0 pl-1", surfaceClassName)
+  // Elipsis menandai bahwa teksnya terpotong. Elipsis bawaan `line-clamp`
+  // berada di ujung kanan baris terakhir, tepat tertutup tombol yang berlatar
+  // opak, jadi elipsis ini yang menggantikannya di tampilan. Ditandai
+  // `aria-hidden` supaya nama aksesibel tombol tetap "Lihat selengkapnya".
+  const toggleContent = (
+    <>
+      <span aria-hidden="true">…</span> Lihat selengkapnya
+    </>
+  )
+
+  // Padding kiri hanya 2px: cukup agar latar opak tidak memotong huruf
+  // terakhir yang masih tampak, tetapi elipsis tetap menempel pada kata yang
+  // terpotong seperti "ekspekt…", bukan "ekspekt …".
+  const toggleClass = cn(TOGGLE_CLASS, "absolute bottom-0 right-0 pl-0.5", surfaceClassName)
 
   return (
     <div className="relative">
@@ -103,11 +114,11 @@ export function ReviewCollapsibleText({
             }}
             className={toggleClass}
           >
-            Lihat selengkapnya
+            {toggleContent}
           </span>
         ) : (
           <button type="button" onClick={handleExpand} className={toggleClass}>
-            Lihat selengkapnya
+            {toggleContent}
           </button>
         )
       ) : null}
