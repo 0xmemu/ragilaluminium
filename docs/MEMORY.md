@@ -2843,3 +2843,39 @@ dan tiap header punya tepat satu primari. Halaman publik /masalah-dan-solusi, /f
 
 Spec tidak berubah: tanpa route, schema, enum, atau bentuk JSON baru. Yang berubah hanya perilaku
 tombol dan lokasi tombol simpan meta di dalam panel. Tanpa em dash.
+
+### 2026-09-20 - Mode urut hanya lewat ikon tarik, tombol naik/turun dihapus
+Kontrak owner (verbatim): "mode geser/urutkan wajib menggunakan ikon drag untuk menggeser, dilarang
+pakai ikon < > up down. tempatkan ikon selalu di tepi kiri item".
+
+Artinya geser-urut hanya lewat satu handle tarik. Tombol panah dan caret naik/turun dihapus dari
+enam halaman yang masih memakainya: Faq, ApaKata, Testimonials, SubModels, ModelProducts (list dan
+grid), dan Beranda/Index. Fungsi `move`/`moveRow` yang dulu melayani tombol itu ikut dibuang supaya
+tidak ada jalur geser kedua yang tertinggal.
+
+Komponen bersama baru: `resources/js/components/admin/reorder-drag-handle.tsx`. Ikon titik enam
+(`dots-six-vertical`), selalu ikon pertama di tepi kiri item, redup (`opacity-30`) saat mode urut
+mati supaya lebar kolom tidak berubah dan baris tidak melompat saat mode dinyalakan. Tooltip:
+"Tarik untuk memindahkan" saat aktif, "Aktifkan mode urutkan untuk memindahkan" saat mati.
+
+Susunan kolom setelah perubahan:
+- Tabel: kolom handle diletakkan paling kiri, lalu kolom No. Kolom "Urutan" yang khusus muncul saat
+  mode geser (ApaKata/Testimonials) dihapus karena handle sudah selalu tampil di tepi kiri.
+- SubModels: header "Urut" diganti kolom handle, dan kolom "No" ditambahkan supaya nomor tidak
+  hilang; `colSpan` baris header grup ikut 7 menjadi 8.
+- ModelProducts grid: label nomor absolut di kartu diganti handle tarik.
+- Tabel kartu (FAQ, Beranda): handle jadi elemen pertama, nomor tetap di sebelahnya.
+
+Satu penyesuaian yang muncul saat verifikasi live: tab Ulasan Website tidak punya mode urut sama
+sekali (tanpa `reorderUrl`), jadi kolom handle di sana tidak dirender, supaya tidak ada kolom redup
+yang tidak bisa dipakai. Kolom hanya muncul saat `canReorder && reorderUrl` benar.
+
+Verifikasi: tsc bersih, eslint 0 warning, build Vite PASS, 151 vitest PASS, 46 PHP test PASS
+(605 assertion). Live lewat browser, tiap halaman diaktifkan mode urutnya lalu diperiksa: 0 tombol
+panah tersisa, handle ada di sel/elemen pertama, dan drag benar-benar memindahkan baris
+(Faq, ApaKata 54 baris, Testimonials eksternal 54 baris, SubModel, ModelProducts list 13 baris dan
+grid 13 kartu, Beranda 2 bagian). Perubahan uji pada data produksi dibatalkan tanpa disimpan
+(reload memulihkan urutan), dan urutan produksi dipastikan kembali seperti semula.
+
+Spec tidak berubah: tanpa route, schema, enum, atau bentuk JSON baru. Yang berubah hanya cara
+menggeser dan susunan kolom tampilan.

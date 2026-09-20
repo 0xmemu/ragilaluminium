@@ -6,6 +6,7 @@ import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -209,20 +210,6 @@ export default function ApaKataIndex({
     router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
   }
 
-  function moveRow(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= orderedRows.length) return
-    const next = [...orderedRows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setOrderedRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
-
   function reorderRows(from: number, to: number) {
     if (from === to) return
     const next = [...orderedRows]
@@ -398,8 +385,8 @@ export default function ApaKataIndex({
             <table className="min-w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                 <tr>
+                  <th className="w-12 px-3 py-3" aria-label="Seret" />
                   <th className="px-3 py-3 font-semibold">No</th>
-                  {reorderMode ? <th className="px-3 py-3 font-semibold">Urutan</th> : null}
                   <th className="px-3 py-3 font-semibold">Pelanggan</th>
                   <th className="px-3 py-3 font-semibold">Sumber</th>
                   <th className="px-3 py-3 font-semibold">Screenshot</th>
@@ -411,33 +398,11 @@ export default function ApaKataIndex({
               <tbody>
                 {displayRows.map((row, index) => (
                   <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}>
+                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
+                    <td className="w-12 px-3 py-3">
+                      <ReorderDragHandle enabled={reorderMode && !listTersaring} />
+                    </td>
                     <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
-                    {reorderMode ? (
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="secondary"
-                            disabled={index === 0}
-                            onClick={() => moveRow(index, -1)}
-                            aria-label="Naikkan prioritas"
-                          >
-                            <Icon name="caret-up" className="size-3.5" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="secondary"
-                            disabled={index === displayRows.length - 1}
-                            onClick={() => moveRow(index, 1)}
-                            aria-label="Turunkan prioritas"
-                          >
-                            <Icon name="caret-down" className="size-3.5" aria-hidden="true" />
-                          </Button>
-                        </div>
-                      </td>
-                    ) : null}
                     <td className="px-3 py-3">
                       <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
                         {row.customer_name}

@@ -6,6 +6,7 @@ import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -193,20 +194,6 @@ export default function ModelProductsIndex({
     apply({ view: mode })
   }
 
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= rows.length) return
-    const next = [...rows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
-
   function reorderRows(from: number, to: number) {
     if (from === to) return
     const next = [...rows]
@@ -368,7 +355,7 @@ export default function ModelProductsIndex({
 
       {reorderMode ? (
         <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Atur urutan dengan drag & drop atau tombol naik/turun, lalu simpan.
+          Tarik ikon titik enam di kiri baris untuk memindahkan, lalu simpan.
         </div>
       ) : null}
 
@@ -475,11 +462,12 @@ export default function ModelProductsIndex({
               )}
               {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
             >
-              {reorderMode ? (
-                <span className="absolute left-2 top-2 z-10 flex size-7 items-center justify-center rounded-md bg-background/90 text-xs font-semibold tabular-nums text-foreground shadow-soft">
-                  {index + 1}
-                </span>
-              ) : null}
+              {/* Geser hanya lewat ikon tarik di tepi kiri kartu (kontrak owner 2026-09-20). */}
+              <span className="absolute left-2 top-2 z-10 rounded-md bg-background/90 shadow-soft">
+                <ReorderDragHandle
+                  enabled={reorderMode && !listTersaring && row.status === "active"}
+                />
+              </span>
               <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
                 {row.image_url ? (
                   <img
@@ -541,6 +529,7 @@ export default function ModelProductsIndex({
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
                 <tr>
+                  <th className="w-12 px-3 py-3" aria-label="Seret" />
                   <th className="px-3 py-3 text-center">No</th>
                   <th className="px-4 py-3 text-left">Model Produk</th>
                   <th className="px-3 py-3 text-center">Jumlah Sub Model</th>
@@ -562,32 +551,18 @@ export default function ModelProductsIndex({
                     )}
                     {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
                   >
-                    <td className="px-3 py-3">
-                      {reorderMode ? (
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="h-7 px-2 text-xs"
-                            disabled={index === 0 || row.status !== "active"}
-                            onClick={() => move(index, -1)}
-                          >
-                            ↑
-                          </Button>
-                          <span className="text-center tabular-nums text-muted-foreground">{row.no}</span>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="h-7 px-2 text-xs"
-                            disabled={index === rows.length - 1 || row.status !== "active"}
-                            onClick={() => move(index, 1)}
-                          >
-                            ↓
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="tabular-nums text-muted-foreground">{row.no}</span>
-                      )}
+                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20).
+                        Baris nonaktif tetap punya handle tapi redup: urutan hanya berarti
+                        untuk model yang tampil di toko. */}
+                    <td className="w-12 px-3 py-3">
+                      <ReorderDragHandle
+                        enabled={
+                          reorderMode && !listTersaring && row.status === "active"
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-3 text-center tabular-nums text-muted-foreground">
+                      {row.no}
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">

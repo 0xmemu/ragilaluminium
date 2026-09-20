@@ -5,6 +5,7 @@ import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -197,20 +198,6 @@ export default function FaqIndex({
       if (next) setShowCreate(false)
       return next
     })
-  }
-
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= rows.length) return
-    const next = [...rows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
   }
 
   function reorderRows(from: number, to: number) {
@@ -489,7 +476,7 @@ export default function FaqIndex({
 
       {reorderMode ? (
         <div className="mt-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Geser naik/turun lalu klik Simpan urutan.
+          Tarik ikon <span className="font-semibold">titik enam</span> di kiri baris untuk memindahkan, lalu klik Simpan urutan.
         </div>
       ) : null}
 
@@ -529,31 +516,12 @@ export default function FaqIndex({
               return (
                 <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(!listTersaring && reorderMode && !isArchivedTab ? dnd.rowProps(index) : {})}>
                   <div className="flex flex-wrap items-start gap-3">
-                    {reorderMode && !isArchivedTab ? (
-                      <div className="flex flex-col gap-1">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-7 px-2 text-xs"
-                          disabled={index === 0}
-                          onClick={() => move(index, -1)}
-                        >
-                          ↑
-                        </Button>
-                        <span className="text-center tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-7 px-2 text-xs"
-                          disabled={index === rows.length - 1}
-                          onClick={() => move(index, 1)}
-                        >
-                          ↓
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="mt-1 tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                    )}
+                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
+                    <ReorderDragHandle
+                      enabled={reorderMode && !isArchivedTab && !listTersaring}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="mt-1 tabular-nums text-xs text-muted-foreground">{row.no}</span>
                     <div className="min-w-0 flex-1">
                       {editing ? (
                         <form

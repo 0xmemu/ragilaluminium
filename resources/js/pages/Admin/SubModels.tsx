@@ -1,9 +1,10 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Card } from "@/components/admin/ui/card"
 import { Icon } from "@/components/shared/icon"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -154,16 +155,6 @@ export default function SubModelsIndex({
     }
   }, [currentStatus, currentModel])
 
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= rows.length) return
-    const next = [...rows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    setRows(next)
-    reorderForm.setData("rows", next.map((row, rowIndex) => ({ id: row.id, sort_order: rowIndex })))
-  }
-
   function reorderRows(from: number, to: number) {
     if (from === to) return
     const next = [...rows]
@@ -285,7 +276,7 @@ export default function SubModelsIndex({
       <div className="space-y-4">
         {reorderMode ? (
           <div className="rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-            Atur urutan dengan drag & drop atau tombol naik/turun, lalu simpan.
+            Tarik ikon titik enam di kiri baris untuk memindahkan, lalu simpan.
           </div>
         ) : null}
 
@@ -388,7 +379,8 @@ export default function SubModelsIndex({
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
-                  <TableHead className="w-12 text-center">Urut</TableHead>
+                  <TableHead className="w-12" aria-label="Seret" />
+                  <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead className="text-left">Kode</TableHead>
                   <TableHead className="text-left">Nama Sub Model</TableHead>
                   <TableHead className="text-left">Deskripsi</TableHead>
@@ -402,35 +394,20 @@ export default function SubModelsIndex({
                   <React.Fragment key={row.id}>
                     {row.groupHeader ? (
                       <TableRow className="bg-surface/60">
-                        <TableCell colSpan={7} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={8} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {row.model_label}
                         </TableCell>
                       </TableRow>
                     ) : null}
                     <TableRow className={cn(dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
-                    <TableCell className="text-center">
-                      {reorderMode ? (
-                        <div className="flex flex-col">
-                          <button
-                            type="button"
-                            className={cn(rowActionTextClass, "disabled:opacity-30")}
-                            disabled={index === 0}
-                            onClick={() => move(index, -1)}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(rowActionTextClass, "disabled:opacity-30")}
-                            disabled={index === rows.length - 1}
-                            onClick={() => move(index, 1)}
-                          >
-                            ↓
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">{row.displayNumber}</span>
-                      )}
+                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
+                    <TableCell className="w-12">
+                      <ReorderDragHandle
+                        enabled={reorderMode && currentStatus === "active" && !listTersaring}
+                      />
+                    </TableCell>
+                    <TableCell className="w-12 text-center tabular-nums text-muted-foreground">
+                      {row.displayNumber}
                     </TableCell>
                     <TableCell className="font-mono text-xs">{row.code}</TableCell>
                     <TableCell className="font-medium">{row.name}</TableCell>

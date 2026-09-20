@@ -4,6 +4,7 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
@@ -78,15 +79,6 @@ export default function BerandaIndex({
         sort_order: section.sort_order,
       })),
     )
-  }
-
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= sections.length) return
-    const next = [...sections]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    syncForm(next)
   }
 
   function reorderSections(from: number, to: number) {
@@ -176,34 +168,12 @@ export default function BerandaIndex({
             className={cn("flex flex-wrap items-center gap-3 p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")}
             {...(reorderMode ? dnd.rowProps(index) : {})}
           >
-            {reorderMode ? (
-              <div className="flex flex-col gap-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  disabled={index === 0}
-                  onClick={() => move(index, -1)}
-                  aria-label={`Naikkan ${section.label}`}
-                >
-                  ↑
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  disabled={index === sections.length - 1}
-                  onClick={() => move(index, 1)}
-                  aria-label={`Turunkan ${section.label}`}
-                >
-                  ↓
-                </Button>
-              </div>
-            ) : (
-              <span className="inline-flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <Icon name={section.icon} className="size-5" aria-hidden="true" />
-              </span>
-            )}
+            {/* Geser hanya lewat ikon tarik di tepi kiri item (kontrak owner 2026-09-20). */}
+            <ReorderDragHandle enabled={reorderMode} />
+
+            <span className="inline-flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Icon name={section.icon} className="size-5" aria-hidden="true" />
+            </span>
 
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-bold tracking-tight">{section.label}</h2>
