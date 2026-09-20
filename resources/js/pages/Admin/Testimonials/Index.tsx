@@ -5,6 +5,7 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import {
@@ -501,13 +502,20 @@ export default function TestimonialsIndex({
     // Keep the reorder editor aligned with the active website testimonial tab.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrderedRows(next)
-    setReorderMode(false)
+    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
+    // defaults, jadi keduanya harus berisi snapshot server yang sama.
     reorderForm.setData({
       rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
     })
-    // `useForm` returns a new facade on every render; rows/tab define the editor snapshot.
+    reorderForm.setDefaults({
+      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    // Mode urut tidak direset di sini: menyalakan mode urut membersihkan
+    // pencarian dan itu memuat ulang rows, sehingga mode urut akan langsung
+    // mati sendiri. Reset terjadi lewat onSuccess simpan dan tombol Urungkan.
+    // `useForm` returns a new facade on every render; rows define the editor snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, tab])
+  }, [rows])
 
   function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string; reply: string }>) {
     const params: Record<string, string> = {
@@ -563,14 +571,49 @@ export default function TestimonialsIndex({
     )
   }
 
+  function saveReorder() {
+    reorderForm.put(reorderUrl as string, {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    const snapshot = rows as WebsiteRow[]
+    setOrderedRows(snapshot)
+    reorderForm.setData({
+      rows: snapshot.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    reorderForm.setDefaults({
+      rows: snapshot.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    setReorderMode(false)
+  }
+
+  React.useEffect(() => {
+    // Pindah tab berarti daftar dan endpoint urutannya berganti, jadi mode urut
+    // dibatalkan supaya tidak menyimpan ke daftar yang salah.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReorderMode(false)
+  }, [tab, indexRoute])
+
+  const channelOptionsList = channelOptions ?? []
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
+  // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
+  const filterKunci =
+    filters.published !== "" ||
+    (channelOptionsList.length > 0 && channel !== "all") ||
+    (replyOptions.length > 0 && reply !== "all")
+  const listTersaring = filters.q.trim() !== "" || filterKunci
+
   const dnd = useRowDragSort({
-    enabled: reorderMode,
+    enabled: reorderMode && !listTersaring,
     count: orderedRows.length,
     onReorder: reorderRows,
   })
 
   const websiteRows = reorderMode || canReorder ? orderedRows : (rows as WebsiteRow[])
-  const channelOptionsList = channelOptions ?? []
   const showTabs = tabs.length > 0
 
   return (
@@ -598,28 +641,28 @@ export default function TestimonialsIndex({
             </Button>
           ) : null}
           {canReorder && reorderUrl ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setReorderMode((value) => !value)
-                }}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={reorderForm.processing}
-                  onClick={() => reorderForm.put(reorderUrl)}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : null}
-            </>
+            /* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+               yang benar-benar digeser. */
+            <ReorderActionButton
+              active={reorderMode}
+              dirty={reorderForm.isDirty}
+              processing={reorderForm.processing}
+              size="sm"
+              disabled={!orderedRows.length || filterKunci}
+              disabledReason="Kosongkan filter status dulu supaya urutan bisa digeser."
+              onToggle={() => {
+                setReorderMode(true)
+                // Pencarian dibersihkan sekaligus supaya urutan bisa digeser
+                // (kontrak owner 2026-09-20).
+                if (filters.q) {
+                  setQ("")
+                  apply({ q: "" })
+                }
+              }}
+              onCancel={cancelReorder}
+              onSave={saveReorder}
+            />
           ) : null}
 
           {tab === "website" && adminReviewHref ? (
@@ -627,12 +670,14 @@ export default function TestimonialsIndex({
               <Link href={adminReviewHref}>Ulasan dari order</Link>
             </Button>
           ) : null}
-          <Button asChild size="sm">
-            <Link href={createHref} className="inline-flex items-center gap-1.5">
-              <Icon name="plus" className="size-3.5" aria-hidden="true" />
-              <span>{createLabel}</span>
-            </Link>
-          </Button>
+          {!reorderMode ? (
+            <Button asChild size="sm">
+              <Link href={createHref} className="inline-flex items-center gap-1.5">
+                <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                <span>{createLabel}</span>
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >
@@ -770,7 +815,7 @@ export default function TestimonialsIndex({
                 </thead>
                 <tbody>
                   {websiteRows.map((row, index) => (
-                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
+                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}>
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                       {reorderMode ? (
                         <td className="px-3 py-3">

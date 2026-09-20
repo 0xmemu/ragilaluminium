@@ -1,9 +1,11 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -70,36 +72,45 @@ function PublishActions({
       <Button asChild variant="secondary" size="xs">
         <Link href={editHref}>Edit</Link>
       </Button>
-      {published ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Sembunyikan
+      <RowActionsMenu>
+        {published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Sembunyikan
+              </button>
+            }
+            title="Sembunyikan screenshot?"
+            description="Item tidak akan tampil di storefront."
+            confirmLabel="Sembunyikan"
+            processing={busy}
+            onConfirm={() => {
+              if (!unpublishUrl) return
+              onBusy(true)
+              router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+            }}
+          />
+        ) : (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy || !publishUrl}
+              onClick={() => {
+                if (!publishUrl) return
+                onBusy(true)
+                router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+              }}
+            >
+              Publikasikan
             </button>
-          }
-          title="Sembunyikan screenshot?"
-          description="Item tidak akan tampil di storefront."
-          confirmLabel="Sembunyikan"
-          processing={busy}
-          onConfirm={() => {
-            if (!unpublishUrl) return
-            onBusy(true)
-            router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        />
-      ) : (
-        <Button
-          size="xs"
-          disabled={busy || !publishUrl}
-          onClick={() => {
-            if (!publishUrl) return
-            onBusy(true)
-            router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        >
-          Publikasikan
-        </Button>
-      )}
+          </DropdownMenuItem>
+        )}
+      </RowActionsMenu>
     </RowActions>
   )
 }
@@ -140,6 +151,11 @@ export default function ApaKataIndex({
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
   const [reorderMode, setReorderMode] = React.useState(false)
   const [orderedRows, setOrderedRows] = React.useState<ApaKataRow[]>(rows)
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
+  // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
+  // Pencarian tidak dikunci karena tombol Urutkan membersihkannya sendiri.
+  const listTersaring = filters.q.trim() !== "" || filters.published !== ""
+  const filterKunci = filters.published !== ""
   const metaForm = useForm({
     title: pageMeta?.title ?? "",
     heading: pageMeta?.heading ?? "",
@@ -170,10 +186,17 @@ export default function ApaKataIndex({
     // Keep the reorder editor aligned with the loaded rows.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrderedRows(next)
-    setReorderMode(false)
+    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
+    // defaults, jadi keduanya harus berisi snapshot server yang sama.
     reorderForm.setData({
       rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
     })
+    reorderForm.setDefaults({
+      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    // Mode urut tidak direset di sini: menyalakan mode urut membersihkan
+    // pencarian dan itu memuat ulang rows, sehingga mode urut akan langsung
+    // mati sendiri. Reset terjadi lewat onSuccess simpan dan tombol Urungkan.
     // `useForm` returns a new facade on every render; rows define the editor snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows])
@@ -213,8 +236,27 @@ export default function ApaKataIndex({
     )
   }
 
+  function saveReorder() {
+    reorderForm.put(reorderUrl as string, {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    setOrderedRows(rows)
+    reorderForm.setData({
+      rows: rows.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    reorderForm.setDefaults({
+      rows: rows.map((row, index) => ({ id: row.id, sort_order: index })),
+    })
+    setReorderMode(false)
+  }
+
   const dnd = useRowDragSort({
-    enabled: reorderMode,
+    enabled: reorderMode && !listTersaring,
     count: orderedRows.length,
     onReorder: reorderRows,
   })
@@ -227,9 +269,6 @@ export default function ApaKataIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" form="apk-meta-form" disabled={metaForm.processing}>
-            {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-          </Button>
           {previewUrl ? (
             <Button asChild variant="secondary">
               <a href={previewUrl} target="_blank" rel="noreferrer">
@@ -238,33 +277,36 @@ export default function ApaKataIndex({
             </Button>
           ) : null}
           {canReorder && reorderUrl ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setReorderMode((value) => !value)
-                }}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={reorderForm.processing}
-                  onClick={() => reorderForm.put(reorderUrl)}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : null}
-            </>
+            /* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+               yang benar-benar digeser. */
+            <ReorderActionButton
+              active={reorderMode}
+              dirty={reorderForm.isDirty}
+              processing={reorderForm.processing}
+              disabled={!orderedRows.length || filterKunci}
+              disabledReason="Kosongkan filter status dulu supaya urutan bisa digeser."
+              onToggle={() => {
+                setReorderMode(true)
+                // Pencarian dibersihkan sekaligus supaya urutan bisa digeser
+                // (kontrak owner 2026-09-20).
+                if (filters.q) {
+                  setQ("")
+                  apply({ q: "" })
+                }
+              }}
+              onCancel={cancelReorder}
+              onSave={saveReorder}
+            />
           ) : null}
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              {createLabel}
-            </Link>
-          </Button>
+          {!reorderMode ? (
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                {createLabel}
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >
@@ -310,7 +352,13 @@ export default function ApaKataIndex({
                 onChange={(event) => metaForm.setData("subtitle", event.target.value)}
               />
             </Field>
-
+            {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
+                bukan daftar item di bawahnya. */}
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <Button type="submit" disabled={metaForm.processing}>
+                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
+              </Button>
+            </div>
           </form>
           </div>
         </details>
@@ -353,7 +401,7 @@ export default function ApaKataIndex({
                   <th className="px-3 py-3 font-semibold">No</th>
                   {reorderMode ? <th className="px-3 py-3 font-semibold">Urutan</th> : null}
                   <th className="px-3 py-3 font-semibold">Pelanggan</th>
-                  <th className="px-3 py-3 font-semibold">Kanal</th>
+                  <th className="px-3 py-3 font-semibold">Sumber</th>
                   <th className="px-3 py-3 font-semibold">Screenshot</th>
                   <th className="px-3 py-3 font-semibold">Status</th>
                   <th className="px-3 py-3 font-semibold">Tanggal</th>
@@ -362,7 +410,7 @@ export default function ApaKataIndex({
               </thead>
               <tbody>
                 {displayRows.map((row, index) => (
-                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
+                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}>
                     <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                     {reorderMode ? (
                       <td className="px-3 py-3">

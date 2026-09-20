@@ -1,9 +1,11 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -37,11 +39,51 @@ interface ModelRow {
   deactivate_url: string
 }
 
+type ViewMode = "list" | "grid"
+
+/** Toggle Grid/List. Klik mengubah state lokal; URL disinkronkan lewat router. */
+function ViewToggle({ viewMode, onChange }: { viewMode: ViewMode; onChange: (mode: ViewMode) => void }) {
+  return (
+    <div className="flex gap-1 rounded-md border border-border p-1">
+      <button
+        type="button"
+        onClick={() => onChange("grid")}
+        aria-pressed={viewMode === "grid"}
+        className={cn(
+          "inline-flex h-8 items-center gap-1.5 rounded px-3 text-xs font-semibold",
+          viewMode === "grid"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted",
+        )}
+      >
+        <Icon name="layout-grid" className="size-3.5" aria-hidden="true" />
+        Grid
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("list")}
+        aria-pressed={viewMode === "list"}
+        className={cn(
+          "inline-flex h-8 items-center gap-1.5 rounded px-3 text-xs font-semibold",
+          viewMode === "list"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted",
+        )}
+      >
+        <Icon name="menu" className="size-3.5" aria-hidden="true" />
+        List
+      </button>
+    </div>
+  )
+}
+
 export default function ModelProductsIndex({
   title,
   description,
+  viewMode: initialViewMode = "list",
   filters,
   statusOptions,
+  categoryOptions = [],
   rows: initialRows = [],
   createHref,
   reorderUrl,
@@ -49,8 +91,10 @@ export default function ModelProductsIndex({
 }: {
   title: string
   description: string
-  filters: { q: string; status: string }
+  viewMode?: ViewMode
+  filters: { q: string; status: string; product_category?: string }
   statusOptions: Array<{ value: string; label: string }>
+  categoryOptions?: Array<{ value: string; label: string }>
   rows: ModelRow[]
   createHref: string
   reorderUrl: string
@@ -58,6 +102,7 @@ export default function ModelProductsIndex({
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [status, setStatus] = React.useState(filters.status)
+  const [viewMode, setViewMode] = React.useState<ViewMode>(initialViewMode)
   const [reorderMode, setReorderMode] = React.useState(false)
   const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
@@ -69,7 +114,13 @@ export default function ModelProductsIndex({
     // Inertia refresh replaces the editable rows with the server snapshot.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
+    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
+    // defaults, jadi keduanya harus berisi snapshot server yang sama.
     reorderForm.setData(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    reorderForm.setDefaults(
       "rows",
       initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
     )
@@ -77,15 +128,69 @@ export default function ModelProductsIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRows])
 
-  function apply(next?: Partial<{ q: string; status: string }>) {
+  function apply(next?: Partial<{ q: string; status: string; product_category: string; view: string }>) {
+    const view = next?.view ?? viewMode
+    const nextQ = next?.q !== undefined ? next.q : q
+    const nextStatus = next?.status !== undefined ? next.status : status
+    const nextCategory = next?.product_category !== undefined ? next.product_category : (filters.product_category ?? "")
+
     router.get(
       routeUrl("admin.model-products.index"),
       {
-        q: next?.q ?? q,
-        status: next?.status ?? status,
+        q: nextQ || undefined,
+        status: nextStatus || undefined,
+        product_category: nextCategory || undefined,
+        view: view === "grid" ? "grid" : undefined,
       },
       { preserveState: true, preserveScroll: true },
     )
+  }
+
+  const activeFilters = React.useMemo(() => {
+    const chips: Array<{ label: string; clear: () => void }> = []
+    if (filters.product_category) {
+      const option = categoryOptions?.find((o) => o.value === filters.product_category)
+      chips.push({
+        label: `Kategori: ${option?.label ?? filters.product_category}`,
+        clear: () => apply({ product_category: "" }),
+      })
+    }
+    if (filters.status) {
+      const option = statusOptions.find((o) => o.value === filters.status)
+      chips.push({
+        label: `Status: ${option?.label ?? filters.status}`,
+        clear: () => {
+          setStatus("")
+          apply({ status: "" })
+        },
+      })
+    }
+    if (filters.q?.trim()) {
+      chips.push({
+        label: `Cari: ${filters.q}`,
+        clear: () => {
+          setQ("")
+          apply({ q: "" })
+        },
+      })
+    }
+    return chips
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.product_category, filters.status, filters.q, categoryOptions, statusOptions])
+
+  function resetAllFilters() {
+    setQ("")
+    setStatus("")
+    router.get(
+      routeUrl("admin.model-products.index"),
+      { view: viewMode === "grid" ? "grid" : undefined },
+      { preserveState: false, preserveScroll: true },
+    )
+  }
+
+  function changeViewMode(mode: ViewMode) {
+    setViewMode(mode)
+    apply({ view: mode })
   }
 
   function move(index: number, direction: -1 | 1) {
@@ -115,11 +220,101 @@ export default function ModelProductsIndex({
     )
   }
 
+  function saveReorder() {
+    // Mode geser otomatis nonaktif setelah tersimpan; snapshot baru dari server
+    // menimpa rows lokal via useEffect [initialRows]. Query view dipertahankan
+    // supaya redirect tetap di tampilan yang sama (grid tidak terlempar ke list).
+    reorderForm.put(reorderUrl, {
+      onSuccess: () => setReorderMode(false),
+      preserveState: true,
+    })
+  }
+
+  /** Batalkan mode geser: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelOrder() {
+    setRows(initialRows)
+    reorderForm.setData(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    reorderForm.setDefaults(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    setReorderMode(false)
+  }
+
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
+  // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
+  const listTersaring =
+    filters.q.trim() !== "" ||
+    filters.status !== "" ||
+    (filters.product_category ?? "") !== ""
+  // Pencarian dibersihkan sendiri oleh tombol Urutkan, jadi hanya filter lain
+  // yang mengunci tombolnya.
+  const filterKunci = filters.status !== "" || (filters.product_category ?? "") !== ""
+
   const dnd = useRowDragSort({
-    enabled: reorderMode,
+    enabled: reorderMode && !listTersaring,
     count: rows.length,
     onReorder: reorderRows,
+    // Urutan hanya berarti untuk model yang tampil di toko; model nonaktif
+    // tidak bisa digeser supaya tidak menghabiskan posisi urutan percuma.
+    isRowDraggable: (index) => rows[index]?.status === "active",
   })
+
+  function ModelActions({ row }: { row: ModelRow }) {
+    return (
+      <RowActions>
+        <Button asChild variant="secondary" size="xs">
+          <Link href={row.edit_href}>Edit</Link>
+        </Button>
+        <RowActionsMenu>
+          {row.status === "active" ? (
+            <ConfirmAction
+              trigger={
+                <button
+                  type="button"
+                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                  disabled={busyId === row.id}
+                >
+                  Nonaktifkan
+                </button>
+              }
+              title="Sembunyikan model?"
+              description="Model tidak tampil di beranda / showcase sampai diaktifkan kembali."
+              confirmLabel="Nonaktifkan"
+              processing={busyId === row.id}
+              onConfirm={() => {
+                setBusyId(row.id)
+                router.post(row.deactivate_url, {}, {
+                  preserveScroll: true,
+                  onFinish: () => setBusyId(null),
+                })
+              }}
+            />
+          ) : (
+            <DropdownMenuItem asChild>
+              <button
+                type="button"
+                className="w-full text-left"
+                disabled={busyId === row.id}
+                onClick={() => {
+                  setBusyId(row.id)
+                  router.post(row.activate_url, {}, {
+                    preserveScroll: true,
+                    onFinish: () => setBusyId(null),
+                  })
+                }}
+              >
+                Aktifkan
+              </button>
+            </DropdownMenuItem>
+          )}
+        </RowActionsMenu>
+      </RowActions>
+    )
+  }
 
   return (
     <AdminLayout
@@ -127,34 +322,44 @@ export default function ModelProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.post(syncUrl)}
+            title="Tambahkan model dari kombinasi kategori + model produk yang belum terdaftar, dan nonaktifkan model yang sudah tidak punya produk aktif."
+          >
+            <Icon name="refresh" className="size-4" aria-hidden="true" />
+            Refresh katalog
           </Button>
-          {reorderMode ? (
-            <Button
-              type="button"
-              disabled={reorderForm.processing}
-              onClick={() => reorderForm.put(reorderUrl)}
-            >
-              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+              Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+              yang benar-benar digeser. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={reorderForm.isDirty}
+            processing={reorderForm.processing}
+            disabled={!rows.length || filterKunci}
+            disabledReason="Kosongkan filter status dan kategori dulu supaya urutan bisa digeser."
+            onToggle={() => {
+              setReorderMode(true)
+              // Urutan tidak bisa digeser saat daftar tersaring, jadi pencarian
+              // dibersihkan sekaligus saat mode geser dinyalakan.
+              if (filters.q) {
+                setQ("")
+                apply({ q: "" })
+              }
+            }}
+            onCancel={cancelOrder}
+            onSave={saveReorder}
+          />
+          {!reorderMode ? (
+            <Button asChild>
+              <Link href={createHref}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah
+              </Link>
             </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => router.post(syncUrl)}
-              >
-                Sinkron dari katalog
-              </Button>
-              <Button asChild>
-                <Link href={createHref}>
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah model
-                </Link>
-              </Button>
-            </>
-          )}
+          ) : null}
         </div>
       }
     >
@@ -172,11 +377,33 @@ export default function ModelProductsIndex({
           value: q,
           onChange: setQ,
           onSubmit: () => apply({ q }),
-          placeholder: "Cari nama atau kode model",
+          placeholder: "Cari nama atau kode model…",
         }}
-
+        summary={
+          <span>
+            <span className="tabular-nums font-semibold text-foreground">
+              {formatNumber(rows.length)}
+            </span>{" "}
+            model
+          </span>
+        }
+        actions={<ViewToggle viewMode={viewMode} onChange={changeViewMode} />}
         className="mb-4"
       >
+        {categoryOptions && categoryOptions.length > 0 ? (
+          <Select
+            className="flex-1 min-w-0"
+            value={filters.product_category ?? ""}
+            onChange={(event) => apply({ product_category: event.target.value })}
+            aria-label="Filter kategori"
+          >
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <Select
           value={status}
           onChange={(event) => {
@@ -185,6 +412,7 @@ export default function ModelProductsIndex({
             apply({ status: value })
           }}
           className="w-40"
+          aria-label="Filter status"
         >
           {statusOptions.map((option) => (
             <option key={option.value || "all"} value={option.value}>
@@ -194,8 +422,121 @@ export default function ModelProductsIndex({
         </Select>
       </ListToolbar>
 
-      <Card className="overflow-hidden border border-border bg-card">
-        {rows.length ? (
+      {/* Filter aktif chips (seragam dengan halaman produk) */}
+      {activeFilters.length ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Filter aktif
+          </span>
+          {activeFilters.map((filter) => (
+            <span
+              key={filter.label}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
+            >
+              {filter.label}
+              <button
+                type="button"
+                onClick={filter.clear}
+                className="inline-flex size-3.5 items-center justify-center rounded-full hover:bg-foreground/10"
+                aria-label={`Hapus filter ${filter.label}`}
+              >
+                <Icon name="x" className="size-2.5" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="ml-1 text-xs font-medium text-muted-foreground underline hover:text-foreground"
+          >
+            Hapus semua filter
+          </button>
+        </div>
+      ) : null}
+
+      {!rows.length ? (
+        <Card className="overflow-hidden border border-border bg-card">
+          <EmptyState
+            title="Belum ada model produk"
+            description="Sinkronkan dari katalog atau tambah model manual untuk showcase beranda."
+            className="border-0"
+          />
+        </Card>
+      ) : viewMode === "grid" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {rows.map((row, index) => (
+            <article
+              key={row.id}
+              className={cn(
+                "relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft",
+                dnd.draggingIndex === index && "opacity-40",
+                dnd.targetIndex === index && dnd.draggingIndex !== null && dnd.draggingIndex !== index && "ring-2 ring-primary",
+                reorderMode && row.status !== "active" && "opacity-60",
+              )}
+              {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
+            >
+              {reorderMode ? (
+                <span className="absolute left-2 top-2 z-10 flex size-7 items-center justify-center rounded-md bg-background/90 text-xs font-semibold tabular-nums text-foreground shadow-soft">
+                  {index + 1}
+                </span>
+              ) : null}
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+                {row.image_url ? (
+                  <img
+                    src={row.image_url}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="flex size-full items-center justify-center text-muted-foreground">
+                    <Icon name="box" className="size-10" aria-hidden="true" />
+                  </span>
+                )}
+                <span className="absolute right-2 top-2">
+                  <StatusBadge
+                    status={row.status === "active" ? "active" : "inactive"}
+                    label={row.status === "active" ? "Aktif" : "Nonaktif"}
+                  />
+                </span>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+                <div className="min-w-0">
+                  <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
+                    {row.name}
+                  </Link>
+                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                    {[row.product_category, row.product_model].filter(Boolean).join(" · ") || "Belum tertaut katalog"}
+                  </p>
+                </div>
+                <dl className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Sub model</dt>
+                    <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.sub_model_count)}</dd>
+                  </div>
+                  <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Aktif</dt>
+                    <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.active_count)}</dd>
+                  </div>
+                  <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Variasi</dt>
+                    <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.variant_count)}</dd>
+                  </div>
+                </dl>
+                {row.sub_models.length ? (
+                  <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                    {row.sub_models.join(", ")}
+                  </p>
+                ) : null}
+                <div className="mt-auto flex justify-end">
+                  <ModelActions row={row} />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Card className="overflow-hidden border border-border bg-card">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
@@ -212,7 +553,15 @@ export default function ModelProductsIndex({
               </thead>
               <tbody>
                 {rows.map((row, index) => (
-                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "border-t border-border align-top",
+                      dnd.draggingIndex === index && "opacity-40",
+                      reorderMode && row.status !== "active" && "opacity-60",
+                    )}
+                    {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
+                  >
                     <td className="px-3 py-3">
                       {reorderMode ? (
                         <div className="flex flex-col gap-1">
@@ -220,7 +569,7 @@ export default function ModelProductsIndex({
                             type="button"
                             variant="secondary"
                             className="h-7 px-2 text-xs"
-                            disabled={index === 0}
+                            disabled={index === 0 || row.status !== "active"}
                             onClick={() => move(index, -1)}
                           >
                             ↑
@@ -230,7 +579,7 @@ export default function ModelProductsIndex({
                             type="button"
                             variant="secondary"
                             className="h-7 px-2 text-xs"
-                            disabled={index === rows.length - 1}
+                            disabled={index === rows.length - 1 || row.status !== "active"}
                             onClick={() => move(index, 1)}
                           >
                             ↓
@@ -276,68 +625,20 @@ export default function ModelProductsIndex({
                       <div className="inline-flex items-center justify-center">
                         <StatusBadge
                           status={row.status === "active" ? "active" : "inactive"}
-                          label={row.status === "active" ? "Aktif" : "Draft"}
+                          label={row.status === "active" ? "Aktif" : "Nonaktif"}
                         />
                       </div>
                     </td>
                     <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                      <RowActions>
-                        <Button asChild variant="secondary" size="xs">
-                          <Link href={row.edit_href}>Edit</Link>
-                        </Button>
-                        {row.status === "active" ? (
-                          <ConfirmAction
-                            trigger={
-                              <button
-                                type="button"
-                                className={cn(rowActionTextClass, "text-destructive")}
-                                disabled={busyId === row.id}
-                              >
-                                Draft
-                              </button>
-                            }
-                            title="Sembunyikan model?"
-                            description="Model tidak tampil di beranda / showcase jika draft."
-                            confirmLabel="Jadikan draft"
-                            processing={busyId === row.id}
-                            onConfirm={() => {
-                              setBusyId(row.id)
-                              router.post(row.deactivate_url, {}, {
-                                preserveScroll: true,
-                                onFinish: () => setBusyId(null),
-                              })
-                            }}
-                          />
-                        ) : (
-                          <Button
-                            size="xs"
-                            disabled={busyId === row.id}
-                            onClick={() => {
-                              setBusyId(row.id)
-                              router.post(row.activate_url, {}, {
-                                preserveScroll: true,
-                                onFinish: () => setBusyId(null),
-                              })
-                            }}
-                          >
-                            Aktifkan
-                          </Button>
-                        )}
-                      </RowActions>
+                      <ModelActions row={row} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <EmptyState
-            title="Belum ada model produk"
-            description="Sinkronkan dari katalog atau tambah model manual untuk showcase beranda."
-            className="border-0"
-          />
-        )}
-      </Card>
+        </Card>
+      )}
     </AdminLayout>
   )
 }

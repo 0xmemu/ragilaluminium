@@ -1,13 +1,15 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field } from "@/components/admin/ui/field"
+import { CheckboxField, Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
@@ -73,7 +75,15 @@ export default function MasalahSolusiIndex({
     // Inertia refresh replaces the editable rows with the server snapshot.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
+    // setDefaults, bukan setData: `isDirty` membandingkan data dengan defaults,
+    // jadi defaults harus ikut pindah ke snapshot server. Kalau tidak, memuat
+    // ulang daftar (misalnya karena pencarian dibersihkan saat mode urut
+    // dinyalakan) langsung membuat tombol Simpan urutan muncul tanpa ada geseran.
     reorderForm.setData(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    reorderForm.setDefaults(
       "rows",
       initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
     )
@@ -86,20 +96,6 @@ export default function MasalahSolusiIndex({
       routeUrl("admin.masalah-solusi.index"),
       { q: next?.q ?? q },
       { preserveState: true, preserveScroll: true },
-    )
-  }
-
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= rows.length) return
-    const next = [...rows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
     )
   }
 
@@ -116,11 +112,52 @@ export default function MasalahSolusiIndex({
     )
   }
 
+  // Meta halaman jarang diubah, jadi formnya dilipat supaya daftar item langsung
+  // terlihat begitu halaman dibuka (kontrak: flow setting sederhana).
+  const [showMeta, setShowMeta] = React.useState(false)
+
+  // Geser-urut dimatikan saat daftar sedang tersaring: posisi target tidak
+  // mewakili urutan global, jadi hasil geser bisa salah tempat.
+  const canReorder = reorderMode && filters.q.trim() === ""
+  const dirty = reorderForm.isDirty
+
   const dnd = useRowDragSort({
-    enabled: reorderMode,
+    enabled: canReorder,
     count: rows.length,
     onReorder: reorderRows,
   })
+
+  function toggleReorder() {
+    const next = !reorderMode
+    setReorderMode(next)
+    if (next) {
+      // Urutan hanya bisa digeser saat daftar tidak tersaring, jadi pencarian
+      // dibersihkan sekaligus saat mode urut dinyalakan.
+      setQ("")
+      if (filters.q) apply({ q: "" })
+    }
+  }
+
+  function saveReorder() {
+    reorderForm.put(reorderUrl, {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    setRows(initialRows)
+    reorderForm.setData(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    reorderForm.setDefaults(
+      "rows",
+      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    )
+    setReorderMode(false)
+  }
 
   return (
     <AdminLayout
@@ -128,39 +165,59 @@ export default function MasalahSolusiIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" form="ms-meta-form" disabled={metaForm.processing}>
-            {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-          </Button>
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
               Lihat halaman publik
             </a>
           </Button>
-          <Button type="button" variant="secondary" onClick={() => setReorderMode((v) => !v)}>
-            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-          </Button>
-          {reorderMode ? (
-            <Button type="button" disabled={reorderForm.processing} onClick={() => reorderForm.put(reorderUrl)}>
-              {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-            </Button>
-          ) : (
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+              Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+              yang benar-benar digeser. Tombol simpan tidak pernah muncul sebelum
+              ada perubahan yang perlu disimpan. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={dirty}
+            processing={reorderForm.processing}
+            disabled={!rows.length}
+            onToggle={toggleReorder}
+            onCancel={cancelReorder}
+            onSave={saveReorder}
+          />
+          {!reorderMode ? (
             <Button asChild>
               <Link href={createHref}>
                 <Icon name="plus" className="size-4" aria-hidden="true" />
-                Tambah pasangan
+                Tambah
               </Link>
             </Button>
-          )}
+          ) : null}
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
+          <button
+            type="button"
+            onClick={() => setShowMeta((current) => !current)}
+            className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            {showMeta ? "Tutup" : "Atur meta halaman"}
+          </button>
+        </div>
+
+        {!showMeta ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {metaForm.data.heading || metaForm.data.title || "Masalah & Solusi"}
+            {metaForm.data.subtitle ? " · " + metaForm.data.subtitle : ""}
+          </p>
+        ) : null}
+
         <form
-  id="ms-meta-form"
-          className="mt-4 grid gap-4 sm:grid-cols-2"
+          id="ms-meta-form"
+          className={showMeta ? "mt-4 grid gap-4 sm:grid-cols-2" : "hidden"}
           onSubmit={(event) => {
             event.preventDefault()
             metaForm.put(metaUrl)
@@ -169,15 +226,12 @@ export default function MasalahSolusiIndex({
           <Field id="ms-title" label="Judul CMS">
             <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
           </Field>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-            <input
-              type="checkbox"
-              checked={metaForm.data.published}
-              onChange={(event) => metaForm.setData("published", event.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Terbitkan halaman
-          </label>
+          <CheckboxField
+            id="ms-published"
+            checked={metaForm.data.published}
+            onChange={(checked) => metaForm.setData("published", checked)}
+            label="Terbitkan halaman"
+          />
           <Field id="ms-heading" label="Judul hero" className="sm:col-span-2">
             <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
           </Field>
@@ -188,16 +242,28 @@ export default function MasalahSolusiIndex({
               onChange={(event) => metaForm.setData("subtitle", event.target.value)}
             />
           </Field>
-          <div className="sm:col-span-2">
+          {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
+              bukan daftar item di bawahnya. Ikut tersembunyi bersama formnya. */}
+          <div className="flex justify-end sm:col-span-2">
+            <Button type="submit" disabled={metaForm.processing}>
+              {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
+            </Button>
           </div>
         </form>
       </section>
 
       {reorderMode ? (
-        <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Atur urutan dengan tombol naik/turun, lalu simpan.
-        </div>
-      ) : null}
+        <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Mode urutkan aktif: tarik ikon <span className="font-semibold text-foreground">titik enam</span> di kiri baris untuk memindahkan, lalu tekan Simpan urutan.
+          {!canReorder ? (
+            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa digeser.</span>
+          ) : null}
+        </p>
+      ) : (
+        <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Urutan baris di bawah ini sama dengan urutan bagian Masalah &amp; Solusi di halaman publik.
+        </p>
+      )}
 
       <ListToolbar
         search={{
@@ -210,94 +276,129 @@ export default function MasalahSolusiIndex({
         className="mb-4"
       />
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        {rows.length ? (
-          <ul className="divide-y divide-border">
-            {rows.map((row, index) => (
-              <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
-                <div className="flex flex-wrap items-start gap-3">
-                  {reorderMode ? (
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-7 px-2 text-xs"
-                        disabled={index === 0}
-                        onClick={() => move(index, -1)}
+      <Card className="overflow-hidden border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Icon name="alert-circle" className="size-4 text-primary" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-foreground">Daftar masalah &amp; solusi</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{rows.length} baris</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border">
+              <tr className="text-left text-xs font-medium text-muted-foreground">
+                <th className="w-12 px-3 py-2" />
+                <th className="w-10 px-3 py-2 text-right">No</th>
+                <th className="px-3 py-2">Masalah</th>
+                <th className="px-3 py-2">Solusi</th>
+                <th className="px-3 py-2 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "border-b border-border align-top last:border-0",
+                      dnd.draggingIndex === index && "opacity-40",
+                      dnd.targetIndex === index && canReorder && "bg-muted/50",
+                      canReorder && "cursor-grab active:cursor-grabbing",
+                    )}
+                    {...(canReorder ? dnd.rowProps(index) : {})}
+                  >
+                    <td className="px-3 py-2.5 align-middle">
+                      <span
+                        className={cn(
+                          "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground",
+                          canReorder ? "bg-muted hover:text-foreground" : "opacity-30",
+                        )}
+                        aria-hidden="true"
+                        title={
+                          canReorder
+                            ? "Tarik untuk memindahkan"
+                            : "Aktifkan mode urutkan untuk memindahkan"
+                        }
                       >
-                        ↑
-                      </Button>
-                      <span className="text-center tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-7 px-2 text-xs"
-                        disabled={index === rows.length - 1}
-                        onClick={() => move(index, 1)}
-                      >
-                        ↓
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="mt-1 tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                  )}
-                  <div className="grid min-w-0 flex-1 gap-3 lg:grid-cols-2">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">Masalah</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-foreground">{row.problem}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">Solusi</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{row.solution}</p>
+                        <Icon name="dots-six-vertical" className="size-4" />
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right align-middle tabular-nums text-xs text-muted-foreground">
+                      {row.no}
+                    </td>
+                    <td className="max-w-[22rem] px-3 py-2.5 align-middle">
+                      <p className="whitespace-pre-wrap font-semibold text-foreground">{row.problem}</p>
+                    </td>
+                    <td className="max-w-[30rem] px-3 py-2.5 align-middle">
+                      <p className="whitespace-pre-wrap leading-6 text-muted-foreground">{row.solution}</p>
                       {row.media_count > 0 ? (
                         <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                           <Icon name="image" className="size-3.5" aria-hidden="true" />
                           {row.media_count} media
                         </p>
                       ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 lg:col-span-2">
-                      <RowActions>
-                        <Button asChild variant="secondary" size="xs">
-                          <Link href={row.edit_href}>Edit</Link>
+                    </td>
+                    <td className="px-3 py-2.5 text-right align-middle">
+                      <RowActions className="justify-end">
+                        <Button
+                          asChild={!reorderMode}
+                          variant="secondary"
+                          size="xs"
+                          disabled={reorderMode}
+                        >
+                          {reorderMode ? <span>Edit</span> : <Link href={row.edit_href}>Edit</Link>}
                         </Button>
-                        <ConfirmAction
-                          trigger={
-                            <button
-                              type="button"
-                              className={cn(rowActionTextClass, "text-destructive")}
-                              disabled={busyId === row.id}
-                            >
-                              Hapus
-                            </button>
-                          }
-                        title="Hapus pasangan ini?"
-                        description="Baris masalah & solusi dihapus dari halaman publik."
-                        confirmLabel="Hapus"
-                        processing={busyId === row.id}
-                        onConfirm={() => {
-                          setBusyId(row.id)
-                          router.delete(row.destroy_url, {
-                            preserveScroll: true,
-                            onFinish: () => setBusyId(null),
-                          })
-                        }}
-                      />
+                        <RowActionsMenu>
+                          <ConfirmAction
+                            trigger={
+                              <button
+                                type="button"
+                                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={busyId === row.id || reorderMode}
+                              >
+                                Hapus
+                              </button>
+                            }
+                            title="Hapus pasangan ini?"
+                            description="Baris masalah & solusi dihapus dari halaman publik."
+                            confirmLabel="Hapus"
+                            processing={busyId === row.id}
+                            onConfirm={() => {
+                              setBusyId(row.id)
+                              router.delete(row.destroy_url, {
+                                preserveScroll: true,
+                                onFinish: () => setBusyId(null),
+                              })
+                            }}
+                          />
+                        </RowActionsMenu>
                       </RowActions>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {filters.q
+                      ? "Tidak ada yang cocok dengan pencarian."
+                      : "Belum ada masalah & solusi."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {!rows.length && !filters.q ? (
           <EmptyState
             title="Belum ada masalah & solusi"
             description="Tambahkan pasangan kendala dan rekomendasi untuk edukasi pembeli."
             className="border-0"
           />
-        )}
-      </section>
+        ) : null}
+      </Card>
     </AdminLayout>
   )
 }

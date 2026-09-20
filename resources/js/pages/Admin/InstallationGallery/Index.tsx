@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -65,17 +66,27 @@ export default function InstallationGalleryIndex({
   const initialRows = projects.data ?? []
   const [rows, setRows] = React.useState<GroupRow[]>(initialRows)
 
+  const reorderForm = useForm({
+    rows: initialRows.map((r) => ({ key: r.key })),
+  })
+
   React.useEffect(() => {
-    setRows(projects.data ?? [])
+    // Inertia refresh replaces the editable group list with the server snapshot.
+    const next = projects.data ?? []
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRows(next)
+    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
+    // defaults, jadi keduanya harus berisi snapshot server yang sama supaya
+    // tombol Simpan urutan tidak muncul tanpa ada geseran.
+    reorderForm.setData("rows", next.map((r) => ({ key: r.key })))
+    reorderForm.setDefaults("rows", next.map((r) => ({ key: r.key })))
+    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects.data])
 
   // Drag-and-drop grup (mode geser).
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const [dragTarget, setDragTarget] = React.useState<number | null>(null)
-
-  const reorderForm = useForm({
-    rows: initialRows.map((r) => ({ key: r.key })),
-  })
 
   function moveRow(from: number, to: number) {
     if (to < 0 || to >= rows.length || from === to) return
@@ -86,12 +97,29 @@ export default function InstallationGalleryIndex({
     reorderForm.setData("rows", next.map((r) => ({ key: r.key })))
   }
 
+  // Geser-urut hanya sahih saat daftar memuat seluruh grup: payload simpan
+  // memakai indeks baris yang tampil, jadi daftar tersaring menulis urutan salah.
+  // Pencarian dan sortir dibersihkan sendiri oleh tombol Urutkan, jadi hanya tab
+  // status yang mengunci tombolnya.
+  const listTersaring = activeStatus !== "all" || search.trim() !== "" || sort !== "order"
+  const filterKunci = activeStatus !== "all"
+
   function handleReorderSubmit() {
     reorderForm.put(reorderUrl, {
       preserveScroll: true,
       onSuccess: () => setReorderMode(false),
     })
   }
+
+  /** Batalkan mode geser: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    const snapshot = projects.data ?? []
+    setRows(snapshot)
+    reorderForm.setData("rows", snapshot.map((r) => ({ key: r.key })))
+    reorderForm.setDefaults("rows", snapshot.map((r) => ({ key: r.key })))
+    setReorderMode(false)
+  }
+
 
   function handleFilter(newParams: Record<string, string | number | null | undefined>) {
     router.get(
@@ -118,50 +146,38 @@ export default function InstallationGalleryIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {reorderMode ? (
-            <>
-              <Button
-                variant="primary"
-                disabled={reorderForm.processing}
-                onClick={handleReorderSubmit}
-              >
-                <Icon name="check" className="size-4" aria-hidden="true" />
-                Simpan urutan
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setReorderMode(false)
-                  setRows(projects.data ?? [])
-                }}
-              >
-                Batal geser
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setReorderMode(true)}
-                title="Atur urutan tampil grup dengan drag and drop"
-              >
-                <Icon name="arrows-down-up" className="size-4" aria-hidden="true" />
-                Mode Geser
-              </Button>
-              <Button asChild variant="outline">
-                <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-                  <Icon name="external-link" className="size-4" aria-hidden="true" />
-                  Lihat Publik
-                </a>
-              </Button>
-              <Button asChild>
-                <Link href={createUrl}>
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah
-                </Link>
-              </Button>
-            </>
-          )}
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+              Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+              yang benar-benar digeser. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={reorderForm.isDirty}
+            processing={reorderForm.processing}
+            disabled={!rows.length || filterKunci}
+            disabledReason="Pilih tab Semua Hasil Pemasangan dulu supaya urutan bisa digeser."
+            onToggle={() => {
+              setReorderMode(true)
+              // Urutan hanya bisa digeser saat daftar lengkap, jadi pencarian
+              // dan sortir dikosongkan sekaligus saat mode geser dinyalakan.
+              if (listTersaring) handleFilter({ q: null, sort: null })
+            }}
+            onCancel={cancelReorder}
+            onSave={handleReorderSubmit}
+          />
+          <Button asChild variant="outline">
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+              <Icon name="external-link" className="size-4" aria-hidden="true" />
+              Lihat Publik
+            </a>
+          </Button>
+          {!reorderMode ? (
+            <Button asChild>
+              <Link href={createUrl}>
+                <Icon name="plus" className="size-4" aria-hidden="true" />
+                Tambah
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >
@@ -337,7 +353,7 @@ export default function InstallationGalleryIndex({
                   {rows.map((group, index) => (
                     <tr
                       key={group.key}
-                      draggable={reorderMode}
+                      draggable={reorderMode && !listTersaring}
                       onDragStart={(event) => {
                         event.dataTransfer.effectAllowed = "move"
                         event.dataTransfer.setData("text/plain", String(index))
@@ -345,7 +361,7 @@ export default function InstallationGalleryIndex({
                       }}
                       onDragOver={(event) => {
                         event.preventDefault()
-                        if (reorderMode && dragIndex !== null && dragIndex !== index) setDragTarget(index)
+                        if (reorderMode && !listTersaring && dragIndex !== null && dragIndex !== index) setDragTarget(index)
                       }}
                       onDragLeave={() => setDragTarget((current) => (current === index ? null : current))}
                       onDrop={(event) => {
@@ -362,7 +378,7 @@ export default function InstallationGalleryIndex({
                       }}
                       className={cn(
                         "transition-colors hover:bg-muted/30",
-                        reorderMode && "cursor-grab active:cursor-grabbing",
+                        reorderMode && !listTersaring && "cursor-grab active:cursor-grabbing",
                         dragIndex === index && "opacity-40",
                         dragTarget === index && dragIndex !== index && "border-t-2 border-primary bg-primary/5",
                       )}

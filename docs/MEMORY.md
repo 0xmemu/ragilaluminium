@@ -100,6 +100,211 @@ Tiga perubahan dibalik atas perintah owner karena menyimpang dari instruksi.
   pembeli kehilangan satu-satunya cara mengembalikan zoom. Diperbaiki di `onTouchEnd` (reset saat jari
   terangkat penuh, dan saat sisa satu jari pada keadaan tidak diperbesar).
 
+### 2026-09-20 - Masalah & Solusi: pola urutkan ditiru dari halaman Paling Banyak Dipesan
+
+Permintaan owner: "tiru halaman paling banyak dipesan". Acuan: `Admin/Beranda/Popular.tsx`
+(`/admin/beranda/paling-banyak-dipesan`). Ini MELANJUTKAN penyamaan sebelumnya yang memakai pola
+Faq/ApaKata/Testimoni; owner memilih pola Paling Banyak Dipesan sebagai acuan akhirnya.
+
+Yang ditiru (dan berbeda dari pola Faq):
+- DAFTAR JADI TABEL di dalam `Card`, bukan `<ul>` kartu. Bakunya: Card dengan header bersumbu
+  `bg-muted/40` (ikon + judul + hitungan baris di kanan, teks `text-sm font-semibold`), lalu
+  `<div className="overflow-x-auto">` dan `<table className="w-full text-sm">`. Kolom di halaman ini:
+  handle (w-12), No (w-10, rata kanan, `tabular-nums`), Masalah, Solusi, Aksi (rata kanan).
+- DRAG HANDLE: `<span>` size-7 rounded-md berisi ikon `dots-six-vertical` di kolom pertama, dengan
+  `title` dinamis ("Tarik untuk memindahkan" saat bisa digeser, "Aktifkan mode urutkan untuk
+  memindahkan" saat tidak). Sebelumnya halaman ini memakai tombol ↑/↓ seperti Faq; tombol itu DIBUANG
+  termasuk fungsi `move()`.
+- Tombol header: "Urutkan" dengan variant primary saat aktif (`variant={reorderMode ? "primary" :
+  "secondary"}`, berikon `dots-six-vertical`), dan "Simpan urutan" yang SELALU tampil namun
+  `disabled={reorderForm.processing || !dirty}`. Sebelumnya tombol simpan hanya muncul saat mode urut
+  dan tidak sadar perubahan.
+- Mode urut OTOMATIS NONAKTIF setelah menyimpan (`onSuccess: () => setReorderMode(false)`). Catatan:
+  ini berbeda dari Faq/Testimoni/ApaKata yang tetap di mode urut setelah simpan, tetapi sama dengan
+  Paling Banyak Dipesan dan Model Produk. Owner memilih pola yang auto-nonaktif.
+- Tombol "Tambah" TETAP tampil saat mode urut (di Paling Banyak Dipesan pun tombol lain tetap ada).
+  Sebelumnya tombol Tambah diganti tombol simpan; sekarang keduanya berdampingan.
+- Banner dua keadaan: saat mode aktif menjelaskan tarik ikon titik enam, saat tidak aktif menjelaskan
+  bahwa urutan di sini sama dengan urutan di halaman publik.
+- Geser-urut DIMATIKAN saat daftar tersaring (`canReorder = reorderMode && filters.q.trim() === ""`)
+  karena posisi target tidak mewakili urutan global. Menyalakan mode urut membersihkan pencarian
+  sekaligus (`setQ("")` plus `apply({ q: "" })`) supaya admin tidak perlu mengosongkan sendiri.
+- Baris kosong ditangani di dalam `<tbody>` (pesan berbeda untuk hasil pencarian kosong vs data kosong),
+  dan `EmptyState` tetap dipakai saat benar-benar belum ada data. Ini meniru Paling Banyak Dipesan yang
+  memakai baris "Tidak ada produk carousel yang cocok dengan pencarian."
+
+Verifikasi live: sebelum mode, tombol "Urutkan" + "Simpan urutan" nonaktif dan baris tidak draggable;
+setelah "Urutkan", banner berganti, baris `draggable="true"`, handle menyala, dan tombol simpan tetap
+nonaktif sampai ada perubahan. Geser baris ke-3 ke posisi ke-1 berhasil dan tombol simpan langsung
+aktif (deteksi perubahan bekerja). Simpan urutan menulis ke database dan mode otomatis nonaktif.
+Urutan data dikembalikan seperti semula (Pesanan Belum Diproses, Produk Rusak, Pengiriman Terlambat,
+Kesulitan Memilih Ukuran) dan sudah diverifikasi lewat pembacaan `sort_order` langsung dari database.
+vitest 151 passed, PHP MasalahSolusiAdminTest 7 passed, tsc bersih, eslint bersih, build Vite PASS.
+
+### 2026-09-20 - Masalah & Solusi: mode geser disamakan dengan halaman lain
+
+Permintaan owner: "tiru mode geser di halaman lain".
+
+Pola acuan diambil dari `Admin/Faq/Index.tsx`, `Admin/ApaKata/Index.tsx`, dan
+`Admin/Testimonials/Index.tsx` (ketiganya memakai `useRowDragSort` yang sama):
+- Label tombolnya "Atur urutan" dan saat aktif menjadi "Selesai atur urutan".
+  Sebelumnya halaman ini memakai "Aktifkan mode geser" / "Nonaktifkan mode geser" (gaya halaman
+  Model Produk dan Beranda), sehingga bahasa tombolnya berbeda antar halaman padahal fungsinya sama.
+- Tombol "Atur urutan" dinonaktifkan bila daftar masih kosong (`disabled={!rows.length}`).
+- Banner panduan berbunyi "Geser naik/turun lalu klik Simpan urutan." (sebelumnya "Atur urutan dengan
+  tombol naik/turun, lalu simpan.").
+- Tombol Edit dan Hapus per baris dinonaktifkan selama mode urut, supaya tidak ada klik tak sengaja
+  saat baris sedang digeser. Ini sama dengan Faq yang menonaktifkan Edit dan Arsipkan pada mode urut.
+  Catatan: menu dropdown "Lainnya" TIDAK ikut dinonaktifkan di halaman acuan mana pun, jadi dibiarkan
+  seperti aslinya (di dalamnya tombol Hapus sudah dinonaktifkan).
+
+Yang TIDAK diubah karena halaman acuan pun berperilaku sama: mode urut tidak otomatis nonaktif
+setelah menyimpan urutan (Faq, ApaKata, dan Testimoni juga tetap dalam mode urut setelah simpan).
+Halaman yang auto-nonaktif hanya Model Produk, jadi perilaku ini memang berbeda per halaman.
+
+Verifikasi live: saat mode aktif, tombol menjadi "Simpan urutan", banner panduan muncul, baris punya
+`draggable="true"`, tombol naik/turun berfungsi (baris ke-3 naik ke posisi ke-2), dan klik Simpan
+urutan menyimpan ke database (sort_order terverifikasi lewat pembacaan langsung). Sesudah
+"Selesai atur urutan", banner hilang, baris tidak lagi draggable, dan tombol kembali "Atur urutan" +
+"Tambah". Urutan data di database dikembalikan seperti semula (Pesanan Belum Diproses, Produk Rusak,
+Pengiriman Terlambat, Kesulitan Memilih Ukuran) sehingga tidak ada data produksi yang berubah.
+vitest 151 passed, PHP MasalahSolusiAdminTest 7 passed, tsc bersih, eslint bersih, build Vite PASS.
+
+### 2026-09-20 - Masalah & Solusi: form admin disederhanakan + perbaikan pemilih video
+
+Permintaan owner: "pastikan layout dan ui di menu admin rapi dan mudah di setting, gausah ribet,
+simple saja pastikan flow setting sederhana".
+
+MASALAH YANG DIUKUR SEBELUM DIPERBAIKI (bukan perkiraan):
+- Seksi media di form create setinggi 798 px dengan 1.105 karakter teks penjelasan, sementara dua
+  seksi lain hanya 48 dan 86 karakter. Total form 1.410 px. Penyebabnya semua kontrol selalu
+  terbuka: pemilih foto, pemilih video, kolom tautan video luar, durasi, poster video, judul bagian,
+  dan teks pengganti, masing-masing dengan paragraf penjelasnya sendiri.
+- Halaman daftar: form meta selalu terbuka dan memakan 340 px, sehingga daftar item baru terlihat
+  di posisi 560 px dan admin harus menggulir hanya untuk melihat daftarnya.
+
+PERBAIKAN FORM (Form.tsx):
+- Seksi "Contoh dokumentasi" diganti nama menjadi "Media contoh" dan disusun ulang: satu penghitung
+  slot di kanan judul, satu paragraf aturan singkat, lalu satu grid yang menampilkan media terpasang
+  (foto, video, atau keduanya) dengan pratinjau dan kolom keterangan.
+- Aksi utama jadi dua tombol sejajar di tempat yang sama: "+ Tambah foto" dan "+ Tambah video".
+  Saat slot penuh, keduanya diganti satu pesan singkat.
+- Yang jarang dipakai disembunyikan di balik tautan kecil: "Atau tempel tautan video luar (YouTube)"
+  dan "Atur judul bagian dan teks pengganti" (judul bagian sudah punya nilai bawaan, jadi tidak perlu
+  dilihat terus).
+- Hasil terukur: seksi media 798 px menjadi 214 px, total form 1.410 px menjadi 826 px, teks form
+  1.239 karakter menjadi 405 karakter. Empat aksi terlihat jelas: Tambah foto, Tambah video, tautan
+  video luar, atur judul bagian.
+
+PERBAIKAN HALAMAN DAFTAR (Index.tsx):
+- Form meta HANYA tampil bila diminta. Saat tertutup yang tampil cuma satu baris ringkasan
+  (judul hero dan subjudul), lengkap dengan tautan "Atur meta halaman".
+- TOMBOL "Simpan meta" PINDAH KE DALAM SECTION META HALAMAN (koreksi owner sesudahnya: "pindah tombol
+  simpan meta ke section terkait"). Sebelumnya diparkir di header `AdminLayout actions`; sekarang
+  duduk di kanan bawah form meta, sebaris dengan kolomnya, dan ikut tersembunyi bersama formnya.
+  Alasannya: tombol simpan jadi jelas milik data yang mana, tidak tercampur dengan aksi halaman
+  (Lihat halaman publik, Aktifkan mode geser, Tambah). Header kini hanya berisi aksi halaman.
+  Catatan: ini pengecualian sadar atas aturan umum "aksi submit diangkat ke header"; tombol lain di
+  halaman ini (Simpan urutan) tetap memakai pola header karena aksinya menyangkut seluruh daftar.
+- Posisi daftar naik dari sekitar 560 px menjadi 339 px, sehingga daftar item langsung terlihat.
+- Import mati `rowActionTextClass` dibuang (error eslint yang sudah ada sebelum perubahan ini).
+
+BUG YANG DITEMUKAN SAAT VERIFIKASI (penting): pemilih video menampilkan ZERO aset walau Media Library
+punya 1 berkas video siap pakai. Akar masalahnya `MediaPickerController::index` mengambil 48 aset
+terbaru LEBIH DULU, baru menyaring jenis di sisi klien lewat komponen `MediaLibrarySelect`. Karena
+853 aset gambar jauh lebih baru daripada video #228, video itu tidak pernah masuk 48 besar. Perbaikan:
+parameter `kind` dikirim ke server dan disaring di query (`->when($kind !== null, ...)`), saringan di
+sisi klien dihapus. Dikunci `test_picker_filters_by_kind_on_server` yang memverifikasi `?kind=video`
+mengembalikan hanya video, `?kind=image` hanya gambar, dan tanpa parameter semua jenis tetap tampil
+seperti perilaku lama. Pemakai lain (Testimonials/GalleryForm, Banners/Form, StorefrontPlatforms/Edit,
+Media/Attach) memakai kind="image" bawaan sehingga perilakunya tidak berubah.
+
+Verifikasi live: pemilih video kini menampilkan 1 aset, memilihnya membuat penghitung menjadi
+"1 dari 2 media terpakai" dan tombol tambah video hilang. Item uji disimpan end-to-end dan tersimpan
+benar (video source=library, asset_id=228, src terisi), lalu item uji dihapus lagi sehingga jumlah
+item kembali 4. vitest 151 passed, PHP MasalahSolusiAdminTest + MediaPickerEndpointTest 8 passed,
+tsc bersih, eslint bersih, build Vite PASS.
+
+### 2026-09-20 - Masalah & Solusi: tata letak media mengikuti bentuknya (koreksi owner)
+
+Koreksi owner atas pekerjaan yang sama hari itu: "gambar yang kamu uji itu salah. harusnya gambar
+landscape adalah gambar yang sendirian, nah gambar yang 1:1 sebaiknya berdua karena masalah &
+solusi seperti foto before after".
+
+Jadi maksud pemakaian medianya seperti pasangan foto before dan after:
+- Foto LEBAR (banner, landscape) dipakai sebagai gambar pembuka dan BERDIRI SENDIRI selebar penuh.
+  Kalau dipasangkan, banner terhimpit separuh lebar.
+- Foto PERSEGI atau TEGAK dipasangkan BERJEJER dua kolom, termasuk di layar ponsel.
+Sebelumnya semua foto dipaksa dua kolom, sehingga banner memanjang terhimpit.
+
+Implementasi:
+- `lib/masalah-solusi-media.ts` menambah `MASALAH_SOLUSI_WIDE_RATIO = 1.5`, `mediaLayout(width,
+  height)` (mengembalikan "full" atau "half", dan null bila ukuran belum diketahui) serta
+  `mediaLayoutClass()` yang memberi `col-span-2` untuk media lebar. Ambang 1.5 mencakup 3:2, 16:9,
+  dan banner; 4:3 (1.33) serta persegi tetap dipasangkan.
+- `ProblemsSolutionsSettings` kini MENYIMPAN ukuran asli aset (`width`, `height` dari MediaAsset
+  `width_px`/`height_px`) pada tiap foto, di tiga tempat: foto baru dari Media Library, foto
+  tersimpan yang dikirim form, dan foto yang dibaca `parseForAdmin` untuk storefront. Dengan begitu
+  tata letak bisa diputuskan server tanpa menunggu gambar dimuat. 837 dari 853 aset gambar sudah
+  punya dimensi.
+- `Public/MasalahSolusi.tsx` memakai komponen baru `MediaFigure` yang memilih tata letak dari
+  ukuran server, dengan cadangan mengukur sendiri lewat `onLoad` bila ukurannya kosong (aset lama).
+
+Verifikasi live di lebar ponsel 390px, memakai dua item uji sementara yang dibuat dari aset nyata:
+- Banner 1400x584: `col-span-2`, lebar 321px (selebar penuh kolom), rasio tampil 2.38 mendekati asli.
+- Dua foto persegi 1040x1040: lebar 156px masing-masing, berdampingan di baris yang sama
+  (x=27 dan x=192), rasio tetap 1:1, tidak terpotong.
+Kedua item uji dihapus lagi setelah verifikasi, jumlah item kembali 4.
+Dikunci `tests/frontend/masalah-solusi-media.test.ts` yang naik dari 12 ke 23 test (11 test tata
+letak). vitest 151 passed, PHP MasalahSolusiAdminTest 7 passed, tsc bersih, eslint bersih, build PASS.
+
+### 2026-09-20 - Masalah & Solusi: maksimal 2 media per item, foto dan video satu slot
+
+Permintaan owner: "tambahkan fitur add foto dan video per item masalah dan solusi, maksimal 2 media
+per item masalah dan solusi. jangan batasi ukuran foto, karena ada kemungkinan admin menambahkan
+foto yang panjang/landscape/banner like atau 2 media berukuran 1:1, tetap beri keterangan ukuran
+rekomendasi".
+
+Aturan baru:
+- `ProblemsSolutionsSettings::MAX_MEDIA_PER_ITEM = 2`. Foto dan video dihitung sebagai SLOT YANG
+  SAMA, jadi yang sah: dua foto, dua video, atau satu foto dan satu video. Ditegakkan di server
+  (kombinasi `media_asset_ids` + `media_video_asset_id`, dihitung setelah foto masuk sebelum video
+  diproses) DAN di form admin (pemilih foto hilang saat slot penuh, muncul pesan slot penuh).
+- Video kini bisa dipilih dari MEDIA LIBRARY (berkas video), bukan hanya tautan luar. Bila keduanya
+  terisi, berkas Library yang dipakai. `video.source` = 'library' atau 'url' disimpan supaya
+  storefront tahu cara menampilkannya. Poster tidak lagi diunggah sebagai berkas (validasi
+  `video_poster` mati dihapus); bila kosong, poster diambil dari aset videonya sendiri.
+- RASIO FOTO TIDAK DIBATASI lagi. Sebelumnya storefront memaksa `aspect-[4/3]` + `object-cover`
+  sehingga foto banner terpotong. Sekarang memakai `object-contain` dengan lebar penuh dan
+  `figcaption` dari kolom keterangan. Diverifikasi live: foto 1:1 tampil 421x421 dan foto banner
+  tampil 421x177, keduanya utuh tanpa potongan. Pratinjau di form admin juga mengikuti rasio asli.
+- Ukuran rekomendasi ditulis di form (bukan sebagai batas): sisi terpanjang 1200 sampai 1600 px,
+  rasio bebas, maksimal 5 MB per berkas.
+- Validasi mati dibersihkan: `photo_files` (unggah langsung, sudah tidak diproses sejak alur
+  Media Library 2026-09-16) dan `video_poster` (unggah berkas poster) dihapus dari controller.
+
+Catatan penting: test `test_admin_can_upload_documentation_photos_for_problem_solution` SEBELUMNYA
+GAGAL karena masih mengirim `photo_files` padahal alur itu sudah tidak diproses di versi kerja
+(perubahan belum di-commit milik pekerjaan sebelumnya). Diganti
+`test_admin_can_attach_documentation_media_from_library` plus 5 test baru: video dari Library, tiga
+media ditolak, dua foto + video ditolak, satu foto + video diterima, berkas Library menang atas URL.
+Total `MasalahSolusiAdminTest` 7 test (69 assertions).
+
+Bug yang ditemukan dan diperbaiki saat verifikasi browser: `MediaLibrarySelect` menyimpan aset
+terpilih di state internal, dan komponen yang sama dipakai sebagai tombol TAMBAH dengan `value`
+kosong. Setelah memilih satu aset, tombolnya berubah menampilkan nama aset itu sehingga label
+"+ Tambah foto" HILANG padahal slot masih tersedia. Diperbaiki dengan hanya menampilkan aset bila
+cocok dengan `value` dari pemanggil (`shownAsset`). Terverifikasi live: penghitung bergerak
+0 -> 1 -> 2 dari 2, lalu pemilih foto hilang dan muncul pesan slot penuh untuk foto dan video.
+
+Berkas: `resources/js/lib/masalah-solusi-media.ts` (baru, aturan slot), `Admin/MasalahSolusi/Form.tsx`,
+`Public/MasalahSolusi.tsx`, `components/admin/media-library-select.tsx`,
+`app/Support/ProblemsSolutionsSettings.php`, `app/Http/Controllers/Admin/MasalahSolusiController.php`,
+`tests/Feature/MasalahSolusiAdminTest.php`, `tests/frontend/masalah-solusi-media.test.ts` (12 test).
+Verifikasi: vitest 140 passed, PHP MasalahSolusiAdminTest 7 passed, tsc bersih, eslint bersih, build
+Vite PASS. Alur end-to-end diuji di live: simpan dua foto dari Media Library berhasil (302), tampil di
+/masalah-dan-solusi, lalu item uji dihapus lagi sehingga jumlah item kembali 4.
+
 ### 2026-09-18 - Tombol kembali di breadcrumb selalu tampil (tidak lagi hilang di browser tertentu)
 
 Laporan owner: "kok tombol back di breadcrum(desktop mode) tidak selalu muncul di browser tertentu ya".
@@ -2596,3 +2801,45 @@ dua diperbaiki langsung (tidak mengubah tampilan), satu direkomendasikan.
 
 Verifikasi: 7 test platforms lolos, tsc bersih, eslint bersih, build Vite PASS. Di /about, panel
 platform tetap menampilkan 8 chip dengan 8 ikon termuat dan judul grup tidak berubah.
+
+### 2026-09-20 - Logika tombol urut admin diseragamkan jadi satu tombol bermorfosis
+Kontrak owner: mode urut di panel admin memakai SATU tombol yang berubah peran mengikuti keadaan,
+bukan dua tombol menumpuk. "Simpan urutan" tidak boleh tampil sebelum mode urut aktif, karena belum
+ada yang perlu disimpan.
+
+Keadaan tombol:
+- belum aktif        -> "Urutkan" (sekunder, ikon titik enam)
+- aktif, belum geser  -> "Urungkan" (sekunder, membatalkan dan mengembalikan urutan server)
+- aktif, sudah geser  -> "Simpan urutan" (satu-satunya primari di header)
+
+Komponen bersama baru: `resources/js/components/admin/reorder-action-button.tsx`. Dipakai sembilan
+halaman: MasalahSolusi/Index, Faq/Index, ApaKata/Index, Testimonials/Index, SubModels,
+ModelProducts/Index, InstallationGallery/Index, Beranda/Index, Beranda/Popular. Tombol Tambah ikut
+disembunyikan selama mode urut aktif supaya header tidak punya dua primari.
+
+Helai yang ditemukan dan diperbaiki saat verifikasi live:
+1. Efek sinkronisasi server me-reset `reorderMode` saat `rows` berganti. Karena tombol Urutkan
+   membersihkan pencarian (dan itu memuat ulang rows), mode urut langsung mati sendiri. Reset
+   sekarang hanya saat tab lingkup berganti (Faq lewat `status`, Testimonials lewat `tab`).
+2. `isDirty` Inertia membandingkan `data` dengan `defaults`. Sinkronisasi snapshot server dulu hanya
+   `setData`, jadi defaults tertinggal di nilai lama dan tombol langsung menampilkan "Simpan urutan"
+   tanpa ada geseran. Sekarang `setData` dan `setDefaults` dipindah bersama.
+3. Penjaga "daftar harus lengkap": handler reorder hanya menulis `sort_order` untuk baris yang
+   dikirim, jadi menggeser daftar tersaring menulis urutan parsial dan menabrak baris di luar filter.
+   Geser-urut dimatikan saat daftar tersaring. Pencarian tidak mengunci tombol karena dibersihkan
+   otomatis (Faq/ApaKata/Testimonials/ModelProducts/SubModels); yang mengunci hanya filter yang
+   tidak bisa dibersihkan sendiri, yaitu filter kategori (Faq), status (ApaKata), status/channel
+   (Testimonials), status/kategori (ModelProducts), dan tab status (InstallationGallery).
+4. Pelanggaran "satu primari per area": tombol "Simpan pengaturan" (Faq) dan "Simpan meta" (ApaKata)
+   dipindah dari header ke dalam panel meta masing-masing, sejalan dengan Masalah & Solusi. Header
+   kini punya tepat satu primari (Tambah).
+
+Verifikasi: tsc bersih, eslint bersih (0 warning), build Vite PASS (21-27 detik), 151 test vitest
+PASS, 37 test PHP PASS (488 assertion, dijalankan sebagai www-data). Verifikasi live lewat browser:
+urutan keadaan tombol di /admin/masalah-solusi diamati langsung (Urutkan -> Urungkan -> Simpan
+urutan), geseran belum tersimpan hilang setelah reload, simpan sungguhan persisten setelah reload,
+dan urutan produksi dikembalikan ke keadaan semula. Sembilan halaman dimigrasi dirender tanpa error
+dan tiap header punya tepat satu primari. Halaman publik /masalah-dan-solusi, /faq, /reviews normal.
+
+Spec tidak berubah: tanpa route, schema, enum, atau bentuk JSON baru. Yang berubah hanya perilaku
+tombol dan lokasi tombol simpan meta di dalam panel. Tanpa em dash.

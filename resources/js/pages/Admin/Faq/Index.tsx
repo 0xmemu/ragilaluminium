@@ -4,6 +4,7 @@ import * as React from "react"
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -111,14 +112,25 @@ export default function FaqIndex({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(initialRows)
     setEditingId(null)
-    setReorderMode(false)
     reorderForm.setData({
+      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+      status,
+    })
+    reorderForm.setDefaults({
       rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
       status,
     })
     // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRows, status])
+
+  React.useEffect(() => {
+    // Pindah tab membatalkan mode urut. Mode urut tidak boleh direset saat rows
+    // berganti, karena menyalakan mode urut membersihkan pencarian dan itu
+    // memuat ulang rows, sehingga mode urut akan langsung mati sendiri.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReorderMode(false)
+  }, [status])
 
   React.useEffect(() => {
     // Query flags are navigation inputs, while the local state drives the panel.
@@ -214,8 +226,49 @@ export default function FaqIndex({
     )
   }
 
+  function saveReorder() {
+    reorderForm.setData("status", status)
+    reorderForm.put(reorderUrl, {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    setRows(initialRows)
+    reorderForm.setData({
+      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+      status,
+    })
+    reorderForm.setDefaults({
+      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+      status,
+    })
+    setReorderMode(false)
+  }
+
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris tab ini: payload
+  // simpan hanya berisi baris yang tampil, jadi daftar tersaring akan menulis
+  // sort_order parsial dan menabrak urutan baris di luar filter.
+  // `status` dikecualikan karena tab memang memisahkan lingkup: urutan yang
+  // ditulis hanya untuk baris di tab itu sendiri. Pencarian juga tidak dikunci
+  // karena tombol Urutkan membersihkannya sendiri.
+  const listTersaring = filters.q.trim() !== "" || filters.category !== ""
+  const filterKunci = filters.category !== ""
+
+  function toggleReorder() {
+    setReorderMode(true)
+    // Urutan tidak bisa digeser saat daftar tersaring, jadi pencarian
+    // dibersihkan sekaligus saat mode urut dinyalakan (kontrak owner 2026-09-20).
+    if (filters.q) {
+      setQ("")
+      apply({ q: "" })
+    }
+  }
+
   const dnd = useRowDragSort({
-    enabled: reorderMode && !isArchivedTab,
+    enabled: reorderMode && !isArchivedTab && !listTersaring,
     count: rows.length,
     onReorder: reorderRows,
   })
@@ -248,9 +301,6 @@ export default function FaqIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" form="faq-meta-form" disabled={metaForm.processing}>
-            {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
-          </Button>
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
               Lihat halaman publik
@@ -261,31 +311,25 @@ export default function FaqIndex({
           </Button>
           {!isArchivedTab ? (
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!rows.length}
-                onClick={() => setReorderMode((value) => !value)}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={reorderForm.processing}
-                  onClick={() => {
-                    reorderForm.setData("status", status)
-                    reorderForm.put(reorderUrl)
-                  }}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : (
+              {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+                  Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+                  yang benar-benar digeser. */}
+              <ReorderActionButton
+                active={reorderMode}
+                dirty={reorderForm.isDirty}
+                processing={reorderForm.processing}
+                disabled={!rows.length || filterKunci}
+                disabledReason="Kosongkan filter kategori dulu supaya urutan bisa digeser."
+                onToggle={toggleReorder}
+                onCancel={cancelReorder}
+                onSave={saveReorder}
+              />
+              {!reorderMode ? (
                 <Button type="button" onClick={openCreatePanel}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
                   Tambah
                 </Button>
-              )}
+              ) : null}
             </>
           ) : null}
         </div>
@@ -365,7 +409,12 @@ export default function FaqIndex({
                 onChange={(event) => metaForm.setData("subtitle", event.target.value)}
               />
             </Field>
+            {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
+                bukan daftar FAQ di bawahnya. Ikut tersembunyi bersama formnya. */}
             <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <Button type="submit" disabled={metaForm.processing}>
+                {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
+              </Button>
               <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
                 Tutup
               </Button>
@@ -478,7 +527,7 @@ export default function FaqIndex({
               const open = openId === row.id
               const editing = editingId === row.id
               return (
-                <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !isArchivedTab ? dnd.rowProps(index) : {})}>
+                <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(!listTersaring && reorderMode && !isArchivedTab ? dnd.rowProps(index) : {})}>
                   <div className="flex flex-wrap items-start gap-3">
                     {reorderMode && !isArchivedTab ? (
                       <div className="flex flex-col gap-1">

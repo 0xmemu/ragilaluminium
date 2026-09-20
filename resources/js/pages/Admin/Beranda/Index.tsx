@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
@@ -44,7 +45,17 @@ export default function BerandaIndex({
     // Inertia refresh replaces the editable section list with the server snapshot.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSections(initialSections)
+    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
+    // defaults, jadi keduanya harus berisi snapshot server yang sama.
     form.setData(
+      "sections",
+      initialSections.map((section) => ({
+        key: section.key,
+        enabled: section.enabled,
+        sort_order: section.sort_order,
+      })),
+    )
+    form.setDefaults(
       "sections",
       initialSections.map((section) => ({
         key: section.key,
@@ -92,6 +103,28 @@ export default function BerandaIndex({
     onReorder: reorderSections,
   })
 
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+  function cancelReorder() {
+    setSections(initialSections)
+    form.setData(
+      "sections",
+      initialSections.map((section) => ({
+        key: section.key,
+        enabled: section.enabled,
+        sort_order: section.sort_order,
+      })),
+    )
+    form.setDefaults(
+      "sections",
+      initialSections.map((section) => ({
+        key: section.key,
+        enabled: section.enabled,
+        sort_order: section.sort_order,
+      })),
+    )
+    setReorderMode(false)
+  }
+
   function toggleEnabled(index: number) {
     const next = sections.map((section, i) =>
       i === index ? { ...section, enabled: !section.enabled } : section,
@@ -105,23 +138,31 @@ export default function BerandaIndex({
       description={description}
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setReorderMode((value) => !value)}
-          >
-            {reorderMode ? "Nonaktifkan mode geser" : "Aktifkan mode geser"}
-          </Button>
           <Button type="button" variant="secondary" asChild>
             <Link href={routeUrl("admin.beranda.index")}>Batal</Link>
           </Button>
-          <Button
-            type="button"
-            disabled={form.processing}
-            onClick={() => form.put(submitUrl)}
-          >
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20).
+              Saat mode urut aktif, tombol ini menggantikan Simpan: form yang sama
+              memuat urutan sekaligus status tampil tiap bagian, jadi satu tombol
+              simpan sudah mewakili seluruh perubahan. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={form.isDirty}
+            processing={form.processing}
+            disabled={sections.length < 2}
+            onToggle={() => setReorderMode(true)}
+            onCancel={cancelReorder}
+            onSave={() => form.put(submitUrl, { onSuccess: () => setReorderMode(false) })}
+          />
+          {!reorderMode ? (
+            <Button
+              type="button"
+              disabled={form.processing}
+              onClick={() => form.put(submitUrl)}
+            >
+              {form.processing ? "Menyimpan..." : "Simpan"}
+            </Button>
+          ) : null}
         </div>
       }
     >
