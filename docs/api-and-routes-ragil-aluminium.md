@@ -388,8 +388,9 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 - `POST /order/{order_number}/review` (`order.review.store`) accepts a guest review only when the order is `delivered` or `completed`. Ownership is proven by the order number plus the checkout phone number (normalized to the same Indonesian format); there is no customer account fallback.
 - `PUT /order/{order_number}/review/{testimonial}` (`order.review.update`) allows the verified customer to edit message, rating, and media. The review must belong to the order and be customer-authored. An admin-authored review returns `403` and cannot be edited through this customer contract.
-- One review is allowed per order, including a review recorded by admin. A customer submission is stored as verified, `moderation_status=pending`, and `published=false`; edits return it to pending moderation. Text is 3–5000 characters, rating is 1–5, and media is at most 10 image/video URL items.
-- Both routes are web/CSRF routes and throttled at 10 requests per minute. Each create/edit writes an immutable `event_logs` audit record with source `customer`, order reference, and moderation transition.
+- One review is allowed per order, including a review recorded by admin. A customer submission is stored as verified, `moderation_status=approved`, and `published=true`, so it appears in the storefront IMMEDIATELY without moderation or admin approval (owner decision 2026-09-21); edits keep it published. The verified purchase is the only quality gate: reviews are accepted only for orders in `delivered` or `completed`. Admin keeps takedown tools: `unpublish` hides a review, and `moderation_status=rejected` hides it permanently. Text is 3–5000 characters, rating is 1–5, and media is at most 10 image/video URL items.
+- Both routes are web/CSRF routes and throttled at 10 requests per minute. Each create/edit writes an immutable `event_logs` audit record with source `customer`, order reference, and the resulting moderation status.
+- Admin replies (`POST /admin/testimonials/{testimonial}/reply`) are allowed at any time, including on reviews that are already live. A reply never changes `published` or `moderation_status`, so answering a live review keeps it live.
 
 ### ETA presentation contract
 

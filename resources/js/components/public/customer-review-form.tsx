@@ -45,7 +45,7 @@ function firstError(payload: unknown): string | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
-/** U3: sheet kompak — bottom sheet (mobile) / side panel kanan (desktop). */
+/** U3: sheet kompak, bottom sheet (mobile) atau side panel kanan (desktop). */
 function ReviewSheet({
   open,
   onOpenChange,
@@ -264,8 +264,10 @@ export function CustomerReviewForm({
         rating,
         message: message.trim(),
         media_items: mediaItems,
-        moderation_status: saved.moderation_status ?? "pending",
-        published: false,
+        // Ulasan pelanggan langsung tayang (keputusan owner 2026-09-21), jadi
+        // state lokalnya mengikuti nilai sungguhan dari server.
+        moderation_status: saved.moderation_status ?? "approved",
+        published: saved.published ?? true,
         verified_purchase: true,
         customer_authored: true,
       })

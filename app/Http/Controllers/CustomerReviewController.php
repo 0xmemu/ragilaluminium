@@ -39,14 +39,22 @@ class CustomerReviewController extends Controller
                 'product_id' => $productId,
                 'order_id' => $lockedOrder->id,
                 'author_type' => 'customer',
-                'moderation_status' => 'pending',
+                // Keputusan owner 2026-09-21: ulasan pelanggan LANGSUNG tayang,
+                // tanpa moderasi atau persetujuan admin. Pembeliannya sudah
+                // terverifikasi lewat pesanan delivered/completed, dan itu
+                // dianggap cukup sebagai penjaga mutu. Nilai ini sekaligus
+                // sejalan dengan default kolomnya di database.
+                //
+                // Admin tetap punya alat menyembunyikan ulasan yang bermasalah,
+                // lewat unpublish (takedown) atau moderation_status rejected.
+                'moderation_status' => 'approved',
                 'verified_at' => now(),
                 'customer_name' => $lockedOrder->customer_name,
                 'message' => trim((string) $validated['message']),
                 'rating' => (int) $validated['rating'],
                 'source' => 'website',
                 'media_items' => $validated['media_items'] ?? [],
-                'published' => false,
+                'published' => true,
                 'sort_order' => 0,
             ]);
 
@@ -58,7 +66,7 @@ class CustomerReviewController extends Controller
                 null,
                 'customer',
                 null,
-                ['moderation_status' => 'pending', 'rating' => $review->rating],
+                ['moderation_status' => 'approved', 'rating' => $review->rating],
                 'customer_review',
                 Order::class,
                 (string) $lockedOrder->id,
@@ -68,7 +76,7 @@ class CustomerReviewController extends Controller
         });
 
         return response()->json([
-            'message' => 'Ulasan berhasil dikirim dan menunggu moderasi.',
+            'message' => 'Ulasan berhasil dikirim dan langsung tayang.',
             'review' => $this->reviewPayload($review),
         ], 201);
     }
@@ -130,12 +138,17 @@ class CustomerReviewController extends Controller
             'moderation_status' => $testimonial->moderation_status,
         ];
 
+        // Hasil edit pelanggan ikut tayang langsung, sama seperti kiriman baru.
+        // Kalau di sini statusnya dikembalikan ke pending, ulasan yang sudah
+        // tayang akan HILANG dari storefront begitu pelanggan memperbaiki
+        // salah ketik, dan itu bertentangan dengan keputusan owner
+        // 2026-09-21 bahwa ulasan pelanggan tampil tanpa moderasi.
         $testimonial->update([
             'message' => trim((string) $validated['message']),
             'rating' => (int) $validated['rating'],
             'media_items' => $validated['media_items'] ?? [],
-            'moderation_status' => 'pending',
-            'published' => false,
+            'moderation_status' => 'approved',
+            'published' => true,
         ]);
 
         ActivityLogService::record(
@@ -146,14 +159,14 @@ class CustomerReviewController extends Controller
             null,
             'customer',
             $before,
-            ['message' => $testimonial->message, 'rating' => $testimonial->rating, 'moderation_status' => 'pending'],
+            ['message' => $testimonial->message, 'rating' => $testimonial->rating, 'moderation_status' => 'approved'],
             'customer_review_edit',
             Order::class,
             (string) $order->id,
         );
 
         return response()->json([
-            'message' => 'Ulasan diperbarui dan menunggu moderasi ulang.',
+            'message' => 'Ulasan diperbarui dan langsung tayang.',
             'review' => $this->reviewPayload($testimonial->fresh()),
         ]);
     }
@@ -229,7 +242,10 @@ class CustomerReviewController extends Controller
     }
 
     /**
-     * Do not echo customer content as published; this is only a submission receipt.
+     * Balasan tipis untuk konfirmasi pengiriman, bukan salinan ulasan.
+     *
+     * Isinya sengaja hanya status dan identitas, tanpa teks atau media
+     * pelanggan, supaya respons ini tetap sekadar tanda terima.
      *
      * @return array<string,mixed>
      */

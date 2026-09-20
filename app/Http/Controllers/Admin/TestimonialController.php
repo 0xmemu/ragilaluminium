@@ -266,7 +266,14 @@ class TestimonialController extends Controller
 
     public function publish(CmsTestimonial $testimonial): RedirectResponse
     {
-        $testimonial->update(['published' => true]);
+        // Moderasi ikut disetujui, bukan hanya kolom terbitnya. Gerbang
+        // storefront mensyaratkan published DAN approved, sedangkan tombol ini
+        // hanya menyentuh published. Akibatnya pada ulasan yang pernah ditolak,
+        // tombol ini tampak berhasil sementara ulasannya tetap tidak muncul.
+        $testimonial->update([
+            'published' => true,
+            'moderation_status' => 'approved',
+        ]);
 
         return back()->with('success', 'Ulasan dipublikasikan.');
     }
@@ -769,8 +776,9 @@ class TestimonialController extends Controller
      * Simpan balasan admin atas ulasan pelanggan (owner 2026-09-18).
      *
      * Balasan hidup di baris ulasan yang sama supaya teks pelanggan tetap utuh.
-     * published & moderation_status SENGAJA tidak disentuh: membalas ulasan yang
-     * masih pending boleh, dan balasannya ikut tampil begitu ulasan disetujui.
+     * published & moderation_status SENGAJA tidak disentuh: membalas boleh
+     * KAPAN PUN, termasuk pada ulasan yang sudah tayang, dan membalas tidak
+     * pernah menarik ulasan itu turun dari storefront (owner 2026-09-21).
      */
     public function reply(Request $request, CmsTestimonial $testimonial): RedirectResponse
     {

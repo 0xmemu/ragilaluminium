@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CustomerReviewTest extends TestCase
@@ -26,15 +27,16 @@ class CustomerReviewTest extends TestCase
             'media_items' => [['type' => 'image', 'url' => 'https://cdn.example.test/review.jpg']],
         ]);
 
+        // Ulasan pelanggan langsung tayang tanpa moderasi (owner 2026-09-21).
         $response->assertCreated()
-            ->assertJsonPath('review.moderation_status', 'pending')
+            ->assertJsonPath('review.moderation_status', 'approved')
             ->assertJsonPath('review.verified_purchase', true);
 
         $this->assertDatabaseHas('cms_testimonials', [
             'order_id' => $order->id,
             'author_type' => 'customer',
-            'moderation_status' => 'pending',
-            'published' => 0,
+            'moderation_status' => 'approved',
+            'published' => 1,
             'rating' => 5,
         ]);
         $this->assertDatabaseHas('event_logs', [
@@ -85,10 +87,13 @@ class CustomerReviewTest extends TestCase
             'rating' => 5,
             'message' => 'Versi yang diperbarui.',
             'media_items' => [],
-        ])->assertOk()->assertJsonPath('review.moderation_status', 'pending');
+        ])->assertOk()->assertJsonPath('review.moderation_status', 'approved');
 
+        // Edit harus tetap tayang. Kalau ini kembali pending, ulasan yang sudah
+        // tayang akan hilang dari storefront begitu pelanggan memperbaiki
+        // salah ketik.
         $this->assertSame('Versi yang diperbarui.', $review->fresh()->message);
-        $this->assertFalse((bool) $review->fresh()->published);
+        $this->assertTrue((bool) $review->fresh()->published);
         $this->assertDatabaseHas('event_logs', [
             'event_type' => 'cms.testimonial_customer_updated',
             'entity_id' => $review->id,
@@ -203,5 +208,78 @@ class CustomerReviewTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('product_id');
 
         $this->assertSame(0, CmsTestimonial::where('order_id', $order->id)->count());
+    }
+
+    /**
+     * Inti keputusan owner 2026-09-21: ulasan pelanggan harus LANGSUNG tampak
+     * di storefront, tanpa moderasi dan tanpa persetujuan admin. Test ini
+     * menempuh jalur yang sama dengan pembeli sungguhan: kirim ulasan, lalu
+     * buka halaman ulasan publik tanpa satu pun aksi admin di antaranya.
+     */
+    public function test_customer_review_appears_in_storefront_without_any_admin_action(): void
+    {
+        [$order, $product] = $this->orderWithProduct('delivered', 'RA-REVIEW-LIVE');
+
+        // Sebelum ulasan dikirim, halaman ulasan publik masih kosong.
+        $this->get(route('reviews.website'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('testimonials.data', 0));
+
+        $this->postJson(route('order.review.store', $order->order_number), [
+            'customer_phone' => '081234567890',
+            'product_id' => $product->id,
+            'rating' => 5,
+            'message' => 'Langsung tayang tanpa moderasi.',
+        ])->assertCreated();
+
+        // Tanpa menyentuh admin sama sekali, ulasan harus sudah terhitung dan
+        // tampil di halaman ulasan publik.
+        $this->get(route('reviews.website'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('testimonials.data', 1)
+                ->where('testimonials.data.0.message', 'Langsung tayang tanpa moderasi.')
+                ->where('testimonials.data.0.rating', 5));
+
+        // Halaman produk memakai gerbang yang sama, yaitu scopePublished()
+        // lewat ProductPopularityService::inheritedTestimonials(). Gerbang itu
+        // diperiksa langsung di sini, karena produk pada fixture ini belum punya
+        // varian aktif sehingga halaman produknya sendiri memang tidak terbit.
+        // scopePublished adalah SATU-SATUNYA gerbang yang dipakai seluruh
+        // permukaan storefront, jadi lolos di sini berarti lolos di semua.
+        $this->assertSame(1, CmsTestimonial::query()->forProduct($product->id)->published()->count());
+    }
+
+    /**
+     * Kalau pelanggan memperbaiki salah ketik, ulasannya harus TETAP tayang.
+     * Bila jalur edit mengembalikan statusnya ke pending, ulasan yang sudah
+     * tayang akan hilang dari storefront hanya karena diedit.
+     */
+    public function test_edited_customer_review_stays_visible_in_storefront(): void
+    {
+        [$order, $product] = $this->orderWithProduct('delivered', 'RA-REVIEW-EDIT-LIVE');
+
+        $created = $this->postJson(route('order.review.store', $order->order_number), [
+            'customer_phone' => '081234567890',
+            'product_id' => $product->id,
+            'rating' => 4,
+            'message' => 'Versi pertama.',
+        ])->assertCreated();
+
+        $review = CmsTestimonial::query()->findOrFail($created->json('review.id'));
+
+        $this->putJson(route('order.review.update', [$order->order_number, $review]), [
+            'customer_phone' => '081234567890',
+            'rating' => 5,
+            'message' => 'Versi setelah diperbaiki.',
+            'media_items' => [],
+        ])->assertOk();
+
+        $this->get(route('reviews.website'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('testimonials.data', 1)
+                ->where('testimonials.data.0.message', 'Versi setelah diperbaiki.')
+                ->where('testimonials.data.0.rating', 5));
     }
 }
