@@ -138,7 +138,7 @@ class PageController extends Controller
         // produk dan varian yang dipilih, dan tanpa eager load keduanya selalu
         // null karena relasinya dibaca lewat guard relationLoaded().
         $base = CmsTestimonial::query()->published()->website()
-            ->with(['product:id,parent_sku,name,short_name', 'order.items']);
+            ->with(['product:id,parent_sku,name,short_name,product_category,product_model,design_variant', 'order.items']);
         $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
         $ratingNav = $this->reviewRatingNav($base, $mediaOnly, $sort);
 

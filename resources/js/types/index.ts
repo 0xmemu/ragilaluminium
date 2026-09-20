@@ -334,8 +334,11 @@ export interface Testimonial {
     parent_sku: string
     /** Nama pendek (short_name), mis. "200x180". */
     name: string
-    /** Judul katalog lengkap; dipakai kartu ulasan. */
-    full_name?: string | null
+    /**
+     * Label garis produk: kategori, model, dan sub-model (design_variant),
+     * mis. "Jendela Jungkit Ornamen". Dipakai kartu ulasan.
+     */
+    line?: string | null
     href: string
   } | null
 }

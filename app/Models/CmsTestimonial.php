@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CatalogLabels;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -127,10 +128,13 @@ class CmsTestimonial extends Model
             // barisnya lolos scope published, jadi tidak bocor saat masih pending.
             'admin_reply' => $this->hasAdminReply() ? (string) $this->admin_reply : null,
             'admin_replied_at' => optional($this->admin_replied_at)?->toIso8601String(),
-            // `name` tetap nama pendek (short_name) demi konsumen lama; `full_name`
-            // memuat judul katalog lengkap, dipakai kartu ulasan karena short_name
-            // di katalog ini hanya label dimensi seperti "200x180".
-            'product' => $includeProduct && $product ? ['id' => $product->id, 'parent_sku' => $product->parent_sku, 'name' => $product->short_name ?: $product->name, 'full_name' => $product->name, 'href' => route('product.show', $product->parent_sku, absolute: false)] : null,
+            // `name` tetap nama pendek (short_name) demi konsumen lama. Kartu
+            // ulasan memakai `line`: label garis produk dari kategori, model, dan
+            // sub-model (design_variant), mis. "Jendela Jungkit Ornamen". Judul
+            // katalog lengkap tidak dipakai karena memuat dimensi seperti
+            // "Tinggi 200cm x Panjang 180cm" sehingga barisnya panjang dan tidak
+            // membantu pembeli mengenali model.
+            'product' => $includeProduct && $product ? ['id' => $product->id, 'parent_sku' => $product->parent_sku, 'name' => $product->short_name ?: $product->name, 'line' => CatalogLabels::productLine($product->product_category, $product->product_model, $product->design_variant), 'href' => route('product.show', $product->parent_sku, absolute: false)] : null,
         ];
     }
 }

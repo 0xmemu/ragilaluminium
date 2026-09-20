@@ -206,7 +206,7 @@ class ProductPopularityService
                 ->published()
                 ->website()
                 ->where('product_id', $target->id)
-                ->with(['product:id,parent_sku,name,short_name', 'order.items'])
+                ->with(['product:id,parent_sku,name,short_name,product_category,product_model,design_variant', 'order.items'])
                 ->orderBy('sort_order')
                 ->orderByDesc('id')
                 ->limit(20)
@@ -227,7 +227,7 @@ class ProductPopularityService
                     $query->orWhereIn('product_id', $sourceIds);
                 }
             })
-            ->with(['product:id,parent_sku,name,short_name', 'order.items'])
+            ->with(['product:id,parent_sku,name,short_name,product_category,product_model,design_variant', 'order.items'])
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->limit(20)

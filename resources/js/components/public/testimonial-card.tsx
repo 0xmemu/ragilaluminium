@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { reviewMediaItems } from "@/lib/review-filters"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
-import { formatDate, productName } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Testimonial } from "@/types"
 
@@ -132,12 +132,10 @@ export function TestimonialCard({
     hasImage ? "testimonial-card--with-image" : null,
   )
 
-  // Waktu ulasan, nama produk, dan varian yang dipilih tampil pada 11px.
+  // Waktu ulasan, label model produk, dan varian yang dipilih tampil pada 11px.
   // Ketiganya opsional: kartu tanpa data itu tetap tampil seperti sebelumnya.
   const reviewDate = testimonial.created_at ? formatDate(testimonial.created_at) : ""
-  const productLabel = testimonial.product
-    ? productName(testimonial.product.full_name || testimonial.product.name || "")
-    : ""
+  const productLabel = testimonial.product?.line ?? ""
   const variantLabel = (testimonial.variant_label ?? "").trim()
 
   const inner = (
@@ -218,7 +216,7 @@ export function TestimonialCard({
   )
 
   const linkLabel = testimonial.product
-    ? `Lihat ulasan ${testimonial.customer_name} di produk ${testimonial.product.name}`
+    ? `Lihat ulasan ${testimonial.customer_name} di produk ${testimonial.product.line || testimonial.product.name}`
     : `Lihat ulasan ${testimonial.customer_name}`
 
   return (
