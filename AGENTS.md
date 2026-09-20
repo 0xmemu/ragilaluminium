@@ -28,6 +28,9 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
   90-150 and already exceeds the Standard budget. Full rules live in
   `docs/ORCHESTRATION.md` under "Tier kerja dan anggaran langkah" and in
   `docs/decisions/ADR-002`. Exceeding the budget means stop and report.
+  The budget is a ceiling, not a target: every tool call must have a nameable
+  purpose and a result you actually use. Do not call tools whose output you
+  ignore, and do not skip verification to stay under budget.
 - No new route / URL / schema field / enum / status / JSON shape without updating the
   canonical docs (`docs/database-schema-ragil-aluminium.md`,
   `docs/api-and-routes-ragil-aluminium.md`, `docs/sitemap/*` + `config/sitemap.php`,

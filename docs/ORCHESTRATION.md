@@ -115,6 +115,30 @@ perintah yang ditolak berulang, sekitar 9 menit untuk kerja nol. Ditolak sekali
 berarti ganti cara, bukan ulangi: pakai tool yang diizinkan, gabungkan jadi satu
 panggilan, atau berhenti dan tanya user.
 
+**4. Setiap panggilan tool harus punya tujuan dan hasil.** Anggaran tier adalah
+batas atas, bukan target. Dua arah yang sama salahnya:
+
+- **Boros:** memanggil tool yang hasilnya tidak dipakai. Terukur: tool seremonial
+  (TodoWrite, ExitPlanMode, TaskOutput) mencapai 47 sampai 55 persen dari jumlah
+  Edit+Write pada 18-19 Sep, jadi overhead hampir separuh kerja nyata. Termasuk
+  juga screenshot yang tidak pernah dinilai, dan berkas yang dibaca padahal tidak
+  memengaruhi keputusan.
+- **Malas:** melewatkan tool yang dibutuhkan task, misalnya mengubah kode tanpa
+  membaca berkasnya dulu, atau mengklaim selesai tanpa menjalankan verifikasi.
+  Itu bukan penghematan, itu risiko.
+
+Uji sebelum memanggil: bisa sebutkan dalam satu kalimat apa yang dicari dan apa
+yang akan dilakukan dengan hasilnya. Kalau tidak bisa, jangan dipanggil. Uji
+sesudah memanggil: hasilnya mengubah keputusan atau isi laporan. Kalau tidak,
+panggilan itu tidak perlu.
+
+Larangan tegas: jangan baca berkas yang sama dua kali untuk tujuan yang sama,
+jangan ambil screenshot yang tidak akan dinilai, jangan panggil verifikasi hanya
+sebagai formalitas, dan jangan lewatkan verifikasi untuk menghemat anggaran.
+
+Sebutkan jumlah panggilan tool aktual di laporan, supaya anggaran bisa dinilai,
+bukan diasumsikan.
+
 **Catatan provider (terukur 2026-09-20).** Dalam satu hari tercatat 145
 permintaan model gagal, 109 di antaranya HTTP 503 `provider_overloaded`,
 dengan 113 retry terjadwal dan `maxAttempts` bernilai 11. Kegagalan menggerombol
