@@ -8,6 +8,8 @@ import { Icon } from "@/components/shared/icon"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import { SUGGESTION_CHIPS, isSuggestionSelected, toggleSuggestion } from "@/lib/review-suggestion"
+import { reviewSyncKey } from "@/lib/review-sync-key"
 import type { PublicOrderItem, PublicOrderReview } from "@/types"
 
 type ReviewItem = Pick<PublicOrderItem, "product_id" | "product_name" | "name" | "parent_sku">
@@ -20,14 +22,6 @@ interface CustomerReviewFormProps {
   variant?: "banner" | "button"
   fullWidth?: boolean
 }
-
-const SUGGESTION_CHIPS = [
-  "Pengiriman cepat",
-  "Barang berkualitas",
-  "Pemasangan rapi",
-  "Harga sesuai",
-  "Pelayanan ramah",
-]
 
 function reviewRoute(orderNumber: string, reviewId?: number): string {
   return reviewId
@@ -116,9 +110,23 @@ export function CustomerReviewForm({
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState<string | null>(null)
 
+  const syncKeyRef = React.useRef<string | null>(null)
+
   React.useEffect(() => {
+    const syncKey = reviewSyncKey(
+      reviews,
+      products.map((product) => product.product_id),
+      orderNumber,
+    )
+
+    // Penjaga ini wajib: halaman lacak pesanan memperbarui data tiap 10 detik
+    // selama status pesanan belum final, dan tiap pembaruan menghasilkan objek
+    // `reviews` baru. Tanpa pembanding isi, bintang, teks, dan media yang
+    // sedang diisi pembeli terhapus sendiri tiap beberapa detik.
+    if (syncKeyRef.current === syncKey) return
+    syncKeyRef.current = syncKey
+
     const next = reviews[0] ?? null
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentReview(next)
     setRating(next?.rating || 0)
     setMessage(next?.message ?? "")
@@ -269,35 +277,6 @@ export function CustomerReviewForm({
     } finally {
       setBusy(false)
     }
-  }
-
-  function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  }
-
-  function chipSelected(chip: string): boolean {
-    const esc = escapeRegExp(chip)
-    return new RegExp(`(^|,\\s*)${esc}(?=\\s*,|\\s*$)`).test(message)
-  }
-
-  function removeChipFromMessage(value: string, chip: string): string {
-    const esc = escapeRegExp(chip)
-    return value
-      .replace(new RegExp(`(^|,\\s*)${esc}(?=\\s*,|\\s*$)`, "g"), "$1")
-      .replace(/^,\\s*/, "")
-      .replace(/,\\s*$/, "")
-      .replace(/,\\s*,/g, ",")
-      .trim()
-  }
-
-  function toggleSuggestion(chip: string): void {
-    resetNotice()
-    setMessage((prev) => {
-      const trimmed = prev.trim()
-      if (chipSelected(chip)) return removeChipFromMessage(trimmed, chip)
-      if (trimmed === "") return chip
-      return `${trimmed.replace(/,\\s*$/, "")}, ${chip.toLowerCase()}`
-    })
   }
 
   const trigger = variant === "banner" ? (
@@ -490,11 +469,18 @@ export function CustomerReviewForm({
                   <button
                     key={chip}
                     type="button"
-                    onClick={() => toggleSuggestion(chip)}
-                    aria-pressed={chipSelected(chip)}
+                    onClick={() => {
+                      resetNotice()
+                      // Nilai terbaru diambil dari updater, bukan dari `message`
+                      // hasil render. Dulu penjaganya membaca nilai render yang
+                      // belum memuat chip baru, sehingga dua klik cepat menambah
+                      // chip yang sama berulang kali.
+                      setMessage((prev) => toggleSuggestion(prev, chip))
+                    }}
+                    aria-pressed={isSuggestionSelected(message, chip)}
                     className={cn(
                       "rounded-full border px-2.5 py-1 text-[11px] transition",
-                      chipSelected(chip)
+                      isSuggestionSelected(message, chip)
                         ? "border-[#2b734e] bg-[#2b734e]/10 text-[#2b734e]"
                         : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
                     )}
