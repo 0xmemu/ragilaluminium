@@ -192,7 +192,7 @@ export function ReviewFilterPills({
             <SortArrowsIcon className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[13rem] p-0">
+        <DropdownMenuContent align="start" className="w-[15rem] p-0">
           <div className="flex flex-col">
             {ratings.map((option) => {
               const value = Number(option.value)
@@ -214,7 +214,13 @@ export function ReviewFilterPills({
                   >
                     {checked ? <Icon name="check" className="size-3" weight="bold" aria-hidden="true" /> : null}
                   </span>
-                  <Icon name="star" className="size-3.5 shrink-0 text-warning" weight="fill" aria-hidden="true" />
+                  {/* Jumlah ikon bintang mengikuti ratingnya, jadi "2 bintang"
+                      tampil dengan dua bintang dan seterusnya. */}
+                  <span className="inline-flex shrink-0 items-center gap-0.5 text-warning" aria-hidden="true">
+                    {Array.from({ length: value }).map((_, starIndex) => (
+                      <Icon key={starIndex} name="star" className="size-3" weight="fill" />
+                    ))}
+                  </span>
                   <span className="min-w-0 flex-1 truncate">{option.value} bintang</span>
                   <span className="tabular-nums shrink-0 text-muted-foreground">({option.count})</span>
                 </button>
