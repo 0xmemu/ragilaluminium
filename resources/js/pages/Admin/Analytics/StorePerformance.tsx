@@ -31,7 +31,6 @@ interface Kpi {
   detail?: string | null
 }
 
-
 interface Section {
   key: string
   title: string
@@ -130,10 +129,6 @@ interface Report {
   }
 }
 
-
-
-
-
 /**
  * Keterangan dasar hitungan angka Total pada header grafik.
  *
@@ -178,8 +173,6 @@ function formatDuration(value: number, isDays = false): string {
 }
 
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
-
-
 
 function HoverHint({
   label,
@@ -743,6 +736,54 @@ function buildMetricDetail(
         notes: ["Metrik ini snapshot: angkanya dihitung saat laporan dibangun dan tidak dibandingkan dengan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan."],
       }
 
+    case "retur-cancellations": {
+      // Semua angka diambil dari section returns_cancellations, jadi tidak ada
+      // nilai yang ditulis di komponen ini. Bagian yang tidak punya data tidak
+      // dirender.
+      const bagianRetur = report.sections.find((s) => s.key === "returns_cancellations")
+      if (!bagianRetur) return null
+
+      const kelompok: Array<{ judul: string; kunci: string[] }> = [
+        { judul: "Retur Barang", kunci: ["returns", "return_value", "returns_created", "returns_open", "returns_completed", "return_rate_created", "return_rate_completed", "refused_orders"] },
+        { judul: "Pembatalan Pesanan", kunci: ["cancelled_orders", "cancelled_by_customer", "cancelled_by_store", "cancelled_value", "cancellation_rate"] },
+        { judul: "Dampak Beban Biaya", kunci: ["refund_given", "return_shipping_cost_total", "return_shipping_cost_cases", "refused_borne_cost"] },
+      ]
+
+      const blocks: DrawerBlock[] = []
+
+      kelompok.forEach((grup) => {
+        const rows: DrawerRow[] = []
+        grup.kunci.forEach((kunci) => {
+          const kpi = kpiMap[kunci]
+          if (!kpi) return
+          const angka = kpi.format === "currency"
+            ? rp(kpi.value)
+            : kpi.format === "percent"
+              ? ang(kpi.value) + "%"
+              : ang(kpi.value)
+          rows.push({ label: kpi.label, value: angka, sign: "·", note: kpi.detail ?? undefined })
+        })
+        if (rows.length) {
+          blocks.push({ kind: "rows", title: grup.judul, rows })
+        }
+      })
+
+      if (!blocks.length) return null
+
+      return {
+        title: "Rincian Kasus Retur dan Pembatalan",
+        badge: badgePeriode,
+        formula: "Retur dan Biaya Retur = Refund Pembeli + Ongkir Retur Ditanggung Toko + Nilai Barang Retur Paket",
+        blocks,
+        source: "Tabel order_return_cases, event_logs, dan orders",
+        notes: [
+          "Retur dan pembatalan tidak mengurangi Penjualan Gross pada periode terjadinya, melainkan mengurangi Penjualan Bersih.",
+          "Refund mencakup seluruh pengembalian uang ke pembeli, termasuk pengembalian tanpa barang yang dikirim balik.",
+          "Ongkir dan biaya COD pada pesanan yang paketnya kembali ditanggung toko karena pembeli tidak membayar apa pun.",
+        ],
+      }
+    }
+
     case "payment-pending":
       return {
         title: "Detail Pembayaran Transfer Pending",
@@ -1014,8 +1055,8 @@ export default function StorePerformance({
     return map
   }, [report])
 
-  // Tampilkan "vs <rentang>" utuh sesuai owner 2026-09-15 (jangan buang prefiks "vs").
-  const compareLabel = report.range.compare_label || "vs periode lalu"
+  // Tanggal pembanding tidak lagi diulang di setiap kartu; cukup sekali di
+  // banner Periode Analisis, tempatnya memang untuk konteks rentang.
 
   // Retur dan biaya retur yang sudah dikurangkan server pada Penjualan Bersih:
   // refund pembeli, ongkir retur yang ditanggung toko, dan nilai barang yang
@@ -1132,7 +1173,6 @@ export default function StorePerformance({
     })
   }
 
-  const returnsSection = report.sections.find((s) => s.key === "returns_cancellations")
 
   // Filter list untuk modal Top Products
   const filteredTopProductsModal = React.useMemo(() => {
@@ -1453,7 +1493,7 @@ export default function StorePerformance({
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-1 border-t border-border/60 pt-2 text-xs">
                     <span className="min-w-0 truncate text-muted-foreground">
-                      {chartIdx >= 0 ? (isActive ? "Grafik aktif" : compareLabel) : compareLabel}
+                      {isActive ? "Grafik aktif" : null}
                     </span>
                     {def.delta === undefined ? null : <DeltaBadge percent={def.delta} />}
                   </div>
@@ -1584,9 +1624,14 @@ export default function StorePerformance({
         className="mb-5"
         contentClassName="p-0"
         action={
-          <Button variant="outline" size="sm" onClick={() => openMetric("alur-uang")}>
-            Detail Rekonsiliasi
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openMetric("retur-cancellations")}>
+              Rincian Retur dan Pembatalan
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openMetric("alur-uang")}>
+              Detail Rekonsiliasi
+            </Button>
+          </div>
         }
       >
         <div className="grid divide-y divide-border lg:grid-cols-4 lg:divide-x lg:divide-y-0">
@@ -1596,9 +1641,6 @@ export default function StorePerformance({
               hint="Penjualan Gross dikurangi tagihan J&T Cargo, biaya COD ke J&T, refund pembeli, ongkir retur, dan nilai barang retur."
               className="text-xs font-medium text-muted-foreground"
             />
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Setelah potongan kurir dan retur
-            </p>
             <p className="mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-primary">
               {formatCurrency(report.financial.net_revenue)}
             </p>
@@ -1613,9 +1655,6 @@ export default function StorePerformance({
               hint="Pembayaran yang tercatat selesai pada periode. Transfer dan COD dipisah di bawahnya."
               className="text-xs font-medium text-muted-foreground"
             />
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Transfer lunas dan COD yang barangnya sudah sampai
-            </p>
             <p className="mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
               {formatCurrency(kpiMap["payments_received"]?.value ?? 0)}
             </p>
@@ -1634,9 +1673,6 @@ export default function StorePerformance({
               hint="Dana COD yang barangnya sudah dikirim tetapi uangnya belum cair ke toko. Angka ini kondisi semua waktu, bukan terikat periode."
               className="text-xs font-medium text-muted-foreground"
             />
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              COD dalam perjalanan, uang belum cair ke toko
-            </p>
             <p className="mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-warning">
               {formatCurrency(codPendingAmount)}
             </p>
@@ -1657,9 +1693,6 @@ export default function StorePerformance({
               hint="Refund pembeli, ongkir retur yang ditanggung toko, dan nilai barang yang kembali. Ketiganya sudah dikurangkan pada Penjualan Bersih."
               className="text-xs font-medium text-muted-foreground"
             />
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Refund, ongkir retur, dan nilai barang kembali
-            </p>
             <p className="mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
               {formatCurrency(potonganRetur)}
             </p>
@@ -1685,7 +1718,6 @@ export default function StorePerformance({
         icon="truck"
         description={
           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span>Antrean fulfillment dan kecepatan layanan pada periode terpilih.</span>
             {codPendingAmount > 0 && codPendingCount > 0 ? (
               <span>
                 Dana COD di kurir:{" "}
@@ -1853,100 +1885,6 @@ export default function StorePerformance({
           </span>
         </div>
 
-        {/* Rincian retur dan pembatalan dilipat: sering ditanya tetapi tidak
-            selalu perlu dilihat, jadi jangan mengambil ruang baris utama. */}
-        {returnsSection ? (
-          <details className="group mt-4 rounded-md border border-border bg-muted/20">
-            <summary className="cursor-pointer select-none px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
-              <span className="inline-flex items-center gap-2">
-                <Icon name="caret-down" className="size-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
-                Rincian Kasus Retur dan Pembatalan ({returnsSection.kpis.length} indikator)
-              </span>
-            </summary>
-            <div className="grid gap-4 border-t border-border px-4 py-3 text-xs sm:grid-cols-3">
-              <div>
-                <p className="font-bold text-foreground">Retur Barang</p>
-                <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["returns_created"]?.label ?? "Retur Diajukan"}:</span>
-                      <DeltaBadge percent={kpiMap["returns_created"]?.change_percent} upIsBad />
-                    </span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["returns_created"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["returns_open"]?.label ?? "Retur Aktif"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["returns_open"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["returns_completed"]?.label ?? "Retur Selesai"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["returns_completed"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["return_rate_completed"]?.label ?? "Rasio Retur Selesai"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["return_rate_completed"]?.value ?? 0)}%</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["refused_orders"]?.label ?? "Pesanan Retur Paket"}:</span>
-                      <DeltaBadge percent={kpiMap["refused_orders"]?.change_percent} upIsBad />
-                    </span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["refused_orders"]?.value ?? 0)}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <p className="font-bold text-foreground">Pembatalan Pesanan</p>
-                <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["cancelled_orders"]?.label ?? "Pesanan Dibatalkan"}:</span>
-                      <DeltaBadge percent={kpiMap["cancelled_orders"]?.change_percent} upIsBad />
-                    </span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["cancelled_orders"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["cancelled_by_customer"]?.label ?? "Dibatalkan Pelanggan"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["cancelled_by_customer"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["cancelled_by_store"]?.label ?? "Dibatalkan Toko"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["cancelled_by_store"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["cancellation_rate"]?.label ?? "Rasio Pembatalan"}:</span>
-                      <DeltaBadge percent={kpiMap["cancellation_rate"]?.change_percent} upIsBad />
-                    </span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["cancellation_rate"]?.value ?? 0)}%</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <p className="font-bold text-foreground">Dampak Beban Biaya</p>
-                <ul className="mt-2 space-y-1.5 text-muted-foreground">
-                  <li className="flex justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>{kpiMap["refund_given"]?.label ?? "Refund Diberikan"}:</span>
-                      <DeltaBadge percent={kpiMap["refund_given"]?.change_percent} upIsBad />
-                    </span>
-                    <span className="font-semibold tabular-nums text-destructive">{formatCurrency(kpiMap["refund_given"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["return_shipping_cost_total"]?.label ?? "Ongkir Retur (Toko)"}:</span>
-                    <span className="font-semibold tabular-nums text-destructive">{formatCurrency(kpiMap["return_shipping_cost_total"]?.value ?? 0)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>{kpiMap["return_shipping_cost_cases"]?.label ?? "Kasus Retur (Ongkir Toko)"}:</span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["return_shipping_cost_cases"]?.value ?? 0)} kasus</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </details>
-        ) : null}
       </SectionCard>
 
       {/* PELANGGAN DAN KUALITAS PENJUALAN: siapa yang membeli, berapa yang baru,
