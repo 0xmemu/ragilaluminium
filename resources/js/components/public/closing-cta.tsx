@@ -4,6 +4,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { resolveCtaActions } from "@/lib/cta-actions"
 import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
 
 /**
@@ -55,9 +56,10 @@ export function ClosingCTASection({
   const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
-  // Warna banner dari pengaturan; token CSS diteruskan apa adanya (harus hex
-  // 6 digit, diverifikasi server).
-  const bannerColor = ctaSettings?.color || "#C00000"
+  // Warna banner: selama admin belum memilih warna, banner memakai token
+  // `bg-primary` bawaan storefront supaya memasang fitur ini tidak menggeser
+  // warna yang sudah live.
+  const bannerColor = ctaSettings?.color ?? null
 
   // Teks & tombol dari pengaturan admin menang; props halaman dipakai sebagai
   // cadangan bila pengaturan belum tersedia.
@@ -95,8 +97,11 @@ export function ClosingCTASection({
     <section id={id} className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div
-          className="flex flex-col items-center gap-1 rounded-xl px-5 py-5 text-center shadow-sm sm:px-8"
-          style={{ backgroundColor: bannerColor }}
+          className={cn(
+            "flex flex-col items-center gap-1 rounded-xl px-5 py-5 text-center shadow-sm sm:px-8",
+            bannerColor === null && "bg-primary",
+          )}
+          style={bannerColor === null ? undefined : { backgroundColor: bannerColor }}
         >
           <p className="text-xs font-semibold tracking-tight text-primary-foreground/90">
             {resolvedEyebrow}

@@ -1,0 +1,274 @@
+{
+  "_comment": "SATU-SATUNYA sumber teks CTA storefront yang tampil hari ini. Dibaca dua sisi: PHP (app/Support/CtaSettings.php) memakainya sebagai nilai live untuk halaman admin, komponen React mengimpornya sebagai teks cadangan. Nilai di sini TIDAK mengubah storefront; komponen tetap memakai teksnya sendiri sampai admin menyimpan pengaturan.",
+  "blocks": [
+    {
+      "key": "home",
+      "kind": "banner",
+      "label": "Beranda: banner penutup",
+      "preview_url": "/",
+      "eyebrow": "Butuh bantuan pilih jendela?",
+      "heading": "Konsultasi gratis via WhatsApp, admin balas cepat",
+      "actions": [{ "label": "Chat WhatsApp", "destination": "whatsapp", "variant": "primary" }],
+      "items": []
+    },
+    {
+      "key": "model-detail",
+      "kind": "banner",
+      "label": "Detail Model Produk: banner penutup",
+      "preview_url": null,
+      "eyebrow": "Butuh bantuan pilih jendela?",
+      "heading": "Konsultasi gratis via WhatsApp, admin balas cepat",
+      "actions": [{ "label": "Chat WhatsApp", "destination": "whatsapp", "variant": "primary" }],
+      "items": []
+    },
+    {
+      "key": "about",
+      "kind": "banner",
+      "label": "Tentang Kami: banner penutup",
+      "preview_url": "/about",
+      "eyebrow": "Butuh bantuan memilih produk?",
+      "heading": "Konsultasi gratis untuk menentukan model dan ukuran yang sesuai",
+      "actions": [
+        { "label": "Chat WhatsApp", "destination": "whatsapp", "variant": "primary" },
+        { "label": "Lihat Produk", "destination": "catalog.index", "variant": "secondary" }
+      ],
+      "items": []
+    },
+    {
+      "key": "faq",
+      "kind": "banner",
+      "label": "Sering Ditanyakan: banner penutup",
+      "preview_url": "/faq",
+      "eyebrow": "Masih punya pertanyaan?",
+      "heading": "Tim kami siap membantu lewat WhatsApp",
+      "actions": [
+        { "label": "Chat WhatsApp", "destination": "whatsapp", "variant": "primary" },
+        { "label": "Cara pemesanan", "destination": "cara-pemesanan", "variant": "secondary" }
+      ],
+      "items": []
+    },
+    {
+      "key": "cara-pemesanan",
+      "kind": "banner",
+      "label": "Cara Pemesanan: banner penutup",
+      "preview_url": "/cara-pemesanan",
+      "eyebrow": "Siap memesan?",
+      "heading": "Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu",
+      "actions": [
+        { "label": "Pilih Model Produk", "destination": "catalog.index", "variant": "primary" },
+        { "label": "Konsultasi Sekarang", "destination": "whatsapp", "variant": "secondary" }
+      ],
+      "items": []
+    },
+    {
+      "key": "masalah-solusi",
+      "kind": "banner",
+      "label": "Masalah & Solusi: banner penutup",
+      "preview_url": "/masalah-dan-solusi",
+      "eyebrow": "Masih ragu spesifikasi yang tepat?",
+      "heading": "Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen",
+      "actions": [
+        { "label": "Konsultasi WhatsApp", "destination": "whatsapp", "variant": "primary" },
+        { "label": "Lihat FAQ", "destination": "faq", "variant": "secondary" }
+      ],
+      "items": []
+    },
+    {
+      "key": "trust",
+      "kind": "card",
+      "label": "Kartu Jaminan di keranjang, checkout, dan pesanan",
+      "preview_url": "/cart",
+      "eyebrow": "Belanja Aman & Terpercaya",
+      "heading": "Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.",
+      "actions": [],
+      "items": []
+    },
+    {
+      "key": "order-help",
+      "kind": "card",
+      "label": "Bantuan di halaman Pesanan",
+      "preview_url": null,
+      "eyebrow": "Butuh bantuan dengan pesanan ini?",
+      "heading": "Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.",
+      "actions": [{ "label": "Hubungi Kami", "destination": "contact", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "about-contact",
+      "kind": "card",
+      "label": "Tentang Kami: panel toko dan workshop",
+      "preview_url": "/about",
+      "eyebrow": "",
+      "heading": "Toko & Workshop Ragil Aluminium",
+      "actions": [{ "label": "Chat WhatsApp", "destination": "whatsapp", "variant": "primary" }],
+      "items": []
+    },
+    {
+      "key": "home-model",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Model Produk",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Semua", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-popular",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Paling Banyak Dipesan",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Semua", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-howto",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Cara Pesan",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Panduan", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-installation",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Hasil Pemasangan",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Semua", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-testimonial",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Apa Kata Pelanggan",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Semua", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-review-website",
+      "kind": "section",
+      "label": "Beranda: tombol pada judul Ulasan di Website",
+      "preview_url": "/",
+      "eyebrow": "",
+      "heading": "",
+      "actions": [{ "label": "Lihat Semua", "destination": "", "variant": "secondary" }],
+      "items": []
+    },
+    {
+      "key": "home-empty-model",
+      "kind": "empty",
+      "label": "Beranda: saat belum ada model",
+      "preview_url": "/",
+      "eyebrow": "Model belum tersedia",
+      "heading": "Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih.",
+      "actions": [{ "label": "Buka Katalog", "destination": "catalog.index", "variant": "primary" }],
+      "items": []
+    },
+    {
+      "key": "home-empty-popular",
+      "kind": "empty",
+      "label": "Beranda: saat belum ada produk populer",
+      "preview_url": "/",
+      "eyebrow": "Belum ada produk populer",
+      "heading": "Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan.",
+      "actions": [{ "label": "Jelajahi Produk", "destination": "catalog.category.jendela", "variant": "primary" }],
+      "items": []
+    },
+    {
+      "key": "home-empty-installation",
+      "kind": "empty",
+      "label": "Beranda: saat belum ada foto pemasangan",
+      "preview_url": "/",
+      "eyebrow": "Belum ada foto pemasangan",
+      "heading": "Contoh pemasangan di kota Anda bisa ditanyakan langsung lewat WhatsApp.",
+      "actions": [],
+      "items": []
+    },
+    {
+      "key": "home-empty-testimonial",
+      "kind": "empty",
+      "label": "Beranda: saat belum ada screenshot ulasan",
+      "preview_url": "/",
+      "eyebrow": "Belum ada screenshot",
+      "heading": "Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan.",
+      "actions": [],
+      "items": []
+    },
+    {
+      "key": "home-empty-review",
+      "kind": "empty",
+      "label": "Beranda: saat belum ada ulasan website",
+      "preview_url": "/",
+      "eyebrow": "Belum ada ulasan website",
+      "heading": "Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini.",
+      "actions": [],
+      "items": []
+    },
+    {
+      "key": "catalog-empty",
+      "kind": "empty",
+      "label": "Katalog: saat pencarian tidak menemukan hasil",
+      "preview_url": "/products/all",
+      "eyebrow": "Tidak ada hasil untuk pencarian Anda",
+      "heading": "Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan kebutuhan Anda.",
+      "actions": [
+        { "label": "Konsultasi via WhatsApp", "destination": "whatsapp", "variant": "primary" },
+        { "label": "Lihat semua model", "destination": "catalog.all", "variant": "secondary" }
+      ],
+      "items": [],
+      "note": "Tombol kedua hanya tampil bila tidak ada ukuran terdekat maupun kategori terkait."
+    },
+    {
+      "key": "home-help",
+      "kind": "list",
+      "label": "Beranda: bagian Kami bantu",
+      "preview_url": "/",
+      "eyebrow": "Masih Bingung?",
+      "heading": "Kami bantu dari awal sampai jadi",
+      "actions": [],
+      "items": [
+        {
+          "label": "Konsultasi sebelum produksi",
+          "description": "Tim kami bantu memilih model yang pas untuk kebutuhan dan tampilan rumah Anda."
+        },
+        {
+          "label": "Kami bantu cek & konfirmasi ukuran sebelum produksi",
+          "description": "Ukuran dan opsi dicek ulang bersama Anda sebelum produksi, agar hasilnya pas di lokasi."
+        },
+        {
+          "label": "Packing kayu gratis & pengiriman ke seluruh Indonesia",
+          "description": "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia."
+        },
+        {
+          "label": "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
+          "description": "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan."
+        }
+      ]
+    },
+    {
+      "key": "pdp-benefits",
+      "kind": "list",
+      "label": "Detail Produk: alasan belanja",
+      "preview_url": null,
+      "dynamic": true,
+      "eyebrow": "",
+      "heading": "Alasan harus belanja di Ragil Aluminium",
+      "actions": [],
+      "items": [
+        { "label": "Garansi 100%", "description": "" },
+        { "label": "Bayar di tempat (COD)", "description": "" },
+        { "label": "Kirim ke seluruh Indonesia", "description": "" }
+      ],
+      "note": "Daftar ini dihitung per produk: label garansi ikut promo yang berlaku dan baris COD hilang bila produk tidak mendukung COD. Daftar di atas adalah kasus umum dan baru dipakai setelah admin menyimpan."
+    }
+  ]
+}

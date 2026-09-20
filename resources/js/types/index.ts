@@ -154,25 +154,31 @@ export interface SharedPageProps extends Record<string, unknown> {
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
   /**
-   * CTA storefront dari Pengaturan Website > CTA Storefront: teks, tombol, dan
-   * warna banner. Null di halaman admin. Bila `enabled` false, seluruh CTA
-   * penutup disembunyikan.
+   * CTA storefront dari Pengaturan Website > CTA Storefront. Null di halaman
+   * admin. Bila `enabled` false, seluruh CTA penutup disembunyikan.
    *
-   * `pages` memuat dua jenis blok: banner penutup per halaman publik dan kartu
-   * reusable (trust, order-help). `actions` berisi tombol dengan `destination`
-   * berupa kunci CtaSettings::DESTINATIONS, bukan URL bebas.
+   * LAPISAN PEMBANDING, bukan sumber teks: kolom bernilai null (atau daftar
+   * kosong) selama admin belum menyimpan blok itu, dan komponen storefront
+   * memakai teksnya sendiri. Jadi memasang fitur ini tidak pernah mengubah
+   * tampilan storefront.
+   *
+   * `pages` memuat seluruh blok yang tampil di storefront: banner penutup,
+   * kartu reusable (trust, order-help), tombol judul section beranda, dan
+   * kondisi kosong. `actions` berisi tombol dengan `destination` berupa kunci
+   * CtaSettings::DESTINATIONS, bukan URL bebas.
    */
   ctaSettings?: {
     enabled: boolean
-    color: string
+    /** null selama admin belum memilih warna, banner memakai warna brand. */
+    color: string | null
     pages: Record<
       string,
       {
-        eyebrow: string
-        heading: string
+        eyebrow: string | null
+        heading: string | null
         actions: Array<{ label: string; destination: string; variant: string }>
-        /** Lencana/poin untuk blok berbentuk daftar (mis. pdp-benefits). */
-        items: string[]
+        /** Kartu/poin blok berbentuk daftar (mis. home-help, pdp-benefits). */
+        items: Array<{ label: string; description: string }>
       }
     >
   } | null

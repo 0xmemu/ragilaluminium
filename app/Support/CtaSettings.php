@@ -6,17 +6,20 @@ use App\Models\CmsPage;
 use App\Models\User;
 
 /**
- * Teks CTA penutup (banner merah di akhir halaman publik), dapat diedit admin
- * lewat menu Pengaturan Website > CTA Storefront.
+ * Pengaturan teks CTA storefront (banner penutup, kartu reusable, tombol judul
+ * section, kondisi kosong), dapat diedit admin lewat Pengaturan Website > CTA
+ * Storefront.
  *
- * Yang dapat diatur hanya KOP dan JUDUL (eyebrow + heading). Tombol/aksi tetap
- * di kode karena terikat rute internal dan tautan WhatsApp: kalau admin salah
- * mengisi tautan, pembeli bisa kehilangan jalur konsultasi atau checkout.
+ * ATURAN UTAMA: pengaturan ini LAPISAN PEMBANDING, bukan sumber teks.
+ * Selama admin belum menyimpan sebuah kolom, `get()` mengembalikan null (atau
+ * daftar kosong) untuk kolom itu, dan komponen storefront memakai teksnya
+ * sendiri. Jadi memasang fitur ini TIDAK PERNAH mengubah tampilan storefront.
+ * Perubahan baru terlihat setelah admin menekan Simpan.
  *
- * Dua jenis blok memakai mekanisme yang sama:
- *   - Banner penutup per halaman (kunci = nama halaman publik).
- *   - Kartu reusable `trust` (kartu jaminan di halaman transaksi).
- * Komponen yang memakainya tinggal memanggil `forPage(<kunci>)`.
+ * Teks live (yang tampil hari ini) tidak disalin ke kelas ini, melainkan dibaca
+ * dari resources/js/lib/cta-live.json, satu berkas yang juga diimpor komponen
+ * React. Dengan begitu halaman admin tidak bisa menampilkan teks yang berbeda
+ * dari yang benar-benar dirender storefront.
  *
  * Disimpan di cms_pages.slug = 'cta' pada key content['cta_storefront'].
  */
@@ -26,32 +29,19 @@ class CtaSettings
 
     public const CONTENT_KEY = 'cta_storefront';
 
-    /** Kunci halaman pemakai CTA penutup + labelnya di halaman admin. */
-    public const PAGES = [
-        'home' => 'Beranda',
-        'model-detail' => 'Detail Model Produk',
-        'about' => 'Tentang Kami',
-        'faq' => 'Sering Ditanyakan',
-        'cara-pemesanan' => 'Cara Pemesanan',
-        'masalah-solusi' => 'Masalah & Solusi',
-        // Blok ini BUKAN banner penutup, melainkan kartu jaminan yang dipakai
-        // berulang di halaman transaksi (keranjang, checkout, konfirmasi
-        // pesanan, daftar pesanan, pelacakan). Owner 2026-09-19: komponen
-        // reusable juga harus bisa diatur dari halaman ini.
-        'trust' => 'Kartu Jaminan (semua halaman)',
-        'order-help' => 'Bantuan di halaman Pesanan',
-        // Blok di bawah ini ditemukan saat penyisiran ulang 2026-09-19: semuanya
-        // teks persuasi yang tampil berulang di storefront tetapi masih keras
-        // di kode, jadi admin tidak bisa mengubahnya sama sekali.
-        'home-help' => 'Beranda: bagian "Kami bantu"',
-        'pdp-benefits' => 'Detail Produk: alasan belanja',
-        'catalog-empty' => 'Katalog: saat pencarian kosong',
-        'about-contact' => 'Tentang Kami: panel toko & workshop',
-    ];
+    /** Relatif terhadap resources/. Dibaca PHP dan diimpor React. */
+    public const REGISTRY_PATH = 'js/lib/cta-live.json';
+
+    /** Warna banner brand, dipakai tombol "kembalikan warna brand" di admin. */
+    public const DEFAULT_COLOR = '#C00000';
+
+    public const MAX_ACTIONS = 2;
+
+    public const MAX_ITEMS = 6;
 
     /**
      * Tujuan tombol yang diizinkan. Tombol CTA tidak menerima tautan bebas:
-     * admin memilih dari daftar ini supaya jalur konsultasi/checkout tidak
+     * admin memilih dari daftar ini supaya jalur konsultasi dan checkout tidak
      * bisa rusak karena salah menyalin URL.
      *
      * @var array<string, string>
@@ -61,6 +51,10 @@ class CtaSettings
         'home' => 'Beranda',
         'catalog.index' => 'Pilih Model Produk (/products)',
         'catalog.all' => 'Semua Produk (/products/all)',
+        'catalog.category.jendela' => 'Produk kategori Jendela (/products/jendela)',
+        'installation.index' => 'Hasil Pemasangan (/hasil-pemasangan)',
+        'reviews.screenshots' => 'Ulasan screenshot (/reviews/ss)',
+        'reviews.website' => 'Ulasan website (/reviews/web)',
         'faq' => 'Sering Ditanyakan (/faq)',
         'cara-pemesanan' => 'Cara Pemesanan (/cara-pemesanan)',
         'masalah-dan-solusi' => 'Masalah & Solusi (/masalah-dan-solusi)',
@@ -68,244 +62,127 @@ class CtaSettings
         'contact' => 'Hubungi Kami (/contact)',
     ];
 
+    /** Registry blok, dimuat sekali per request. */
+    private static ?array $registry = null;
+
     /**
-     * Tombol bawaan per blok = tombol yang benar-benar dirender storefront
-     * saat ini (dikumpulkan dari call site ClosingCTASection, 2026-09-19).
-     * Destination `whatsapp` diselesaikan runtime ke nomor toko.
+     * Peta blok: key => {label, kind, eyebrow, heading, actions, items, ...}.
+     * Urutan mengikuti berkas registry supaya urutan di halaman admin stabil.
      *
-     * @var array<string, list<array{label: string, destination: string, variant: string}>>
+     * @return array<string, array<string, mixed>>
      */
-    public const INITIAL_ACTIONS = [
-        'home' => [
-            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-        ],
-        'model-detail' => [
-            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-        ],
-        'about' => [
-            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-            ['label' => 'Lihat Produk', 'destination' => 'catalog.index', 'variant' => 'secondary'],
-        ],
-        'faq' => [
-            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-            ['label' => 'Cara pemesanan', 'destination' => 'cara-pemesanan', 'variant' => 'secondary'],
-        ],
-        'cara-pemesanan' => [
-            ['label' => 'Pilih Model Produk', 'destination' => 'catalog.index', 'variant' => 'primary'],
-            ['label' => 'Konsultasi Sekarang', 'destination' => 'whatsapp', 'variant' => 'secondary'],
-        ],
-        'masalah-solusi' => [
-            ['label' => 'Konsultasi WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-            ['label' => 'Lihat FAQ', 'destination' => 'faq', 'variant' => 'secondary'],
-        ],
-        'trust' => [],
-        'order-help' => [
-            ['label' => 'Hubungi Kami', 'destination' => 'contact', 'variant' => 'secondary'],
-        ],
-        // Blok baru: hanya yang benar-benar punya tombol di storefront.
-        'home-help' => [],
-        'pdp-benefits' => [],
-        'catalog-empty' => [
-            ['label' => 'Konsultasi via WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-            ['label' => 'Lihat semua model', 'destination' => 'catalog.all', 'variant' => 'secondary'],
-        ],
-        'about-contact' => [
-            ['label' => 'Chat WhatsApp', 'destination' => 'whatsapp', 'variant' => 'primary'],
-        ],
-    ];
+    public static function registry(): array
+    {
+        if (self::$registry !== null) {
+            return self::$registry;
+        }
+
+        $path = resource_path(self::REGISTRY_PATH);
+        $decoded = is_file($path)
+            ? json_decode((string) file_get_contents($path), true)
+            : null;
+
+        $blocks = [];
+        foreach ((array) ($decoded['blocks'] ?? []) as $block) {
+            if (! is_array($block) || ! isset($block['key'])) {
+                continue;
+            }
+            $key = (string) $block['key'];
+            $blocks[$key] = [
+                'key' => $key,
+                'label' => (string) ($block['label'] ?? $key),
+                'kind' => (string) ($block['kind'] ?? 'banner'),
+                'preview_url' => $block['preview_url'] ?? null,
+                'dynamic' => (bool) ($block['dynamic'] ?? false),
+                'note' => $block['note'] ?? null,
+                'eyebrow' => (string) ($block['eyebrow'] ?? ''),
+                'heading' => (string) ($block['heading'] ?? ''),
+                'actions' => array_values(array_filter(
+                    (array) ($block['actions'] ?? []),
+                    fn ($action) => is_array($action) && isset($action['label']),
+                )),
+                'items' => array_values(array_filter(
+                    (array) ($block['items'] ?? []),
+                    fn ($item) => is_array($item) && isset($item['label']),
+                )),
+            ];
+        }
+
+        return self::$registry = $blocks;
+    }
+
+    /** @return array<string, string> key => label, urut seperti registry. */
+    public static function pages(): array
+    {
+        return array_map(fn (array $block): string => $block['label'], self::registry());
+    }
 
     /**
-     * Daftar teks bawaan untuk blok berbentuk LENCANA/POIN, bukan satu kalimat.
-     * Dikumpulkan dari kode storefront (bukan tebakan).
+     * Teks yang BENAR-BENAR dirender storefront hari ini, untuk ditampilkan
+     * sebagai nilai awal di halaman admin.
      *
-     * @var array<string, list<string>>
+     * @return array<string, array<string, mixed>>
      */
-    public const INITIAL_ITEMS = [
-        // use-product-purchase.ts `benefits`, tampil 3 kartu di kolom beli PDP.
-        'pdp-benefits' => [
-            'Garansi 100%',
-            'Bayar di tempat (COD)',
-            'Kirim ke seluruh Indonesia',
-        ],
-    ];
-
-    /** Warna banner CTA bawaan (merah brand storefront). */
-    public const DEFAULT_COLOR = '#C00000';
-
-    /** Dipakai bila kunci halaman tidak dikenal (mis. halaman baru). */
-    public const DEFAULT_TEXT = [
-        'eyebrow' => 'Butuh bantuan pilih jendela?',
-        'heading' => 'Konsultasi gratis via WhatsApp, admin balas cepat',
-    ];
+    public static function live(): array
+    {
+        return self::registry();
+    }
 
     /**
-     * Teks awal = teks yang berlaku sebelum fitur ini ada, supaya memasang fitur
-     * ini TIDAK mengubah tampilan storefront sama sekali.
+     * Nilai yang sudah disimpan admin. Kolom yang belum pernah disimpan bernilai
+     * null (atau daftar kosong) supaya storefront tetap memakai teksnya sendiri.
      *
-     * @var array<string, array{eyebrow: string, heading: string}>
-     */
-    public const INITIAL_TEXT = [
-        'home' => [
-            'eyebrow' => 'Butuh bantuan pilih jendela?',
-            'heading' => 'Konsultasi gratis via WhatsApp, admin balas cepat',
-        ],
-        'model-detail' => [
-            'eyebrow' => 'Butuh bantuan pilih jendela?',
-            'heading' => 'Konsultasi gratis via WhatsApp, admin balas cepat',
-        ],
-        'about' => [
-            'eyebrow' => 'Butuh bantuan memilih produk?',
-            'heading' => 'Konsultasi gratis untuk menentukan model dan ukuran yang sesuai',
-        ],
-        'faq' => [
-            'eyebrow' => 'Masih punya pertanyaan?',
-            'heading' => 'Tim kami siap membantu lewat WhatsApp',
-        ],
-        'cara-pemesanan' => [
-            'eyebrow' => 'Siap memesan?',
-            'heading' => 'Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu',
-        ],
-        'masalah-solusi' => [
-            'eyebrow' => 'Masih ragu spesifikasi yang tepat?',
-            'heading' => 'Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen',
-        ],
-        'trust' => [
-            'eyebrow' => 'Belanja Aman & Terpercaya',
-            'heading' => 'Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.',
-        ],
-        'order-help' => [
-            'eyebrow' => 'Butuh bantuan dengan pesanan ini?',
-            'heading' => 'Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti.',
-        ],
-        // home-sections.tsx KamiBantuSection.
-        'home-help' => [
-            'eyebrow' => 'Masih Bingung?',
-            'heading' => 'Kami bantu dari awal sampai jadi',
-        ],
-        // product-buy-box.tsx "Alasan harus belanja di Ragil Aluminium".
-        'pdp-benefits' => [
-            'eyebrow' => '',
-            'heading' => 'Alasan harus belanja di Ragil Aluminium',
-        ],
-        // Catalog.tsx empty state saat pencarian tidak menemukan hasil.
-        'catalog-empty' => [
-            'eyebrow' => 'Tidak ada hasil untuk pencarian Anda',
-            'heading' => 'Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan kebutuhan Anda.',
-        ],
-        // About.tsx panel "Toko & Workshop Ragil Aluminium".
-        'about-contact' => [
-            'eyebrow' => '',
-            'heading' => 'Toko & Workshop Ragil Aluminium',
-        ],
-    ];
-
-    /**
-     * @return array{enabled: bool, pages: array<string, array{eyebrow: string, heading: string}>}
+     * @return array{enabled: bool, color: ?string, pages: array<string, array{eyebrow: ?string, heading: ?string, actions: list<array{label: string, destination: string, variant: string}>, items: list<array{label: string, description: string}>}>}
      */
     public static function get(): array
     {
         $stored = self::read();
         $pages = [];
-        foreach (array_keys(self::PAGES) as $key) {
-            $row = is_array($stored['pages'][$key] ?? null) ? $stored['pages'][$key] : [];
-            $initial = self::INITIAL_TEXT[$key] ?? self::DEFAULT_TEXT;
-            $pages[$key] = [
-                'eyebrow' => self::text($row['eyebrow'] ?? null, $initial['eyebrow'], 120),
-                'heading' => self::text($row['heading'] ?? null, $initial['heading'], 240),
-                // Tombol: kunci yang belum tersimpan diisi dari tombol live
-                // supaya halaman admin selalu menggambarkan CTA sebenarnya.
-                'actions' => self::actions($row['actions'] ?? null, $key),
-                // Lencana/poin: hanya blok berbentuk daftar yang punya isi.
-                'items' => self::items($row['items'] ?? null, $key),
-            ];
-        }
 
-        $color = trim((string) ($stored['color'] ?? ''));
-        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
-            $color = self::DEFAULT_COLOR;
+        foreach (array_keys(self::pages()) as $key) {
+            $row = is_array($stored['pages'][$key] ?? null) ? $stored['pages'][$key] : [];
+            $pages[$key] = [
+                'eyebrow' => self::text($row['eyebrow'] ?? null, 120),
+                'heading' => self::text($row['heading'] ?? null, 240),
+                'actions' => self::actions($row['actions'] ?? [], $key),
+                'items' => self::items($row['items'] ?? []),
+            ];
         }
 
         return [
             'enabled' => $stored === [] ? true : (bool) ($stored['enabled'] ?? true),
-            'color' => $color,
+            'color' => self::color($stored['color'] ?? null),
             'pages' => $pages,
         ];
     }
 
     /**
-     * Rapikan daftar tombol satu blok: buang yang tidak lengkap / tujuan tidak
-     * dikenal / lebih dari dua (kontrak owner 2026-09-02: maksimal 2 tombol),
-     * lalu lengkapi dari tombol live bila kosong.
+     * Simpan pengaturan. Nilai yang dikirim admin disimpan apa adanya; teks
+     * kosong berarti kolom itu kembali ke teks storefront (bukan disalin dari
+     * teks live, supaya tidak membekukan teks yang nanti diperbarui di kode).
      *
-     * @return list<array{label: string, destination: string, variant: string}>
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
      */
-    private static function actions(mixed $incoming, string $key): array
-    {
-        $clean = [];
-        foreach ((array) ($incoming ?? []) as $action) {
-            if (! is_array($action) || count($clean) >= 2) {
-                break;
-            }
-            $label = self::text($action['label'] ?? null, '', 40);
-            $destination = trim((string) ($action['destination'] ?? ''));
-            if ($label === '' || ! isset(self::DESTINATIONS[$destination])) {
-                continue;
-            }
-            $clean[] = [
-                'label' => $label,
-                'destination' => $destination,
-                'variant' => ($action['variant'] ?? 'primary') === 'secondary' ? 'secondary' : 'primary',
-            ];
-        }
-
-        if ($clean === []) {
-            $clean = self::INITIAL_ACTIONS[$key] ?? [];
-        }
-
-        return $clean;
-    }
-
-    /**
-     * Teks CTA untuk satu halaman, atau null bila CTA dimatikan admin.
-     *
-     * @return array{eyebrow: string, heading: string}|null
-     */
-    public static function forPage(string $pageKey): ?array
-    {
-        $settings = self::get();
-        if (! $settings['enabled']) {
-            return null;
-        }
-
-        return $settings['pages'][$pageKey] ?? self::DEFAULT_TEXT;
-    }
-
-    /** @param array<string, mixed> $incoming */
     public static function update(array $incoming, ?int $adminId = null): array
     {
         $page = self::page(create: true);
         $content = is_array($page->content) ? $page->content : [];
 
         $pages = [];
-        foreach (array_keys(self::PAGES) as $key) {
+        foreach (array_keys(self::pages()) as $key) {
             $row = is_array($incoming['pages'][$key] ?? null) ? $incoming['pages'][$key] : [];
-            $initial = self::INITIAL_TEXT[$key] ?? self::DEFAULT_TEXT;
             $pages[$key] = [
-                'eyebrow' => self::text($row['eyebrow'] ?? null, $initial['eyebrow'], 120),
-                'heading' => self::text($row['heading'] ?? null, $initial['heading'], 240),
+                'eyebrow' => self::text($row['eyebrow'] ?? null, 120),
+                'heading' => self::text($row['heading'] ?? null, 240),
                 'actions' => self::actions($row['actions'] ?? [], $key),
-                'items' => self::items($row['items'] ?? [], $key),
+                'items' => self::items($row['items'] ?? []),
             ];
-        }
-
-        $color = trim((string) ($incoming['color'] ?? ''));
-        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
-            $color = self::DEFAULT_COLOR;
         }
 
         $content[self::CONTENT_KEY] = [
             'enabled' => (bool) ($incoming['enabled'] ?? true),
-            'color' => $color,
+            'color' => self::color($incoming['color'] ?? null),
             'pages' => $pages,
         ];
 
@@ -325,27 +202,95 @@ class CtaSettings
     }
 
     /**
-     * Rapikan daftar teks satu blok: buang yang kosong, batasi 6 baris, dan
-     * kembalikan daftar live bila hasilnya kosong supaya blok tidak pernah
-     * tampil tanpa isi.
-     *
-     * @return list<string>
+     * Buang seluruh nilai tersimpan sehingga storefront kembali memakai teks
+     * aslinya. Dipakai saat teks dipindahkan kembali ke kode.
      */
-    private static function items(mixed $incoming, string $key): array
+    public static function forget(): void
     {
-        $clean = [];
-        foreach ((array) ($incoming ?? []) as $item) {
-            if (! is_string($item) || count($clean) >= 6) {
-                continue;
-            }
-            $text = self::text($item, '', 120);
-            if ($text !== '') {
-                $clean[] = $text;
-            }
+        $page = self::page();
+        if (! $page) {
+            return;
         }
 
-        if ($clean === []) {
-            $clean = self::INITIAL_ITEMS[$key] ?? [];
+        $content = is_array($page->content) ? $page->content : [];
+        unset($content[self::CONTENT_KEY]);
+        $page->content = $content;
+        $page->save();
+
+        CmsSettings::forgetPage(self::PAGE_SLUG);
+    }
+
+    /**
+     * Rapikan daftar tombol satu blok. Tombol dikembalikan apa adanya bila sah,
+     * dan daftar KOSONG bila admin belum menyimpan tombol: komponen lalu
+     * memakai tombolnya sendiri.
+     *
+     * Blok `section` (tombol kecil di samping judul section) hanya menyimpan
+     * label: tautannya menyatu dengan tata letak section, jadi tidak boleh
+     * diganti dari sini.
+     *
+     * @return list<array{label: string, destination: string, variant: string}>
+     */
+    private static function actions(mixed $incoming, string $key): array
+    {
+        $kind = self::registry()[$key]['kind'] ?? 'banner';
+        $labelOnly = $kind === 'section';
+        $clean = [];
+
+        foreach ((array) ($incoming ?? []) as $action) {
+            if (! is_array($action) || count($clean) >= self::MAX_ACTIONS) {
+                break;
+            }
+            $label = self::text($action['label'] ?? null, 40);
+            if ($label === null) {
+                continue;
+            }
+
+            $destination = trim((string) ($action['destination'] ?? ''));
+            if ($labelOnly) {
+                $destination = '';
+            } elseif (! isset(self::DESTINATIONS[$destination])) {
+                continue;
+            }
+
+            $clean[] = [
+                'label' => $label,
+                'destination' => $destination,
+                'variant' => $labelOnly
+                    ? 'secondary'
+                    : (($action['variant'] ?? 'primary') === 'secondary' ? 'secondary' : 'primary'),
+            ];
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Rapikan daftar kartu/poin satu blok: label wajib, keterangan opsional,
+     * maksimal 6 baris.
+     *
+     * @return list<array{label: string, description: string}>
+     */
+    private static function items(mixed $incoming): array
+    {
+        $clean = [];
+
+        foreach ((array) ($incoming ?? []) as $item) {
+            if (count($clean) >= self::MAX_ITEMS) {
+                break;
+            }
+            // Bentuk lama (string) tetap diterima supaya data tersimpan dari
+            // versi sebelumnya tidak hilang saat dibaca.
+            $raw = is_array($item) ? $item : ['label' => $item];
+
+            $label = self::text($raw['label'] ?? null, 120);
+            if ($label === null) {
+                continue;
+            }
+            $clean[] = [
+                'label' => $label,
+                'description' => self::text($raw['description'] ?? null, 240) ?? '',
+            ];
         }
 
         return $clean;
@@ -359,19 +304,24 @@ class CtaSettings
         return is_array($stored) ? $stored : [];
     }
 
-    /** Rapikan teks: trim, rapatkan spasi, dan pakai nilai awal bila kosong. */
-    private static function text(?string $value, string $fallback, int $max): string
+    /** Warna hex 6 digit, atau null bila belum diatur admin. */
+    private static function color(mixed $value): ?string
     {
-        if ($value === null) {
-            return $fallback;
+        $color = trim((string) $value);
+
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : null;
+    }
+
+    /** Rapikan teks: trim, rapatkan spasi; null bila kosong. */
+    private static function text(mixed $value, int $max): ?string
+    {
+        if (! is_string($value)) {
+            return null;
         }
 
         $clean = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
-        if ($clean === '') {
-            return $fallback;
-        }
 
-        return mb_substr($clean, 0, $max);
+        return $clean === '' ? null : mb_substr($clean, 0, $max);
     }
 
     private static function page(bool $create = false): ?CmsPage

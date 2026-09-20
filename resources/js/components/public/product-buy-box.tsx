@@ -57,16 +57,17 @@ export function ProductBuyBox({
   } = purchase
 
   // Alasan belanja diatur admin lewat CTA Storefront, blok
-  // "Detail Produk: alasan belanja". Ikon tetap dari kode dan dipakai
-  // bergiliran sesuai urutan, jadi admin hanya mengurus kalimatnya.
-  const { ctaSettings } = usePage<SharedPageProps>().props
-  const pdpConfigured = ctaSettings?.pages?.["pdp-benefits"]
-  const configuredBenefits = pdpConfigured?.items
+  // "Detail Produk: alasan belanja". Daftar bawaannya dihitung per produk
+  // (label garansi ikut promo, baris COD bisa hilang), jadi daftar itu tetap
+  // dipakai sampai admin benar-benar menyimpan penggantinya. Ikon tetap dari
+  // kode dan dipakai bergiliran sesuai urutan, admin hanya mengurus kalimatnya.
+  const block = usePage<SharedPageProps>().props.ctaSettings?.pages?.["pdp-benefits"]
+  const configuredItems = block?.items ?? []
   const resolvedBenefits =
-    configuredBenefits && configuredBenefits.length > 0
-      ? configuredBenefits.map((label, index) => ({
+    configuredItems.length > 0
+      ? configuredItems.map((item, index) => ({
           icon: benefits[index % benefits.length].icon,
-          label,
+          label: item.label,
         }))
       : benefits
 
@@ -348,7 +349,7 @@ export function ProductBuyBox({
       {/* Benefit belanja */}
       <div className="mt-4">
         <h2 className="truncate text-sm font-bold text-foreground">
-          {pdpConfigured?.heading || "Alasan harus belanja di Ragil Aluminium"}
+          {block?.heading || "Alasan harus belanja di Ragil Aluminium"}
         </h2>
         <div className="mt-3 flex gap-2.5">
           {resolvedBenefits.map((benefit, index) => (

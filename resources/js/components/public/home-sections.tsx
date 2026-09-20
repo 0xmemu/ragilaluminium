@@ -1,4 +1,4 @@
-import { Link, usePage } from "@inertiajs/react"
+import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import {
@@ -12,13 +12,13 @@ import { SectionHeading } from "@/components/shared/section-heading"
 import { SectionHeadingAction } from "@/components/shared/section-heading-action"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
+import { ctaActionLabel, useCtaActions, useCtaBlock } from "@/lib/cta-actions"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type {
   InstallationItem,
   ModelCardData,
   ProductCardData,
-  SharedPageProps,
   Testimonial,
 } from "@/types"
 
@@ -30,6 +30,9 @@ export interface HowToOrderData {
 
 export function PilihModelProdukSection({ models }: { models: ModelCardData[] }) {
   const seeMoreHref = routeUrl("catalog.index")
+  const block = useCtaBlock("home-model")
+  const emptyBlock = useCtaBlock("home-empty-model")
+  const emptyAction = useCtaActions("home-empty-model")[0]
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
@@ -42,18 +45,26 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
           className="gap-1"
           title="Model Produk"
           action={
-            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel(block, "Lihat Semua")}
+            />
           }
         />
         {models.length ? (
           <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
-            title="Model belum tersedia"
-            description="Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
+            title={emptyBlock?.eyebrow || "Model belum tersedia"}
+            description={
+              emptyBlock?.heading ||
+              "Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
+            }
             action={
               <Button asChild>
-                <Link href={seeMoreHref}>Buka Katalog</Link>
+                <Link href={emptyAction?.href ?? seeMoreHref}>
+                  {emptyAction?.label ?? "Buka Katalog"}
+                </Link>
               </Button>
             }
           />
@@ -65,6 +76,9 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
 
 export function PalingBanyakDipesanSection({ products }: { products: ProductCardData[] }) {
   const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular&from=paling-banyak-dipesan`
+  const block = useCtaBlock("home-popular")
+  const emptyBlock = useCtaBlock("home-empty-popular")
+  const emptyAction = useCtaActions("home-empty-popular")[0]
 
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20">
@@ -77,18 +91,31 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
           className="gap-1"
           title="Paling banyak dipesan"
           action={
-            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel(block, "Lihat Semua")}
+            />
           }
         />
         {products.length ? (
           <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
         ) : (
           <EmptyState
-            title="Belum ada produk populer"
-            description="Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
+            title={emptyBlock?.eyebrow || "Belum ada produk populer"}
+            description={
+              emptyBlock?.heading ||
+              "Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
+            }
             action={
               <Button asChild>
-                <Link href={routeUrl("catalog.category", { category: "jendela" })}>Jelajahi Produk</Link>
+                <Link
+                  href={
+                    emptyAction?.href ??
+                    routeUrl("catalog.category", { category: "jendela" })
+                  }
+                >
+                  {emptyAction?.label ?? "Jelajahi Produk"}
+                </Link>
               </Button>
             }
           />
@@ -123,6 +150,7 @@ export function CaraPesanSection({
   data?: HowToOrderData
 }) {
   const title = data?.title || "cara pesan jendela impian anda"
+  const block = useCtaBlock("home-howto")
   const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
   const stepDescriptions: Record<string, string> = {
     "Pilih model": "telusuri katalog di website dan pilih model jendela favoritmu",
@@ -264,7 +292,10 @@ export function CaraPesanSection({
           className="gap-1"
           title={title}
           action={
-            <SectionHeadingAction href={routeUrl("cara-pemesanan")}>Lihat Panduan</SectionHeadingAction>
+            <SectionHeadingAction
+              href={routeUrl("cara-pemesanan")}
+              label={ctaActionLabel(block, "Lihat Panduan")}
+            />
           }
         />
 
@@ -349,6 +380,8 @@ export function HasilPemasanganSection({
   meta?: { heading?: string; subtitle?: string } | null
 }) {
   const seeMoreHref = routeUrl("installation.index")
+  const block = useCtaBlock("home-installation")
+  const emptyBlock = useCtaBlock("home-empty-installation")
 
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20">
@@ -361,7 +394,10 @@ export function HasilPemasanganSection({
           className="gap-1"
           title={meta?.heading?.trim() || "Hasil pemasangan"}
           action={
-            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel(block, "Lihat Semua")}
+            />
           }
         />
         {items.length ? (
@@ -369,8 +405,11 @@ export function HasilPemasanganSection({
         ) : (
           <EmptyState
             icon="image"
-            title="Belum ada foto pemasangan"
-            description="Contoh pemasangan di kota Anda bisa ditanyakan langsung lewat WhatsApp."
+            title={emptyBlock?.eyebrow || "Belum ada foto pemasangan"}
+            description={
+              emptyBlock?.heading ||
+              "Contoh pemasangan di kota Anda bisa ditanyakan langsung lewat WhatsApp."
+            }
           />
         )}
       </div>
@@ -380,6 +419,8 @@ export function HasilPemasanganSection({
 
 export function ApaKataPelangganSection({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews.screenshots")
+  const block = useCtaBlock("home-testimonial")
+  const emptyBlock = useCtaBlock("home-empty-testimonial")
 
   // Section screenshot: hanya ulasan ber-media (hindari kartu kosong tanpa media).
   const screenshots = testimonials.filter((t) => Boolean(t.image_url))
@@ -395,7 +436,10 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
           className="gap-1"
           title="Apa kata pelanggan kami"
           action={
-            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel(block, "Lihat Semua")}
+            />
           }
         />
         {screenshots.length ? (
@@ -408,8 +452,11 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
         ) : (
           <EmptyState
             icon="message-circle"
-            title="Belum ada screenshot"
-            description="Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+            title={emptyBlock?.eyebrow || "Belum ada screenshot"}
+            description={
+              emptyBlock?.heading ||
+              "Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+            }
           />
         )}
       </div>
@@ -419,6 +466,8 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
 
 export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews.website")
+  const block = useCtaBlock("home-review-website")
+  const emptyBlock = useCtaBlock("home-empty-review")
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface">
@@ -431,7 +480,10 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
           className="gap-1"
           title="Ulasan pelanggan di website"
           action={
-            <SectionHeadingAction href={seeMoreHref}>Lihat Semua</SectionHeadingAction>
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel(block, "Lihat Semua")}
+            />
           }
         />
         {testimonials.length ? (
@@ -444,8 +496,11 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
         ) : (
           <EmptyState
             icon="star"
-            title="Belum ada ulasan website"
-            description="Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
+            title={emptyBlock?.eyebrow || "Belum ada ulasan website"}
+            description={
+              emptyBlock?.heading ||
+              "Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
+            }
           />
         )}
       </div>
@@ -483,23 +538,32 @@ const HELP_STEPS = [
 export { ClosingCTASection } from "./closing-cta"
 
 export function KamiBantuSection() {
-  // Kop & judul diatur admin lewat CTA Storefront, blok "Beranda: Kami bantu".
-  const { ctaSettings } = usePage<SharedPageProps>().props
-  const configured = ctaSettings?.pages?.["home-help"]
+  // Kop, judul, dan kartu langkah diatur admin lewat CTA Storefront, blok
+  // "Beranda: bagian Kami bantu". Selama admin belum menyimpan, teks dan kartu
+  // di bawah ini yang dipakai. Ikon tetap milik komponen dan dipakai bergiliran
+  // sesuai urutan, jadi admin cukup mengurus kalimatnya.
+  const block = useCtaBlock("home-help")
+  const steps = block?.items?.length
+    ? block.items.map((item, index) => ({
+        icon: HELP_STEPS[index % HELP_STEPS.length].icon,
+        title: item.label,
+        description: item.description,
+      }))
+    : HELP_STEPS
 
   return (
     <section id="kami-bantu" className="scroll-mt-20 bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
         <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
           <p className="text-xs font-bold text-primary sm:text-sm">
-            {configured?.eyebrow || "Masih Bingung?"}
+            {block?.eyebrow || "Masih Bingung?"}
           </p>
           <SectionHeading
             size="display"
             fitHeading={false}
             headingClassName="!text-[18px]"
             title={
-              configured?.heading || (
+              block?.heading || (
                 <>
                   Kami bantu dari <span>awal sampai jadi</span>
                 </>
@@ -509,7 +573,7 @@ export function KamiBantuSection() {
         </div>
 
         <div className="mx-auto max-w-3xl grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
-          {HELP_STEPS.map((item, index) => {
+          {steps.map((item, index) => {
             const stepNo = String(index + 1).padStart(2, "0")
             return (
               <article

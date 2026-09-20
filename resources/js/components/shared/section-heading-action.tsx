@@ -10,10 +10,13 @@ import { cn } from "@/lib/utils"
 export function SectionHeadingAction({
   href,
   children,
+  label,
   className,
 }: {
   href: string
-  children: React.ReactNode
+  children?: React.ReactNode
+  /** Teks tombol dari pengaturan admin; menang atas children. */
+  label?: string
   className?: string
 }) {
   return (
@@ -26,7 +29,7 @@ export function SectionHeadingAction({
         className,
       )}
     >
-      <span className="shrink-0">{children}</span>
+      <span className="shrink-0">{label ?? children}</span>
       <Icon name="arrow-right" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
     </Link>
   )

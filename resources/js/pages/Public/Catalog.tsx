@@ -82,7 +82,8 @@ function SearchFallbackEmpty({
   const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
   // Teks & tombol diatur admin lewat CTA Storefront, blok
   // "Katalog: saat pencarian kosong". Judul pertama tetap memuat kata kunci
-  // pencarian, jadi hanya keterangan & tombolnya yang dapat diubah.
+  // pencarian, jadi hanya keterangan & tombolnya yang dapat diubah. Selama
+  // admin belum menyimpan, teks dan tombol bawaan di bawah ini yang dipakai.
   const configured = ctaSettings?.pages?.["catalog-empty"]
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
   const configuredActions = resolveCtaActions(configured?.actions, whatsappUrl)
@@ -112,11 +113,23 @@ function SearchFallbackEmpty({
               </Button>
             ))}
           </div>
-        ) : nearbySizes.length === 0 && relatedModels.length === 0 ? (
-          <Button asChild variant="secondary" className="mt-3">
-            <Link href={routeUrl("catalog.all")}>Lihat semua model</Link>
-          </Button>
-        ) : null}
+        ) : (
+          <>
+            {consultationWhatsApp?.directUrl ? (
+              <Button asChild className="mt-4">
+                <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
+                  <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+                  Konsultasi via WhatsApp
+                </a>
+              </Button>
+            ) : null}
+            {nearbySizes.length === 0 && relatedModels.length === 0 ? (
+              <Button asChild variant="secondary" className="mt-3">
+                <Link href={routeUrl("catalog.all")}>Lihat semua model</Link>
+              </Button>
+            ) : null}
+          </>
+        )}
       </div>
 
       {nearbySizes.length ? (
