@@ -12,12 +12,16 @@ export interface ReviewRatingCount {
 /**
  * Apakah ulasan ini punya foto atau video.
  * Foto dibaca dari `images` dengan fallback `image_url`, video dari `media`.
+ *
+ * Cukup ada satu entri media, tidak mensyaratkan `url`: filter ini menjawab
+ * "punya media atau tidak", sedangkan ketersediaan `url` urusan render
+ * (lihat reviewMediaItems).
  */
 export function reviewHasMedia(review: Testimonial): boolean {
   const images = (review.images ?? []).filter((url): url is string => Boolean(url))
   if (images.length || review.image_url) return true
 
-  return (review.media ?? []).some((item) => Boolean(item?.url))
+  return (review.media ?? []).length > 0
 }
 
 /** Satu ubin media ulasan: foto atau video. */
