@@ -144,10 +144,21 @@ class ProductReviewDemoSeeder extends Seeder
     }
 
     /**
-     * Rancangan sepuluh ulasan, urut tampil (sort_order 1 tampil paling awal).
+     * Rancangan dua belas ulasan, urut tampil (sort_order 1 tampil paling awal).
      *
-     * Sebaran rating: bintang 5 empat baris, bintang 4 tiga baris, lalu
+     * Sebaran rating: bintang 5 lima baris, bintang 4 empat baris, lalu
      * bintang 3, 2, dan 1 masing-masing satu baris.
+     *
+     * Bentuk ulasan sengaja diragamkan supaya seluruh keadaan tampilan ikut
+     * terperiksa:
+     * - ulasan berteks, sebagian berfoto dan sebagian bervideo;
+     * - ulasan berfoto tanpa teks sama sekali (kolom `message` null);
+     * - ulasan hanya bintang, tanpa teks dan tanpa media.
+     *
+     * Dua bentuk terakhir tidak bisa dibuat lewat form mana pun saat ini:
+     * form pelanggan mewajibkan teks minimal 3 karakter, dan form admin
+     * mewajibkan teks atau gambar. Barisnya ada di sini khusus untuk menguji
+     * tampilan kartu saat kolom teks kosong.
      *
      * @param  list<string>  $photos
      * @return list<array<string,mixed>>
@@ -220,6 +231,20 @@ class ProductReviewDemoSeeder extends Seeder
                 'reply' => 'Mohon maaf sebesar-besarnya atas keterlambatan ini. Kendalanya ada di pihak ekspedisi untuk rute tersebut dan sudah kami tindak lanjuti. Tim kami menghubungi Anda lewat WhatsApp untuk penyelesaiannya.',
                 'photos' => [],
                 'message' => 'Saya beri satu bintang karena barang datang hampir dua minggu dari estimasi. Saya membutuhkannya untuk renovasi yang sudah dijadwalkan, jadi jadwal tukang ikut mundur.',
+            ],
+            [
+                // Foto tanpa teks: pembeli hanya mengirim gambar hasil pemasangan.
+                'customer_name' => 'Rina Anggraini', 'location' => 'Balikpapan', 'rating' => 5,
+                'days_ago' => 62, 'verified' => true, 'video' => false, 'reply' => null,
+                'photos' => [$photos[2], $photos[4]],
+                'message' => null,
+            ],
+            [
+                // Bintang saja: tanpa teks dan tanpa media.
+                'customer_name' => 'Hasan Basri', 'location' => 'Denpasar', 'rating' => 4,
+                'days_ago' => 70, 'verified' => true, 'video' => false, 'reply' => null,
+                'photos' => [],
+                'message' => null,
             ],
         ];
     }
