@@ -52,6 +52,8 @@ interface ChartBlock {
   total: number
   previous_total?: number
   total_format: "currency" | "number" | "percent"
+  /** Dasar hitungan angka Total: jumlah titik seri, unik, atau rasio. */
+  total_basis?: "sum" | "unique_period" | "unique_daily" | "ratio"
   series: SeriesPoint[]
   previous_series?: SeriesPoint[]
 }
@@ -126,6 +128,23 @@ interface Report {
 
 
 
+
+/**
+ * Keterangan dasar hitungan angka Total pada header grafik.
+ *
+ * Beberapa metrik memang tidak bisa dijumlahkan dari titik serinya:
+ * produk dan pengunjung dihitung unik, sedangkan konversi adalah rasio.
+ * Untuk metrik itu angka Total dihitung atas seluruh periode, sehingga
+ * jumlah batangnya tidak akan sama. Keterangan ini membuat perbedaan itu
+ * terbaca sebagai penjelasan, bukan sebagai angka yang salah.
+ */
+function totalBasisNote(basis: string | undefined): string | null {
+  if (basis === "unique_period" || basis === "unique_daily") {
+    return "dihitung unik sepanjang periode, jadi bukan jumlah titik grafik"
+  }
+  if (basis === "ratio") return "rasio periode, bukan jumlah titik grafik"
+  return null
+}
 
 /**
  * Format nilai total dan pembanding pada grafik tren. Satu tempat saja supaya
@@ -1455,6 +1474,12 @@ export default function StorePerformance({
                     <span className="font-semibold tabular-nums text-foreground">
                       {formatChartValue(chart.total, chart.total_format)}
                     </span>
+                    {totalBasisNote(chart.total_basis) ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({totalBasisNote(chart.total_basis)})
+                      </span>
+                    ) : null}
                   </span>
                 </div>
 

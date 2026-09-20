@@ -265,6 +265,12 @@ class StorePerformanceService
         if (($range['is_running'] ?? false) && $periodStarted) {
             $range['to'] = $currentTo;
         }
+        // Jendela pembanding diselaraskan ke batas bucket untuk granularitas
+        // minggu, bulan, dan tahun. Dilakukan SEBELUM metrik pembanding
+        // dihitung, supaya angka Pembanding dan seri pembanding memakai
+        // jendela yang sama persis.
+        $range = $this->alignPreviousWindowToBuckets($range);
+
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
@@ -413,8 +419,9 @@ class StorePerformanceService
                     'total' => $current['gross_revenue'],
                     'previous_total' => $previous['gross_revenue'] ?? 0.0,
                     'total_format' => 'currency',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'revenue'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'revenue'),
+                    'total_basis' => 'sum',
+                    'series' => $this->chartSeries($range, 'revenue', false),
+                    'previous_series' => $this->chartSeries($range, 'revenue', true),
                 ],
                 [
                     'key' => 'orders',
@@ -422,8 +429,9 @@ class StorePerformanceService
                     'total' => $current['orders'],
                     'previous_total' => $previous['orders'] ?? 0.0,
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'orders'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'orders'),
+                    'total_basis' => 'sum',
+                    'series' => $this->chartSeries($range, 'orders', false),
+                    'previous_series' => $this->chartSeries($range, 'orders', true),
                 ],
                 [
                     'key' => 'products',
@@ -431,8 +439,9 @@ class StorePerformanceService
                     'total' => $current['products_sold'],
                     'previous_total' => $previous['products_sold'] ?? 0.0,
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'products'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'products'),
+                    'total_basis' => 'unique_period',
+                    'series' => $this->chartSeries($range, 'products', false),
+                    'previous_series' => $this->chartSeries($range, 'products', true),
                 ],
                 [
                     'key' => 'units',
@@ -440,8 +449,9 @@ class StorePerformanceService
                     'total' => $current['units'],
                     'previous_total' => $previous['units'] ?? 0.0,
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'units'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'units'),
+                    'total_basis' => 'sum',
+                    'series' => $this->chartSeries($range, 'units', false),
+                    'previous_series' => $this->chartSeries($range, 'units', true),
                 ],
                 [
                     'key' => 'visitors',
@@ -449,8 +459,9 @@ class StorePerformanceService
                     'total' => $current['visitors'],
                     'previous_total' => $previous['visitors'] ?? 0.0,
                     'total_format' => 'number',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
+                    'total_basis' => 'unique_daily',
+                    'series' => $this->chartSeries($range, 'visitors', false),
+                    'previous_series' => $this->chartSeries($range, 'visitors', true),
                 ],
                 [
                     'key' => 'conversion_rate',
@@ -458,8 +469,9 @@ class StorePerformanceService
                     'total' => $current['conversion_rate'],
                     'previous_total' => $previous['conversion_rate'] ?? 0.0,
                     'total_format' => 'percent',
-                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),
-                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'conversion_rate'),
+                    'total_basis' => 'ratio',
+                    'series' => $this->chartSeries($range, 'conversion_rate', false),
+                    'previous_series' => $this->chartSeries($range, 'conversion_rate', true),
                 ],
 
             ],
@@ -855,22 +867,38 @@ class StorePerformanceService
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
 
-            // Cadangan untuk riwayat pengunjung sebelum tabel event ada. Tabel
-            // metrik lama hanya menyimpan agregat harian (metric_date berupa
-            // tanggal), jadi cadangan ini HANYA dipakai untuk skala Per Hari ke
-            // atas. Dulu skala Per Jam diturunkan diam-diam menjadi Per Hari,
-            // sehingga memilih Per Jam bisa menggambar satu titik saja dan sumbu
-            // grafiknya tidak cocok dengan pilihan dropdown.
-            if ($rows->isEmpty() && $granularity !== 'hour') {
-                $legacyGranularity = $granularity;
-                $buckets = $this->emptyBuckets($from, $to, $legacyGranularity);
-                $rows = PerformanceMetric::query()
-                    ->selectRaw($this->bucketSelect('metric_date', $legacyGranularity).' as bucket')
-                    ->selectRaw('SUM(metric_value) as value')
-                    ->where('metric_name', 'storefront_unique_visitors')
-                    ->whereBetween('metric_date', [$from->toDateString(), $to->toDateString()])
-                    ->groupBy('bucket')
-                    ->pluck('value', 'bucket');
+            // Cadangan untuk riwayat pengunjung sebelum tabel event ada. Dua
+            // pagar dipasang di sini:
+            //
+            // 1. Metrik lama bersatuan HARI (metric_date berupa tanggal), jadi
+            //    ia hanya dipakai untuk hari yang seluruhnya berada SEBELUM era
+            //    event. Dulu bacaannya memakai whereBetween tanggal, sehingga
+            //    jendela yang terpotong di tengah hari tetap menarik satu hari
+            //    penuh dan nilainya berbeda dari angka Pembanding yang dihitung
+            //    visitorsBetween() atas jendela sempit. Batasnya kini disamakan
+            //    dengan visitorsBetween() supaya sumber kedua angka itu identik.
+            // 2. Skala Per Jam tidak pernah memakai metrik harian: menurunkannya
+            //    diam-diam pernah membuat grafik hanya bergambar satu titik.
+            $firstEventDay = $this->firstVisitorEventDay();
+
+            if ($granularity !== 'hour' && ($firstEventDay === null || $from->lt($firstEventDay))) {
+                $legacyEnd = $firstEventDay !== null && $firstEventDay->lt($to)
+                    ? $firstEventDay->copy()->subSecond()
+                    : $to;
+
+                if ($from->lte($legacyEnd)) {
+                    $legacy = PerformanceMetric::query()
+                        ->selectRaw($this->bucketSelect('metric_date', $granularity).' as bucket')
+                        ->selectRaw('SUM(metric_value) as value')
+                        ->where('metric_name', 'storefront_unique_visitors')
+                        ->whereBetween('metric_date', [$from->toDateString(), $legacyEnd->toDateString()])
+                        ->groupBy('bucket')
+                        ->pluck('value', 'bucket');
+
+                    foreach ($legacy as $bucketKey => $value) {
+                        $rows[$bucketKey] = (float) ($rows[$bucketKey] ?? 0) + (float) $value;
+                    }
+                }
             }
 
             return collect($buckets)->map(function (array $bucket) use ($rows) {
@@ -1520,6 +1548,103 @@ class StorePerformanceService
     /**
      * @return list<array{key: string, label: string}>
      */
+    /**
+     * Seri untuk satu chart. Satu pintu supaya perlakuan label seri periode ini
+     * dan seri pembanding tidak berbeda antar chart.
+     *
+     * Pada skala Per Jam, label seri pembanding diberi tanggal. Membandingkan
+     * "jam 00:00 hari ini" dengan "jam 00:00 hari sebelumnya" memang disengaja,
+     * jadi label porosnya sama; tanpa tanggal, tooltip hanya menuliskan
+     * "00:00 vs 00:00" dan pembaca tidak tahu hari mana yang dibandingkan.
+     *
+     * @param  array<string, mixed>  $range
+     * @return list<array{bucket: string, label: string, value: float}>
+     */
+    protected function chartSeries(array $range, string $metric, bool $previous): array
+    {
+        $from = $previous ? $range['previous_from'] : $range['from'];
+        $to = $previous ? $range['previous_to'] : $range['to'];
+
+        $rows = $this->series($from, $to, (string) $range['granularity'], $metric);
+
+        if ($previous && $range['granularity'] === 'hour') {
+            foreach ($rows as $index => $row) {
+                $rows[$index]['label'] = Carbon::parse($row['bucket'])->translatedFormat('j M H:i');
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Hari pertama data event pengunjung, atau null bila tabelnya masih kosong.
+     * Dipakai agar seri dan total memakai batas era yang sama.
+     */
+    protected function firstVisitorEventDay(): ?Carbon
+    {
+        $first = PerformanceVisitorEvent::query()->min('visited_at');
+
+        return $first === null ? null : Carbon::parse($first)->startOfDay();
+    }
+
+    /**
+     * Menyejajarkan jendela pembanding ke batas bucket utuh untuk granularitas
+     * minggu, bulan, dan tahun.
+     *
+     * Jendela pembanding dihitung dari selisih detik, sehingga awal dan akhirnya
+     * jatuh di tengah bucket. Pada granularitas kasar itu berarti bucket pertama
+     * atau terakhir muncul di KEDUA seri dengan label yang sama, dan jumlah titik
+     * kedua seri bisa berbeda. Karena halaman memasangkan seri berdasarkan
+     * indeks, keduanya membuat grafik membandingkan periode yang keliru.
+     *
+     * Penyejajaran tidak diperlukan untuk jam dan hari: kedua jendela berdurasi
+     * sama dan bucketnya sudah sejajar sendiri. Membandingkan "sejak awal sampai
+     * jam yang sama" juga sengaja dipertahankan untuk dua skala itu (KPI-002).
+     *
+     * @param  array<string, mixed>  $range
+     * @return array<string, mixed>
+     */
+    protected function alignPreviousWindowToBuckets(array $range): array
+    {
+        $granularity = (string) $range['granularity'];
+
+        if (! in_array($granularity, ['week', 'month', 'year'], true)) {
+            return $range;
+        }
+
+        /** @var Carbon $from */
+        $from = $range['from'];
+        /** @var Carbon $to */
+        $to = $range['to'];
+
+        $count = count($this->emptyBuckets($from, $to, $granularity));
+        if ($count === 0) {
+            return $range;
+        }
+
+        // Bucket pertama periode ini, lalu mundur sejumlah bucket yang sama.
+        $gridStart = match ($granularity) {
+            'week' => $from->copy()->startOfWeek(),
+            'month' => $from->copy()->startOfMonth(),
+            default => $from->copy()->startOfYear(),
+        };
+
+        $previousFrom = $gridStart->copy();
+        for ($i = 0; $i < $count; $i++) {
+            $previousFrom = match ($granularity) {
+                'week' => $previousFrom->subWeek(),
+                'month' => $previousFrom->subMonth(),
+                default => $previousFrom->subYear(),
+            };
+        }
+
+        $range['previous_from'] = $previousFrom;
+        $range['previous_to'] = $gridStart->copy()->subSecond();
+        $range['previous_aligned_to_buckets'] = true;
+
+        return $range;
+    }
+
     protected function emptyBuckets(Carbon $from, Carbon $to, string $granularity): array
     {
         $buckets = [];
@@ -1541,7 +1666,9 @@ class StorePerformanceService
             $end = $to->copy()->startOfWeek();
             while ($cursor <= $end) {
                 $key = $cursor->format('Y-W');
-                $buckets[] = ['key' => $key, 'label' => 'Minggu '.$cursor->format('W')];
+                // Tahun ikut ditulis supaya label minggu tidak pernah bertabrakan
+                // dengan seri pembanding yang jatuh di tahun berbeda.
+                $buckets[] = ['key' => $key, 'label' => 'Minggu '.$cursor->format('W').' '.$cursor->format('Y')];
                 $cursor->addWeek();
             }
 
@@ -1578,6 +1705,39 @@ class StorePerformanceService
                 'key' => $day->toDateString(),
                 'label' => $day->translatedFormat('j M'),
             ];
+        }
+
+        return $granularity === 'day' ? $this->labelBucketYears($buckets) : $buckets;
+    }
+
+    /**
+     * Menambahkan tahun pada label bucket minggu dan hari bila grid-nya
+     * mencakup lebih dari satu tahun kalender.
+     *
+     * Label bulan dan tahun sudah memuat tahunnya sendiri. Tanpa penambahan ini,
+     * seri periode ini dan seri pembanding yang jatuh di tahun berbeda bisa
+     * memakai label yang sama persis, sehingga tooltip menuliskan
+     * "Minggu 14 vs Minggu 14" untuk dua minggu yang berlainan.
+     *
+     * @param  list<array{key: string, label: string}>  $buckets
+     * @return list<array{key: string, label: string}>
+     */
+    protected function labelBucketYears(array $buckets): array
+    {
+        $total = count($buckets);
+        if ($total < 2) {
+            return $buckets;
+        }
+
+        $firstYear = substr((string) $buckets[0]['key'], 0, 4);
+        $lastYear = substr((string) $buckets[$total - 1]['key'], 0, 4);
+
+        if ($firstYear === $lastYear) {
+            return $buckets;
+        }
+
+        foreach ($buckets as $index => $bucket) {
+            $buckets[$index]['label'] = $bucket['label'].' '.substr((string) $bucket['key'], 0, 4);
         }
 
         return $buckets;
