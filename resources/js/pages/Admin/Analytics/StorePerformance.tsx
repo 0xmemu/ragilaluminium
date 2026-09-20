@@ -16,7 +16,7 @@ import {
 } from "@/components/admin/ui/dialog"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber } from "@/lib/format"
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
@@ -158,9 +158,9 @@ interface Report {
  */
 function totalBasisNote(basis: string | undefined): string | null {
   if (basis === "unique_period" || basis === "unique_daily") {
-    return "dihitung unik sepanjang periode, jadi bukan jumlah titik grafik"
+    return "dihitung unik sepanjang periode, bukan penjumlahan titik grafik"
   }
-  if (basis === "ratio") return "rasio periode, bukan jumlah titik grafik"
+  if (basis === "ratio") return "rasio periode, bukan penjumlahan titik grafik"
   return null
 }
 
@@ -446,6 +446,61 @@ type CategoryDetail = {
   notes: string[]
 }
 
+/** Skala grafik dalam bahasa pembaca, bukan kode internal. */
+function labelGranularitas(granularity: string): string {
+  const peta: Record<string, string> = {
+    hour: "Per Jam",
+    day: "Per Hari",
+    week: "Per Minggu",
+    month: "Per Bulan",
+    year: "Per Tahun",
+  }
+  return peta[granularity] ?? granularity
+}
+
+/** Waktu laporan dalam WIB, bukan cap waktu ISO mentah. */
+function formatWaktuWib(iso: string): string {
+  const waktu = new Date(iso)
+  if (Number.isNaN(waktu.getTime())) return iso
+  const tanggal = waktu.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+  const jam = waktu.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+  return tanggal + ", " + jam + " WIB"
+}
+
+/** Pihak yang menanggung ongkir retur, dalam bahasa toko. */
+function labelPenanggung(nilai: string | null): string {
+  if (!nilai) return "-"
+  const peta: Record<string, string> = {
+    store: "Toko",
+    customer: "Pembeli",
+    seller: "Toko",
+    buyer: "Pembeli",
+    other: "Lainnya",
+  }
+  return peta[nilai] ?? "Lainnya"
+}
+
+/** Metode pembayaran apa adanya. Tidak menebak "Transfer Bank" untuk metode lain. */
+function labelMetodeBayar(metode: string): string {
+  const kunci = metode.trim().toLowerCase()
+  const peta: Record<string, string> = {
+    cod: "COD",
+    transfer: "Transfer Bank",
+    bank_transfer: "Transfer Bank",
+    gateway: "Pembayaran Online",
+    other: "Lainnya",
+  }
+  return peta[kunci] ?? "Metode Lain"
+}
+
 /** Satu tempat untuk mengubah nilai KPI menjadi teks, supaya satuan seragam. */
 function formatKpiValue(kpi: Kpi): string {
   if (kpi.format === "currency") return formatCurrency(kpi.value)
@@ -581,7 +636,7 @@ function buildCategoryDetail(
         ],
         formula:
           "Rata-rata Nilai Pesanan = Penjualan Gross dibagi Jumlah Pesanan. Harga Rata-rata per Unit = Nilai Produk dibagi Jumlah Unit Terjual.",
-        source: "orders dan order_items",
+        source: "Data pesanan dan item pesanan",
         notes: [
           "Pesanan yang belum dikonfirmasi, menunggu pembayaran, atau dibatalkan tidak dihitung.",
           "Produk Terjual menghitung SKU varian berbeda, jadi satu produk dengan dua ukuran dihitung dua.",
@@ -601,7 +656,7 @@ function buildCategoryDetail(
           title: "B. Pengurang setelah Penjualan Gross",
           rows: [
             {
-              label: "Tagihan J&T Cargo",
+              label: "Tagihan J&T",
               value: rp(fin.shipping_raw ?? 0),
               sign: "−",
               sub:
@@ -720,7 +775,7 @@ function buildCategoryDetail(
           head: ["Metode", "Nilai Pesanan", "Pesanan"],
           total: bauran.total,
           rows: bauran.rows.map((row) => [
-            row.method.toLowerCase() === "cod" ? "COD" : "Transfer Bank",
+            labelMetodeBayar(row.method),
             rp(row.revenue),
             ang(row.count),
           ]),
@@ -737,8 +792,8 @@ function buildCategoryDetail(
           total: ongkirRetur.total,
           rows: ongkirRetur.rows.map((row) => [
             row.order_number ?? ("#" + row.order_id),
-            row.completed_at ? row.completed_at.slice(0, 10) : "-",
-            row.fault_party ?? "-",
+            row.completed_at ? formatDate(row.completed_at) : "-",
+            labelPenanggung(row.fault_party),
             rp(row.return_shipping_cost),
           ]),
         })
@@ -749,9 +804,9 @@ function buildCategoryDetail(
         badge: badgePeriode,
         intro:
           "Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas, termasuk posisi kas dan bauran pembayaran.",
-        formula: "Penjualan Bersih = Penjualan Gross dikurangi Potongan J&T dikurangi Retur dan Biaya Retur",
+        formula: "Penjualan Bersih = Penjualan Gross dikurangi Tagihan J&T dikurangi Retur dan Biaya Retur",
         blocks,
-        source: "orders, order_return_cases, payments, shipping_records, dan payment_mix",
+        source: "Data pesanan, retur, pembayaran, dan pengiriman",
         notes: [
           fin.definition,
           "Kas Diterima memakai basis waktu dana benar-benar lunas, berbeda dari hak penjualan barang.",
@@ -766,7 +821,7 @@ function buildCategoryDetail(
         title: "Operasional",
         badge: badgePeriode,
         intro:
-          "Antrean fulfillment dan kecepatan layanan. Enam baris pertama terikat periode, dua terakhir kondisi saat ini.",
+          "Antrean pesanan dan kecepatan layanan. Lima baris pertama terikat periode, dua terakhir kondisi saat ini.",
         blocks: [
           {
             kind: "rows",
@@ -788,7 +843,7 @@ function buildCategoryDetail(
             rows: kpiRows(kpiMap, ["returns_open", "payment_pending_count"]),
           },
         ],
-        source: "orders, shipping_records, dan event_logs",
+        source: "Data pesanan, pengiriman, dan riwayat perubahan status",
         notes: [
           "Pesanan Belum Selesai dan Dalam Pengiriman menghitung pesanan yang DIBUAT dalam rentang dan masih berstatus itu, bukan ukuran antrean saat ini.",
           "Dua baris terakhir adalah snapshot: angkanya dihitung saat laporan dibangun dan sengaja tidak dibandingkan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan.",
@@ -817,7 +872,7 @@ function buildCategoryDetail(
               label: "Pembeli Unik",
               value: kunjunganTidakLengkap ? "Belum tersedia" : ang(pembeli) + " pembeli",
               sign: "÷",
-              sub: "Dihitung dari nomor telepon berbeda pada pesanan yang masuk alur fulfillment.",
+              sub: "Dihitung dari nomor telepon berbeda pada pesanan yang sudah masuk proses.",
             },
             {
               label: "Pengunjung yang Membeli",
@@ -856,7 +911,7 @@ function buildCategoryDetail(
         intro: "Berapa yang datang, berapa yang membeli, dan siapa yang paling banyak berbelanja.",
         formula: "Pengunjung yang Membeli = Pembeli Unik dibagi Pengunjung Unik, dikali 100 persen",
         blocks,
-        source: "performance_visitor_events, performance_metrics, dan orders",
+        source: "Data kunjungan situs dan data pesanan",
         notes: [
           "Angka konversi adalah rasio dua populasi, bukan penautan sesi ke pesanan: sistem tidak menyimpan relasi antara sesi kunjungan dan pesanan, sehingga tidak berarti orang yang mengunjungi lalu membeli.",
           "Pengunjung Unik dijumlah per hari, bukan hitungan unik sepanjang rentang, karena satu pengunjung dihitung satu sesi per hari.",
@@ -921,7 +976,7 @@ function buildCategoryDetail(
         blocks: kelompok
           .map((grup) => ({ kind: "rows" as const, title: grup.judul, rows: kpiRows(kpiMap, grup.kunci) }))
           .filter((block) => block.rows.length > 0),
-        source: "order_return_cases, event_logs, dan orders",
+        source: "Data retur, riwayat pembatalan, dan pesanan",
         notes: [
           "Retur dan pembatalan tidak mengurangi Penjualan Gross pada periode terjadinya, melainkan mengurangi Penjualan Bersih.",
           "Refund mencakup seluruh pengembalian uang ke pembeli, termasuk pengembalian tanpa barang yang dikirim balik.",
@@ -1008,7 +1063,7 @@ function buildCategoryDetail(
         intro:
           "Peringkat produk menurut nilai penjualan, unit terjual, dan minat pengunjung. Daftar dipotong di sini karena daftar penuh sudah ada di modal katalog dan ekspor XLSX.",
         blocks,
-        source: "orders, order_items, performance_metrics, dan product_clicks",
+        source: "Data pesanan, item pesanan, dan catatan interaksi produk",
         notes: [
           "Peringkat menurut nilai dan menurut unit bisa berbeda: produk berharga tinggi dengan unit sedikit bisa memuncaki nilai tetapi tidak unit.",
           "Dilihat dan Klik dihitung per produk, bukan per varian, dan diambil dari catatan interaksi pada periode terpilih.",
@@ -1028,7 +1083,7 @@ function buildCategoryDetail(
             kind: "rows",
             title: "Rentang Laporan",
             rows: [
-              { label: "Periode", value: range.label + " (" + range.period + ")", sign: "·" },
+              { label: "Periode", value: range.label, sign: "·" },
               { label: "Tanggal Mulai", value: range.from_date, sign: "·" },
               { label: "Tanggal Selesai", value: range.to_date, sign: "·" },
               { label: "Rentang Lengkap", value: range.range_detail ?? "-", sign: "·" },
@@ -1049,14 +1104,14 @@ function buildCategoryDetail(
                 sign: "·",
               },
               {
-                label: "Granularitas Grafik",
-                value: range.granularity,
+                label: "Skala Grafik",
+                value: labelGranularitas(range.granularity),
                 sign: "·",
                 note: "Menentukan lebar satu titik pada grafik tren.",
               },
               {
                 label: "Laporan Dibangun",
-                value: report.generated_at,
+                value: formatWaktuWib(report.generated_at),
                 sign: "·",
               },
               {
@@ -1071,7 +1126,7 @@ function buildCategoryDetail(
           },
           {
             kind: "rows",
-            title: "Penanda Kejujuran Grafik",
+            title: "Dasar Angka Total pada Grafik",
             rows: report.charts.map((chart) => ({
               label: chart.title,
               value:
@@ -1086,7 +1141,7 @@ function buildCategoryDetail(
           },
         ],
         formula: fin.definition,
-        source: "props report dari AnalyticsController, dibangun StorePerformanceService",
+        source: "Dihitung dari data pesanan, pembayaran, pengiriman, dan kunjungan",
         notes: [
           "Kunjungan baru dicatat sejak tanggal tertentu; rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi.",
           "Metrik snapshot seperti Retur Aktif dan Pembayaran Transfer Pending dihitung saat laporan dibangun, bukan pada rentang tanggal.",

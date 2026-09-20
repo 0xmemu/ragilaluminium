@@ -313,25 +313,25 @@ class StorePerformanceService
         $opsKpis = [
             // Operasional = FULFILLMENT (bukan retur). Kontrak 2026-09-02: retur dipindah
             // ke section 'Retur & Pembatalan' supaya Operasional bersih dari dominasi retur.
-            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number', 'Pesanan yang masuk fulfillment dan belum selesai pada periode.'),
+            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number', 'Pesanan yang sudah masuk proses dan belum selesai pada periode.'),
             $this->kpi('dispatched_orders', 'Dalam Pengiriman', $current['dispatched_orders'], $previous['dispatched_orders'], 'number', 'Pesanan berstatus dikirim/dalam perjalanan pada periode.'),
-            $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours', 'Waktu dari pesan masuk sampai dikonfirmasi.'),
-            $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days', 'Waktu dari dikonfirmasi sampai disiapkan/siap kirim.'),
+            $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours', 'Waktu dari pesanan masuk sampai dikonfirmasi admin.'),
+            $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days', 'Waktu dari dikonfirmasi sampai pesanan siap diserahkan ke kurir.'),
         ];
 
         $paymentsKpis = [
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
-            $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang tercatat selesai (paid_at) pada periode.'),
+            $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang dana-nya benar-benar lunas pada periode.'),
             $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
-            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending (kondisi saat ini)', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada order aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
+            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending (kondisi saat ini)', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada pesanan aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
 
         $cancellationsKpis = [
-            $this->kpi('cancelled_orders', 'Pesanan Dibatalkan', $current['cancelled_orders'], $previous['cancelled_orders'], 'number', 'Dihitung dari event pembatalan pada periode.'),
-            $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Pembatalan oleh pelanggan (created_by_user_id kosong).'),
-            $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Pembatalan oleh admin/toko (created_by_user_id terisi).'),
+            $this->kpi('cancelled_orders', 'Pesanan Dibatalkan', $current['cancelled_orders'], $previous['cancelled_orders'], 'number', 'Dihitung dari catatan pembatalan pada periode.'),
+            $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Dibatalkan pembeli lewat halaman pesanan.'),
+            $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Dibatalkan oleh admin toko.'),
             $this->kpi('cancelled_value', 'Nilai Pesanan Dibatalkan', $current['cancelled_value'], $previous['cancelled_value'] ?? 0, 'currency', 'Total nilai pesanan yang dibatalkan pada periode. Tidak termasuk dalam Penjualan Gross.'),
-            $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari event pembatalan pada periode dibandingkan pesanan yang masuk fulfillment pada periode.'),
+            $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari catatan pembatalan pada periode dibandingkan pesanan yang masuk proses pada periode.'),
         ];
 
         $returnsKpis = [
@@ -342,7 +342,7 @@ class StorePerformanceService
             $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
             $this->kpi('refused_orders', 'Pesanan Retur Paket', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
-            $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk fulfillment.'),
+            $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk proses.'),
             $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
         ];
 
@@ -408,7 +408,7 @@ class StorePerformanceService
                 'refused_shipping_cost' => $current['refused_shipping_cost'],
                 'refused_cod_fee' => $current['refused_cod_fee'],
                 'refused_borne_cost' => $current['refused_borne_cost'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi ongkir raw J&T, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di ongkir raw J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
             'sections' => [
