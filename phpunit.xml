@@ -45,5 +45,12 @@
              benar-benar memutus sesi live (insiden 2026-09-10 dan
              2026-09-14). Port 1 selalu ditolak koneksi. -->
         <env name="WHATSAPP_BAILEYS_BASE_URL" value="http://127.0.0.1:1"/>
+        <!-- J&T juga WAJIB nonaktif saat test. Bila .env server memuat
+             kredensial (JNT_ENABLED=true), test yang lupa mem-fake
+             JntCargoClient akan menembak API J&T SUNGGUHAN: kena limit akun
+             produksi dan hasilnya tidak deterministik. Test yang memang butuh
+             J&T aktif menyetel config(['jnt.enabled' => true]) sendiri, dan
+             nilai config eksplisit itu menang atas nilai env. -->
+        <env name="JNT_ENABLED" value="false"/>
     </php>
 </phpunit>
