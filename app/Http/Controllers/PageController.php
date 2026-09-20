@@ -174,38 +174,43 @@ class PageController extends Controller
      * Halaman "Apa kata pelanggan kami" (galeri screenshot).
      * /reviews/ss - hanya ulasan yang punya gambar (media).
      */
+    /**
+     * Halaman ini SENGAJA tidak diubah saat tiga pill filter dipasang di
+     * /reviews/web: daftar screenshot tetap dirender apa adanya seperti sebelum
+     * perubahan, jadi parameternya juga tidak dipakai di sini.
+     */
     public function reviewsScreenshots(Request $request): Response
     {
         [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
-        $activeRating = $this->reviewRatingFilter($request);
-        $mediaOnly = $this->reviewMediaOnlyFilter($request);
-        $sort = $this->reviewSortFilter($request);
 
-        // Halaman ini memang hanya memuat ulasan berscreenshot, jadi filter
-        // "Foto/Video" tidak menambah penyaringan di sini.
-        $base = CmsTestimonial::query()->published()->withScreenshot();
-        $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
-        $ratingNav = $this->reviewRatingNav($base, $mediaOnly, $sort);
+        $published = CmsTestimonial::query()->published()->withScreenshot();
+        if ($modelCategory && $modelCode) {
+            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
+                $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
+                    ->where('product_model', $modelCode);
+            });
+        }
 
-        $filtered = $this->applyReviewListingFilters(clone $base, $activeRating, $mediaOnly, $sort);
+        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
 
-        $testimonials = $this->paginateReviews($filtered, includeProduct: true);
-
-        $websiteTotal = $filtered->where('source', 'website')->count();
+        $websiteTotal = (clone $published)->website()->count();
 
         return Inertia::render('Public/Reviews', [
             'type' => 'ss',
             'pageMeta' => TestimonialPageSettings::forStorefront(),
             'testimonials' => $testimonials,
+            'modelNav' => $this->reviewModelNav(),
             'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
-            'ratingNav' => $ratingNav,
-            'activeRating' => $activeRating !== [] ? implode(',', $activeRating) : null,
-            'activeMediaOnly' => $mediaOnly,
-            'activeSort' => $sort,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => null,
             ],
+            'installationsHref' => route('installation.index'),
         ]);
     }
 

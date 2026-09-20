@@ -6,11 +6,14 @@ import {
   type ReviewRatingCount,
   type ReviewSortValue,
 } from "@/components/public/review-filter-pills"
+import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
 import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
+import { Icon } from "@/components/shared/icon"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ReviewListingFrame } from "@/components/public/review-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
+import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { Testimonial } from "@/types"
 
@@ -89,6 +92,20 @@ export default function Reviews({
   )
 
   const total = isSs ? marketplace.length : (stats?.website_total ?? website.length)
+  const averageRating = stats?.average_rating ?? null
+
+  // Halaman /reviews/ss memakai kontrol urutan ASLI (tidak diubah): nilai
+  // urutan hanya dipakai kontrolnya sendiri, daftar screenshot dirender apa
+  // adanya sesuai perilaku sebelum perubahan filter dipasang.
+  const [sortFilter, setSortFilter] = React.useState("")
+  const sortOptions = React.useMemo(
+    () => [
+      { value: "", label: "Ulasan terbaru" },
+      { value: "oldest", label: "Ulasan terlama" },
+      { value: "best", label: "Ulasan terbaik" },
+    ],
+    [],
+  )
 
   const galleryItems = React.useMemo(() => toGalleryItems(testimonialList), [testimonialList])
   const [lightboxIndex, setLightboxIndex] = React.useState(-1)
@@ -106,14 +123,6 @@ export default function Reviews({
 
   const sortValue: ReviewSortValue =
     activeSort === "newest" || activeSort === "oldest" ? activeSort : "all"
-
-  // Daftar ulasan halaman ini sudah disaring dan diurutkan oleh server, jadi
-  // grid hanya merender apa adanya. Grid di halaman /reviews/ss menampilkan
-  // item marketplace, sehingga daftar dari server dipakai apa adanya juga.
-  const visibleItems = React.useMemo(
-    () => (isSs ? testimonialList : website),
-    [isSs, testimonialList, website],
-  )
 
   const ratingCounts: ReviewRatingCount[] = React.useMemo(
     () =>
@@ -203,33 +212,68 @@ export default function Reviews({
           { label: heading, href: null },
         ]}
         summary={
-          <ReviewFilterPills
-            idPrefix={isSs ? "reviews-ss" : "reviews-web"}
-            totalCount={total}
-            sort={sortValue}
-            onSortChange={(value) => applyFilters({ sort: value })}
-            mediaOnly={activeMediaOnly}
-            onMediaOnlyChange={(value) => applyFilters({ mediaOnly: value })}
-            ratings={ratingCounts}
-            selectedRatings={selectedRatings}
-            onRatingsChange={(value) => applyFilters({ ratings: value })}
-          />
+          isSs ? (
+            /* Halaman /reviews/ss TIDAK diubah: tetap memakai ringkasan jumlah
+               ulasan dan kontrol urutan seperti semula. Tiga pill filter hanya
+               berlaku di /reviews/web. */
+            total ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground">
+                  <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
+                  {averageRating ? (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="mx-1.5 text-muted-foreground">·</span>
+                      <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
+                      <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                    </span>
+                  ) : null}
+                </p>
+                <FilterBerdasarkanControl
+                  id="reviews-sort"
+                  variant="plain"
+                  value={sortFilter}
+                  options={sortOptions}
+                  onChange={setSortFilter}
+                  ariaLabel="Urutkan ulasan"
+                  menuLabel="Urutkan"
+                />
+              </div>
+            ) : null
+          ) : (
+            <ReviewFilterPills
+              idPrefix="reviews-web"
+              totalCount={total}
+              sort={sortValue}
+              onSortChange={(value) => applyFilters({ sort: value })}
+              mediaOnly={activeMediaOnly}
+              onMediaOnlyChange={(value) => applyFilters({ mediaOnly: value })}
+              ratings={ratingCounts}
+              selectedRatings={selectedRatings}
+              onRatingsChange={(value) => applyFilters({ ratings: value })}
+            />
+          )
         }
         pagination={pagination}
       >
         {isSs ? (
           <section id="apa-kata-pelanggan" className="scroll-mt-20">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
+              <span className="tabular-nums text-sm text-muted-foreground">
+                {formatNumber(marketplace.length)}
+              </span>
+            </div>
             {renderGrid(
-              visibleItems,
+              marketplace,
               "screenshot",
               "Belum ada screenshot pelanggan",
-              "Coba ubah filter, atau bukti percakapan Shopee/WhatsApp akan tampil di sini.",
+              "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
             )}
           </section>
         ) : (
           <section id="ulasan-website" className="scroll-mt-20">
             {renderGrid(
-              visibleItems,
+              website,
               "review",
               "Belum ada ulasan sesuai filter",
               "Coba ubah atau hapus filter untuk melihat ulasan lainnya.",

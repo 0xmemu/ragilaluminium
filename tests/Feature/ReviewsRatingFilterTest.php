@@ -162,7 +162,12 @@ class ReviewsRatingFilterTest extends TestCase
                 ->where('ratingNav.0.count', 1));
     }
 
-    public function test_filter_rating_juga_berlaku_di_halaman_screenshot(): void
+    /**
+     * Halaman /reviews/ss SENGAJA tidak memakai filter: permintaan owner hanya
+     * menyebut /reviews/web, jadi halaman screenshot dibiarkan seperti semula.
+     * Param rating yang dikirim ke sana harus DIABAIKAN.
+     */
+    public function test_halaman_screenshot_tidak_terpengaruh_filter_rating(): void
     {
         $page = $this->page();
 
@@ -181,14 +186,21 @@ class ReviewsRatingFilterTest extends TestCase
         $mk('Satu', 5);
         $mk('Dua', 3);
 
+        // Tanpa param: dua ulasan tampil.
+        $this->get(route('reviews.screenshots'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $assert) => $assert
+                ->component('Public/Reviews')
+                ->has('testimonials.data', 2)
+                ->missing('ratingNav')
+                ->missing('activeRating'));
+
+        // Dengan param rating: tetap dua ulasan, tidak disaring.
         $this->get(route('reviews.screenshots', ['rating' => 3]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $assert) => $assert
                 ->component('Public/Reviews')
-                ->has('testimonials.data', 1)
-                ->where('testimonials.data.0.customer_name', 'Dua')
-                ->where('activeRating', '3')
-                ->has('ratingNav', 2));
+                ->has('testimonials.data', 2));
     }
 
     public function test_ulasan_belum_disetujui_tidak_ikut_terhitung(): void

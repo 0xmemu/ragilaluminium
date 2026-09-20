@@ -85,8 +85,8 @@ Total: 320 routes (regenerated 2026-08-16).
 - Top-level `GET /windows`, `GET /doors`, `GET /bouven` no longer exist (404) and are not re-added.
 - `GET /promo` -> `CatalogController@promo`  (name: `catalog.promo`)
 - `GET /reviews/web` -> `PageController@reviewsWebsite`  (name: `reviews.website`)
-- `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
-  - Query param filter (semuanya bisa dipakai bersamaan):
+  - Tiga pill filter di halaman ini (berlaku mobile dan desktop): urutan, Foto/Video, dan Bintang.
+  - Query param filter (semuanya bisa dipakai bersamaan, HANYA di route ini):
     - `model` = `KATEGORI|MODEL` (mis. `WINDOW|JUNGKIT`). Format salah diabaikan, tidak memfilter. Tidak ada kontrol UI untuk ini; parameternya tetap dibawa agar URL lama tidak kehilangan filter saat pembeli mengganti filter lain.
     - `rating` = satu nilai (`4`) atau daftar dipisah koma (`4,5`). Hanya `1`..`5` yang diterima; nilai lain, duplikat, dan nilai kosong dibuang. Tanpa nilai sah berarti tanpa filter rating.
     - `media_only` = `1` untuk hanya ulasan yang punya foto atau video.
@@ -94,6 +94,8 @@ Total: 320 routes (regenerated 2026-08-16).
   - Opsi filter rating (`ratingNav`) dihitung dari basis SESUDAH filter model dan filter media, tetapi TANPA filter rating, sehingga jumlah tiap rating tetap terbaca saat salah satu rating dipilih. Hanya rating yang punya ulasan tayang yang ditawarkan, urut menaik dari 1 bintang.
   - Statistik `stats.website_total` dan `stats.average_rating` MENGIKUTI filter yang aktif, supaya angka pada pill filter konsisten dengan daftar yang tampil.
   - Pemakaian `media_only` disaring di PHP, bukan dengan klausa JSON pada SQL: kolom media bertipe json dan perilakunya berbeda antara MySQL (produksi) dan SQLite (test). Karena itu daftar dibentuk sebagai koleksi lalu dipaginasi manual 12 per halaman.
+- `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
+  - Halaman ini SENGAJA tidak memakai filter: daftar screenshot dirender apa adanya. Param `rating`, `media_only`, dan `sort` diabaikan di sini, karena permintaan owner hanya menyebut `/reviews/web`.
 - `GET /reviews` -> `Closure`  (301 redirect ke `/reviews/web`, query diteruskan)
 - `GET /sanctum/csrf-cookie` -> `Laravel\Sanctum\Http\Controllers\CsrfCookieController@show`  (name: `sanctum.csrf-cookie`)
 - `GET /search` -> `Closure`  (name: `search`)
