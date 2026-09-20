@@ -79,6 +79,50 @@ Adopt both repositories as mandatory **agent process helpers**:
 - Plugin behavior may differ across runtimes, so local fallback instructions
   remain necessary.
 
+## Amendment 2026-09-21: Tier work and step budget
+
+### Context
+
+Runtime logs from one full working day (2026-09-20) quantified the cost of the
+loop adopted above:
+
+- 10,114 model requests and 5,289 tool calls in a single day.
+- Median model request latency 11.4 seconds, p90 38 seconds, maximum 11.6 minutes.
+- Median Bash tool call 3.2 seconds, so one tool call costs 13 to 24 seconds
+  end-to-end once the following model round trip is counted.
+- Completed turn duration: median 4.3 minutes, p75 11.2 minutes, p90 26.8 minutes,
+  maximum 78.7 minutes.
+- 145 model request failures on the day (109 of them HTTP 503 provider overload),
+  with 113 scheduled retries and `maxAttempts` set to 11.
+
+A compliant run of the four phases (brainstorm, plan, work, compound) needs an
+estimated 162 to 267 tool calls, which at roughly 20 seconds each is 54 to 89
+minutes for one task. This confirms the trade-off recorded above, that very small
+tasks carry a process overhead, and shows the overhead is not lightweight in
+practice. The compound archive is also still empty (zero learnings recorded), so
+the compound phase has not yet produced durable value to offset its cost.
+
+### Decision
+
+Introduce an explicit tier plus a binding tool-call budget. Trivial and Standard
+work runs plan and work only; brainstorm and compound are skipped, not run in a
+compact form. Deep work keeps the full loop. Budgets are 15 tool calls for
+Trivial, 60 for Standard, and 150 for Deep. Exceeding the budget stops the run and
+reports, rather than continuing silently.
+
+The tier never relaxes the non-negotiables: database safety, the mandatory report
+format, canonical documentation updates when a spec changes, and verification
+evidence all apply at every tier. Tier selection is recorded in the report, and
+Deep work may not be downgraded to save time.
+
+### Consequences
+
+- Small tasks stop paying for two turn-ending confirmation gates and two archival phases.
+- Trade-off: some small tasks lose the brainstorm framing and the compound archive
+  entry. Accepted because the measured overhead was the dominant cost and because
+  the archive is currently empty.
+- Item 2 of the original decision still governs Deep work unchanged.
+
 ## Verification
 
 - `AGENTS.md` makes both techniques mandatory and defines precedence and

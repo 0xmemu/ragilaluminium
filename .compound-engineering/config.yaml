@@ -1,0 +1,16 @@
+# Compound Engineering repo configuration.
+# Read by ce-plan, ce-brainstorm, ce-work, and ce-compound.
+# Rationale and tier rules: docs/ORCHESTRATION.md, section "Tier kerja dan anggaran langkah".
+
+# Artifact root, resolved relative to the repo root. Stated explicitly so the
+# skills do not fall back to an implicit guess on every run.
+docs_root: docs
+
+# Plan output format, markdown or html.
+plan_output: md
+
+# NOTE: plan_skip_scoping_confirm is deliberately NOT set here.
+# Setting it true would remove the scoping confirmation for every plan size,
+# including authentication, payments, and migration work that ce-plan itself
+# classifies as always-Durable. For Trivial and Standard runs, pass the
+# per-run token confirm:auto instead, which skips only that one run.

@@ -47,6 +47,33 @@ agent-process references, not permission to invent routes, fields, statuses,
 providers, or UI behavior. See
 [`ADR-002`](decisions/ADR-002-agent-efficiency-and-compound-workflow.md).
 
+### Tier kerja dan anggaran langkah (2026-09-21)
+
+Biaya satu task sama dengan jumlah perjalanan bolak balik ke model dikali
+latensi tiap perjalanan. Log runtime 2026-09-20 mengukur latensi satu
+permintaan model median 11,4 detik dan satu panggilan tool median 3,2 detik,
+sehingga satu panggilan tool memakan 13 sampai 24 detik ujung ke ujung
+setelah perjalanan model berikutnya ikut dihitung. Jumlah langkah, bukan
+pilihan model, adalah pengungkit utama waktu.
+
+| Tier | Kriteria | Fase wajib | Anggaran panggilan tool |
+|------|----------|------------|-------------------------|
+| Trivial | 1-2 berkas, tanpa perubahan perilaku | plan ringkas di chat, lalu work | 15 |
+| Standard | satu bidang, ada test, tanpa kontrak eksternal | plan, lalu work | 60 |
+| Deep | lintas modul, atau menyentuh auth, pembayaran, migrasi, kontrak eksternal | brainstorm, plan, work, review, compound | 150 |
+
+Aturan tier:
+
+1. Tier ditetapkan di awal dan ditulis di laporan. Bila ragu, ambil tier yang lebih berat.
+2. Pada Trivial dan Standard, fase brainstorm dan compound DILEWATI, bukan dijalankan dalam bentuk ringkas. Fase review cukup berupa diff dan test evidence di laporan.
+3. Track wajib A-E dan daftar baca di §4 tetap berlaku di semua tier. Tier memangkas fase, bukan bukti kontrak.
+4. Lewat anggaran berarti berhenti dan lapor, bukan lanjut diam diam.
+5. Deep tidak boleh diturunkan tiernya dengan alasan waktu.
+
+Tier tidak pernah melonggarkan Non-negotiables: larangan destruktif DB, format
+laporan wajib, pembaruan dokumen kanonik saat spec berubah, dan bukti verifikasi
+tetap berlaku di semua tier.
+
 ---
 
 ## 1. Kontrak (selalu)
@@ -214,7 +241,11 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 
 ## 6. Alur kerja agent (urutan)
 
-1. Jalankan fase **brainstorm** Compound Engineering secara ringkas: pahami tujuan, risiko, dan batasan.
+**Tier dulu, baru urutan.** Tetapkan tier (lihat "Tier kerja dan anggaran langkah")
+sebelum menjalankan urutan di bawah. Pada tier Trivial dan Standard, langkah 1
+(brainstorm) dan langkah 11 (compound) dilewati.
+
+1. Jalankan fase **brainstorm** Compound Engineering secara ringkas: pahami tujuan, risiko, dan batasan. Dilewati pada tier Trivial dan Standard.
 2. Baca `AGENTS.md` (format laporan) dan terapkan kompresi prose Caveman tanpa mengubah bukti teknis.
 3. Bila merencanakan, mengaudit, membuat ADR, atau menilai release: baca `AGENT-ARCHITECT-ORCHESTRATOR.md`.
 4. Jalankan fase **plan**: baca file ini, pilih **track**, skill wajib, SoT, dan strategi test.
@@ -225,7 +256,7 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
    - **UI/fitur:** analisis aksi di layar → sambungkan ke backend yang ada → verifikasi fungsional (lihat `ragil-ui-functional-integration`). Dilarang selesai sebagai mockup.
 9. Jalankan fase **review**: cek diff, kontrak, keamanan, regression, dan test evidence.
 10. Laporkan dengan format kontekstual AGENTS.md (pilih seksi sesuai jenis pekerjaan).
-11. Jalankan fase **compound**: hanya catat keputusan, gotcha, atau milestone reusable di `docs/MEMORY.md`.
+11. Jalankan fase **compound**: hanya catat keputusan, gotcha, atau milestone reusable di `docs/MEMORY.md`. Dilewati pada tier Trivial dan Standard.
 
 ---
 
