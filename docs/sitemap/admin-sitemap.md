@@ -31,6 +31,10 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
     titik kedua seri wajib sama dan tidak boleh ada label yang muncul di kedua seri. Jendela
     pembanding diselaraskan ke batas bucket untuk granularitas minggu, bulan, dan tahun
     (alignPreviousWindowToBuckets). Untuk skala Per Jam, label pembanding memuat tanggal.
+  - Chart pengunjung dan konversi membawa previous_measured. Bila false, jendela pembandingnya
+    berada sebelum tanggal pencatatan pengunjung, sehingga halaman menulis tidak diukur dan bukan
+    angka 0 yang terbaca sebagai hasil pengukuran. Halaman memakai range.from_date_iso untuk
+    perbandingan tanggal; range.from_date hanya untuk tampilan dan tidak boleh dipakai membandingkan.
   - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)

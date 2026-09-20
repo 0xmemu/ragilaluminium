@@ -54,6 +54,8 @@ interface ChartBlock {
   total_format: "currency" | "number" | "percent"
   /** Dasar hitungan angka Total: jumlah titik seri, unik, atau rasio. */
   total_basis?: "sum" | "unique_period" | "unique_daily" | "ratio"
+  /** Salah bila jendela pembanding berada di luar era pencatatan pengunjung. */
+  previous_measured?: boolean
   series: SeriesPoint[]
   previous_series?: SeriesPoint[]
 }
@@ -64,6 +66,9 @@ interface Report {
     label: string
     from_date: string
     to_date: string
+    /** Tanggal ISO, dipakai untuk perbandingan; from_date hanya untuk tampilan. */
+    from_date_iso?: string
+    to_date_iso?: string
     granularity: string
     compare_label: string
     compare_from_date: string
@@ -1030,7 +1035,14 @@ export default function StorePerformance({
   // konversinya tidak ditampilkan: 7 pembeli dibagi 7 pengunjung akan terbaca
   // konversi 100%, padahal artinya bukan begitu.
   const tersediaSejak = report.financial.visitors_available_from ?? null
-  const kunjunganTidakLengkap = Boolean(tersediaSejak) && report.range.from_date < tersediaSejak!
+  // Perbandingan memakai tanggal ISO. Sebelumnya memakai from_date yang
+  // berformat tampilan ("23 Agt 2026") sehingga dibandingkan sebagai teks, dan
+  // hasilnya bergantung pada angka harinya: "15 Sep 2026" kebetulan lebih kecil
+  // dari "2026-09-19" sehingga penjaganya menyala, sedangkan "21 Sep 2026" tidak.
+  const kunjunganTidakLengkap =
+    Boolean(tersediaSejak) &&
+    Boolean(report.range.from_date_iso) &&
+    report.range.from_date_iso! < tersediaSejak!
 
   // Angka drawer dibangun dari props report yang sama dengan kartu di halaman,
   // jadi tidak ada nilai yang ditulis ulang di komponen tampilan.
@@ -1498,9 +1510,15 @@ export default function StorePerformance({
                     </span>
                     <span>
                       Pembanding:{" "}
-                      <span className="font-semibold tabular-nums text-muted-foreground">
-                        {formatChartValue(chart.previous_total, chart.total_format)}
-                      </span>
+                      {chart.previous_measured === false ? (
+                        <span className="font-medium text-muted-foreground">
+                          tidak diukur pada periode itu
+                        </span>
+                      ) : (
+                        <span className="font-semibold tabular-nums text-muted-foreground">
+                          {formatChartValue(chart.previous_total, chart.total_format)}
+                        </span>
+                      )}
                     </span>
                   </div>
 

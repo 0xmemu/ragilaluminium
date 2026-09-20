@@ -271,6 +271,13 @@ class StorePerformanceService
         // jendela yang sama persis.
         $range = $this->alignPreviousWindowToBuckets($range);
 
+        // Pengunjung hanya dicatat sejak tanggal tertentu. Jendela pembanding
+        // yang mulai sebelum tanggal itu tidak pernah diukur, jadi angkanya
+        // bukan nol melainkan tidak ada. Dipakai chart pengunjung dan konversi.
+        $pengunjungSejak = $current['visitors_available_from'] ?? null;
+        $pengunjungPembandingTerukur = $pengunjungSejak !== null
+            && $range['previous_from']->gte(Carbon::parse($pengunjungSejak));
+
         $previous = $this->metricsFor($range['previous_from'], $range['previous_to']);
 
         $salesKpis = [
@@ -460,6 +467,7 @@ class StorePerformanceService
                     'previous_total' => $previous['visitors'] ?? 0.0,
                     'total_format' => 'number',
                     'total_basis' => 'unique_daily',
+                    'previous_measured' => $pengunjungPembandingTerukur,
                     'series' => $this->chartSeries($range, 'visitors', false),
                     'previous_series' => $this->chartSeries($range, 'visitors', true),
                 ],
@@ -470,6 +478,7 @@ class StorePerformanceService
                     'previous_total' => $previous['conversion_rate'] ?? 0.0,
                     'total_format' => 'percent',
                     'total_basis' => 'ratio',
+                    'previous_measured' => $pengunjungPembandingTerukur,
                     'series' => $this->chartSeries($range, 'conversion_rate', false),
                     'previous_series' => $this->chartSeries($range, 'conversion_rate', true),
                 ],
