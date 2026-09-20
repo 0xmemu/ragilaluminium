@@ -465,7 +465,7 @@ class ProductReviewsTest extends TestCase
                 ->has('websiteTestimonials', 10)
             );
     }
-    public function test_kartu_ulasan_membawa_tanggal_nama_produk_dan_varian(): void
+    public function test_kartu_ulasan_membawa_tanggal_label_model_dan_varian(): void
     {
         $page = CmsPage::create([
             'slug' => 'testimoni',
@@ -540,9 +540,12 @@ class ProductReviewsTest extends TestCase
                 ->where('testimonials.data.0.location', 'Semarang')
                 ->where('testimonials.data.0.variant_label', 'Warna: Putih · Kaca: Kaca Es')
                 // `name` tetap nama pendek demi konsumen lama; kartu ulasan
-                // memakai `full_name` karena short_name hanya label dimensi.
+                // memakai `line`, label kategori + model + sub-model. Produk ini
+                // dibuat tanpa override, jadi kategorinya WINDOW, model JUNGKIT,
+                // dan sub-modelnya POLOS.
                 ->where('testimonials.data.0.product.name', '200x180')
-                ->where('testimonials.data.0.product.full_name', 'Jendela Aluminium Jungkit Ornamen')
+                ->where('testimonials.data.0.product.line', 'Jendela Jungkit Polos')
+                ->missing('testimonials.data.0.product.full_name')
                 ->where('testimonials.data.0.created_at', fn ($value) => is_string($value) && str_starts_with($value, '2026-04-18'))
             );
     }
