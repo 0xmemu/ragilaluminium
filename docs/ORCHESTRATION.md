@@ -92,6 +92,13 @@ sementara satu panggilan yang menjalankan semuanya memakan sekitar 3 detik.
 - Cermin hanya untuk MEMBACA. Semua penulisan tetap langsung ke repo VPS
   sesuai kontrak "tanpa kerja lokal" di bawah.
 
+**3. Sekali ditolak, ganti pendekatan.** Bila satu tool call ditolak kebijakan
+(mode plan, guard, atau izin), JANGAN mengulanginya dengan variasi perintah.
+Sesi 2026-09-21 menghabiskan 27 dari 136 percobaan tool (20 persen) pada
+perintah yang ditolak berulang, sekitar 9 menit untuk kerja nol. Ditolak sekali
+berarti ganti cara, bukan ulangi: pakai tool yang diizinkan, gabungkan jadi satu
+panggilan, atau berhenti dan tanya user.
+
 **2. Bukti visual sekali jalan.** Verifikasi visual tetap wajib, tapi jangan
 per halaman. Render dan screenshot per halaman lalu mengirim tiap gambar
 kembali ke konteks membuat gambar terakumulasi: satu sesi pernah menyimpan
