@@ -74,6 +74,52 @@ Tier tidak pernah melonggarkan Non-negotiables: larangan destruktif DB, format
 laporan wajib, pembaruan dokumen kanonik saat spec berubah, dan bukti verifikasi
 tetap berlaku di semua tier.
 
+### Efisiensi akses dan bukti (2026-09-21)
+
+Dua kebiasaan menyumbang waktu terbesar setelah jumlah fase.
+
+**1. Satu panggilan ssh, bukan banyak.** Satu panggilan `ssh` ke 209 berbiaya
+tetap sekitar **3,1 detik**, tidak tergantung besar payload; RTT ping hanya
+260 ms dan multiplexing ControlMaster tidak menolong. Menyambung lima kali
+untuk lima perintah kecil memakan sekitar 15 detik untuk kerja nyaris nol,
+sementara satu panggilan yang menjalankan semuanya memakan sekitar 3 detik.
+
+- Gabungkan inspeksi remote dalam SATU panggilan: banyak `echo` pemisah dan
+  `sed`/`grep` dalam satu perintah, bukan satu tool call per berkas.
+- Untuk inspeksi berulang pada berkas yang sama, pakai cermin lokal
+  (`docs/VPS`, `docs/TEKNIS`) dan `Read`/`Grep`. Read lokal p50 sekitar 25
+  milidetik, jadi sekitar 128 kali lebih cepat daripada Bash.
+- Cermin hanya untuk MEMBACA. Semua penulisan tetap langsung ke repo VPS
+  sesuai kontrak "tanpa kerja lokal" di bawah.
+
+**2. Bukti visual sekali jalan.** Verifikasi visual tetap wajib, tapi jangan
+per halaman. Render dan screenshot per halaman lalu mengirim tiap gambar
+kembali ke konteks membuat gambar terakumulasi: satu sesi pernah menyimpan
+61 pasang screenshot dan direktori artefak menampung 338 PNG (155 MB), dan
+setiap gambar memperbesar setiap perjalanan model berikutnya.
+
+- Kumpulkan screenshot untuk seluruh halaman yang diperiksa dalam SATU batch,
+  simpan ke berkas, lalu nilai bersama.
+- Baca tiap gambar sekali. Jangan kirim ulang gambar yang sudah dinilai.
+- Jangan loop screenshot/vision; lihat kontrak preferensi owner.
+- Verifikasi visual memakai render lokal (`scripts/admin-preview.cjs`), bukan
+  render jarak jauh, sesuai AGENTS.md.
+
+**Catatan provider (terukur 2026-09-20).** Dalam satu hari tercatat 145
+permintaan model gagal, 109 di antaranya HTTP 503 `provider_overloaded`,
+dengan 113 retry terjadwal dan `maxAttempts` bernilai 11. Kegagalan menggerombol
+di jendela sekitar 13 menit (contoh 12:15-12:28), bukan tersebar merata. Akibatnya
+204 permintaan memakan lebih dari 100 detik dan menyumbang sekitar sepertiga
+waktu model hari itu meski hanya 2 persen dari jumlah permintaan.
+
+Saat gagal beruntun seperti itu, hentikan pengiriman permintaan baru dan tunggu
+jendela pulih, jangan mengirim ulang berkali-kali. Nilai `maxAttempts` berasal
+dari runtime CLI dan **tidak ada di file konfigurasi yang bisa diedit user**, jadi
+perbaikan di sisi kami adalah mengurangi jumlah panggilan tool (lihat anggaran
+tier) dan berhenti saat jalur gagal.
+- Verifikasi visual memakai render lokal (`scripts/admin-preview.cjs`), bukan
+  render jarak jauh, sesuai AGENTS.md.
+
 ---
 
 ## 1. Kontrak (selalu)
