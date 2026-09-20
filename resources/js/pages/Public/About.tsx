@@ -8,6 +8,7 @@ import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
 import { resolveCtaActions } from "@/lib/cta-actions"
+import { channelOf, isLiveHref } from "@/lib/platforms"
 import { routeUrl } from "@/lib/routes"
 import { telephoneHref } from "@/lib/format"
 import type { SharedPageProps, SocialLink } from "@/types"
@@ -83,17 +84,6 @@ const TRUST_ROWS = [
   "Ada konfirmasi detail sebelum produksi",
   "Ada kebijakan penggantian jika produk bermasalah",
 ]
-
-function isLiveHref(href?: string | null): boolean {
-  return Boolean(href && href !== "#")
-}
-
-function channelOf(item: SocialLink): "marketplace" | "social" {
-  if (item.channel === "marketplace" || item.channel === "social") {
-    return item.channel
-  }
-  return ["shopee", "tokopedia", "lazada", "tiktok_shop"].includes(item.key) ? "marketplace" : "social"
-}
 
 /** Pecah label statistik brand (mis. "15+ Tahun Pengalaman") jadi angka + keterangan. */
 function parseStatLabel(label: string): { value: string; caption: string } {

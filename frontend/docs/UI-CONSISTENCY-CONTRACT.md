@@ -204,15 +204,37 @@ footer dengan prop `layout` grouped/inline, `variant` light/dark, `align`, `icon
   untuk platform yang belum punya tautan. Dilarang menyalin daftar ikon ke dalam komponen: salinan
   seperti itu tidak ikut berubah saat ikon diganti, sehingga tampilan jadi tidak konsisten.
 
-Utang yang diketahui (belum dikerjakan):
+Status duplikasi logika (selesai 2026-09-20):
 
-- `pages/Public/About.tsx` masih memakai implementasi platform LOKAL (`PlatformGroup`,
-  `PlatformChip`, `channelOf` sendiri) alih-alih `StorefrontPlatforms`, sehingga `channelOf` ada di
-  dua berkas. Penyatuan belum dilakukan karena presentasinya memang berbeda: About memakai dua
-  kartu panel berdampingan ("Ikuti kami", "Belanja di marketplace") dengan chip "Segera hadir" bila
-  grup belum punya tautan aktif, sedangkan komponen bersama merender satu kolom bertingkat
-  ("Marketplace", "Media Sosial"). Menyatukan berarti mengubah tampilan About, jadi butuh keputusan
-  owner. Yang SUDAH diperbaiki: ikon chip placeholder di About diambil dari data, bukan hardcode.
+- `channelOf` dan `isLiveHref` kini HANYA ada di `lib/platforms.ts`, dipakai bersama
+  `storefront-platforms.tsx` (footer) dan `pages/Public/About.tsx`. Sebelumnya keduanya disalin di
+  dua berkas. Dikunci `tests/frontend/platforms.test.ts`.
+
+Utang yang masih terbuka (butuh keputusan owner):
+
+- `pages/Public/About.tsx` masih memakai komponen platform LOKAL (`PlatformGroup`, `PlatformChip`)
+  alih-alih `StorefrontPlatforms`, walau logika klasifikasinya sudah bersama. Penyatuan komponen
+  belum dilakukan karena presentasinya memang berbeda: About memakai dua kartu panel berdampingan
+  ("Ikuti kami", "Belanja di marketplace") dengan chip "Segera hadir" bila grup belum punya tautan
+  aktif, sedangkan komponen bersama merender satu kolom bertingkat ("Marketplace", "Media Sosial").
+  Menyatukan berarti mengubah tampilan About.
+
+## Penutup halaman publik
+
+Halaman publik boleh punya penutup, tidak wajib. Ketentuannya:
+
+- **Halaman informasi** (beranda, tentang kami, FAQ, cara pemesanan, masalah & solusi, detail model)
+  memakai `ClosingCTASection` sebagai penutup.
+- **Halaman transaksi** (keranjang, checkout, konfirmasi pesanan, daftar pesanan, status pesanan,
+  detail produk) TIDAK memakai banner penutup. Alasannya: halaman ini sudah punya aksi utama sendiri
+  (tombol beli, checkout, lacak) dan menambah ajakan di bawahnya bisa mengalihkan perhatian dari
+  langkah yang sedang dikerjakan. Penutup yang dipakai adalah kartu jaminan (`TrustAssuranceCard`).
+- **Halaman legal** (kebijakan privasi, ketentuan layanan) tidak diberi ajakan jualan.
+- **Halaman katalog dan daftar** (katalog, model produk, hasil pemasangan, ulasan) diakhiri daftar
+  itu sendiri (pagination), tanpa banner penutup.
+
+Keputusan ini mencatat keadaan yang berlaku, bukan menambah pekerjaan: 13 halaman yang tidak punya
+banner penutup sudah sesuai ketentuan di atas.
 
 ## CTA storefront (teks, tombol, warna)
 

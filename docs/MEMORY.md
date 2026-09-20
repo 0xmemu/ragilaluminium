@@ -2565,3 +2565,34 @@ CATATAN LAIN dari penyisiran:
 
 Verifikasi: 8 chip platform di /about semuanya bertautan dan 8 gambarnya termuat
 (`semuaTermuat: true`), ikon dilayani 200 OK. tsc bersih untuk berkas yang diubah, build Vite PASS.
+
+### 2026-09-20 - Tindak lanjut tiga temuan penutup storefront
+Owner bertanya "sebaiknya di apakan temuan itu", lalu ketiga temuan dikerjakan sesuai sifatnya:
+dua diperbaiki langsung (tidak mengubah tampilan), satu direkomendasikan.
+
+1. DUPLIKASI LOGIKA PLATFORM -> diperbaiki. `channelOf` dan `isLiveHref` sebelumnya disalin di dua
+   berkas (storefront-platforms.tsx dan pages/Public/About.tsx). Sekarang keduanya HANYA ada di
+   `lib/platforms.ts` dan dipakai bersama, dikunci `tests/frontend/platforms.test.ts` (7 test:
+   channel eksplisit menang, simpulan dari key untuk marketplace dan sosial, channel kosong tidak
+   menimpa, placeholder # ditolak, tautan relatif dihitung hidup).
+
+2. BERKAS MATI -> dihapus. `components/public/value-propositions-card.tsx` (62 baris) nol pemakai,
+   dicek di resources/js, tests, dan docs. Salinan arsipnya sudah ada di
+   `_archive/value-propositions-card/` sejak 2026-08-22 dan isinya LEBIH BARU (teks berbeda:
+   "Konfirmasi via WhatsApp", "Bisa Custom Ukuran", "Gratis packing kayu", "Kirim ke Seluruh
+   Indonesia"), jadi tidak ada yang hilang dan kontrak "arsipkan, jangan hapus" tetap terpenuhi.
+
+3. PENYATUAN KOMPONEN PLATFORM ABOUT -> TIDAK dikerjakan, hanya direkomendasikan. About masih
+   memakai PlatformGroup/PlatformChip lokal. Menyatukan ke StorefrontPlatforms berarti mengubah
+   tampilan (dua kartu panel berdampingan + chip "Segera hadir" menjadi satu kolom bertingkat),
+   dan itu keputusan owner. Logika klasifikasinya sendiri sudah bersama setelah poin 1, jadi
+   risiko perbedaan perilaku sudah hilang.
+
+4. KETENTUAN PENUTUP HALAMAN -> ditulis di UI-CONSISTENCY-CONTRACT, mencatat keadaan yang berlaku:
+   halaman informasi memakai ClosingCTASection; halaman transaksi TIDAK memakai banner penutup
+   karena sudah punya aksi utama sendiri (beli, checkout, lacak) dan penutupnya berupa kartu
+   jaminan; halaman legal tanpa ajakan jualan; halaman katalog diakhiri pagination. Jadi 13 halaman
+   tanpa banner penutup bukan utang, melainkan sesuai ketentuan.
+
+Verifikasi: 7 test platforms lolos, tsc bersih, eslint bersih, build Vite PASS. Di /about, panel
+platform tetap menampilkan 8 chip dengan 8 ikon termuat dan judul grup tidak berubah.

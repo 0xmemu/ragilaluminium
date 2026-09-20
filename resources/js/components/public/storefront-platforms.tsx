@@ -1,18 +1,6 @@
+import { channelOf, isLiveHref } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import type { SocialLink } from "@/types"
-
-function isLiveHref(href?: string | null): boolean {
-  return Boolean(href && href !== "#")
-}
-
-function channelOf(item: SocialLink): "marketplace" | "social" {
-  if (item.channel === "marketplace" || item.channel === "social") {
-    return item.channel
-  }
-  return ["shopee", "tokopedia", "lazada", "tiktok_shop"].includes(item.key)
-    ? "marketplace"
-    : "social"
-}
 
 /** Platform link: icon (+ optional label). Footer uses icons-only. */
 function PlatformChip({
