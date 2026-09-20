@@ -8,6 +8,7 @@ import {
   type ReviewSortValue,
 } from "@/components/public/review-filter-pills"
 import { filterReviews, reviewMediaItems, reviewRatingCounts } from "@/lib/review-filters"
+import { formatDate } from "@/lib/format"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
 import { TestimonialCard } from "@/components/public/testimonial-card"
@@ -282,12 +283,21 @@ export function ProductInfoSections({
                     <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
                       {review.customer_name}
                     </p>
-                    {review.location ? (
-                      <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                        {review.location}
+                    {review.location || review.created_at ? (
+                      <p className="flex items-center gap-1 text-[11px] leading-tight text-muted-foreground">
+                        {review.location ? <span className="truncate">{review.location}</span> : null}
+                        {review.location && review.created_at ? <span aria-hidden="true">·</span> : null}
+                        {review.created_at ? (
+                          <span className="shrink-0 tabular-nums">{formatDate(review.created_at)}</span>
+                        ) : null}
                       </p>
                     ) : null}
                   </div>
+                  {(review.variant_label ?? "").trim() ? (
+                    <p className="mt-1.5 truncate text-[11px] leading-tight text-muted-foreground">
+                      {review.variant_label}
+                    </p>
+                  ) : null}
                   {(review.rating ?? 0) > 0 ? (
                     <div className="mt-2 flex text-warning" aria-label={`${review.rating} dari 5 bintang`}>
                       <StarRow value={review.rating ?? 0} size="size-3" />
