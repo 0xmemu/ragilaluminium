@@ -70,6 +70,7 @@ interface Report {
     to_date_iso?: string
     granularity: string
     compare_label: string
+    range_detail?: string
     compare_from_date: string
     compare_to_date: string
     is_running: boolean
@@ -96,6 +97,9 @@ interface Report {
     cod_paid?: number
     cod_pending_amount?: number
     cod_pending_count?: number
+    /** Dana COD belum cair untuk pesanan yang DIBUAT dalam periode terpilih. */
+    cod_pending_in_period_amount?: number
+    cod_pending_in_period_count?: number
     payment_pending_count?: number
     refused_goods_value?: number
     refused_borne_count?: number
@@ -105,6 +109,20 @@ interface Report {
     definition: string
   }
   sections: Section[]
+  /**
+   * Apakah rentang pembanding punya pesanan sama sekali. Bila false, badge
+   * perubahan pada kartu tidak bermakna.
+   */
+  previous_has_data?: boolean
+  /** Ongkir retur per kasus yang ongkirnya ditanggung toko. */
+  return_shipping_costs?: Array<{
+    order_id: number
+    order_number: string | null
+    completed_at: string | null
+    fault_party: string | null
+    reason: string | null
+    return_shipping_cost: number
+  }>
   charts: ChartBlock[]
   top_products: Array<{
     parent_sku: string
@@ -356,112 +374,228 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
   )
 }
 
-type DrawerSign = "+" | "−" | "=" | "÷" | "·"
+/* ==========================================================================
+   Detail per kategori.
 
-type DrawerRow = {
+   Halaman ini dulu membuka tiga belas drawer berbeda, satu per KPI. Sekarang
+   hanya ada SATU drawer, dan isinya dipilih lewat filter kategori di baris
+   filter.
+
+   Kenapa satu drawer dan bukan permintaan ke server per kategori: membangun
+   laporan butuh 418 ms dengan 177 query (diukur 2026-09-21). Kalau berpindah
+   kategori memicu permintaan, biaya itu dibayar ulang setiap kali. Karena itu
+   pemilihan kategori HANYA mengubah state lokal: tanpa permintaan, tanpa byte
+   jaringan, drawer terbuka seketika.
+
+   Seluruh angka dibaca dari props `report` dan `kpiMap`. Tidak ada nilai yang
+   ditulis di komponen ini.
+   ========================================================================== */
+
+/** Kategori drawer. Urutan di sini menentukan urutan pil di filter dan drawer. */
+type DetailCategory =
+  | "penjualan"
+  | "arus-kas"
+  | "operasional"
+  | "pengunjung"
+  | "retur"
+  | "katalog"
+  | "referensi"
+
+const DETAIL_CATEGORIES: Array<{ key: DetailCategory; label: string }> = [
+  { key: "penjualan", label: "Penjualan" },
+  { key: "arus-kas", label: "Arus Kas" },
+  { key: "operasional", label: "Operasional" },
+  { key: "pengunjung", label: "Pengunjung & Pelanggan" },
+  { key: "retur", label: "Retur & Pembatalan" },
+  { key: "katalog", label: "Katalog" },
+  { key: "referensi", label: "Referensi & Kelengkapan" },
+]
+
+/**
+ * Batas baris daftar di dalam drawer. Daftar penuh ada di modal katalog dan di
+ * ekspor XLSX, jadi drawer tidak perlu menyalin seluruhnya dan jumlah simpul
+ * DOM yang dibuat tetap terbatas.
+ */
+const DETAIL_LIST_LIMIT = 12
+
+type DetailSign = "+" | "−" | "=" | "÷" | "·"
+
+type DetailRow = {
   label: string
   value: string
-  sign: DrawerSign
+  sign: DetailSign
   sub?: string
   note?: string
-  tone?: "default" | "muted" | "primary" | "destructive"
+  tone?: "default" | "primary" | "destructive"
+  /** Persentase perubahan. undefined berarti badge tidak ditampilkan. */
+  delta?: number | null
 }
 
-type DrawerBlock =
-  | { kind: "rows"; title?: string; rows: DrawerRow[] }
+type DetailBlock =
+  | { kind: "rows"; title?: string; rows: DetailRow[] }
   | { kind: "items"; title?: string; items: Array<{ title: string; value: string; desc: string }> }
+  | { kind: "list"; title?: string; head: string[]; rows: string[][]; total: number }
 
-type MetricDetail = {
+type CategoryDetail = {
   title: string
-  /** "Kondisi Saat Ini" khusus metrik snapshot: angkanya tidak terikat rentang tanggal. */
-  badge: "Periode Terpilih" | "Semua Waktu" | "Kondisi Saat Ini"
-  wide?: boolean
-  value?: string
-  kpiKey?: string
+  badge: string
+  intro?: string
   formula?: string
-  blocks: DrawerBlock[]
+  blocks: DetailBlock[]
   source?: string
   notes: string[]
 }
 
+/** Satu tempat untuk mengubah nilai KPI menjadi teks, supaya satuan seragam. */
+function formatKpiValue(kpi: Kpi): string {
+  if (kpi.format === "currency") return formatCurrency(kpi.value)
+  if (kpi.format === "percent") return formatNumber(kpi.value) + "%"
+  if (kpi.format === "hours") return formatDuration(kpi.value)
+  if (kpi.format === "days") return formatDuration(kpi.value, true)
+  return formatNumber(kpi.value)
+}
+
 /**
- * Satu-satunya sumber angka drawer adalah props `report` dari controller.
- * Tidak ada angka contoh yang ditulis di komponen ini: semua nilai dibaca dari
- * report.financial, report.sections[].kpis[], atau report.charts[].series.
- * Bila sebuah bagian tidak punya sumber data, bagian itu tidak dirender.
+ * Baris dari satu kunci KPI. Mengembalikan null bila kuncinya tidak ada, supaya
+ * kategori tidak pernah menampilkan baris kosong atau label kosong.
  */
-function buildMetricDetail(
-  key: string,
+function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·"): DetailRow | null {
+  const kpi = kpiMap[key]
+  if (!kpi) return null
+  return {
+    label: kpi.label,
+    value: formatKpiValue(kpi),
+    sign,
+    note: kpi.detail ?? undefined,
+    delta: kpi.change_percent,
+  }
+}
+
+/** Kumpulkan baris KPI, buang yang tidak ada di payload. */
+function kpiRows(
+  kpiMap: Record<string, Kpi>,
+  keys: string[],
+  sign: DetailSign = "·",
+): DetailRow[] {
+  return keys
+    .map((key) => kpiRow(kpiMap, key, sign))
+    .filter((row): row is DetailRow => row !== null)
+}
+
+/** Potong daftar dan sertakan jumlah totalnya supaya sisanya tidak disembunyikan. */
+function daftarTerbatas<T>(items: T[]): { rows: T[]; total: number } {
+  return { rows: items.slice(0, DETAIL_LIST_LIMIT), total: items.length }
+}
+
+function buildCategoryDetail(
+  category: DetailCategory,
   report: Report,
   kpiMap: Record<string, Kpi>,
   kunjunganTidakLengkap: boolean,
   tersediaSejak: string | null,
-): MetricDetail | null {
+): CategoryDetail {
   const fin = report.financial
-  const kpiValue = (kpiKey: string) => kpiMap[kpiKey]?.value ?? 0
+  const range = report.range
   const rp = formatCurrency
   const ang = formatNumber
-  const badgePeriode = "Periode Terpilih" as const
+  const badgePeriode = "Periode Terpilih"
 
-  // Catatan batas data diturunkan dari fakta payload, bukan daftar statis.
-  const catatanKunjungan: string[] = kunjunganTidakLengkap && tersediaSejak
-    ? ["Data kunjungan baru andal sejak " + tersediaSejak + ". Rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi."]
-    : []
+  const catatanKunjungan: string[] =
+    kunjunganTidakLengkap && tersediaSejak
+      ? [
+          "Data kunjungan baru andal sejak " +
+            tersediaSejak +
+            ". Rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi.",
+        ]
+      : []
 
-  const barisPembentukanGross: DrawerRow[] = [
+  // Dipakai jalur pembentukan Penjualan Gross, yang muncul di kategori
+  // Penjualan maupun Arus Kas.
+  const pembentukanGross: DetailRow[] = [
     { label: "Nilai Produk Terjual", value: rp(fin.items_before_discount ?? 0), sign: "+" },
     { label: "Voucher Toko", value: rp(fin.voucher_discount ?? 0), sign: "−" },
     { label: "Ongkir Dibayar Pembeli", value: rp(fin.shipping_paid_by_customer ?? 0), sign: "+" },
     { label: "Asuransi Pengiriman", value: rp(fin.insurance ?? 0), sign: "+" },
     { label: "Biaya COD Dibayar Pembeli", value: rp(fin.cod_fee ?? 0), sign: "+" },
-    { label: "Total Penjualan Gross", value: rp(fin.gross_revenue), sign: "=", tone: "primary" },
+    {
+      label: "Total Penjualan Gross",
+      value: rp(fin.gross_revenue),
+      sign: "=",
+      tone: "primary",
+      delta: kpiMap["omzet"]?.change_percent,
+    },
   ]
 
-  switch (key) {
-    case "gross-revenue":
+  switch (category) {
+    case "penjualan":
       return {
-        title: "Detail Penjualan Gross",
+        title: "Penjualan",
         badge: badgePeriode,
-        value: rp(fin.gross_revenue),
-        kpiKey: "omzet",
-        formula: "Penjualan Gross = Nilai Produk − Voucher Toko + Ongkir Dibayar Pembeli + Asuransi + Biaya COD Dibayar Pembeli",
-        blocks: [{ kind: "rows", rows: barisPembentukanGross }],
-        source: "orders.total_amount pada pesanan yang sudah masuk alur fulfillment",
-        notes: (fin.product_discount ?? 0) !== 0
-          ? ["Diskon produk / flash sale " + rp(fin.product_discount ?? 0) + " bukan pengurang kas: nilai produk sudah memakai harga jual riil setelah promo, sehingga potongan harga coret tidak mengurangi penjualan."]
-          : [],
-      }
-
-    case "net-revenue":
-      return {
-        title: "Detail Penjualan Bersih",
-        badge: badgePeriode,
-        value: rp(fin.net_revenue),
-        kpiKey: "net_revenue",
-        formula: "Penjualan Bersih = Penjualan Gross − Tagihan J&T − Biaya COD ke J&T − Refund − Ongkir Retur Toko − Nilai Barang Retur Paket",
+        intro: "Angka penjualan pada periode terpilih, termasuk dua rata-rata dan cara keduanya dibentuk.",
         blocks: [
           {
             kind: "rows",
+            title: "Ringkasan Penjualan",
+            rows: kpiRows(kpiMap, [
+              "omzet",
+              "orders",
+              "models",
+              "products",
+              "units",
+              "completed_orders",
+            ]),
+          },
+          {
+            kind: "rows",
+            title: "Rata-rata Nilai Pesanan",
             rows: [
               { label: "Penjualan Gross", value: rp(fin.gross_revenue), sign: "+" },
-              { label: "Tagihan J&T Cargo", value: rp(fin.shipping_raw ?? 0), sign: "−" },
-              { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−" },
-              { label: "Refund Diberikan", value: rp(fin.refund_adjustments ?? 0), sign: "−" },
-              { label: "Ongkir Retur Ditanggung Toko", value: rp(fin.return_shipping_store ?? 0), sign: "−" },
-              { label: "Nilai Barang Retur Paket", value: rp(fin.refused_goods_value ?? 0), sign: "−" },
-              { label: "Penjualan Bersih", value: rp(fin.net_revenue), sign: "=", tone: "primary" },
+              { label: "Jumlah Pesanan", value: ang(kpiMap["orders"]?.value ?? 0) + " pesanan", sign: "÷" },
+              {
+                label: "Rata-rata Nilai Pesanan",
+                value: rp(kpiMap["aov"]?.value ?? 0),
+                sign: "=",
+                tone: "primary",
+              },
+            ],
+          },
+          {
+            kind: "rows",
+            title: "Harga Rata-rata per Unit",
+            rows: [
+              {
+                label: "Nilai Produk",
+                value: rp(fin.items_before_discount ?? 0),
+                sign: "+",
+                sub: "Subtotal produk pada pesanan, sebelum ongkir dan biaya layanan COD.",
+              },
+              { label: "Jumlah Unit Terjual", value: ang(kpiMap["units"]?.value ?? 0) + " unit", sign: "÷" },
+              {
+                label: "Harga Rata-rata per Unit",
+                value: rp(kpiMap["avg_unit_price"]?.value ?? 0),
+                sign: "=",
+                tone: "primary",
+              },
             ],
           },
         ],
-        source: "orders dan order_return_cases",
-        notes: [],
+        formula:
+          "Rata-rata Nilai Pesanan = Penjualan Gross dibagi Jumlah Pesanan. Harga Rata-rata per Unit = Nilai Produk dibagi Jumlah Unit Terjual.",
+        source: "orders dan order_items",
+        notes: [
+          "Pesanan yang belum dikonfirmasi, menunggu pembayaran, atau dibatalkan tidak dihitung.",
+          "Produk Terjual menghitung SKU varian berbeda, jadi satu produk dengan dua ukuran dihitung dua.",
+          "Unit dan nilai produk diambil dari snapshot pesanan saat checkout, bukan dari katalog aktif.",
+          "Harga Rata-rata per Unit memakai Nilai Produk, bukan Penjualan Gross, supaya ongkir dan biaya COD tidak ikut terbagi ke harga satuan.",
+        ],
       }
 
-    case "alur-uang": {
+    case "arus-kas": {
       const potonganRetur =
         (fin.refund_adjustments ?? 0) + (fin.return_shipping_store ?? 0) + (fin.refused_goods_value ?? 0)
-      const blocks: DrawerBlock[] = [
-        { kind: "rows", title: "A. Pembentukan Penjualan Gross", rows: barisPembentukanGross },
+
+      const blocks: DetailBlock[] = [
+        { kind: "rows", title: "A. Pembentukan Penjualan Gross", rows: pembentukanGross },
         {
           kind: "rows",
           title: "B. Pengurang setelah Penjualan Gross",
@@ -470,17 +604,35 @@ function buildMetricDetail(
               label: "Tagihan J&T Cargo",
               value: rp(fin.shipping_raw ?? 0),
               sign: "−",
-              sub: "Ongkir dibayar pembeli " + rp(fin.shipping_paid_by_customer ?? 0) + " · Asuransi dibayar pembeli " + rp(fin.insurance ?? 0) + " · Subsidi ongkir ditanggung toko " + rp(fin.shipping_subsidy ?? 0),
+              sub:
+                "Ongkir dibayar pembeli " +
+                rp(fin.shipping_paid_by_customer ?? 0) +
+                " · Asuransi dibayar pembeli " +
+                rp(fin.insurance ?? 0) +
+                " · Subsidi ongkir ditanggung toko " +
+                rp(fin.shipping_subsidy ?? 0),
               note: "Tagihan J&T adalah satu-satunya pengurang ongkir. Baris rincian di atas menjelaskan komposisinya, bukan pengurang tambahan.",
             },
             { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−" },
             {
-              label: "Retur & Biaya Retur",
+              label: "Retur dan Biaya Retur",
               value: rp(potonganRetur),
               sign: "−",
-              sub: "Refund diberikan " + rp(fin.refund_adjustments ?? 0) + " · Ongkir retur toko " + rp(fin.return_shipping_store ?? 0) + " · Nilai barang retur paket " + rp(fin.refused_goods_value ?? 0),
+              sub:
+                "Refund diberikan " +
+                rp(fin.refund_adjustments ?? 0) +
+                " · Ongkir retur toko " +
+                rp(fin.return_shipping_store ?? 0) +
+                " · Nilai barang retur paket " +
+                rp(fin.refused_goods_value ?? 0),
             },
-            { label: "Penjualan Bersih", value: rp(fin.net_revenue), sign: "=", tone: "primary" },
+            {
+              label: "Penjualan Bersih",
+              value: rp(fin.net_revenue),
+              sign: "=",
+              tone: "primary",
+              delta: kpiMap["net_revenue"]?.change_percent,
+            },
           ],
         },
       ]
@@ -491,7 +643,7 @@ function buildMetricDetail(
           title: "C. Catatan di Luar Kas",
           items: [
             {
-              title: "Diskon Produk / Flash Sale",
+              title: "Diskon Produk atau Flash Sale",
               value: rp(fin.product_discount ?? 0),
               desc: "Selisih harga coret terhadap harga jual. Tidak ada uang yang bergerak, hanya potensi harga yang tidak diambil. Harga jual yang dibayar pembeli sudah tercatat pada Nilai Produk di bagian A.",
             },
@@ -504,323 +656,459 @@ function buildMetricDetail(
         title: "D. Posisi Kas",
         rows: [
           {
-            label: "Kas Diterima",
+            label: "Pembayaran Diterima (periode ini)",
             value: rp(fin.payments_received ?? 0),
             sign: "+",
-            sub: "Transfer bank lunas " + rp(Math.max(0, (fin.payments_received ?? 0) - (fin.cod_paid ?? 0))) + " · COD Selesai " + rp(fin.cod_paid ?? 0),
+            sub:
+              "Transfer bank lunas " +
+              rp(Math.max(0, (fin.payments_received ?? 0) - (fin.cod_paid ?? 0))) +
+              " · COD Selesai " +
+              rp(fin.cod_paid ?? 0),
+            note: "Basis waktunya dana benar-benar lunas, berbeda dari hak penjualan barang.",
+            delta: kpiMap["payments_received"]?.change_percent,
+          },
+          {
+            label: kpiMap["cod_paid"]?.label ?? "COD Selesai",
+            value: rp(kpiMap["cod_paid"]?.value ?? 0),
+            sign: "·",
+            sub: "Pesanan COD yang barangnya sudah sampai ke pembeli pada periode terpilih.",
+            delta: kpiMap["cod_paid"]?.change_percent,
           },
           {
             label: "Belum Masuk (semua waktu)",
             value: rp(fin.cod_pending_amount ?? 0),
             sign: "·",
-            sub: ang(fin.cod_pending_count ?? 0) + " pesanan COD aktif, dihitung dari kondisi saat ini tanpa batas periode.",
+            sub:
+              ang(fin.cod_pending_count ?? 0) +
+              " pesanan COD aktif. Angka ini kondisi saat ini, dihitung tanpa batas periode.",
+          },
+          {
+            label: "Belum Masuk (periode ini)",
+            value: rp(fin.cod_pending_in_period_amount ?? 0),
+            sign: "·",
+            sub:
+              ang(fin.cod_pending_in_period_count ?? 0) +
+              " pesanan COD aktif yang pesanannya dibuat dalam periode terpilih.",
+          },
+          {
+            label: "Pembayaran Transfer Pending",
+            value: ang(kpiMap["payment_pending_count"]?.value ?? 0) + " pembayaran",
+            sign: "·",
+            sub: "Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun.",
           },
           {
             label: "Retur Paket Ditanggung Toko",
             value: rp(fin.refused_borne_cost ?? 0),
             sign: "·",
-            sub: ang(fin.refused_borne_count ?? 0) + " pesanan, ongkir kirim dan biaya layanan COD paket yang kembali sebelum diterima pembeli.",
+            sub:
+              ang(fin.refused_borne_count ?? 0) +
+              " pesanan. Ongkir kirim " +
+              rp(fin.refused_shipping_cost ?? 0) +
+              " ditambah biaya layanan COD " +
+              rp(fin.refused_cod_fee ?? 0) +
+              " untuk paket yang kembali sebelum diterima pembeli.",
+            note: "Pembeli tidak membayar apa pun untuk paket ini, jadi toko yang menanggung tagihannya.",
           },
         ],
       })
 
+      if (report.payment_mix.length > 0) {
+        const bauran = daftarTerbatas(report.payment_mix)
+        blocks.push({
+          kind: "list",
+          title: "E. Bauran Metode Pembayaran",
+          head: ["Metode", "Nilai Pesanan", "Pesanan"],
+          total: bauran.total,
+          rows: bauran.rows.map((row) => [
+            row.method.toLowerCase() === "cod" ? "COD" : "Transfer Bank",
+            rp(row.revenue),
+            ang(row.count),
+          ]),
+        })
+      }
+
+      const ongkirReturSemua = report.return_shipping_costs ?? []
+      if (ongkirReturSemua.length > 0) {
+        const ongkirRetur = daftarTerbatas(ongkirReturSemua)
+        blocks.push({
+          kind: "list",
+          title: "F. Ongkir Retur per Kasus",
+          head: ["Pesanan", "Selesai", "Penanggung", "Ongkir"],
+          total: ongkirRetur.total,
+          rows: ongkirRetur.rows.map((row) => [
+            row.order_number ?? ("#" + row.order_id),
+            row.completed_at ? row.completed_at.slice(0, 10) : "-",
+            row.fault_party ?? "-",
+            rp(row.return_shipping_cost),
+          ]),
+        })
+      }
+
       return {
-        title: "Rincian Rekonsiliasi Penjualan",
+        title: "Arus Kas",
         badge: badgePeriode,
-        wide: true,
-        value: rp(fin.net_revenue),
-        kpiKey: "net_revenue",
-        formula: "Penjualan Bersih = Penjualan Gross − Potongan J&T − Retur & Biaya Retur",
+        intro:
+          "Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas, termasuk posisi kas dan bauran pembayaran.",
+        formula: "Penjualan Bersih = Penjualan Gross dikurangi Potongan J&T dikurangi Retur dan Biaya Retur",
         blocks,
-        source: "orders, order_return_cases, payments, shipping_records",
-        notes: ["Kas Diterima memakai basis waktu dana benar-benar lunas (paid_at), berbeda dari hak penjualan barang. Baris Belum Masuk adalah kondisi saat ini, bukan angka periode."],
+        source: "orders, order_return_cases, payments, shipping_records, dan payment_mix",
+        notes: [
+          fin.definition,
+          "Kas Diterima memakai basis waktu dana benar-benar lunas, berbeda dari hak penjualan barang.",
+          "Baris Belum Masuk dan Pembayaran Transfer Pending adalah kondisi saat ini, bukan angka periode.",
+          "Ongkir dan biaya COD pada paket yang kembali sudah tercakup di Tagihan J&T dan Biaya COD ke J&T, jadi tidak dikurangkan dua kali.",
+        ].filter((note): note is string => Boolean(note)),
       }
     }
 
-    case "orders-count":
+    case "operasional":
       return {
-        title: "Detail Jumlah Pesanan",
+        title: "Operasional",
         badge: badgePeriode,
-        value: ang(kpiValue("orders")) + " pesanan",
-        kpiKey: "orders",
-        formula: "Jumlah Pesanan = COUNT(orders.id) pada status processing, shipped, delivered, completed, return_in_process, return_completed",
-        blocks: [],
-        source: "orders.order_status",
-        notes: ["Pesanan yang belum dikonfirmasi, menunggu pembayaran, atau dibatalkan tidak dihitung."],
-      }
-
-    case "units-sold":
-      return {
-        title: "Detail Jumlah Unit Terjual",
-        badge: badgePeriode,
-        value: ang(kpiValue("units")) + " unit",
-        kpiKey: "units",
-        formula: "Jumlah Unit Terjual = SUM(order_items.quantity)",
-        blocks: [],
-        source: "order_items.quantity",
-        notes: ["Diambil dari snapshot pesanan saat checkout, bukan dari stok katalog aktif."],
-      }
-
-    case "products-sold":
-      return {
-        title: "Detail Produk Terjual",
-        badge: badgePeriode,
-        value: ang(kpiValue("products")) + " produk",
-        kpiKey: "products",
-        formula: "Produk Terjual = COUNT(DISTINCT order_items.variant_sku)",
+        intro:
+          "Antrean fulfillment dan kecepatan layanan. Enam baris pertama terikat periode, dua terakhir kondisi saat ini.",
         blocks: [
           {
             kind: "rows",
-            rows: [
-              {
-                label: "Produk Terjual",
-                value: ang(kpiValue("products")) + " produk",
-                sign: "=",
-                tone: "primary",
-                sub: "Terdiri dari " + ang(kpiValue("models")) + " model produk dan " + ang(kpiValue("products")) + " SKU varian berbeda.",
-              },
-            ],
+            title: "Metrik Periode Terpilih",
+            rows: kpiRows(
+              kpiMap,
+              [
+                "open_orders",
+                "dispatched_orders",
+                "completed_orders",
+                "avg_confirm_hours",
+                "avg_process_days",
+              ],
+            ),
+          },
+          {
+            kind: "rows",
+            title: "Kondisi Saat Ini, tidak dibandingkan periode",
+            rows: kpiRows(kpiMap, ["returns_open", "payment_pending_count"]),
           },
         ],
-        source: "order_items.variant_sku (snapshot saat checkout)",
-        notes: ["Satu produk dengan dua ukuran dihitung dua produk karena identitasnya adalah SKU varian."],
+        source: "orders, shipping_records, dan event_logs",
+        notes: [
+          "Pesanan Belum Selesai dan Dalam Pengiriman menghitung pesanan yang DIBUAT dalam rentang dan masih berstatus itu, bukan ukuran antrean saat ini.",
+          "Dua baris terakhir adalah snapshot: angkanya dihitung saat laporan dibangun dan sengaja tidak dibandingkan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan.",
+          "Rata-rata Waktu Konfirmasi dihitung dari pesanan masuk sampai dikonfirmasi admin. Rata-rata Waktu Proses dari dikonfirmasi sampai siap diserahkan ke kurir.",
+        ],
       }
 
-    case "visitors": {
-      const visitorChart = report.charts.find((chart) => chart.key === "visitors")
-      const rows: DrawerRow[] = (visitorChart?.series ?? [])
-        .filter((point) => point.value > 0)
-        .map((point) => ({ label: "Kunjungan " + point.label, value: ang(point.value) + " sesi", sign: "+" as const }))
-      if (rows.length > 0) {
-        rows.push({ label: "Total Periode", value: ang(fin.visitors ?? 0) + " sesi", sign: "=", tone: "primary" })
-      }
-
-      return {
-        title: "Detail Pengunjung Unik",
-        badge: badgePeriode,
-        value: kunjunganTidakLengkap ? "Belum tersedia" : ang(fin.visitors ?? 0) + " sesi",
-        kpiKey: "visitors",
-        formula: "Pengunjung Unik = SUM per hari COUNT(DISTINCT visitor_hash), hanya kunjungan yang lolos penyaring bot",
-        blocks: rows.length > 0 && !kunjunganTidakLengkap
-          ? [{ kind: "rows", title: "Rincian Kunjungan per Bucket Grafik", rows }]
-          : [],
-        source: "performance_visitor_events dan performance_metrics",
-        notes: catatanKunjungan,
-      }
-    }
-
-    case "conversion": {
+    case "pengunjung": {
       const visitors = fin.visitors ?? 0
-      const rate = kpiValue("conversion")
+      const rate = kpiMap["conversion"]?.value ?? 0
       const pembeli = visitors > 0 ? Math.round((rate / 100) * visitors) : 0
 
+      const blocks: DetailBlock[] = [
+        {
+          kind: "rows",
+          title: "Kunjungan dan Konversi",
+          rows: [
+            {
+              label: kpiMap["visitors"]?.label ?? "Pengunjung Unik",
+              value: kunjunganTidakLengkap ? "Belum tersedia" : ang(visitors) + " sesi",
+              sign: "+",
+              sub: "Dijumlah per hari, bukan hitungan unik sepanjang rentang: satu pengunjung dihitung satu sesi per hari.",
+              delta: kunjunganTidakLengkap ? undefined : kpiMap["visitors"]?.change_percent,
+            },
+            {
+              label: "Pembeli Unik",
+              value: kunjunganTidakLengkap ? "Belum tersedia" : ang(pembeli) + " pembeli",
+              sign: "÷",
+              sub: "Dihitung dari nomor telepon berbeda pada pesanan yang masuk alur fulfillment.",
+            },
+            {
+              label: "Pengunjung yang Membeli",
+              value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
+              sign: "=",
+              tone: "primary",
+            },
+          ],
+        },
+        {
+          kind: "rows",
+          title: "Pelanggan",
+          rows: kpiRows(kpiMap, ["new_customers", "repeat_customers", "repeat_order_rate"]),
+        },
+      ]
+
+      if (report.customers.length > 0) {
+        const pelanggan = daftarTerbatas(report.customers)
+        blocks.push({
+          kind: "list",
+          title: "Pelanggan dengan Pembelian Terbesar",
+          head: ["Nama", "Telepon", "Pesanan", "Total Belanja"],
+          total: pelanggan.total,
+          rows: pelanggan.rows.map((row) => [
+            row.customer_name ?? "-",
+            row.customer_phone ?? "-",
+            ang(row.order_count),
+            rp(row.total_spent),
+          ]),
+        })
+      }
+
       return {
-        title: "Detail Pengunjung yang Membeli",
+        title: "Pengunjung dan Pelanggan",
         badge: badgePeriode,
-        value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
-        kpiKey: "conversion",
-        formula: "Pengunjung yang Membeli = (Pembeli Unik ÷ Pengunjung Unik) × 100%",
-        blocks: [
-          {
-            kind: "rows",
-            rows: [
-              { label: "Pembeli Unik (nomor telepon)", value: ang(pembeli) + " pembeli", sign: "+" },
-              {
-                label: "Pengunjung Unik",
-                value: kunjunganTidakLengkap ? "Belum tersedia" : ang(visitors) + " sesi",
-                sign: "÷",
-              },
-              {
-                label: "Pengunjung yang Membeli",
-                value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
-                sign: "=",
-                tone: "primary",
-              },
-            ],
-          },
-        ],
-        source: "orders (distinct customer_phone) dan performance_visitor_events",
+        intro: "Berapa yang datang, berapa yang membeli, dan siapa yang paling banyak berbelanja.",
+        formula: "Pengunjung yang Membeli = Pembeli Unik dibagi Pengunjung Unik, dikali 100 persen",
+        blocks,
+        source: "performance_visitor_events, performance_metrics, dan orders",
         notes: [
-          "Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak menyimpan relasi antara sesi kunjungan dan pesanan, sehingga tidak berarti orang yang mengunjungi lalu membeli.",
+          "Angka konversi adalah rasio dua populasi, bukan penautan sesi ke pesanan: sistem tidak menyimpan relasi antara sesi kunjungan dan pesanan, sehingga tidak berarti orang yang mengunjungi lalu membeli.",
+          "Pengunjung Unik dijumlah per hari, bukan hitungan unik sepanjang rentang, karena satu pengunjung dihitung satu sesi per hari.",
+          "Nomor telepon yang hanya muncul di pesanan batal tidak dihitung, baik sebagai pelanggan baru maupun pelanggan ulang.",
           ...catatanKunjungan,
         ],
       }
     }
 
-    case "aov":
-      return {
-        title: "Detail Rata-rata Nilai Pesanan",
-        badge: badgePeriode,
-        value: rp(kpiValue("aov")),
-        kpiKey: "aov",
-        formula: "Rata-rata Nilai Pesanan = Penjualan Gross ÷ Jumlah Pesanan",
-        blocks: [
-          {
-            kind: "rows",
-            rows: [
-              { label: "Penjualan Gross", value: rp(fin.gross_revenue), sign: "+" },
-              { label: "Jumlah Pesanan", value: ang(kpiValue("orders")) + " pesanan", sign: "÷" },
-              { label: "Rata-rata Nilai Pesanan", value: rp(kpiValue("aov")), sign: "=", tone: "primary" },
-            ],
-          },
-        ],
-        source: "orders",
-        notes: ["Pembagi memakai pesanan yang masuk alur fulfillment, bukan seluruh pesanan termasuk yang dibatalkan."],
+    case "retur": {
+      const bagianRetur = report.sections.find((section) => section.key === "returns_cancellations")
+      if (!bagianRetur) {
+        return {
+          title: "Retur dan Pembatalan",
+          badge: badgePeriode,
+          blocks: [],
+          notes: ["Bagian retur dan pembatalan belum tersedia pada laporan ini."],
+        }
       }
-
-    case "avg-unit-price":
-      return {
-        title: "Detail Harga Rata-rata per Unit",
-        badge: badgePeriode,
-        value: rp(kpiValue("avg_unit_price")),
-        kpiKey: "avg_unit_price",
-        formula: "Harga Rata-rata per Unit = Nilai Produk ÷ Jumlah Unit Terjual",
-        blocks: [
-          {
-            kind: "rows",
-            rows: [
-              {
-                label: "Nilai Produk",
-                value: rp(fin.items_before_discount ?? 0),
-                sign: "+",
-                sub: "Subtotal produk pada pesanan, dihitung sebelum ongkir dan biaya layanan COD.",
-              },
-              { label: "Jumlah Unit Terjual", value: ang(kpiValue("units")) + " unit", sign: "÷" },
-              { label: "Harga Rata-rata per Unit", value: rp(kpiValue("avg_unit_price")), sign: "=", tone: "primary" },
-            ],
-          },
-        ],
-        source: "order_items",
-        notes: ["Memakai nilai produk, bukan Penjualan Gross, supaya ongkir dan biaya COD tidak ikut terbagi ke harga satuan produk."],
-      }
-
-    case "new-customers":
-      return {
-        title: "Detail Pelanggan Baru",
-        badge: badgePeriode,
-        value: ang(kpiValue("new_customers")) + " pelanggan",
-        kpiKey: "new_customers",
-        formula: "Pelanggan Baru = Nomor HP unik yang bertransaksi pada periode ini, dikurangi nomor HP yang sudah pernah bertransaksi sebelum periode ini",
-        blocks: [
-          {
-            kind: "rows",
-            rows: [
-              { label: "Pelanggan Unik Periode Ini", value: ang(kpiValue("new_customers") + kpiValue("repeat_customers")) + " pelanggan", sign: "+" },
-              { label: "Sudah Pernah Memesan", value: ang(kpiValue("repeat_customers")) + " pelanggan", sign: "−" },
-              { label: "Pelanggan Baru", value: ang(kpiValue("new_customers")) + " pelanggan", sign: "=", tone: "primary" },
-            ],
-          },
-        ],
-        source: "orders.customer_phone pada pesanan yang masuk alur fulfillment, dipisahkan riwayat pesanan sebelum periode",
-        notes: ["Nomor HP yang hanya muncul di pesanan batal tidak dihitung, baik sebagai pelanggan baru maupun pelanggan ulang."],
-      }
-
-    case "returns-open":
-      return {
-        title: "Detail Retur Aktif",
-        badge: "Kondisi Saat Ini",
-        value: ang(kpiValue("returns_open")) + " kasus",
-        kpiKey: "returns_open",
-        formula: "Retur Aktif = jumlah kasus retur berstatus terbuka pada saat laporan dibangun",
-        blocks: [
-          {
-            kind: "rows",
-            rows: [
-              { label: "Retur Diajukan (periode ini)", value: ang(kpiValue("returns_created")) + " kasus", sign: "+" },
-              { label: "Retur Selesai (periode ini)", value: ang(kpiValue("returns_completed")) + " kasus", sign: "−" },
-              { label: "Retur Aktif Saat Ini", value: ang(kpiValue("returns_open")) + " kasus", sign: "=", tone: "primary" },
-            ],
-          },
-        ],
-        source: "order_return_cases WHERE status = 'open', tanpa filter tanggal",
-        notes: ["Metrik ini snapshot: angkanya dihitung saat laporan dibangun dan tidak dibandingkan dengan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan."],
-      }
-
-    case "retur-cancellations": {
-      // Semua angka diambil dari section returns_cancellations, jadi tidak ada
-      // nilai yang ditulis di komponen ini. Bagian yang tidak punya data tidak
-      // dirender.
-      const bagianRetur = report.sections.find((s) => s.key === "returns_cancellations")
-      if (!bagianRetur) return null
 
       const kelompok: Array<{ judul: string; kunci: string[] }> = [
-        { judul: "Retur Barang", kunci: ["returns", "return_value", "returns_created", "returns_open", "returns_completed", "return_rate_created", "return_rate_completed", "refused_orders"] },
-        { judul: "Pembatalan Pesanan", kunci: ["cancelled_orders", "cancelled_by_customer", "cancelled_by_store", "cancelled_value", "cancellation_rate"] },
-        { judul: "Dampak Beban Biaya", kunci: ["refund_given", "return_shipping_cost_total", "return_shipping_cost_cases", "refused_borne_cost"] },
+        {
+          judul: "Retur Barang",
+          kunci: [
+            "returns",
+            "return_value",
+            "returns_created",
+            "returns_open",
+            "returns_completed",
+            "return_rate_created",
+            "return_rate_completed",
+            "refused_orders",
+          ],
+        },
+        {
+          judul: "Pembatalan Pesanan",
+          kunci: [
+            "cancelled_orders",
+            "cancelled_by_customer",
+            "cancelled_by_store",
+            "cancelled_value",
+            "cancellation_rate",
+          ],
+        },
+        {
+          judul: "Dampak Beban Biaya",
+          kunci: [
+            "refund_given",
+            "return_shipping_cost_total",
+            "return_shipping_cost_cases",
+            "refused_borne_cost",
+          ],
+        },
       ]
 
-      const blocks: DrawerBlock[] = []
-
-      kelompok.forEach((grup) => {
-        const rows: DrawerRow[] = []
-        grup.kunci.forEach((kunci) => {
-          const kpi = kpiMap[kunci]
-          if (!kpi) return
-          const angka = kpi.format === "currency"
-            ? rp(kpi.value)
-            : kpi.format === "percent"
-              ? ang(kpi.value) + "%"
-              : ang(kpi.value)
-          rows.push({ label: kpi.label, value: angka, sign: "·", note: kpi.detail ?? undefined })
-        })
-        if (rows.length) {
-          blocks.push({ kind: "rows", title: grup.judul, rows })
-        }
-      })
-
-      if (!blocks.length) return null
-
       return {
-        title: "Rincian Kasus Retur dan Pembatalan",
+        title: "Retur dan Pembatalan",
         badge: badgePeriode,
-        formula: "Retur dan Biaya Retur = Refund Pembeli + Ongkir Retur Ditanggung Toko + Nilai Barang Retur Paket",
-        blocks,
-        source: "Tabel order_return_cases, event_logs, dan orders",
+        intro: "Seluruh indikator retur, pembatalan, dan beban biaya yang ditanggung toko.",
+        formula:
+          "Retur dan Biaya Retur = Refund Pembeli + Ongkir Retur Ditanggung Toko + Nilai Barang Retur Paket",
+        blocks: kelompok
+          .map((grup) => ({ kind: "rows" as const, title: grup.judul, rows: kpiRows(kpiMap, grup.kunci) }))
+          .filter((block) => block.rows.length > 0),
+        source: "order_return_cases, event_logs, dan orders",
         notes: [
           "Retur dan pembatalan tidak mengurangi Penjualan Gross pada periode terjadinya, melainkan mengurangi Penjualan Bersih.",
           "Refund mencakup seluruh pengembalian uang ke pembeli, termasuk pengembalian tanpa barang yang dikirim balik.",
           "Ongkir dan biaya COD pada pesanan yang paketnya kembali ditanggung toko karena pembeli tidak membayar apa pun.",
+          "Retur Aktif adalah snapshot kondisi saat ini, sedangkan indikator lain pada kategori ini terikat periode terpilih.",
         ],
       }
     }
 
-    case "payment-pending":
+    case "katalog": {
+      const blocks: DetailBlock[] = []
+
+      if (report.top_products.length > 0) {
+        const terlaris = daftarTerbatas(report.top_products)
+        blocks.push({
+          kind: "list",
+          title: "Produk Terlaris menurut Nilai",
+          head: ["Produk", "SKU", "Unit", "Pesanan", "Nilai"],
+          total: terlaris.total,
+          rows: terlaris.rows.map((row) => [
+            row.name,
+            row.parent_sku,
+            ang(row.units),
+            ang(row.order_count),
+            rp(row.revenue),
+          ]),
+        })
+      }
+
+      if (report.product_breakdowns.best_sellers.length > 0) {
+        const terlarisUnit = daftarTerbatas(report.product_breakdowns.best_sellers)
+        blocks.push({
+          kind: "list",
+          title: "Produk Terlaris menurut Unit",
+          head: ["Produk", "SKU", "Unit", "Pesanan", "Nilai"],
+          total: terlarisUnit.total,
+          rows: terlarisUnit.rows.map((row) => [
+            row.name,
+            row.parent_sku,
+            ang(row.units),
+            ang(row.order_count),
+            rp(row.revenue),
+          ]),
+        })
+      }
+
+      if (report.product_breakdowns.most_viewed.length > 0) {
+        const dilihat = daftarTerbatas(report.product_breakdowns.most_viewed)
+        blocks.push({
+          kind: "list",
+          title: "Paling Dilihat",
+          head: ["Produk", "SKU", "Dilihat", "Klik", "Total Interaksi"],
+          total: dilihat.total,
+          rows: dilihat.rows.map((row) => [
+            row.name,
+            row.parent_sku,
+            ang(row.views),
+            ang(row.clicks),
+            ang(row.total),
+          ]),
+        })
+      }
+
+      if (report.product_breakdowns.most_clicked.length > 0) {
+        const diklik = daftarTerbatas(report.product_breakdowns.most_clicked)
+        blocks.push({
+          kind: "list",
+          title: "Paling Diklik",
+          head: ["Produk", "SKU", "Dilihat", "Klik", "Total Interaksi"],
+          total: diklik.total,
+          rows: diklik.rows.map((row) => [
+            row.name,
+            row.parent_sku,
+            ang(row.views),
+            ang(row.clicks),
+            ang(row.total),
+          ]),
+        })
+      }
+
       return {
-        title: "Detail Pembayaran Transfer Pending",
-        badge: "Kondisi Saat Ini",
-        value: ang(kpiValue("payment_pending_count")) + " pembayaran",
-        kpiKey: "payment_pending_count",
-        formula: "Pembayaran Transfer Pending = jumlah pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun",
+        title: "Katalog",
+        badge: badgePeriode,
+        intro:
+          "Peringkat produk menurut nilai penjualan, unit terjual, dan minat pengunjung. Daftar dipotong di sini karena daftar penuh sudah ada di modal katalog dan ekspor XLSX.",
+        blocks,
+        source: "orders, order_items, performance_metrics, dan product_clicks",
+        notes: [
+          "Peringkat menurut nilai dan menurut unit bisa berbeda: produk berharga tinggi dengan unit sedikit bisa memuncaki nilai tetapi tidak unit.",
+          "Dilihat dan Klik dihitung per produk, bukan per varian, dan diambil dari catatan interaksi pada periode terpilih.",
+          "Produk yang sudah tidak ada di katalog tetap dihitung pada penjualan, tetapi tidak muncul di peringkat interaksi karena namanya tidak bisa ditampilkan.",
+        ],
+      }
+    }
+
+    case "referensi":
+      return {
+        title: "Referensi dan Kelengkapan Data",
+        badge: "Referensi",
+        intro:
+          "Rentang yang dipakai laporan, penanda kejujuran tiap grafik, dan batas data yang perlu diketahui sebelum membaca angka lain.",
         blocks: [
           {
             kind: "rows",
+            title: "Rentang Laporan",
             rows: [
-              { label: "Pembayaran Diterima (periode ini)", value: rp(fin.payments_received ?? 0), sign: "+" },
-              { label: "Pesanan COD (mengikuti barang sampai)", value: rp(fin.cod_paid ?? 0), sign: "·" },
-              { label: "Pembayaran Transfer Pending Saat Ini", value: ang(kpiValue("payment_pending_count")) + " pembayaran", sign: "=", tone: "primary" },
+              { label: "Periode", value: range.label + " (" + range.period + ")", sign: "·" },
+              { label: "Tanggal Mulai", value: range.from_date, sign: "·" },
+              { label: "Tanggal Selesai", value: range.to_date, sign: "·" },
+              { label: "Rentang Lengkap", value: range.range_detail ?? "-", sign: "·" },
+              { label: "Rentang Pembanding", value: range.compare_label ?? "-", sign: "·" },
+              {
+                label: "Pembanding Mulai",
+                value: range.compare_from_date ?? "-",
+                sign: "·",
+              },
+              {
+                label: "Pembanding Selesai",
+                value: range.compare_to_date ?? "-",
+                sign: "·",
+              },
+              {
+                label: "Periode Masih Berjalan",
+                value: range.is_running ? "Ya, dibandingkan sampai jam yang sama" : "Tidak, dibandingkan penuh",
+                sign: "·",
+              },
+              {
+                label: "Granularitas Grafik",
+                value: range.granularity,
+                sign: "·",
+                note: "Menentukan lebar satu titik pada grafik tren.",
+              },
+              {
+                label: "Laporan Dibangun",
+                value: report.generated_at,
+                sign: "·",
+              },
+              {
+                label: "Periode Pembanding Punya Data",
+                value: report.previous_has_data
+                  ? "Ya, ada pesanan pada rentang pembanding"
+                  : "Tidak, rentang pembanding tidak punya pesanan",
+                sign: "·",
+                note: "Bila tidak ada data pembanding, badge perubahan pada kartu tidak bermakna.",
+              },
             ],
           },
+          {
+            kind: "rows",
+            title: "Penanda Kejujuran Grafik",
+            rows: report.charts.map((chart) => ({
+              label: chart.title,
+              value:
+                (chart.total_basis === "sum"
+                  ? "total sama dengan jumlah titik grafik"
+                  : chart.total_basis === "ratio"
+                    ? "rasio, bukan jumlah titik grafik"
+                    : "dihitung unik, bukan jumlah titik grafik") +
+                (chart.previous_measured === false ? " · pembanding tidak diukur" : ""),
+              sign: "·" as const,
+            })),
+          },
         ],
-        source: "payments WHERE method != cod AND paid_at IS NULL pada pesanan aktif, tanpa filter tanggal",
+        formula: fin.definition,
+        source: "props report dari AnalyticsController, dibangun StorePerformanceService",
         notes: [
-          "Metrik ini snapshot: angkanya dihitung saat laporan dibangun dan tidak dibandingkan dengan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan.",
-          "COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.",
+          "Kunjungan baru dicatat sejak tanggal tertentu; rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi.",
+          "Metrik snapshot seperti Retur Aktif dan Pembayaran Transfer Pending dihitung saat laporan dibangun, bukan pada rentang tanggal.",
+          "Periode yang masih berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, bukan dibandingkan penuh.",
+          "Untuk angka yang tidak bisa dijumlahkan dari grafik, sisi angka Total pada tiap kartu menyebutkan dasar hitungannya.",
         ],
       }
-
-    default:
-      return null
   }
 }
 
-function MetricDetailPanel({
+/**
+ * Isi drawer: satu kategori pada satu waktu. Pemilih kategori ada di dalam
+ * drawer supaya berpindah kategori tidak perlu menutup dan membuka ulang.
+ */
+function CategoryDetailPanel({
+  category,
   detail,
-  kpiMap,
-  range,
+  onSelectCategory,
 }: {
-  detail: MetricDetail
-  kpiMap: Record<string, Kpi>
-  range: Report["range"]
+  category: DetailCategory
+  detail: CategoryDetail
+  onSelectCategory: (next: DetailCategory) => void
 }) {
   return (
     <div className="pb-6">
@@ -831,24 +1119,37 @@ function MetricDetailPanel({
             {detail.badge}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Konteks laporan: {range.from_date} - {range.to_date} (WIB)
-        </p>
+        {detail.intro ? (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail.intro}</p>
+        ) : null}
       </header>
 
-      <div className="space-y-4 p-5">
-        {detail.value ? (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Nilai</p>
-            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
-                {detail.value}
-              </span>
-              {detail.kpiKey ? <DeltaBadge percent={kpiMap[detail.kpiKey]?.change_percent} /> : null}
-            </div>
-          </div>
-        ) : null}
+      <div className="border-b border-border px-5 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kategori</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {DETAIL_CATEGORIES.map((item) => {
+            const aktif = item.key === category
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onSelectCategory(item.key)}
+                aria-pressed={aktif}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+                  aktif
+                    ? "border-foreground/30 bg-secondary font-semibold text-foreground"
+                    : "border-border bg-surface text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
+      <div className="space-y-4 p-5">
         {detail.formula ? (
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rumus</p>
@@ -893,17 +1194,20 @@ function MetricDetailPanel({
                         >
                           {row.value}
                         </td>
+                        <td className="w-8 px-2 py-2 text-right">
+                          {row.delta === undefined ? null : <DeltaBadge percent={row.delta} />}
+                        </td>
                       </tr>
                       {row.sub ? (
                         <tr>
-                          <td colSpan={3} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
+                          <td colSpan={4} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
                             {row.sub}
                           </td>
                         </tr>
                       ) : null}
                       {row.note ? (
                         <tr>
-                          <td colSpan={3} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
+                          <td colSpan={4} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
                             {row.note}
                           </td>
                         </tr>
@@ -912,7 +1216,9 @@ function MetricDetailPanel({
                   ))}
                 </tbody>
               </table>
-            ) : (
+            ) : null}
+
+            {block.kind === "items" ? (
               <div className="space-y-2 p-4">
                 {block.items.map((item, itemIndex) => (
                   <div
@@ -927,7 +1233,57 @@ function MetricDetailPanel({
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
+
+            {block.kind === "list" ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      {block.head.map((judul, headIndex) => (
+                        <th
+                          key={"kepala-" + blockIndex + "-" + headIndex}
+                          className={cn("px-4 py-2 font-medium", headIndex > 0 ? "text-right" : "")}
+                        >
+                          {judul}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {block.rows.map((row, rowIndex) => (
+                      <tr key={"daftar-" + blockIndex + "-" + rowIndex}>
+                        {row.map((sel, cellIndex) => {
+                          const isKolomTeks =
+                            cellIndex > 0 &&
+                            /nama|sku|metode|penanggung|selesai/i.test(block.head[cellIndex] ?? "")
+                          return (
+                          <td
+                            key={"sel-" + blockIndex + "-" + rowIndex + "-" + cellIndex}
+                            className={cn(
+                              "px-4 py-2",
+                              cellIndex === 0
+                                ? "text-foreground"
+                                : isKolomTeks
+                                  ? "font-mono text-muted-foreground"
+                                  : "text-right font-mono tabular-nums text-muted-foreground",
+                            )}
+                          >
+                            {sel}
+                          </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {block.total > block.rows.length ? (
+                  <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
+                    Menampilkan {block.rows.length} dari {block.total} baris. Daftar penuh ada di ekspor XLSX.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ))}
 
@@ -942,49 +1298,14 @@ function MetricDetailPanel({
           <div className="rounded-lg border border-info/30 bg-info/10 p-3 text-xs leading-relaxed text-muted-foreground">
             <p className="font-semibold text-foreground">Catatan Batas Data</p>
             <ul className="mt-1.5 space-y-1">
-              {detail.notes.map((note) => (
-                <li key={note}>· {note}</li>
+              {detail.notes.map((note, noteIndex) => (
+                <li key={"catatan-" + noteIndex}>· {note}</li>
               ))}
             </ul>
           </div>
         ) : null}
       </div>
     </div>
-  )
-}
-
-/**
- * Tombol info kecil pada kartu metrik. Ini jalur aksesibel untuk membuka
- * drawer (Enter / Spasi), karena kartunya sendiri adalah div ber-onClick yang
- * tidak bisa menerima fokus papan tombol.
- */
-function MetricInfoButton({
-  metric,
-  label,
-  onOpen,
-  className,
-}: {
-  metric: string
-  label: string
-  onOpen: (metric: string) => void
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation()
-        onOpen(metric)
-      }}
-      title={"Lihat rumus dan rincian " + label}
-      aria-label={"Lihat rumus dan rincian " + label}
-      className={cn(
-        "inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
-        className,
-      )}
-    >
-      <Icon name="info" className="size-3.5" aria-hidden="true" />
-    </button>
   )
 }
 
@@ -1006,8 +1327,11 @@ export default function StorePerformance({
   exportUrl: string
 }) {
   const [refreshing, setRefreshing] = React.useState(false)
-  // Detail metrik pada Sheet samping. null berarti panel tertutup.
-  const [activeMetric, setActiveMetric] = React.useState<string | null>(null)
+  // Kategori detail pada Sheet samping. null berarti panel tertutup.
+  // Pemilihan kategori hanya mengubah state lokal: membangun laporan butuh
+  // 418 ms dengan 177 query, jadi berpindah kategori tidak boleh memicu
+  // permintaan ke server.
+  const [detailCategory, setDetailCategory] = React.useState<DetailCategory | null>(null)
   const [exportOpen, setExportOpen] = React.useState(false)
   const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
   const [exportFrom, setExportFrom] = React.useState("")
@@ -1085,21 +1409,15 @@ export default function StorePerformance({
     Boolean(report.range.from_date_iso) &&
     report.range.from_date_iso! < tersediaSejak!
 
-  // Angka drawer dibangun dari props report yang sama dengan kartu di halaman,
-  // jadi tidak ada nilai yang ditulis ulang di komponen tampilan.
-  const activeDetail = React.useMemo(() => {
-    if (!activeMetric) return null
-    return buildMetricDetail(activeMetric, report, kpiMap, kunjunganTidakLengkap, tersediaSejak)
-  }, [activeMetric, report, kpiMap, kunjunganTidakLengkap, tersediaSejak])
+  // Isi drawer dibangun dari props report yang sama dengan kartu di halaman,
+  // jadi tidak ada nilai yang ditulis ulang di komponen tampilan. Dihitung
+  // hanya saat kategori atau laporan berubah, bukan setiap render.
+  const detailIsi = React.useMemo(() => {
+    if (!detailCategory) return null
+    return buildCategoryDetail(detailCategory, report, kpiMap, kunjunganTidakLengkap, tersediaSejak)
+  }, [detailCategory, report, kpiMap, kunjunganTidakLengkap, tersediaSejak])
 
-  // Kartu KPI dan baris Alur Uang membuka drawer yang sama. Kartu memakai
-  // onClick untuk kenyamanan tetikus; jalur aksesibelnya adalah tombol info di
-  // dalam kartu, jadi div ini tidak diberi peran tombol supaya tidak ada
-  // kontrol interaktif bersarang.
-  const openMetric = (metric: string) => setActiveMetric(metric)
-  const metricCardProps = (metric: string) => ({
-    onClick: () => openMetric(metric)
-  })
+  const bukaKategori = (kategori: DetailCategory) => setDetailCategory(kategori)
 
   // Selisih durasi ditampilkan dalam satuannya sendiri (jam / hari) supaya
   // pembaca tidak perlu menafsirkan persen dari basis yang nyaris nol.
@@ -1330,6 +1648,35 @@ export default function StorePerformance({
                 ))}
               </Select>
             </div>
+
+            {/* Detail: memilih kategori rincian yang dibuka di drawer. Nilainya
+                state lokal, bukan parameter URL, karena berpindah kategori tidak
+                boleh memicu permintaan ke server (membangun laporan 418 ms, 177
+                query). */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Detail:</span>
+              <Select
+                value={detailCategory ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (!value) {
+                    setDetailCategory(null)
+                    return
+                  }
+                  bukaKategori(value as DetailCategory)
+                }}
+                className="h-8 w-44 text-xs font-medium bg-surface"
+                id="detail-category-select"
+                aria-label="Pilih kategori rincian"
+              >
+                <option value="">Pilih kategori</option>
+                {DETAIL_CATEGORIES.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -1441,24 +1788,17 @@ export default function StorePerformance({
                 ? report.charts.findIndex((c) => c.key === def.chart)
                 : -1
               const isActive = chartIdx >= 0 && chartTab === chartIdx
-              // Kartu ini satu elemen klik untuk memilih tab grafik. Tombol
-              // rincian berada di dalamnya, jadi wadahnya div ber-peran button,
-              // bukan <button>: tombol bersarang tidak sah dan merusak fokus.
-              const activate = () => {
-                if (chartIdx >= 0) setChartTab(chartIdx)
-                else openMetric(def.metric)
-              }
+              // Kartu ini tetap satu elemen klik untuk memilih tab grafik, karena
+              // itulah cara berpindah grafik di halaman ini. Yang dihapus hanya
+              // tombol rincian per KPI: detailnya kini lewat filter kategori.
+              const activate = () => setChartTab(chartIdx)
               return (
                 <div
                   key={def.metric}
                   role="button"
                   tabIndex={0}
-                  aria-pressed={chartIdx >= 0 ? isActive : undefined}
-                  aria-label={
-                    chartIdx >= 0
-                      ? def.label + (isActive ? ", grafik sedang tampil" : ", tampilkan grafik")
-                      : def.label + ", buka rincian"
-                  }
+                  aria-pressed={isActive}
+                  aria-label={def.label + (isActive ? ", grafik sedang tampil" : ", tampilkan grafik")}
                   onClick={activate}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -1485,7 +1825,6 @@ export default function StorePerformance({
                       >
                         {def.label}
                       </span>
-                      <MetricInfoButton metric={def.metric} label={def.label} onOpen={openMetric} />
                     </div>
                     <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground">
                       {def.value}
@@ -1625,10 +1964,10 @@ export default function StorePerformance({
         contentClassName="p-0"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => openMetric("retur-cancellations")}>
+            <Button variant="outline" size="sm" onClick={() => bukaKategori("retur")}>
               Rincian Retur dan Pembatalan
             </Button>
-            <Button variant="outline" size="sm" onClick={() => openMetric("alur-uang")}>
+            <Button variant="outline" size="sm" onClick={() => bukaKategori("arus-kas")}>
               Detail Rekonsiliasi
             </Button>
           </div>
@@ -1788,7 +2127,6 @@ export default function StorePerformance({
                 hint="Kasus retur yang masih terbuka saat laporan dibuat. Angka ini kondisi saat ini, jadi tidak dibandingkan dengan periode sebelumnya."
                 className="text-xs font-semibold text-muted-foreground"
               />
-              <MetricInfoButton metric="returns-open" label="Retur Aktif" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["returns_open"]?.value ?? 0)}{" "}
@@ -1808,7 +2146,6 @@ export default function StorePerformance({
                 hint={kpiMap["payment_pending_count"]?.detail ?? "Pembayaran non-COD yang belum lunas pada order aktif saat laporan dibuat."}
                 className="text-xs font-semibold text-muted-foreground"
               />
-              <MetricInfoButton metric="payment-pending" label="Pembayaran Transfer Pending" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["payment_pending_count"]?.value ?? 0)}{" "}
@@ -1828,7 +2165,6 @@ export default function StorePerformance({
                 hint={kpiMap["avg_confirm_hours"]?.detail ?? "Rata-rata waktu respon sejak pesanan masuk hingga dikonfirmasi admin."}
                 className="text-xs font-semibold text-muted-foreground"
               />
-              <MetricInfoButton metric="avg-confirm-hours" label="Rata-rata Waktu Konfirmasi" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
@@ -1850,7 +2186,6 @@ export default function StorePerformance({
                 hint={kpiMap["avg_process_days"]?.detail ?? "Rata-rata waktu sejak pesanan dikonfirmasi hingga siap diserahkan ke kurir."}
                 className="text-xs font-semibold text-muted-foreground"
               />
-              <MetricInfoButton metric="avg-process-days" label="Rata-rata Waktu Proses" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}
@@ -1898,7 +2233,6 @@ export default function StorePerformance({
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div
-            {...metricCardProps("new-customers")}
             className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
           >
             <div className="flex items-center justify-between">
@@ -1907,7 +2241,6 @@ export default function StorePerformance({
                 hint="Pelanggan yang pesanan pertamanya jatuh di dalam rentang tanggal periode ini."
                 className="text-xs font-medium text-muted-foreground"
               />
-              <MetricInfoButton metric="new-customers" label="Pelanggan Baru" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["new_customers"]?.value ?? 0)}{" "}
@@ -1939,7 +2272,6 @@ export default function StorePerformance({
           </div>
 
           <div
-            {...metricCardProps("aov")}
             className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
           >
             <div className="flex items-center justify-between">
@@ -1948,7 +2280,6 @@ export default function StorePerformance({
                 hint="Penjualan Gross dibagi jumlah pesanan yang masuk alur fulfillment pada periode ini."
                 className="text-xs font-medium text-muted-foreground"
               />
-              <MetricInfoButton metric="aov" label="Rata-rata Nilai Pesanan" onOpen={openMetric} />
             </div>
             <p className="mt-2 font-mono text-xl font-bold tabular-nums text-foreground">
               {formatCurrency(kpiMap["aov"]?.value ?? 0)}
@@ -1959,7 +2290,6 @@ export default function StorePerformance({
           </div>
 
           <div
-            {...metricCardProps("avg-unit-price")}
             className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
           >
             <div className="flex items-center justify-between">
@@ -1968,7 +2298,6 @@ export default function StorePerformance({
                 hint="Nilai produk dibagi jumlah unit terjual. Memakai nilai produk saja, bukan penjualan gross yang memuat ongkir dan biaya COD."
                 className="text-xs font-medium text-muted-foreground"
               />
-              <MetricInfoButton metric="avg-unit-price" label="Harga Rata-rata per Unit" onOpen={openMetric} />
             </div>
             <p className="mt-2 font-mono text-xl font-bold tabular-nums text-foreground">
               {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
@@ -2393,18 +2722,22 @@ export default function StorePerformance({
         </DialogContent>
       </Dialog>
 
-      {/* Sheet detail metrik. Lebarnya mengikuti isi: rekonsiliasi alur uang
-          butuh ruang lebih karena memuat empat blok tabel. */}
-      <Sheet open={activeDetail !== null} onOpenChange={(open) => { if (!open) setActiveMetric(null) }}>
-        <SheetContent
-          side="right"
-          className={cn(
-            "sm:max-w-none",
-            activeDetail?.wide ? "w-[min(94vw,42rem)]" : "w-[min(90vw,28rem)]",
-          )}
-        >
-          {activeDetail ? (
-            <MetricDetailPanel detail={activeDetail} kpiMap={kpiMap} range={report.range} />
+      {/* Satu drawer untuk seluruh detail. Lebarnya tetap supaya berpindah
+          kategori tidak menggeser tata letak, dan cukup lega untuk tabel
+          rekonsiliasi arus kas. */}
+      <Sheet
+        open={detailCategory !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailCategory(null)
+        }}
+      >
+        <SheetContent side="right" className="w-[min(94vw,44rem)] sm:max-w-none">
+          {detailCategory && detailIsi ? (
+            <CategoryDetailPanel
+              category={detailCategory}
+              detail={detailIsi}
+              onSelectCategory={bukaKategori}
+            />
           ) : null}
         </SheetContent>
       </Sheet>
