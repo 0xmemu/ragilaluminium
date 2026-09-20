@@ -269,7 +269,10 @@ export function ProductInfoSections({
           <ul
             ref={reviewsScrollRef}
             onScroll={checkScroll}
-            className="scrollbar-none mt-4 flex flex-col gap-3 lg:flex-row lg:overflow-x-auto lg:scroll-smooth lg:pb-2"
+            // `lg:items-start` mencegah flex row merentangkan semua kartu ke tinggi
+            // kartu tertinggi (bawaan align-items: stretch), sehingga tiap kartu
+            // berhenti di tinggi kontennya sendiri.
+            className="scrollbar-none mt-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:overflow-x-auto lg:scroll-smooth lg:pb-2"
           >
             {filteredReviews.map((review) => {
               const media = reviewMediaItems(review)
