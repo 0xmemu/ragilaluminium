@@ -58,7 +58,7 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /policy/terms` -> `PageController@terms`  (name: `terms`)
 - `GET /product/{parent_sku}` -> `ProductController@show`  (name: `product.show`)
 - `POST /product/{product}/engage` -> `ProductEngagementController@store`  (name: `product.engage`)  [Illuminate\Routing\Middleware\ThrottleRequests:120,1]
-- `GET /products` -> `CatalogController@index`  (name: `catalog.index`)  — hub "Semua Model Produk" (kartu kategori x model). Query `sort=latest|oldest` mengubah urutan kartu (default: urutan manual admin `sort_order` CMS); nilai sort lain dialihkan ke `catalog.all`.
+- `GET /products` -> `CatalogController@index`  (name: `catalog.index`): hub "Semua Model Produk" (kartu kategori x model). Query `sort=latest|oldest` mengubah urutan kartu (default: urutan manual admin `sort_order` CMS); nilai sort lain dialihkan ke `catalog.all`.
 - `GET /products/all` -> `CatalogController@all`  (name: `catalog.all`)  `sort=popular` mengikuti urutan kurasi admin bila `from=paling-banyak-dipesan` (halaman Lihat Semua carousel Paling Banyak Dipesan); tanpa penanda tetap murni skor penjualan.
 - `GET /products/{category}` -> `CatalogController@categoryShow`  (name: `catalog.category`)
 - `GET /products/{category}/{model}` -> `CatalogController@modelShow`  (name: `catalog.model`)
@@ -93,6 +93,10 @@ Total: 320 routes (regenerated 2026-08-16).
     - `sort` = `newest` atau `oldest`. Selain itu (termasuk kosong) berarti urutan bawaan halaman, yaitu `sort_order` admin lalu terbaru.
   - Opsi filter rating (`ratingNav`) dihitung dari basis SESUDAH filter model dan filter media, tetapi TANPA filter rating, sehingga jumlah tiap rating tetap terbaca saat salah satu rating dipilih. Hanya rating yang punya ulasan tayang yang ditawarkan, urut menaik dari 1 bintang.
   - Statistik `stats.website_total` dan `stats.average_rating` MENGIKUTI filter yang aktif, supaya angka pada pill filter konsisten dengan daftar yang tampil.
+  - Bentuk satu ulasan pada props storefront (dipakai kartu ulasan di `/reviews/web`, `/reviews/ss`, carousel beranda, dan popup ulasan halaman produk): `id`, `customer_name`, `message`, `rating`, `source`, `location`, `created_at`, `variant_label`, `image_url`, `images`, `media`, `verified_purchase`, `admin_reply`, `admin_replied_at`, dan `product`.
+  - `created_at` = waktu ulasan dibuat, format ISO 8601. Kartu ulasan menampilkannya di samping kota, bersama nama produk dan varian, pada ukuran 11px.
+  - `variant_label` = varian yang dipilih pembeli, dibaca dari `order_items` pesanan terkait lalu digabung dengan pemisah ` · ` (mis. `Warna: Putih · Kaca: Kaca Es`). Bernilai null pada ulasan yang tidak tertaut pesanan (mis. ulasan buatan admin), dan kartu cukup tidak menampilkannya. Sumbernya `order_items`, bukan kolom di `cms_testimonials`, karena pilihan varian hanya hidup di baris pesanan. Schema tidak berubah karena itu.
+  - `product.name` = nama pendek (`short_name`), sedangkan `product.full_name` = judul katalog lengkap. Kartu ulasan memakai `full_name`, karena `short_name` di katalog ini hanya label dimensi seperti `200x180`.
   - Pemakaian `media_only` disaring di PHP, bukan dengan klausa JSON pada SQL: kolom media bertipe json dan perilakunya berbeda antara MySQL (produksi) dan SQLite (test). Karena itu daftar dibentuk sebagai koleksi lalu dipaginasi manual 12 per halaman.
 - `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
   - Halaman ini SENGAJA tidak memakai filter: daftar screenshot dirender apa adanya. Param `rating`, `media_only`, dan `sort` diabaikan di sini, karena permintaan owner hanya menyebut `/reviews/web`.
@@ -229,7 +233,7 @@ Kontrak payload Performa Toko: report.sections tetap 3 grup x 5 KPI (15 KPI). re
 - `POST /admin/orders/{order}/shipping` -> `Admin\OrderController@storeShipping`  (name: `admin.orders.shipping.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/orders/{order}/shipping/refresh` -> `Admin\OrderController@refreshShipping`  (name: `admin.orders.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/orders/{order}/status` -> `Admin\OrderController@updateStatus`  (name: `admin.orders.status`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `GET /admin/orders/{order}/status` -> `Admin\OrderController@statusEntry` (name: `admin.orders.status.view`) — handoff ke detail order; perubahan status tetap memakai PUT.
+- `GET /admin/orders/{order}/status` -> `Admin\OrderController@statusEntry` (name: `admin.orders.status.view`): handoff ke detail order; perubahan status tetap memakai PUT.
 - `GET /admin/orders/{order}/whatsapp` -> `Admin\WhatsAppMessageController@byOrder`  (name: `admin.orders.whatsapp`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/pages` -> `Admin\PageController@index`  (name: `admin.pages.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/pages` -> `Admin\PageController@store`  (name: `admin.pages.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

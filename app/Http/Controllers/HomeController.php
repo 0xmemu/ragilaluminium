@@ -57,7 +57,7 @@ class HomeController extends Controller
         try {
             $base = CmsTestimonial::query()
                 ->published()
-                ->with('product:id,parent_sku,name,short_name')
+                ->with(['product:id,parent_sku,name,short_name', 'order.items'])
                 ->orderBy('sort_order')
                 ->orderByDesc('id');
 

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\CmsGalleryItem;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use Tests\Concerns\CreatesVisibleProducts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -461,6 +463,116 @@ class ProductReviewsTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Home')
                 ->has('websiteTestimonials', 10)
+            );
+    }
+    public function test_kartu_ulasan_membawa_tanggal_nama_produk_dan_varian(): void
+    {
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        $product = $this->createVisibleProduct([
+            'parent_sku' => 'WIN-VAR-1',
+            'name' => 'Jendela Aluminium Jungkit Ornamen',
+            'short_name' => '200x180',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'RA-REV-VAR-001',
+            'customer_name' => 'Pelanggan Varian',
+            'customer_phone' => '081200000009',
+            'shipping_address_line1' => 'Jl Test Varian',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'delivered',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 100000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000,
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'parent_sku' => 'WIN-VAR-1',
+            'name' => 'Jendela Aluminium Jungkit Ornamen',
+            'unit_price' => 100000,
+            'quantity' => 1,
+            'line_subtotal' => 100000,
+            'line_total' => 100000,
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Putih',
+            'variation_2_name' => 'Kaca',
+            'variation_2_option' => 'Kaca Es',
+        ]);
+
+        $review = CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $product->id,
+            'order_id' => $order->id,
+            'customer_name' => 'Pelanggan Varian',
+            'message' => 'Variannya persis seperti yang dipilih.',
+            'rating' => 5,
+            'source' => 'website',
+            'location' => 'Semarang',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        // `created_at` tidak ada di $fillable, jadi create() akan membuangnya
+        // tanpa error. Diisi lewat forceFill supaya tanggalnya pasti terpasang.
+        $review->forceFill(['created_at' => '2026-04-18 15:00:00'])->save();
+
+        $this->get(route('reviews.website'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Reviews')
+                ->has('testimonials.data', 1)
+                ->where('testimonials.data.0.location', 'Semarang')
+                ->where('testimonials.data.0.variant_label', 'Warna: Putih · Kaca: Kaca Es')
+                // `name` tetap nama pendek demi konsumen lama; kartu ulasan
+                // memakai `full_name` karena short_name hanya label dimensi.
+                ->where('testimonials.data.0.product.name', '200x180')
+                ->where('testimonials.data.0.product.full_name', 'Jendela Aluminium Jungkit Ornamen')
+                ->where('testimonials.data.0.created_at', fn ($value) => is_string($value) && str_starts_with($value, '2026-04-18'))
+            );
+    }
+
+    public function test_ulasan_tanpa_pesanan_tidak_membawa_varian(): void
+    {
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Tanpa Pesanan',
+            'message' => 'Ulasan lama yang tidak tertaut pesanan.',
+            'rating' => 4,
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->get(route('reviews.website'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Reviews')
+                ->has('testimonials.data', 1)
+                ->where('testimonials.data.0.variant_label', null)
+                ->where('testimonials.data.0.product', null)
             );
     }
 }

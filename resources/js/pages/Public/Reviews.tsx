@@ -70,7 +70,13 @@ export default function Reviews({
       : "Ulasan pelanggan yang memesan lewat website.")
   const docTitle = pageMeta?.title?.trim() || heading
 
-  const testimonialList = Array.isArray(testimonials) ? testimonials : testimonials?.data ?? []
+  // Dibungkus useMemo supaya identitasnya stabil: tiga useMemo di bawah memakai
+  // array ini sebagai dependensi, dan tanpa ini warning
+  // react-hooks/exhaustive-deps muncul (lint wajib nol warning).
+  const testimonialList = React.useMemo(
+    () => (Array.isArray(testimonials) ? testimonials : testimonials?.data ?? []),
+    [testimonials],
+  )
   const pagination = !Array.isArray(testimonials)
     ? {
         current_page: testimonials?.current_page ?? 1,

@@ -8,6 +8,7 @@ import type { SharedPageProps } from "@/types"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
+import { formatDate, productName } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Testimonial } from "@/types"
 
@@ -127,18 +128,43 @@ export function TestimonialCard({
     hasImage ? "testimonial-card--with-image" : null,
   )
 
+  // Waktu ulasan, nama produk, dan varian yang dipilih tampil pada 11px.
+  // Ketiganya opsional: kartu tanpa data itu tetap tampil seperti sebelumnya.
+  const reviewDate = testimonial.created_at ? formatDate(testimonial.created_at) : ""
+  const productLabel = testimonial.product
+    ? productName(testimonial.product.full_name || testimonial.product.name || "")
+    : ""
+  const variantLabel = (testimonial.variant_label ?? "").trim()
+
   const inner = (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
           {testimonial.customer_name}
         </p>
-        {testimonial.location ? (
-          <p className="truncate text-[11px] leading-tight text-muted-foreground">
-            {testimonial.location}
+        {testimonial.location || reviewDate ? (
+          <p className="flex items-center gap-1 text-[11px] leading-tight text-muted-foreground">
+            {testimonial.location ? <span className="truncate">{testimonial.location}</span> : null}
+            {testimonial.location && reviewDate ? <span aria-hidden="true">·</span> : null}
+            {reviewDate ? <span className="shrink-0 tabular-nums">{reviewDate}</span> : null}
           </p>
         ) : null}
       </div>
+      {productLabel || variantLabel ? (
+        <div className="mt-1.5 min-w-0">
+          {productLabel ? (
+            <p
+              className="truncate text-[11px] leading-tight text-muted-foreground"
+              title={productLabel}
+            >
+              {productLabel}
+            </p>
+          ) : null}
+          {variantLabel ? (
+            <p className="truncate text-[11px] leading-tight text-muted-foreground">{variantLabel}</p>
+          ) : null}
+        </div>
+      ) : null}
       {rating > 0 ? (
         <div className="mt-2 flex gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
           {Array.from({ length: 5 }).map((_, index) => (

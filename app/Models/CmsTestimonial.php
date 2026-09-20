@@ -77,19 +77,60 @@ class CmsTestimonial extends Model
         }, $items)));
     }
 
+    /**
+     * Label varian yang dipilih pembeli, dibaca dari baris pesanan terkait.
+     *
+     * Ulasan menyimpan tautan `order_id`, bukan salinan pilihan varian, karena
+     * pilihan itu hanya hidup di `order_items`. Ulasan yang tidak tertaut
+     * pesanan (mis. dibuat admin) memang tidak punya varian, jadi hasilnya null.
+     */
+    public function orderVariantLabel(): ?string
+    {
+        $order = $this->relationLoaded('order') ? $this->order : null;
+        if (! $order || ! $order->relationLoaded('items')) {
+            return null;
+        }
+
+        // Utamakan baris pesanan untuk produk yang diulas; kalau tidak ada
+        // yang cocok, pakai baris pertama supaya pesanan satu item tetap terbaca.
+        $item = null;
+        if ($this->product_id) {
+            $item = $order->items->firstWhere('product_id', $this->product_id);
+        }
+        $item ??= $order->items->first();
+
+        if (! $item) {
+            return null;
+        }
+
+        return collect([
+            [$item->variation_1_name, $item->variation_1_option],
+            [$item->variation_2_name, $item->variation_2_option],
+        ])->filter(fn ($pair) => filled($pair[0]) && filled($pair[1]))
+            ->map(fn ($pair) => $pair[0].': '.$pair[1])
+            ->implode(' · ') ?: null;
+    }
+
     public function toPublicArray(bool $includeProduct = true): array
     {
         $product = $this->relationLoaded('product') ? $this->product : null;
         return [
             'id' => $this->id, 'customer_name' => $this->customer_name, 'message' => $this->message,
             'rating' => $this->rating, 'source' => $this->source, 'location' => $this->location,
+            // Waktu ulasan ditampilkan di kartu storefront; umpan balik pelanggan
+            // tanpa tanggal sulit dinilai relevansinya oleh pembeli.
+            'created_at' => optional($this->created_at)?->toIso8601String(),
+            'variant_label' => $this->orderVariantLabel(),
             'image_url' => $this->image_url, 'images' => $this->imagesPayload(), 'media' => $this->mediaPayload(),
             'verified_purchase' => $this->verified_at !== null,
             // Balasan admin (owner 2026-09-18). Hanya terkirim ke storefront bila
             // barisnya lolos scope published, jadi tidak bocor saat masih pending.
             'admin_reply' => $this->hasAdminReply() ? (string) $this->admin_reply : null,
             'admin_replied_at' => optional($this->admin_replied_at)?->toIso8601String(),
-            'product' => $includeProduct && $product ? ['id' => $product->id, 'parent_sku' => $product->parent_sku, 'name' => $product->short_name ?: $product->name, 'href' => route('product.show', $product->parent_sku, absolute: false)] : null,
+            // `name` tetap nama pendek (short_name) demi konsumen lama; `full_name`
+            // memuat judul katalog lengkap, dipakai kartu ulasan karena short_name
+            // di katalog ini hanya label dimensi seperti "200x180".
+            'product' => $includeProduct && $product ? ['id' => $product->id, 'parent_sku' => $product->parent_sku, 'name' => $product->short_name ?: $product->name, 'full_name' => $product->name, 'href' => route('product.show', $product->parent_sku, absolute: false)] : null,
         ];
     }
 }

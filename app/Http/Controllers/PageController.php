@@ -134,7 +134,11 @@ class PageController extends Controller
         // Basis untuk menghitung jumlah tiap rating: SESUDAH filter model dan
         // media, tetapi SEBELUM filter rating. Dengan begitu jumlah tiap
         // rating tetap terbaca saat salah satu rating dipilih.
-        $base = CmsTestimonial::query()->published()->website();
+        // Produk dan baris pesanan dimuat di muka: kartu ulasan menampilkan nama
+        // produk dan varian yang dipilih, dan tanpa eager load keduanya selalu
+        // null karena relasinya dibaca lewat guard relationLoaded().
+        $base = CmsTestimonial::query()->published()->website()
+            ->with(['product:id,parent_sku,name,short_name', 'order.items']);
         $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
         $ratingNav = $this->reviewRatingNav($base, $mediaOnly, $sort);
 

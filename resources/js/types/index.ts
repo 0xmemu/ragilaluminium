@@ -317,13 +317,20 @@ export interface Testimonial {
   image_url?: string | null
   /** Semua foto ulasan (multi-gambar); fallback ke [image_url] bila kosong. */
   images?: string[] | null
+  /** Waktu ulasan dikirim (ISO 8601); null pada baris lama tanpa tanggal. */
+  created_at?: string | null
+  /** Varian yang dipilih pembeli, mis. "Warna: Putih · Kaca: Bening". */
+  variant_label?: string | null
   /** Balasan admin atas ulasan (owner 2026-09-18); null bila belum dibalas. */
   admin_reply?: string | null
   admin_replied_at?: string | null
   product?: {
     id: number
     parent_sku: string
+    /** Nama pendek (short_name), mis. "200x180". */
     name: string
+    /** Judul katalog lengkap; dipakai kartu ulasan. */
+    full_name?: string | null
     href: string
   } | null
 }
