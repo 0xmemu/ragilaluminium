@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog"
+import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -70,6 +71,8 @@ interface Report {
   generated_at: string
   financial: {
     gross_revenue: number
+    items_before_discount?: number
+    insurance?: number
     shipping_raw?: number
     product_discount?: number
     voucher_discount?: number
@@ -325,6 +328,590 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
   )
 }
 
+type DrawerSign = "+" | "−" | "=" | "÷" | "·"
+
+type DrawerRow = {
+  label: string
+  value: string
+  sign: DrawerSign
+  sub?: string
+  note?: string
+  tone?: "default" | "muted" | "primary" | "destructive"
+}
+
+type DrawerBlock =
+  | { kind: "rows"; title?: string; rows: DrawerRow[] }
+  | { kind: "items"; title?: string; items: Array<{ title: string; value: string; desc: string }> }
+
+type MetricDetail = {
+  title: string
+  /** "Kondisi Saat Ini" khusus metrik snapshot: angkanya tidak terikat rentang tanggal. */
+  badge: "Periode Terpilih" | "Semua Waktu" | "Kondisi Saat Ini"
+  wide?: boolean
+  value?: string
+  kpiKey?: string
+  formula?: string
+  blocks: DrawerBlock[]
+  source?: string
+  notes: string[]
+}
+
+/**
+ * Satu-satunya sumber angka drawer adalah props `report` dari controller.
+ * Tidak ada angka contoh yang ditulis di komponen ini: semua nilai dibaca dari
+ * report.financial, report.sections[].kpis[], atau report.charts[].series.
+ * Bila sebuah bagian tidak punya sumber data, bagian itu tidak dirender.
+ */
+function buildMetricDetail(
+  key: string,
+  report: Report,
+  kpiMap: Record<string, Kpi>,
+  kunjunganTidakLengkap: boolean,
+  tersediaSejak: string | null,
+): MetricDetail | null {
+  const fin = report.financial
+  const kpiValue = (kpiKey: string) => kpiMap[kpiKey]?.value ?? 0
+  const rp = formatCurrency
+  const ang = formatNumber
+  const badgePeriode = "Periode Terpilih" as const
+
+  // Catatan batas data diturunkan dari fakta payload, bukan daftar statis.
+  const catatanKunjungan: string[] = kunjunganTidakLengkap && tersediaSejak
+    ? ["Data kunjungan baru andal sejak " + tersediaSejak + ". Rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi."]
+    : []
+
+  const barisPembentukanGross: DrawerRow[] = [
+    { label: "Nilai Produk Terjual", value: rp(fin.items_before_discount ?? 0), sign: "+" },
+    { label: "Voucher Toko", value: rp(fin.voucher_discount ?? 0), sign: "−" },
+    { label: "Ongkir Dibayar Pembeli", value: rp(fin.shipping_paid_by_customer ?? 0), sign: "+" },
+    { label: "Asuransi Pengiriman", value: rp(fin.insurance ?? 0), sign: "+" },
+    { label: "Biaya COD Dibayar Pembeli", value: rp(fin.cod_fee ?? 0), sign: "+" },
+    { label: "Total Penjualan Gross", value: rp(fin.gross_revenue), sign: "=", tone: "primary" },
+  ]
+
+  switch (key) {
+    case "gross-revenue":
+      return {
+        title: "Detail Penjualan Gross",
+        badge: badgePeriode,
+        value: rp(fin.gross_revenue),
+        kpiKey: "omzet",
+        formula: "Penjualan Gross = Nilai Produk − Voucher Toko + Ongkir Dibayar Pembeli + Asuransi + Biaya COD Dibayar Pembeli",
+        blocks: [{ kind: "rows", rows: barisPembentukanGross }],
+        source: "orders.total_amount pada pesanan yang sudah masuk alur fulfillment",
+        notes: (fin.product_discount ?? 0) !== 0
+          ? ["Diskon produk / flash sale " + rp(fin.product_discount ?? 0) + " bukan pengurang kas: nilai produk sudah memakai harga jual riil setelah promo, sehingga potongan harga coret tidak mengurangi penjualan."]
+          : [],
+      }
+
+    case "net-revenue":
+      return {
+        title: "Detail Penjualan Bersih",
+        badge: badgePeriode,
+        value: rp(fin.net_revenue),
+        kpiKey: "net_revenue",
+        formula: "Penjualan Bersih = Penjualan Gross − Tagihan J&T − Biaya COD ke J&T − Refund − Ongkir Retur Toko − Nilai Barang Retur Paket",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Penjualan Gross", value: rp(fin.gross_revenue), sign: "+" },
+              { label: "Tagihan J&T Cargo", value: rp(fin.shipping_raw ?? 0), sign: "−" },
+              { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−" },
+              { label: "Refund Diberikan", value: rp(fin.refund_adjustments ?? 0), sign: "−" },
+              { label: "Ongkir Retur Ditanggung Toko", value: rp(fin.return_shipping_store ?? 0), sign: "−" },
+              { label: "Nilai Barang Retur Paket", value: rp(fin.refused_goods_value ?? 0), sign: "−" },
+              { label: "Penjualan Bersih", value: rp(fin.net_revenue), sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "orders dan order_return_cases",
+        notes: [],
+      }
+
+    case "alur-uang": {
+      const potonganRetur =
+        (fin.refund_adjustments ?? 0) + (fin.return_shipping_store ?? 0) + (fin.refused_goods_value ?? 0)
+      const blocks: DrawerBlock[] = [
+        { kind: "rows", title: "A. Pembentukan Penjualan Gross", rows: barisPembentukanGross },
+        {
+          kind: "rows",
+          title: "B. Pengurang setelah Penjualan Gross",
+          rows: [
+            {
+              label: "Tagihan J&T Cargo",
+              value: rp(fin.shipping_raw ?? 0),
+              sign: "−",
+              sub: "Ongkir dibayar pembeli " + rp(fin.shipping_paid_by_customer ?? 0) + " · Asuransi dibayar pembeli " + rp(fin.insurance ?? 0) + " · Subsidi ongkir ditanggung toko " + rp(fin.shipping_subsidy ?? 0),
+              note: "Tagihan J&T adalah satu-satunya pengurang ongkir. Baris rincian di atas menjelaskan komposisinya, bukan pengurang tambahan.",
+            },
+            { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−" },
+            {
+              label: "Retur & Biaya Retur",
+              value: rp(potonganRetur),
+              sign: "−",
+              sub: "Refund diberikan " + rp(fin.refund_adjustments ?? 0) + " · Ongkir retur toko " + rp(fin.return_shipping_store ?? 0) + " · Nilai barang retur paket " + rp(fin.refused_goods_value ?? 0),
+            },
+            { label: "Penjualan Bersih", value: rp(fin.net_revenue), sign: "=", tone: "primary" },
+          ],
+        },
+      ]
+
+      if ((fin.product_discount ?? 0) !== 0) {
+        blocks.push({
+          kind: "items",
+          title: "C. Catatan di Luar Kas",
+          items: [
+            {
+              title: "Diskon Produk / Flash Sale",
+              value: rp(fin.product_discount ?? 0),
+              desc: "Selisih harga coret terhadap harga jual. Tidak ada uang yang bergerak, hanya potensi harga yang tidak diambil. Harga jual yang dibayar pembeli sudah tercatat pada Nilai Produk di bagian A.",
+            },
+          ],
+        })
+      }
+
+      blocks.push({
+        kind: "rows",
+        title: "D. Posisi Kas",
+        rows: [
+          {
+            label: "Kas Diterima",
+            value: rp(fin.payments_received ?? 0),
+            sign: "+",
+            sub: "Transfer bank lunas " + rp(Math.max(0, (fin.payments_received ?? 0) - (fin.cod_paid ?? 0))) + " · COD Selesai " + rp(fin.cod_paid ?? 0),
+          },
+          {
+            label: "Belum Masuk (semua waktu)",
+            value: rp(fin.cod_pending_amount ?? 0),
+            sign: "·",
+            sub: ang(fin.cod_pending_count ?? 0) + " pesanan COD aktif, dihitung dari kondisi saat ini tanpa batas periode.",
+          },
+          {
+            label: "Retur Paket Ditanggung Toko",
+            value: rp(fin.refused_borne_cost ?? 0),
+            sign: "·",
+            sub: ang(fin.refused_borne_count ?? 0) + " pesanan, ongkir kirim dan biaya layanan COD paket yang kembali sebelum diterima pembeli.",
+          },
+        ],
+      })
+
+      return {
+        title: "Rincian Rekonsiliasi Penjualan",
+        badge: badgePeriode,
+        wide: true,
+        value: rp(fin.net_revenue),
+        kpiKey: "net_revenue",
+        formula: "Penjualan Bersih = Penjualan Gross − Potongan J&T − Retur & Biaya Retur",
+        blocks,
+        source: "orders, order_return_cases, payments, shipping_records",
+        notes: ["Kas Diterima memakai basis waktu dana benar-benar lunas (paid_at), berbeda dari hak penjualan barang. Baris Belum Masuk adalah kondisi saat ini, bukan angka periode."],
+      }
+    }
+
+    case "orders-count":
+      return {
+        title: "Detail Jumlah Pesanan",
+        badge: badgePeriode,
+        value: ang(kpiValue("orders")) + " pesanan",
+        kpiKey: "orders",
+        formula: "Jumlah Pesanan = COUNT(orders.id) pada status processing, shipped, delivered, completed, return_in_process, return_completed",
+        blocks: [],
+        source: "orders.order_status",
+        notes: ["Pesanan yang belum dikonfirmasi, menunggu pembayaran, atau dibatalkan tidak dihitung."],
+      }
+
+    case "units-sold":
+      return {
+        title: "Detail Jumlah Unit Terjual",
+        badge: badgePeriode,
+        value: ang(kpiValue("units")) + " unit",
+        kpiKey: "units",
+        formula: "Jumlah Unit Terjual = SUM(order_items.quantity)",
+        blocks: [],
+        source: "order_items.quantity",
+        notes: ["Diambil dari snapshot pesanan saat checkout, bukan dari stok katalog aktif."],
+      }
+
+    case "products-sold":
+      return {
+        title: "Detail Produk Terjual",
+        badge: badgePeriode,
+        value: ang(kpiValue("products")) + " produk",
+        kpiKey: "products",
+        formula: "Produk Terjual = COUNT(DISTINCT order_items.variant_sku)",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              {
+                label: "Produk Terjual",
+                value: ang(kpiValue("products")) + " produk",
+                sign: "=",
+                tone: "primary",
+                sub: "Terdiri dari " + ang(kpiValue("models")) + " model produk dan " + ang(kpiValue("products")) + " SKU varian berbeda.",
+              },
+            ],
+          },
+        ],
+        source: "order_items.variant_sku (snapshot saat checkout)",
+        notes: ["Satu produk dengan dua ukuran dihitung dua produk karena identitasnya adalah SKU varian."],
+      }
+
+    case "visitors": {
+      const visitorChart = report.charts.find((chart) => chart.key === "visitors")
+      const rows: DrawerRow[] = (visitorChart?.series ?? [])
+        .filter((point) => point.value > 0)
+        .map((point) => ({ label: "Kunjungan " + point.label, value: ang(point.value) + " sesi", sign: "+" as const }))
+      if (rows.length > 0) {
+        rows.push({ label: "Total Periode", value: ang(fin.visitors ?? 0) + " sesi", sign: "=", tone: "primary" })
+      }
+
+      return {
+        title: "Detail Pengunjung Unik",
+        badge: badgePeriode,
+        value: kunjunganTidakLengkap ? "Belum tersedia" : ang(fin.visitors ?? 0) + " sesi",
+        kpiKey: "visitors",
+        formula: "Pengunjung Unik = SUM per hari COUNT(DISTINCT visitor_hash), hanya kunjungan yang lolos penyaring bot",
+        blocks: rows.length > 0 && !kunjunganTidakLengkap
+          ? [{ kind: "rows", title: "Rincian Kunjungan per Bucket Grafik", rows }]
+          : [],
+        source: "performance_visitor_events dan performance_metrics",
+        notes: catatanKunjungan,
+      }
+    }
+
+    case "conversion": {
+      const visitors = fin.visitors ?? 0
+      const rate = kpiValue("conversion")
+      const pembeli = visitors > 0 ? Math.round((rate / 100) * visitors) : 0
+
+      return {
+        title: "Detail Pengunjung yang Membeli",
+        badge: badgePeriode,
+        value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
+        kpiKey: "conversion",
+        formula: "Pengunjung yang Membeli = (Pembeli Unik ÷ Pengunjung Unik) × 100%",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Pembeli Unik (nomor telepon)", value: ang(pembeli) + " pembeli", sign: "+" },
+              {
+                label: "Pengunjung Unik",
+                value: kunjunganTidakLengkap ? "Belum tersedia" : ang(visitors) + " sesi",
+                sign: "÷",
+              },
+              {
+                label: "Pengunjung yang Membeli",
+                value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
+                sign: "=",
+                tone: "primary",
+              },
+            ],
+          },
+        ],
+        source: "orders (distinct customer_phone) dan performance_visitor_events",
+        notes: [
+          "Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak menyimpan relasi antara sesi kunjungan dan pesanan, sehingga tidak berarti orang yang mengunjungi lalu membeli.",
+          ...catatanKunjungan,
+        ],
+      }
+    }
+
+    case "aov":
+      return {
+        title: "Detail Rata-rata Nilai Pesanan",
+        badge: badgePeriode,
+        value: rp(kpiValue("aov")),
+        kpiKey: "aov",
+        formula: "Rata-rata Nilai Pesanan = Penjualan Gross ÷ Jumlah Pesanan",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Penjualan Gross", value: rp(fin.gross_revenue), sign: "+" },
+              { label: "Jumlah Pesanan", value: ang(kpiValue("orders")) + " pesanan", sign: "÷" },
+              { label: "Rata-rata Nilai Pesanan", value: rp(kpiValue("aov")), sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "orders",
+        notes: ["Pembagi memakai pesanan yang masuk alur fulfillment, bukan seluruh pesanan termasuk yang dibatalkan."],
+      }
+
+    case "avg-unit-price":
+      return {
+        title: "Detail Harga Rata-rata per Unit",
+        badge: badgePeriode,
+        value: rp(kpiValue("avg_unit_price")),
+        kpiKey: "avg_unit_price",
+        formula: "Harga Rata-rata per Unit = Nilai Produk ÷ Jumlah Unit Terjual",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              {
+                label: "Nilai Produk",
+                value: rp(fin.items_before_discount ?? 0),
+                sign: "+",
+                sub: "Subtotal produk pada pesanan, dihitung sebelum ongkir dan biaya layanan COD.",
+              },
+              { label: "Jumlah Unit Terjual", value: ang(kpiValue("units")) + " unit", sign: "÷" },
+              { label: "Harga Rata-rata per Unit", value: rp(kpiValue("avg_unit_price")), sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "order_items",
+        notes: ["Memakai nilai produk, bukan Penjualan Gross, supaya ongkir dan biaya COD tidak ikut terbagi ke harga satuan produk."],
+      }
+
+    case "new-customers":
+      return {
+        title: "Detail Pelanggan Baru",
+        badge: badgePeriode,
+        value: ang(kpiValue("new_customers")) + " pelanggan",
+        kpiKey: "new_customers",
+        formula: "Pelanggan Baru = Nomor HP unik yang bertransaksi pada periode ini, dikurangi nomor HP yang sudah pernah bertransaksi sebelum periode ini",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Pelanggan Unik Periode Ini", value: ang(kpiValue("new_customers") + kpiValue("repeat_customers")) + " pelanggan", sign: "+" },
+              { label: "Sudah Pernah Memesan", value: ang(kpiValue("repeat_customers")) + " pelanggan", sign: "−" },
+              { label: "Pelanggan Baru", value: ang(kpiValue("new_customers")) + " pelanggan", sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "orders.customer_phone pada pesanan yang masuk alur fulfillment, dipisahkan riwayat pesanan sebelum periode",
+        notes: ["Nomor HP yang hanya muncul di pesanan batal tidak dihitung, baik sebagai pelanggan baru maupun pelanggan ulang."],
+      }
+
+    case "returns-open":
+      return {
+        title: "Detail Retur Aktif",
+        badge: "Kondisi Saat Ini",
+        value: ang(kpiValue("returns_open")) + " kasus",
+        kpiKey: "returns_open",
+        formula: "Retur Aktif = jumlah kasus retur berstatus terbuka pada saat laporan dibangun",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Retur Diajukan (periode ini)", value: ang(kpiValue("returns_created")) + " kasus", sign: "+" },
+              { label: "Retur Selesai (periode ini)", value: ang(kpiValue("returns_completed")) + " kasus", sign: "−" },
+              { label: "Retur Aktif Saat Ini", value: ang(kpiValue("returns_open")) + " kasus", sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "order_return_cases WHERE status = 'open', tanpa filter tanggal",
+        notes: ["Metrik ini snapshot: angkanya dihitung saat laporan dibangun dan tidak dibandingkan dengan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan."],
+      }
+
+    case "payment-pending":
+      return {
+        title: "Detail Pembayaran Transfer Pending",
+        badge: "Kondisi Saat Ini",
+        value: ang(kpiValue("payment_pending_count")) + " pembayaran",
+        kpiKey: "payment_pending_count",
+        formula: "Pembayaran Transfer Pending = jumlah pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun",
+        blocks: [
+          {
+            kind: "rows",
+            rows: [
+              { label: "Pembayaran Diterima (periode ini)", value: rp(fin.payments_received ?? 0), sign: "+" },
+              { label: "Pesanan COD (mengikuti barang sampai)", value: rp(fin.cod_paid ?? 0), sign: "·" },
+              { label: "Pembayaran Transfer Pending Saat Ini", value: ang(kpiValue("payment_pending_count")) + " pembayaran", sign: "=", tone: "primary" },
+            ],
+          },
+        ],
+        source: "payments WHERE method != cod AND paid_at IS NULL pada pesanan aktif, tanpa filter tanggal",
+        notes: [
+          "Metrik ini snapshot: angkanya dihitung saat laporan dibangun dan tidak dibandingkan dengan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan.",
+          "COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.",
+        ],
+      }
+
+    default:
+      return null
+  }
+}
+
+function MetricDetailPanel({
+  detail,
+  kpiMap,
+  range,
+}: {
+  detail: MetricDetail
+  kpiMap: Record<string, Kpi>
+  range: Report["range"]
+}) {
+  return (
+    <div className="pb-6">
+      <header className="border-b border-border px-5 py-4 pr-12">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{detail.title}</h3>
+          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {detail.badge}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Konteks laporan: {range.from_date} - {range.to_date} (WIB)
+        </p>
+      </header>
+
+      <div className="space-y-4 p-5">
+        {detail.value ? (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Nilai</p>
+            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
+                {detail.value}
+              </span>
+              {detail.kpiKey ? <DeltaBadge percent={kpiMap[detail.kpiKey]?.change_percent} /> : null}
+            </div>
+          </div>
+        ) : null}
+
+        {detail.formula ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rumus</p>
+            <div className="mt-1.5 rounded-lg bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
+              {detail.formula}
+            </div>
+          </div>
+        ) : null}
+
+        {detail.blocks.map((block, blockIndex) => (
+          <div key={"blok-" + blockIndex} className="overflow-hidden rounded-xl border border-border">
+            {block.title ? (
+              <p className="border-b border-border bg-muted/20 px-4 py-2 text-xs font-semibold text-foreground">
+                {block.title}
+              </p>
+            ) : null}
+
+            {block.kind === "rows" ? (
+              <table className="w-full text-xs">
+                <tbody className="divide-y divide-border/60">
+                  {block.rows.map((row, rowIndex) => (
+                    <React.Fragment key={"baris-" + blockIndex + "-" + rowIndex}>
+                      <tr
+                        className={cn(
+                          "align-top",
+                          row.sign === "=" ? "bg-muted/20 font-semibold text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        <td className="px-4 py-2">{row.label}</td>
+                        <td className="w-8 py-2 text-right font-mono font-bold tabular-nums text-foreground">
+                          {row.sign}
+                        </td>
+                        <td
+                          className={cn(
+                            "whitespace-nowrap px-4 py-2 text-right font-mono tabular-nums",
+                            row.sign === "="
+                              ? "font-semibold text-primary"
+                              : row.tone === "destructive"
+                                ? "text-destructive"
+                                : "text-foreground",
+                          )}
+                        >
+                          {row.value}
+                        </td>
+                      </tr>
+                      {row.sub ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
+                            {row.sub}
+                          </td>
+                        </tr>
+                      ) : null}
+                      {row.note ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 pb-2 text-[11px] leading-relaxed text-muted-foreground">
+                            {row.note}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="space-y-2 p-4">
+                {block.items.map((item, itemIndex) => (
+                  <div
+                    key={"item-" + blockIndex + "-" + itemIndex}
+                    className="rounded-lg border border-border bg-muted/20 p-2.5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-foreground">
+                      <span>{item.title}</span>
+                      <span className="font-mono tabular-nums">{item.value}</span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {detail.source ? (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Data</p>
+            <p className="mt-1 font-mono text-[11px] text-foreground">{detail.source}</p>
+          </div>
+        ) : null}
+
+        {detail.notes.length > 0 ? (
+          <div className="rounded-lg border border-info/30 bg-info/10 p-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="font-semibold text-foreground">Catatan Batas Data</p>
+            <ul className="mt-1.5 space-y-1">
+              {detail.notes.map((note) => (
+                <li key={note}>· {note}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Tombol info kecil pada kartu metrik. Ini jalur aksesibel untuk membuka
+ * drawer (Enter / Spasi), karena kartunya sendiri adalah div ber-onClick yang
+ * tidak bisa menerima fokus papan tombol.
+ */
+function MetricInfoButton({
+  metric,
+  label,
+  onOpen,
+  className,
+}: {
+  metric: string
+  label: string
+  onOpen: (metric: string) => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpen(metric)
+      }}
+      title={"Lihat rumus dan rincian " + label}
+      aria-label={"Lihat rumus dan rincian " + label}
+      className={cn(
+        "inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+        className,
+      )}
+    >
+      <Icon name="info" className="size-3.5" aria-hidden="true" />
+    </button>
+  )
+}
+
 export default function StorePerformance({
   title,
   description,
@@ -343,6 +930,8 @@ export default function StorePerformance({
   exportUrl: string
 }) {
   const [refreshing, setRefreshing] = React.useState(false)
+  // Detail metrik pada Sheet samping. null berarti panel tertutup.
+  const [activeMetric, setActiveMetric] = React.useState<string | null>(null)
   const [exportOpen, setExportOpen] = React.useState(false)
   const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
   const [exportFrom, setExportFrom] = React.useState("")
@@ -404,12 +993,33 @@ export default function StorePerformance({
     (report.financial.refused_goods_value ?? 0)
   const refusedBorne = report.financial.refused_borne_cost ?? 0
 
+  // Dana COD yang sudah dikirim tapi belum cair. Dipakai di header section
+  // operasional sebagai ringkasan kas yang masih di jalan.
+  const codPendingAmount = report.financial.cod_pending_amount ?? 0
+  const codPendingCount = report.financial.cod_pending_count ?? 0
+
   // Data kunjungan hanya layak sejak penyaring bot aktif. Periode yang mulai
   // sebelum tanggal itu mencampur data tercemar, jadi angka kunjungan dan
   // konversinya tidak ditampilkan: 7 pembeli dibagi 7 pengunjung akan terbaca
   // konversi 100%, padahal artinya bukan begitu.
   const tersediaSejak = report.financial.visitors_available_from ?? null
   const kunjunganTidakLengkap = Boolean(tersediaSejak) && report.range.from_date < tersediaSejak!
+
+  // Angka drawer dibangun dari props report yang sama dengan kartu di halaman,
+  // jadi tidak ada nilai yang ditulis ulang di komponen tampilan.
+  const activeDetail = React.useMemo(() => {
+    if (!activeMetric) return null
+    return buildMetricDetail(activeMetric, report, kpiMap, kunjunganTidakLengkap, tersediaSejak)
+  }, [activeMetric, report, kpiMap, kunjunganTidakLengkap, tersediaSejak])
+
+  // Kartu KPI dan baris Alur Uang membuka drawer yang sama. Kartu memakai
+  // onClick untuk kenyamanan tetikus; jalur aksesibelnya adalah tombol info di
+  // dalam kartu, jadi div ini tidak diberi peran tombol supaya tidak ada
+  // kontrol interaktif bersarang.
+  const openMetric = (metric: string) => setActiveMetric(metric)
+  const metricCardProps = (metric: string) => ({
+    onClick: () => openMetric(metric)
+  })
 
   // Selisih durasi ditampilkan dalam satuannya sendiri (jam / hari) supaya
   // pembaca tidak perlu menafsirkan persen dari basis yang nyaris nol.
@@ -664,9 +1274,12 @@ export default function StorePerformance({
       </section>
 
       {/* LAYER 1: HEADLINE METRICS (4 KARTU EKSEKUTIF BERPRIORITAS TINGGI) */}
-      <section aria-label="Ringkasan utama" className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section aria-label="Ringkasan utama" className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* KARTU 1: Penjualan Gross (nilai utama) */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
+        <div
+          {...metricCardProps("gross-revenue")}
+          className="flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft transition hover:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
           <div>
             <div>
               <HoverHint
@@ -674,6 +1287,7 @@ export default function StorePerformance({
                 hint="Total nilai transaksi pembeli pada periode (sebelum dikurangi ongkir J&T, biaya COD, subsidi, dan retur)."
                 className="text-xs font-medium text-muted-foreground"
               />
+              <MetricInfoButton metric="gross-revenue" label="Penjualan Gross" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatCurrency(report.financial.gross_revenue)}
@@ -692,8 +1306,44 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* KARTU 2: Jumlah Pesanan */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
+        {/* KARTU 2: Penjualan Bersih. Satu tingkat di bawah Penjualan Gross
+            karena angka ini yang menjadi dasar kas toko: gross dikurangi
+            tagihan J&T, biaya COD ke J&T, refund, dan biaya retur. */}
+        <div
+          {...metricCardProps("net-revenue")}
+          className="flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft transition hover:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <div>
+            <div>
+              <HoverHint
+                label={kpiMap["net_revenue"]?.label ?? "Penjualan Bersih"}
+                hint="Penjualan Gross dikurangi tagihan J&T Cargo, biaya COD ke J&T, refund pembeli, ongkir retur, dan nilai barang retur."
+                className="text-xs font-medium text-muted-foreground"
+              />
+              <MetricInfoButton metric="net-revenue" label="Penjualan Bersih" onOpen={openMetric} />
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {formatCurrency(report.financial.net_revenue)}
+            </p>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
+            <span className="text-xs text-muted-foreground">{compareLabel}</span>
+            <span className={cn(
+              "font-semibold",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) > 0 && "text-success",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) < 0 && "text-destructive",
+              (kpiMap["net_revenue"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
+            )}>
+              <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
+            </span>
+          </div>
+        </div>
+
+        {/* KARTU 3: Jumlah Pesanan */}
+        <div
+          {...metricCardProps("orders-count")}
+          className="flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft transition hover:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
           <div>
             <div>
               <HoverHint
@@ -701,6 +1351,7 @@ export default function StorePerformance({
                 hint="Pesanan yang sudah masuk alur fulfillment (diproses atau lebih lanjut). Pesanan yang baru masuk dan belum dikonfirmasi belum ikut dihitung."
                 className="text-xs font-medium text-muted-foreground"
               />
+              <MetricInfoButton metric="orders-count" label="Jumlah Pesanan" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["orders"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">pesanan</span>
@@ -719,35 +1370,11 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* KARTU 3c: Jumlah Produk Terjual */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
-          <div>
-            <div>
-              <HoverHint
-                label={kpiMap["products"]?.label ?? "Produk Terjual"}
-                hint="Jumlah produk unik yang terjual pada periode."
-                className="text-xs font-medium text-muted-foreground"
-              />
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatNumber(kpiMap["products"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">produk</span>
-            </p>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">{compareLabel}</span>
-            <span className={cn(
-              "font-semibold",
-              (kpiMap["products"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["products"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["products"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-            )}>
-              <DeltaBadge percent={kpiMap["products"]?.change_percent} />
-            </span>
-          </div>
-        </div>
-
-        {/* KARTU 3b: Jumlah Unit Terjual */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
+        {/* KARTU 4: Jumlah Unit Terjual */}
+        <div
+          {...metricCardProps("units-sold")}
+          className="flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft transition hover:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
           <div>
             <div>
               <HoverHint
@@ -755,6 +1382,7 @@ export default function StorePerformance({
                 hint="Total unit fisik terjual pada periode (dari pesanan fulfillment)."
                 className="text-xs font-medium text-muted-foreground"
               />
+              <MetricInfoButton metric="units-sold" label="Jumlah Unit Terjual" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
               {formatNumber(kpiMap["units"]?.value ?? 0)} <span className="text-sm font-normal text-muted-foreground">unit</span>
@@ -773,68 +1401,6 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {/* KARTU 4: Tingkat Konversi Toko */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
-          <div>
-            <div>
-              <HoverHint
-                label={kpiMap["conversion"]?.label ?? "Pengunjung yang Membeli"}
-                hint="Jumlah pembeli unik dibanding pengunjung unik pada periode ini. Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak melacak pengunjung mana yang membeli."
-                className="text-xs font-medium text-muted-foreground"
-              />
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {kunjunganTidakLengkap
-                ? "Belum tersedia"
-                : formatNumber(kpiMap["conversion"]?.value ?? 0) + "%"}
-            </p>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">
-              {kunjunganTidakLengkap ? "Data kunjungan baru andal sejak " + tersediaSejak : compareLabel}
-            </span>
-            {kunjunganTidakLengkap ? null : (
-              <span className={cn(
-                "font-semibold",
-                (kpiMap["conversion"]?.change_percent ?? 0) > 0 && "text-success",
-                (kpiMap["conversion"]?.change_percent ?? 0) < 0 && "text-destructive",
-                (kpiMap["conversion"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-              )}>
-                <DeltaBadge percent={kpiMap["conversion"]?.change_percent} />
-              </span>
-            )}
-          </div>
-        </div>
-        {/* KARTU 3: Rata-rata Nilai Pesanan */}
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-soft">
-          <div>
-            <div>
-              <HoverHint
-                label={kpiMap["avg_unit_price"]?.label ?? "Harga Rata-rata per Unit"}
-                hint="Nilai pesanan dibagi jumlah unit terjual pada periode ini."
-                className="text-xs font-medium text-muted-foreground"
-              />
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground tracking-tight">
-              {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {kpiMap["aov"]?.label ?? "Rata-rata Nilai Pesanan"} {formatCurrency(kpiMap["aov"]?.value ?? 0)}
-            </p>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-2.5 text-xs">
-            <span className="text-xs text-muted-foreground">{compareLabel}</span>
-            <span className={cn(
-              "font-semibold",
-              (kpiMap["avg_unit_price"]?.change_percent ?? 0) > 0 && "text-success",
-              (kpiMap["avg_unit_price"]?.change_percent ?? 0) < 0 && "text-destructive",
-              (kpiMap["avg_unit_price"]?.change_percent ?? 0) === 0 && "text-muted-foreground",
-            )}>
-              <DeltaBadge percent={kpiMap["avg_unit_price"]?.change_percent} />
-            </span>
-          </div>
-        </div>
-
       </section>
 
       {/* ALUR UANG (ringkas). Sebelumnya blok ini membeberkan belasan baris
@@ -849,6 +1415,11 @@ export default function StorePerformance({
         description="Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas."
         className="mb-5"
         contentClassName="p-0"
+        action={
+          <Button variant="outline" size="sm" onClick={() => openMetric("alur-uang")}>
+            Detail Rekonsiliasi
+          </Button>
+        }
       >
         <div className="grid divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="p-5">
@@ -863,6 +1434,7 @@ export default function StorePerformance({
                     hint="Nilai transaksi pembeli, termasuk ongkir dan biaya COD."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="gross-revenue" label="Penjualan Gross" onOpen={openMetric} />
                 </dt>
                 <dd className="tabular-nums font-medium text-foreground">
                   {formatCurrency(report.financial.gross_revenue)}
@@ -875,6 +1447,7 @@ export default function StorePerformance({
                     hint="Ongkir dan biaya layanan COD yang diteruskan ke J&T Cargo."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="alur-uang" label="Potongan J&T" onOpen={openMetric} />
                 </dt>
                 <dd className="tabular-nums text-muted-foreground">
                   {potonganJnt > 0 ? "− " + formatCurrency(potonganJnt) : formatCurrency(0)}
@@ -887,6 +1460,7 @@ export default function StorePerformance({
                     hint="Refund pembeli, ongkir retur yang ditanggung toko, dan nilai barang yang kembali."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="alur-uang" label="Retur & Biaya Retur" onOpen={openMetric} />
                 </dt>
                 <dd className="tabular-nums text-muted-foreground">
                   {potonganRetur > 0 ? "− " + formatCurrency(potonganRetur) : formatCurrency(0)}
@@ -899,6 +1473,7 @@ export default function StorePerformance({
                     hint="Hak pendapatan toko setelah dikurangi biaya kurir dan retur."
                     className="font-semibold text-foreground"
                   />
+                  <MetricInfoButton metric="net-revenue" label="Penjualan Bersih" onOpen={openMetric} />
                   <div className="mt-1">
                     <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
                   </div>
@@ -921,6 +1496,7 @@ export default function StorePerformance({
                     hint="Dana yang benar-benar masuk: transfer lunas dan COD yang barangnya sudah sampai."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="alur-uang" label="Kas Diterima" onOpen={openMetric} />
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     Transfer {formatCurrency(Math.max(0, (report.financial.payments_received ?? 0) - (report.financial.cod_paid ?? 0)))} {'\u00b7'} COD Selesai {formatCurrency(report.financial.cod_paid ?? 0)}
                   </p>
@@ -936,6 +1512,7 @@ export default function StorePerformance({
                     hint="COD yang uangnya belum cair. Dihitung dari kondisi saat ini, bukan periode terpilih."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="alur-uang" label="Belum Masuk" onOpen={openMetric} />
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {formatNumber(report.financial.cod_pending_count ?? 0)} pesanan COD
                   </p>
@@ -951,6 +1528,7 @@ export default function StorePerformance({
                     hint="Ongkir kirim dan biaya layanan COD untuk paket yang kembali sebelum diterima pembeli."
                     className="text-muted-foreground"
                   />
+                  <MetricInfoButton metric="alur-uang" label="Retur Paket Ditanggung Toko" onOpen={openMetric} />
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {formatNumber(report.financial.refused_borne_count ?? 0)} pesanan
                   </p>
@@ -969,11 +1547,38 @@ export default function StorePerformance({
         </div>
       </SectionCard>
 
-      {/* LAYER 3: KESEHATAN OPERASIONAL & PIPELINE FULFILLMENT */}
+      {/* LAYER 3: KONDISI OPERASIONAL SAAT INI. Empat kartu status yang
+          menggambarkan keadaan saat laporan dibuka, bukan perbandingan periode.
+          Retur Aktif dan Pembayaran Transfer Pending dihitung server sebagai
+          snapshot tanpa filter tanggal, jadi keduanya memakai badge "Kondisi
+          saat ini", bukan DeltaBadge: delta periode untuk snapshot selalu nol
+          dan menyesatkan pembaca. */}
       <SectionCard
-        title="Kesehatan Operasional & Logistik Toko"
+        title="Kondisi Operasional Saat Ini"
         icon="truck"
-        description="Pantau antrean fulfillment pesanan agar tidak terjadi bottleneck pengiriman."
+        description={
+          <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <span>Antrean fulfillment dan uang yang belum masuk kas saat laporan dibuat.</span>
+            <span>
+              Total antrean aktif:{" "}
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                {formatNumber(kpiMap["open_orders"]?.value ?? 0)}
+              </span>{" "}
+              pesanan
+            </span>
+            {/* Dana COD di kurir hanya relevan bila memang ada tagihan yang
+                belum cair, jadi barisnya disembunyikan saat nol. */}
+            {codPendingAmount > 0 && codPendingCount > 0 ? (
+              <span>
+                Dana COD di kurir:{" "}
+                <span className="font-mono font-semibold tabular-nums text-foreground">
+                  {formatCurrency(codPendingAmount)}
+                </span>{" "}
+                ({formatNumber(codPendingCount)} pesanan)
+              </span>
+            ) : null}
+          </span>
+        }
         className="mb-5"
         action={
           <Button asChild variant="outline" size="sm">
@@ -983,7 +1588,7 @@ export default function StorePerformance({
           </Button>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link
             href={routeUrl("admin.orders.index")}
             className="group rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
@@ -994,12 +1599,12 @@ export default function StorePerformance({
                 hint="Pesanan yang belum selesai: menunggu konfirmasi, sedang diproses, atau sudah dikirim. Ketiganya dihitung, jadi daftar yang terbuka menampilkan seluruh antrean."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
-              <Icon name="package" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
+              <Icon name="clock" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["open_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <div className="mt-1.5">
+            <div className="mt-2">
               <DeltaBadge percent={kpiMap["open_orders"]?.change_percent} upIsBad />
             </div>
           </Link>
@@ -1019,44 +1624,79 @@ export default function StorePerformance({
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
               {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <div className="mt-1.5">
+            <div className="mt-2">
               <DeltaBadge percent={kpiMap["dispatched_orders"]?.change_percent} />
             </div>
           </Link>
 
-          <Link
-            href={`${routeUrl("admin.orders.index")}?order_status=completed`}
-            className="group rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
-          >
-            <div className="flex items-center justify-between">
-              <HoverHint
-                label={kpiMap["completed_orders"]?.label ?? "Pesanan Selesai"}
-                hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
-                className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
-              />
-              <Icon name="check-circle" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
-            </div>
-            <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
-              {formatNumber(kpiMap["completed_orders"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pesanan</span>
-            </p>
-            <div className="mt-1.5">
-              <DeltaBadge percent={kpiMap["completed_orders"]?.change_percent} />
-            </div>
-          </Link>
-
+          {/* Retur Aktif: snapshot kasus yang masih terbuka. */}
           <div className="rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <HoverHint
-                label={kpiMap["avg_confirm_hours"]?.label ?? "Rata-rata Waktu Konfirmasi"}
-                hint="Rata-rata waktu respon sejak pesanan masuk hingga dikonfirmasi admin."
+                label="Retur Aktif"
+                hint="Kasus retur yang masih terbuka pada saat laporan dibuat. Angka ini kondisi saat ini, jadi tidak dibandingkan dengan periode sebelumnya."
                 className="text-xs font-semibold text-muted-foreground"
               />
-              <Icon name="clock" className="size-4 text-muted-foreground" aria-hidden="true" />
+              <MetricInfoButton metric="returns-open" label="Retur Aktif" onOpen={openMetric} />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
-              {formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}
+              {formatNumber(kpiMap["returns_open"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">kasus</span>
             </p>
-            <div className="mt-1.5">
+            <div className="mt-2">
+              <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                Kondisi saat ini
+              </span>
+            </div>
+          </div>
+
+          {/* Pembayaran Transfer Pending: snapshot tagihan yang belum lunas. */}
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <div className="flex items-center justify-between">
+              <HoverHint
+                label="Pembayaran Transfer Pending"
+                hint={kpiMap["payment_pending_count"]?.detail ?? "Pembayaran non-COD yang belum lunas pada order aktif saat laporan dibuat."}
+                className="text-xs font-semibold text-muted-foreground"
+              />
+              <MetricInfoButton metric="payment-pending" label="Pembayaran Transfer Pending" onOpen={openMetric} />
+            </div>
+            <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
+              {formatNumber(kpiMap["payment_pending_count"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pembayaran</span>
+            </p>
+            <div className="mt-2">
+              <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                Kondisi saat ini
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Baris ringkas pendukung. Tiga indikator ini dihitung untuk periode
+            terpilih, bukan snapshot, jadi tetap memakai delta periode. Rincian
+            retur dan pembatalan ada di panel lipat di bawah. */}
+        <div className="mt-4 grid gap-3 border-t border-border pt-4 text-xs sm:grid-cols-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5">
+              <Icon name="check-circle" className="size-4 text-muted-foreground" aria-hidden="true" />
+              <HoverHint
+                label={kpiMap["completed_orders"]?.label ?? "Pesanan Selesai"}
+                hint="Pesanan yang telah sampai di tujuan dan diterima pembeli."
+                className="font-medium text-muted-foreground"
+              />
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="font-semibold tabular-nums text-foreground">{formatNumber(kpiMap["completed_orders"]?.value ?? 0)}</span>
+              <DeltaBadge percent={kpiMap["completed_orders"]?.change_percent} />
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <HoverHint
+              label={kpiMap["avg_confirm_hours"]?.label ?? "Rata-rata Waktu Konfirmasi"}
+              hint="Rata-rata waktu respon sejak pesanan masuk hingga dikonfirmasi admin."
+              className="font-medium text-muted-foreground"
+            />
+            <span className="flex items-center gap-2">
+              <span className="font-semibold tabular-nums text-foreground">{formatDuration(kpiMap["avg_confirm_hours"]?.value ?? 0)}</span>
               {/* Metrik durasi memakai selisih satuan, bukan persen: kenaikan
                   waktu dari basis beberapa menit menghasilkan persen tak berarti. */}
               <DeltaBadge
@@ -1066,22 +1706,17 @@ export default function StorePerformance({
                 absoluteFormat="number"
                 upIsBad
               />
-            </div>
+            </span>
           </div>
 
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <HoverHint
-                label={kpiMap["avg_process_days"]?.label ?? "Rata-rata Waktu Proses"}
-                hint="Waktu dari dikonfirmasi sampai disiapkan/siap kirim."
-                className="text-xs font-semibold text-muted-foreground"
-              />
-              <Icon name="clock" className="size-4 text-muted-foreground" aria-hidden="true" />
-            </div>
-            <p className="mt-2 text-xl font-bold tabular-nums text-foreground">
-              {formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}
-            </p>
-            <div className="mt-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <HoverHint
+              label={kpiMap["avg_process_days"]?.label ?? "Rata-rata Waktu Proses"}
+              hint="Waktu dari dikonfirmasi sampai disiapkan/siap kirim."
+              className="font-medium text-muted-foreground"
+            />
+            <span className="flex items-center gap-2">
+              <span className="font-semibold tabular-nums text-foreground">{formatDuration(kpiMap["avg_process_days"]?.value ?? 0, true)}</span>
               <DeltaBadge
                 percent={null}
                 absolute={durasiProcess.delta}
@@ -1089,7 +1724,7 @@ export default function StorePerformance({
                 absoluteFormat="number"
                 upIsBad
               />
-            </div>
+            </span>
           </div>
         </div>
 
@@ -1319,38 +1954,11 @@ export default function StorePerformance({
               />
             </div>
 
-            {/* Sub-section A: Kunjungan & Retensi Pelanggan */}
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <HoverHint
-                  label={kpiMap["visitors"]?.label ?? "Pengunjung Unik"}
-                  hint="Jumlah pengunjung unik berdasarkan id sesi per hari yang membuka halaman toko."
-                  className="text-xs font-medium text-muted-foreground"
-                />
-                {kunjunganTidakLengkap ? (
-                  <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-                    Belum tersedia, data kunjungan baru andal sejak {tersediaSejak}
-                  </p>
-                ) : (
-                  <>
-                    <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["visitors"]?.value ?? 0)}</p>
-                    <div className="mt-1">
-                      <DeltaBadge percent={kpiMap["visitors"]?.change_percent} />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
-                <HoverHint
-                  label={kpiMap["new_customers"]?.label ?? "Pelanggan Baru"}
-                  hint="Jumlah pelanggan yang belum pernah memesan sebelum periode ini (dihitung per nomor HP unik)."
-                  className="text-xs font-medium text-muted-foreground"
-                />
-                <p className="mt-1.5 text-base font-bold tabular-nums text-foreground">{formatNumber(kpiMap["new_customers"]?.value ?? 0)}</p>
-                <div className="mt-1">
-                  <DeltaBadge percent={kpiMap["new_customers"]?.change_percent} />
-                </div>
-              </div>
+            {/* Sub-section A: Retensi Pelanggan. Pengunjung Unik dan Pelanggan
+                Baru sudah punya kartu sendiri di section Pelanggan & Kualitas
+                Penjualan, jadi di sini hanya angka retensi supaya angka yang
+                sama tidak muncul dua kali di halaman ini. */}
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
               <div className="rounded-lg border border-border bg-surface p-2.5 text-center">
                 <HoverHint
                   label={kpiMap["repeat_customers"]?.label ?? "Pelanggan Ulang"}
@@ -1408,6 +2016,173 @@ export default function StorePerformance({
           </div>
         </div>
       </div>
+
+      {/* LAYER 4b: PELANGGAN & KUALITAS PENJUALAN. Empat metrik mutu
+          penjualan yang tidak lagi berada di baris headline: daya tarik
+          kunjungan, akuisisi pelanggan baru, dan nilai rata-rata transaksi. */}
+      <SectionCard
+        title="Pelanggan & Kualitas Penjualan"
+        icon="users"
+        description="Siapa yang datang, berapa yang jadi pelanggan baru, dan seberapa besar nilai tiap transaksi."
+        className="mb-5"
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* KARTU 1: Pengunjung Unik */}
+          <div
+            {...metricCardProps("visitors")}
+            className="relative flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+          >
+            <div>
+              <div>
+                <HoverHint
+                  label={kpiMap["visitors"]?.label ?? "Pengunjung Unik"}
+                  hint="Jumlah pengunjung unik berdasarkan id sesi per hari yang membuka halaman toko."
+                  className="text-xs font-medium text-muted-foreground"
+                />
+                <MetricInfoButton metric="visitors" label="Pengunjung Unik" onOpen={openMetric} />
+              </div>
+              {kunjunganTidakLengkap ? (
+                <p className="mt-2 text-sm font-medium text-muted-foreground">
+                  Belum tersedia, data kunjungan baru andal sejak {tersediaSejak}
+                </p>
+              ) : (
+                <p className="mt-2 text-xl font-bold tabular-nums text-foreground tracking-tight">
+                  {formatNumber(kpiMap["visitors"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">sesi</span>
+                </p>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">Cakupan data: {report.range.from_date} - {report.range.to_date}</span>
+              {kunjunganTidakLengkap ? null : <DeltaBadge percent={kpiMap["visitors"]?.change_percent} />}
+            </div>
+          </div>
+
+          {/* KARTU 2: Pelanggan Baru */}
+          <div
+            {...metricCardProps("new-customers")}
+            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+          >
+            <div>
+              <div>
+                <HoverHint
+                  label={kpiMap["new_customers"]?.label ?? "Pelanggan Baru"}
+                  hint="Jumlah pelanggan yang belum pernah memesan sebelum periode ini (dihitung per nomor HP unik)."
+                  className="text-xs font-medium text-muted-foreground"
+                />
+                <MetricInfoButton metric="new-customers" label="Pelanggan Baru" onOpen={openMetric} />
+              </div>
+              <p className="mt-2 text-xl font-bold tabular-nums text-foreground tracking-tight">
+                {formatNumber(kpiMap["new_customers"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">pelanggan</span>
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{compareLabel}</span>
+              <DeltaBadge percent={kpiMap["new_customers"]?.change_percent} />
+            </div>
+          </div>
+
+          {/* KARTU 3: Rata-rata Nilai Pesanan */}
+          <div
+            {...metricCardProps("aov")}
+            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+          >
+            <div>
+              <div>
+                <HoverHint
+                  label={kpiMap["aov"]?.label ?? "Rata-rata Nilai Pesanan"}
+                  hint="Penjualan Gross dibagi jumlah pesanan pada periode ini. Inilah nilai rupiah tipikal satu transaksi."
+                  className="text-xs font-medium text-muted-foreground"
+                />
+                <MetricInfoButton metric="aov" label="Rata-rata Nilai Pesanan" onOpen={openMetric} />
+              </div>
+              <p className="mt-2 text-xl font-bold tabular-nums text-foreground tracking-tight">
+                {formatCurrency(kpiMap["aov"]?.value ?? 0)}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{compareLabel}</span>
+              <DeltaBadge percent={kpiMap["aov"]?.change_percent} />
+            </div>
+          </div>
+
+          {/* KARTU 4: Harga Rata-rata per Unit */}
+          <div
+            {...metricCardProps("avg-unit-price")}
+            className="flex cursor-pointer flex-col justify-between rounded-lg border border-border bg-surface p-4 transition hover:border-primary"
+          >
+            <div>
+              <div>
+                <HoverHint
+                  label={kpiMap["avg_unit_price"]?.label ?? "Harga Rata-rata per Unit"}
+                  hint="Nilai produk dibagi jumlah unit terjual pada periode ini."
+                  className="text-xs font-medium text-muted-foreground"
+                />
+                <MetricInfoButton metric="avg-unit-price" label="Harga Rata-rata per Unit" onOpen={openMetric} />
+              </div>
+              <p className="mt-2 text-xl font-bold tabular-nums text-foreground tracking-tight">
+                {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+              <span className="text-muted-foreground">{compareLabel}</span>
+              <DeltaBadge percent={kpiMap["avg_unit_price"]?.change_percent} />
+            </div>
+          </div>
+        </div>
+
+        {/* Dua metrik mutu penjualan lain tetap ditampilkan di sini supaya
+            tidak kehilangan jalan akses setelah baris headline dipangkas jadi
+            empat kartu: seberapa luas katalog yang bergerak, dan seberapa besar
+            kunjungan berubah menjadi pembeli. */}
+        <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+          <div
+            {...metricCardProps("products-sold")}
+            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 transition hover:border-primary"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Icon name="package" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <HoverHint
+                label={kpiMap["products"]?.label ?? "Produk Terjual"}
+                hint="Jumlah produk unik yang terjual pada periode."
+                className="text-xs font-medium text-muted-foreground"
+              />
+              <MetricInfoButton metric="products-sold" label="Produk Terjual" onOpen={openMetric} />
+            </div>
+            <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+              {formatNumber(kpiMap["products"]?.value ?? 0)} <span className="text-xs font-normal text-muted-foreground">produk</span>
+            </p>
+          </div>
+
+          <div
+            {...metricCardProps("conversion")}
+            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 transition hover:border-primary"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Icon name="chart-line" className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <HoverHint
+                label={kpiMap["conversion"]?.label ?? "Pengunjung yang Membeli"}
+                hint="Jumlah pembeli unik dibanding pengunjung unik pada periode ini. Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak melacak pengunjung mana yang membeli."
+                className="text-xs font-medium text-muted-foreground"
+              />
+              <MetricInfoButton metric="conversion" label="Pengunjung yang Membeli" onOpen={openMetric} />
+            </div>
+            <p className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+              {kunjunganTidakLengkap ? (
+                <span className="text-xs font-medium text-muted-foreground">
+                  Belum tersedia, data kunjungan baru andal sejak {tersediaSejak}
+                </span>
+              ) : (
+                <>
+                  {formatNumber(kpiMap["conversion"]?.value ?? 0)}%
+                  {kpiMap["conversion"]?.detail ? (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">{kpiMap["conversion"]?.detail}</span>
+                  ) : null}
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       {/* LAYER 5: ANALISIS KATALOG PRODUK (PRODUK TERLARIS & INTERAKSI DI PALING BAWAH) */}
       <div className="mb-5 grid gap-6 xl:grid-cols-2">
@@ -1795,6 +2570,22 @@ export default function StorePerformance({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Sheet detail metrik. Lebarnya mengikuti isi: rekonsiliasi alur uang
+          butuh ruang lebih karena memuat empat blok tabel. */}
+      <Sheet open={activeDetail !== null} onOpenChange={(open) => { if (!open) setActiveMetric(null) }}>
+        <SheetContent
+          side="right"
+          className={cn(
+            "sm:max-w-none",
+            activeDetail?.wide ? "w-[min(94vw,42rem)]" : "w-[min(90vw,28rem)]",
+          )}
+        >
+          {activeDetail ? (
+            <MetricDetailPanel detail={activeDetail} kpiMap={kpiMap} range={report.range} />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
   )
 }
