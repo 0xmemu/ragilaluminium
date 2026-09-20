@@ -86,6 +86,11 @@ Total: 320 routes (regenerated 2026-08-16).
 - `GET /promo` -> `CatalogController@promo`  (name: `catalog.promo`)
 - `GET /reviews/web` -> `PageController@reviewsWebsite`  (name: `reviews.website`)
 - `GET /reviews/ss` -> `PageController@reviewsScreenshots`  (name: `reviews.screenshots`)
+  - Query param filter (keduanya bisa dipakai bersamaan):
+    - `model` = `KATEGORI|MODEL` (mis. `WINDOW|JUNGKIT`). Format salah diabaikan, tidak memfilter.
+    - `rating` = `1`..`5`. Nilai di luar rentang atau bukan angka diabaikan, tidak memfilter.
+  - Opsi filter rating (`ratingNav`) dihitung dari basis TANPA filter rating tetapi SESUDAH filter model, sehingga jumlah tiap rating tetap terbaca saat salah satu rating dipilih. Hanya rating yang punya ulasan tayang yang ditawarkan.
+  - Statistik `stats.website_total` dan `stats.average_rating` MENGIKUTI filter rating yang aktif, supaya angka di header konsisten dengan daftar yang tampil.
 - `GET /reviews` -> `Closure`  (301 redirect ke `/reviews/web`, query diteruskan)
 - `GET /sanctum/csrf-cookie` -> `Laravel\Sanctum\Http\Controllers\CsrfCookieController@show`  (name: `sanctum.csrf-cookie`)
 - `GET /search` -> `Closure`  (name: `search`)

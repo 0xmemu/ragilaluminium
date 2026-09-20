@@ -37,6 +37,8 @@ export default function Reviews({
   testimonials = [],
   modelNav = [],
   activeModel = null,
+  ratingNav = [],
+  activeRating = null,
   stats,
   installationsHref,
 }: {
@@ -55,6 +57,9 @@ export default function Reviews({
       }
   modelNav?: ModelNavOption[]
   activeModel?: string | null
+  /** Opsi filter rating (mis. "5 bintang") beserta jumlah ulasannya. */
+  ratingNav?: ModelNavOption[]
+  activeRating?: string | null
   stats?: { website_total?: number; average_rating?: number | null }
   installationsHref?: string
 }) {
@@ -121,12 +126,31 @@ export default function Reviews({
   const activeModelLabel =
     modelNav.find((option) => option.value === activeModel)?.label ?? null
 
-  function selectModel(value: string | null) {
+  /**
+   * Filter model dan rating dikirim sebagai query param dan SALING menjaga:
+   * memilih salah satu tidak menghapus pilihan yang lain, sehingga keduanya
+   * bisa dipakai bersamaan.
+   */
+  function applyFilters(next: { model?: string | null; rating?: string | null }) {
+    const model = next.model !== undefined ? next.model : activeModel
+    const rating = next.rating !== undefined ? next.rating : activeRating
+    const params: Record<string, string> = {}
+    if (model) params.model = model
+    if (rating) params.rating = rating
+
     router.get(
       routeUrl(isSs ? "reviews.screenshots" : "reviews.website"),
-      value ? { model: value } : {},
+      params,
       { preserveScroll: true, preserveState: false, replace: true },
     )
+  }
+
+  function selectModel(value: string | null) {
+    applyFilters({ model: value })
+  }
+
+  function selectRating(value: string | null) {
+    applyFilters({ rating: value })
   }
 
   const modelOptions = React.useMemo(
@@ -135,6 +159,20 @@ export default function Reviews({
       ...modelNav.map((option) => ({ value: option.value, label: option.label })),
     ],
     [modelNav],
+  )
+
+  // Filter rating hanya berguna bila ada lebih dari satu nilai rating, supaya
+  // pilihannya tidak menawarkan hal yang sama.
+  const showRatingFilter = ratingNav.length > 1
+  const ratingOptions = React.useMemo(
+    () => [
+      { value: "", label: "Semua rating" },
+      ...ratingNav.map((option) => ({
+        value: option.value,
+        label: `${option.label} (${formatNumber(option.count)})`,
+      })),
+    ],
+    [ratingNav],
   )
 
   function renderGrid(
@@ -195,15 +233,28 @@ export default function Reviews({
                 </span>
               ) : null}
             </p>
-            <FilterBerdasarkanControl
-              id="reviews-sort"
-              variant="plain"
-              value={sortFilter}
-              options={sortOptions}
-              onChange={setSortFilter}
-              ariaLabel="Urutkan ulasan"
-              menuLabel="Urutkan"
-            />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {showRatingFilter ? (
+                <FilterBerdasarkanControl
+                  id="reviews-rating"
+                  variant="plain"
+                  value={activeRating ?? ""}
+                  options={ratingOptions}
+                  onChange={(value) => selectRating(value || null)}
+                  ariaLabel="Filter rating ulasan"
+                  menuLabel="Rating"
+                />
+              ) : null}
+              <FilterBerdasarkanControl
+                id="reviews-sort"
+                variant="plain"
+                value={sortFilter}
+                options={sortOptions}
+                onChange={setSortFilter}
+                ariaLabel="Urutkan ulasan"
+                menuLabel="Urutkan"
+              />
+            </div>
           </div>
         ) : null}
         pagination={pagination}

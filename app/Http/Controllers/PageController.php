@@ -127,19 +127,22 @@ class PageController extends Controller
     public function reviewsWebsite(Request $request): Response
     {
         [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
+        $activeRating = $this->reviewRatingFilter($request);
 
-        $published = CmsTestimonial::query()->published()->website();
-        if ($modelCategory && $modelCode) {
-            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
-                $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
-                    ->where('product_model', $modelCode);
-            });
-        }
+        // Basis SEBELUM filter rating: dipakai untuk menghitung jumlah tiap
+        // rating, supaya angkanya tidak mengecil menjadi hanya rating terpilih.
+        $base = CmsTestimonial::query()->published()->website();
+        $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
+        $ratingNav = $this->reviewRatingNav($base);
 
-        $websiteTotal = (clone $published)->count();
-        $avgRating = (clone $published)->whereNotNull('rating')->avg('rating');
+        // Statistik mengikuti filter aktif, sehingga angka di header konsisten
+        // dengan daftar yang benar-benar tampil.
+        $filtered = (clone $base)->when($activeRating !== null, fn ($q) => $q->where('rating', $activeRating));
 
-        $testimonials = (clone $published)
+        $websiteTotal = (clone $filtered)->count();
+        $avgRating = (clone $filtered)->whereNotNull('rating')->avg('rating');
+
+        $testimonials = (clone $filtered)
             ->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id')
@@ -157,6 +160,8 @@ class PageController extends Controller
             'testimonials' => $testimonials,
             'modelNav' => $this->reviewModelNav(),
             'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
+            'ratingNav' => $ratingNav,
+            'activeRating' => $activeRating !== null ? (string) $activeRating : null,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
@@ -172,23 +177,22 @@ class PageController extends Controller
     public function reviewsScreenshots(Request $request): Response
     {
         [$modelCategory, $modelCode] = $this->reviewModelFilter($request);
+        $activeRating = $this->reviewRatingFilter($request);
 
-        $published = CmsTestimonial::query()->published()->withScreenshot();
-        if ($modelCategory && $modelCode) {
-            $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
-                $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
-                    ->where('product_model', $modelCode);
-            });
-        }
+        $base = CmsTestimonial::query()->published()->withScreenshot();
+        $this->applyReviewModelFilter($base, $modelCategory, $modelCode);
+        $ratingNav = $this->reviewRatingNav($base);
 
-        $testimonials = (clone $published)->with('product:id,parent_sku,name,short_name')
+        $filtered = (clone $base)->when($activeRating !== null, fn ($q) => $q->where('rating', $activeRating));
+
+        $testimonials = (clone $filtered)->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->paginate(12)
             ->withQueryString()
             ->through(fn (CmsTestimonial $t) => $t->toPublicArray());
 
-        $websiteTotal = (clone $published)->website()->count();
+        $websiteTotal = (clone $filtered)->website()->count();
 
         return Inertia::render('Public/Reviews', [
             'type' => 'ss',
@@ -196,6 +200,8 @@ class PageController extends Controller
             'testimonials' => $testimonials,
             'modelNav' => $this->reviewModelNav(),
             'activeModel' => $modelCategory && $modelCode ? $modelCategory.'|'.$modelCode : null,
+            'ratingNav' => $ratingNav,
+            'activeRating' => $activeRating !== null ? (string) $activeRating : null,
             'stats' => [
                 'website_total' => $websiteTotal,
                 'average_rating' => null,
@@ -213,6 +219,67 @@ class PageController extends Controller
         [$category, $code] = explode('|', $modelFilter, 2);
 
         return [strtoupper($category), strtoupper($code)];
+    }
+
+    /**
+     * Filter rating dari query string. Hanya menerima 1..5; nilai lain
+     * dianggap tidak memfilter, sama seperti perilaku filter model.
+     */
+    private function reviewRatingFilter(Request $request): ?int
+    {
+        $raw = trim((string) $request->input('rating', ''));
+        if (! ctype_digit($raw)) {
+            return null;
+        }
+        $rating = (int) $raw;
+
+        return $rating >= 1 && $rating <= 5 ? $rating : null;
+    }
+
+    /** @param \Illuminate\Database\Eloquent\Builder<CmsTestimonial> $query */
+    private function applyReviewModelFilter($query, ?string $modelCategory, ?string $modelCode): void
+    {
+        if (! $modelCategory || ! $modelCode) {
+            return;
+        }
+
+        $query->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
+            $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
+                ->where('product_model', $modelCode);
+        });
+    }
+
+    /**
+     * Opsi filter rating beserta jumlahnya. Dihitung dari basis TANPA filter
+     * rating, supaya jumlah tiap rating tetap terbaca saat salah satu dipilih.
+     * Rating tanpa ulasan tidak ditampilkan.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<CmsTestimonial>  $base
+     * @return list<array{value: string, label: string, count: int}>
+     */
+    private function reviewRatingNav($base): array
+    {
+        $counts = (clone $base)
+            ->whereNotNull('rating')
+            ->selectRaw('rating, count(*) as total')
+            ->groupBy('rating')
+            ->pluck('total', 'rating');
+
+        $options = [];
+
+        for ($rating = 5; $rating >= 1; $rating--) {
+            $count = (int) ($counts[$rating] ?? 0);
+            if ($count < 1) {
+                continue;
+            }
+            $options[] = [
+                'value' => (string) $rating,
+                'label' => $rating.' bintang',
+                'count' => $count,
+            ];
+        }
+
+        return $options;
     }
 
     private function reviewModelNav(): array
