@@ -391,15 +391,15 @@ class PageController extends Controller
 
         // Urut dari 1 ke 5: bintang terendah di paling atas, sesuai kontrak
         // tampilan dropdown filter.
+        //
+        // Rating tanpa ulasan TETAP dikirim dengan count 0 (permintaan owner
+        // 2026-09-21): pilihan bintang harus selalu lengkap 1 sampai 5 supaya
+        // pembeli tidak bingung mencari bintang yang hilang dari daftar.
         for ($rating = 1; $rating <= 5; $rating++) {
-            $count = (int) ($counts[$rating] ?? 0);
-            if ($count < 1) {
-                continue;
-            }
             $options[] = [
                 'value' => (string) $rating,
                 'label' => $rating.' bintang',
-                'count' => $count,
+                'count' => (int) ($counts[$rating] ?? 0),
             ];
         }
 

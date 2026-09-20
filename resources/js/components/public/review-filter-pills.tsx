@@ -50,6 +50,9 @@ function pillClass(active: boolean, className?: string): string {
  *   baru berlaku setelah tombol Terapkan ditekan. Tombol Hapus mengosongkan
  *   pilihan sekaligus menerapkannya, sehingga tidak pernah tampak tidak
  *   berfungsi bila ditekan tanpa menekan Terapkan.
+ *
+ *   Pilihan rating selalu lengkap 1 sampai 5, termasuk bintang yang belum
+ *   punya ulasan (count 0), permintaan owner 2026-09-21.
  */
 export function ReviewFilterPills({
   sort,
@@ -68,7 +71,7 @@ export function ReviewFilterPills({
   onSortChange: (value: ReviewSortValue) => void
   mediaOnly: boolean
   onMediaOnlyChange: (value: boolean) => void
-  /** Daftar rating yang punya ulasan, urut dari 1 ke 5. */
+  /** Pilihan rating 1 sampai 5, urut menaik. `count` 0 berarti belum ada ulasan. */
   ratings: ReviewRatingCount[]
   selectedRatings: number[]
   onRatingsChange: (value: number[]) => void
@@ -113,7 +116,6 @@ export function ReviewFilterPills({
     setOpen(null)
   }
 
-  const showRatingPill = ratings.length > 0
 
   return (
     <div
@@ -174,69 +176,69 @@ export function ReviewFilterPills({
         Foto/Video
       </button>
 
-      {/* Pill 3: filter rating */}
-      {showRatingPill ? (
-        <DropdownMenu open={open === "rating"} onOpenChange={handleOpenChange}>
-          <DropdownMenuTrigger asChild>
+      {/* Pill 3: filter rating. Selalu tampil lengkap 1 sampai 5, termasuk
+          bintang yang belum punya ulasan, supaya pilihannya tidak hilang. */}
+      <DropdownMenu open={open === "rating"} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            id={`${idPrefix}-rating`}
+            className={pillClass(ratingLabel !== null)}
+            aria-label="Filter rating ulasan"
+            disabled={disabled}
+          >
+            <Icon name="star" className="size-3.5" weight="fill" aria-hidden="true" />
+            <span>{ratingLabel === null ? "Bintang" : `Bintang ${ratingLabel}`}</span>
+            <SortArrowsIcon className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[13rem] p-0">
+          <div className="flex flex-col">
+            {ratings.map((option) => {
+              const value = Number(option.value)
+              const checked = draft.includes(value)
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  onClick={() => toggleDraft(value)}
+                  className="flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground transition hover:bg-muted"
+                >
+                  <span
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded border transition",
+                      checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface",
+                    )}
+                  >
+                    {checked ? <Icon name="check" className="size-3" weight="bold" aria-hidden="true" /> : null}
+                  </span>
+                  <Icon name="star" className="size-3.5 shrink-0 text-warning" weight="fill" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{option.value} bintang</span>
+                  <span className="tabular-nums shrink-0 text-muted-foreground">({option.count})</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-2 border-t border-border p-2">
             <button
               type="button"
-              id={`${idPrefix}-rating`}
-              className={pillClass(ratingLabel !== null)}
-              aria-label="Filter rating ulasan"
-              disabled={disabled}
+              onClick={clearRatings}
+              className="h-8 flex-1 rounded-md border border-border bg-surface text-xs font-semibold text-foreground transition hover:bg-muted"
             >
-              <Icon name="star" className="size-3.5" weight="fill" aria-hidden="true" />
-              <span>{ratingLabel === null ? "Bintang" : `Bintang ${ratingLabel}`}</span>
-              <SortArrowsIcon className="h-4 w-4" />
+              Hapus
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[13rem] p-0">
-            <div className="flex flex-col">
-              {ratings.map((option) => {
-                const value = Number(option.value)
-                const checked = draft.includes(value)
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={checked}
-                    onClick={() => toggleDraft(value)}
-                    className="flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground transition hover:bg-muted"
-                  >
-                    <span
-                      className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded border transition",
-                        checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface",
-                      )}
-                    >
-                      {checked ? <Icon name="check" className="size-3" weight="bold" aria-hidden="true" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{option.value} bintang</span>
-                    <span className="tabular-nums shrink-0 text-muted-foreground">({option.count})</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="flex items-center gap-2 border-t border-border p-2">
-              <button
-                type="button"
-                onClick={clearRatings}
-                className="h-8 flex-1 rounded-md border border-border bg-surface text-xs font-semibold text-foreground transition hover:bg-muted"
-              >
-                Hapus
-              </button>
-              <button
-                type="button"
-                onClick={applyDraft}
-                className="h-8 flex-1 rounded-md bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover"
-              >
-                Terapkan
-              </button>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+            <button
+              type="button"
+              onClick={applyDraft}
+              className="h-8 flex-1 rounded-md bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover"
+            >
+              Terapkan
+            </button>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

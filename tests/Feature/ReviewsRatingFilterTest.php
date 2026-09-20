@@ -60,7 +60,7 @@ class ReviewsRatingFilterTest extends TestCase
         ]);
     }
 
-    public function test_opsi_rating_hanya_menawarkan_rating_yang_ada_ulasannya(): void
+    public function test_opsi_rating_selalu_lengkap_dari_bintang_1_sampai_5(): void
     {
         $page = $this->page();
         $product = $this->product('RA-RATING-1');
@@ -74,12 +74,15 @@ class ReviewsRatingFilterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $assert) => $assert
                 ->component('Public/Reviews')
-                // Urut menaik: bintang terendah paling atas.
-                ->has('ratingNav', 2)
-                ->where('ratingNav.0.value', '3')
-                ->where('ratingNav.0.count', 1)
-                ->where('ratingNav.1.value', '5')
-                ->where('ratingNav.1.count', 2)
+                // Urut menaik: bintang terendah paling atas. Pilihan selalu
+                // lengkap 1 sampai 5, termasuk rating tanpa ulasan (count 0).
+                ->has('ratingNav', 5)
+                ->where('ratingNav.0.value', '1')
+                ->where('ratingNav.0.count', 0)
+                ->where('ratingNav.2.value', '3')
+                ->where('ratingNav.2.count', 1)
+                ->where('ratingNav.4.value', '5')
+                ->where('ratingNav.4.count', 2)
                 ->where('activeRating', null));
     }
 
@@ -101,9 +104,9 @@ class ReviewsRatingFilterTest extends TestCase
                 ->where('activeRating', '4')
                 // Jumlah tiap rating tetap dihitung dari seluruh ulasan,
                 // bukan dari hasil filter.
-                ->has('ratingNav', 3)
-                ->where('ratingNav.0.value', '3')
-                ->where('ratingNav.0.count', 1));
+                ->has('ratingNav', 5)
+                ->where('ratingNav.2.value', '3')
+                ->where('ratingNav.2.count', 1));
     }
 
     public function test_statistik_mengikuti_filter_rating(): void
@@ -156,10 +159,13 @@ class ReviewsRatingFilterTest extends TestCase
                 ->where('testimonials.data.0.customer_name', 'Jungkit Empat')
                 ->where('activeRating', '4')
                 ->where('activeModel', 'WINDOW|JUNGKIT')
-                // Opsi rating mengikuti filter model: model JUNGKIT punya
-                // rating 5 dan 4, model SLIDING tidak ikut terhitung.
-                ->has('ratingNav', 2)
-                ->where('ratingNav.0.count', 1));
+                // Hitungan mengikuti filter model: model JUNGKIT punya rating
+                // 5 dan 4, model SLIDING tidak ikut terhitung. Daftar tetap
+                // lengkap 1 sampai 5, rating tanpa ulasan bernilai 0.
+                ->has('ratingNav', 5)
+                ->where('ratingNav.0.count', 0)
+                ->where('ratingNav.3.count', 1)
+                ->where('ratingNav.4.count', 1));
     }
 
     /**
@@ -225,8 +231,12 @@ class ReviewsRatingFilterTest extends TestCase
         $this->get(route('reviews.website'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $assert) => $assert
-                ->has('ratingNav', 1)
-                ->where('ratingNav.0.value', '5')
-                ->where('ratingNav.0.count', 1));
+                ->has('ratingNav', 5)
+                // Ulasan bintang 1 yang masih pending tidak ikut terhitung,
+                // jadi angkanya tetap 0 dan hanya bintang 5 yang berisi.
+                ->where('ratingNav.0.value', '1')
+                ->where('ratingNav.0.count', 0)
+                ->where('ratingNav.4.value', '5')
+                ->where('ratingNav.4.count', 1));
     }
 }

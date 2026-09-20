@@ -11,14 +11,18 @@ import { cn } from "@/lib/utils"
  * - Mode "button": bisa diklik (buka preview) dengan hover zoom halus.
  * - Mode "static": hanya gambar, opsional overlay +N (badge count).
  * - Video ulasan dirender sebagai elemen video dengan lencana putar.
+ * - Mode `bare`: tanpa bingkai ukuran tetap, ukurannya diatur pemanggil
+ *   lewat `className` (dipakai deretan media 4 kolom di kartu ulasan).
  */
 export function ReviewPhotoThumb({
   src,
   alt,
   isVideo = false,
   asButton = false,
+  bare = false,
   onButtonClick,
   buttonClassName,
+  className,
   ariaLabel,
   overlayCount,
 }: {
@@ -27,8 +31,11 @@ export function ReviewPhotoThumb({
   /** Pratinjau video ulasan: memakai elemen video, bukan gambar. */
   isVideo?: boolean
   asButton?: boolean
+  /** Tanpa bingkai `size-14`: ukuran dan radius diatur lewat `className`. */
+  bare?: boolean
   onButtonClick?: () => void
   buttonClassName?: string
+  className?: string
   ariaLabel?: string
   overlayCount?: number
 }) {
@@ -71,15 +78,18 @@ export function ReviewPhotoThumb({
     </>
   )
 
+  // Saat `bare`, ukuran dan radius datang dari pemanggil; overflow tetap wajib
+  // supaya media terpotong rapi di dalam kolom.
+  const baseClass = bare
+    ? "group/img relative overflow-hidden bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    : "group/img relative size-14 shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+
   if (asButton) {
     return (
       <button
         type="button"
         onClick={onButtonClick}
-        className={cn(
-          "group/img relative size-14 shrink-0 overflow-hidden rounded-[3px] bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          buttonClassName,
-        )}
+        className={cn(baseClass, buttonClassName, className)}
         aria-label={ariaLabel ?? alt}
       >
         {body}
@@ -87,9 +97,5 @@ export function ReviewPhotoThumb({
     )
   }
 
-  return (
-    <span className="relative size-14 shrink-0 overflow-hidden rounded-[3px] bg-surface-muted">
-      {body}
-    </span>
-  )
+  return <span className={cn(baseClass, className)}>{body}</span>
 }

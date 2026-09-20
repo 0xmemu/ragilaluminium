@@ -62,7 +62,10 @@ export function reviewMediaItems(review: Testimonial): ReviewMediaItem[] {
  *
  * Sengaja dihitung dari SELURUH ulasan (tanpa filter rating), supaya jumlah
  * tiap rating tetap terbaca saat pembeli sedang memilih salah satu rating.
- * Rating tanpa ulasan tidak ditampilkan, jadi tidak ada pilihan kosong.
+ *
+ * Pilihan selalu lengkap 1 sampai 5, termasuk rating yang belum punya ulasan
+ * (count 0), sesuai permintaan owner 2026-09-21: pilihan bintang yang hilang
+ * membuat pembeli mengira filternya rusak.
  * Urut menaik: bintang terendah di paling atas.
  */
 export function reviewRatingCounts(reviews: Testimonial[]): ReviewRatingCount[] {
@@ -73,9 +76,7 @@ export function reviewRatingCounts(reviews: Testimonial[]): ReviewRatingCount[] 
     if (value >= 1 && value <= 5) counts.set(value, (counts.get(value) ?? 0) + 1)
   }
 
-  return [...counts.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([value, count]) => ({ value: String(value), count }))
+  return [1, 2, 3, 4, 5].map((value) => ({ value: String(value), count: counts.get(value) ?? 0 }))
 }
 
 /**

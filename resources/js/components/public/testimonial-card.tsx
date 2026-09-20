@@ -8,6 +8,7 @@ import type { SharedPageProps } from "@/types"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { reviewMediaItems } from "@/lib/review-filters"
+import { ReviewCollapsibleText } from "@/components/public/review-collapsible-text"
 import { ReviewPhotoThumb } from "@/components/public/review-photo-thumb"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -181,19 +182,14 @@ export function TestimonialCard({
         </div>
       ) : null}
       {message ? (
-        <p className={cn("mt-1 text-xs leading-snug text-foreground", compact ? "line-clamp-4" : "line-clamp-5")}>
-          {message}
-        </p>
-      ) : null}
-      {adminReply ? (
-        <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Balasan {storeName}
-          </p>
-          <p className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90 line-clamp-3">
-            {adminReply}
-          </p>
-        </div>
+        <ReviewCollapsibleText
+          text={message}
+          // Kartu di /reviews/web dirender di dalam <Link>, jadi tombolnya
+          // memakai elemen non-tombol agar tidak bersarang di dalam <a>.
+          insideLink={Boolean(reviewSectionHref)}
+          clampClassName={compact ? "line-clamp-4" : "line-clamp-5"}
+          className="mt-1 text-xs leading-snug text-foreground"
+        />
       ) : null}
 
       {mediaItems.length ? (
@@ -210,6 +206,20 @@ export function TestimonialCard({
               />
             )
           })}
+        </div>
+      ) : null}
+
+      {adminReply ? (
+        <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Balasan {storeName}
+          </p>
+          <ReviewCollapsibleText
+            text={adminReply}
+            insideLink={Boolean(reviewSectionHref)}
+            clampClassName="line-clamp-3"
+            className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90"
+          />
         </div>
       ) : null}
     </div>

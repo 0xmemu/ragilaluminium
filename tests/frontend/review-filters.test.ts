@@ -20,7 +20,7 @@ function review(id: number, rating: number | null, extra: Partial<Testimonial> =
 }
 
 describe("filter ulasan", () => {
-  it("menghitung jumlah per rating dari seluruh ulasan dan mengurutkan menaik", () => {
+  it("selalu menyediakan pilihan bintang 1 sampai 5 dan mengurutkan menaik", () => {
     const items = [
       review(1, 5),
       review(2, 5),
@@ -29,8 +29,12 @@ describe("filter ulasan", () => {
       review(5, 0),
     ]
 
-    // Rating 4 dan 5 saja; null dan 0 tidak dihitung, urut dari yang terkecil.
+    // Rating tanpa ulasan tetap tampil dengan count 0 (permintaan owner
+    // 2026-09-21), sedangkan null dan 0 bukan rating sah dan tidak dihitung.
     expect(reviewRatingCounts(items)).toEqual([
+      { value: "1", count: 0 },
+      { value: "2", count: 0 },
+      { value: "3", count: 0 },
       { value: "4", count: 1 },
       { value: "5", count: 2 },
     ])

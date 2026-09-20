@@ -41,6 +41,19 @@ class ProductReviewDemoSeeder extends Seeder
         'https://media.333labs.tech/products/98/PuF14Khf3ZxDmAaP-card.webp',
     ];
 
+    /**
+     * Tiga pesanan dev yang benar-benar memuat produk ini beserta pilihan
+     * variannya. Label varian di kartu ulasan diturunkan dari baris pesanan
+     * (CmsTestimonial::orderVariantLabel), bukan disimpan di tabel ulasan,
+     * jadi ulasan tanpa pesanan tidak akan pernah menampilkan varian.
+     * Dipakai contoh supaya tampilan label varian ikut terperiksa.
+     */
+    private const ORDER_COKELAT_BENING = 100001;
+
+    private const ORDER_HITAM_ES = 100017;
+
+    private const ORDER_HITAM_ES_KEDUA = 100019;
+
     /** Video contoh dari pustaka media, dipakai ulasan bervideo. */
     private const VIDEO = 'https://media.333labs.tech/media/library/2026/09/67d2e859-44bb-4bf9-ac21-fe055f1a344c.mp4';
 
@@ -60,16 +73,10 @@ class ProductReviewDemoSeeder extends Seeder
 
         $pageId = TestimonialPageSettings::pageId();
         $inserted = 0;
-        $skipped = 0;
+        $updated = 0;
 
         foreach ($this->reviews(self::PHOTOS) as $index => $row) {
             $reference = self::REF_PREFIX.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
-
-            if (CmsTestimonial::query()->where('source_reference', $reference)->exists()) {
-                $skipped++;
-
-                continue;
-            }
 
             $media = [];
             foreach ($row['photos'] as $url) {
@@ -82,11 +89,12 @@ class ProductReviewDemoSeeder extends Seeder
             // Jam dibuat berbeda-beda supaya urutan waktu tidak seragam.
             $when = now()->subDays($row['days_ago'])->setTime(9 + ($index % 9), (13 + $index * 7) % 60);
 
-            $review = new CmsTestimonial();
-            $review->forceFill([
+            $attributes = [
                 'cms_page_id' => $pageId,
                 'product_id' => $product->id,
-                'order_id' => null,
+                // Sebagian ulasan contoh sengaja tidak tertaut pesanan
+                // (order_id null) supaya keduanya ikut terlihat di halaman.
+                'order_id' => $row['order_id'] ?? null,
                 'author_admin_id' => null,
                 'author_type' => 'customer',
                 'moderation_status' => 'approved',
@@ -105,19 +113,33 @@ class ProductReviewDemoSeeder extends Seeder
                 'media_items' => $media ?: null,
                 'published' => true,
                 'sort_order' => $index + 1,
-                'created_at' => $when,
-                'updated_at' => $when,
-            ]);
+            ];
+
+            $existing = CmsTestimonial::query()->where('source_reference', $reference)->first();
+
+            if ($existing) {
+                // Baris sudah ada: isinya diselaraskan supaya seeder tetap
+                // idempoten, tetapi created_at tidak diubah agar tanggal
+                // ulasan tidak bergeser setiap kali seeder dijalankan.
+                $existing->forceFill($attributes);
+                $existing->save();
+                $updated++;
+
+                continue;
+            }
+
+            $review = new CmsTestimonial();
+            $review->forceFill($attributes + ['created_at' => $when, 'updated_at' => $when]);
             $review->save();
 
             $inserted++;
         }
 
         $this->command?->info(sprintf(
-            'Ulasan demo %s: %d baris ditambahkan, %d baris sudah ada (dilewati).',
+            'Ulasan demo %s: %d baris ditambahkan, %d baris diselaraskan.',
             self::SKU,
             $inserted,
-            $skipped,
+            $updated,
         ));
     }
 
@@ -153,14 +175,15 @@ class ProductReviewDemoSeeder extends Seeder
             ],
             [
                 'customer_name' => 'Rizky Pratama', 'location' => 'Bandung', 'rating' => 5,
-                'days_ago' => 15, 'verified' => true, 'video' => false,
+                'days_ago' => 15, 'verified' => true, 'video' => false, 'order_id' => self::ORDER_COKELAT_BENING,
                 'reply' => 'Terima kasih atas ulasannya. Senang mendengar ukurannya pas. Kalau nanti butuh tambahan unit untuk ruangan lain, silakan hubungi kami lewat WhatsApp.',
                 'photos' => [$photos[1], $photos[3], $photos[2]],
                 'message' => 'Ukuran 140x50 pas dengan bukaan yang saya ukur sendiri. Engsel halus dan tidak bunyi saat daun jendela dibuka tutup. Packing kayu rapat, tidak ada lecet sedikit pun.',
             ],
             [
                 'customer_name' => 'Sri Wahyuni', 'location' => 'Yogyakarta', 'rating' => 5,
-                'days_ago' => 21, 'verified' => true, 'video' => false, 'reply' => null,
+                'days_ago' => 21, 'verified' => true, 'video' => false, 'order_id' => self::ORDER_HITAM_ES,
+                'reply' => null,
                 'photos' => [],
                 'message' => 'Sudah dua kali pesan di sini. Yang pertama untuk kamar anak, sekarang untuk dapur. Adminnya sabar membantu menghitung kebutuhan kaca dan tidak memaksa untuk upgrade.',
             ],
@@ -179,7 +202,8 @@ class ProductReviewDemoSeeder extends Seeder
             ],
             [
                 'customer_name' => 'Bayu Nugroho', 'location' => 'Semarang', 'rating' => 3,
-                'days_ago' => 41, 'verified' => true, 'video' => false, 'reply' => null,
+                'days_ago' => 41, 'verified' => true, 'video' => false, 'order_id' => self::ORDER_HITAM_ES_KEDUA,
+                'reply' => null,
                 'photos' => [$photos[0]],
                 'message' => 'Barangnya sesuai deskripsi dan rangkanya kokoh. Yang kurang pas buat saya, seal karet di sisi bawah agak longgar sehingga perlu saya rekatkan ulang. Fungsi jendelanya tetap normal.',
             ],

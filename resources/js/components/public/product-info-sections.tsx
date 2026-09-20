@@ -8,6 +8,7 @@ import {
   type ReviewSortValue,
 } from "@/components/public/review-filter-pills"
 import { filterReviews, reviewMediaItems, reviewRatingCounts } from "@/lib/review-filters"
+import { ReviewCollapsibleText } from "@/components/public/review-collapsible-text"
 import { formatDate } from "@/lib/format"
 
 import { GalleryLightbox } from "@/components/public/gallery-lightbox"
@@ -272,8 +273,13 @@ export function ProductInfoSections({
           >
             {filteredReviews.map((review) => {
               const media = reviewMediaItems(review)
-              const previews = media.slice(0, 3)
-              const extraMedia = media.length - previews.length
+              // Empat media per baris, satu baris penuh (grid 4 kolom).
+              const visibleMedia = media.slice(0, 4)
+              const extraMedia = media.length - visibleMedia.length
+              // Variabel lokal supaya tipenya menyempit jadi string; guard
+              // `?? ""` pada pemakaian langsung tidak menyempitkan tipe.
+              const variantLabel = (review.variant_label ?? "").trim()
+              const adminReply = (review.admin_reply ?? "").trim()
               return (
                 <li
                   key={review.id}
@@ -298,48 +304,58 @@ export function ProductInfoSections({
                       <StarRow value={review.rating ?? 0} size="size-3" />
                     </div>
                   ) : null}
-                  {(review.variant_label ?? "").trim() ? (
-                    <p className="mt-1.5 truncate text-[11px] leading-tight text-muted-foreground">
-                      {review.variant_label}
+                  {variantLabel ? (
+                    <p className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[11px] leading-tight text-muted-foreground">
+                      <Icon name="tags" className="size-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{variantLabel.replace(/ · /g, " / ")}</span>
                     </p>
                   ) : null}
-                  <p className="mt-1 max-w-full break-words text-xs leading-snug text-foreground line-clamp-3">
-                    {review.message}
-                  </p>
-                  {(review.admin_reply ?? "").trim() ? (
+                  {review.message ? (
+                    <ReviewCollapsibleText
+                      text={review.message}
+                      className="mt-1 max-w-full break-words text-xs leading-snug text-foreground"
+                    />
+                  ) : null}
+                  {media.length ? (
+                    <div className="mt-2.5 grid w-full grid-cols-4 gap-1.5">
+                      {visibleMedia.map((item, index) => {
+                        // Ubin terakhir menanggung sisa media yang tidak tampil.
+                        const withOverlay = extraMedia > 0 && index === visibleMedia.length - 1
+                        return (
+                          <ReviewPhotoThumb
+                            key={`${item.src}-${index}`}
+                            src={item.src}
+                            isVideo={item.isVideo}
+                            bare
+                            asButton
+                            onButtonClick={() => {
+                              setPreviewReview(review)
+                              setPreviewIndex(index)
+                            }}
+                            ariaLabel={
+                              withOverlay
+                                ? `Lihat ${media.length} media ulasan ${review.customer_name}`
+                                : `${item.isVideo ? "Video" : "Foto"} ulasan ${review.customer_name} ${index + 1}`
+                            }
+                            alt={`${item.isVideo ? "Video" : "Foto"} ulasan ${review.customer_name} ${index + 1}`}
+                            overlayCount={withOverlay ? extraMedia : undefined}
+                            className="aspect-square w-full rounded-[4px]"
+                            buttonClassName="bg-surface-muted"
+                          />
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                  {adminReply ? (
                     <div className="mt-2 rounded-lg border border-border/70 bg-muted/50 p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         Balasan {storeName}
                       </p>
-                      <p className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90 line-clamp-3">
-                        {review.admin_reply}
-                      </p>
-                    </div>
-                  ) : null}
-                  {media.length ? (
-                    <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
-                      {previews.map((item, index) => (
-                        <ReviewPhotoThumb
-                          key={`${item.src}-${index}`}
-                          src={item.src}
-                          isVideo={item.isVideo}
-                          alt={`${item.isVideo ? "Video" : "Foto"} ulasan ${review.customer_name} ${index + 1}`}
-                          asButton
-                          onButtonClick={() => {
-                            setPreviewReview(review)
-                            setPreviewIndex(index)
-                          }}
-                          buttonClassName="bg-surface-muted"
-                        />
-                      ))}
-                      {extraMedia > 0 ? (
-                        <ReviewPhotoThumb
-                          src={previews[previews.length - 1].src}
-                          isVideo={previews[previews.length - 1].isVideo}
-                          alt=""
-                          overlayCount={extraMedia}
-                        />
-                      ) : null}
+                      <ReviewCollapsibleText
+                        text={adminReply}
+                        clampClassName="line-clamp-2"
+                        className="mt-0.5 whitespace-pre-line text-xs leading-snug text-foreground/90"
+                      />
                     </div>
                   ) : null}
                 </li>
