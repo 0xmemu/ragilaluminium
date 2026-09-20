@@ -25,7 +25,10 @@ class StorePerformanceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Analytics/StorePerformance')
                 ->has('report.sections', 5)
-                ->has('report.charts', 4)
+                // Enam seri tren, satu per kartu KPI di baris atas halaman:
+                // penjualan, pesanan, produk terjual, unit terjual, pengunjung,
+                // dan pengunjung yang membeli.
+                ->has('report.charts', 6)
                 ->where('filters.period', 'today'));
     }
 

@@ -426,6 +426,15 @@ class StorePerformanceService
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'orders'),
                 ],
                 [
+                    'key' => 'products',
+                    'title' => 'Tren Produk Terjual',
+                    'total' => $current['products_sold'],
+                    'previous_total' => $previous['products_sold'] ?? 0.0,
+                    'total_format' => 'number',
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'products'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'products'),
+                ],
+                [
                     'key' => 'units',
                     'title' => 'Tren Unit Terjual',
                     'total' => $current['units'],
@@ -442,6 +451,15 @@ class StorePerformanceService
                     'total_format' => 'number',
                     'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'visitors'),
                     'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'visitors'),
+                ],
+                [
+                    'key' => 'conversion_rate',
+                    'title' => 'Tren Pengunjung yang Membeli',
+                    'total' => $current['conversion_rate'],
+                    'previous_total' => $previous['conversion_rate'] ?? 0.0,
+                    'total_format' => 'percent',
+                    'series' => $this->series($range['from'], $range['to'], $range['granularity'], 'conversion_rate'),
+                    'previous_series' => $this->series($range['previous_from'], $range['previous_to'], $range['granularity'], 'conversion_rate'),
                 ],
 
             ],
@@ -894,7 +912,21 @@ class StorePerformanceService
             })->values()->all();
         }
 
-        if ($metric === 'units') {
+        if ($metric === 'products') {
+            // Produk berbeda yang terjual per bucket, disamakan dengan
+            // products_sold pada metricsFor: distinct variant_sku dari order
+            // berstatus omzet, baris tanpa variant_sku tidak dihitung.
+            $rows = OrderItem::query()
+                ->selectRaw($this->bucketSelect('orders.created_at', $granularity).' as bucket')
+                ->selectRaw('COUNT(DISTINCT order_items.variant_sku) as value')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereBetween('orders.created_at', [$from, $to])
+                ->whereRaw($this->paidRevenueStatusSql('orders'))
+                ->whereNotNull('order_items.variant_sku')
+                ->where('order_items.variant_sku', '!=', '')
+                ->groupBy('bucket')
+                ->pluck('value', 'bucket');
+        } elseif ($metric === 'units') {
             $rows = OrderItem::query()
                 ->selectRaw($this->bucketSelect('orders.created_at', $granularity).' as bucket')
                 ->selectRaw('SUM(order_items.quantity) as value')

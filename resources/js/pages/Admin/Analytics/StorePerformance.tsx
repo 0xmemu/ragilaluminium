@@ -51,7 +51,7 @@ interface ChartBlock {
   title: string
   total: number
   previous_total?: number
-  total_format: "currency" | "number"
+  total_format: "currency" | "number" | "percent"
   series: SeriesPoint[]
   previous_series?: SeriesPoint[]
 }
@@ -126,6 +126,17 @@ interface Report {
 
 
 
+
+/**
+ * Format nilai total dan pembanding pada grafik tren. Satu tempat saja supaya
+ * rupiah, persen, dan angka polos tidak berbeda antar chart.
+ */
+function formatChartValue(value: number | undefined, totalFormat: string): string {
+  const angka = value ?? 0
+  if (totalFormat === "currency") return formatCurrency(angka)
+  if (totalFormat === "percent") return formatNumber(angka) + "%"
+  return formatNumber(angka)
+}
 
 function formatDuration(value: number, isDays = false): string {
   if (!Number.isFinite(value) || value <= 0) return "0 menit"
@@ -1270,10 +1281,11 @@ export default function StorePerformance({
         ) : null}
       </section>
 
-      {/* HERO: enam KPI utama dalam satu baris. Kartu yang punya seri tren
-          sekaligus menjadi tab grafik tepat di bawahnya, jadi ringkasan angka
-          dan grafiknya terbaca sebagai satu kesatuan. Tata letak mengikuti
-          prototype ui-lab/performa-toko.html. */}
+      {/* HERO: enam KPI utama dalam satu baris, dan keenamnya sekaligus menjadi
+          tab grafik tepat di bawahnya. Jadi setiap angka ringkasan punya tren
+          yang bisa dibuka tanpa pindah halaman. Rincian rumus tiap metrik tetap
+          lewat tombol info di tiap kartu. Tata letak mengikuti prototype
+          ui-lab/performa-toko.html. */}
       <section
         aria-label="Ringkasan utama"
         className="mb-5 overflow-hidden rounded-xl border border-border bg-card shadow-soft"
@@ -1310,7 +1322,7 @@ export default function StorePerformance({
               {
                 metric: "products-sold",
                 kpi: "products",
-                chart: null,
+                chart: "products",
                 label: kpiMap["products"]?.label ?? "Produk Terjual",
                 hint: "Jumlah produk unik yang terjual pada periode.",
                 value: formatNumber(kpiMap["products"]?.value ?? 0),
@@ -1341,7 +1353,7 @@ export default function StorePerformance({
               {
                 metric: "conversion",
                 kpi: "conversion",
-                chart: null,
+                chart: "conversion_rate",
                 label: kpiMap["conversion"]?.label ?? "Pengunjung yang Membeli",
                 hint: "Jumlah pembeli unik dibanding pengunjung unik pada periode ini. Angka ini rasio, bukan penautan sesi ke pesanan: sistem tidak melacak pengunjung mana yang membeli.",
                 value: kunjunganTidakLengkap ? (
@@ -1441,9 +1453,7 @@ export default function StorePerformance({
                   <span className="text-xs text-muted-foreground">
                     Total:{" "}
                     <span className="font-semibold tabular-nums text-foreground">
-                      {chart.total_format === "currency"
-                        ? formatCurrency(chart.total)
-                        : formatNumber(chart.total)}
+                      {formatChartValue(chart.total, chart.total_format)}
                     </span>
                   </span>
                 </div>
@@ -1464,9 +1474,7 @@ export default function StorePerformance({
                     <span>
                       Pembanding:{" "}
                       <span className="font-semibold tabular-nums text-muted-foreground">
-                        {chart.total_format === "currency"
-                          ? formatCurrency(chart.previous_total)
-                          : formatNumber(chart.previous_total)}
+                        {formatChartValue(chart.previous_total, chart.total_format)}
                       </span>
                     </span>
                   </div>
@@ -1502,10 +1510,10 @@ export default function StorePerformance({
                   <TrendChart
                     series={combinedSeries}
                     format={
-                      chart.key === "conversion_rate"
-                        ? "percent"
-                        : chart.total_format === "currency"
-                          ? "currency"
+                      chart.total_format === "currency"
+                        ? "currency"
+                        : chart.total_format === "percent"
+                          ? "percent"
                           : "number"
                     }
                     chartType={chartModel}

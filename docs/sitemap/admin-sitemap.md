@@ -23,6 +23,9 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 ### 2. Performa Toko
 - **Performa Toko** (Tipe: Analytics / pembukuan)
   - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
+  - Enam kartu KPI di baris atas sekaligus menjadi tab grafik tren, urut sejajar kartu:
+    revenue, orders, products, units, visitors, conversion_rate. Menambah kartu baru berarti
+    menambah satu entri di reports.charts agar kartunya tetap bisa menampilkan tren.
   - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)
@@ -114,7 +117,8 @@ Biaya COD tetap item flat di grup yang sama.
 ### 7. CMS / Pengaturan Website
 - **Beranda Pembeli** (Tipe: `Content/CMS`)
   - Tata letak section beranda (urutan/aktif) + editor Sorotan Layanan & Cara Pesan. Banner → Promo Toko.
-  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm}`. Data: `cms_pages.beranda` JSON.
+  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm,Popular}`.
+  - **Paling Banyak Dipesan** (`admin.beranda.popular.index`): urutan prioritas carousel beranda/katalog via drag & drop; menulis `products.homepage_popular` + `homepage_popular_sort` (10 produk aktif teratas tayang). Data: `cms_pages.beranda` JSON.
 - **Cara Pemesanan** (Tipe: `Content/CMS`)
   - Editor panduan publik `/cara-pemesanan`: hero, langkah (+ checklist), kartu info, catatan HTML.
   - Route: `admin.cara-pemesanan.*` → `Admin/CaraPemesanan/Edit`. Data: `cms_pages.slug = cara-pemesanan`.
@@ -124,9 +128,10 @@ Biaya COD tetap item flat di grup yang sama.
 - **Masalah & Solusi** (Tipe: `Content/CMS`)
   - Pasangan kendala/rekomendasi (`cms_problems_solutions`) + meta `cms_pages.masalah-solusi`.
   - Route: `admin.masalah-solusi.*` → `Admin/MasalahSolusi/{Index,Form}`. Publik: `/masalah-dan-solusi` → `Public/MasalahSolusi`.
-- **Informasi Toko** (Tipe: `Content/CMS`)
-  - Editor dokumen panjang (`cms_pages.tentang-kami` → `content.body` + heading).
-  - Route: `admin.tentang-kami.*` → `Admin/CmsDocument/Edit`. Publik: `/about`.
+- **Informasi Toko / Tentang Kami** (Tipe: `Content/CMS` & Pusat Profil Terpadu)
+  - Pusat pengelolaan profil perusahaan terpadu: informasi utama (hero/headline/deskripsi), foto utama & galeri workshop (1-4 foto), statistik keunggulan, proses produksi, cara kerja pemesanan, dan jaminan pelanggan (`cms_pages.tentang-kami` via `AboutPageSettings`).
+  - Otomatis menyinkronkan kontak (alamat, WA, email, jam kerja) ke `cms_pages.kontak` (`StoreContactSettings`) dan tautan marketplace/sosmed ke `cms_pages.storefront-platforms` (`StorefrontPlatformSettings`).
+  - Route: `admin.tentang-kami.*` → `Admin/TentangKami/Edit`. Publik: `/about` → `Public/About`.
 - **Marketplace & Media Sosial** (Tipe: `Settings`)
   - Editor tautan eksternal toko/akun (`cms_pages.storefront-platforms` → `content.links`). Katalog key/label/icon di `config/sitemap.php` → `platforms`.
   - Route: `admin.storefront-platforms.*` → `Admin/StorefrontPlatforms/Edit`. Tampil di Informasi Toko + footer via Inertia share `platforms`.
