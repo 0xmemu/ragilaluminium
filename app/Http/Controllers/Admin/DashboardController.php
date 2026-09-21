@@ -147,34 +147,25 @@ class DashboardController extends Controller
                 'count' => Order::where('order_status', 'issue')->count(),
                 'href' => route('admin.orders.index', ['order_status' => 'issue']),
             ],
-            // Queue pembayaran aman berbasis mapping existing (tidak overclaim).
-            // TIDAK membuat queue "Payment verification": payment_status pending saat ini
-            // belum membedakan unpaid vs proof_received (lihat OrderStatusView).
+            // Antrean pesanan baru yang belum diproses. Sebelumnya dipecah jadi
+            // transfer_unpaid dan cod_pending, padahal keduanya menyaring status
+            // pesanan yang sama (awaiting_confirmation), sehingga yang tampil
+            // sebenarnya satu antrean yang dipisah menurut cara bayar. Owner
+            // 2026-09-21: jadikan satu item.
+            //
+            // Payment status sengaja TIDAK disaring: labelnya bicara soal proses,
+            // bukan pembayaran, jadi pesanan yang sudah dibayar tetapi belum kita
+            // proses tetap menunggu diproses. Tautannya juga tidak memaksa cara
+            // bayar, supaya kedua populasi terlihat sekaligus; halaman pesanan
+            // sudah punya filter cara bayar sendiri.
             [
-                'key' => 'transfer_unpaid',
-                'label' => 'Transfer menunggu pembayaran',
+                'key' => 'menunggu_diproses',
+                'label' => 'Pesanan menunggu diproses',
                 'count' => Order::query()
                     ->where('order_status', 'awaiting_confirmation')
-                    ->where('payment_status', 'pending')
-                    ->where('cod_flag', false)
                     ->count(),
                 'href' => route('admin.orders.index', [
                     'order_status' => 'awaiting_confirmation',
-                    'payment_status' => 'pending',
-                    'is_cod' => 0,
-                ]),
-            ],
-            [
-                'key' => 'cod_pending',
-                'label' => 'COD menunggu diproses',
-                'count' => Order::query()
-                    ->where('order_status', 'awaiting_confirmation')
-                    ->where('payment_status', 'pending')
-                    ->where('cod_flag', true)
-                    ->count(),
-                'href' => route('admin.orders.index', [
-                    'order_status' => 'awaiting_confirmation',
-                    'is_cod' => 1,
                 ]),
             ],
             // WhatsApp belum terhubung = notifikasi pesanan tidak terkirim:
@@ -193,8 +184,9 @@ class DashboardController extends Controller
             'delivered_stale' => 'medium',
             'return_overdue' => 'medium',
             'issue_orders' => 'high',
-            'transfer_unpaid' => 'medium',
-            'cod_pending' => 'low',
+            // medium, bukan low: item ini kini mencakup transfer yang uangnya
+            // belum masuk, jadi tidak tepat ditandai paling tidak mendesak.
+            'menunggu_diproses' => 'medium',
             'wa_disconnected' => 'high',
         ];
         // Beri 'severity' pada tiap item attention utk tone badge di UI (danger/warning/info).

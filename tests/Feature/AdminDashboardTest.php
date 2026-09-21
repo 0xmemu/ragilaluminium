@@ -248,6 +248,81 @@ class AdminDashboardTest extends TestCase
             );
     }
 
+    /**
+     * Antrean pesanan baru dihitung sebagai SATU item.
+     *
+     * Sebelumnya dipecah jadi transfer_unpaid dan cod_pending, padahal keduanya
+     * menyaring status pesanan yang sama (awaiting_confirmation), sehingga yang
+     * tampil sebenarnya satu antrean yang dipisah menurut cara bayar. Owner
+     * 2026-09-21 memutuskan digabung, dan penyaringan payment_status dibuang:
+     * yang dihitung semua pesanan menunggu konfirmasi, COD maupun transfer,
+     * termasuk yang sudah dibayar tetapi belum diproses.
+     *
+     * Dijaga di sini karena item perhatian dashboard tidak punya test lain, jadi
+     * tanpa ini angka dan labelnya bisa berubah tanpa ketahuan.
+     */
+    public function test_antrean_menunggu_diproses_menggabungkan_cod_dan_transfer(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        // Dua cara bayar yang dulu punya item terpisah.
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-COD-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'payment_method' => 'cod',
+            'cod_flag' => true,
+        ]);
+
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-TRANSFER-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        // Sudah dibayar tetapi belum diproses. Ikut terhitung, karena label item
+        // ini bicara soal proses, bukan soal pembayaran.
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-LUNAS-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'paid',
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        // Semua dibuat baru, jadi tidak masuk item aging yang sudah ada.
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $attention = collect($page->toArray()['props']['attention'] ?? []);
+                $keys = $attention->pluck('key')->all();
+
+                $this->assertNotContains('transfer_unpaid', $keys, 'Item transfer_unpaid harus sudah tidak ada.');
+                $this->assertNotContains('cod_pending', $keys, 'Item cod_pending harus sudah tidak ada.');
+
+                $item = $attention->firstWhere('key', 'menunggu_diproses');
+                $this->assertNotNull($item, 'Item Pesanan menunggu diproses harus ada.');
+
+                $this->assertSame('Pesanan menunggu diproses', $item['label']);
+                $this->assertSame(
+                    3,
+                    $item['count'],
+                    'COD, transfer, dan yang sudah lunas semuanya terhitung dalam satu item.'
+                );
+                $this->assertSame(
+                    route('admin.orders.index', ['order_status' => 'awaiting_confirmation']),
+                    $item['href'],
+                    'Tautan menyaring status pesanan saja, tanpa memaksa cara bayar.'
+                );
+            });
+    }
+
     public function test_dashboard_hides_empty_attention_items(): void
     {
         $admin = User::factory()->create([
