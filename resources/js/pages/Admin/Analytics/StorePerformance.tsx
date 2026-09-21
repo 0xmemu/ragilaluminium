@@ -16,6 +16,7 @@ import {
 } from "@/components/admin/ui/dialog"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import AdminLayout from "@/layouts/admin-layout"
+import type { DeltaComparison } from "@/lib/delta-comparison"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -30,6 +31,12 @@ interface Kpi {
   change_percent: number | null
   format: "currency" | "number" | "percent" | "hours" | "days"
   detail?: string | null
+  /**
+   * Nilai periode ini dan periode sebelumnya, dirakit halaman untuk
+   * keterangan badge perubahan. Kosong untuk metrik bercakupan sekarang,
+   * karena angkanya tidak dibandingkan dengan periode sebelumnya.
+   */
+  comparison?: DeltaComparison
 }
 
 interface Section {
@@ -419,6 +426,8 @@ type DetailRow = {
   tone?: "default" | "primary" | "destructive"
   /** Persentase perubahan. undefined berarti badge tidak ditampilkan. */
   delta?: number | null
+  /** Keterangan yang muncul saat badge perubahan diarahkan kursor. */
+  comparison?: DeltaComparison
 }
 
 type DetailBlock =
@@ -491,13 +500,23 @@ function labelMetodeBayar(metode: string): string {
   return peta[kunci] ?? "Metode Lain"
 }
 
+/**
+ * Nilai diformat dari angka dan satuannya. Dipakai untuk nilai periode ini
+ * maupun nilai periode sebelumnya, supaya keterangan pembanding memakai satuan
+ * yang sama persis dengan angka di kartu.
+ */
+function formatNilaiKpi(nilai: number | null | undefined, format: Kpi["format"]): string {
+  if (nilai === null || nilai === undefined) return "Belum tersedia"
+  if (format === "currency") return formatCurrency(nilai)
+  if (format === "percent") return formatNumber(nilai) + "%"
+  if (format === "hours") return formatDuration(nilai)
+  if (format === "days") return formatDuration(nilai, true)
+  return formatNumber(nilai)
+}
+
 /** Satu tempat untuk mengubah nilai KPI menjadi teks, supaya satuan seragam. */
 function formatKpiValue(kpi: Kpi): string {
-  if (kpi.format === "currency") return formatCurrency(kpi.value)
-  if (kpi.format === "percent") return formatNumber(kpi.value) + "%"
-  if (kpi.format === "hours") return formatDuration(kpi.value)
-  if (kpi.format === "days") return formatDuration(kpi.value, true)
-  return formatNumber(kpi.value)
+  return formatNilaiKpi(kpi.value, kpi.format)
 }
 
 /**
@@ -515,6 +534,7 @@ function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·
     // Metrik snapshot sengaja tidak diberi perubahan: angkanya keadaan saat
     // laporan dibangun, jadi tidak ada periode pembanding yang bermakna.
     delta: adalahSnapshot(kpi) ? undefined : (kpi.change_percent ?? undefined),
+    comparison: kpi.comparison,
   }
 }
 
@@ -1337,7 +1357,9 @@ function CategoryDetailPanel({
                             {row.value}
                           </td>
                           <td className="w-24 py-2 pl-3 text-right">
-                            {row.delta === undefined ? null : <DeltaBadge percent={row.delta} />}
+                            {row.delta === undefined ? null : (
+                              <DeltaBadge percent={row.delta} comparison={row.comparison} />
+                            )}
                           </td>
                         </tr>
                         {barisPenjelas ? (
@@ -1525,9 +1547,31 @@ export default function StorePerformance({
 
   const kpiMap = React.useMemo(() => {
     const map: Record<string, (typeof report)["sections"][number]["kpis"][number]> = {}
-    for (const sec of report.sections) for (const k of sec.kpis) {
-      map[k.key] = k
+    // Rentang pembanding disebut sekali di sini, lalu dipakai keterangan badge
+    // di seluruh halaman.
+    const periodePembanding =
+      report.range.compare_from_date && report.range.compare_to_date
+        ? report.range.compare_from_date + " - " + report.range.compare_to_date
+        : undefined
+
+    for (const sec of report.sections) {
+      for (const k of sec.kpis) {
+        // Metrik bercakupan sekarang tidak punya pembanding, jadi tidak diberi
+        // keterangan: angkanya keadaan saat ini, bukan hasil perbandingan.
+        map[k.key] =
+          k.previous === null || k.previous === undefined
+            ? k
+            : {
+                ...k,
+                comparison: {
+                  current: formatNilaiKpi(k.value, k.format),
+                  previous: formatNilaiKpi(k.previous, k.format),
+                  period: periodePembanding,
+                },
+              }
+      }
     }
+
     return map
   }, [report])
 
@@ -1986,7 +2030,9 @@ export default function StorePerformance({
                     <span className="min-w-0 truncate text-muted-foreground">
                       {isActive ? "Grafik aktif" : null}
                     </span>
-                    {def.delta === undefined ? null : <DeltaBadge percent={def.delta} />}
+                    {def.delta === undefined ? null : (
+                      <DeltaBadge percent={def.delta} comparison={kpiMap[def.kpi]?.comparison} />
+                    )}
                   </div>
                 </div>
               )
@@ -2149,7 +2195,10 @@ export default function StorePerformance({
               {formatCurrency(report.financial.net_revenue)}
             </p>
             <div className="mt-3">
-              <DeltaBadge percent={kpiMap["net_revenue"]?.change_percent} />
+              <DeltaBadge
+                percent={kpiMap["net_revenue"]?.change_percent}
+                comparison={kpiMap["net_revenue"]?.comparison}
+              />
             </div>
           </div>
 
@@ -2331,6 +2380,7 @@ export default function StorePerformance({
                 percent={null}
                 absolute={durasiConfirm.delta}
                 absoluteSuffix={durasiConfirm.suffix}
+                comparison={kpiMap["avg_confirm_hours"]?.comparison}
                 upIsBad
               />
             </div>
@@ -2352,6 +2402,7 @@ export default function StorePerformance({
                 percent={null}
                 absolute={durasiProcess.delta}
                 absoluteSuffix={durasiProcess.suffix}
+                comparison={kpiMap["avg_process_days"]?.comparison}
                 upIsBad
               />
             </div>
@@ -2373,7 +2424,10 @@ export default function StorePerformance({
             <span className="font-semibold tabular-nums text-foreground">
               {formatNumber(kpiMap["completed_orders"]?.value ?? 0)}
             </span>
-            <DeltaBadge percent={kpiMap["completed_orders"]?.change_percent} />
+            <DeltaBadge
+          percent={kpiMap["completed_orders"]?.change_percent}
+          comparison={kpiMap["completed_orders"]?.comparison}
+        />
           </span>
         </div>
 
@@ -2404,7 +2458,10 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">pelanggan</span>
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["new_customers"]?.change_percent} />
+              <DeltaBadge
+                percent={kpiMap["new_customers"]?.change_percent}
+                comparison={kpiMap["new_customers"]?.comparison}
+              />
             </div>
           </div>
 
@@ -2424,7 +2481,10 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">pelanggan</span>
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["repeat_customers"]?.change_percent} />
+              <DeltaBadge
+                percent={kpiMap["repeat_customers"]?.change_percent}
+                comparison={kpiMap["repeat_customers"]?.comparison}
+              />
             </div>
           </div>
 
@@ -2442,7 +2502,10 @@ export default function StorePerformance({
               {formatCurrency(kpiMap["aov"]?.value ?? 0)}
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["aov"]?.change_percent} />
+              <DeltaBadge
+                percent={kpiMap["aov"]?.change_percent}
+                comparison={kpiMap["aov"]?.comparison}
+              />
             </div>
           </div>
 
@@ -2460,7 +2523,10 @@ export default function StorePerformance({
               {formatCurrency(kpiMap["avg_unit_price"]?.value ?? 0)}
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["avg_unit_price"]?.change_percent} />
+              <DeltaBadge
+                percent={kpiMap["avg_unit_price"]?.change_percent}
+                comparison={kpiMap["avg_unit_price"]?.comparison}
+              />
             </div>
           </div>
         </div>
