@@ -184,3 +184,39 @@ di kategori Penjualan, Referensi, dan Arus Kas; kedua kotak penjelasan hilang; h
 "Model Produk Terjual" memunculkan "Jenis model yang terjual, tanpa membedakan desain. Satu
 model dengan dua desain tetap dihitung satu."; isi drawer Arus Kas muat tanpa gulir
 (855px isi = 855px terlihat).
+
+---
+
+## 2026-09-22 01:45 UTC | zcode | Deep | 414f5388 | selesai
+Lingkup: Batch 5 halaman Performa Toko, tiga hal yang semuanya diukur lebih dulu.
+(1) Tujuh indeks baru lewat migrasi `2026_09_22_000100_add_store_performance_indexes`, diverifikasi
+belum ada sebelum dibuat dan diverifikasi lewat EXPLAIN bahwa optimizer MEMILIH tiap indeks baru
+untuk kuerinya. Migrasi memakai `Schema::hasIndex` sehingga aman dijalankan ulang, dijalankan
+sebagai www-data forward-only.
+(2) Pengaman masukan rentang. Tanggal hanya dipakai bila bentuknya persis YYYY-MM-DD; nilai seperti
+"monday" atau "2026-13-45" diabaikan dan dilaporkan lewat `range.input_diabaikan`. Rentang yang
+melewati hari ini dipotong ke hari ini dan dilaporkan lewat `range.rentang_dipotong`, karena
+sebelumnya jendela pembandingnya menciut sampai panjang NOL detik sehingga seluruh kolom pembanding
+kehilangan arti. Dipilih memotong, bukan menolak dengan galat, supaya admin tetap bisa memperbaiki
+salah ketiknya sendiri.
+(3) Jumlah kueri tidak lagi tumbuh sebanding jumlah pesanan. Ini akar masalah sebenarnya di balik
+`period=all`: rentangnya bukan penyebabnya, melainkan kueri per pesanan. Terukur: last_30 dari 185
+menjadi 139 kueri, all dari 188 menjadi 132. `statusEventsFor` dan `firstWaybillAtFor` menggantikan
+`statusEventAt` yang kini kode mati dan sudah dihapus.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED. `docs/database-schema-ragil-aluminium.md` memuat tujuh
+indeks baru; `docs/sitemap/admin-sitemap.md` memuat perilaku pengaman masukan dan jaminan jumlah
+kueri.
+Untuk agent berikutnya: `range.input_diabaikan` dan `range.rentang_dipotong` adalah kunci payload
+BARU. Jangan menyimpulkan rentang yang tampil selalu sama dengan rentang yang diminta tanpa
+memeriksa kedua kunci itu. Test penjaga: `StorePerformanceInputGuardTest`, dan test jumlah kuerinya
+sudah dibuktikan non vakuum (dipasang kembali kueri per pesanan, 40 pesanan menambah tepat 40 kueri,
+test merah, lalu dikembalikan). Catatan fixture yang sempat menipu: periode "Hari ini" membandingkan
+sampai JAM yang sama, jadi fixture pembanding yang memakai jam tetap (mis. 10:00) akan gagal bila
+suite dijalankan pagi; taruh di awal hari kemarin.
+Retensi BELUM mendesak dan TIDAK diputuskan sendiri: event_logs 681 baris (0,3 MB), kunjungan 22
+baris dalam 4 hari, orders 20. Tabel terbesar justru jnt_address_masters 37 MB dan
+postal_code_mappings 22 MB. Usulan: pangkas event_logs dan performance_visitor_events bila lewat 12
+bulan, terjadwal, setelah data produksi berjalan beberapa bulan.
+Bukti: 8 test baru lulus; suite performa 1 skipped 137 passed (1872 assertions); suite frontend 21
+berkas 179 test lulus; tsc dan eslint bersih; build sukses lewat `scripts/prod/build-assets.sh`;
+permintaan rentang masa depan diverifikasi live dipotong ke hari ini dengan pemberitahuan tampil.
