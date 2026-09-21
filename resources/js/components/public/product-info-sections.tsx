@@ -312,9 +312,8 @@ export function ProductInfoSections({
                     </div>
                   ) : null}
                   {variantLabel ? (
-                    <p className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[11px] leading-tight text-muted-foreground">
-                      <Icon name="tags" className="size-3 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{variantLabel.replace(/ · /g, " / ")}</span>
+                    <p className="mt-1.5 truncate text-[11px] leading-tight text-muted-foreground">
+                      {variantLabel.replace(/ · /g, " / ")}
                     </p>
                   ) : null}
                   {review.message ? (
