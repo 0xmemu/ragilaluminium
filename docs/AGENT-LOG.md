@@ -96,3 +96,39 @@ public/build-slot-b, berarti ada run yang gagal, jalankan skrip sekali lagi untu
 membereskannya. Kelambatan situs BELUM diperbaiki: terowongan QUIC hanya mengalir 1
 sampai 80 KB per detik padahal aplikasi membalas 0,24 detik. Uji berikutnya adalah
 menjalankan cloudflared dengan --protocol http2.
+
+## 2026-09-21 13:00 UTC | zcode | Standard | - | selesai (percobaan, tidak ada perubahan perilaku)
+Lingkup: menguji apakah protokol terowongan Cloudflare penyebab situs lambat dimuat
+(bagian kedua diagnosa kondisi server 209). Hasil: BUKAN. Tidak ada perubahan yang
+dipertahankan, konfigurasi terowongan dikembalikan ke keadaan semula.
+Cara uji: kontainer kedua dijalankan dengan token yang sama plus --protocol http2,
+sehingga terdaftar sebagai 4 koneksi ke edge Dallas dengan protocol=http2, lalu
+kontainer QUIC lama dihentikan supaya tunnel dilayani hanya oleh http2. Tidak ada
+jeda mati karena kedua saluran sempat hidup bersamaan. Catatan teknis: citra
+cloudflare/cloudflared default berjalan sebagai nonroot sedangkan berkas token mode
+600 milik root, jadi kontainer perlu --user 0:0 (kontainer lama juga berjalan sebagai
+root, itu sebabnya ia berhasil).
+Hasil ukur dari komputer klien: http2 tetap liar, 18 dari 40 permintaan /up di atas
+1,5 detik, rentang 0,46 sampai 17,6 detik. Baseline QUIC juga liar, 3 dari 10 di atas
+1,5 detik, rentang 0,5 sampai 38,5 detik. Dari dalam server, kedua protokol sama
+stabilnya sekitar 0,1 detik. Kesimpulan: protokol terowongan bukan penyebabnya.
+Pembanding yang mengunci kesimpulan: dari klien yang sama pada saat yang sama,
+cloudflare.com 0,35 sampai 0,49 detik, google.com 0,15 sampai 0,88 detik, github.com
+0,12 sampai 0,19 detik, semuanya stabil, sedangkan situs kita 0,45 sampai 6,3 detik.
+Jadi kelambatan spesifik pada jalur situs kita, bukan pada link ISP klien.
+Yang sempat menyesatkan dan sudah dibersihkan: (1) Cloudflare WARP sempat dicurigai
+mengacaukan pengukuran, ternyata statusnya Disconnected (manual) dan tidak diubah,
+(2) satu permintaan sempat dilayani colo Marseille (MRS), itu anomali sesaat, sepuluh
+sampel berikutnya konsisten Singapura dan Hong Kong, (3) IPv6 dari ISP klien gagal
+total, itu cacat ISP lokal, bukan cacat situs.
+Untuk agent berikutnya: semua 4 koneksi terowongan berada di edge Dallas (dfw),
+sehingga permintaan dari pengunjung Asia Tenggara harus diteruskan Singapura ke Dallas
+di dalam jaringan Cloudflare lalu masuk terowongan. Kandidat perbaikan berikutnya,
+keduanya butuh keputusan owner: (a) arahkan DNS langsung ke origin sebagai A record
+proxied dan hentikan pemakaian tunnel, karena jalur Cloudflare ke 209 lewat TCP
+terukur sangat baik (RTT 1,9 ms, 0 persen paket hilang) dan ufw sudah membuka 443,
+tetapi 443 belum ada yang listen di nginx dan belum ada sertifikat origin Cloudflare;
+(b) pindahkan origin lebih dekat ke pengunjung, server 202 masih standby.
+Verifikasi pemulihan: hanya ragil-cloudflared yang berjalan, halaman 200, health check
+127.0.0.1:8200/up 200, tidak ada berkas ALERT-health, jalur websocket Reverb /app/
+menjawab 101.
