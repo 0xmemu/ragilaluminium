@@ -145,8 +145,9 @@ Biaya COD tetap item flat di grup yang sama.
 
 ### 7. CMS / Pengaturan Website
 - **Beranda Pembeli** (Tipe: `Content/CMS`)
-  - Tata letak section beranda (urutan/aktif) + editor Sorotan Layanan & Cara Pesan. Banner → Promo Toko.
-  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm,Popular}`.
+  - Tata letak section beranda (urutan/aktif) + editor seksi Cara Pesan Jendela Anda. Banner → Promo Toko.
+  - Tidak punya entri sidebar sejak 2026-09-21 (permintaan owner: "buang menu"). Halaman dan rutenya tetap hidup dan bisa dibuka lewat URL langsung `/admin/beranda`; yang dihapus hanya entri navigasinya. Halaman ini masih memuat dua kontrol yang dibaca beranda publik: on/off carousel Banner Utama dan editor seksi Cara Pesan Jendela Anda. Editor Sorotan Layanan sudah dihapus lebih dulu (tidak ada komponen publik yang membacanya).
+  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,HowToOrderForm,Popular}`.
   - **Paling Banyak Dipesan** (`admin.beranda.popular.index`): urutan prioritas carousel beranda/katalog via drag & drop; menulis `products.homepage_popular` + `homepage_popular_sort` (10 produk aktif teratas tayang). Data: `cms_pages.beranda` JSON.
 - **Cara Pemesanan** (Tipe: `Content/CMS`)
   - Editor panduan publik `/cara-pemesanan`: hero, langkah (+ checklist), kartu info, catatan HTML.

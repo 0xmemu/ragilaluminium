@@ -141,13 +141,6 @@ return [
                         'admin.beranda.kontak.*',
                     ],
                 ],
-                [
-                    'label' => 'Tata Letak Beranda',
-                    'route' => 'admin.beranda.index',
-                    'capability' => 'storefront_content.view',
-                    'icon' => 'layout-dashboard',
-                    'active' => ['admin.beranda.index', 'admin.beranda.update'],
-                ],
                 ['label' => 'CTA Storefront', 'route' => 'admin.cta-settings.edit', 'capability' => 'storefront_content.view', 'icon' => 'megaphone', 'active' => ['admin.cta-settings.*']],
                 ['label' => 'Sering Ditanyakan', 'route' => 'admin.faq.index', 'icon' => 'help-circle', 'active' => ['admin.faq.*']],
                 ['label' => 'Masalah & Solusi', 'route' => 'admin.masalah-solusi.index', 'icon' => 'alert-circle', 'active' => ['admin.masalah-solusi.*']],
