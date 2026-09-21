@@ -1251,6 +1251,21 @@ function CategoryDetailPanel({
           <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
             {detail.badge}
           </span>
+          {/* Sumber data dan catatan batas data dijadikan satu keterangan hover
+              di sini. Sebelumnya keduanya kotak terpisah di bawah drawer, dan
+              keduanya penjelasan sehingga mendorong angka ke atas. */}
+          {detail.source || detail.notes.length > 0 ? (
+            <HoverHint
+              label={<Icon name="info" className="size-3.5" aria-hidden="true" />}
+              hint={[
+                detail.source ? `Sumber data: ${detail.source}.` : null,
+                ...detail.notes,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              className="text-muted-foreground"
+            />
+          ) : null}
         </div>
         {detail.intro ? (
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail.intro}</p>
@@ -1334,7 +1349,10 @@ function CategoryDetailPanel({
                               total ? "font-semibold text-foreground" : "text-muted-foreground",
                             )}
                           >
-                            {row.label}
+                            {/* Penjelasan baris jadi keterangan hover, bukan baris
+                                tabel tersendiri, supaya tabelnya tidak setinggi itu.
+                                Angkanya sendiri tetap terlihat di kolom Nilai. */}
+                            <HoverHint label={row.label} hint={barisPenjelas || undefined} />
                           </td>
                           <td className="w-6 py-2 text-center font-mono text-muted-foreground">
                             {row.sign}
@@ -1362,16 +1380,7 @@ function CategoryDetailPanel({
                             )}
                           </td>
                         </tr>
-                        {barisPenjelas ? (
-                          <tr className={cn(total ? "bg-muted/20" : "")}>
-                            <td
-                              colSpan={4}
-                              className="border-l-2 border-border/60 py-1.5 pl-3 pr-4 text-[11px] leading-relaxed text-muted-foreground"
-                            >
-                              {barisPenjelas}
-                            </td>
-                          </tr>
-                        ) : null}
+
                       </React.Fragment>
                     )
                   })}
@@ -1387,10 +1396,9 @@ function CategoryDetailPanel({
                     className="rounded-lg border border-border bg-muted/20 p-2.5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-foreground">
-                      <span>{item.title}</span>
+                      <HoverHint label={item.title} hint={item.desc} />
                       <span className="font-mono tabular-nums">{item.value}</span>
                     </div>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1461,23 +1469,6 @@ function CategoryDetailPanel({
           </div>
         ))}
 
-        {detail.source ? (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-[11px] font-semibold text-muted-foreground">Sumber Data</p>
-            <p className="mt-1 font-mono text-[11px] text-foreground">{detail.source}</p>
-          </div>
-        ) : null}
-
-        {detail.notes.length > 0 ? (
-          <div className="rounded-lg border border-info/30 bg-info/10 p-3 text-xs leading-relaxed text-muted-foreground">
-            <p className="font-semibold text-foreground">Catatan Batas Data</p>
-            <ul className="mt-1.5 space-y-1">
-              {detail.notes.map((note, noteIndex) => (
-                <li key={"catatan-" + noteIndex}>· {note}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
       </div>
     </div>
   )
