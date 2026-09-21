@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CmsTestimonial;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderReturnCase;
@@ -363,6 +364,11 @@ class OrderController extends Controller
             $order->load(['shippingRecords' => fn ($q) => $q->latest('id')]);
         }
 
+        // Ulasan pelanggan untuk pesanan ini (bila sudah ada). Dipakai tombol
+        // Balas di halaman pesanan, supaya admin tidak perlu pindah ke daftar
+        // ulasan hanya untuk membalas.
+        $testimonial = CmsTestimonial::query()->where('order_id', $order->id)->first();
+
         return Inertia::render('Admin/Orders/Show', [
             'backUrl' => route('admin.orders.index'),
             'order' => [
@@ -469,6 +475,25 @@ class OrderController extends Controller
                         'replacement_quantity' => $item->replacement_quantity,
                     ])->values()->all(),
                 ])->values()->all(),
+                // Ulasan pelanggan untuk pesanan ini, dipakai tombol Balas di
+                // halaman pesanan. Tidak ada relasi Order ke ulasan, jadi
+                // dibaca langsung; satu pesanan hanya boleh punya satu ulasan.
+                'testimonial' => $testimonial ? [
+                    'id' => $testimonial->id,
+                    'customer_name' => $testimonial->customer_name,
+                    'rating' => $testimonial->rating,
+                    'message' => $testimonial->message,
+                    'location' => $testimonial->location,
+                    'image_url' => $testimonial->image_url,
+                    'source_label' => CmsTestimonial::sourceLabel((string) $testimonial->source),
+                    'created_at' => optional($testimonial->created_at)?->toIso8601String(),
+                    'admin_reply' => $testimonial->admin_reply,
+                    'admin_replied_at' => optional($testimonial->admin_replied_at)?->toIso8601String(),
+                    'has_reply' => $testimonial->hasAdminReply(),
+                    'can_reply' => ! in_array((string) $testimonial->source, CmsTestimonial::MARKETPLACE_SOURCES, true),
+                    'reply_url' => route('admin.testimonials.reply', $testimonial),
+                    'destroy_reply_url' => route('admin.testimonials.reply.destroy', $testimonial),
+                ] : null,
             ],
             'events' => $events,
             'tracking' => OrderTrackingPresenter::forOrder($order, $activeShipping),

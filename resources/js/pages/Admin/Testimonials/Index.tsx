@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -22,7 +23,6 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -195,112 +195,6 @@ function PublishActions({
         </RowActionsMenu>
       ) : null}
     </RowActions>
-  )
-}
-
-/**
- * Dialog balasan admin atas ulasan pelanggan (owner 2026-09-18).
- *
- * Dikontrol dari state halaman (bukan DialogTrigger per baris) supaya hanya ada
- * satu dialog terpasang meski daftar berisi 20 baris. Pola submit meniru
- * AttachProductsDialog: useForm + router, footer tombol onClick.
- */
-function ReplyDialog({
-  row,
-  onClose,
-}: {
-  row: WebsiteRow | null
-  onClose: () => void
-}) {
-  const form = useForm({ admin_reply: row?.admin_reply ?? "" })
-
-  React.useEffect(() => {
-    form.setData("admin_reply", row?.admin_reply ?? "")
-    form.clearErrors()
-    // Sinkronkan teks saat admin membuka ulasan lain; `form` facade baru tiap render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [row?.id, row?.admin_reply])
-
-  const busy = form.processing
-
-  return (
-    <Dialog open={Boolean(row)} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="max-w-lg bg-card text-card-foreground">
-        <DialogTitle>Balas ulasan pelanggan</DialogTitle>
-        <DialogDescription>
-          Balasan tampil di website tepat di bawah ulasan pelanggan. Teks asli pelanggan tidak diubah.
-        </DialogDescription>
-
-        {row ? (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/40 p-3">
-              <p className="text-xs font-semibold text-foreground">
-                {row.customer_name}
-                {row.rating ? ` · ${row.rating} dari 5 bintang` : ""}
-              </p>
-              <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                {row.message?.trim() || "(tanpa teks)"}
-              </p>
-            </div>
-
-            <Field
-              id={`admin-reply-${row.id}`}
-              label="Balasan toko"
-              error={form.errors.admin_reply}
-              hint="Maksimal 1000 karakter. Contoh: Terima kasih Kak, senang produknya cocok."
-            >
-              <Textarea
-                id={`admin-reply-${row.id}`}
-                rows={5}
-                value={form.data.admin_reply}
-                maxLength={1000}
-                onChange={(event) => form.setData("admin_reply", event.target.value)}
-                placeholder="Tulis balasan untuk pelanggan"
-              />
-            </Field>
-
-            <div className="flex items-center justify-between gap-2">
-              {row.has_reply && row.destroy_reply_url ? (
-                <ConfirmAction
-                  trigger={
-                    <Button type="button" variant="ghost" size="sm" className="text-destructive" disabled={busy}>
-                      Hapus balasan
-                    </Button>
-                  }
-                  title="Hapus balasan ulasan?"
-                  description="Balasan dihapus dari website. Ulasan pelanggan tetap tampil."
-                  confirmLabel="Hapus balasan"
-                  processing={busy}
-                  onConfirm={() => {
-                    router.delete(row.destroy_reply_url!, {
-                      preserveScroll: true,
-                      onSuccess: onClose,
-                    })
-                  }}
-                />
-              ) : (
-                <span />
-              )}
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={busy || form.data.admin_reply.trim().length < 2}
-                  onClick={() => {
-                    form.post(row.reply_url!, { preserveScroll: true, onSuccess: onClose })
-                  }}
-                >
-                  {busy ? "Menyimpan..." : "Simpan balasan"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -799,6 +693,7 @@ export default function TestimonialsIndex({
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Screenshot" : "Komentar"}</th>
                     {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
+                    <th className="px-3 py-3 font-semibold">Balasan</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold">Tanggal</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
@@ -873,12 +768,6 @@ export default function TestimonialsIndex({
                         ) : (
                           <div className="min-w-0">
                             <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "-")}</p>
-                            {row.has_reply ? (
-                              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-                                <span className="font-semibold text-foreground">Balasan toko: </span>
-                                {row.admin_reply}
-                              </p>
-                            ) : null}
                           </div>
                         )}
                       </td>
@@ -895,6 +784,36 @@ export default function TestimonialsIndex({
                           )}
                         </td>
                       ) : null}
+                      {/* Kolom Balasan: satu jalan masuk untuk membalas atau
+                          memperbarui balasan, dibuka sebagai popup (owner 2026-09-21). */}
+                      <td className="px-3 py-3 align-top">
+                        <div className="min-w-0 max-w-[16rem]">
+                          {row.has_reply ? (
+                            <>
+                              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                                {row.admin_reply}
+                              </p>
+                              {row.can_reply ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="xs"
+                                  className="mt-0.5 h-auto px-0 text-xs"
+                                  onClick={() => setReplyTarget(row)}
+                                >
+                                  Edit balasan
+                                </Button>
+                              ) : null}
+                            </>
+                          ) : row.can_reply ? (
+                            <Button type="button" variant="secondary" size="xs" onClick={() => setReplyTarget(row)}>
+                              Balas
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
@@ -1025,7 +944,7 @@ export default function TestimonialsIndex({
       </section>
 
       {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman. */}
-      <ReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
+      <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
     </AdminLayout>
   )
 }

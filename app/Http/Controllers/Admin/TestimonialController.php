@@ -360,6 +360,16 @@ class TestimonialController extends Controller
                     'edit_href' => route('admin.testimonials.edit', ['testimonial' => $t, 'intent' => 'marketplace']),
                     'publish_url' => route('admin.testimonials.publish', $t),
                     'unpublish_url' => route('admin.testimonials.unpublish', $t),
+                    // Data balasan, sama seperti tab website. Tab ini memuat
+                    // ulasan bertaut produk yang punya teks, jadi kolom Balasan
+                    // di tabelnya memang bisa dipakai. Ulasan yang benar-benar
+                    // dari marketplace tetap ditolak backend karena tanpa teks.
+                    'admin_reply' => $t->admin_reply,
+                    'admin_replied_at' => optional($t->admin_replied_at)?->toIso8601String(),
+                    'has_reply' => $t->hasAdminReply(),
+                    'can_reply' => ! in_array((string) $t->source, CmsTestimonial::MARKETPLACE_SOURCES, true),
+                    'reply_url' => route('admin.testimonials.reply', $t),
+                    'destroy_reply_url' => route('admin.testimonials.reply.destroy', $t),
                 ];
             })->all(),
             'pagination' => null,
@@ -636,7 +646,10 @@ class TestimonialController extends Controller
             ],
             [
                 'key' => 'eksternal',
-                'label' => 'Ulasan Eksternal',
+                // Nama yang dipakai dokumen kanonik (docs/sitemap/admin-sitemap.md)
+                // dan sudah dipakai storefront; kunci tab tetap 'eksternal'
+                // supaya tautan lama tidak pecah.
+                'label' => 'Apa Kata Pelanggan',
                 'href' => route('admin.testimonials.index', ['tab' => 'eksternal']),
             ],
         ];

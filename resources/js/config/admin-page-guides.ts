@@ -85,9 +85,9 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace, dan galeri hasil pemasangan.",
     steps: [
       "Ulasan pelanggan website tayang otomatis begitu dikirim, jadi tidak perlu disetujui. Gunakan aksi Sembunyikan di tabel bila ada ulasan yang bermasalah.",
-      "Gunakan tab Ulasan Eksternal untuk mengelola tangkapan layar ulasan dari Shopee atau WhatsApp.",
+      "Gunakan tab Apa Kata Pelanggan untuk mengelola tangkapan layar ulasan dari Shopee atau WhatsApp.",
       "Gunakan tab Hasil Pemasangan untuk mengelola foto dan video aplikasi produk.",
-      "Gunakan tombol Atur urutan pada ulasan eksternal untuk mengatur urutan tampil di etalase.",
+      "Gunakan tombol Urutkan pada tab Apa Kata Pelanggan untuk mengubah urutan tampil di etalase.",
     ],
     notes: [
       "Ulasan website tayang otomatis di halaman produk terkait dan halaman ulasan publik; balasannya bisa ditambahkan kapan pun, termasuk setelah ulasan tayang.",

@@ -10,6 +10,7 @@ import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { Checkbox } from "@/components/admin/ui/checkbox"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
@@ -92,6 +93,23 @@ interface OrderDetail {
   created_at: string | null
   updated_at: string | null
   whatsapp_url?: string | null
+  /** Ulasan pelanggan untuk pesanan ini, bila sudah ada (owner 2026-09-21). */
+  testimonial?: {
+    id: number
+    customer_name: string
+    rating?: number | null
+    message?: string | null
+    location?: string | null
+    image_url?: string | null
+    source_label?: string | null
+    created_at?: string | null
+    admin_reply?: string | null
+    admin_replied_at?: string | null
+    has_reply?: boolean
+    can_reply?: boolean
+    reply_url?: string
+    destroy_reply_url?: string
+  } | null
   /** Tautan chat WA berisi naskah template sesuai status pesanan. */
   whatsapp_status_url?: string | null
   items: OrderItemRow[]
@@ -1006,6 +1024,8 @@ export default function OrderShow({
   // Popup input resi: form + ringkasan verifikasi alamat/pelanggan.
   // Sistem tidak menilai benar/salah; admin yang memastikan lalu menyimpan.
   const [resiOpen, setResiOpen] = React.useState(false)
+  // Popup balas ulasan pelanggan, dipakai tombol Balas di baris aksi.
+  const [reviewReplyOpen, setReviewReplyOpen] = React.useState(false)
   const [trackingOpen, setTrackingOpen] = React.useState(false)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
@@ -1372,6 +1392,12 @@ export default function OrderShow({
           </Button>
         ) : null}
 
+        {order.testimonial && order.testimonial.can_reply && (order.order_status === "delivered" || order.order_status === "completed") ? (
+          <Button variant="secondary" className="shrink-0" onClick={() => setReviewReplyOpen(true)}>
+            <Icon name="chat-circle" className="size-4" aria-hidden="true" />
+            {order.testimonial.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
+          </Button>
+        ) : null}
         {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
           can("orders.cancel", capabilities) ? (
             <ConfirmAction
@@ -2045,6 +2071,12 @@ export default function OrderShow({
           </div>
         </SheetContent>
       </Sheet>
+      {/* Popup balas ulasan pelanggan. Komponennya sama dengan yang dipakai
+          daftar ulasan, jadi balasan bisa ditulis dari dua tempat. */}
+      <ReviewReplyDialog
+        row={reviewReplyOpen && order.testimonial ? order.testimonial : null}
+        onClose={() => setReviewReplyOpen(false)}
+      />
     </AdminLayout>
   )
 }
