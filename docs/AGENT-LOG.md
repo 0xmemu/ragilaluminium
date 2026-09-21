@@ -155,3 +155,32 @@ Bukti: `tsc --noEmit` dan `eslint --max-warnings=0` bersih (tanpa import mengang
 passed. `npm run build` sukses (StorePerformance-CUknURzc.js 70,02 kB).
 Diperiksa live di browser: keenam elemen tidak ada, ketiga dropdown tetap berfungsi,
 dan drawer Arus Kas terbukti masih terbuka dari dropdown Detail.
+
+---
+
+## 2026-09-21 16:03 UTC | zcode | Standard | b5c88a9e | selesai
+Lingkup: merapikan drawer Performa Toko atas permintaan owner ("ubah text yang dipilih dan
+semua yang terkait menjadi text hint hover, pastikan drawer rapi tanpa banyak penjelasan yg
+membuat penuh ui"). Berkas: `resources/js/pages/Admin/Analytics/StorePerformance.tsx`.
+Yang dipindah ke hover: (1) penjelasan per baris tabel, yang sebelumnya menempati satu baris
+tabel tersendiri (satu sel `colspan=4`) di bawah tiap barisnya, (2) keterangan pada blok
+"Catatan di Luar Kas" (blok items), (3) kotak "Sumber Data" dan kotak "Catatan Batas Data",
+keduanya digabung menjadi satu penanda info di header drawer.
+Yang SENGAJA tidak dipindah: angka (label, operasi, nilai, kolom perubahan) tetap terlihat
+seluruhnya; kotak "Rumus" tetap tampil karena isinya rumus dan hanya satu baris; data `sub`
+dan `note` di service maupun halaman tidak diubah, karena perender memang sudah menggabungkan
+keduanya menjadi satu kalimat sehingga yang berubah hanya tempat menampilkannya.
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: TIGA ANGKA kini hanya terbaca lewat hover, dan ini disengaja supaya
+diketahui: `shipping_subsidy`, `refused_shipping_cost`, dan `refused_cod_fee` memang hanya
+muncul di dalam kalimat penjelas, tidak punya baris sendiri. Ketiganya komponen rincian dari
+angka induk yang tetap terlihat (Tagihan J&T, dan Retur Paket Ditanggung Toko) dan semuanya
+ada di ekspor XLSX. Kalau ada keluhan angka "hilang", periksa tiga nama itu dulu. Aturan
+umumnya: di drawer ini penjelasan boleh ke hover, angka tidak.
+Bukti: `tsc --noEmit` dan `eslint --max-warnings=0` bersih. `npm run test` 21 berkas 179 test
+lulus. `php artisan test --filter=StorePerformance` 1 skipped 129 passed (2090 assertions).
+Build sukses lewat `scripts/prod/build-assets.sh`. Diperiksa live di browser: 0 sel `colspan=4`
+di kategori Penjualan, Referensi, dan Arus Kas; kedua kotak penjelasan hilang; hover pada label
+"Model Produk Terjual" memunculkan "Jenis model yang terjual, tanpa membedakan desain. Satu
+model dengan dua desain tetap dihitung satu."; isi drawer Arus Kas muat tanpa gulir
+(855px isi = 855px terlihat).
