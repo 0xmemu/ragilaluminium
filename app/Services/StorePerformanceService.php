@@ -35,6 +35,80 @@ class StorePerformanceService
     public const OPEN_STATUSES = ['awaiting_confirmation', 'processing', 'shipped'];
 
     /**
+     * Cakupan dan tanggal acuan setiap metrik yang dilaporkan halaman ini.
+     *
+     * Satu sumber kebenaran: label, drawer, tabel Referensi, dan ekspor XLSX
+     * membacanya dari sini, jadi tidak ada permukaan yang bisa berbeda.
+     *
+     * scope 'current': perhitungannya TIDAK membaca rentang tanggal sama sekali.
+     *   Angkanya keadaan saat laporan dibangun, karena itu tidak diberi
+     *   pembanding periode (membandingkannya dengan dirinya sendiri selalu nol).
+     *   Labelnya wajib menyebut cakupannya, lihat scopeMarker().
+     * scope 'period': perhitungannya membaca rentang terpilih pada kolom tanggal
+     *   yang disebut di 'anchor'.
+     *
+     * 'anchor' memakai frasa Bahasa Indonesia karena ditampilkan ke pembaca,
+     * bukan nama kolom database.
+     */
+    public const METRIC_BASIS = [
+        // --- Penjualan, semuanya terikat periode ---
+        'omzet' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'models' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'sub_models' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'products' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'units' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_unit_price' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'aov' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'completed_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan selesai'],
+
+        // --- Kunjungan & pelanggan ---
+        'visitors' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
+        'conversion' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
+        'new_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'repeat_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'repeat_order_rate' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+
+        // --- Operasional ---
+        // Dua metrik antrean ini membaca keadaan sekarang, tanpa tanggal.
+        'open_orders' => ['scope' => 'current', 'anchor' => null],
+        'dispatched_orders' => ['scope' => 'current', 'anchor' => null],
+        'open_orders_in_period' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_confirm_hours' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_process_days' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+
+        // --- Pembayaran ---
+        'net_revenue' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat dan tanggal retur selesai'],
+        'payments_received' => ['scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
+        'cod_paid' => ['scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
+        'payment_pending_count' => ['scope' => 'current', 'anchor' => null],
+        // Dua angka kas COD ini menjumlahkan seluruh pesanan yang uangnya belum
+        // cair, jadi cakupannya melampaui periode terpilih.
+        'cod_pending_amount' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
+        'cod_pending_count' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
+
+        // --- Retur & pembatalan ---
+        'returns' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_value' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'returns_created' => ['scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
+        'returns_open' => ['scope' => 'current', 'anchor' => null],
+        'returns_completed' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'refused_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'refund_given' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_rate_created' => ['scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
+        'return_rate_completed' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_shipping_cost_total' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_shipping_cost_cases' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'refused_borne_cost' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'cancelled_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_by_customer' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_by_store' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_value' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancellation_rate' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+    ];
+
+
+    /**
      * issue is an operational exception, not proof that goods were returned.
      * Actual return KPIs come from the return ledger below.
      */
@@ -341,11 +415,14 @@ class StorePerformanceService
         ];
 
         $returnsKpis = [
-            $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
+            // Menghitung PESANAN berbeda yang returnya selesai dan barangnya
+            // benar benar kembali, bukan jumlah kasus retur. Kasus retur
+            // termasuk refund tanpa barang kembali ada di Kasus Retur Selesai.
+            $this->kpi('returns', 'Pesanan dengan Retur Barang Selesai', $current['return_orders'], $previous['return_orders'], 'number', 'Jumlah pesanan berbeda yang returnya selesai pada periode dan barangnya benar benar kembali. Satu pesanan dengan dua kasus retur tetap dihitung satu. Refund tanpa barang kembali tidak masuk hitungan ini.'),
             $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
             $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
             $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], null, 'number', 'Kasus retur yang masih terbuka saat laporan dibuat. Tidak dibatasi periode.'),
-            $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
+            $this->kpi('returns_completed', 'Kasus Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number', 'Jumlah kasus retur yang selesai pada periode, termasuk refund tanpa barang kembali. Satu pesanan bisa punya lebih dari satu kasus.'),
             $this->kpi('refused_orders', 'Pesanan Retur Paket', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
             $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk proses.'),
@@ -444,6 +521,9 @@ class StorePerformanceService
                 'cod_paid' => $previous['cod_paid'] ?? 0.0,
             ],
             'previous_has_data' => ($previous['orders'] ?? 0) > 0,
+            // Cakupan dan tanggal acuan tiap metrik, dipakai halaman untuk
+            // memberi penanda cakupan dan untuk tabel Dasar Setiap Metrik.
+            'metric_basis' => $this->metricBasisMap(),
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Pelanggan', 'kpis' => $trafficKpis],
@@ -1578,12 +1658,56 @@ class StorePerformanceService
     /**
      * @return array{key: string, label: string, value: float|int, previous: float|int, change_percent: float|null, format: string}
      */
+
+    /**
+     * Penanda cakupan yang ditempelkan ke label metrik.
+     *
+     * ADR-015 bagian 2b mewajibkan label metrik kondisi-saat-ini menyebut
+     * cakupannya. Penanda ditempel di sini, bukan di kartu, supaya ikut terbawa
+     * ke semua permukaan yang membaca label: kartu, drawer, dan ekspor XLSX.
+     */
+    protected function scopeMarker(string $key): string
+    {
+        $basis = self::METRIC_BASIS[$key] ?? null;
+        if (($basis['scope'] ?? null) !== 'current') {
+            return '';
+        }
+
+        return ' ('.($basis['marker'] ?? 'kondisi saat ini').')';
+    }
+
+    /**
+     * Peta cakupan seluruh metrik untuk halaman, termasuk dua angka kas COD
+     * yang tidak tampil sebagai KPI kartu tetapi punya cakupan sendiri.
+     *
+     * @return array<string, array{scope: string, anchor: string|null, marker: string|null}>
+     */
+    public function metricBasisMap(): array
+    {
+        $peta = [];
+        foreach (self::METRIC_BASIS as $key => $basis) {
+            $peta[$key] = [
+                'scope' => $basis['scope'],
+                'anchor' => $basis['anchor'],
+                'marker' => $basis['scope'] === 'current'
+                    ? ($basis['marker'] ?? 'kondisi saat ini')
+                    : null,
+            ];
+        }
+
+        return $peta;
+    }
     protected function kpi(string $key, string $label, float|int $value, float|int|null $previous, string $format, ?string $detail = null): array
     {
-        // Pembanding kosong dipakai metrik snapshot: angkanya keadaan saat
-        // laporan dibangun, jadi tidak ada periode pembanding yang bermakna.
-        // Perubahan dikosongkan supaya kartu tidak menampilkan "Tetap" atau
-        // persentase palsu hasil membandingkan snapshot dengan dirinya sendiri.
+        // Penanda cakupan berasal dari METRIC_BASIS, bukan dari nilai pembanding:
+        // labelnya wajib menyebut cakupan sendiri supaya ikut terbaca di ekspor
+        // dan drawer yang tidak menampilkan lencana kartu.
+        $label .= $this->scopeMarker($key);
+
+        // Pembanding kosong dipakai metrik ber-cakupan sekarang: angkanya
+        // keadaan saat laporan dibangun, jadi tidak ada periode pembanding yang
+        // bermakna. Perubahan dikosongkan supaya kartu tidak menampilkan "Tetap"
+        // atau persentase palsu hasil membandingkan angka itu dengan dirinya sendiri.
         if ($previous === null) {
             return [
                 'key' => $key,

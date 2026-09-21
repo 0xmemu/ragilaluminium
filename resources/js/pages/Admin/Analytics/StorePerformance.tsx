@@ -117,6 +117,11 @@ interface Report {
    * perubahan pada kartu tidak bermakna.
    */
   previous_has_data?: boolean
+  /**
+   * Cakupan dan tanggal acuan tiap metrik, dari kontrak server. Dipakai tabel
+   * Dasar Setiap Metrik di kategori Referensi.
+   */
+  metric_basis?: Record<string, { scope: "current" | "period"; anchor: string | null; marker: string | null }>
   /** Ongkir retur per kasus yang ongkirnya ditanggung toko. */
   return_shipping_costs?: Array<{
     order_id: number
@@ -532,26 +537,28 @@ function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·
 }
 
 /**
- * Metrik snapshot tidak punya periode pembanding, sehingga server mengirim
- * nilai pembandingnya kosong. Itu penandanya, jadi tidak perlu kunci payload
- * tambahan yang akan ikut terkirim ke Dashboard.
+ * Metrik dengan cakupan sekarang tidak punya periode pembanding, sehingga
+ * server mengirim nilai pembandingnya kosong. Itu penandanya.
  */
 function adalahSnapshot(kpi?: Kpi): boolean {
   return kpi !== undefined && kpi.previous === null
 }
 
 /**
- * Penanda metrik snapshot pada kartu. Metrik seperti ini tidak terikat periode,
- * jadi badge perubahan diganti keterangan supaya tidak terbaca "Tetap" seolah
- * angkanya dibandingkan periode sebelumnya.
+ * Label tanpa penanda cakupan. Tabel Dasar Setiap Metrik sudah punya kolom
+ * Cakupan sendiri, jadi penanda di label akan terduplikasi di situ. Yang dibuang
+ * hanya dua frasa cakupan, bukan tanda kurung lain pada label.
  */
-function SnapshotChip() {
-  return (
-    <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-      Kondisi saat ini
-    </span>
-  )
+function labelTanpaCakupan(label: string): string {
+  return label.replace(/\s*\((kondisi saat ini|semua waktu)\)$/, "")
 }
+
+/** Label untuk metrik ber-cakupan yang tidak tampil sebagai kartu KPI. */
+const LABEL_DASAR_TAMBAHAN: Record<string, string> = {
+  cod_pending_amount: "Belum Masuk, nilai",
+  cod_pending_count: "Belum Masuk, jumlah pesanan",
+}
+
 
 /** Kumpulkan baris KPI, buang yang tidak ada di payload. */
 function kpiRows(
@@ -1115,13 +1122,48 @@ function buildCategoryDetail(
       }
     }
 
-    case "referensi":
+    case "referensi": {
+      // Satu baris per metrik: cakupan dan tanggal acuannya, sumbernya kontrak
+      // server supaya tabel ini tidak bisa berbeda dari label dan ekspor.
+      //
+      // Tabel ini TIDAK dipotong seperti daftar produk: ukurannya tetap sepanjang
+      // kontrak, dan memotongnya menyembunyikan metrik bercakupan sekarang yang
+      // justru paling mudah salah dibaca sebagai angka periode. Metrik itu
+      // ditaruh lebih dulu supaya langsung terlihat.
+      const dasarMetrik: Array<{ label: string; cakupan: string; acuan: string; sekarang: boolean }> =
+        Object.entries(report.metric_basis ?? {}).map(([key, basis]) => ({
+          label: kpiMap[key] ? labelTanpaCakupan(kpiMap[key].label) : (LABEL_DASAR_TAMBAHAN[key] ?? key),
+          cakupan:
+            basis.scope === "current"
+              ? basis.marker === "semua waktu"
+                ? "Semua waktu"
+                : "Kondisi saat ini"
+              : "Periode terpilih",
+          acuan: basis.anchor ?? "Tanpa tanggal",
+          sekarang: basis.scope === "current",
+        }))
+
+      const dasarUrut = [
+        ...dasarMetrik.filter((baris) => baris.sekarang),
+        ...dasarMetrik.filter((baris) => !baris.sekarang),
+      ]
+
       return {
         title: "Referensi dan Kelengkapan Data",
         badge: "Referensi",
         intro:
-          "Rentang yang dipakai laporan, penanda kejujuran tiap grafik, dan batas data yang perlu diketahui sebelum membaca angka lain.",
+          "Dasar cakupan setiap metrik, rentang yang dipakai laporan, penanda kejujuran tiap grafik, dan batas data yang perlu diketahui sebelum membaca angka lain.",
         blocks: [
+          {
+            kind: "list",
+            title: "Dasar Setiap Metrik",
+            head: ["Metrik", "Cakupan", "Acuan Tanggal"],
+            // total sama dengan jumlah baris supaya keterangan "daftar penuh ada
+            // di ekspor XLSX" tidak muncul: tabel ini memang utuh di sini, dan
+            // memang tidak ada di ekspor.
+            total: dasarUrut.length,
+            rows: dasarUrut.map((baris) => [baris.label, baris.cakupan, baris.acuan]),
+          },
           {
             kind: "rows",
             title: "Rentang Laporan",
@@ -1187,11 +1229,13 @@ function buildCategoryDetail(
         source: "Dihitung dari data pesanan, pembayaran, pengiriman, dan kunjungan",
         notes: [
           "Kunjungan baru dicatat sejak tanggal tertentu; rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi.",
-          "Metrik snapshot seperti Retur Aktif dan Pembayaran Transfer Pending dihitung saat laporan dibangun, bukan pada rentang tanggal.",
+          "Cakupan setiap metrik tertulis pada labelnya: metrik bertanda kondisi saat ini dihitung dari keadaan sekarang, bukan dari rentang tanggal.",
           "Periode yang masih berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, bukan dibandingkan penuh.",
           "Untuk angka yang tidak bisa dijumlahkan dari grafik, sisi angka Total pada tiap kartu menyebutkan dasar hitungannya.",
+          "Metrik yang bercakupan kondisi saat ini tidak dibandingkan dengan periode sebelumnya, karena angkanya keadaan sekarang sehingga selisihnya selalu nol dan menyesatkan.",
         ],
       }
+    }
   }
 }
 
@@ -2148,7 +2192,9 @@ export default function StorePerformance({
 
           <div className="p-6">
             <HoverHint
-              label="Belum Masuk"
+              // Penanda cakupannya diambil dari kontrak metric_basis, bukan
+              // ditulis tetap, supaya tidak bisa berbeda dari tabel Referensi.
+              label={"Belum Masuk (" + (report.metric_basis?.["cod_pending_amount"]?.marker ?? "semua waktu") + ")"}
               hint="Dana COD yang barangnya sudah dikirim tetapi uangnya belum cair ke toko. Angka ini kondisi semua waktu, bukan terikat periode."
               className="text-xs font-medium text-muted-foreground"
             />
@@ -2176,7 +2222,7 @@ export default function StorePerformance({
               {formatCurrency(potonganRetur)}
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
-              {formatNumber(kpiMap["returns"]?.value ?? 0)} kasus retur
+              {formatNumber(kpiMap["returns"]?.value ?? 0)} pesanan retur
               {kpiMap["return_shipping_cost_total"]?.value ? (
                 <>
                   {" "}
@@ -2234,9 +2280,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["open_orders"]?.value ?? 0)}{" "}
               <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <div className="mt-2">
-              <SnapshotChip />
-            </div>
+
           </Link>
 
           <Link
@@ -2255,16 +2299,16 @@ export default function StorePerformance({
               {formatNumber(kpiMap["dispatched_orders"]?.value ?? 0)}{" "}
               <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
-            <div className="mt-2">
-              <SnapshotChip />
-            </div>
+
           </Link>
 
           <div className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Retur Aktif"
-                hint="Kasus retur yang masih terbuka saat laporan dibuat. Angka ini kondisi saat ini, jadi tidak dibandingkan dengan periode sebelumnya."
+                // Label diambil dari server supaya penanda cakupannya ikut,
+                // sama seperti drawer dan ekspor.
+                label={kpiMap["returns_open"]?.label ?? "Retur Aktif (kondisi saat ini)"}
+                hint={kpiMap["returns_open"]?.detail ?? "Kasus retur yang masih terbuka saat laporan dibuat. Angka ini keadaan sekarang, jadi tidak dibandingkan dengan periode sebelumnya."}
                 className="text-xs font-semibold text-muted-foreground"
               />
             </div>
@@ -2272,15 +2316,13 @@ export default function StorePerformance({
               {formatNumber(kpiMap["returns_open"]?.value ?? 0)}{" "}
               <span className="text-xs font-normal text-muted-foreground">kasus</span>
             </p>
-            <div className="mt-2">
-              <SnapshotChip />
-            </div>
+
           </div>
 
           <div className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <HoverHint
-                label="Pembayaran Transfer Pending"
+                label={kpiMap["payment_pending_count"]?.label ?? "Pembayaran Transfer Pending (kondisi saat ini)"}
                 hint={kpiMap["payment_pending_count"]?.detail ?? "Pembayaran non-COD yang belum lunas pada order aktif saat laporan dibuat."}
                 className="text-xs font-semibold text-muted-foreground"
               />
@@ -2289,9 +2331,7 @@ export default function StorePerformance({
               {formatNumber(kpiMap["payment_pending_count"]?.value ?? 0)}{" "}
               <span className="text-xs font-normal text-muted-foreground">pembayaran</span>
             </p>
-            <div className="mt-2">
-              <SnapshotChip />
-            </div>
+
           </div>
 
           <div className="flex flex-col justify-between rounded-lg border border-border bg-surface p-4">

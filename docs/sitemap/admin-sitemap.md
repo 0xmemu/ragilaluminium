@@ -35,13 +35,19 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
     berada sebelum tanggal pencatatan pengunjung, sehingga halaman menulis tidak diukur dan bukan
     angka 0 yang terbaca sebagai hasil pengukuran. Halaman memakai range.from_date_iso untuk
     perbandingan tanggal; range.from_date hanya untuk tampilan dan tidak boleh dipakai membandingkan.
-  - Metrik dipisah dua sifat. Metrik PERIODE terikat rentang terpilih dan punya pembanding:
-    omzet, orders, models, sub_models, products, units, completed_orders, open_orders_in_period,
-    rasio retur, dan rasio pembatalan. Metrik SNAPSHOT adalah keadaan saat laporan dibangun dan
-    SENGAJA tidak punya nilai pembanding (payload mengirim previous null), karena angkanya tidak
-    bergantung rentang: open_orders, dispatched_orders, returns_open, payment_pending_count,
-    dan cod_pending_*. Halaman membacanya lewat previous kosong, jadi tidak ada kunci payload
-    tambahan yang ikut terkirim ke Dashboard.
+  - Cakupan setiap metrik dideklarasikan di satu tempat, StorePerformanceService::METRIC_BASIS,
+    yang menyebut scope (period atau current) dan anchor tanggal acuannya. Payload mengirimnya
+    sebagai kunci metric_basis, dan halaman memakainya untuk tabel Dasar Setiap Metrik di
+    kategori Referensi.
+  - Metrik PERIODE terikat rentang terpilih dan punya pembanding (payload mengirim previous
+    berupa angka). Metrik CAKUPAN SEKARANG dihitung dari keadaan saat laporan dibangun dan
+    sengaja tidak punya pembanding (payload mengirim previous null), karena membandingkannya
+    dengan dirinya sendiri selalu nol. Yang bercakupan sekarang: open_orders, dispatched_orders,
+    returns_open, payment_pending_count, cod_pending_amount, cod_pending_count.
+  - Penanda cakupan ditempel pada LABEL, bukan pada lencana terpisah di kartu, supaya ekspor
+    XLSX dan drawer yang hanya membaca label ikut membawa cakupannya. Metrik bercakupan
+    sekarang berlabel "(kondisi saat ini)", sedangkan dua angka kas COD berlabel "(semua waktu)"
+    karena cakupannya melampaui periode terpilih.
   - Pesanan Selesai dihitung dari waktu pesanan berpindah ke status completed (event_logs), bukan
     dari created_at, supaya pesanan lama yang selesai pada periode ini tetap terhitung. Untuk
     pesanan lama yang perpindahannya tidak tercatat, updated_at dipakai sebagai perkiraan.

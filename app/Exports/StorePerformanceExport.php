@@ -72,6 +72,21 @@ class StorePerformanceExport implements WithMultipleSheets
  */
 abstract class StorePerformanceTableSheet extends RagilStyledExport implements FromArray, WithStrictNullComparison, WithTitle
 {
+    /**
+     * Penanda cakupan sebuah metrik, diambil dari kontrak
+     * StorePerformanceService::METRIC_BASIS. Dipakai baris yang menulis
+     * labelnya sendiri, supaya cakupannya tidak bisa berbeda dari label KPI
+     * dan dari penanda di layar.
+     */
+    protected function penandaCakupan(string $key): string
+    {
+        $basis = \App\Services\StorePerformanceService::METRIC_BASIS[$key] ?? null;
+        if (($basis['scope'] ?? null) !== 'current') {
+            return '';
+        }
+
+        return ' ('.($basis['marker'] ?? 'kondisi saat ini').')';
+    }
     /** @var list<array{0: int, 1: int, 2: string}> [baris, indeks kolom, format] */
     protected array $numberCells = [];
 
@@ -550,7 +565,7 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $money('Transfer Bank Lunas', max($num($fin['payments_received'] ?? 0) - $num($fin['cod_paid'] ?? 0), 0.0), false, max($num($finPrev['payments_received'] ?? 0) - $num($finPrev['cod_paid'] ?? 0), 0.0));
         $money('COD Selesai (barang sudah sampai)', $fin['cod_paid'] ?? null, false, $num($finPrev['cod_paid'] ?? 0));
         $money('Pembayaran Diterima', $fin['payments_received'] ?? null, true, $num($finPrev['payments_received'] ?? 0));
-        $money('COD (barang belum sampai, kondisi saat ini), '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
+        $money('COD (barang belum sampai)'.$this->penandaCakupan('cod_pending_amount').', '.(int) ($fin['cod_pending_count'] ?? 0).' pesanan', $fin['cod_pending_amount'] ?? null);
 
         return $rows;
     }

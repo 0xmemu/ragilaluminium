@@ -75,10 +75,40 @@ periode tidak bisa dijumlahkan:
 
 - **Periode**: dihitung dari tanggal dalam rentang terpilih (omzet, pesanan, unit,
   pembayaran diterima, retur selesai, pembatalan).
-- **Kondisi saat ini (snapshot)**: dihitung dari keadaan sekarang tanpa batas tanggal
-  (`payment_pending_count`, `returns_open`, `cod_pending_count`). Labelnya wajib
-  menyebut "kondisi saat ini" atau "semua waktu", dan tidak diberi pembanding
-  persen karena pembandingnya adalah snapshot yang sama sehingga selalu 0.
+- **Kondisi saat ini (snapshot)**: dihitung dari keadaan sekarang tanpa batas tanggal.
+  Labelnya wajib menyebut "kondisi saat ini" atau "semua waktu", dan tidak diberi
+  pembanding persen karena pembandingnya adalah snapshot yang sama sehingga selalu 0.
+
+Cakupan setiap metrik dideklarasikan di SATU tempat, `StorePerformanceService::METRIC_BASIS`.
+Deklarasi itu menyebut `scope` (`period` atau `current`) dan `anchor`, yaitu tanggal
+yang dipakai kueri, dalam frasa yang bisa dibaca pembaca. Label, drawer, tabel Referensi
+di halaman, dan ekspor XLSX semuanya membaca deklarasi itu, jadi tidak ada permukaan yang
+bisa berbeda.
+
+Daftar metrik bercakupan kondisi saat ini, disamakan dengan kode. Menambah satu metrik
+bercakupan baru berarti menambah satu baris di `METRIC_BASIS`, menambahkan testnya, dan
+memperbarui daftar ini:
+
+| Metrik | Penanda pada label | Alasan |
+|---|---|---|
+| `open_orders` | kondisi saat ini | menghitung seluruh pesanan yang belum selesai, tanpa melihat tanggal pembuatan |
+| `dispatched_orders` | kondisi saat ini | menghitung pesanan yang sedang dikirim sekarang |
+| `returns_open` | kondisi saat ini | kasus retur yang masih terbuka saat laporan dibuat |
+| `payment_pending_count` | kondisi saat ini | pembayaran yang belum lunas pada pesanan aktif |
+| `cod_pending_amount` | semua waktu | menjumlahkan seluruh dana COD yang belum cair |
+| `cod_pending_count` | semua waktu | jumlah pesanan COD yang uangnya belum cair |
+
+Seluruh metrik lain terikat periode. Empat di antaranya tidak tampil sebagai kartu KPI,
+tetapi tetap dideklarasikan karena angkanya muncul di halaman atau di ekspor:
+`open_orders_in_period`, `cod_pending_in_period_amount`, `cod_pending_in_period_count`,
+dan `payment_pending_count`.
+
+Cara menentukan cakupan sebuah metrik TIDAK BOLEH memakai perbandingan nilai antar rentang.
+Metrik terikat periode pun akan bernilai sama pada dua rentang bila datanya nol di kedua
+rentang, jadi perbandingan itu tidak membuktikan apa pun. Yang dipakai adalah membaca kueri
+sumbernya, lalu dibuktikan dengan test yang menanam data di LUAR rentang: metrik
+bercakupan sekarang tetap menghitungnya, metrik terikat periode tidak
+(`StorePerformanceMetricBasisTest`).
 
 ### 3. Pembayaran Diterima
 
@@ -263,8 +293,9 @@ Tidak ada keputusan baru lain yang ditambahkan di draft ini.
 
 ## Konfirmasi
 
-- File ini DRAFT lokal, tidak menggantikan ADR-015 yang ada sampai direview & disetujui.
-- Tidak ada source code yang diubah.
-- Tidak ada database/migration yang diubah.
-- Tidak ada commit/push; tidak ada perubahan VPS.
+- Status keputusan ini Accepted (lihat bagian Status dan Tanggal approval di atas).
+- Isi ADR ini berlaku sebagai kontrak: label, drawer, tabel Referensi, dan ekspor
+  membaca deklarasi cakupan di `StorePerformanceService::METRIC_BASIS`.
+- Perubahan yang mengikuti ADR ini selalu disertai test, karena setiap cakupan metrik
+  dibuktikan dengan data di luar rentang, bukan dengan perbandingan nilai antar rentang.
 - Tidak mengubah ADR existing.
