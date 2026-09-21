@@ -9,6 +9,31 @@ queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, 
 `docs/AGENT-ARCHITECT-ORCHESTRATOR.md` (architect/orchestrator contract, ADR-001) →
 `docs/PRODUCT-HANDOFF.md` (product behavior). Session context: `docs/MEMORY.md`.
 
+## Papan kolaborasi agent (baca sebelum menyentuh berkas)
+
+Beberapa agent bekerja di working tree yang sama, kadang bersamaan. Papan ini
+membuat pekerjaan mereka terlihat tanpa perlu bertanya.
+
+1. **Identitas.** Sebut agent id di awal laporan, dan akhiri pesan commit dengan
+   baris `Agent: <id>`. Semua commit repo ini tercatat atas nama mesin (`Ubuntu`),
+   jadi tanpa baris itu pekerjaan tidak bisa dibedakan pemiliknya.
+2. **Sebelum menulis, lihat dulu.** Jalankan `bash scripts/agent-state.sh`. Skrip
+   itu mencetak berkas kotor, berkas kontrak yang sedang dipegang agent lain,
+   selisih dengan origin, commit terakhir, dan entri log terakhir.
+3. **Jangan menimpa pekerjaan agent lain.** Berkas berstatus ` M` adalah pekerjaan
+   yang belum di-commit, bukan berkas bebas. Jangan `git add` massal per direktori,
+   jangan `git checkout --` berkas itu, jangan `git stash` milik orang lain. Bila
+   berkas kotor harus diubah, ikuti prosedur di `docs/AGENT-COLLABORATION.md`.
+4. **Sesudah selesai, catat.** Tambahkan satu entri di `docs/AGENT-LOG.md` (wajib
+   tiap task, termasuk yang gagal atau diblokir). Bila ada keputusan atau
+   milestone, tambahkan juga di `docs/MEMORY.md`.
+5. **Data terkini menang atas dokumen.** Sebelum mengklaim sesuatu benar,
+   verifikasi kondisi terkini. `docs/TEKNIS/` selalu akurat karena dihasilkan dari
+   kode; `docs/KONTRAK/` dan `docs/ADR/` bisa basi. Bagian "Current status" di
+   bawah adalah RIWAYAT, bukan kondisi terkini.
+
+Ledger perubahan: `docs/AGENT-LOG.md`. Prosedur rinci: `docs/AGENT-COLLABORATION.md`.
+
 ## Non-negotiables
 
 - **DATABASE SAFETY (hard rule):** never `migrate:fresh` / `migrate:refresh` / `db:wipe` /
