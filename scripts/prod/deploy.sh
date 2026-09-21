@@ -28,7 +28,7 @@ fi
 
 cd "$REPO"
 
-# --- 1. Backup .env (jaga-jaga, reversible) — hanya saat LIVE, bukan dry-run ---
+# --- 1. Backup .env (jaga-jaga, reversible), hanya saat LIVE, bukan dry-run ---
 if [ "$DRY" != "1" ] && [ -f .env ]; then
   cp .env /root/backups/.env.bak-deploy-$(date +%Y%m%d-%H%M%S)
   echo "  .env di-backup" >> "$LOG"
@@ -62,7 +62,7 @@ if [ "$DRY" != "1" ]; then
 fi
 
 if [ "$DRY" = "1" ]; then
-  echo "DEPLOY DRY-RUN PASS — target $NEW_SHA siap deploy" >> "$LOG"
+  echo "DEPLOY DRY-RUN PASS: target $NEW_SHA siap deploy" >> "$LOG"
   exit 0
 fi
 
@@ -73,9 +73,9 @@ git checkout "$REF_TARGET" 2>>"$LOG"
 echo "  composer install (--no-dev)..." >> "$LOG"
 composer install --no-interaction --prefer-dist --no-dev --no-progress >> "$LOG" 2>&1
 
-echo "  npm ci + build..." >> "$LOG"
+echo "  npm ci + build (aman, public/build tidak dikosongkan)..." >> "$LOG"
 npm ci >> "$LOG" 2>&1
-npm run build >> "$LOG" 2>&1
+bash scripts/prod/build-assets.sh >> "$LOG" 2>&1
 
 # --- 5. Bersihkan public/hot (Vite dev hot-file jangan sampai di prod) ---
 rm -f public/hot
@@ -103,4 +103,4 @@ sleep 3
 curl -s -o /dev/null -w '  app home: %{http_code}\n' --max-time 15 http://127.0.0.1:8200/ | tee -a "$LOG"
 php artisan --version >> "$LOG" 2>&1
 
-echo "DEPLOY COMPLETE — $CUR_SHA -> $NEW_SHA (manifest: $NEW_SHA on $BRANCH)" >> "$LOG"
+echo "DEPLOY COMPLETE: $CUR_SHA -> $NEW_SHA (manifest: $NEW_SHA on $BRANCH)" >> "$LOG"

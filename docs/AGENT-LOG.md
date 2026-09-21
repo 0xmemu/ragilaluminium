@@ -69,3 +69,30 @@ KEDUANYA, kalau tidak sesi lokal dan sesi VPS bisa memakai aturan berbeda.
 Bukti: `bash _agent-metrics/agent-state.sh` dari workspace lokal mencetak
 briefing lengkap dalam satu koneksi; `grep -c "Papan kolaborasi agent" AGENTS.md`
 lokal = 1.
+
+## 2026-09-21 12:05 UTC | zcode | Standard | - | selesai
+Lingkup: memperbaiki penyebab halaman gagal dimuat (HTTP 500) setiap kali build
+frontend berjalan di server 209. Ini bagian pertama dari diagnosa kondisi server;
+kelambatan situs adalah masalah terpisah dan belum diperbaiki.
+Akar masalah: perintah npm run build menulis langsung ke public/build dan mengosongkan
+folder itu lebih dulu. Selama jendela build, berkas public/build/manifest.json (daftar
+nama berkas hasil build yang dipakai Laravel untuk memanggil CSS dan JS) tidak ada,
+sehingga setiap halaman dijawab 500 ViteManifestNotFoundException. Dua pemicunya:
+scripts/prod/deploy.sh baris 78, dan .git/hooks/pre-push baris 28 (hook ini tidak
+terlacak git, jadi perubahannya hanya ada di server ini).
+Perubahan: berkas BARU scripts/prod/build-assets.sh. Build ditulis ke salah satu dari
+dua slot di dalam public/ sehingga masih satu filesystem dengan public/build dan
+pemindahannya hanya rename, bukan salin. public/build ditukar hanya setelah
+manifest.json hasil build terverifikasi, jadi tidak pernah ada jendela waktu tanpa
+manifest. Dua slot dipakai bergantian sehingga tidak diperlukan perintah hapus. deploy.sh
+dan pre-push hook kini memanggil skrip itu. .gitignore menambah /public/build-slot-*.
+Dampak spec: tidak berubah (tidak ada route, schema, enum, atau JSON).
+Verifikasi: dua putaran build sambil halaman dipantau tiap 0,2 detik, hasil 45/45 dan
+46/46 jawaban HTTP 200, manifest.json tidak pernah hilang, nol error Vite setelah
+perbaikan, dan aset yang dirujuk halaman tersaji 200 dari build baru.
+Untuk agent berikutnya: jangan memanggil npm run build langsung di repo 209, pakai
+bash scripts/prod/build-assets.sh. Kalau ada sisa public/build-slot-a atau
+public/build-slot-b, berarti ada run yang gagal, jalankan skrip sekali lagi untuk
+membereskannya. Kelambatan situs BELUM diperbaiki: terowongan QUIC hanya mengalir 1
+sampai 80 KB per detik padahal aplikasi membalas 0,24 detik. Uji berikutnya adalah
+menjalankan cloudflared dengan --protocol http2.
