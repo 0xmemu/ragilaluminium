@@ -585,6 +585,22 @@ export interface OrderTrackingViewModel {
       icon: string
     }>
   }
+  /**
+   * Alur pengembalian barang. Terisi hanya saat pesanan sudah masuk status
+   * retur, karena pada pesanan biasa stepper pengiriman yang dipakai.
+   */
+  returnFlow?: {
+    title: string
+    description: string
+    recordedAt: string | null
+    finishedAt: string | null
+    steps: Array<{
+      key: string
+      label: string
+      state: "completed" | "current" | "upcoming" | "attention" | "exception"
+      icon: string
+    }>
+  } | null
   position: {
     stateKey: string
     text: string
@@ -656,11 +672,19 @@ export interface PublicOrder {
   tracking?: PublicOrderTracking | null
   whatsapp_url?: string | null
   delivered_at?: string | null
+  /**
+   * Kebijakan retur untuk pesanan ini. `eligible` berarti tombol pengajuan
+   * pengembalian boleh tampil (pesanan sudah Sampai); `warnings` memuat
+   * kebijakan resmi yang tidak lagi memblokir, yaitu batas 48 jam dan status
+   * lunas, supaya pelanggan tetap melihatnya.
+   */
   return_block?: {
     eligible: boolean
     reason?: string | null
     deadline?: string | null
+    warnings?: string[]
   } | null
+  /** Tautan WA berisi naskah pengajuan retur, dipakai tombol Pengembalian Barang. */
   return_whatsapp_url?: string | null
   tracking_public?: PublicOrderTracking | null
   vm?: OrderTrackingViewModel | null

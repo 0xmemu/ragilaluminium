@@ -1,6 +1,6 @@
 # Kebijakan Retur & SOP (DRAF untuk review)
 
-Status: DRAFT - 2026-08-23
+Status: DRAFT - 2026-08-23, direvisi 2026-09-21 (skema retur full manual)
 Sumber: workflow nyata (kode) + keputusan pemilik. Belum dieksekusi / belum jadi desain sistem.
 Lokasi final: menunggu review. Ini dokumen kebijakan bisnis, bukan teknis.
 
@@ -8,12 +8,16 @@ Lokasi final: menunggu review. Ini dokumen kebijakan bisnis, bukan teknis.
 
 ## 1. Prinsip
 
-1. Retur dimulai dari order `delivered` (Sampai) atau `completed` (Selesai). Sebelum barang sampai,
-   paket ditangani lewat pembatalan kurir, bukan retur.
+1. Retur dimulai dari order `delivered` (Sampai). Status `completed` (Selesai) **tidak** bisa
+   diretur di sistem. Sebelum barang sampai, paket ditangani lewat pembatalan kurir, bukan retur.
 2. Retur selalu dicatat lewat form admin. Pelanggan mengirim kronologi/foto via WhatsApp; admin
-   menginput ke sistem. (Tidak ada form retur publik.)
+   menginput ke sistem. (Tidak ada form retur publik.) Yang tersedia untuk pelanggan hanya tombol
+   "Pengembalian Barang" di kartu status Sampai, dan tombol itu sekadar membuka chat WhatsApp.
+   Keputusan 2026-09-21: skema retur **full manual**, jadi tidak ada form pengajuan dari pelanggan.
 3. Alasan retur wajib dari daftar pilihan tetap.
 4. Refund dana hanya dipertimbangkan bila pembeli benar-benar sudah membayar (lihat bagian D).
+   Ini pertimbangan bisnis, bukan pagar sistem: sejak 2026-09-21 pesanan yang belum lunas tetap
+   bisa dicatat returnya, dengan peringatan yang tampil ke admin.
 
 ## 2. Alasan retur (select wajib)
 
@@ -35,7 +39,9 @@ KEPUTUSAN PEMILIK (2026-08-23): `rusak` dan `pecah` dipisah menjadi dua opsi (se
 ## 3. Alur retur (SOP admin)
 
 ```
-1. Admin menerima komplain/ajuan retur via WhatsApp dari pelanggan.
+1. Pelanggan menekan tombol "Pengembalian Barang" di kartu status Sampai, yang membuka chat
+   WhatsApp berisi nomor pesanan, atau menghubungi toko langsung. Admin berdiskusi dulu di
+   WhatsApp; belum ada apa pun yang tercatat di sistem pada tahap ini.
 2. Buka Detail Pesanan -> section "Retur & penyelesaian".
 3. Isi alasan (wajib) + kronologi pelanggan (wajib) + catatan admin (opsional).
 4. Tandai item & jumlah yang ingin diretur.
@@ -103,10 +109,19 @@ COD belum dibayar
     Perubahan ke `delivered` akan dilakukan pada Sprint 2 (bukan sekarang, masih preflight).
 - COD yang belum sampai / belum dibayar: TIDAK layak refund (tidak ada uang yang diterima pembeli).
 
-## 6. Batas waktu retur (KEPUTUSAN PEMILIK, 2026-08-23)
+## 6. Batas waktu retur (KEPUTUSAN PEMILIK, 2026-08-23, direvisi 2026-09-21)
 
 - Batas retur: **48 jam** sejak status pengiriman menjadi `delivered` (Sampai).
-- Retur dari status **`completed` TIDAK diizinkan**. Retur hanya dari `delivered`.
+- **Revisi 2026-09-21: batas 48 jam adalah imbauan, bukan penghalang.** Melewatinya tidak
+  membuat retur ditolak. Nilainya muncul sebagai peringatan yang wajib terbaca admin di panel
+  retur, dan sebagai `return_block.warnings` di halaman pelanggan. Alasannya: keputusan retur
+  diambil admin setelah diskusi WhatsApp, dan memblokir sistem hanya memindahkan pekerjaan ke
+  luar sistem sehingga tidak tercatat di laporan.
+- Syarat yang sama berlaku untuk status lunas: pesanan yang belum dibayar tetap boleh diretur,
+  dengan peringatan "Pembayaran pesanan ini belum tercatat lunas." Kasus nyatanya adalah paket
+  COD yang ditolak kurir sehingga uang tidak pernah masuk.
+- Retur dari status **`completed` TETAP TIDAK diizinkan**. Retur hanya dari `delivered`. Ini
+  satu-satunya syarat yang mengikat di sistem.
 - CATATAN VALIDASI vs KODE SAAT INI:
   - Kode sekarang mengizinkan retur dari `delivered` ATAU `completed`. Kebijakan baru = hanya `delivered`.
     Perlu perubahan di `createReturn` (Sprint 2).

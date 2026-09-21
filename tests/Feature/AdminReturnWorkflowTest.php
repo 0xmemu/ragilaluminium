@@ -113,7 +113,24 @@ class AdminReturnWorkflowTest extends TestCase
         ], $overrides);
     }
 
-    // 1. hati: create retur hanya delivered + paid + dalam 48 jam.
+    /**
+     * Baca kelayakan retur lewat controller. Method-nya protected, jadi dipanggil
+     * lewat reflection supaya test mengunci nilai yang benar-benar dikirim ke
+     * panel admin, bukan salinannya.
+     *
+     * @return array{eligible: bool, reason: string|null, deadline: string|null, warnings: list<string>}
+     */
+    private function returnEligibility(\App\Models\Order $order): array
+    {
+        $controller = app(\App\Http\Controllers\Admin\OrderController::class);
+        $method = new \ReflectionMethod($controller, 'returnEligibility');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $order);
+    }
+
+    // 1. inti: create retur hanya dari status Sampai. Batas 48 jam dan status
+    //    lunas kini peringatan, bukan penghalang.
     public function test_create_return_succeeds_for_delivered_inside_deadline(): void
     {
         $admin = $this->admin();
@@ -156,8 +173,10 @@ class AdminReturnWorkflowTest extends TestCase
         $this->assertSame('completed', $order->order_status);
     }
 
-    // 3. lewat 48 jam ditolak.
-    public function test_create_return_rejected_after_48h_deadline(): void
+    // 3. lewat 48 jam TETAP boleh dicatat (skema full manual 2026-09-21):
+    //    keputusan retur diambil admin setelah diskusi WhatsApp. Batas 48 jam
+    //    dipindah dari penghalang menjadi peringatan yang tampil di panel retur.
+    public function test_create_return_allowed_after_48h_deadline(): void
     {
         $admin = $this->admin();
         $p = $this->productWithStock();
@@ -170,23 +189,78 @@ class AdminReturnWorkflowTest extends TestCase
             ->post(route('admin.orders.returns.store', $order), $this->validCreatePayload($order))
             ->assertRedirect(route('admin.orders.show', $order));
 
-        $this->assertDatabaseMissing('order_return_cases', ['order_id' => $order->id]);
+        $this->assertDatabaseHas('order_return_cases', [
+            'order_id' => $order->id,
+            'status' => 'open',
+        ]);
+        $this->assertSame('return_in_process', $order->fresh()->order_status);
     }
 
-    // 4. unpaid ditolak.
-    public function test_create_return_rejected_for_unpaid(): void
+    // 3b. lewat 48 jam dilaporkan sebagai peringatan, bukan disembunyikan.
+    public function test_return_eligibility_reports_48h_as_warning_not_blocker(): void
+    {
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered');
+        $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(60)->toDateTimeString());
+
+        $eligibility = $this->returnEligibility($order);
+
+        $this->assertTrue($eligibility['eligible']);
+        $this->assertNull($eligibility['reason']);
+        $this->assertStringContainsString('48 jam', implode(' ', $eligibility['warnings']));
+    }
+
+    // 3c. pesanan yang belum dicatat sampai tetap boleh, dengan peringatan.
+    public function test_return_eligibility_warns_when_delivered_time_unknown(): void
+    {
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered');
+        $this->attachItem($order, $p, $v, 1, 100000);
+
+        $eligibility = $this->returnEligibility($order);
+
+        $this->assertTrue($eligibility['eligible']);
+        $this->assertStringContainsString('belum tercatat', implode(' ', $eligibility['warnings']));
+    }
+
+    // 4. unpaid TETAP boleh dicatat (skema full manual 2026-09-21), dengan
+    //    peringatan lunas. Kasus nyatanya: paket COD ditolak kurir sehingga
+    //    uang tidak pernah masuk, tetap perlu retur yang tercatat.
+    public function test_create_return_allowed_for_unpaid_with_warning(): void
     {
         $admin = $this->admin();
         $p = $this->productWithStock();
         $v = $this->variantWithStock($p);
         $order = $this->makeOrder('delivered', ['payment_status' => 'pending']);
         $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(2)->toDateTimeString());
 
         $this->actingAs($admin)
             ->post(route('admin.orders.returns.store', $order), $this->validCreatePayload($order))
             ->assertRedirect(route('admin.orders.show', $order));
 
-        $this->assertDatabaseMissing('order_return_cases', ['order_id' => $order->id]);
+        $this->assertDatabaseHas('order_return_cases', [
+            'order_id' => $order->id,
+            'status' => 'open',
+        ]);
+    }
+
+    // 4b. status lunas juga hanya peringatan.
+    public function test_return_eligibility_reports_unpaid_as_warning_not_blocker(): void
+    {
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered', ['payment_status' => 'pending']);
+        $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(2)->toDateTimeString());
+
+        $eligibility = $this->returnEligibility($order);
+
+        $this->assertTrue($eligibility['eligible']);
+        $this->assertStringContainsString('lunas', implode(' ', $eligibility['warnings']));
     }
 
     // 5. reason lainnya wajib reason_detail.

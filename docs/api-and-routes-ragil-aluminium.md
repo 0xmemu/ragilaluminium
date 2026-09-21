@@ -374,9 +374,10 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 ## Admin order returns (2026-08-15)
 
-- POST /admin/orders/{order}/returns"��y��y� admin-only create return case. Valid only when order status is delivered or completed; requires reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions order to return_in_process, and records audit/WhatsApp follow-up.
-- POST /admin/orders/{order}/returns/{returnCase}/complete �w^~)�t admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
+- POST /admin/orders/{order}/returns -> admin-only create return case. Requires order status delivered, reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions the order to return_in_process, and records audit plus WhatsApp follow-up.
+- POST /admin/orders/{order}/returns/{returnCase}/complete -> admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
+- Skema retur full manual (2026-09-21): the 48 hour window and the paid requirement are no longer blockers. They are returned as `returnEligibility.warnings` for the admin and `return_block.warnings` for the customer page, so returns decided over WhatsApp can still be recorded after 48 hours or on an unpaid order. The only binding condition is order status `delivered`.
 
 - GET /admin/imports/internal-template -> Admin\\ImportJobController@downloadInternalTemplate (name: admin.imports.internal-template) [Authenticate|EnsureUserIsAdmin]
 - POST /admin/imports/preview -> Admin\\ImportJobController@previewInternal (name: admin.imports.preview) [Authenticate|EnsureUserIsAdmin]
@@ -392,6 +393,7 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 ### Customer review contract
 
 - `POST /order/{order_number}/review` (`order.review.store`) accepts a guest review only when the order is `delivered` or `completed`. Ownership is proven by the order number plus the checkout phone number (normalized to the same Indonesian format); there is no customer account fallback.
+- Order status payload now renders its return fields: `return_block` `{eligible, reason, deadline, warnings}` and `return_whatsapp_url` feed the "Pengembalian Barang" button on the delivered order card, and `whatsapp_url` feeds the "Chat WhatsApp" button beside it. `vm.returnFlow` replaces the four step shipping stepper while an order is in `return_in_process` or `return_completed`.
 - `PUT /order/{order_number}/review/{testimonial}` (`order.review.update`) allows the verified customer to edit message, rating, and media. The review must belong to the order and be customer-authored. An admin-authored review returns `403` and cannot be edited through this customer contract.
 - One review is allowed per order, including a review recorded by admin. A customer submission is stored as verified, `moderation_status=approved`, and `published=true`, so it appears in the storefront IMMEDIATELY without moderation or admin approval (owner decision 2026-09-21); edits keep it published. The verified purchase is the only quality gate: reviews are accepted only for orders in `delivered` or `completed`. Admin keeps takedown tools: `unpublish` hides a review, and `moderation_status=rejected` hides it permanently. Text is 3–5000 characters, rating is 1–5, and media is at most 10 image/video URL items.
 - Both routes are web/CSRF routes and throttled at 10 requests per minute. Each create/edit writes an immutable `event_logs` audit record with source `customer`, order reference, and the resulting moderation status.

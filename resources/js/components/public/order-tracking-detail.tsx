@@ -655,6 +655,125 @@ function SupportAction({ className }: { className?: string }) {
  * Card 5: Trust Assurance
  */
 /**
+ * Alur pengembalian barang untuk pelanggan.
+ *
+ * Sumber TUNGGAL: order.vm.returnFlow (backend). Komponen ini tidak menghitung
+ * status sendiri. Muncul hanya saat pesanan sudah masuk status retur.
+ */
+function ReturnFlowCard({ order }: { order: PublicOrder }) {
+  const flow = order.vm?.returnFlow
+  if (!flow) return null
+
+  return (
+    <section className="order-tracking__return-flow rounded-[14px] border border-border bg-surface p-4 shadow-sm lg:p-5">
+      <p className="text-sm font-bold text-foreground">{flow.title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{flow.description}</p>
+
+      <ol className="mt-4">
+        {flow.steps.map((step, index) => {
+          const Glyph = SUMMARY_ICONS[step.icon] ?? Package
+          const active = step.state === "completed" || step.state === "current"
+          const isLast = index === flow.steps.length - 1
+          return (
+            <li key={step.key} className="relative flex gap-3 pb-4 last:pb-0">
+              {/* Garis penghubung antar lingkaran, berhenti di tepi ikon supaya
+                  tidak menembus lingkarannya. */}
+              {!isLast ? (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute left-[21px] top-11 bottom-0 w-[2px]",
+                    step.state === "completed" ? "bg-[#2b734e]" : "bg-border/60",
+                  )}
+                />
+              ) : null}
+              <span
+                className={cn(
+                  "relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full",
+                  stepClass(step.state),
+                )}
+              >
+                {step.state === "completed" ? (
+                  <Check className="size-5" weight="bold" />
+                ) : (
+                  <Glyph
+                    className="size-5"
+                    weight={step.state === "current" ? "bold" : "regular"}
+                  />
+                )}
+              </span>
+              <span
+                className={cn(
+                  "pt-3 text-xs leading-tight",
+                  active ? "font-semibold text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {step.label}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+/**
+ * Kartu tindakan khusus pesanan yang sudah Sampai: ajakan mengulas plus jalur
+ * bantuan WhatsApp. Dipisah dari kartu bantuan umum supaya pelanggan yang
+ * pesanannya sudah tiba melihat tindakan yang relevan lebih dulu.
+ */
+function DeliveredActions({ order }: { order: PublicOrder }) {
+  if (order.order_status !== "delivered") return null
+
+  return (
+    <CustomerReviewForm
+      orderNumber={order.order_number}
+      orderStatus={order.order_status}
+      items={order.items}
+      reviews={order.reviews}
+      variant="banner"
+      chatUrl={order.whatsapp_url ?? null}
+    />
+  )
+}
+
+/**
+ * Tombol pengajuan pengembalian barang.
+ *
+ * Skema retur full manual (keputusan owner 2026-09-21): pengajuan dilakukan
+ * lewat WhatsApp supaya dibicarakan dulu dengan admin. Karena itu tombol ini
+ * hanya membuka percakapan dan TIDAK mengubah status pesanan; status baru
+ * berpindah saat admin mencatat kasus returnya.
+ *
+ * Gaya merah sengaja redup (garis tepi, bukan blok merah penuh): ini tindakan
+ * yang jarang dipakai dan tidak boleh mencolok dibanding tombol ulasan.
+ */
+function ReturnRequestButton({ order }: { order: PublicOrder }) {
+  if (order.order_status !== "delivered") return null
+
+  const href = order.return_whatsapp_url
+  if (!href) return null
+
+  return (
+    <div>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-xs font-semibold text-destructive transition hover:border-destructive/70 hover:bg-destructive/10 sm:w-auto"
+      >
+        <Icon name="arrow-counter-clockwise" className="size-4" aria-hidden="true" />
+        Pengembalian Barang
+      </a>
+      <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+        Ajukan lewat WhatsApp dulu supaya bisa dibicarakan dengan admin sebelum diproses.
+      </p>
+    </div>
+  )
+}
+
+/**
  * Komponen Utama OrderTrackingDetail
  */
 
@@ -665,14 +784,11 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
           lewat col-start/row-start: kartu lacak pindah ke kolom kanan,
           sementara bantuan & jaminan tetap di kolom kiri bawah kartu penerima. */}
 
-      {/* Banner delivered/completed: "sudah sampai" + CTA ulasan */}
-      <CustomerReviewForm
-        orderNumber={order.order_number}
-        orderStatus={order.order_status}
-        items={order.items}
-        reviews={order.reviews}
-        variant="banner"
-      />
+      {/* Pesanan Sampai: sapaan "sudah sampai" + tombol Beri Ulasan dan Chat WhatsApp */}
+      <DeliveredActions order={order} />
+
+      {/* Alur pengembalian barang, hanya saat status pesanan sudah retur */}
+      <ReturnFlowCard order={order} />
 
       {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
       <OrderSummaryCard order={order} className="lg:col-start-1" />
@@ -680,8 +796,17 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
       {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
       <JnTCard order={order} className="lg:col-start-2 lg:row-start-1" />
 
-      {/* 3. Bantuan & jaminan: tepat di bawah kartu penerima (kolom kiri) */}
-      <SupportAction className="lg:col-start-1" />
+      {/* 3. Bantuan & jaminan: tepat di bawah kartu penerima (kolom kiri).
+          Untuk pesanan Sampai, ajakan mengulas dan chat WhatsApp sudah ada di
+          kartu atas, jadi kartu bantuan umum tidak perlu diulang. */}
+      {order.order_status !== "delivered" ? <SupportAction className="lg:col-start-1" /> : null}
+
+      {/* Tombol pengembalian barang: tepat di bawah kartu Sampai, sengaja
+          dipisah karena tindakan ini jarang dipakai dan perlu penjelasan. */}
+      <div className="lg:col-start-1">
+        <ReturnRequestButton order={order} />
+      </div>
+
       <TrustAssuranceCard className="px-4 lg:col-start-1 lg:px-5" />
 
     </div>

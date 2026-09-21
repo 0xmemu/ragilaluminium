@@ -357,23 +357,20 @@ class OrderController extends Controller
 
         // Phase D: blok retur customer-safe (tanpa internal reason; reason sdh
         // dirancang customer-facing di ReturnService::canCreateReturn).
-        $returnBlock = [
-            'eligible' => false,
-            'reason' => null,
-            'deadline' => null,
-        ];
+        // Revisi skema full manual 2026-09-21: syarat mengikatnya hanya pesanan
+        // berstatus Sampai, sedangkan batas 48 jam dan status lunas ikut dikirim
+        // sebagai `warnings` supaya pelanggan tetap melihat kebijakan resminya.
         $deliveredRecord = $shipping?->status === 'delivered' ? $shipping : $order->shippingRecords
             ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
         $deliveredAt = $deliveredRecord?->last_status_at;
-        if ($deliveredAt) {
-            $eligibility = app(ReturnService::class)
-                ->canCreateReturn($order, $deliveredRecord);
-            $returnBlock = [
-                'eligible' => (bool) ($eligibility['allowed'] ?? false),
-                'reason' => $eligibility['reason'] ?? null,
-                'deadline' => $eligibility['deadline'] ?? null,
-            ];
-        }
+        $eligibility = app(ReturnService::class)
+            ->canCreateReturn($order, $deliveredRecord);
+        $returnBlock = [
+            'eligible' => (bool) ($eligibility['allowed'] ?? false),
+            'reason' => $eligibility['reason'] ?? null,
+            'deadline' => $eligibility['deadline'] ?? null,
+            'warnings' => $eligibility['warnings'] ?? [],
+        ];
 
         $whatsappUrl = null;
         $returnWhatsappUrl = null;

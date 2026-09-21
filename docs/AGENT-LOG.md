@@ -27,6 +27,68 @@ Jalankan `bash scripts/agent-state.sh` sebelum mulai bekerja.
 
 ---
 
+## 2026-09-21 19:12 UTC | zcode | Deep | - | selesai
+Lingkup: skema retur sisi pelanggan diubah menjadi FULL MANUAL, sesuai perintah owner. Empat
+bagian, semuanya diverifikasi live.
+(1) Jalur admin dari Sampai ke Retur Diproses dibuka. `Admin\OrderController@returnEligibility`
+dan `ReturnService::canCreateReturn` masih menghitung batas 48 jam dan status lunas, tetapi
+keduanya kini mengembalikan `warnings` dan bukan penolakan; satu-satunya syarat mengikat tinggal
+`order_status = delivered`. Ambang 48 jam dibaca dari `ReturnService::RETURN_WINDOW_HOURS` di
+kedua sisi, jadi salinan ketiga di `Show.tsx` (`48 * 60 * 60 * 1000`) sudah dibuang.
+`updateStatus` TETAP menolak `return_in_process`; pemblokiran itu sengaja dipertahankan karena
+dulu dipasang untuk menutup bug yang membuat `returned_quantity` tidak tercatat sehingga laporan
+uang salah. Jalur satu-satunya tetap form retur.
+(2) Tampilan pelanggan saat status sudah retur dirapikan lewat `OrderTrackingViewModel`: ada
+`returnFlow()` baru berisi 3 langkah (Pengembalian diterima, Sedang ditangani, Selesai) yang
+MENGGANTIKAN stepper pengiriman 4 tahap, karena tahap "Selesai" tidak akan pernah tercapai pada
+pesanan yang diretur. Badge retur selesai diperbaiki dari kunci `refunded` (yang membuatnya
+tampil "Dikembalikan") menjadi `return_completed`. `actionRequired()` tidak lagi memunculkan
+banner "pengiriman bermasalah" saat status retur. Waktu kejadian dibaca dari
+`order_return_cases.created_at`/`completed_at`, bukan `orders.updated_at` yang bisa bergeser.
+(3) Kartu status Sampai kini memuat tiga hal: tombol Chat WhatsApp (`whatsapp_url`), tombol Beri
+Ulasan, dan tombol Pengembalian Barang gaya merah redup di bawah kartu (`return_whatsapp_url`).
+Dua kunci payload itu sebelumnya dihitung backend tetapi TIDAK dirender siapa pun. Tombol
+pengembalian hanya membuka chat WhatsApp dan TIDAK mengubah status pesanan. Kartu bantuan umum
+("Hubungi Kami" ke `/contact`) disembunyikan untuk pesanan Sampai karena fungsinya sudah diambil
+alih chat WhatsApp.
+(4) Panel retur admin selalu tampil untuk pesanan Sampai, termasuk saat tidak memenuhi syarat,
+karena sebelumnya panelnya disembunyikan sehingga tombol "Catat Retur" melompat ke bagian kosong
+dan alasan penolakannya tidak pernah terbaca.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED. `docs/api-and-routes-ragil-aluminium.md` memuat aturan
+kelayakan baru dan pemakaian `return_block`/`return_whatsapp_url`; `docs/kebijakan-retur-draf.md`
+bagian 1, 3, dan 6 direvisi. Tidak ada route, kolom, enum, atau bentuk JSON yang ditambah atau
+hilang; `return_block` hanya bertambah kunci `warnings`, dan `vm` bertambah `returnFlow`.
+Untuk agent berikutnya: (a) JANGAN mengaktifkan kembali `updateStatus` untuk `return_in_process`.
+(b) `docs/kontrak` di workspace lokal sudah disesuaikan: item 13 di
+`docs/KONTRAK/ANTREAN-PEKERJAAN.md` berstatus DIGANTIKAN (form pengajuan pelanggan dengan foto
+TIDAK jadi dikerjakan), dan `docs/DOMAIN/retur-pengembalian.md` bagian 1, 2, 3, 10, 12 diubah
+beserta bagian 4D yang baru. Jangan memakai item 13 sebagai rencana. (c) Tiga keputusan owner
+masih terbuka dan dicatat di bagian 12 dokumen domain: retur dari pesanan Selesai, aturan refund
+untuk pesanan belum lunas, dan koreksi retur yang salah dicatat. (d) Test batas 48 jam pada
+halaman pelanggan WAJIB mematikan `ShippingService::refreshStatus` lewat partialMock, karena
+halaman itu menyegarkan J&T saat dibuka dan menulis ulang `last_status_at` menjadi waktu sekarang
+sehingga batasnya tidak pernah terlihat lewat. (e) Rumus uang TIDAK disentuh sama sekali; lihat
+bukti di bawah.
+Bukti: suite PHP penuh 1 skipped 1110 passed (11105 assertions), TANPA kegagalan. Suite frontend
+21 berkas 179 test lulus. `tsc --noEmit` bersih, eslint bersih pada 5 berkas yang diubah, build
+sukses. Test baru: 3 di `AdminReturnWorkflowTest` (lewat 48 jam tetap boleh, peringatan lunas,
+waktu sampai belum tercatat) dan 4 di `OrderReturnCtaTest` (wajib Sampai, peringatan 48 jam,
+`return_completed` memakai kunci sendiri, alur retur menggantikan stepper). Verifikasi live:
+payload `RA-SIM-2609-02` (delivered) memberi `return_block.eligible=true` dengan
+`warnings=["Waktu paket sampai belum tercatat di sistem."]`, `returnFlow` null, dan stepper tetap
+4 makro; payload `RA-SIM-2609-01` setelah dipindah ke `return_in_process` memberi badge "Retur
+diproses", `actionRequired` null, dan `summary.steps` berisi
+`return_recorded/return_handling/return_finished`. Di browser: tombol Chat WhatsApp berdampingan
+dengan Beri Ulasan di dalam kartu Sampai, tombol Pengembalian Barang tampil redup di bawah kartu
+dengan tautan `wa.me` bernomor pesanan, dan saat status retur tombol itu hilang bersama kartu
+ulasan. Data verifikasi sementara (satu pesanan `RA-VERIFY-SAMPAI` dan satu kasus retur) sudah
+dihapus dan `RA-SIM-2609-01` dikembalikan ke `delivered`; kasus retur yang tersisa hanya kasus
+lama id 1 dari 2026-08-24 pada `RA-260810-0001`. Rumus uang tidak berubah:
+`StorePerformanceService.php`, `app/Exports/`, dan `IncomeDetailQuery.php` tidak disentuh sama
+sekali, dan test uang tetap lulus (`StorePerformanceF10RulesTest` "r9 return and refund keep raw
+rows and r10 refund cuts net", `StorePerformanceRefusedReturnTest`, `StorePerformanceTask1Test`,
+`StorePerformanceRefusedCostTest`).
+
 ## 2026-09-20 18:38 UTC | zcode-workflow | Deep | b9f20142 | selesai
 Lingkup: kontrak efisiensi agent. `docs/ORCHESTRATION.md` (tier Trivial/Standard/Deep
 plus anggaran 15/60/270, aturan ssh sekali panggil, bukti visual sekali batch, aturan

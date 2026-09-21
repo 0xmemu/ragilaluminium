@@ -562,6 +562,13 @@ interface ReturnEligibility {
   eligible: boolean
   reason: string | null
   deadline: string | null
+  /**
+   * Kebijakan resmi yang TIDAK lagi memblokir sejak skema retur full manual
+   * (keputusan owner 2026-09-21): batas 48 jam dan status lunas. Ditampilkan
+   * sebagai peringatan supaya admin memutuskan dengan sadar, bukan diam-diam
+   * dilewati.
+   */
+  warnings?: string[]
 }
 
 const RETURN_REASONS = [
@@ -573,14 +580,22 @@ const RETURN_REASONS = [
   { value: "lainnya", label: "Lainnya" },
 ]
 
-function returnDeadline(order: OrderDetail): { deliveredAt: string | null; deadline: string | null; expired: boolean } {
+/**
+ * Waktu paket sampai dan batas returnya. `deadline` dihitung backend memakai
+ * ReturnService::RETURN_WINDOW_HOURS, jadi ambang jamnya tidak ditulis ulang di
+ * klien (dulu 48 jam tersalin di sini dan bisa berbeda dari aturan server).
+ */
+function returnDeadline(order: OrderDetail, eligibility?: ReturnEligibility): { deliveredAt: string | null; deadline: string | null; expired: boolean } {
   const delivered = order.shipping_records
     ?.filter((r) => r.status === "delivered" && r.last_status_at)
     .sort((a, b) => (b.last_status_at || "").localeCompare(a.last_status_at || ""))[0]
   if (!delivered?.last_status_at) return { deliveredAt: null, deadline: null, expired: false }
-  const deliveredAt = new Date(delivered.last_status_at)
-  const deadline = new Date(deliveredAt.getTime() + 48 * 60 * 60 * 1000)
-  return { deliveredAt: delivered.last_status_at, deadline: deadline.toISOString(), expired: Date.now() > deadline.getTime() }
+  const deadline = eligibility?.deadline ?? null
+  return {
+    deliveredAt: delivered.last_status_at,
+    deadline: deadline ?? delivered.last_status_at,
+    expired: deadline ? Date.now() > new Date(deadline).getTime() : false,
+  }
 }
 
 function ReturnCasePanel({
@@ -617,7 +632,7 @@ function ReturnCasePanel({
   >({})
   const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
 
-  const { deadline, expired } = returnDeadline(order)
+  const { deadline, expired } = returnDeadline(order, eligibility)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -693,6 +708,25 @@ function ReturnCasePanel({
             <p className="text-xs text-destructive">
               {eligibility?.reason || "Retur tidak dapat dicatat sekarang."}
             </p>
+          ) : null}
+
+          {/* Kebijakan resmi yang dilampaui. Keputusan tetap di tangan admin
+              (skema full manual), jadi ditampilkan sebagai peringatan, bukan
+              sebagai penolakan. */}
+          {showCreate && (eligibility?.warnings?.length ?? 0) > 0 ? (
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+              <p className="text-xs font-semibold text-warning">
+                Perhatian sebelum mencatat retur
+              </p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                {(eligibility?.warnings ?? []).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Pastikan sudah disepakati dengan pelanggan lewat WhatsApp sebelum dicatat.
+              </p>
+            </div>
           ) : null}
 
           {cases.map((item) => (
@@ -1658,7 +1692,13 @@ export default function OrderShow({
         const cases = order.return_cases ?? returnCases
         const elig = returnEligibility ?? { eligible: false, reason: null, deadline: null }
         const hasActiveCase = cases.some((c) => c.status !== "resolved" && c.status !== "rejected")
-        if (!hasActiveCase && !elig.eligible) return null
+        // Panel wajib muncul untuk SETIAP pesanan Sampai dan setiap pesanan yang
+        // punya kasus aktif. Dulu panel disembunyikan saat tidak memenuhi syarat,
+        // sehingga tombol "Catat Retur" melompat ke bagian kosong dan alasan
+        // penolakannya tidak pernah terbaca admin.
+        const showPanel =
+          hasActiveCase || order.order_status === "delivered" || order.order_status === "return_in_process"
+        if (!showPanel) return null
         return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
       })()}
 

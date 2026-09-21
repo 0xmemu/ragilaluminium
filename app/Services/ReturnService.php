@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Paket 2 fokus service & validasi (tanpa endpoint HTTP). Mencakup:
  *  - Transisi delivered -> COD paid (idempotent).
- *  - canCreateReturn (window 48 jam, hanya delivered, payment paid).
+ *  - canCreateReturn (hanya delivered; batas 48 jam dan status lunas
+ *    dilaporkan sebagai warnings, bukan penghalang, sejak skema retur
+ *    full manual 2026-09-21).
  *  - validateReason / reason_detail (wajib utk "lainnya").
  *  - defaultFaultParty berdasarkan reason.
  *  - validateRefundAmount (0 <= refund <= total_amount).
@@ -184,36 +186,55 @@ class ReturnService
     }
 
     /**
-     * Kelayakan membuat kasus retur.
+     * Kebijakan resmi retur untuk sebuah pesanan.
      *
-     * @return array{allowed: bool, reason?: string, deadline?: string}
+     * Skema retur full manual (keputusan owner 2026-09-21): keputusan retur
+     * diambil admin setelah diskusi WhatsApp, jadi satu-satunya syarat yang
+     * mengikat di sini adalah status pesanan sudah Sampai. Batas 48 jam dan
+     * status lunas tetap dihitung supaya bisa ditampilkan sebagai peringatan,
+     * bukan sebagai penolakan. `allowed` menjawab "boleh mengajukan tombol
+     * pengembalian?", bukan "masih di dalam kebijakan".
+     *
+     * @return array{allowed: bool, reason?: string, deadline?: string, warnings?: list<string>}
      */
     public function canCreateReturn(Order $order, ?ShippingRecord $shippingRecord = null, ?Carbon $now = null): array
     {
         if ($order->order_status !== 'delivered') {
-            return ['allowed' => false, 'reason' => 'Retur hanya dapat dicatat untuk pesanan berstatus Sampai.'];
+            return [
+                'allowed' => false,
+                'reason' => 'Retur hanya dapat diajukan untuk pesanan berstatus Sampai.',
+                'warnings' => [],
+            ];
         }
 
         $shipping = $shippingRecord
             ?? $order->shippingRecords
                 ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
 
+        $warnings = [];
+
         if (! $shipping || $shipping->status !== 'delivered' || $shipping->last_status_at === null) {
-            return ['allowed' => false, 'reason' => 'Waktu paket sampai belum tersedia.'];
+            $warnings[] = 'Waktu paket sampai belum tercatat di sistem.';
+
+            return ['allowed' => true, 'deadline' => null, 'warnings' => $warnings];
         }
 
         $now = $now ?? now();
         $deadline = $shipping->last_status_at->copy()->addHours(self::RETURN_WINDOW_HOURS);
 
         if ($now->gt($deadline)) {
-            return ['allowed' => false, 'reason' => 'Batas retur 48 jam telah lewat. Tindak lanjuti melalui WhatsApp.'];
+            $warnings[] = 'Sudah lewat batas retur '.self::RETURN_WINDOW_HOURS.' jam sejak paket sampai.';
         }
 
         if ($order->payment_status !== 'paid') {
-            return ['allowed' => false, 'reason' => 'Pesanan belum tercatat lunas.'];
+            $warnings[] = 'Pembayaran pesanan ini belum tercatat lunas.';
         }
 
-        return ['allowed' => true, 'deadline' => $deadline->toIso8601String()];
+        return [
+            'allowed' => true,
+            'deadline' => $deadline->toIso8601String(),
+            'warnings' => $warnings,
+        ];
     }
 
     /**

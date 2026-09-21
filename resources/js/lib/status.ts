@@ -43,7 +43,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   payment_verification: { label: "Pembayaran Diverifikasi", tone: "info" },
   issue: { label: "Perlu perhatian", tone: "warning" },
   return_in_process: { label: "Retur diproses", tone: "warning-soft" },
-  return_completed: { label: "Retur selesai", tone: "neutral-soft" },
+  return_completed: { label: "Retur selesai", tone: "success-soft" },
   cancelled: { label: "Dibatalkan", tone: "danger" },
   paid: { label: "Lunas", tone: "success" },
   refunded: { label: "Dikembalikan", tone: "neutral-soft" },

@@ -108,16 +108,18 @@ class ReturnServiceTest extends TestCase
         $this->assertArrayHasKey('deadline', $result);
     }
 
-    public function test_can_create_return_blocked_after_48h(): void
+    public function test_can_create_return_allowed_after_48h_with_warning(): void
     {
-        $order = $this->makeOrder();
+        $order = $this->makeOrder(['payment_status' => 'paid']);
         $record = $this->deliveredRecord($order, now()->subHours(49)->toDateTimeString());
         $svc = app(ReturnService::class);
 
         $result = $svc->canCreateReturn($order, $record, Carbon::now());
 
-        $this->assertFalse($result['allowed']);
-        $this->assertStringContainsString('48 jam', $result['reason']);
+        // Skema full manual 2026-09-21: lewat 48 jam bukan penghalang lagi,
+        // hanya peringatan yang ditampilkan ke admin dan pelanggan.
+        $this->assertTrue($result['allowed']);
+        $this->assertStringContainsString('48 jam', implode(' ', $result['warnings']));
     }
 
     public function test_can_create_return_blocked_when_not_delivered(): void
@@ -130,7 +132,7 @@ class ReturnServiceTest extends TestCase
         $this->assertFalse($result['allowed']);
     }
 
-    public function test_can_create_return_blocked_when_not_paid(): void
+    public function test_can_create_return_allowed_when_not_paid_with_warning(): void
     {
         $order = $this->makeOrder(['payment_status' => 'pending']);
         $record = $this->deliveredRecord($order, now()->subHour()->toDateTimeString());
@@ -138,8 +140,20 @@ class ReturnServiceTest extends TestCase
 
         $result = $svc->canCreateReturn($order, $record, Carbon::now());
 
-        $this->assertFalse($result['allowed']);
-        $this->assertStringContainsString('lunas', $result['reason']);
+        $this->assertTrue($result['allowed']);
+        $this->assertStringContainsString('lunas', implode(' ', $result['warnings']));
+    }
+
+    public function test_can_create_return_warns_when_delivered_time_unknown(): void
+    {
+        $order = $this->makeOrder(['payment_status' => 'paid']);
+        $svc = app(ReturnService::class);
+
+        $result = $svc->canCreateReturn($order, null, Carbon::now());
+
+        $this->assertTrue($result['allowed']);
+        $this->assertNull($result['deadline']);
+        $this->assertStringContainsString('belum tercatat', implode(' ', $result['warnings']));
     }
 
     public function test_validate_reason_requires_detail_for_lainnya(): void

@@ -21,6 +21,12 @@ interface CustomerReviewFormProps {
   reviews?: PublicOrderReview[]
   variant?: "banner" | "button"
   fullWidth?: boolean
+  /**
+   * Tautan chat WhatsApp toko. Diisi di halaman status pesanan supaya tombol
+   * "Chat WhatsApp" bisa berdampingan dengan tombol ulasan: dua kartu terpisah
+   * akan saling mendorong turun, jadi keduanya diletakkan dalam satu wadah.
+   */
+  chatUrl?: string | null
 }
 
 function reviewRoute(orderNumber: string, reviewId?: number): string {
@@ -85,6 +91,7 @@ export function CustomerReviewForm({
   reviews = [],
   variant = "button",
   fullWidth = false,
+  chatUrl = null,
 }: CustomerReviewFormProps) {
   const eligible = orderStatus === "delivered" || orderStatus === "completed"
   const review = reviews[0] ?? null
@@ -107,6 +114,7 @@ export function CustomerReviewForm({
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
+  const [chatCopied, setChatCopied] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [success, setSuccess] = React.useState<string | null>(null)
 
@@ -281,6 +289,35 @@ export function CustomerReviewForm({
     }
   }
 
+  /**
+   * Tautan chat bisa kosong (mis. nomor WA toko belum terpasang di pengaturan).
+   * Fallback-nya menyalin nomor pesanan supaya pelanggan tetap punya sesuatu
+   * yang bisa ditempel; tombol mati tanpa penjelasan lebih membingungkan.
+   */
+  async function handleChatFallback() {
+    try {
+      await navigator.clipboard.writeText(orderNumber)
+      setChatCopied(true)
+      window.setTimeout(() => setChatCopied(false), 2000)
+    } catch {
+      setChatCopied(false)
+    }
+  }
+
+  const chatButton = chatUrl ? (
+    <Button asChild variant="secondary" className="w-full sm:w-auto">
+      <a href={chatUrl} target="_blank" rel="noreferrer">
+        <Icon name="whatsapp" className="mr-2 size-4" aria-hidden="true" />
+        Chat WhatsApp
+      </a>
+    </Button>
+  ) : (
+    <Button type="button" variant="secondary" onClick={handleChatFallback} className="w-full sm:w-auto">
+      <Icon name="whatsapp" className="mr-2 size-4" aria-hidden="true" />
+      {chatCopied ? "Nomor pesanan disalin" : "Salin nomor pesanan"}
+    </Button>
+  )
+
   const trigger = variant === "banner" ? (
     <section className="rounded-[14px] border border-success/30 bg-success/10 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -294,34 +331,41 @@ export function CustomerReviewForm({
             <p className="mt-0.5 text-xs text-muted-foreground">Bagikan pengalaman Anda agar bermanfaat bagi pembeli lain.</p>
           )}
         </div>
-        {hasOwnReview ? (
-          <Link
-            href={productReviewUrl}
-            className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-success/30 bg-surface px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:border-success/60 hover:bg-white"
-          >
-            <span className="flex items-center gap-0.5" aria-label={`Rating ${currentReview?.rating ?? 5} dari 5`}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Icon
-                  key={n}
-                  name="star"
-                  weight={n <= (currentReview?.rating ?? 5) ? "fill" : "regular"}
-                  className={n <= (currentReview?.rating ?? 5) ? "size-3.5 text-warning" : "size-3.5 text-muted-foreground"}
-                  aria-hidden="true"
-                />
-              ))}
-            </span>
-            <span className="ml-1 text-primary font-bold">Lihat Ulasan →</span>
-          </Link>
-        ) : (
-          <Button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
-            Beri Ulasan
-          </Button>
-        )}
+        {/* Tombol ulasan dan tombol chat WA berdiri sendiri-sendiri dulu; bila
+            keduanya dijadikan dua kartu terpisah, kartu atas akan mendorong
+            kartu bawah turun dan susunannya goyah. Keduanya ditaruh dalam satu
+            kolom aksi di dalam kartu ini. */}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
+          {hasOwnReview ? (
+            <Link
+              href={productReviewUrl}
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-success/30 bg-surface px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:border-success/60 hover:bg-white"
+            >
+              <span className="flex items-center gap-0.5" aria-label={`Rating ${currentReview?.rating ?? 5} dari 5`}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Icon
+                    key={n}
+                    name="star"
+                    weight={n <= (currentReview?.rating ?? 5) ? "fill" : "regular"}
+                    className={n <= (currentReview?.rating ?? 5) ? "size-3.5 text-warning" : "size-3.5 text-muted-foreground"}
+                    aria-hidden="true"
+                  />
+                ))}
+              </span>
+              <span className="ml-1 text-primary font-bold">Lihat Ulasan →</span>
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Icon name="star" className="mr-2 size-4" aria-hidden="true" />
+              Beri Ulasan
+            </Button>
+          )}
+          {chatButton}
+        </div>
       </div>
     </section>
   ) : (

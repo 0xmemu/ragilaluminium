@@ -122,12 +122,15 @@ class OrderTrackingViewModel
                 'Pesanan ini tidak akan diproses atau dikirim.');
         }
         if (in_array($status, ['return_completed'], true)) {
-            return $this->mk('refunded', 'Retur selesai', 'success', 'Retur selesai',
-                'Proses retur telah selesai dan dicatat oleh tim kami.');
+            // Kunci sengaja `return_completed`, bukan `refunded`: badge membaca
+            // kunci ini langsung, dan `refunded` membuat retur yang sudah selesai
+            // tampil sebagai "Dikembalikan".
+            return $this->mk('return_completed', 'Retur selesai', 'success', 'Retur selesai',
+                'Pengembalian barang sudah selesai dicatat oleh tim kami.');
         }
         if (in_array($status, ['return_in_process'], true)) {
-            return $this->mk('return_in_process', 'Retur diproses', 'warning', 'Retur sedang diproses',
-                'Tim kami akan memberi kabar selanjutnya melalui WhatsApp.');
+            return $this->mk('return_in_process', 'Retur diproses', 'warning', 'Pengembalian sedang ditangani',
+                'Tim kami sedang menangani pengembalian barang. Kabar selanjutnya melalui WhatsApp.');
         }
 
         // 2. Refund
@@ -237,7 +240,10 @@ class OrderTrackingViewModel
     public function actionRequired(): ?array
     {
         $status = $this->orderStatus();
-        if (in_array($status, ['cancelled', 'return_completed', 'completed'], true)) {
+        // Status retur ditangani blok alur retur sendiri; banner "pengiriman
+        // bermasalah" akan menyesatkan karena tokonya justru sedang
+        // menindaklanjuti pengembalian.
+        if (in_array($status, ['cancelled', 'return_completed', 'return_in_process', 'completed'], true)) {
             return null;
         }
 
@@ -655,13 +661,76 @@ class OrderTrackingViewModel
     }
 
     /**
-     * StatusSummary 4 makro stabil (kontrak): Dikonfirmasi -> Disiapkan ->
-     * Dikirim -> Selesai. State dihitung dari progress() (satu mapper).
+     * Alur pengembalian barang untuk pelanggan.
+     *
+     * Skema retur full manual (keputusan owner 2026-09-21): pelanggan mengajukan
+     * lewat WhatsApp, admin mencatat kasusnya, baru status pesanan berpindah.
+     * Karena itu langkah pertama di sini berarti "toko sudah menerima
+     * pengembalian", bukan "pelanggan baru mengirim form". Terisi hanya saat
+     * pesanan sudah masuk status retur; selain itu null.
+     *
+     * @return array{title:string,description:string,recordedAt:string|null,finishedAt:string|null,steps:list<array{key:string,label:string,state:string,icon:string}>}|null
+     */
+    public function returnFlow(): ?array
+    {
+        $status = $this->orderStatus();
+        if (! in_array($status, ['return_in_process', 'return_completed'], true)) {
+            return null;
+        }
+
+        $case = $this->order->returnCases->sortByDesc('id')->first();
+
+        $recordedAt = $case?->created_at?->toIso8601String()
+            ?? $this->order->updated_at?->toIso8601String();
+        $finishedAt = $case?->completed_at?->toIso8601String();
+        $done = $status === 'return_completed';
+
+        return [
+            'title' => $done ? 'Pengembalian selesai' : 'Pengembalian sedang ditangani',
+            'description' => $done
+                ? 'Pengembalian barang untuk pesanan ini sudah selesai dicatat oleh tim kami.'
+                : 'Tim kami sedang menangani pengembalian barang untuk pesanan ini. Kabar selanjutnya melalui WhatsApp.',
+            'recordedAt' => $recordedAt,
+            'finishedAt' => $finishedAt,
+            'steps' => [
+                [
+                    'key' => 'return_recorded',
+                    'label' => 'Pengembalian diterima',
+                    'state' => 'completed',
+                    'icon' => 'check-circle',
+                ],
+                [
+                    'key' => 'return_handling',
+                    'label' => 'Sedang ditangani',
+                    'state' => $done ? 'completed' : 'current',
+                    'icon' => $done ? 'check-circle' : 'package',
+                ],
+                [
+                    'key' => 'return_finished',
+                    'label' => 'Selesai',
+                    'state' => $done ? 'completed' : 'upcoming',
+                    'icon' => 'check-circle',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * StatusSummary: Dikonfirmasi -> Disiapkan -> Dikirim -> Selesai untuk
+     * pesanan biasa. Untuk pesanan yang sudah diretur, stepper pengiriman itu
+     * berbohong (tahap "Selesai" tidak pernah tercapai dan satu tahap hanya
+     * diwarnai khusus tanpa keterangan), jadi diganti alur retur 3 langkah dari
+     * returnFlow(). State dihitung dari progress() (satu mapper).
      *
      * @return array{steps: list<array{key:string,label:string,state:string,icon:string}>}
      */
     public function summary(): array
     {
+        $flow = $this->returnFlow();
+        if ($flow !== null) {
+            return ['steps' => $flow['steps']];
+        }
+
         $progress = collect($this->progress())->keyBy('key');
         $state = static fn (string $key): string => (string) ($progress[$key]['state'] ?? 'upcoming');
 
@@ -949,10 +1018,23 @@ class OrderTrackingViewModel
             $key = $status === 'cancelled' ? 'cancelled' : $status;
             $t = self::EVENT_TRANSLATION[$key] ?? null;
             if ($t !== null) {
+                // Waktu retur dibaca dari kasus returnya (kapan admin mencatat,
+                // dan kapan selesai), bukan dari updated_at pesanan yang bisa
+                // bergeser oleh perubahan lain.
+                $case = in_array($status, ['return_in_process', 'return_completed'], true)
+                    ? $this->order->returnCases->sortByDesc('id')->first()
+                    : null;
+                $at = match (true) {
+                    $status === 'return_completed' => $case?->completed_at ?? $case?->created_at,
+                    $case !== null => $case->created_at,
+                    default => null,
+                };
                 $events[$key] = [
                     'key' => $key,
                     'label' => $t['label'],
-                    'at' => $this->order->updated_at?->utc()->toIso8601String() ?? now()->utc()->toIso8601String(),
+                    'at' => $at?->utc()->toIso8601String()
+                        ?? $this->order->updated_at?->utc()->toIso8601String()
+                        ?? now()->utc()->toIso8601String(),
                     'position' => $t['position'],
                     'source' => $t['source'],
                     'detail' => null,
@@ -1056,6 +1138,7 @@ class OrderTrackingViewModel
             'shipment' => $this->shipment(),
             'customerStatus' => $this->customerStatus(),
             'summary' => $this->summary(),
+            'returnFlow' => $this->returnFlow(),
             'position' => $this->position(),
             'progress' => $this->progress(),
             'events' => $this->events(),

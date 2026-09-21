@@ -10,6 +10,7 @@ use App\Models\OrderReturnCase;
 use App\Models\AdminNotification;
 use App\Services\OrderService;
 use App\Services\PaymentService;
+use App\Services\ReturnService;
 use App\Services\ShippingService;
 use App\Support\ExportSafety;
 use Maatwebsite\Excel\Facades\Excel;
@@ -686,7 +687,9 @@ class OrderController extends Controller
 
     public function createReturn(Request $request, Order $order): RedirectResponse
     {
-        // Retur hanya dari delivered, payment paid, sebelum 48 jam, tanpa duplicate aktif.
+        // Retur hanya dari status Sampai (skema full manual 2026-09-21);
+        // batas 48 jam dan status lunas tampil sebagai peringatan, dan
+        // kasus retur aktif ganda tetap ditolak di bawah.
         $eligibility = $this->returnEligibility($order);
         if (! $eligibility['eligible']) {
             return redirect()->route('admin.orders.show', $order)
@@ -787,7 +790,7 @@ class OrderController extends Controller
             ->with('success', 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
     }
 
-    public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase, \App\Services\ReturnService $returns): RedirectResponse
+    public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase, ReturnService $returns): RedirectResponse
     {
         if ((int) $returnCase->order_id !== (int) $order->id || $order->order_status !== 'return_in_process') {
             return redirect()->route('admin.orders.show', $order)
@@ -951,9 +954,13 @@ class OrderController extends Controller
     }
 
     /**
-     * Kelayakan membuat retur (blueprint Sprint 2): hanya delivered + paid + dalam 48 jam.
+     * Kelayakan mencatat retur. Skema retur full manual (keputusan owner
+     * 2026-09-21): keputusan retur diambil admin setelah diskusi WhatsApp, jadi
+     * syarat mengikatnya hanya status pesanan sudah Sampai. Batas 48 jam dan
+     * status lunas tetap dihitung, tetapi dikirim sebagai `warnings` yang
+     * ditampilkan ke admin, bukan sebagai penolakan.
      *
-     * @return array{eligible: bool, reason: string|null, deadline: string|null}
+     * @return array{eligible: bool, reason: string|null, deadline: string|null, warnings: list<string>}
      */
     protected function returnEligibility(Order $order): array
     {
@@ -961,14 +968,17 @@ class OrderController extends Controller
             return [
                 'eligible' => false,
                 'reason' => $order->order_status === 'completed'
-                    ? 'Retur hanya dapat dicatat untuk pesanan berstatus Sampai. Pesanan selesai tidak dapat diretur di sistem; tindak lanjuti melalui WhatsApp.'
-                    : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai (delivered).',
+                    ? 'Pesanan sudah selesai, jadi tidak lagi berstatus Sampai. Retur hanya bisa dicatat untuk pesanan berstatus Sampai; bila tetap harus diretur, bicarakan dulu dengan pelanggan melalui WhatsApp.'
+                    : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai.',
                 'deadline' => null,
+                'warnings' => [],
             ];
         }
 
+        $warnings = [];
+
         if ($order->payment_status !== 'paid') {
-            return ['eligible' => false, 'reason' => 'Pesanan belum tercatat lunas.', 'deadline' => null];
+            $warnings[] = 'Pembayaran pesanan ini belum tercatat lunas.';
         }
 
         $deliveredAt = $order->shippingRecords
@@ -976,20 +986,23 @@ class OrderController extends Controller
             ->first(fn ($s) => $s->status === 'delivered' && $s->last_status_at !== null)?->last_status_at;
 
         if (! $deliveredAt) {
-            return ['eligible' => false, 'reason' => 'Waktu paket sampai belum tersedia.', 'deadline' => null];
+            $warnings[] = 'Waktu paket sampai belum tercatat di sistem, jadi batas retur tidak bisa dihitung.';
+
+            return ['eligible' => true, 'reason' => null, 'deadline' => null, 'warnings' => $warnings];
         }
 
-        $deadline = $deliveredAt->copy()->addHours(48);
+        $deadline = $deliveredAt->copy()->addHours(ReturnService::RETURN_WINDOW_HOURS);
 
         if (now()->gt($deadline)) {
-            return [
-                'eligible' => false,
-                'reason' => 'Batas retur 48 jam telah lewat. Untuk komplain lebih lanjut, hubungi pelanggan melalui WhatsApp.',
-                'deadline' => $deadline->toIso8601String(),
-            ];
+            $warnings[] = 'Sudah lewat batas retur '.ReturnService::RETURN_WINDOW_HOURS.' jam sejak paket sampai.';
         }
 
-        return ['eligible' => true, 'reason' => null, 'deadline' => $deadline->toIso8601String()];
+        return [
+            'eligible' => true,
+            'reason' => null,
+            'deadline' => $deadline->toIso8601String(),
+            'warnings' => $warnings,
+        ];
     }
 
     protected function defaultFaultParty(string $reason): string
