@@ -283,8 +283,9 @@ class StorePerformanceService
         $salesKpis = [
             $this->kpi('omzet', 'Penjualan Gross', $current['revenue'], $previous['revenue'], 'currency'),
             $this->kpi('orders', 'Jumlah Pesanan', $current['orders'], $previous['orders'], 'number'),
-            $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number'),
-            $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number'),
+            $this->kpi('models', 'Model Produk Terjual', $current['models_sold'], $previous['models_sold'], 'number', 'Jenis model yang terjual, tanpa membedakan desain. Satu model dengan dua desain tetap dihitung satu.'),
+            $this->kpi('sub_models', 'Sub Model Terjual', $current['sub_models_sold'], $previous['sub_models_sold'], 'number', 'Model beserta desainnya. Satu model dengan dua desain dihitung dua.'),
+            $this->kpi('products', 'Produk Terjual', $current['products_sold'], $previous['products_sold'], 'number', 'Produk berbeda yang terjual, dibedakan menurut varian ukuran. Produk yang dijual tanpa varian dihitung memakai kode SKU induknya.'),
             $this->kpi('units', 'Jumlah Unit Terjual', $current['units'], $previous['units'], 'number'),
             $this->kpi('avg_unit_price', 'Harga Rata-rata per Unit', $current['avg_unit_price'], $previous['avg_unit_price'], 'currency'),
             $this->kpi('aov', 'Rata-rata Nilai Pesanan', $current['aov'], $previous['aov'], 'currency'),
@@ -313,8 +314,13 @@ class StorePerformanceService
         $opsKpis = [
             // Operasional = FULFILLMENT (bukan retur). Kontrak 2026-09-02: retur dipindah
             // ke section 'Retur & Pembatalan' supaya Operasional bersih dari dominasi retur.
-            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], $previous['open_orders'], 'number', 'Pesanan yang sudah masuk proses dan belum selesai pada periode.'),
-            $this->kpi('dispatched_orders', 'Dalam Pengiriman', $current['dispatched_orders'], $previous['dispatched_orders'], 'number', 'Pesanan berstatus dikirim/dalam perjalanan pada periode.'),
+            // Dua KPI antrean ini snapshot: angkanya keadaan saat laporan
+            // dibangun, jadi sengaja tidak punya nilai pembanding. Membandingkan
+            // snapshot dengan periode sebelumnya selalu menghasilkan nol dan
+            // menyesatkan.
+            $this->kpi('open_orders', 'Pesanan Belum Selesai', $current['open_orders'], null, 'number', 'Seluruh pesanan yang belum selesai saat laporan dibangun: menunggu konfirmasi, sedang diproses, atau sudah dikirim. Tidak dibatasi periode.'),
+            $this->kpi('dispatched_orders', 'Dalam Pengiriman', $current['dispatched_orders'], null, 'number', 'Pesanan yang sedang dikirim saat laporan dibangun. Tidak dibatasi periode.'),
+            $this->kpi('open_orders_in_period', 'Pesanan Dibuat Periode Ini yang Masih Terbuka', $current['open_orders_in_period'], $previous['open_orders_in_period'], 'number', 'Pesanan yang DIBUAT pada periode terpilih dan sampai sekarang belum selesai. Berbeda dari antrean saat ini, yang menghitung seluruh pesanan terbuka tanpa melihat tanggal pembuatan.'),
             $this->kpi('avg_confirm_hours', 'Rata-rata Waktu Konfirmasi', $current['avg_confirm_hours'], $previous['avg_confirm_hours'], 'hours', 'Waktu dari pesanan masuk sampai dikonfirmasi admin.'),
             $this->kpi('avg_process_days', 'Rata-rata Waktu Proses', $current['avg_process_days'], $previous['avg_process_days'], 'days', 'Waktu dari dikonfirmasi sampai pesanan siap diserahkan ke kurir.'),
         ];
@@ -323,7 +329,7 @@ class StorePerformanceService
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang dana-nya benar-benar lunas pada periode.'),
             $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
-            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending (kondisi saat ini)', $current['payment_pending_count'], $previous['payment_pending_count'], 'number', 'Pembayaran non-COD yang belum lunas pada pesanan aktif. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
+            $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], null, 'number', 'Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun. Tidak dibatasi periode. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
 
         $cancellationsKpis = [
@@ -331,19 +337,19 @@ class StorePerformanceService
             $this->kpi('cancelled_by_customer', 'Dibatalkan Pelanggan', $current['cancelled_by_customer'], $previous['cancelled_by_customer'], 'number', 'Dibatalkan pembeli lewat halaman pesanan.'),
             $this->kpi('cancelled_by_store', 'Dibatalkan Toko', $current['cancelled_by_store'], $previous['cancelled_by_store'], 'number', 'Dibatalkan oleh admin toko.'),
             $this->kpi('cancelled_value', 'Nilai Pesanan Dibatalkan', $current['cancelled_value'], $previous['cancelled_value'] ?? 0, 'currency', 'Total nilai pesanan yang dibatalkan pada periode. Tidak termasuk dalam Penjualan Gross.'),
-            $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Dihitung dari catatan pembatalan pada periode dibandingkan pesanan yang masuk proses pada periode.'),
+            $this->kpi('cancellation_rate', 'Rasio Pembatalan', $current['cancellation_rate'], $previous['cancellation_rate'], 'percent', 'Pesanan yang dibatalkan pada periode dibanding pesanan yang dibuat pada periode yang sama. Pembatalan atas pesanan lama tidak ikut dihitung supaya rasionya tidak melewati 100 persen.'),
         ];
 
         $returnsKpis = [
             $this->kpi('returns', 'Jumlah Retur', $current['return_orders'], $previous['return_orders'], 'number'),
             $this->kpi('return_value', 'Nilai Retur', $current['return_value'], $previous['return_value'], 'currency'),
             $this->kpi('returns_created', 'Retur Diajukan', $current['returns_created'], $previous['returns_created'], 'number'),
-            $this->kpi('returns_open', 'Retur Aktif (kondisi saat ini)', $current['returns_open'], $previous['returns_open'], 'number', 'Kasus retur yang masih terbuka saat laporan dibuat.'),
+            $this->kpi('returns_open', 'Retur Aktif', $current['returns_open'], null, 'number', 'Kasus retur yang masih terbuka saat laporan dibuat. Tidak dibatasi periode.'),
             $this->kpi('returns_completed', 'Retur Selesai', $current['returns_completed'], $previous['returns_completed'], 'number'),
             $this->kpi('refused_orders', 'Pesanan Retur Paket', $current['refused_orders'], $previous['refused_orders'], 'number', 'Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.'),
             $this->kpi('refund_given', 'Refund Diberikan', $current['refund_given'], $previous['refund_given'], 'currency'),
             $this->kpi('return_rate_created', 'Rasio Retur Diajukan', $current['return_rate_created'], $previous['return_rate_created'], 'percent', 'Retur diajukan dibanding pesanan yang masuk proses.'),
-            $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur selesai dibanding pesanan selesai.'),
+            $this->kpi('return_rate_completed', 'Rasio Retur Selesai', $current['return_rate_completed'], $previous['return_rate_completed'], 'percent', 'Retur yang selesai pada periode dibanding pesanan yang selesai pada periode. Keduanya dihitung dari waktu penyelesaian, bukan waktu pembuatan.'),
         ];
 
         $returnCostKpis = [
@@ -394,6 +400,11 @@ class StorePerformanceService
                 'return_shipping_store' => $current['return_shipping_store'],
                 'net_revenue' => $current['net_revenue'],
                 'buyer_orders' => $current['orders'],
+                // Jumlah pembeli unik apa adanya. Sebelumnya dibuang dari
+                // payload sehingga tampilan menghitungnya ulang dari persentase
+                // yang sudah dibulatkan, dan hasilnya bisa meleset beberapa
+                // pembeli.
+                'buyers' => $current['buyers'],
                 'visitors' => $current['visitors'],
                 'visitors_available_from' => $current['visitors_available_from'],
                 'payments_received' => $current['payments_received'],
@@ -567,28 +578,50 @@ class StorePerformanceService
             : (int) OrderItem::query()->whereIn('order_id', $revenueOrderIds)->sum('quantity');
 
         // Historical identity is read from order_items snapshots, never from live catalog rows.
-        $modelsSold = $revenueOrderIds->isEmpty()
-            ? 0
-            : $this->distinctModelCount($revenueOrderIds);
+        // Model dan sub model dipisah karena keduanya dua hal berbeda: satu
+        // model dengan dua desain adalah satu model tetapi dua sub model.
+        $modelCounts = $revenueOrderIds->isEmpty()
+            ? ['models' => 0, 'sub_models' => 0]
+            : $this->distinctModelCounts($revenueOrderIds);
+        $modelsSold = $modelCounts['models'];
+        $subModelsSold = $modelCounts['sub_models'];
 
-        // Produk berbeda (per varian/ukuran) yang terjual - distinct SKU dari snapshot.
+        // Produk berbeda yang terjual, dari snapshot. Baris tanpa varian
+        // (produk yang dijual tanpa ukuran) tetap dihitung memakai parent_sku,
+        // supaya tidak ada produk yang hilang diam diam dari hitungan.
         $productsSold = $revenueOrderIds->isEmpty()
             ? 0
-            : (int) OrderItem::query()
-                ->whereIn('order_id', $revenueOrderIds)
-                ->whereNotNull('variant_sku')
-                ->where('variant_sku', '!=', '')
-                ->distinct('variant_sku')
-                ->count('variant_sku');
+            : $this->distinctProductCount($revenueOrderIds);
 
         // Harga rata-rata per unit memakai NILAI PRODUK saja, bukan penjualan
         // gross: gross memuat ongkir, biaya COD, dan asuransi sehingga angkanya
         // jadi nilai tagihan per unit, bukan harga produk. Temuan audit 2026-09-20.
         $avgUnitPrice = $units > 0 ? round($itemsBeforeDiscount / $units, 2) : 0.0;
 
-        $completedOrders = (clone $base)->whereIn('order_status', self::COMPLETED_STATUSES)->count();
-        $openOrders = (clone $base)->whereIn('order_status', self::OPEN_STATUSES)->count();
-        $dispatchedOrders = (clone $base)->where('order_status', 'shipped')->count();
+        // Pesanan selesai dihitung dari KAPAN pesanan selesai, bukan kapan
+        // pesanan dibuat. Sebelumnya penyaring created_at membuat pesanan yang
+        // dibuat bulan lalu dan selesai bulan ini tidak pernah terhitung,
+        // padahal labelnya menjanjikan "selesai pada periode ini".
+        $completionDates = $this->completionDates();
+        $completedOrders = count(array_filter(
+            $completionDates,
+            fn (Carbon $at): bool => $at->gte($from) && $at->lte($to)
+        ));
+
+        // Antrean saat ini, sengaja TANPA penyaring tanggal: labelnya
+        // menjanjikan antrean yang sedang menumpuk sekarang. Sebelumnya
+        // penyaring created_at plus irisan REVENUE_STATUSES membuat pesanan
+        // yang belum dikonfirmasi tidak pernah bisa muncul.
+        $openOrders = (int) Order::query()->whereIn('order_status', self::OPEN_STATUSES)->count();
+        $dispatchedOrders = (int) Order::query()->where('order_status', 'shipped')->count();
+
+        // Versi terbatas periode, supaya admin tetap bisa melihat berapa
+        // pesanan yang DIBUAT pada rentang ini dan masih terbuka. Termasuk
+        // awaiting_confirmation, yang sebelumnya selalu hilang.
+        $openOrdersInPeriod = (int) Order::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('order_status', self::OPEN_STATUSES)
+            ->count();
 
         $returnCases = OrderReturnCase::query()
             ->where('status', 'completed')
@@ -714,6 +747,7 @@ class StorePerformanceService
             'net_revenue' => round($netRevenue, 2),
             'units' => $units,
             'models_sold' => $modelsSold,
+            'sub_models_sold' => $subModelsSold,
             'products_sold' => $productsSold,
             'avg_unit_price' => $avgUnitPrice,
             'visitors' => $visitors,
@@ -726,6 +760,7 @@ class StorePerformanceService
             'repeat_customers' => $repeatCustomers,
             'completed_orders' => $completedOrders,
             'open_orders' => $openOrders,
+            'open_orders_in_period' => $openOrdersInPeriod,
             'dispatched_orders' => $dispatchedOrders,
             'return_orders' => $returnOrders,
             'return_value' => round($returnValue, 2),
@@ -765,8 +800,11 @@ class StorePerformanceService
             'cancelled_value' => $cancellationCounts['value'],
             'cancelled_by_customer' => $cancellationCounts['customer'],
             'cancelled_by_store' => $cancellationCounts['store'],
-            'cancellation_rate' => $orders + $cancellationCounts['total'] > 0
-                ? round(($cancellationCounts['total'] / ($orders + $cancellationCounts['total'])) * 100, 2)
+            // Pembilang dan penyebut kini dari populasi yang sama: pesanan yang
+            // DIBUAT pada periode ini. Sebelumnya pembilang memuat pembatalan
+            // pesanan lama, sehingga rasionya bisa melewati 100 persen.
+            'cancellation_rate' => $orders + $cancellationCounts['in_period'] > 0
+                ? round(($cancellationCounts['in_period'] / ($orders + $cancellationCounts['in_period'])) * 100, 2)
                 : 0.0,
         ];
     }
@@ -972,17 +1010,20 @@ class StorePerformanceService
         }
 
         if ($metric === 'products') {
-            // Produk berbeda yang terjual per bucket, disamakan dengan
-            // products_sold pada metricsFor: distinct variant_sku dari order
-            // berstatus omzet, baris tanpa variant_sku tidak dihitung.
+            // Produk berbeda yang terjual per bucket. Aturannya WAJIB sama
+            // dengan products_sold pada metricsFor, kalau tidak jumlah titik
+            // seri tidak lagi sama dengan total di kartu. Baris tanpa
+            // variant_sku jatuh ke parent_sku supaya produk yang dijual tanpa
+            // varian ukuran tetap terhitung.
+            $produkRef = "COALESCE(NULLIF(TRIM(order_items.variant_sku), ''), "
+                ."NULLIF(TRIM(order_items.parent_sku), ''), NULLIF(TRIM(order_items.name), ''), '')";
             $rows = OrderItem::query()
                 ->selectRaw($this->bucketSelect('orders.created_at', $granularity).' as bucket')
-                ->selectRaw('COUNT(DISTINCT order_items.variant_sku) as value')
+                ->selectRaw("COUNT(DISTINCT {$produkRef}) as value")
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
                 ->whereRaw($this->paidRevenueStatusSql('orders'))
-                ->whereNotNull('order_items.variant_sku')
-                ->where('order_items.variant_sku', '!=', '')
+                ->havingRaw("COUNT(DISTINCT {$produkRef}) > 0")
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         } elseif ($metric === 'units') {
@@ -1055,11 +1096,23 @@ class StorePerformanceService
             ->whereIn('id', $orderIds)
             ->sum('total_amount');
 
+        // Pembatalan atas pesanan yang DIBUAT pada periode yang sama. Dipakai
+        // sebagai pembilang rasio supaya pembilang berada di dalam populasi
+        // penyebut (pesanan yang dibuat periode itu), sehingga rasionya tidak
+        // bisa melewati 100 persen karena pembatalan pesanan lama.
+        $inPeriod = $orderIds === []
+            ? 0
+            : (int) Order::query()
+                ->whereIn('id', $orderIds)
+                ->whereBetween('created_at', [$from, $to])
+                ->count();
+
         return [
             'total' => $dedup->count(),
             'customer' => $customer,
             'store' => $store,
             'value' => round($cancelledValue, 2),
+            'in_period' => $inPeriod,
         ];
     }
 
@@ -1525,8 +1578,26 @@ class StorePerformanceService
     /**
      * @return array{key: string, label: string, value: float|int, previous: float|int, change_percent: float|null, format: string}
      */
-    protected function kpi(string $key, string $label, float|int $value, float|int $previous, string $format, ?string $detail = null): array
+    protected function kpi(string $key, string $label, float|int $value, float|int|null $previous, string $format, ?string $detail = null): array
     {
+        // Pembanding kosong dipakai metrik snapshot: angkanya keadaan saat
+        // laporan dibangun, jadi tidak ada periode pembanding yang bermakna.
+        // Perubahan dikosongkan supaya kartu tidak menampilkan "Tetap" atau
+        // persentase palsu hasil membandingkan snapshot dengan dirinya sendiri.
+        if ($previous === null) {
+            return [
+                'key' => $key,
+                'label' => $label,
+                'value' => $format === 'currency' || $format === 'percent' || $format === 'hours' || $format === 'days'
+                    ? round((float) $value, 2)
+                    : (int) $value,
+                'previous' => null,
+                'change_percent' => null,
+                'format' => $format,
+                'detail' => $detail,
+            ];
+        }
+
         $change = null;
         if ((float) $previous > 0) {
             $change = round((((float) $value - (float) $previous) / (float) $previous) * 100, 1);
@@ -1797,21 +1868,107 @@ class StorePerformanceService
      *
      * @param  iterable<int>  $orderIds
      */
-    protected function distinctModelCount(iterable $orderIds): int
+    /**
+     * Hitungan model dan sub model dari snapshot item pesanan.
+     *
+     * Model = jenis produk saja (mis. JUNGKIT). Sub model = model beserta
+     * desainnya (mis. JUNGKIT ORNAMEN). Sebelumnya hanya pasangan yang
+     * dihitung tetapi dilabeli "Model", sehingga satu model dengan dua desain
+     * terhitung dua model.
+     *
+     * @return array{models: int, sub_models: int}
+     */
+    protected function distinctModelCounts(iterable $orderIds): array
     {
-        return (int) OrderItem::query()
+        $rows = OrderItem::query()
             ->whereIn('order_id', $orderIds)
-            ->whereRaw(
-                "(COALESCE(NULLIF(TRIM(product_model), ''), NULLIF(TRIM(parent_sku), ''), NULLIF(TRIM(name), ''), '') <> '' "
-                ."OR COALESCE(NULLIF(TRIM(design_variant), ''), '') <> '')"
-            )
             ->selectRaw(
                 "COALESCE(NULLIF(TRIM(product_model), ''), NULLIF(TRIM(parent_sku), ''), NULLIF(TRIM(name), ''), '') AS model_ref, "
                 ."COALESCE(NULLIF(TRIM(design_variant), ''), '') AS design_ref"
             )
             ->distinct()
-            ->get(['model_ref', 'design_ref'])
+            ->get();
+
+        $models = $rows
+            ->pluck('model_ref')
+            ->filter(fn ($nilai): bool => (string) $nilai !== '')
+            ->unique()
             ->count();
+
+        $subModels = $rows
+            ->filter(fn ($row): bool => (string) $row->model_ref !== '' || (string) $row->design_ref !== '')
+            ->map(fn ($row): string => $row->model_ref.'|'.$row->design_ref)
+            ->unique()
+            ->count();
+
+        return ['models' => (int) $models, 'sub_models' => (int) $subModels];
+    }
+
+    /**
+     * Produk berbeda yang terjual, dibedakan menurut varian ukuran.
+     *
+     * Baris yang tidak punya variant_sku tetap dihitung memakai parent_sku,
+     * karena produk yang dijual tanpa ukuran tidak boleh hilang dari laporan.
+     */
+    protected function distinctProductCount(iterable $orderIds): int
+    {
+        return (int) OrderItem::query()
+            ->whereIn('order_id', $orderIds)
+            ->selectRaw(
+                "COALESCE(NULLIF(TRIM(variant_sku), ''), NULLIF(TRIM(parent_sku), ''), NULLIF(TRIM(name), ''), '') AS produk_ref"
+            )
+            ->distinct()
+            ->get()
+            ->pluck('produk_ref')
+            ->filter(fn ($nilai): bool => (string) $nilai !== '')
+            ->unique()
+            ->count();
+    }
+
+    /**
+     * Tanggal setiap pesanan berpindah ke status selesai.
+     *
+     * Sumber utamanya riwayat perubahan status, bukan status saat ini, karena
+     * sebuah pesanan bisa keluar lagi dari status completed (mis. masuk retur),
+     * sehingga status hari ini tidak membuktikan kapan penyelesaiannya terjadi.
+     *
+     * Untuk pesanan lama yang sudah selesai tetapi perubahan statusnya tidak
+     * tercatat di riwayat (data sebelum pencatatan riwayat berjalan), waktu
+     * perubahan terakhir pesanan dipakai sebagai perkiraan supaya pesanan itu
+     * tidak hilang dari hitungan.
+     *
+     * @return array<int, Carbon> id pesanan => waktu selesai
+     */
+    protected function completionDates(): array
+    {
+        $dates = [];
+
+        foreach (EventLog::query()
+            ->where('event_type', 'order_status_changed')
+            ->where('entity_type', 'order')
+            ->get() as $event) {
+            if ((string) data_get($event->payload, 'order_status') !== 'completed') {
+                continue;
+            }
+
+            $id = (int) $event->entity_id;
+            if (! isset($dates[$id]) || $event->created_at->lt($dates[$id])) {
+                $dates[$id] = $event->created_at;
+            }
+        }
+
+        $sudahAda = $dates === [] ? [0] : array_keys($dates);
+
+        foreach (Order::query()
+            ->where('order_status', 'completed')
+            ->whereNotIn('id', $sudahAda)
+            ->get(['id', 'updated_at']) as $order) {
+            if ($order->updated_at !== null) {
+                $dates[(int) $order->id] = $order->updated_at;
+            }
+        }
+
+        return $dates;
     }
 
     protected function paidRevenueScope($query, string $alias = '')

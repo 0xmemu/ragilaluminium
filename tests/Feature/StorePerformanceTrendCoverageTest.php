@@ -163,12 +163,14 @@ class StorePerformanceTrendCoverageTest extends TestCase
         );
     }
 
-    public function test_seri_produk_terjual_mengabaikan_baris_tanpa_varian(): void
+    public function test_seri_produk_terjual_menghitung_baris_tanpa_varian(): void
     {
         $this->createProductWithVariant('TREN-C');
         $order = $this->createOrder('RA-TREN-0004', 'TREN-C-V1');
-        // Baris tambahan tanpa variant_sku (kasus data lama) tidak boleh
-        // menambah hitungan produk.
+        // Produk yang dijual tanpa varian ukuran menyimpan variant_sku kosong.
+        // Perbaikan 2026-09-21: baris seperti ini tidak lagi dibuang, melainkan
+        // dihitung memakai parent_sku, supaya produknya tidak hilang dari
+        // laporan. Sebelumnya baris ini dibuang diam diam.
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => Product::query()->value('id'),
@@ -185,7 +187,12 @@ class StorePerformanceTrendCoverageTest extends TestCase
         $report = app(StorePerformanceService::class)->build('last_7');
         $chart = collect($report['charts'])->firstWhere('key', 'products');
 
-        $this->assertEquals(1, (int) $chart['total'], 'baris tanpa variant_sku tidak dihitung');
+        $this->assertEquals(2, (int) $chart['total'], 'baris tanpa varian dihitung memakai parent_sku');
+
+        // Total dan jumlah titik seri harus tetap sama, karena keduanya kini
+        // memakai aturan yang sama.
+        $seriesSum = (int) array_sum(array_column($chart['series'], 'value'));
+        $this->assertSame(2, $seriesSum, 'jumlah titik seri harus sama dengan total periode');
     }
 
     public function test_seri_konversi_memakai_satuan_persen(): void

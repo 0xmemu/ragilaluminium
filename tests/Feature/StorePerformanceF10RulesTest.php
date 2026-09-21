@@ -137,7 +137,12 @@ class StorePerformanceF10RulesTest extends TestCase
 
         $metrics = app(StorePerformanceService::class)->metricsFor(now()->startOfDay(), now()->endOfDay());
 
-        $this->assertSame(2, $metrics['models_sold']);
+        // Tiga baris ini memakai satu model bernama LOCKED dengan dua desain.
+        // Perbaikan 2026-09-21: "Model Produk Terjual" menghitung jenis model,
+        // jadi dua desain pada model yang sama tetap satu model. Pasangan
+        // model dan desain punya metriknya sendiri, Sub Model Terjual.
+        $this->assertSame(1, $metrics['models_sold'], 'satu model dengan dua desain tetap satu model');
+        $this->assertSame(2, $metrics['sub_models_sold'], 'model beserta desainnya dihitung dua');
         $this->assertSame(3, $metrics['units']);
     }
 

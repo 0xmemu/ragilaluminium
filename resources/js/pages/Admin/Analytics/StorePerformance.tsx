@@ -25,7 +25,8 @@ interface Kpi {
   key: string
   label: string
   value: number
-  previous: number
+  /** Kosong untuk metrik snapshot yang tidak punya periode pembanding. */
+  previous?: number | null
   change_percent: number | null
   format: "currency" | "number" | "percent" | "hours" | "days"
   detail?: string | null
@@ -90,6 +91,8 @@ interface Report {
     return_shipping_store?: number
     net_revenue: number
     buyer_orders?: number
+    /** Jumlah pembeli unik, dihitung server supaya tidak dibulatkan ulang. */
+    buyers?: number
     visitors?: number
     /** Tanggal paling awal data kunjungan yang layak dipercaya. */
     visitors_available_from?: string | null
@@ -522,8 +525,32 @@ function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·
     value: formatKpiValue(kpi),
     sign,
     note: kpi.detail ?? undefined,
-    delta: kpi.change_percent,
+    // Metrik snapshot sengaja tidak diberi perubahan: angkanya keadaan saat
+    // laporan dibangun, jadi tidak ada periode pembanding yang bermakna.
+    delta: adalahSnapshot(kpi) ? undefined : (kpi.change_percent ?? undefined),
   }
+}
+
+/**
+ * Metrik snapshot tidak punya periode pembanding, sehingga server mengirim
+ * nilai pembandingnya kosong. Itu penandanya, jadi tidak perlu kunci payload
+ * tambahan yang akan ikut terkirim ke Dashboard.
+ */
+function adalahSnapshot(kpi?: Kpi): boolean {
+  return kpi !== undefined && kpi.previous === null
+}
+
+/**
+ * Penanda metrik snapshot pada kartu. Metrik seperti ini tidak terikat periode,
+ * jadi badge perubahan diganti keterangan supaya tidak terbaca "Tetap" seolah
+ * angkanya dibandingkan periode sebelumnya.
+ */
+function SnapshotChip() {
+  return (
+    <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      Kondisi saat ini
+    </span>
+  )
 }
 
 /** Kumpulkan baris KPI, buang yang tidak ada di payload. */
@@ -603,6 +630,7 @@ function buildCategoryDetail(
               "omzet",
               "orders",
               "models",
+              "sub_models",
               "products",
               "units",
               "completed_orders",
@@ -829,16 +857,20 @@ function buildCategoryDetail(
         title: "Operasional",
         badge: badgePeriode,
         intro:
-          "Antrean pesanan dan kecepatan layanan. Lima baris pertama terikat periode, dua terakhir kondisi saat ini.",
+          "Antrean yang sedang menumpuk sekarang, ditambah kecepatan layanan pada periode terpilih.",
         blocks: [
+          {
+            kind: "rows",
+            title: "Antrean Saat Ini, tidak dibandingkan periode",
+            rows: kpiRows(kpiMap, ["open_orders", "dispatched_orders", "returns_open"]),
+          },
           {
             kind: "rows",
             title: "Metrik Periode Terpilih",
             rows: kpiRows(
               kpiMap,
               [
-                "open_orders",
-                "dispatched_orders",
+                "open_orders_in_period",
                 "completed_orders",
                 "avg_confirm_hours",
                 "avg_process_days",
@@ -848,13 +880,14 @@ function buildCategoryDetail(
           {
             kind: "rows",
             title: "Kondisi Saat Ini, tidak dibandingkan periode",
-            rows: kpiRows(kpiMap, ["returns_open", "payment_pending_count"]),
+            rows: kpiRows(kpiMap, ["payment_pending_count"]),
           },
         ],
         source: "Data pesanan, pengiriman, dan riwayat perubahan status",
         notes: [
-          "Pesanan Belum Selesai dan Dalam Pengiriman menghitung pesanan yang DIBUAT dalam rentang dan masih berstatus itu, bukan ukuran antrean saat ini.",
-          "Dua baris terakhir adalah snapshot: angkanya dihitung saat laporan dibangun dan sengaja tidak dibandingkan periode sebelumnya, karena selisihnya akan selalu nol dan menyesatkan.",
+          "Pesanan Belum Selesai dan Dalam Pengiriman menghitung seluruh pesanan yang berstatus itu saat laporan dibangun, tanpa melihat tanggal pembuatan. Itulah ukuran antrean yang sedang ditangani, jadi angkanya memang bisa lebih besar daripada jumlah pesanan pada periode terpilih.",
+          "Pesanan Dibuat Periode Ini yang Masih Terbuka menjawab pertanyaan berbeda: dari pesanan yang masuk pada periode terpilih, berapa yang belum selesai. Angka ini terikat periode dan ikut dibandingkan.",
+          "Pesanan Selesai dihitung dari waktu pesanan berpindah ke status selesai, bukan waktu pesanan dibuat, supaya pesanan lama yang selesai pada periode ini tetap terhitung.",
           "Rata-rata Waktu Konfirmasi dihitung dari pesanan masuk sampai dikonfirmasi admin. Rata-rata Waktu Proses dari dikonfirmasi sampai siap diserahkan ke kurir.",
         ],
       }
@@ -862,7 +895,9 @@ function buildCategoryDetail(
     case "pengunjung": {
       const visitors = fin.visitors ?? 0
       const rate = kpiMap["conversion"]?.value ?? 0
-      const pembeli = visitors > 0 ? Math.round((rate / 100) * visitors) : 0
+      // Jumlah pembeli dikirim server. Sebelumnya dihitung ulang dari
+      // persentase yang sudah dibulatkan, sehingga hasilnya bisa meleset.
+      const pembeli = fin.buyers ?? 0
 
       const blocks: DetailBlock[] = [
         {
@@ -2153,10 +2188,10 @@ export default function StorePerformance({
         </div>
       </SectionCard>
 
-      {/* ANTREAN OPERASIONAL DAN KECEPATAN LAYANAN. Tiga kartu pertama antrean
-          (dua di antaranya snapshot, ditandai "Kondisi saat ini" supaya tidak
-          dibaca sebagai perbandingan periode), tiga berikutnya kecepatan
-          layanan pada periode terpilih. */}
+      {/* ANTREAN OPERASIONAL DAN KECEPATAN LAYANAN. Empat kartu pertama adalah
+          kondisi saat laporan dibangun (antrean dan kas yang belum selesai),
+          ditandai "Kondisi saat ini" supaya tidak dibaca sebagai perbandingan
+          periode; dua kartu terakhir kecepatan layanan pada periode terpilih. */}
       <SectionCard
         title="Antrean Operasional dan Kecepatan Layanan"
         icon="truck"
@@ -2200,7 +2235,7 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["open_orders"]?.change_percent} upIsBad />
+              <SnapshotChip />
             </div>
           </Link>
 
@@ -2211,7 +2246,7 @@ export default function StorePerformance({
             <div className="flex items-center justify-between">
               <HoverHint
                 label={kpiMap["dispatched_orders"]?.label ?? "Dalam Pengiriman"}
-                hint="Pesanan sedang dalam pengiriman ekspedisi kurir pada periode terpilih."
+                hint="Pesanan yang sedang dikirim ekspedisi kurir saat ini, tanpa dibatasi tanggal pembuatan."
                 className="text-xs font-semibold text-muted-foreground group-hover:text-primary"
               />
               <Icon name="truck" className="size-4 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
@@ -2221,7 +2256,7 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">pesanan</span>
             </p>
             <div className="mt-2">
-              <DeltaBadge percent={kpiMap["dispatched_orders"]?.change_percent} />
+              <SnapshotChip />
             </div>
           </Link>
 
@@ -2238,9 +2273,7 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">kasus</span>
             </p>
             <div className="mt-2">
-              <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Kondisi saat ini
-              </span>
+              <SnapshotChip />
             </div>
           </div>
 
@@ -2257,9 +2290,7 @@ export default function StorePerformance({
               <span className="text-xs font-normal text-muted-foreground">pembayaran</span>
             </p>
             <div className="mt-2">
-              <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Kondisi saat ini
-              </span>
+              <SnapshotChip />
             </div>
           </div>
 

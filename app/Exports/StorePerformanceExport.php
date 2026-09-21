@@ -608,14 +608,19 @@ class StorePerformanceKpiSheet extends StorePerformanceTableSheet
                 $change = $kpi['change_percent'];
                 $fmt = $this->kpiNumberFormat((string) ($kpi['format'] ?? 'number'));
 
+                // Metrik snapshot tidak punya pembanding: layarnya menampilkan
+                // penanda "kondisi saat ini", jadi ekspornya juga tidak boleh
+                // menulis angka 0 atau persentase yang mengesankan perbandingan.
+                $punyaPembanding = $prevHasData && ($kpi['previous'] ?? null) !== null;
+
                 $line = $push([
                     $guard($kpi['label']),
                     $guard($kpi['value'] ?? 0),
-                    $prevHasData ? $guard($kpi['previous'] ?? 0) : 'Tidak ada data',
-                    ! $prevHasData ? '-' : ($change === null ? 'Baru pada periode ini' : $guard($change)),
+                    $punyaPembanding ? $guard($kpi['previous']) : 'Tidak ada data',
+                    ! $punyaPembanding ? '-' : ($change === null ? 'Baru pada periode ini' : $guard($change)),
                 ]);
                 $this->registerNumber($line, 2, $fmt);
-                if ($prevHasData) {
+                if ($punyaPembanding) {
                     $this->registerNumber($line, 3, $fmt);
                     if ($change !== null) {
                         $this->registerNumber($line, 4, '0.0"%"');

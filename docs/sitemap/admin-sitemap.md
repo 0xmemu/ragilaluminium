@@ -35,6 +35,21 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
     berada sebelum tanggal pencatatan pengunjung, sehingga halaman menulis tidak diukur dan bukan
     angka 0 yang terbaca sebagai hasil pengukuran. Halaman memakai range.from_date_iso untuk
     perbandingan tanggal; range.from_date hanya untuk tampilan dan tidak boleh dipakai membandingkan.
+  - Metrik dipisah dua sifat. Metrik PERIODE terikat rentang terpilih dan punya pembanding:
+    omzet, orders, models, sub_models, products, units, completed_orders, open_orders_in_period,
+    rasio retur, dan rasio pembatalan. Metrik SNAPSHOT adalah keadaan saat laporan dibangun dan
+    SENGAJA tidak punya nilai pembanding (payload mengirim previous null), karena angkanya tidak
+    bergantung rentang: open_orders, dispatched_orders, returns_open, payment_pending_count,
+    dan cod_pending_*. Halaman membacanya lewat previous kosong, jadi tidak ada kunci payload
+    tambahan yang ikut terkirim ke Dashboard.
+  - Pesanan Selesai dihitung dari waktu pesanan berpindah ke status completed (event_logs), bukan
+    dari created_at, supaya pesanan lama yang selesai pada periode ini tetap terhitung. Untuk
+    pesanan lama yang perpindahannya tidak tercatat, updated_at dipakai sebagai perkiraan.
+  - Model Produk Terjual menghitung jenis model saja; Sub Model Terjual menghitung pasangan model
+    dan desainnya. Produk Terjual menghitung produk berbeda menurut varian ukuran, dan baris tanpa
+    variant_sku jatuh ke parent_sku supaya produk tanpa varian tetap terhitung.
+  - Rasio Retur Selesai dan Rasio Pembatalan memakai populasi yang sama di pembilang dan penyebut,
+    sehingga nilainya tidak bisa melewati 100 persen.
   - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)
