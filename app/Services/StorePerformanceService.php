@@ -132,12 +132,53 @@ class StorePerformanceService
     /**
      * @return array{from: Carbon, to: Carbon, previous_from: Carbon, previous_to: Carbon, label: string, granularity: string, period: string}
      */
+    /**
+     * Apakah nilai tanggal masukan berformat persis YYYY-MM-DD.
+     *
+     * Dipakai untuk MENOLAK masukan yang bukan tanggal, bukan menebaknya.
+     * Sebelumnya nilai apa pun diserahkan ke pengurai tanggal, dan pengurai itu
+     * menerima kata seperti "monday" atau "+3 days" sebagai tanggal yang sah,
+     * lalu gagal diam diam menjadi rentang bawaan untuk nilai yang tidak masuk
+     * akal seperti "2026-13-45". Dua duanya membuat laporan menampilkan rentang
+     * yang tidak pernah diminta, tanpa pemberitahuan apa pun.
+     */
+    protected function tanggalSah(?string $nilai): bool
+    {
+        if ($nilai === null) {
+            return false;
+        }
+
+        $bersih = trim($nilai);
+        if ($bersih === '') {
+            return false;
+        }
+
+        $tanggal = \DateTimeImmutable::createFromFormat('!Y-m-d', $bersih);
+
+        // createFromFormat meloloskan tanggal bergeser seperti 2026-02-31, jadi
+        // hasilnya dibandingkan balik dengan masukannya.
+        return $tanggal !== false && $tanggal->format('Y-m-d') === $bersih;
+    }
+
     public function resolveRange(string $period, ?string $from = null, ?string $to = null, ?string $granularity = null): array
     {
         $now = now();
         $period = in_array($period, ['today', 'yesterday', 'last_7', 'last_30', 'this_month', 'this_year', 'all', 'custom'], true)
             ? $period
             : 'today';
+
+        // Masukan tanggal dipakai hanya bila bentuknya sah. Yang tidak sah
+        // dicatat namanya, sehingga halaman bisa memberi tahu bahwa rentang yang
+        // tampil bukan rentang yang diminta.
+        $fromSah = $this->tanggalSah($from) ? trim((string) $from) : null;
+        $toSah = $this->tanggalSah($to) ? trim((string) $to) : null;
+        $inputDiabaikan = [];
+        if ($from !== null && trim($from) !== '' && $fromSah === null) {
+            $inputDiabaikan[] = 'from';
+        }
+        if ($to !== null && trim($to) !== '' && $toSah === null) {
+            $inputDiabaikan[] = 'to';
+        }
 
         [$start, $end, $label] = match ($period) {
             'yesterday' => [
@@ -173,8 +214,8 @@ class StorePerformanceService
                 'Semua waktu',
             ],
             'custom' => [
-                $this->safeParseDate($from, $now->copy()->subDays(6)->startOfDay(), true),
-                $this->safeParseDate($to, $now->copy()->endOfDay(), false),
+                $this->safeParseDate($fromSah, $now->copy()->subDays(6)->startOfDay(), true),
+                $this->safeParseDate($toSah, $now->copy()->endOfDay(), false),
                 'Rentang kustom',
             ],
             default => [
@@ -186,6 +227,22 @@ class StorePerformanceService
 
         if ($start->gt($end)) {
             [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
+        }
+
+        // Rentang yang melewati hari ini dipotong ke hari ini. Sebelumnya rentang
+        // masa depan diterima apa adanya, dan jendela pembandingnya menciut
+        // sampai panjang nol detik, sehingga seluruh kolom pembanding dan
+        // persentase di halaman kehilangan arti. Pemotongan ini dilaporkan lewat
+        // 'rentang_dipotong' supaya halaman bisa mengatakannya.
+        $rentangDipotong = false;
+        $batasHariIni = now()->endOfDay();
+        if ($start->gt($batasHariIni)) {
+            $start = now()->startOfDay();
+            $rentangDipotong = true;
+        }
+        if ($end->gt($batasHariIni)) {
+            $end = $batasHariIni->copy();
+            $rentangDipotong = true;
         }
 
         // Carbon 3: diffInSeconds default absolute=false -> hitung dari $start ke $end.
@@ -223,6 +280,12 @@ class StorePerformanceService
             'granularity' => $granularity,
             'period' => $period,
             'is_running' => $isRunning,
+            // Nama parameter tanggal yang diminta tetapi tidak dipakai karena
+            // bentuknya bukan tanggal, mis. "monday" atau "2026-13-45".
+            'input_diabaikan' => $inputDiabaikan,
+            // Benar bila rentang yang diminta melewati hari ini sehingga
+            // dipotong.
+            'rentang_dipotong' => $rentangDipotong,
         ];
     }
 
@@ -460,6 +523,8 @@ class StorePerformanceService
                 'from_date_iso' => $range['from']->toDateString(),
                 'to_date_iso' => $range['to']->toDateString(),
                 'is_running' => $range['is_running'],
+                'input_diabaikan' => $range['input_diabaikan'] ?? [],
+                'rentang_dipotong' => $range['rentang_dipotong'] ?? false,
             ],
             // P0-2 freshness: waktu laporan dibangun (WIB) utk indikator 'Data diperbarui'.
             'generated_at' => now()->timezone(config('app.timezone', 'Asia/Jakarta'))->toIso8601String(),
@@ -1593,31 +1658,90 @@ class StorePerformanceService
     }
 
     /**
-     * Cari event transisi status order. Menerima $fromStatus tunggal ATAU array
-     * (legacy fallback: order lama pakai 'pending_payment', order baru 'awaiting_confirmation').
+     * Waktu transisi status paling awal untuk sekumpulan pesanan, dalam SATU
+     * kueri.
+     *
+     * Menerima $fromStatus tunggal ATAU array (fallback legacy: pesanan lama
+     * memakai 'pending_payment', pesanan baru 'awaiting_confirmation').
+     *
+     * Sebelumnya tiap pesanan menanyakan riwayatnya sendiri lewat
+     * statusEventAt(), sehingga jumlah kueri tumbuh sebanding jumlah pesanan:
+     * terukur 188 kueri untuk 10 pesanan pada periode "semua waktu". Sekarang
+     * riwayat seluruh pesanan periode diambil sekali, lalu dipetakan di PHP.
+     *
+     * @param  list<int|string>  $orderIds
+     * @param  string|list<string>  $fromStatus
+     * @return array<int, Carbon> id pesanan => waktu transisi
      */
-    protected function statusEventAt(int|string $orderId, string|array $fromStatus, string $toStatus): ?Carbon
+    protected function statusEventsFor(array $orderIds, string|array $fromStatus, string $toStatus): array
     {
-        $fromStatuses = (array) $fromStatus;
+        if ($orderIds === []) {
+            return [];
+        }
 
-        return EventLog::query()
+        $fromStatuses = (array) $fromStatus;
+        $hasil = [];
+
+        foreach (EventLog::query()
             ->where('entity_type', 'order')
-            ->where('entity_id', (string) $orderId)
+            ->whereIn('entity_id', array_map('strval', $orderIds))
             ->where('event_type', 'order_status_changed')
-            ->get()
-            ->filter(function (EventLog $event) use ($fromStatuses, $toStatus): bool {
-                return in_array((string) data_get($event->payload, 'from'), $fromStatuses, true)
-                    && (string) data_get($event->payload, 'order_status') === $toStatus;
-            })
-            ->sortBy('created_at')
-            ->first()?->created_at;
+            ->orderBy('created_at')
+            ->get() as $event) {
+            if (! in_array((string) data_get($event->payload, 'from'), $fromStatuses, true)) {
+                continue;
+            }
+
+            if ((string) data_get($event->payload, 'order_status') !== $toStatus) {
+                continue;
+            }
+
+            $id = (int) $event->entity_id;
+            if (! isset($hasil[$id]) || $event->created_at->lt($hasil[$id])) {
+                $hasil[$id] = $event->created_at;
+            }
+        }
+
+        return $hasil;
+    }
+
+    /** Resi pertama tiap pesanan pada sekumpulan pesanan, dalam SATU kueri. */
+    protected function firstWaybillAtFor(array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $hasil = [];
+        foreach (ShippingRecord::query()
+            ->whereIn('order_id', $orderIds)
+            ->whereNotNull('waybill_number')
+            ->orderBy('created_at')
+            ->get(['order_id', 'created_at']) as $resi) {
+            $id = (int) $resi->order_id;
+            if (! isset($hasil[$id])) {
+                $hasil[$id] = $resi->created_at;
+            }
+        }
+
+        return $hasil;
     }
 
     protected function avgConfirmHours(Carbon $from, Carbon $to): float
     {
         $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id', 'created_at']);
-        $durations = $orders->map(function (Order $order): ?float {
-            $confirmedAt = $this->statusEventAt($order->id, ['awaiting_confirmation', 'pending_payment'], 'processing');
+        if ($orders->isEmpty()) {
+            return 0.0;
+        }
+
+        $dikonfirmasi = $this->statusEventsFor(
+            $orders->pluck('id')->all(),
+            ['awaiting_confirmation', 'pending_payment'],
+            'processing'
+        );
+
+        $durations = $orders->map(function (Order $order) use ($dikonfirmasi): ?float {
+            $confirmedAt = $dikonfirmasi[(int) $order->id] ?? null;
 
             return $confirmedAt ? max(0, $order->created_at->diffInMinutes($confirmedAt) / 60) : null;
         })->filter(fn (?float $value): bool => $value !== null);
@@ -1628,18 +1752,23 @@ class StorePerformanceService
     protected function avgProcessDays(Carbon $from, Carbon $to): float
     {
         $orders = Order::query()->whereBetween('created_at', [$from, $to])->get(['id']);
-        $durations = $orders->map(function (Order $order): ?float {
-            $processingAt = $this->statusEventAt($order->id, ['awaiting_confirmation', 'pending_payment'], 'processing')
-                ?: $this->statusEventAt($order->id, 'issue', 'processing');
+        if ($orders->isEmpty()) {
+            return 0.0;
+        }
+
+        $ids = $orders->pluck('id')->all();
+        $diproses = $this->statusEventsFor($ids, ['awaiting_confirmation', 'pending_payment'], 'processing');
+        $dariIssue = $this->statusEventsFor($ids, 'issue', 'processing');
+        $resi = $this->firstWaybillAtFor($ids);
+
+        $durations = $orders->map(function (Order $order) use ($diproses, $dariIssue, $resi): ?float {
+            $id = (int) $order->id;
+            $processingAt = $diproses[$id] ?? $dariIssue[$id] ?? null;
             if (! $processingAt) {
                 return null;
             }
 
-            $waybillAt = ShippingRecord::query()
-                ->where('order_id', $order->id)
-                ->whereNotNull('waybill_number')
-                ->orderBy('created_at')
-                ->value('created_at');
+            $waybillAt = $resi[$id] ?? null;
 
             return $waybillAt
                 ? max(0, $processingAt->diffInMinutes(Carbon::parse($waybillAt)) / (60 * 24))

@@ -55,6 +55,16 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
     variant_sku jatuh ke parent_sku supaya produk tanpa varian tetap terhitung.
   - Rasio Retur Selesai dan Rasio Pembatalan memakai populasi yang sama di pembilang dan penyebut,
     sehingga nilainya tidak bisa melewati 100 persen.
+  - Pengaman masukan rentang. Parameter from/to hanya dipakai bila bentuknya persis YYYY-MM-DD; nilai
+    lain seperti "monday" atau "2026-13-45" TIDAK ditafsirkan, melainkan diabaikan dan dilaporkan lewat
+    range.input_diabaikan, lalu laporan memakai rentang bawaan. Rentang yang melewati hari ini dipotong
+    sampai hari ini dan dilaporkan lewat range.rentang_dipotong; tanpa itu jendela pembandingnya menciut
+    sampai nol detik sehingga seluruh kolom pembanding kehilangan arti. Halaman menampilkan satu kalimat
+    pemberitahuan bila salah satu penanda itu menyala.
+  - Jumlah kueri halaman ini TIDAK tumbuh sebanding jumlah pesanan. Riwayat status dan resi pertama
+    diambil sekali untuk seluruh pesanan periode (statusEventsFor dan firstWaybillAtFor), bukan satu
+    kueri per pesanan. Dijaga test StorePerformanceInputGuardTest, yang gagal bila menambah 40 pesanan
+    menambah lebih dari 10 kueri.
   - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
 
 ### 3. Produk (Catalog)

@@ -315,12 +315,17 @@ class StorePerformancePeriodeSnapshotTest extends TestCase
 
         // Periode pembanding wajib berisi, kalau tidak seluruh kolom pembanding
         // memang kosong dan perbedaan snapshot dengan periode tidak teruji.
+        //
+        // Ditaruh pada AWAL hari kemarin, bukan jam tertentu seperti 10:00:
+        // periode berjalan dibandingkan sampai jam yang sama, sehingga jendela
+        // pembanding pada pukul 01:16 hanya sampai 01:16 hari kemarin. Fixture
+        // yang memakai jam tetap akan gagal bila suite dijalankan pagi.
         $kemarin = $this->order(
             'RA-XLSX-KEMARIN',
             'processing',
             1000000,
             '081200000117',
-            Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString(),
+            Carbon::today()->subDay()->startOfDay()->addMinute()->toDateTimeString(),
         );
         $this->item($kemarin);
 

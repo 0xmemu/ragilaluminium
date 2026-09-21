@@ -79,6 +79,7 @@ Migration terkait:
 - `design_variant` (`VARCHAR`), nullable
 - `homepage_popular` (`TINYINT(1)`), NN, default '0'
 - `homepage_popular_sort` (`INTEGER`), NN, default '0'
+- `homepage_popular_since` (`TIMESTAMP`), nullable; kapan produk masuk jendela carousel Paling Banyak Dipesan (10 teratas); dipakai pembanding views/clicks sebelum vs sesudah di halaman admin
 - `popularity_seed` (`BIGINT UNSIGNED`), NN, default '0'; snapshot seed used only for ranking
 - `popularity_seed_source_product_id` (`BIGINT`), nullable, FK -> products.id
 - `popularity_seed_applied_at` (`TIMESTAMP`), nullable
@@ -232,11 +233,14 @@ Indexes:
 - `code` (`VARCHAR`), NN
 - `name` (`VARCHAR`), NN
 - `description` (`TEXT`), nullable
-- `image_url` (`VARCHAR`), nullable
 - `sort_order` (`INTEGER`), NN, default '0'
 - `is_active` (`TINYINT(1)`), NN, default '1'
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
+
+Catatan: `image_url` DIHAPUS (migrasi 2026-09-16, kontrak owner). Kolom tidak pernah terisi
+(0 baris) dan tidak dibaca storefront; gambar desain/sub model di katalog selalu dari media
+produk (InertiaCatalog::cardImage).
 
 Indexes:
 - `sub_models_product_model_code_unique` (UQ  on `product_model`, `code`)
@@ -363,6 +367,7 @@ Indexes:
 - `idx_orders_statuses` (IDX on `order_status`, `payment_status`, `shipping_status`)
 - `idx_orders_customer_phone` (IDX on `customer_phone`)
 - `idx_orders_created_at` (IDX on `created_at`)
+- `idx_orders_created_status` (IDX on `created_at`, `order_status`) - Performa Toko: pesanan dibuat dalam rentang beserta statusnya
 
 ### 3.2 `order_items`
 
@@ -393,6 +398,7 @@ Indexes:
 - `idx_order_items_variant_sku` (IDX on `variant_sku`)
 - `idx_order_items_order` (IDX on `order_id`)
 - `idx_order_items_catalog_identity` (IDX on `product_model`, `design_variant`)
+- `idx_order_items_order_variant` (IDX on `order_id`, `variant_sku`) - Performa Toko: metrik Produk Terjual per pesanan
 
 Snapshot identity di atas adalah sumber historis analytics; jangan membaca katalog live untuk order lama.
 
@@ -411,6 +417,12 @@ Ledger internal retur yang diisi admin. issue pada orders.order_status bukan buk
 - created_at, updated_at (DATETIME), nullable
 
 Retur KPI hanya membaca case status=completed, completed_at pada periode, dan item dengan returned_quantity > 0.
+
+Indexes:
+- `idx_return_cases_order_status` (IDX on `order_id`, `status`)
+- `idx_return_cases_completed_at` (IDX on `completed_at`)
+- `idx_return_cases_status_completed` (IDX on `status`, `completed_at`) - Performa Toko: retur selesai dalam rentang
+- `idx_return_cases_created_at` (IDX on `created_at`) - Performa Toko: retur diajukan dalam rentang
 
 ### 3.2b order_return_items
 
@@ -500,6 +512,8 @@ Indexes:
 Indexes:
 - `idx_payments_status` (IDX on `status`)
 - `idx_payments_order` (IDX on `order_id`)
+- `idx_payments_status_paid_at` (IDX on `status`, `paid_at`) - Performa Toko: pembayaran lunas dalam rentang
+- `idx_payments_method_status` (IDX on `payment_method`, `status`) - Performa Toko: COD dan non-COD dipisah
 
 ## 4. WhatsApp
 
@@ -602,7 +616,9 @@ Indexes:
 
 - `id` (`INTEGER`), PK, NN
 - `name` (`VARCHAR`), NN
-- `image_url` (`VARCHAR`), nullable
+- `image_url` (`VARCHAR 1024`), nullable (snapshot/fallback; saat `media_asset_id` diisi nilainya diturunkan dari media asset)
+- `media_asset_id` (`BIGINT UNSIGNED`), nullable, FK -> media_assets.id (gambar utama model dari Media Library, migrasi 2026-09-15)
+- `media_show_product_photos` (`TINYINT(1)`), NN, default '1' (setelan media: tampilkan foto produk di hero halaman detail model, migrasi 2026-09-15)
 - `type` (`VARCHAR`), NN, default 'polos'
 - `status` (`VARCHAR`), NN, default 'draft'
 - `sort_order` (`INTEGER`), NN, default '0'
@@ -619,8 +635,24 @@ Nilai enum `status`: `active`, `draft` (default `draft`).
 
 Indexes:
 - `cms_model_products_category_model_idx` (IDX on `product_category`, `product_model`)
+- `cms_model_products_media_asset_id_foreign` (IDX on `media_asset_id`)
 
-### 5.6 `cms_problems_solutions`
+### 5.6 `cms_model_product_media`
+
+Galeri foto model produk (hero halaman detail model), migrasi 2026-09-15. Urutan
+galeri ditentukan `sort_order` pivot; pasangan model + asset unik.
+
+- `id` (`BIGINT UNSIGNED`), PK, NN
+- `cms_model_product_id` (`BIGINT UNSIGNED`), NN, FK -> cms_model_products.id (cascade on delete)
+- `media_asset_id` (`BIGINT UNSIGNED`), NN, FK -> media_assets.id (cascade on delete)
+- `sort_order` (`INT UNSIGNED`), NN, default '0'
+- `created_at` / `updated_at` (`TIMESTAMP`), nullable
+
+Indexes:
+- `cms_model_product_media_unique` (UQ on `cms_model_product_id`, `media_asset_id`)
+- `cms_model_product_media_order_idx` (IDX on `cms_model_product_id`, `sort_order`)
+
+### 5.7 `cms_problems_solutions`
 
 - `id` (`INTEGER`), PK, NN
 - `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
@@ -630,7 +662,7 @@ Indexes:
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
 
-### 5.7 `cms_testimonials`
+### 5.8 `cms_testimonials`
 
 - `id` (`INTEGER`), PK, NN
 - `cms_page_id` (`INTEGER`), NN, FK -> cms_pages.id
@@ -803,6 +835,7 @@ Indexes:
 Indexes:
 - `idx_event_logs_event_type` (IDX on `event_type`)
 - `idx_event_logs_entity` (IDX on `entity_type`, `entity_id`)
+- `idx_event_logs_type_created` (IDX on `event_type`, `created_at`) - Performa Toko: pembatalan dan penyelesaian dalam rentang
 
 ### 7.4 `performance_metrics`
 

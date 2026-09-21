@@ -80,6 +80,10 @@ interface Report {
     compare_from_date: string
     compare_to_date: string
     is_running: boolean
+    /** Parameter tanggal yang diminta tetapi tidak dipakai karena bukan tanggal. */
+    input_diabaikan?: string[]
+    /** Benar bila rentang yang diminta melewati hari ini sehingga dipotong. */
+    rentang_dipotong?: boolean
   }
   generated_at: string
   financial: {
@@ -1596,6 +1600,27 @@ export default function StorePerformance({
     Boolean(report.range.from_date_iso) &&
     report.range.from_date_iso! < tersediaSejak!
 
+  // Satu kalimat pemberitahuan bila rentang yang tampil bukan rentang yang
+  // diminta: masukannya bukan tanggal, atau rentangnya melewati hari ini dan
+  // dipotong. Dibuat satu kalimat supaya barisnya tidak menumpuk, dan tanpa
+  // menyebut istilah teknis.
+  const peringatanRentang = (() => {
+    const diabaikan = report.range.input_diabaikan ?? []
+    const dipotong = report.range.rentang_dipotong === true
+
+    if (diabaikan.length && dipotong) {
+      return "Tanggal yang diminta tidak dikenali, dan rentangnya melewati hari ini, jadi laporan memakai rentang yang tampil sekarang."
+    }
+    if (diabaikan.length) {
+      return `Tanggal ${diabaikan.join(" dan ")} yang diminta tidak dikenali, jadi laporan memakai rentang yang tampil sekarang.`
+    }
+    if (dipotong) {
+      return "Rentang yang diminta melewati hari ini, jadi batasnya dipotong sampai hari ini."
+    }
+
+    return null
+  })()
+
   // Isi drawer dibangun dari props report yang sama dengan kartu di halaman,
   // jadi tidak ada nilai yang ditulis ulang di komponen tampilan. Dihitung
   // hanya saat kategori atau laporan berubah, bukan setiap render.
@@ -1866,6 +1891,12 @@ export default function StorePerformance({
         {refreshError ? (
           <p className="mt-2 text-xs font-medium text-destructive" role="status">
             Gagal memuat pembaruan data. Coba refresh lagi.
+          </p>
+        ) : null}
+
+        {peringatanRentang ? (
+          <p className="mt-2 text-xs font-medium text-muted-foreground" role="status">
+            {peringatanRentang}
           </p>
         ) : null}
 
