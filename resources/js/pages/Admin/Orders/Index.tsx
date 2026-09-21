@@ -967,6 +967,8 @@ export default function OrdersIndex({
           >
             {tabs.map((tab) => {
               const active = tab.key === activeStatus
+              // Tab retur memakai badge notifikasi, bukan pil angka biasa.
+              const isReturnTab = tab.key === "return_in_process"
               return (
                 <button
                   key={tab.key}
@@ -982,26 +984,46 @@ export default function OrdersIndex({
                   )}
                 >
                   {tab.label}
-                  <span
-                    className={cn(
-                      "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
-                      active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {formatNumber(tab.count)}
-                  </span>
-                  {/* Titik notifikasi: ada ulasan pelanggan di status ini yang
-                      belum dibalas. Angkanya sengaja tidak ditampilkan supaya
-                      tidak bersaing dengan angka jumlah pesanan di sebelahnya. */}
-                  {(tab.awaiting_review_count ?? 0) > 0 ? (
+                  {isReturnTab && tab.count > 0 ? (
+                    /* Tab retur: angkanya tampil sebagai badge notifikasi supaya
+                       perhatian admin tertuju ke sana, karena pesanan di status
+                       ini menunggu tindakan. Pil abu-abunya digantikan, bukan
+                       ditambah, sebab angkanya sama dengan jumlah pesanan. */
+                    <span
+                      className="relative ml-0.5 inline-flex h-4 min-w-4 shrink-0 items-center justify-center"
+                      title={`${formatNumber(tab.count)} pesanan menunggu diproses returnya`}
+                    >
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
+                        {tab.count > 99 ? "99+" : formatNumber(tab.count)}
+                      </span>
+                    </span>
+                  ) : (
                     <span
                       className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        active ? "bg-background" : "bg-destructive",
+                        "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
+                        active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
                       )}
+                    >
+                      {formatNumber(tab.count)}
+                    </span>
+                  )}
+                  {/* Ulasan pelanggan yang belum dibalas. Berangka dan berdenyut,
+                      sama seperti badge lonceng notifikasi di header, supaya tidak
+                      terlewat di antara sepuluh tab status. */}
+                  {(tab.awaiting_review_count ?? 0) > 0 ? (
+                    <span
+                      className="relative ml-0.5 inline-flex h-4 min-w-4 shrink-0 items-center justify-center"
                       aria-label={`${tab.awaiting_review_count} ulasan pelanggan belum dibalas`}
                       title={`${formatNumber(tab.awaiting_review_count ?? 0)} ulasan pelanggan belum dibalas`}
-                    />
+                    >
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
+                        {(tab.awaiting_review_count ?? 0) > 99
+                          ? "99+"
+                          : formatNumber(tab.awaiting_review_count ?? 0)}
+                      </span>
+                    </span>
                   ) : null}
                 </button>
               )
