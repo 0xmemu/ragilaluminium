@@ -1,4 +1,5 @@
 import { Head, Link, router } from "@inertiajs/react"
+import { ReviewReplyDialog, type ReviewReplyTarget } from "@/components/admin/review-reply-dialog"
 import * as React from "react"
 
 import * as DialogPrimitive from "@radix-ui/react-dialog"
@@ -108,12 +109,19 @@ interface OrderCard {
   }
   items: OrderItemPreview[]
   items_total: number
+  /**
+   * Ulasan pelanggan untuk pesanan ini, bila sudah ada; null bila belum diulas.
+   * Dipakai tombol Balas ulasan di kolom Aksi.
+   */
+  review?: ReviewReplyTarget | null
 }
 
 interface StatusTab {
   key: string
   label: string
   count: number
+  /** Jumlah ulasan pelanggan pada status ini yang belum dibalas. 0 = tidak ada penanda. */
+  awaiting_review_count?: number
 }
 
 interface OrdersIndexProps {
@@ -242,10 +250,12 @@ function OrderCardRow({
   queryState,
   onInputResi,
   onEditNotes,
+  onReplyReview,
 }: {
   order: OrderCard
   onInputResi?: (order: OrderCard) => void
   onEditNotes?: (order: OrderCard) => void
+  onReplyReview?: (order: OrderCard) => void
   queryState: {
     order_status: string
     q: string
@@ -547,6 +557,26 @@ function OrderCardRow({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
             Aksi
           </p>
+          {/* Balas ulasan pelanggan: hanya bila pesanan ini sudah diulas.
+              Ditandai titik merah saat balasannya belum ditulis, supaya
+              admin tahu ada yang menunggu tanpa membuka pesanannya. */}
+          {order.review ? (
+            <Button
+              variant="secondary"
+              size="xs"
+              className="relative w-full xl:w-auto"
+              onClick={() => onReplyReview?.(order)}
+            >
+              {order.review.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
+              {order.review.awaiting_reply ? (
+                <span
+                  className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive ring-2 ring-card"
+                  aria-label="Balasan ulasan belum ditulis"
+                />
+              ) : null}
+            </Button>
+          ) : null}
+
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
             <Button size="xs" className="w-full xl:w-auto" disabled={busy} onClick={applyPrimary}>
               {busy ? "Memproses..." : order.primary_action.label}
@@ -636,6 +666,9 @@ export default function OrdersIndex({
   exportUrl,
 }: OrdersIndexProps) {
   const [exportOpen, setExportOpen] = React.useState(false)
+  // Pesanan yang ulasannya sedang dibalas. Satu dialog untuk seluruh daftar,
+  // bukan satu per baris.
+  const [replyTarget, setReplyTarget] = React.useState<ReviewReplyTarget | null>(null)
   const [refreshing, setRefreshing] = React.useState(false)
   const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
   const [exportFrom, setExportFrom] = React.useState("")
@@ -957,6 +990,19 @@ export default function OrdersIndex({
                   >
                     {formatNumber(tab.count)}
                   </span>
+                  {/* Titik notifikasi: ada ulasan pelanggan di status ini yang
+                      belum dibalas. Angkanya sengaja tidak ditampilkan supaya
+                      tidak bersaing dengan angka jumlah pesanan di sebelahnya. */}
+                  {(tab.awaiting_review_count ?? 0) > 0 ? (
+                    <span
+                      className={cn(
+                        "size-2 shrink-0 rounded-full",
+                        active ? "bg-background" : "bg-destructive",
+                      )}
+                      aria-label={`${tab.awaiting_review_count} ulasan pelanggan belum dibalas`}
+                      title={`${formatNumber(tab.awaiting_review_count ?? 0)} ulasan pelanggan belum dibalas`}
+                    />
+                  ) : null}
                 </button>
               )
             })}
@@ -1159,6 +1205,7 @@ export default function OrdersIndex({
                     queryState={queryState}
                     onInputResi={setResiOrder}
                     onEditNotes={openNotesModal}
+                    onReplyReview={(order) => setReplyTarget(order.review ?? null)}
                   />
                 ))}
               </div>
@@ -1448,6 +1495,10 @@ export default function OrdersIndex({
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
+
+      {/* Popup balas ulasan. Komponennya sama dengan halaman detail pesanan
+          dan daftar ulasan, jadi balasan bisa ditulis dari mana saja. */}
+      <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
     </AdminLayout>
   )
 }

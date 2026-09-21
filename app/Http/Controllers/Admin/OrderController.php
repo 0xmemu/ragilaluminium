@@ -89,6 +89,17 @@ class OrderController extends Controller
             ->groupBy('order_status')
             ->pluck('total', 'order_status');
 
+        // Pesanan yang ulasan pelanggannya menunggu dibalas, dikelompokkan per
+        // status. Dipakai titik notifikasi di tab status supaya admin tahu ada
+        // yang perlu dibalas tanpa membuka tiap pesanan. Satu query untuk semua
+        // status, bukan per tab. Definisi "menunggu balasan" ada di scope
+        // CmsTestimonial::awaitingReply.
+        $awaitingReviewCounts = Order::query()
+            ->whereIn('id', CmsTestimonial::query()->awaitingReply()->whereNotNull('order_id')->select('order_id'))
+            ->select('order_status', DB::raw('count(*) as total'))
+            ->groupBy('order_status')
+            ->pluck('total', 'order_status');
+
         $ordersQuery = Order::query()
             ->with([
                 'items.product.mainImage',
@@ -148,7 +159,15 @@ class OrderController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base) {
+        // Ulasan milik pesanan di halaman ini saja, satu query untuk seluruh
+        // halaman (bukan per baris), lalu dipetakan per order_id. Dipakai
+        // tombol Balas di kolom Aksi tiap baris.
+        $pageOrders = $orders->getCollection();
+        $reviewsByOrder = $pageOrders->isEmpty()
+            ? collect()
+            : CmsTestimonial::query()->whereIn('order_id', $pageOrders->pluck('id')->all())->get()->keyBy('order_id');
+
+        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts) {
             $count = $tab['key'] === 'all'
                 ? (clone $base)->count()
                 : (int) ($tabCounts[$tab['key']] ?? 0);
@@ -157,6 +176,10 @@ class OrderController extends Controller
                 'key' => $tab['key'],
                 'label' => $tab['label'],
                 'count' => $count,
+                // Nol berarti tidak ada titik notifikasi di tab ini.
+                'awaiting_review_count' => $tab['key'] === 'all'
+                    ? (int) $awaitingReviewCounts->sum()
+                    : (int) ($awaitingReviewCounts[$tab['key']] ?? 0),
             ];
         })->values()->all();
 
@@ -190,8 +213,8 @@ class OrderController extends Controller
             'dateTo' => $dateTo,
             'searchQuery' => trim((string) $request->input('q', '')),
             'summary' => $summary,
-            'orders' => $orders->getCollection()
-                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone))
+            'orders' => $pageOrders
+                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone, $reviewsByOrder->get($order->id)))
                 ->values()
                 ->all(),
             'pagination' => InertiaAdmin::pagination($orders),
@@ -478,22 +501,7 @@ class OrderController extends Controller
                 // Ulasan pelanggan untuk pesanan ini, dipakai tombol Balas di
                 // halaman pesanan. Tidak ada relasi Order ke ulasan, jadi
                 // dibaca langsung; satu pesanan hanya boleh punya satu ulasan.
-                'testimonial' => $testimonial ? [
-                    'id' => $testimonial->id,
-                    'customer_name' => $testimonial->customer_name,
-                    'rating' => $testimonial->rating,
-                    'message' => $testimonial->message,
-                    'location' => $testimonial->location,
-                    'image_url' => $testimonial->image_url,
-                    'source_label' => CmsTestimonial::sourceLabel((string) $testimonial->source),
-                    'created_at' => optional($testimonial->created_at)?->toIso8601String(),
-                    'admin_reply' => $testimonial->admin_reply,
-                    'admin_replied_at' => optional($testimonial->admin_replied_at)?->toIso8601String(),
-                    'has_reply' => $testimonial->hasAdminReply(),
-                    'can_reply' => ! in_array((string) $testimonial->source, CmsTestimonial::MARKETPLACE_SOURCES, true),
-                    'reply_url' => route('admin.testimonials.reply', $testimonial),
-                    'destroy_reply_url' => route('admin.testimonials.reply.destroy', $testimonial),
-                ] : null,
+                'testimonial' => $this->testimonialPayload($testimonial),
             ],
             'events' => $events,
             'tracking' => OrderTrackingPresenter::forOrder($order, $activeShipping),
@@ -1214,9 +1222,58 @@ class OrderController extends Controller
             ->all();
     }
     /**
+     * Bentuk data ulasan untuk dialog balas admin.
+     *
+     * Dipakai dua tempat: halaman detail pesanan dan daftar pesanan, supaya
+     * keduanya mengirim bentuk yang sama dan dialog bersama
+     * (ReviewReplyDialog) bisa dipakai tanpa penyesuaian.
+     *
+     * Tidak ada relasi Order ke ulasan, jadi pemanggil yang menyediakan
+     * ulasannya (dibaca langsung lewat order_id; satu pesanan maksimal satu).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function testimonialPayload(?CmsTestimonial $testimonial): ?array
+    {
+        if (! $testimonial) {
+            return null;
+        }
+
+        // Ulasan marketplace murni screenshot tanpa teks, jadi endpoint balasan
+        // menolaknya. Penanda "menunggu balasan" harus ikut menghormati aturan
+        // itu, kalau tidak titik notifikasinya tidak akan pernah hilang.
+        $canReply = ! in_array((string) $testimonial->source, CmsTestimonial::MARKETPLACE_SOURCES, true);
+
+        // Penanda "menunggu balasan" harus memakai syarat yang SAMA dengan
+        // scope CmsTestimonial::awaitingReply yang menghitung titik notifikasi
+        // di tab. Kalau di sini syaratnya lebih longgar (mis. tidak memeriksa
+        // author_type), barisnya akan bertanda padahal tabnya menghitung nol.
+        $awaitingReply = $canReply
+            && $testimonial->isCustomerAuthored()
+            && ! $testimonial->hasAdminReply();
+
+        return [
+            'id' => $testimonial->id,
+            'customer_name' => $testimonial->customer_name,
+            'rating' => $testimonial->rating,
+            'message' => $testimonial->message,
+            'location' => $testimonial->location,
+            'image_url' => $testimonial->image_url,
+            'source_label' => CmsTestimonial::sourceLabel((string) $testimonial->source),
+            'created_at' => optional($testimonial->created_at)?->toIso8601String(),
+            'admin_reply' => $testimonial->admin_reply,
+            'admin_replied_at' => optional($testimonial->admin_replied_at)?->toIso8601String(),
+            'has_reply' => $testimonial->hasAdminReply(),
+            'can_reply' => $canReply,
+            'awaiting_reply' => $awaitingReply,
+            'reply_url' => route('admin.testimonials.reply', $testimonial),
+            'destroy_reply_url' => route('admin.testimonials.reply.destroy', $testimonial),
+        ];
+    }
+    /**
      * @param  array<string, int>  $refusedByPhone  nomor ternormalisasi => jumlah penolakan
      */
-    private function orderCard(Order $order, array $refusedByPhone = []): array
+    private function orderCard(Order $order, array $refusedByPhone = [], ?CmsTestimonial $testimonial = null): array
     {
         $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
         $items = $order->items ?? collect();
@@ -1243,6 +1300,9 @@ class OrderController extends Controller
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
             'attention' => $this->customerAttention($order, $refusedByPhone),
+            // Ulasan pelanggan pesanan ini, bila ada: dipakai tombol Balas di
+            // kolom Aksi. Null berarti pesanan belum diulas.
+            'review' => $this->testimonialPayload($testimonial),
             'customer_email' => $order->customer_email,
             'shipping_address_line1' => $order->shipping_address_line1,
             'shipping_address_line2' => $order->shipping_address_line2,

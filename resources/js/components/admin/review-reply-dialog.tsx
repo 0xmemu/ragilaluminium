@@ -33,6 +33,12 @@ export interface ReviewReplyTarget {
   admin_reply?: string | null
   admin_replied_at?: string | null
   has_reply?: boolean
+  /**
+   * Ulasan pelanggan ini menunggu dibalas admin. Dipakai penanda titik
+   * merah di daftar pesanan. Selalu false untuk ulasan marketplace,
+   * karena ulasan seperti itu memang tidak bisa dibalas.
+   */
+  awaiting_reply?: boolean
   reply_url?: string
   destroy_reply_url?: string
 }

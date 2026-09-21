@@ -51,6 +51,24 @@ class CmsTestimonial extends Model
     public function scopeReplied(Builder $query): Builder { return $query->whereNotNull('admin_reply')->where('admin_reply', '!=', ''); }
     public function scopeUnreplied(Builder $query): Builder { return $query->where(fn (Builder $q) => $q->whereNull('admin_reply')->orWhere('admin_reply', '')); }
 
+    /**
+     * Ulasan pelanggan yang menunggu dibalas admin.
+     *
+     * Ini definisi tunggal "ulasan pelanggan baru" yang dipakai penanda di
+     * panel admin (titik notifikasi di tab dan tombol balas). Ulasan
+     * marketplace (Shopee/WhatsApp) dikecualikan karena tanpa teks dan
+     * endpoint balasan menolaknya, jadi kalau ikut dihitung penandanya tidak
+     * akan pernah hilang. Ulasan buatan admin juga tidak dihitung karena
+     * bukan tulisan pelanggan.
+     */
+    public function scopeAwaitingReply(Builder $query): Builder
+    {
+        return $query
+            ->where('author_type', 'customer')
+            ->whereNotIn('source', self::MARKETPLACE_SOURCES)
+            ->unreplied();
+    }
+
     public static function sourceLabel(string $source): string { return self::SOURCE_LABELS[$source] ?? $source; }
     public function isCustomerAuthored(): bool { return ($this->author_type ?: 'customer') === 'customer'; }
     public function isAdminAuthored(): bool { return ($this->author_type ?: 'customer') === 'admin'; }
