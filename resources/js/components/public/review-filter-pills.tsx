@@ -30,7 +30,7 @@ const SORT_OPTIONS: ReviewSortValue[] = ["all", "newest", "oldest"]
 /** Pill dasar bersama untuk tiga filter di halaman ulasan. */
 function pillClass(active: boolean, className?: string): string {
   return cn(
-    "inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 text-xs font-semibold transition",
+    "inline-flex h-8 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-1.5 text-xs font-semibold transition sm:flex-none sm:px-3",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
     active
       ? "border-primary bg-primary text-primary-foreground"
@@ -120,7 +120,7 @@ export function ReviewFilterPills({
   return (
     <div
       className={cn(
-        "scrollbar-none -mx-1 flex items-center gap-2 overflow-x-auto px-1 py-0.5",
+        "scrollbar-none -mx-1 flex items-center justify-center gap-1.5 overflow-x-auto px-1 py-0.5 sm:justify-start sm:gap-2",
         className,
       )}
     >
