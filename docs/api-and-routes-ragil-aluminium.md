@@ -310,6 +310,11 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 - `POST /admin/testimonials/{testimonial}/media` -> `Admin\TestimonialController@addMedia` (name: `admin.testimonials.media`); tambah foto/video tanpa mengubah teks pelanggan
 - `POST /admin/testimonials/{testimonial}/reply` -> `Admin\TestimonialController@reply` (name: `admin.testimonials.reply`); simpan balasan admin atas ulasan pelanggan, tidak mengubah published/moderasi
 - `DELETE /admin/testimonials/{testimonial}/reply` -> `Admin\TestimonialController@destroyReply` (name: `admin.testimonials.reply.destroy`); hapus balasan tanpa menghapus ulasan
+  - Jalan masuk balas ada tiga, semuanya memakai endpoint `admin.testimonials.reply` dan satu komponen dialog bersama (`ReviewReplyDialog`):
+    - Kolom Balasan di daftar ulasan, HANYA di tab Ulasan Website.
+    - Menu Lainnya di baris daftar ulasan, di KEDUA tab. Ini satu-satunya jalan membalas untuk baris yang screenshot-nya belum ada.
+    - Tombol Balas di detail pesanan admin, dan kolom Aksi di daftar pesanan, untuk pesanan yang pelanggannya sudah menulis ulasan.
+  - Kolom Balasan sengaja TIDAK dirender di tab Apa Kata Pelanggan. Tab itu berisi galeri screenshot, dan `can_reply` mengecualikan sumber marketplace (Shopee, WhatsApp), sehingga selnya hanya akan berisi tanda hubung begitu ada ulasan marketplace sungguhan. Dikunci `AdminTestimonialReplyColumnTest`.
 - `GET /admin/users` -> `Admin\UserController@index`  (name: `admin.users.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/users` -> `Admin\UserController@store`  (name: `admin.users.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/users/create` -> `Admin\UserController@create`  (name: `admin.users.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

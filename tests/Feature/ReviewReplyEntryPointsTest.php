@@ -76,9 +76,13 @@ class ReviewReplyEntryPointsTest extends TestCase
     }
 
     /**
-     * Tab marketplace dulu tidak mengirim field balasan sama sekali, sehingga
-     * kolom Balasan di tabelnya tidak mungkin dipakai. Field itu sekarang
-     * dikirim, karena tab ini memuat ulasan bertaut produk yang punya teks.
+     * Tab Apa Kata Pelanggan tetap MENGIRIM field balasan, walaupun kolom
+     * Balasan tidak lagi dirender di tab itu (lihat AdminTestimonialReplyColumnTest).
+     *
+     * Alasannya: aksi balas di tab itu masih tersedia lewat menu Lainnya, dan itu
+     * satu-satunya jalan membalas untuk baris yang screenshot-nya belum ada
+     * (kolom Screenshot menandainya "Belum ada screenshot", sedangkan field
+     * can_reply tidak membedakannya).
      */
     public function test_tab_apa_kata_pelanggan_mengirim_field_balasan(): void
     {

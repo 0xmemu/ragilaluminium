@@ -693,7 +693,12 @@ export default function TestimonialsIndex({
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Screenshot" : "Komentar"}</th>
                     {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
-                    <th className="px-3 py-3 font-semibold">Balasan</th>
+                    {/* Kolom Balasan hanya di tab Ulasan Website, tempat ulasan
+                        pelanggan bertaut pesanan. Di tab Apa Kata Pelanggan
+                        kolomnya tidak dirender sama sekali, karena tab itu
+                        berisi screenshot dan balasan memang tidak berlaku untuk
+                        sumber marketplace sehingga selnya akan selalu kosong. */}
+                    {!isApaKata ? <th className="px-3 py-3 font-semibold">Balasan</th> : null}
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold">Tanggal</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
@@ -784,8 +789,9 @@ export default function TestimonialsIndex({
                           )}
                         </td>
                       ) : null}
-                      {/* Kolom Balasan: satu jalan masuk untuk membalas atau
-                          memperbarui balasan, dibuka sebagai popup (owner 2026-09-21). */}
+                      {/* Jalan masuk balas dari daftar, dibuka sebagai popup
+                          (owner 2026-09-21). Hanya di tab Ulasan Website. */}
+                      {!isApaKata ? (
                       <td className="px-3 py-3 align-top">
                         <div className="min-w-0 max-w-[16rem]">
                           {row.has_reply ? (
@@ -814,6 +820,7 @@ export default function TestimonialsIndex({
                           )}
                         </div>
                       </td>
+                      ) : null}
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
