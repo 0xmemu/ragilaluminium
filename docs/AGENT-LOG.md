@@ -132,3 +132,26 @@ tetapi 443 belum ada yang listen di nginx dan belum ada sertifikat origin Cloudf
 Verifikasi pemulihan: hanya ragil-cloudflared yang berjalan, halaman 200, health check
 127.0.0.1:8200/up 200, tidak ada berkas ALERT-health, jalur websocket Reverb /app/
 menjawab 101.
+
+---
+
+## 2026-09-21 14:40 UTC | zcode | Trivial | 70a4ce0c | selesai
+Lingkup: membuang enam elemen dari halaman Performa Toko atas permintaan owner
+("buang ini", dengan enam elemen ditunjuk). Berkas: `resources/js/pages/Admin/Analytics/StorePerformance.tsx`.
+Yang dibuang: (1) tombol "Rincian Retur dan Pembatalan" dan (2) "Detail Rekonsiliasi"
+di kartu Ringkasan Keuangan, (3) label "Periode:", (4) "Granularitas:", (5) "Detail:",
+(6) toggle model grafik "Line Chart"/"Bar Chart".
+Dampak spec: tidak berubah. Tidak ada route, schema, JSON, atau enum yang disentuh.
+Untuk agent berikutnya: dua tombol itu duplikat dropdown Detail, dan penghapusannya
+SUDAH DIBUKTIKAN tidak menghilangkan akses (dropdown tetap memuat 8 kategori termasuk
+Retur & Pembatalan dan Arus Kas, dan memilihnya membuka drawer). Toggle model grafik
+dibuang seluruhnya, bukan hanya tombol "Bar Chart", karena toggle dengan satu pilihan
+tidak berfungsi; state `chartModel` dan prop `chartType` ikut dilepas, jadi grafik
+kembali selalu garis. Kalau nanti perlu grafik batang lagi, tambahkan toggle yang
+benar-benar punya dua pilihan, jangan menghidupkan satu tombol.
+Bukti: `tsc --noEmit` dan `eslint --max-warnings=0` bersih (tanpa import menganggur;
+`Button`, `cn`, dan `bukaKategori` masih dipakai di tempat lain). `npm run test`
+21 berkas 179 test lulus. `php artisan test --filter=StorePerformance` 1 skipped 129
+passed. `npm run build` sukses (StorePerformance-CUknURzc.js 70,02 kB).
+Diperiksa live di browser: keenam elemen tidak ada, ketiga dropdown tetap berfungsi,
+dan drawer Arus Kas terbukti masih terbuka dari dropdown Detail.
