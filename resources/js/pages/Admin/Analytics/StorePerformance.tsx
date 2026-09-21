@@ -1624,7 +1624,6 @@ export default function StorePerformance({
   const durasiConfirm = durasi("avg_confirm_hours", "jam")
   const durasiProcess = durasi("avg_process_days", "hari")
   const [chartTab, setChartTab] = React.useState(0)
-  const [chartModel, setChartModel] = React.useState<"line" | "bar">("line")
 
   function buildExportUrl(): string {
     try {
@@ -1804,7 +1803,6 @@ export default function StorePerformance({
 
           <div className="ml-auto flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Periode:</span>
               <Select
                 value={period}
                 onChange={(event) => {
@@ -1826,7 +1824,6 @@ export default function StorePerformance({
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Granularitas:</span>
               <Select
                 value={granularity}
                 onChange={(event) => {
@@ -1850,7 +1847,6 @@ export default function StorePerformance({
                 boleh memicu permintaan ke server (membangun laporan 418 ms, 177
                 query). */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Detail:</span>
               <Select
                 value={detailCategory ?? ""}
                 onChange={(event) => {
@@ -2112,27 +2108,6 @@ export default function StorePerformance({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5">
-                    {([
-                      { key: "line", label: "Line Chart" },
-                      { key: "bar", label: "Bar Chart" },
-                    ] as const).map(({ key, label }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setChartModel(key)}
-                        className={cn(
-                          "rounded px-2.5 py-1 text-xs font-medium transition",
-                          chartModel === key
-                            ? "bg-foreground font-semibold text-background shadow-xs"
-                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                        )}
-                        title={label}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
 
@@ -2149,7 +2124,6 @@ export default function StorePerformance({
                           ? "percent"
                           : "number"
                     }
-                    chartType={chartModel}
                     showChartTypeToggle={false}
                     height={200}
                   />
@@ -2173,16 +2147,7 @@ export default function StorePerformance({
         description="Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas."
         className="mb-5"
         contentClassName="p-0"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => bukaKategori("retur")}>
-              Rincian Retur dan Pembatalan
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => bukaKategori("arus-kas")}>
-              Detail Rekonsiliasi
-            </Button>
-          </div>
-        }
+
       >
         <div className="grid divide-y divide-border lg:grid-cols-4 lg:divide-x lg:divide-y-0">
           <div className="p-6">
