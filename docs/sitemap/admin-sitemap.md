@@ -26,7 +26,6 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Enam kartu KPI di baris atas sekaligus menjadi tab grafik tren, urut sejajar kartu:
     revenue, orders, products, units, visitors, conversion_rate. Menambah kartu baru berarti
     menambah satu entri di reports.charts agar kartunya tetap bisa menampilkan tren.
-  - Setiap entri charts membawa total_basis: sum, unique_period, unique_daily, atau ratio.
     Halaman memasangkan seri periode ini dan periode pembanding berdasarkan INDEKS, jadi jumlah
     titik kedua seri wajib sama dan tidak boleh ada label yang muncul di kedua seri. Jendela
     pembanding diselaraskan ke batas bucket untuk granularitas minggu, bulan, dan tahun

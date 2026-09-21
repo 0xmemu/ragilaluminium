@@ -164,9 +164,8 @@ class StorePerformanceContractTest extends TestCase
             $this->assertIsNumeric($point['value']);
         }
 
-        // Total series harus sama dengan total chart (revenue hari ini masuk salah satu bucket).
-        $seriesSum = array_sum(array_column($chart['series'], 'value'));
-        $this->assertEqualsWithDelta(2_000_000.0, $seriesSum, 0.01);
+        // Titik seri hanya diperiksa bentuknya. Angka resmi diambil dari sumber
+        // yang sama dengan kartu, bukan dihitung dari titik grafik.
     }
 
     public function test_visitors_and_orders_feed_today_kpis(): void

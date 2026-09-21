@@ -52,8 +52,6 @@ interface ChartBlock {
   total: number
   previous_total?: number
   total_format: "currency" | "number" | "percent"
-  /** Dasar hitungan angka Total: jumlah titik seri, unik, atau rasio. */
-  total_basis?: "sum" | "unique_period" | "unique_daily" | "ratio"
   /** Salah bila jendela pembanding berada di luar era pencatatan pengunjung. */
   previous_measured?: boolean
   series: SeriesPoint[]
@@ -155,22 +153,6 @@ interface Report {
   }
 }
 
-/**
- * Keterangan dasar hitungan angka Total pada header grafik.
- *
- * Beberapa metrik memang tidak bisa dijumlahkan dari titik serinya:
- * produk dan pengunjung dihitung unik, sedangkan konversi adalah rasio.
- * Untuk metrik itu angka Total dihitung atas seluruh periode, sehingga
- * jumlah batangnya tidak akan sama. Keterangan ini membuat perbedaan itu
- * terbaca sebagai penjelasan, bukan sebagai angka yang salah.
- */
-function totalBasisNote(basis: string | undefined): string | null {
-  if (basis === "unique_period" || basis === "unique_daily") {
-    return "dihitung unik sepanjang periode, bukan penjumlahan titik grafik"
-  }
-  if (basis === "ratio") return "rasio periode, bukan penjumlahan titik grafik"
-  return null
-}
 
 /**
  * Format nilai total dan pembanding pada grafik tren. Satu tempat saja supaya
@@ -1209,21 +1191,7 @@ function buildCategoryDetail(
               },
             ],
           },
-          {
-            kind: "rows",
-            title: "Dasar Angka Total pada Grafik",
-            rows: report.charts.map((chart) => ({
-              label: chart.title,
-              value:
-                (chart.total_basis === "sum"
-                  ? "total sama dengan jumlah titik grafik"
-                  : chart.total_basis === "ratio"
-                    ? "rasio, bukan jumlah titik grafik"
-                    : "dihitung unik, bukan jumlah titik grafik") +
-                (chart.previous_measured === false ? " · pembanding tidak diukur" : ""),
-              sign: "·" as const,
-            })),
-          },
+
         ],
         formula: fin.definition,
         source: "Dihitung dari data pesanan, pembayaran, pengiriman, dan kunjungan",
@@ -1231,7 +1199,7 @@ function buildCategoryDetail(
           "Kunjungan baru dicatat sejak tanggal tertentu; rentang yang mulai sebelum tanggal itu tidak menampilkan angka kunjungan dan konversi.",
           "Cakupan setiap metrik tertulis pada labelnya: metrik bertanda kondisi saat ini dihitung dari keadaan sekarang, bukan dari rentang tanggal.",
           "Periode yang masih berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, bukan dibandingkan penuh.",
-          "Untuk angka yang tidak bisa dijumlahkan dari grafik, sisi angka Total pada tiap kartu menyebutkan dasar hitungannya.",
+          "Grafik adalah tampilan visual dari angka yang sama dengan kartu, drawer, dan ekspor XLSX. Grafik dipakai untuk melihat arah dan perbandingan, bukan untuk menghitung; angka yang dipakai menghitung selalu berasal dari sumber data yang sama dengan kartu dan drawer.",
           "Metrik yang bercakupan kondisi saat ini tidak dibandingkan dengan periode sebelumnya, karena angkanya keadaan sekarang sehingga selisihnya selalu nol dan menyesatkan.",
         ],
       }
@@ -2049,12 +2017,7 @@ export default function StorePerformance({
                     <span className="font-semibold tabular-nums text-foreground">
                       {formatChartValue(chart.total, chart.total_format)}
                     </span>
-                    {totalBasisNote(chart.total_basis) ? (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        ({totalBasisNote(chart.total_basis)})
-                      </span>
-                    ) : null}
+
                   </span>
                 </div>
 

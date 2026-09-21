@@ -103,6 +103,24 @@ tetapi tetap dideklarasikan karena angkanya muncul di halaman atau di ekspor:
 `open_orders_in_period`, `cod_pending_in_period_amount`, `cod_pending_in_period_count`,
 dan `payment_pending_count`.
 
+Grafik adalah VISUAL dari angka, bukan sumber perhitungan. Angka resmi di halaman
+berasal dari satu sumber yang sama dan dipakai bersama oleh kartu, drawer, dan ekspor
+XLSX; grafik menggambarkan angka itu supaya arah dan perbandingannya terlihat. Karena
+itu:
+
+- Tidak boleh ada angka halaman yang dihitung dari titik grafik.
+- Angka Total pada tiap grafik wajib sama dengan angka kartu metrik yang sama, karena
+  keduanya satu sumber. Kesamaan itu yang diuji, bukan kesamaan dengan jumlah titik
+  grafik.
+- Angka Total TIDAK wajib sama dengan jumlah titik grafik, dan itu memang wajar.
+  Produk Terjual menghitung produk unik sepanjang periode, sedangkan grafik menampilkan
+  produk itu di setiap hari penjualannya, sehingga jumlah titiknya bisa lebih besar.
+  Memaksa keduanya sama berarti menjadikan grafik sebagai sumber perhitungan.
+- Permukaan pembaca tidak menjelaskan hubungan Total dengan titik grafik. Penjelasan itu
+  tidak menambah keputusan apa pun bagi pembaca dan pernah melahirkan kekeliruan: satu
+  kalimat yang sama dipakai untuk dua perilaku berbeda, sehingga kartu Pengunjung Unik
+  menyatakan "bukan penjumlahan titik grafik" padahal angkanya justru dijumlahkan.
+
 Cara menentukan cakupan sebuah metrik TIDAK BOLEH memakai perbandingan nilai antar rentang.
 Metrik terikat periode pun akan bernilai sama pada dua rentang bila datanya nol di kedua
 rentang, jadi perbandingan itu tidak membuktikan apa pun. Yang dipakai adalah membaca kueri

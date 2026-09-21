@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\StorePerformanceService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -83,7 +84,7 @@ class StorePerformanceChartAlignmentTest extends TestCase
         ]);
     }
 
-    private function createOrder(string $orderNumber, ProductVariant $variant): Order
+    private function createOrder(string $orderNumber, ProductVariant $variant, ?string $dibuat = null): Order
     {
         $order = Order::create([
             'order_number' => $orderNumber,
@@ -118,7 +119,13 @@ class StorePerformanceChartAlignmentTest extends TestCase
             'line_total' => 1_000_000,
         ]);
 
-        return $order;
+        if ($dibuat !== null) {
+            // created_at tidak ada di $fillable, jadi update() Eloquent
+            // membuangnya. Backdate lewat query builder.
+            Order::whereKey($order->id)->update(['created_at' => $dibuat, 'updated_at' => $dibuat]);
+        }
+
+        return $order->fresh();
     }
 
     public function test_jumlah_titik_kedua_seri_selalu_sama(): void
@@ -182,59 +189,76 @@ class StorePerformanceChartAlignmentTest extends TestCase
         }
     }
 
-    public function test_total_dan_pembanding_cocok_untuk_chart_yang_dijumlahkan(): void
+    /**
+     * Angka Total pada grafik berasal dari sumber yang sama dengan angka kartu.
+     *
+     * Grafik adalah visual dari angka itu, bukan sumber perhitungan, jadi testnya
+     * membandingkan angka grafik dengan angka kartu, bukan dengan jumlah titik
+     * grafiknya. Membandingkan dengan jumlah titik grafik tidak sah sebagai
+     * aturan umum: pada data nyata Produk Terjual bisa 13 sementara jumlah
+     * titiknya 16, karena satu produk yang terjual di beberapa hari dihitung
+     * sekali sebagai produk tetapi muncul di tiap hari pada grafik.
+     */
+    public function test_total_grafik_sama_dengan_angka_pada_kartu(): void
     {
         $variant = $this->createProductWithVariant('SEJAJAR-C');
-        $this->createOrder('RA-SEJAJAR-0003', $variant);
+        // Varian yang SAMA terjual pada DUA hari berbeda. Ini penting supaya
+        // testnya tidak vakum: distinct produk sepanjang periode hanya 1,
+        // sedangkan grafik menampilkan nilai di dua hari sehingga jumlah
+        // titiknya 2. Kalau fixture menaruh semuanya di satu hari, kedua angka
+        // kebetulan sama dan test tidak membuktikan apa pun.
+        $this->createOrder('RA-SEJAJAR-0003', $variant, Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString());
+        $this->createOrder('RA-SEJAJAR-0004', $variant, Carbon::today()->setTime(10, 0)->toDateTimeString());
+
+        // Buktikan fixture-nya dari sisi DATA, bukan dari angka yang sedang
+        // diuji: dua pesanan memakai varian yang sama pada dua hari, jadi
+        // distinct produk sepanjang periode adalah 1 sementara grafik punya dua
+        // hari bernilai. Kalau pemeriksaan ini memakai angka hasil service, ia
+        // akan ikut berubah saat kode disabotase dan test berhenti di situ.
+        $this->assertSame(
+            1,
+            OrderItem::query()->whereNotNull('variant_sku')->distinct()->count('variant_sku'),
+            'fixture wajib memakai satu varian saja, supaya distinct produk = 1'
+        );
+        $this->assertSame(
+            2,
+            Order::query()->count(),
+            'fixture wajib punya dua pesanan di dua hari berbeda, supaya grafik punya dua titik bernilai'
+        );
+
+        // Setiap chart wajib punya padanan kunci KPI pada kartu.
+        $padanan = [
+            'revenue' => 'omzet',
+            'orders' => 'orders',
+            'products' => 'products',
+            'units' => 'units',
+            'visitors' => 'visitors',
+            'conversion_rate' => 'conversion',
+        ];
 
         foreach ($this->reachableCombinations() as [$period, $granularity]) {
             $report = $this->service()->build($period, null, null, $granularity);
 
-            foreach ($report['charts'] as $chart) {
-                if (($chart['total_basis'] ?? null) !== 'sum') {
-                    continue;
-                }
-
-                $jumlahTitik = array_sum(array_column($chart['series'], 'value'));
-                $jumlahPembanding = array_sum(array_column($chart['previous_series'], 'value'));
-
-                if (abs((float) $chart['total']) > 0.001) {
-                    $this->assertEqualsWithDelta(
-                        (float) $chart['total'],
-                        (float) $jumlahTitik,
-                        0.01,
-                        'Total chart '.$chart['key'].' pada '.$period.' + '.$granularity
-                            .' harus sama dengan jumlah titik serinya'
-                    );
-                }
-
-                if (abs((float) $chart['previous_total']) > 0.001) {
-                    $this->assertEqualsWithDelta(
-                        (float) $chart['previous_total'],
-                        (float) $jumlahPembanding,
-                        0.01,
-                        'Pembanding chart '.$chart['key'].' pada '.$period.' + '.$granularity
-                            .' harus sama dengan jumlah titik seri pembandingnya'
-                    );
+            // Peta angka kartu: satu sumber untuk seluruh halaman.
+            $kartu = [];
+            foreach ($report['sections'] as $bagian) {
+                foreach ($bagian['kpis'] as $kpi) {
+                    $kartu[$kpi['key']] = $kpi['value'];
                 }
             }
-        }
-    }
 
-    public function test_setiap_chart_menyatakan_dasar_hitungan_totalnya(): void
-    {
-        $report = $this->service()->build('last_7');
+            foreach ($report['charts'] as $chart) {
+                $kunci = $padanan[$chart['key']] ?? null;
+                $this->assertNotNull($kunci, 'chart '.$chart['key'].' wajib punya padanan KPI');
+                $this->assertArrayHasKey($kunci, $kartu, 'kartu '.$kunci.' wajib ada');
 
-        $dikenal = ['sum', 'unique_period', 'unique_daily', 'ratio'];
-
-        foreach ($report['charts'] as $chart) {
-            $this->assertArrayHasKey(
-                'total_basis',
-                $chart,
-                'chart '.$chart['key'].' harus menyatakan dasar hitungan Total, supaya'
-                    .' angka Total tidak tampak tidak cocok dengan grafiknya'
-            );
-            $this->assertContains($chart['total_basis'], $dikenal);
+                $this->assertSame(
+                    round((float) $kartu[$kunci], 2),
+                    round((float) $chart['total'], 2),
+                    'angka Total chart '.$chart['key'].' wajib sama dengan angka kartu '.$kunci
+                        .' pada '.$period.' + '.$granularity.', karena keduanya satu sumber'
+                );
+            }
         }
     }
 

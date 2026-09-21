@@ -155,12 +155,6 @@ class StorePerformanceTrendCoverageTest extends TestCase
             'produk terjual harus menghitung variant_sku secara unik'
         );
 
-        $seriesSum = (int) array_sum(array_column($chart['series'], 'value'));
-        $this->assertSame(
-            2,
-            $seriesSum,
-            'jumlah titik seri harus sama dengan total periode'
-        );
     }
 
     public function test_seri_produk_terjual_menghitung_baris_tanpa_varian(): void
@@ -189,10 +183,6 @@ class StorePerformanceTrendCoverageTest extends TestCase
 
         $this->assertEquals(2, (int) $chart['total'], 'baris tanpa varian dihitung memakai parent_sku');
 
-        // Total dan jumlah titik seri harus tetap sama, karena keduanya kini
-        // memakai aturan yang sama.
-        $seriesSum = (int) array_sum(array_column($chart['series'], 'value'));
-        $this->assertSame(2, $seriesSum, 'jumlah titik seri harus sama dengan total periode');
     }
 
     public function test_seri_konversi_memakai_satuan_persen(): void
