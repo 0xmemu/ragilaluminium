@@ -38,6 +38,12 @@ function CopyButton({
   iconSize?: string
 }) {
   const [copied, setCopied] = React.useState(false)
+  // `shrink-0` wajib: tanpa itu tombol ini diperas oleh teks di sebelahnya
+  // yang panjang, sehingga sasaran sentuhnya menyusut sampai di bawah 16px
+  // dan ikonnya tampak menggantung di antara dua baris. Latar tipis saat
+  // hover memberi tanda bahwa ini tombol, bukan hiasan. Ambang kontras untuk
+  // komponen non-teks adalah 3:1, dan ikon abu ini terukur 4,0:1 di atas
+  // permukaan putih.
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -51,7 +57,7 @@ function CopyButton({
       type="button"
       onClick={handleCopy}
       className={cn(
-        "inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
+        "inline-flex shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         className,
       )}
       aria-label={label}
@@ -118,8 +124,8 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
             <CopyButton
               text={order.order_number}
               label="Salin nomor pesanan"
-              className="size-5"
-              iconSize="size-3.5"
+              className="size-8"
+              iconSize="size-4"
             />
           </div>
           {order.created_at ? (
@@ -135,8 +141,8 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
                 <CopyButton
                   text={order.vm.carrier.waybill}
                   label="Salin nomor resi"
-                  className="size-4"
-                  iconSize="size-3"
+                  className="size-7"
+                  iconSize="size-3.5"
                 />
               </span>
             ) : (
@@ -158,7 +164,15 @@ function OrderSummaryCard({ order, className }: { order: PublicOrder; className?
         </div>
 
         <div className="shrink-0">
-          <StatusBadge status={order.vm?.primaryStatus?.key ?? order.order_status} />
+          {/* Label dan nada diambil dari view model, BUKAN dipetakan ulang lewat
+              STATUS_MAP. Peta itu memakai istilah yang lebih pendek, sehingga
+              pesanan COD yang sudah lunas pernah tampil "Menunggu pembayaran"
+              karena kuncinya `pending`. View model adalah sumber istilahnya. */}
+          <StatusBadge
+            status={order.vm?.primaryStatus?.key ?? order.order_status}
+            label={order.vm?.primaryStatus?.label}
+            tone={order.vm?.primaryStatus?.tone as never}
+          />
         </div>
       </div>
 
@@ -784,30 +798,50 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
           lewat col-start/row-start: kartu lacak pindah ke kolom kanan,
           sementara bantuan & jaminan tetap di kolom kiri bawah kartu penerima. */}
 
-      {/* Pesanan Sampai: sapaan "sudah sampai" + tombol Beri Ulasan dan Chat WhatsApp */}
-      <DeliveredActions order={order} />
+      {/* Kolom kiri: satu wadah yang mengalir sendiri supaya tingginya tidak
+          ditentukan kartu J&T di kolom kanan. Di mobile wadah ini `contents`,
+          jadi anaknya kembali menjadi item grid dan urutannya diatur `order`.
+          Sebelumnya kedua kolom berbagi baris grid, dan karena kartu J&T jauh
+          lebih tinggi daripada sapaan "sudah sampai", kolom kiri menyisakan
+          celah kosong 405px di layar 1280px ke atas. */}
+      <div className="contents lg:flex lg:flex-col lg:gap-4">
+        {/* Pesanan Sampai: sapaan "sudah sampai" + tombol Beri Ulasan dan Chat WhatsApp */}
+        <div className="order-1 lg:order-none">
+          <DeliveredActions order={order} />
+        </div>
 
-      {/* Alur pengembalian barang, hanya saat status pesanan sudah retur */}
-      <ReturnFlowCard order={order} />
+        {/* Alur pengembalian barang, hanya saat status pesanan sudah retur */}
+        <div className="order-2 lg:order-none">
+          <ReturnFlowCard order={order} />
+        </div>
 
-      {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
-      <OrderSummaryCard order={order} className="lg:col-start-1" />
+        {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
+        <div className="order-3 lg:order-none">
+          <OrderSummaryCard order={order} />
+        </div>
 
-      {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan */}
-      <JnTCard order={order} className="lg:col-start-2 lg:row-start-1" />
+        {/* 3. Bantuan: untuk pesanan Sampai, ajakan mengulas dan chat WhatsApp
+            sudah ada di kartu atas, jadi kartu bantuan umum tidak perlu diulang. */}
+        {order.order_status !== "delivered" ? (
+          <div className="order-5 lg:order-none">
+            <SupportAction />
+          </div>
+        ) : null}
 
-      {/* 3. Bantuan & jaminan: tepat di bawah kartu penerima (kolom kiri).
-          Untuk pesanan Sampai, ajakan mengulas dan chat WhatsApp sudah ada di
-          kartu atas, jadi kartu bantuan umum tidak perlu diulang. */}
-      {order.order_status !== "delivered" ? <SupportAction className="lg:col-start-1" /> : null}
+        {/* Tombol pengembalian barang: tepat di bawah kartu Sampai, sengaja
+            dipisah karena tindakan ini jarang dipakai dan perlu penjelasan. */}
+        <div className="order-6 lg:order-none">
+          <ReturnRequestButton order={order} />
+        </div>
 
-      {/* Tombol pengembalian barang: tepat di bawah kartu Sampai, sengaja
-          dipisah karena tindakan ini jarang dipakai dan perlu penjelasan. */}
-      <div className="lg:col-start-1">
-        <ReturnRequestButton order={order} />
+        <div className="order-7 lg:order-none">
+          <TrustAssuranceCard className="px-4 lg:px-5" />
+        </div>
       </div>
 
-      <TrustAssuranceCard className="px-4 lg:col-start-1 lg:px-5" />
+      {/* 2. J&T Cargo + Stepper 4-Step + Lacak Pesanan. Di mobile tampil keempat
+          (tepat setelah kartu penerima); di desktop pindah ke kolom kanan. */}
+      <JnTCard order={order} className="order-4 lg:order-none lg:col-start-2 lg:row-start-1" />
 
     </div>
   )

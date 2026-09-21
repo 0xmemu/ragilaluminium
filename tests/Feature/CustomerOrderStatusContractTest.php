@@ -526,4 +526,96 @@ class CustomerOrderStatusContractTest extends TestCase
             $v2['shipment']['officialTrackingUrl'],
         );
     }
+
+    /**
+     * Pesanan yang punya riwayat pelacakan TIDAK boleh membuat halaman status
+     * gagal dimuat.
+     *
+     * Pernah terjadi: `OrderTrackingPresenter::timeline()` memanggil `merge()`
+     * milik Eloquent Collection pada item yang sudah berupa array, sehingga
+     * muncul "Call to a member function getKey() on array" dan seluruh halaman
+     * Cek Status Pesanan berbalas HTTP 500. Yang terkena bukan hanya pesanan
+     * uji: satu pesanan asli (ORD26080001) juga punya 13 baris riwayat.
+     */
+    public function test_order_with_tracking_events_renders_timeline_without_error(): void
+    {
+        $order = $this->order(['order_status' => 'shipped', 'payment_status' => 'paid']);
+        $shipping = $this->shipping($order, ['status' => 'in_transit']);
+
+        ShippingTrackingEvent::create([
+            'shipping_record_id' => $shipping->id,
+            'order_id' => $order->id,
+            'provider' => 'jnt',
+            'waybill_number' => $shipping->waybill_number,
+            'provider_status' => 'PICKED_UP',
+            'normalized_status' => 'picked_up',
+            'source' => 'webhook',
+            'location' => 'BANJARNEGARA',
+            'description' => 'Paket telah dijemput kurir',
+            'occurred_at' => now()->subHours(3),
+            'event_hash' => hash('sha256', 'uji-picked-up'),
+        ]);
+        ShippingTrackingEvent::create([
+            'shipping_record_id' => $shipping->id,
+            'order_id' => $order->id,
+            'provider' => 'jnt',
+            'waybill_number' => $shipping->waybill_number,
+            'provider_status' => 'IN_TRANSIT',
+            'normalized_status' => 'in_transit',
+            'source' => 'webhook',
+            'location' => 'SEMARANG',
+            'description' => 'Paket dalam perjalanan',
+            'occurred_at' => now()->subHour(),
+            'event_hash' => hash('sha256', 'uji-in-transit'),
+        ]);
+
+        $tracking = \App\Support\OrderTrackingPresenter::forOrder($order->fresh(), $shipping);
+
+        // Timeline harus benar-benar berisi, bukan sekadar tidak error.
+        $this->assertNotEmpty($tracking['timeline'] ?? [], 'timeline kosong padahal ada riwayat');
+        $pesan = array_column($tracking['timeline'], 'message');
+        $this->assertNotEmpty(array_filter($pesan, fn ($m) => is_string($m) && $m !== ''));
+    }
+
+    /**
+     * Pesanan yang sudah Sampai tetap dilaporkan "Sampai" walau catatan
+     * pengiriman kurirnya belum ada.
+     *
+     * Sebelumnya pesanan seperti ini jatuh ke cabang "belum dikirim", sehingga
+     * badge pada halaman pelanggan berbunyi "Menunggu pembayaran" (transfer)
+     * atau "Pesanan dikonfirmasi" (COD) padahal barangnya sudah diterima.
+     */
+    public function test_delivered_order_without_shipping_record_still_reports_delivered(): void
+    {
+        foreach (['paid', 'pending'] as $payment) {
+            $order = $this->order([
+                'order_status' => 'delivered',
+                'payment_status' => $payment,
+                'shipping_status' => 'delivered',
+            ]);
+
+            $vm = $this->vm($order);
+
+            $this->assertSame('delivered', $vm['primaryStatus']['key'], "pembayaran {$payment}");
+            $this->assertSame('Sampai', $vm['primaryStatus']['label'], "pembayaran {$payment}");
+            $this->assertSame('success', $vm['primaryStatus']['tone'], "pembayaran {$payment}");
+        }
+    }
+
+    /**
+     * Nada badge harus cocok dengan nada yang dipancarkan view model, karena
+     * badge storefront memakai nilai itu apa adanya.
+     */
+    public function test_primary_status_tone_is_one_badge_understands(): void
+    {
+        $sah = ['neutral', 'info', 'warning', 'success', 'danger'];
+
+        foreach (['awaiting_confirmation', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'issue', 'return_in_process', 'return_completed'] as $status) {
+            $vm = $this->vm($this->order(['order_status' => $status]));
+            $tone = $vm['primaryStatus']['tone'];
+
+            $this->assertContains($tone, $sah, "nada tak dikenal untuk status {$status}: {$tone}");
+        }
+    }
+
 }

@@ -47,7 +47,11 @@ class OrderTrackingPresenter
                 'at' => optional($log->created_at)?->toIso8601String(),
                 'source' => (string) $log->event_type,
             ];
-        })->merge($tracking->map(function (ShippingTrackingEvent $event): array {
+        // `toBase()` WAJIB: method merge() milik Eloquent Collection memanggil
+        // getKey() pada setiap item yang digabung, sedangkan item di sini sudah
+        // berupa array hasil map(). Tanpa toBase(), pesanan yang punya satu saja
+        // riwayat pelacakan membuat halaman status pelanggan gagal total.
+        })->toBase()->merge($tracking->map(function (ShippingTrackingEvent $event): array {
             $raw = $event->description ?: $event->provider_status;
             $local = self::trackingScanLabel((string) $event->provider_status, $event->location);
 

@@ -27,6 +27,57 @@ Jalankan `bash scripts/agent-state.sh` sebelum mulai bekerja.
 
 ---
 
+## 2026-09-21 22:45 UTC | zcode | Deep | - | selesai
+Lingkup: relayout halaman Cek Status Pesanan sekaligus mengeksekusi temuan audit UI/UX.
+Owner menilai data uji lamanya tidak menyeluruh, jadi fixture dibuat ulang lebih dulu.
+(1) Fixture menyeluruh. `database/seeders/OrderStatusShowcaseSeeder.php` (BARU) membuat 19
+pesanan uji `RA-UI-2209-01` sampai `-19`, satu untuk setiap keadaan yang bisa dihasilkan view
+model: menunggu pembayaran, COD dikonfirmasi, menyiapkan, dalam perjalanan, sedang diantar,
+menunggu penjemputan, sampai, selesai, retur diproses, retur selesai, dibatalkan, perlu
+perhatian, pengiriman gagal, tiga item sekaligus, refund, dan dua keadaan Sampai TANPA catatan
+resi. Lengkap dengan pengiriman, riwayat pelacakan, dan kasus retur. Idempoten, tidak menyentuh
+`order_number_sequences`, dan hanya menyentuh awalan `RA-UI-2209-`.
+(2) Bug badge: pesanan yang sudah Sampai tetapi belum punya catatan resi tampil "Menunggu
+pembayaran" (transfer) atau "Pesanan dikonfirmasi" (COD) padahal barangnya sudah diterima,
+karena `primaryStatus()` memutuskan label dari keadaan pembayaran/pengiriman lebih dulu. Status
+pesanan sekarang diperiksa lebih dulu, dan badge storefront memakai label serta nada DARI VIEW
+MODEL, bukan dipetakan ulang lewat `STATUS_MAP` (dulu 11 label dan 6 nada berbeda antara badge
+dan teks di kartu yang sama).
+(3) Bug produksi yang ditemukan dari fixture baru: `OrderTrackingPresenter::timeline()`
+memanggil `merge()` milik Eloquent Collection pada item yang sudah berupa array, sehingga
+muncul "Call to a member function getKey() on array" dan SELURUH halaman status pelanggan
+berbalas HTTP 500 begitu pesanan punya satu saja riwayat pelacakan. Terbukti pada pesanan ASLI
+`ORD26080001` (13 baris riwayat), bukan hanya data uji. Diperbaiki dengan `toBase()`.
+(4) Relayout: celah kosong 405px di kolom kiri pada layar 1280px ke atas, karena grid membagi
+tinggi baris dan kartu J&T (557px) jauh lebih tinggi daripada sapaan "sudah sampai" (177px).
+Kolom kiri kini satu wadah yang mengalir sendiri (`contents` di mobile plus `order-*` untuk
+urutan), sehingga tidak ada lagi celah yang ditentukan kartu kanan.
+(5) Pemilih pesanan: `setActiveNumber` ada tetapi TIDAK ADA yang memanggilnya, jadi pelanggan
+dengan lebih dari satu pesanan hanya bisa membuka yang pertama. Pemilih ditambahkan, dan
+pilihannya disimpan per perangkat supaya bertahan setelah muat ulang.
+(6) Tombol salin nomor pesanan: terukur 14x20px karena tidak punya `shrink-0` sehingga diperas
+teks di sebelahnya. Kini 32px dengan `shrink-0` dan latar hover.
+Dampak spec: tidak berubah. Tidak ada route, kolom, enum, atau bentuk JSON baru. `vm` dan
+`return_block` tetap seperti sebelumnya; yang berubah hanya nilai label/nada yang sudah ada.
+Untuk agent berikutnya: (a) `OrderTrackingPresenter::timeline()` WAJIB memakai `toBase()` pada
+koleksi log sebelum `merge()`. (b) Badge storefront memakai `label` dan `tone` dari
+`vm.primaryStatus`; jangan mengembalikannya ke pemetaan `STATUS_MAP`, karena di situlah bug
+"Menunggu pembayaran" lahir. (c) Seeder `OrderStatusShowcaseSeeder` menulis ke DB LIVE dan
+memengaruhi laporan: 19 pesanan uji menaikkan Penjualan Gross dari 56.053.745 menjadi
+120.278.745 dan `refused_goods_value` dari 0 menjadi 2.845.000. Data uji SUDAH DIHAPUS dan
+laporan sudah kembali persis ke angka semula (diverifikasi). Jalankan seeder ini hanya saat
+mengaudit tampilan, lalu bersihkan dengan blok SQL di docblock seeder. (d) `dev:cleanup-dummy`
+belum mengenal awalan `RA-UI`.
+Bukti: suite PHP penuh 1 skipped 1113 passed (11170 assertions), TANPA kegagalan, dengan 3 test
+penjaga baru di `CustomerOrderStatusContractTest` (riwayat pelacakan tidak boleh membuat halaman
+gagal, pesanan Sampai tanpa catatan kurir tetap "Sampai", dan nada badge harus salah satu nada
+yang dikenal). `tsc --noEmit` bersih, eslint bersih, build sukses. Audit badge atas 19 keadaan
+menunjukkan 0 kunci hilang. Verifikasi live di browser: pemilih pesanan menampilkan 7 pesanan
+dengan label view model, pilihan bertahan setelah muat ulang (satu chip aktif), celah 405px
+hilang, dan pesanan `RA-UI-2209-18` (Sampai tanpa resi, COD) kini berbunyi "Sampai" bukan
+"Menunggu pembayaran". Lima pesanan yang sebelumnya berbalas HTTP 500 (RA-UI-2209-05, -10, -11,
+-17, -18) kini semua 200.
+
 ## 2026-09-21 19:12 UTC | zcode | Deep | - | selesai
 Lingkup: skema retur sisi pelanggan diubah menjadi FULL MANUAL, sesuai perintah owner. Empat
 bagian, semuanya diverifikasi live.

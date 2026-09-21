@@ -139,6 +139,24 @@ class OrderTrackingViewModel
                 'Dana akan dikembalikan melalui metode pembayaran yang digunakan.');
         }
 
+        // 2b. Pesanan yang statusnya sudah Sampai atau Selesai dilaporkan apa
+        // adanya, walau catatan kurir belum ada atau pembayarannya belum
+        // tercatat lunas. Tanpa cabang ini, pesanan COD yang sudah diterima
+        // tampil "Menunggu pembayaran" dan pesanan transfer yang diterima tanpa
+        // catatan kurir tampil "Pengiriman belum berhasil".
+        if ($status === 'delivered') {
+            return $this->mk('delivered', 'Sampai', 'success',
+                'Sampai',
+                'Paket telah diterima.',
+                $this->shipping?->last_status_at?->toIso8601String()
+                    ?? $this->order->updated_at?->toIso8601String());
+        }
+        if ($status === 'completed') {
+            return $this->mk('completed', 'Pesanan selesai', 'success',
+                'Pesanan selesai',
+                'Terima kasih, pesanan Anda telah selesai. Retur baru tidak tersedia untuk pesanan ini; jika butuh bantuan, hubungi kami melalui WhatsApp.');
+        }
+
         // 3. Delivery exception / failed
         if ($shipping === 'exception' || $shipping === 'delivery_failed' || $shipping === 'returned') {
             return $this->mk('delivery_failed', 'Pengiriman perlu perhatian', 'danger',
@@ -167,13 +185,6 @@ class OrderTrackingViewModel
                     'Pesanan menunggu konfirmasi',
                     'Kami sedang memverifikasi pesanan Anda.');
             }
-        }
-
-        // 5b. Order selesai: tidak ada retur baru, hanya dukungan historis.
-        if ($status === 'completed') {
-            return $this->mk('completed', 'Pesanan selesai', 'success',
-                'Pesanan selesai',
-                'Terima kasih, pesanan Anda telah selesai. Retur baru tidak tersedia untuk pesanan ini; jika butuh bantuan, hubungi kami melalui WhatsApp.');
         }
 
         // 6. Fulfillment/shipping normal

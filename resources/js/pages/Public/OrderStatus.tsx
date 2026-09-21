@@ -16,12 +16,33 @@ import type { PublicOrder, SharedPageProps } from "@/types"
 
 const TERMINAL_STATUSES = new Set(["completed", "cancelled", "return_completed"])
 const ORDER_STATUS_STORAGE_KEY = "ragil.order-status.v1"
+/** Pesanan yang sedang dibuka, disimpan per perangkat. */
+const ACTIVE_ORDER_STORAGE_KEY = "ragil.order-status.active"
 const MAX_STORED_ORDER_REFS = 5
 
 type StoredOrderRef = {
   order_number: string
   /** Legacy browser records may still contain the lookup phone for one migration read. */
   customer_phone?: string
+}
+
+/** Pesanan yang terakhir dibuka di perangkat ini, bila masih tersimpan. */
+function readStoredActiveNumber(): string | null {
+  try {
+    const value = window.localStorage.getItem(ACTIVE_ORDER_STORAGE_KEY)
+    return value && value !== "" ? value : null
+  } catch {
+    return null
+  }
+}
+
+function writeStoredActiveNumber(orderNumber: string): void {
+  try {
+    window.localStorage.setItem(ACTIVE_ORDER_STORAGE_KEY, orderNumber)
+  } catch {
+    // Penyimpanan penuh atau diblokir: pilihan tidak bertahan, tetapi halaman
+    // tetap berjalan. Ini bukan kegagalan yang perlu menghentikan pelanggan.
+  }
 }
 
 function readStoredOrderRefs(): StoredOrderRef[] {
@@ -129,20 +150,36 @@ export default function OrderStatus({
     () => mergeOrders(storedOrders, serverOrders),
     [serverOrders, storedOrders],
   )
+  // Pilihan tersimpan didahulukan supaya pilihan pelanggan tidak hilang saat
+  // halaman dimuat ulang. Bila pesanannya tidak ada lagi, efek di bawah yang
+  // mengembalikannya ke pesanan yang masih valid.
   const [activeNumber, setActiveNumber] = React.useState(
-    () => currentOrderNumber,
+    () => readStoredActiveNumber() ?? currentOrderNumber,
   )
 
   React.useEffect(() => {
     const list = sessionList
     // Keep the selected order valid after a lookup response or local restore replaces the list.
+    if (list.length === 0) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveNumber((current) =>
-      list.some((row) => row.order_number === current)
-        ? current
-        : currentOrderNumber,
-    )
+    setActiveNumber((current) => {
+      if (list.some((row) => row.order_number === current)) return current
+      // Pilihan tersimpan yang sudah tidak ada (mis. pesanan kedaluwarsa dari
+      // sesi) diganti pesanan pertama yang benar-benar tersedia.
+      const fallback = list.some((row) => row.order_number === currentOrderNumber)
+        ? currentOrderNumber
+        : list[0].order_number
+      writeStoredActiveNumber(fallback)
+      return fallback
+    })
   }, [sessionList, currentOrderNumber])
+
+  /** Pilih pesanan dari pemilih, lalu simpan pilihannya untuk muat ulang. */
+  function selectOrder(orderNumber: string) {
+    setActiveNumber(orderNumber)
+    setLiveOrder(null)
+    writeStoredActiveNumber(orderNumber)
+  }
 
   const form = useForm({
     order_number: prefill_order_number ?? "",
@@ -217,7 +254,6 @@ export default function OrderStatus({
 
   React.useEffect(() => {
     // Reset data polling saat pindah order.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLiveOrder(null)
     // Polling hanya untuk order yang sedang tampil dan belum mencapai status terminal.
     if (!activeOrder || TERMINAL_STATUSES.has(activeOrder.order_status)) return
@@ -492,6 +528,41 @@ export default function OrderStatus({
           <div className="mx-auto w-full min-w-0 max-w-2xl lg:max-w-5xl">
             {pageErrors.cancel ? (
               <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
+            ) : null}
+
+            {/* Pemilih pesanan. Muncul hanya bila perangkat ini menyimpan lebih
+                dari satu pesanan; tanpa ini, pesanan selain yang pertama tidak
+                bisa dibuka sama sekali. Dipakai `aria-pressed` karena ini
+                pilihan tunggal yang sedang aktif, bukan tombol aksi. */}
+            {sessionList.length > 1 ? (
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                  Pilih pesanan ({sessionList.length})
+                </p>
+                <ul className="flex flex-wrap gap-2" aria-label="Pesanan tersimpan di perangkat ini">
+                  {sessionList.map((row) => {
+                    const active = row.order_number === shownOrder?.order_number
+                    const label = row.vm?.primaryStatus?.label ?? row.order_status
+                    return (
+                      <li key={row.order_number}>
+                        <button
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => selectOrder(row.order_number)}
+                          className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-surface text-foreground hover:border-foreground/25"
+                          }`}
+                        >
+                          <span className="font-mono">{row.order_number}</span>
+                          <span className="font-normal opacity-80">{label}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             ) : null}
 
 
