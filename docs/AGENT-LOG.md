@@ -53,3 +53,19 @@ berkas. Berkas kotor ` M` milik agent lain JANGAN ditimpa; ikuti prosedur
 semua commit repo ini tercatat atas nama mesin `Ubuntu`.
 Bukti: `bash scripts/agent-state.sh` mencetak berkas kotor, selisih origin, dan
 entri log terakhir.
+
+## 2026-09-21 11:02 UTC | zcode-workflow | Trivial | b102c5e3 | selesai
+Lingkup: papan kolaborasi juga dipasang di sisi LOKAL `D:\website_5.0`.
+`AGENTS.md` lokal (berkas yang disuntik harness ke setiap sesi workspace ini)
+mendapat bagian "0. Papan kolaborasi agent", dan berkas baru
+`_agent-metrics/agent-state.sh` menjadi pembungkus yang menyambung ke
+`scripts/agent-state.sh` di VPS dalam SATU panggilan ssh (3,8 detik, bukan
+berkali-kali).
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: `AGENTS.md` repo VPS dan `AGENTS.md` lokal adalah DUA
+berkas berbeda dengan isi berbeda. Repo VPS yang mengikat kode; versi lokal
+mengikat sesi di workspace `D:\website_5.0`. Perubahan kontrak harus mendarat di
+KEDUANYA, kalau tidak sesi lokal dan sesi VPS bisa memakai aturan berbeda.
+Bukti: `bash _agent-metrics/agent-state.sh` dari workspace lokal mencetak
+briefing lengkap dalam satu koneksi; `grep -c "Papan kolaborasi agent" AGENTS.md`
+lokal = 1.
