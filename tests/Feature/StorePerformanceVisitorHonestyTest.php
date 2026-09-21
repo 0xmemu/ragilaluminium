@@ -105,6 +105,72 @@ class StorePerformanceVisitorHonestyTest extends TestCase
         );
     }
 
+    /**
+     * Penjaga data kunjungan wajib dipakai di header grafik, bukan hanya di
+     * kartu dan drawer.
+     *
+     * Kartu menahan angka kunjungan dan konversi bila rentangnya mulai sebelum
+     * kunjungan layak dicatat, tetapi header grafik dulu merender angka Total
+     * tanpa penjaga, sehingga satu layar menampilkan dua jawaban berbeda untuk
+     * satu hal. Angka itu bukan sekadar belum lengkap melainkan salah: pembeli
+     * dihitung sepanjang periode sedangkan pengunjung hanya sejak pencatatan
+     * berjalan.
+     */
+    public function test_header_grafik_memakai_penjaga_kunjungan(): void
+    {
+        $isi = file_get_contents(base_path('resources/js/pages/Admin/Analytics/StorePerformance.tsx'));
+        $this->assertNotFalse($isi, 'halaman harus terbaca');
+        // Komentar dibuang supaya penjelasan di kode tidak dianggap kode.
+        $isi = preg_replace('~/\*.*?\*/~s', '', $isi ?? '') ?? '';
+        $isi = preg_replace('~^\s*//.*$~m', '', $isi) ?? '';
+
+        // Dua grafik yang memakai data kunjungan.
+        $this->assertStringContainsString(
+            'grafikKunjungan',
+            $isi,
+            'header grafik wajib mengenali grafik berbasis kunjungan'
+        );
+        $this->assertMatchesRegularExpression(
+            '~chart\.key === "visitors" \|\| chart\.key === "conversion_rate"~',
+            $isi,
+            'grafik berbasis kunjungan adalah visitors dan conversion_rate'
+        );
+
+        // Nilai periode pada header wajib memakai penjaga, bukan mencetak angka
+        // apa adanya.
+        $this->assertStringContainsString(
+            'totalTidakLayak ?',
+            $isi,
+            'nilai Total pada header grafik wajib bercabang lewat penjaga'
+        );
+        $this->assertStringNotContainsString(
+            "Total:{\" \"}\n                    <span className=\"font-semibold tabular-nums text-foreground\">",
+            $isi,
+            'nilai Total tidak boleh langsung dicetak tanpa penjaga'
+        );
+    }
+
+    /**
+     * Pemeriksaan yang sama untuk drawer: angka kunjungan di sana juga wajib
+     * lewat penjaga, supaya tidak ada permukaan yang lolos.
+     */
+    public function test_drawer_dan_kartu_memakai_penjaga_yang_sama(): void
+    {
+        $isi = file_get_contents(base_path('resources/js/pages/Admin/Analytics/StorePerformance.tsx'));
+        $this->assertNotFalse($isi);
+        $isi = preg_replace('~/\*.*?\*/~s', '', $isi ?? '') ?? '';
+        $isi = preg_replace('~^\s*//.*$~m', '', $isi) ?? '';
+
+        // Penjaga didefinisikan sekali dan dipakai lebih dari dua tempat:
+        // dua kartu atas, tiga baris drawer, dan header grafik.
+        $pemakaian = substr_count($isi, 'kunjunganTidakLengkap');
+        $this->assertGreaterThanOrEqual(
+            5,
+            $pemakaian,
+            'penjaga kunjungan wajib dipakai di kartu, drawer, dan header grafik;'
+                .' pemakaian ditemukan: '.$pemakaian
+        );
+    }
     public function test_penanda_pembanding_benar_untuk_kedua_cabang(): void
     {
         $service = $this->service();

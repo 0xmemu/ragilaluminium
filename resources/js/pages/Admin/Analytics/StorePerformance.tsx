@@ -1999,6 +1999,15 @@ export default function StorePerformance({
         {(() => {
           const chart = report.charts[chartTab] ?? report.charts[0]
           if (!chart) return null
+
+          // Dua grafik ini memakai data kunjungan, jadi ikut memakai penjaga
+          // yang sama dengan kartu. Tanpa penjaga, angka Total di sini dihitung
+          // dari dua jendela waktu berbeda: pembilangnya sepanjang periode,
+          // penyebutnya hanya sejak kunjungan mulai dicatat, sehingga rasionya
+          // jauh lebih besar daripada kenyataan.
+          const grafikKunjungan = chart.key === "visitors" || chart.key === "conversion_rate"
+          const totalTidakLayak = kunjunganTidakLengkap && grafikKunjungan
+
           const prev = chart.previous_series ?? []
           const combinedSeries = chart.series.map((item, idx) => ({
             ...item,
@@ -2008,16 +2017,37 @@ export default function StorePerformance({
           return (
             <div className="border-t border-border p-5">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-2.5">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <span className="text-sm font-semibold tracking-tight text-foreground">
                     {chart.title}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Total:{" "}
-                    <span className="font-semibold tabular-nums text-foreground">
-                      {formatChartValue(chart.total, chart.total_format)}
-                    </span>
-
+                    {totalTidakLayak ? (
+                      // Sama seperti kartu: angkanya ditahan dan alasannya
+                      // disebutkan, bukan ditampilkan sebagai hasil pengukuran.
+                      <span className="font-medium text-muted-foreground">
+                        Belum tersedia, kunjungan dicatat sejak {formatDate(tersediaSejak)}
+                      </span>
+                    ) : (
+                      <span className="font-semibold tabular-nums text-foreground">
+                        {formatChartValue(chart.total, chart.total_format)}
+                      </span>
+                    )}
+                  </span>
+                  {/* Pembanding berdampingan dengan nilai periode terpilih,
+                      supaya kedua angka yang dibandingkan terbaca berurutan. */}
+                  <span className="text-xs text-muted-foreground">
+                    Pembanding:{" "}
+                    {chart.previous_measured === false ? (
+                      <span className="font-medium text-muted-foreground">
+                        tidak diukur pada periode itu
+                      </span>
+                    ) : (
+                      <span className="font-semibold tabular-nums text-muted-foreground">
+                        {formatChartValue(chart.previous_total, chart.total_format)}
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -2033,18 +2063,6 @@ export default function StorePerformance({
                     <span className="inline-flex items-center gap-1.5">
                       <span className="inline-block h-0.5 w-3 border-t-2 border-dashed border-muted-foreground/60" />
                       Periode Lalu
-                    </span>
-                    <span>
-                      Pembanding:{" "}
-                      {chart.previous_measured === false ? (
-                        <span className="font-medium text-muted-foreground">
-                          tidak diukur pada periode itu
-                        </span>
-                      ) : (
-                        <span className="font-semibold tabular-nums text-muted-foreground">
-                          {formatChartValue(chart.previous_total, chart.total_format)}
-                        </span>
-                      )}
                     </span>
                   </div>
 
