@@ -271,7 +271,7 @@ class StorePerformanceMetricBasisTest extends TestCase
         $kontrak = $payload['date_contract'] ?? null;
 
         $this->assertIsArray($kontrak, 'build() wajib mengirim date_contract.');
-        foreach (['timezone', 'start_boundary', 'end_boundary', 'running_period', 'comparison', 'per_metric'] as $kunci) {
+        foreach (['timezone', 'start_boundary', 'end_boundary', 'running_period', 'comparison', 'recognition', 'per_metric'] as $kunci) {
             $this->assertArrayHasKey($kunci, $kontrak, 'date_contract kurang kunci '.$kunci.'.');
             $this->assertNotSame('', trim((string) $kontrak[$kunci]), 'Kunci '.$kunci.' pada date_contract kosong.');
         }

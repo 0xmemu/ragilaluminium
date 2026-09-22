@@ -12,7 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * Fase 10 — lock StorePerformance handoff rules:
+ * Fase 10: lock StorePerformance handoff rules:
  *   R1  dashboard & Performa Toko page share the exact same formula contract (StorePerformanceService::build).
  *   R4  ALL orders (transfer & COD) count toward omzet from processing onward;
  *      realization (cash-in) is measured separately via "Pembayaran Diterima" (paid_at).
@@ -23,10 +23,11 @@ use Tests\TestCase;
 class StorePerformanceF10RulesTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function codOrder(string $number, string $status = 'processing', int $total = 1000): Order
     {
-        return Order::create([
+        $order = Order::create([
             'order_number' => $number,
             'customer_name' => 'COD Order F10',
             'customer_phone' => '081277733311',
@@ -45,6 +46,8 @@ class StorePerformanceF10RulesTest extends TestCase
             'payment_method' => 'cod',
             'cod_flag' => true,
         ]);
+
+        return $this->tanamEventPengakuan($order);
     }
 
     private function attachItem(Order $order, int $unitPrice = 1000, int $quantity = 1, string $model = 'COD-MODEL', string $design = 'POLOS'): OrderItem
@@ -116,6 +119,7 @@ class StorePerformanceF10RulesTest extends TestCase
             'payment_method' => 'transfer',
             'cod_flag' => false,
         ]);
+        $this->tanamEventPengakuan($transfer);
         $this->attachItem($transfer, 1000, 2, 'T-MODEL', 'POLOS');
 
         $metrics = app(StorePerformanceService::class)->metricsFor(now()->startOfDay(), now()->endOfDay());
@@ -202,15 +206,21 @@ class StorePerformanceF10RulesTest extends TestCase
 
     public function test_r8_query_does_not_rely_on_sqlite_only_functions(): void
     {
+        // Aturan omzet kini himpunan pengakuan berbasis event (P0.2): pembangun
+        // himpunannya murni Eloquent plus penyaring payload di PHP, tanpa SQL
+        // mentah, jadi tidak ada fungsi khusus sqlite yang bisa menyelinap.
         $service = app(StorePerformanceService::class);
-        $reflection = new \ReflectionMethod($service, 'paidRevenueStatusSql');
-        $reflection->setAccessible(true);
-        $sql = $reflection->invoke($service, 'orders');
 
-        $this->assertStringContainsString('order_status', $sql);
-        $this->assertStringNotContainsString('cod_flag', $sql);
-        $this->assertStringNotContainsString('strftime', $sql);
-        $this->assertStringNotContainsString('group_concat', $sql);
+        $this->assertFalse(
+            method_exists($service, 'paidRevenueStatusSql'),
+            'SQL mentah aturan omzet harus sudah diganti himpunan pengakuan event.'
+        );
+
+        $refleksi = new \ReflectionMethod($service, 'recognizedOrderIds');
+        $refleksi->setAccessible(true);
+        $id = $refleksi->invoke($service, now()->startOfDay(), now()->endOfDay());
+
+        $this->assertIsArray($id);
     }
 }
 

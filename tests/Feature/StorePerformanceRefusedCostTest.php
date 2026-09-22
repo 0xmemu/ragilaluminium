@@ -25,6 +25,7 @@ use Tests\TestCase;
 class StorePerformanceRefusedCostTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeProduct(int $sku): Product
     {
@@ -47,7 +48,7 @@ class StorePerformanceRefusedCostTest extends TestCase
      */
     private function makeOrder(array $overrides = []): Order
     {
-        return Order::create(array_merge([
+        $order = Order::create(array_merge([
             'order_number' => 'RC-'.uniqid(),
             'customer_name' => 'Pelanggan Menolak',
             'customer_phone' => '0813'.random_int(10000000, 99999999),
@@ -69,6 +70,8 @@ class StorePerformanceRefusedCostTest extends TestCase
             'payment_method' => 'cod',
             'cod_flag' => true,
         ], $overrides));
+
+        return $this->tanamEventPengakuan($order);
     }
 
     private function addItem(Order $order, Product $product, int $qty = 1, int $price = 800000): void

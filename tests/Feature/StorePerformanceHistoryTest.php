@@ -17,10 +17,11 @@ use Tests\TestCase;
 class StorePerformanceHistoryTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function order(string $number, string $status = 'processing', int $total = 1000, string $phone = '081234567890'): Order
     {
-        return Order::create([
+        $order = Order::create([
             'order_number' => $number,
             'customer_name' => 'History Test',
             'customer_phone' => $phone,
@@ -39,6 +40,8 @@ class StorePerformanceHistoryTest extends TestCase
             'payment_method' => 'transfer',
             'cod_flag' => false,
         ]);
+
+        return $this->tanamEventPengakuan($order);
     }
 
     private function item(Order $order, int $unitPrice = 1000, int $quantity = 1, string $model = 'SLIDING', string $design = 'PUTIH'): OrderItem

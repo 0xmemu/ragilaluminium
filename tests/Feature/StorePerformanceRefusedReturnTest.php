@@ -22,6 +22,7 @@ use Tests\TestCase;
 class StorePerformanceRefusedReturnTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeProduct(int $sku): Product
     {
@@ -39,7 +40,7 @@ class StorePerformanceRefusedReturnTest extends TestCase
 
     private function makeCodOrder(int $amount, string $status): Order
     {
-        return Order::create([
+        $order = Order::create([
             'order_number' => 'REF-'.uniqid(),
             'customer_name' => 'Pelanggan Menolak',
             'customer_phone' => '0812'.random_int(10000000, 99999999),
@@ -58,6 +59,8 @@ class StorePerformanceRefusedReturnTest extends TestCase
             'payment_method' => 'cod',
             'cod_flag' => true,
         ]);
+
+        return $this->tanamEventPengakuan($order);
     }
 
     private function addItem(Order $order, Product $product, int $qty, int $price): void

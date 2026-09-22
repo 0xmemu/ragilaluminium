@@ -19,11 +19,12 @@ use Tests\TestCase;
  * dari StorePerformanceService::build().
  *
  * Jika shape/urutan/atribut di sini berubah, Dashboard.tsx (MetricTile, TrendBars)
- * akan pecah — jadi setiap perubahan kontrak harus disengaja.
+ * akan pecah, jadi setiap perubahan kontrak harus disengaja.
  */
 class StorePerformanceContractTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private const DASHBOARD_TRAFFIC_KEYS = [
         'visitors',
@@ -77,6 +78,8 @@ class StorePerformanceContractTest extends TestCase
             'payment_method' => 'transfer',
             'cod_flag' => false,
         ]);
+        $this->tanamEventPengakuan($order);
+
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -173,7 +176,7 @@ class StorePerformanceContractTest extends TestCase
         $this->createFulfilledOrder('RA-CONTRACT-0002', 1_500_000);
 
         // SQLite menyimpan metric_date cast date sebagai 'Y-m-d 00:00:00', sedangkan
-        // visitorsBetween memakai whereBetween string tanggal — di MySQL kolom DATE
+        // visitorsBetween memakai whereBetween string tanggal, di MySQL kolom DATE
         // men-trim time jadi ini artefak env test. Insert raw menyimpan plain date
         // persis seperti perilaku produksi, sehingga kontrak tetap teruji.
         DB::table('performance_metrics')->insert([
@@ -245,6 +248,8 @@ class StorePerformanceContractTest extends TestCase
                 'created_at' => $pastTime,
                 'updated_at' => $pastTime,
             ]);
+            $yesterdayOrder->refresh();
+            $this->tanamEventPengakuan($yesterdayOrder);
             $this->createFulfilledOrder('RA-CONTRACT-0003', 2_000_000);
 
             $report = $service->build('today');

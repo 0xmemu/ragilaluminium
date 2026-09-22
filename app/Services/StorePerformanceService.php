@@ -28,11 +28,10 @@ class StorePerformanceService
 
     public const COMPLETED_STATUSES = ['completed'];
 
-    // Status pesanan yang dihitung sebagai 'pesanan valid' utk KPI Pesanan & tingkat konversi
-    // (konsisten dgn omzet: exclude pending, cancelled, issue).
-    public const VALID_ORDER_STATUSES = self::REVENUE_STATUSES;
-
     public const OPEN_STATUSES = ['awaiting_confirmation', 'processing', 'shipped'];
+
+    /** Cache himpunan pengakuan per jendela, diisi recognizedOrderIds(). */
+    protected array $recognizedCache = [];
 
     /**
      * Cakupan dan tanggal acuan setiap metrik yang dilaporkan halaman ini.
@@ -52,14 +51,14 @@ class StorePerformanceService
      */
     public const METRIC_BASIS = [
         // --- Penjualan, semuanya terikat periode ---
-        'omzet' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'models' => ['unit' => 'model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'sub_models' => ['unit' => 'sub model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'products' => ['unit' => 'produk', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'units' => ['unit' => 'unit', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'avg_unit_price' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'aov' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'omzet' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'models' => ['unit' => 'model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'sub_models' => ['unit' => 'sub model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'products' => ['unit' => 'produk', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'units' => ['unit' => 'unit', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'avg_unit_price' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'aov' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
         'completed_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan selesai'],
 
         // --- Kunjungan & pelanggan ---
@@ -68,10 +67,10 @@ class StorePerformanceService
         // Pembilang dari rasio konversi: jumlah pembeli unik pada pesanan
         // berstatus omzet dalam rentang, dihitung per nomor telepon. Dipakai
         // drawer Pengunjung pada baris Pembeli Unik.
-        'buyers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'new_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'repeat_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'repeat_order_rate' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'buyers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'new_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'repeat_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
+        'repeat_order_rate' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
 
         // --- Operasional ---
         // Dua metrik antrean ini membaca keadaan sekarang, tanpa tanggal.
@@ -102,13 +101,13 @@ class StorePerformanceService
         'returns_created' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
         'returns_open' => ['unit' => 'kasus', 'scope' => 'current', 'anchor' => null],
         'returns_completed' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'refused_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'refused_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
         'refund_given' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'return_rate_created' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
         'return_rate_completed' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'return_shipping_cost_total' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'return_shipping_cost_cases' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'refused_borne_cost' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'refused_borne_cost' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
         'cancelled_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
         'cancelled_by_customer' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
         'cancelled_by_store' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
@@ -396,6 +395,9 @@ class StorePerformanceService
     public function build(string $period = 'today', ?string $from = null, ?string $to = null, ?string $granularity = null): array
     {
         $range = $this->resolveRange($period, $from, $to, $granularity);
+        // Cache pengakuan berlaku satu build saja: data bisa berubah di antara
+        // dua build pada instance yang sama (pola yang dipakai test).
+        $this->recognizedCache = [];
         // KPI-002: saat periode masih berjalan, bandingkan current sampai 'sekarang' (elapsed sama),
         // bukan endOfDay penuh, agar setara dgn previous yang dipotong di jam yang sama.
         // KPI-002: periode berjalan dibandingkan sampai 'sekarang'. Namun
@@ -607,6 +609,7 @@ class StorePerformanceService
                 'end_boundary' => 'Inklusif: hari terakhir dihitung sampai 23:59:59.999999',
                 'running_period' => 'Periode berjalan dipotong ke waktu laporan dibangun',
                 'comparison' => 'Periode berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, periode selesai dibandingkan penuh',
+                'recognition' => 'Pesanan dihitung bila dibuat dalam periode dan mencapai Diproses paling lambat akhir periode',
                 'per_metric' => 'Kolom tanggal tiap metrik tercantum di metric_basis.anchor',
             ],
             'sections' => [
@@ -688,11 +691,15 @@ class StorePerformanceService
      */
     public function metricsFor(Carbon $from, Carbon $to): array
     {
-        $base = Order::query()->whereBetween('created_at', [$from, $to]);
-
-        $base = (clone $base)->whereIn('order_status', self::VALID_ORDER_STATUSES);
+        // Pengakuan penjualan (P0.2, keputusan owner 2026-09-22): pesanan yang
+        // DIBUAT dalam periode DAN tercatat mencapai Diproses paling lambat
+        // akhir periode. Satu himpunan dipakai semua metrik penjualan, grafik,
+        // top produk, dan pelanggan supaya tidak ada formula kedua.
+        $recognizedIds = $this->recognizedOrderIds($from, $to);
+        $base = Order::query()->whereBetween('created_at', [$from, $to])
+            ->whereIn('id', $recognizedIds);
         $orders = (clone $base)->count();
-        $revenueOrders = $this->paidRevenueScope(clone $base);
+        $revenueOrders = clone $base;
         $revenue = (float) (clone $revenueOrders)->sum('total_amount');
         // Total transaksi pelanggan mencakup ongkir net + biaya COD. Keduanya
         // diterima toko hanya untuk diteruskan ke J&T, bukan pendapatan toko.
@@ -959,12 +966,12 @@ class StorePerformanceService
             'cancelled_value' => $cancellationCounts['value'],
             'cancelled_by_customer' => $cancellationCounts['customer'],
             'cancelled_by_store' => $cancellationCounts['store'],
-            // Pembilang dan penyebut kini dari populasi yang sama: pesanan yang
-            // DIBUAT pada periode ini. Sebelumnya pembilang memuat pembatalan
-            // pesanan lama, sehingga rasionya bisa melewati 100 persen.
-            'cancellation_rate' => $orders + $cancellationCounts['in_period'] > 0
-                ? round(($cancellationCounts['in_period'] / ($orders + $cancellationCounts['in_period'])) * 100, 2)
-                : 0.0,
+            // Penyebut = GABUNGAN pesanan yang diakui dan pesanan yang
+            // dibatalkan pada periode ini, tanpa hitung ganda. Sebelumnya
+            // penjumlahan dua hitungan; sejak pengakuan memakai himpunan
+            // event, pesanan bisa diakui lalu dibatalkan pada periode sama,
+            // dan penjumlahan akan menghitungnya dua kali.
+            'cancellation_rate' => $this->cancellationRate($from, $to, $recognizedIds, $cancellationCounts),
         ];
     }
 
@@ -1146,7 +1153,7 @@ class StorePerformanceService
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
                 ->selectRaw('COUNT(*) as value')
                 ->whereBetween('created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql())
+                ->whereIn('id', $this->recognizedOrderIds($from, $to))
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
             $visitorRows = PerformanceVisitorEvent::query()
@@ -1181,7 +1188,7 @@ class StorePerformanceService
                 ->selectRaw("COUNT(DISTINCT {$produkRef}) as value")
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql('orders'))
+                ->whereIn('orders.id', $this->recognizedOrderIds($from, $to))
                 ->havingRaw("COUNT(DISTINCT {$produkRef}) > 0")
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
@@ -1191,7 +1198,7 @@ class StorePerformanceService
                 ->selectRaw('SUM(order_items.quantity) as value')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql('orders'))
+                ->whereIn('orders.id', $this->recognizedOrderIds($from, $to))
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         } elseif ($metric === 'revenue') {
@@ -1199,7 +1206,7 @@ class StorePerformanceService
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
                 ->selectRaw('SUM(total_amount) as value')
                 ->whereBetween('created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql())
+                ->whereIn('id', $this->recognizedOrderIds($from, $to))
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         } else {
@@ -1207,7 +1214,7 @@ class StorePerformanceService
                 ->selectRaw($this->bucketSelect('created_at', $granularity).' as bucket')
                 ->selectRaw('COUNT(*) as value')
                 ->whereBetween('created_at', [$from, $to])
-                ->whereRaw($this->paidRevenueStatusSql())
+                ->whereIn('id', $this->recognizedOrderIds($from, $to))
                 ->groupBy('bucket')
                 ->pluck('value', 'bucket');
         }
@@ -1230,7 +1237,7 @@ class StorePerformanceService
      * timestamp = event_logs.created_at, actor = created_by_user_id.
      * Dedupe per entity_id (status cancelled terminal -> maks 1, guard retry).
      *
-     * @return array{total: int, customer: int, store: int, value: float}
+     * @return array{total: int, customer: int, store: int, value: float, in_period: int, in_period_ids: list<int>}
      */
     protected function cancellationCounts(Carbon $from, Carbon $to): array
     {
@@ -1259,19 +1266,24 @@ class StorePerformanceService
         // sebagai pembilang rasio supaya pembilang berada di dalam populasi
         // penyebut (pesanan yang dibuat periode itu), sehingga rasionya tidak
         // bisa melewati 100 persen karena pembatalan pesanan lama.
-        $inPeriod = $orderIds === []
-            ? 0
-            : (int) Order::query()
+        $inPeriodIds = $orderIds === []
+            ? []
+            : Order::query()
                 ->whereIn('id', $orderIds)
                 ->whereBetween('created_at', [$from, $to])
-                ->count();
+                ->pluck('id')
+                ->all();
 
         return [
             'total' => $dedup->count(),
             'customer' => $customer,
             'store' => $store,
             'value' => round($cancelledValue, 2),
-            'in_period' => $inPeriod,
+            'in_period' => count($inPeriodIds),
+            // Id pesanan batal yang DIBUAT pada periode, dipakai penyebut rasio
+            // pembatalan supaya gabungannya dengan himpunan pengakuan bebas
+            // hitung ganda.
+            'in_period_ids' => $inPeriodIds,
         ];
     }
 
@@ -1331,7 +1343,7 @@ class StorePerformanceService
                 DB::raw('COUNT(DISTINCT order_items.order_id) as order_count')])
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereRaw($this->paidRevenueStatusSql('orders'))
+            ->whereIn('orders.id', $this->recognizedOrderIds($from, $to))
             ->groupBy('order_items.product_id', 'order_items.parent_sku', 'order_items.name')
             ->orderByDesc('units')
             ->limit($limit)
@@ -1409,7 +1421,7 @@ class StorePerformanceService
             ])
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereRaw($this->paidRevenueStatusSql('orders'))
+            ->whereIn('orders.id', $this->recognizedOrderIds($from, $to))
             ->groupBy('order_items.product_id', 'order_items.parent_sku', 'order_items.name')
             ->orderByDesc('revenue')
             ->limit($limit)
@@ -1450,7 +1462,9 @@ class StorePerformanceService
                 'customer_phone',
                 DB::raw('MAX(customer_name) as customer_name'),
                 DB::raw('COUNT(*) as order_count'),
-                DB::raw('SUM(CASE WHEN '.$this->paidRevenueStatusSql().' THEN total_amount ELSE 0 END) as total_spent'),
+                // Pengakuan memakai himpunan event, bukan status saat ini;
+                // daftar id di-inline karena CASE WHEN tidak bisa memakai whereIn.
+                DB::raw('SUM(CASE WHEN orders.id IN ('.implode(',', $this->recognizedOrderIds($from, $to) ?: [0]).') THEN total_amount ELSE 0 END) as total_spent'),
                 DB::raw('MAX(created_at) as last_order_at'),
             ])
             ->whereBetween('created_at', [$from, $to])
@@ -1481,7 +1495,7 @@ class StorePerformanceService
                 DB::raw('SUM(total_amount) as revenue'),
             ])
             ->whereBetween('created_at', [$from, $to])
-            ->whereRaw($this->paidRevenueStatusSql())
+            ->whereIn('id', $this->recognizedOrderIds($from, $to))
             ->groupBy('payment_method')
             ->orderByDesc('revenue')
             ->get()
@@ -1652,10 +1666,11 @@ class StorePerformanceService
 
     protected function customerCounts(Carbon $from, Carbon $to): array
     {
-        // KPI-011: 'customer' punya order VALID (konsisten dgn KPI-003), exclude pending/cancelled.
+        // KPI-011: 'customer' dihitung dari himpunan pengakuan yang sama dengan
+        // KPI-003, jadi pembeli ikut beku terhadap pembatalan pasca periode.
         $phonesInPeriod = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('order_status', self::VALID_ORDER_STATUSES)
+            ->whereIn('id', $this->recognizedOrderIds($from, $to))
             ->whereNotNull('customer_phone')
             ->distinct()
             ->pluck('customer_phone');
@@ -1675,6 +1690,81 @@ class StorePerformanceService
         $new = $phonesInPeriod->diff($priorPhones)->count();
 
         return [$new, $repeat];
+    }
+
+    /**
+     * Himpunan id pesanan yang DIKENALI sebagai penjualan untuk periode
+     * [from, to], menurut keputusan owner 2026-09-22 (P0.2):
+     *
+     *     Pesanan dihitung bila DIBUAT dalam periode DAN TERCATAT mencapai
+     *     status Diproses (event_logs, event_type order_status_changed,
+     *     payload.order_status = 'processing') pada atau sebelum akhir
+     *     periode.
+     *
+     * Kualifikasi diuji HINGGA AKHIR PERIODE, bukan status saat ini, sehingga
+     * keanggotaannya beku: pembatalan setelah periode berakhir tidak
+     * menghapus pesanan dari laporan periode itu. Konsekuensi yang disetujui:
+     * pesanan yang baru Diproses setelah periode berakhir tidak dihitung di
+     * periode mana pun, karena bucket tetap tanggal dibuat. Pesanan tanpa
+     * catatan event tidak terhitung, karena satu-satunya bukti pengakuan
+     * memang catatan event.
+     *
+     * Hasilnya di-cache per jendela karena satu build() memakai jendela yang
+     * sama di metrik, grafik, top produk, dan pelanggan.
+     *
+     * @return list<int>
+     */
+    protected function recognizedOrderIds(Carbon $from, Carbon $to): array
+    {
+        $kunci = $from->format('YmdHis').'|'.$to->format('YmdHis');
+        if (array_key_exists($kunci, $this->recognizedCache)) {
+            return $this->recognizedCache[$kunci];
+        }
+
+        $kandidat = Order::query()->whereBetween('created_at', [$from, $to])->pluck('id');
+        if ($kandidat->isEmpty()) {
+            return $this->recognizedCache[$kunci] = [];
+        }
+
+        $diakui = [];
+        foreach (EventLog::query()
+            ->where('entity_type', 'order')
+            ->whereIn('entity_id', $kandidat->map(fn ($v): string => (string) $v)->all())
+            ->where('event_type', 'order_status_changed')
+            ->where('created_at', '<=', $to)
+            ->orderBy('created_at')
+            ->get(['entity_id', 'payload']) as $event) {
+            if ((string) data_get($event->payload, 'order_status') === 'processing') {
+                $diakui[(int) $event->entity_id] = true;
+            }
+        }
+
+        return $this->recognizedCache[$kunci] = array_map('intval', array_keys($diakui));
+    }
+
+    /**
+     * Rasio pembatalan dengan penyebut GABUNGAN: pesanan yang diakui pada
+     * periode digabung pesanan yang dibatalkan pada periode yang sama, tanpa
+     * hitung ganda. Pembilang tetap pembatalan yang pesanannya DIBUAT pada
+     * periode yang sama, supaya rasio tidak bisa melewati 100 persen.
+     */
+    protected function cancellationRate(Carbon $from, Carbon $to, array $recognizedIds, array $cancellationCounts): float
+    {
+        $batalPeriode = array_values(array_unique(array_merge(
+            $recognizedIds,
+            (array) ($cancellationCounts['in_period_ids'] ?? [])
+        )));
+        if ($batalPeriode === []) {
+            return 0.0;
+        }
+
+        $populasi = (int) Order::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('id', $batalPeriode)
+            ->count();
+        $pembilang = (int) ($cancellationCounts['in_period'] ?? 0);
+
+        return $populasi > 0 ? round(($pembilang / $populasi) * 100, 2) : 0.0;
     }
 
     /**
@@ -2113,22 +2203,6 @@ class StorePerformanceService
         return $buckets;
     }
 
-    /**
-     * Whether an order counts as omzet (revenue).
-     * Rule omzet (owner 2026-08-22): SEMUA pesanan (transfer & COD) dihitung omzet
-     * sejak memasuki fulfillment (processing), apa pun metode bayarnya.
-     * Realisasi/uang masuk dibedakan lewat metrik "Pembayaran Diterima" (paid_at), bukan di sini.
-     */
-    protected function paidRevenueStatusSql(string $alias = ''): string
-    {
-        // Rule omzet (owner 2026-08-22): SEMUA pesanan (transfer & COD) yang masuk alur
-        // fulfillment dihitung omzet sejak processing, apa pun metode bayarnya.
-        // Terealisasi (uang masuk) dibedakan lewat metrik "Pembayaran Diterima" (paid_at),
-        // bukan dengan menunda pengakuan omzet COD ke completed.
-        $prefix = $alias !== '' ? $alias.'.' : '';
-
-        return "{$prefix}order_status IN (".implode(',', array_map(fn (string $v): string => "'".$v."'", self::REVENUE_STATUSES)).')';
-    }
 
     /**
      * MySQL + SQLite compatible distinct count of catalogue models sold.
@@ -2239,8 +2313,4 @@ class StorePerformanceService
         return $dates;
     }
 
-    protected function paidRevenueScope($query, string $alias = '')
-    {
-        return $query->whereRaw($this->paidRevenueStatusSql($alias));
-    }
 }

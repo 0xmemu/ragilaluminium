@@ -22,6 +22,7 @@ use Tests\TestCase;
 class StorePerformanceTrendCoverageTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     /** Kunci chart yang wajib ada, sejajar dengan kartu KPI di baris atas. */
     private const CHART_KEYS = [
@@ -89,7 +90,7 @@ class StorePerformanceTrendCoverageTest extends TestCase
             'line_total' => 1_000_000 * $quantity,
         ]);
 
-        return $order;
+        return $this->tanamEventPengakuan($order);
     }
 
     public function test_setiap_chart_yang_dibutuhkan_kartu_tersedia(): void

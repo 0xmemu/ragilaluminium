@@ -15,6 +15,7 @@ use Tests\TestCase;
 class StorePerformanceTask3Test extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeProduct(int $sku): Product
     {
@@ -59,7 +60,7 @@ class StorePerformanceTask3Test extends TestCase
             DB::table('orders')->where('id', $order->id)
                 ->update(['created_at' => $createdAt, 'updated_at' => $createdAt]);
         }
-        return $order->fresh();
+        return $this->tanamEventPengakuan($order->fresh());
     }
 
     private function addItem(Order $order, Product $product, int $qty, int $price): void

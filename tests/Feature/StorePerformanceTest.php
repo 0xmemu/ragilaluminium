@@ -14,6 +14,7 @@ use Tests\TestCase;
 class StorePerformanceTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     public function test_admin_store_performance_page_renders_report(): void
     {
@@ -76,6 +77,7 @@ class StorePerformanceTest extends TestCase
         ]);
         // Fix line totals vs order total for metrics (units from items, revenue from order).
         $paid->update(['subtotal_amount' => 2000000, 'total_amount' => 2000000]);
+        $this->tanamEventPengakuan($paid);
 
         Order::create([
             'order_number' => 'RA-PERF-PEND',

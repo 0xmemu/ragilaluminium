@@ -17,6 +17,7 @@ use Tests\TestCase;
 class StorePerformanceTask2Test extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeProduct(int $sku): Product
     {
@@ -61,7 +62,7 @@ class StorePerformanceTask2Test extends TestCase
             DB::table('orders')->where('id', $order->id)
                 ->update(['created_at' => $createdAt, 'updated_at' => $createdAt]);
         }
-        return $order->fresh();
+        return $this->tanamEventPengakuan($order->fresh());
     }
 
     private function makePayment(Order $order, string $method, string $amount, string $status, ?Carbon $paidAt = null): Payment
@@ -211,8 +212,11 @@ class StorePerformanceTask2Test extends TestCase
         $this->makeCancelEvent($c->id, $admin->id, today()->startOfDay()->addMinutes(5));
 
         $m = $this->metricsForToday();
-        // rate = cancelled/(cancelled+orders) = 1/(1+3) = 25
-        $this->assertSame(25.0, $m['cancellation_rate']);
+        // Penyebut = GABUNGAN pesanan yang diakui dan yang dibatalkan pada
+        // periode ini. c diakui (pernah Diproses) lalu dibatalkan pada periode
+        // yang sama, jadi dihitung SEKALI: populasi = {a, b, c} = 3.
+        // rate = 1/3 = 33.33, bukan 1/(1+3) hasil menjumlahkan dua hitungan.
+        $this->assertSame(33.33, $m['cancellation_rate']);
     }
 
     public function test_cancellation_rate_zero_when_no_event_and_no_orders(): void

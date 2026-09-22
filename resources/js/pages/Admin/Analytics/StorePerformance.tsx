@@ -568,6 +568,7 @@ const LABEL_KONTRAK_TANGGAL: Record<string, string> = {
   running_period: "Periode Berjalan",
   comparison: "Cara Membandingkan",
   per_metric: "Tanggal Acuan per Metrik",
+  recognition: "Pengakuan Penjualan",
 }
 
 const LABEL_DASAR_TAMBAHAN: Record<string, string> = {

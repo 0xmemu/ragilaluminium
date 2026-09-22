@@ -22,6 +22,7 @@ use Tests\TestCase;
 class StorePerformancePeriodeSnapshotTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function order(
         string $nomor,
@@ -56,7 +57,7 @@ class StorePerformancePeriodeSnapshotTest extends TestCase
             Order::whereKey($order->id)->update(['created_at' => $dibuat, 'updated_at' => $dibuat]);
         }
 
-        return $order->fresh();
+        return $this->tanamEventPengakuan($order->fresh());
     }
 
     private function item(Order $order, string $model = 'SLIDING', string $desain = 'POLOS', ?string $varian = 'VAR-1'): OrderItem
