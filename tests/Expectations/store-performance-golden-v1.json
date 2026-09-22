@@ -1,0 +1,2856 @@
+{
+    "charts": [
+        {
+            "key": "revenue",
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 300000
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 300000,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 2000000
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 1000000
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 650000
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 500000
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 800000
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Penjualan Gross",
+            "total": 4950000,
+            "total_format": "currency"
+        },
+        {
+            "key": "orders",
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 1,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Pesanan",
+            "total": 5,
+            "total_format": "number"
+        },
+        {
+            "key": "products",
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 1,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 2
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Produk Terjual",
+            "total": 5,
+            "total_format": "number"
+        },
+        {
+            "key": "units",
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 1,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 2
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 1
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 2
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Unit Terjual",
+            "total": 6,
+            "total_format": "number"
+        },
+        {
+            "key": "visitors",
+            "previous_measured": false,
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 0,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 4
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 4
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Pengunjung Unik",
+            "total": 8,
+            "total_format": "number"
+        },
+        {
+            "key": "conversion_rate",
+            "previous_measured": false,
+            "previous_series": [
+                {
+                    "bucket": "2026-07-01",
+                    "label": "1 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-02",
+                    "label": "2 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-03",
+                    "label": "3 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-04",
+                    "label": "4 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-05",
+                    "label": "5 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-06",
+                    "label": "6 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-07",
+                    "label": "7 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-08",
+                    "label": "8 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-09",
+                    "label": "9 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-10",
+                    "label": "10 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-11",
+                    "label": "11 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-12",
+                    "label": "12 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-13",
+                    "label": "13 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-14",
+                    "label": "14 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-15",
+                    "label": "15 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-16",
+                    "label": "16 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-17",
+                    "label": "17 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-18",
+                    "label": "18 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-19",
+                    "label": "19 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-20",
+                    "label": "20 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-21",
+                    "label": "21 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-22",
+                    "label": "22 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-23",
+                    "label": "23 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-24",
+                    "label": "24 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-25",
+                    "label": "25 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-26",
+                    "label": "26 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-27",
+                    "label": "27 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-28",
+                    "label": "28 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-29",
+                    "label": "29 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-30",
+                    "label": "30 Jul",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-07-31",
+                    "label": "31 Jul",
+                    "value": 0
+                }
+            ],
+            "previous_total": 0,
+            "series": [
+                {
+                    "bucket": "2026-08-01",
+                    "label": "1 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-02",
+                    "label": "2 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-03",
+                    "label": "3 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-04",
+                    "label": "4 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-05",
+                    "label": "5 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-06",
+                    "label": "6 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-07",
+                    "label": "7 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-08",
+                    "label": "8 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-09",
+                    "label": "9 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-10",
+                    "label": "10 Agt",
+                    "value": 25
+                },
+                {
+                    "bucket": "2026-08-11",
+                    "label": "11 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-12",
+                    "label": "12 Agt",
+                    "value": 25
+                },
+                {
+                    "bucket": "2026-08-13",
+                    "label": "13 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-14",
+                    "label": "14 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-15",
+                    "label": "15 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-16",
+                    "label": "16 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-17",
+                    "label": "17 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-18",
+                    "label": "18 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-19",
+                    "label": "19 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-20",
+                    "label": "20 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-21",
+                    "label": "21 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-22",
+                    "label": "22 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-23",
+                    "label": "23 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-24",
+                    "label": "24 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-25",
+                    "label": "25 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-26",
+                    "label": "26 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-27",
+                    "label": "27 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-28",
+                    "label": "28 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-29",
+                    "label": "29 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-30",
+                    "label": "30 Agt",
+                    "value": 0
+                },
+                {
+                    "bucket": "2026-08-31",
+                    "label": "31 Agt",
+                    "value": 0
+                }
+            ],
+            "title": "Tren Pengunjung yang Membeli",
+            "total": 62.5,
+            "total_format": "percent"
+        }
+    ],
+    "customers": [
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "081200000022",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 2000000
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "0812000000d6",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 1000000
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "081200000039",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 800000
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "0812000000f4",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 650000
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "08120000009f",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 500000
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "0812000000da",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 0
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "081200000081",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 0
+        },
+        {
+            "customer_name": "Pelanggan Golden",
+            "customer_phone": "081200000043",
+            "last_order_at": null,
+            "order_count": 1,
+            "total_spent": 0
+        }
+    ],
+    "date_contract": {
+        "comparison": "Periode berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, periode selesai dibandingkan penuh",
+        "end_boundary": "Inklusif: hari terakhir dihitung sampai 23:59:59.999999",
+        "per_metric": "Kolom tanggal tiap metrik tercantum di metric_basis.anchor",
+        "recognition": "Pesanan dihitung bila dibuat dalam periode dan mencapai Diproses paling lambat akhir periode",
+        "running_period": "Periode berjalan dipotong ke waktu laporan dibangun",
+        "start_boundary": "Inklusif: hari pertama dihitung sejak 00:00:00",
+        "timezone": "Asia/Jakarta"
+    },
+    "financial": {
+        "buyer_orders": 5,
+        "buyers": 5,
+        "cod_fee": 15000,
+        "cod_paid": 500000,
+        "cod_pending_amount": 0,
+        "cod_pending_count": 0,
+        "cod_pending_in_period_amount": 0,
+        "cod_pending_in_period_count": 0,
+        "definition": "Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.",
+        "gross_revenue": 4950000,
+        "insurance": 10000,
+        "items_before_discount": 4950000,
+        "net_revenue": 4030000,
+        "payment_pending_count": 0,
+        "payments_received": 3500000,
+        "product_discount": 0,
+        "refund_adjustments": 150000,
+        "refused_borne_cost": 35000,
+        "refused_borne_count": 1,
+        "refused_cod_fee": 10000,
+        "refused_goods_value": 650000,
+        "refused_shipping_cost": 25000,
+        "return_shipping_store": 45000,
+        "shipping_paid_by_customer": 45000,
+        "shipping_raw": 60000,
+        "shipping_subsidy": 5000,
+        "visitors": 8,
+        "visitors_available_from": "2026-08-10",
+        "voucher_discount": 0
+    },
+    "financial_previous": {
+        "cod_fee": 0,
+        "cod_paid": 0,
+        "gross_revenue": 300000,
+        "insurance": 0,
+        "items_before_discount": 300000,
+        "net_revenue": 300000,
+        "payments_received": 300000,
+        "refund_adjustments": 0,
+        "refused_cod_fee": 0,
+        "refused_goods_value": 0,
+        "refused_shipping_cost": 0,
+        "return_shipping_store": 0,
+        "shipping_paid_by_customer": 0,
+        "shipping_raw": 0,
+        "voucher_discount": 0
+    },
+    "metric_basis": {
+        "aov": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "avg_confirm_hours": {
+            "anchor": "Tanggal pesanan dibuat",
+            "marker": null,
+            "scope": "period",
+            "unit": "jam"
+        },
+        "avg_process_days": {
+            "anchor": "Tanggal pesanan dibuat",
+            "marker": null,
+            "scope": "period",
+            "unit": "hari"
+        },
+        "avg_unit_price": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "buyers": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "orang"
+        },
+        "cancellation_rate": {
+            "anchor": "Tanggal pembatalan dicatat",
+            "marker": null,
+            "scope": "period",
+            "unit": "persen"
+        },
+        "cancelled_by_customer": {
+            "anchor": "Tanggal pembatalan dicatat",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "cancelled_by_store": {
+            "anchor": "Tanggal pembatalan dicatat",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "cancelled_orders": {
+            "anchor": "Tanggal pembatalan dicatat",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "cancelled_value": {
+            "anchor": "Tanggal pembatalan dicatat",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "cod_paid": {
+            "anchor": "Tanggal pembayaran lunas",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "cod_pending_amount": {
+            "anchor": null,
+            "marker": "semua waktu",
+            "scope": "current",
+            "unit": "rupiah"
+        },
+        "cod_pending_count": {
+            "anchor": null,
+            "marker": "semua waktu",
+            "scope": "current",
+            "unit": "pesanan"
+        },
+        "cod_pending_in_period_amount": {
+            "anchor": "Tanggal pesanan dibuat",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "cod_pending_in_period_count": {
+            "anchor": "Tanggal pesanan dibuat",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "completed_orders": {
+            "anchor": "Tanggal pesanan selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "conversion": {
+            "anchor": "Tanggal kunjungan",
+            "marker": null,
+            "scope": "period",
+            "unit": "persen"
+        },
+        "dispatched_orders": {
+            "anchor": null,
+            "marker": "kondisi saat ini",
+            "scope": "current",
+            "unit": "pesanan"
+        },
+        "models": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "model"
+        },
+        "net_revenue": {
+            "anchor": "Tanggal pesanan dibuat dan tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "new_customers": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "orang"
+        },
+        "omzet": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "open_orders": {
+            "anchor": null,
+            "marker": "kondisi saat ini",
+            "scope": "current",
+            "unit": "pesanan"
+        },
+        "open_orders_in_period": {
+            "anchor": "Tanggal pesanan dibuat",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "orders": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "payment_pending_count": {
+            "anchor": null,
+            "marker": "kondisi saat ini",
+            "scope": "current",
+            "unit": "pembayaran"
+        },
+        "payments_received": {
+            "anchor": "Tanggal pembayaran lunas",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "products": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "produk"
+        },
+        "refund_given": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "refused_borne_cost": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "refused_orders": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "repeat_customers": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "orang"
+        },
+        "repeat_order_rate": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "persen"
+        },
+        "return_rate_completed": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "persen"
+        },
+        "return_rate_created": {
+            "anchor": "Tanggal retur diajukan",
+            "marker": null,
+            "scope": "period",
+            "unit": "persen"
+        },
+        "return_shipping_cost_cases": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "kasus"
+        },
+        "return_shipping_cost_total": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "return_value": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "returns": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "pesanan"
+        },
+        "returns_completed": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "kasus"
+        },
+        "returns_created": {
+            "anchor": "Tanggal retur diajukan",
+            "marker": null,
+            "scope": "period",
+            "unit": "kasus"
+        },
+        "returns_open": {
+            "anchor": null,
+            "marker": "kondisi saat ini",
+            "scope": "current",
+            "unit": "kasus"
+        },
+        "sub_models": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "sub model"
+        },
+        "units": {
+            "anchor": "Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode",
+            "marker": null,
+            "scope": "period",
+            "unit": "unit"
+        },
+        "visitors": {
+            "anchor": "Tanggal kunjungan",
+            "marker": null,
+            "scope": "period",
+            "unit": "kunjungan"
+        }
+    },
+    "payment_mix": [
+        {
+            "count": 3,
+            "method": "transfer",
+            "revenue": 3800000
+        },
+        {
+            "count": 2,
+            "method": "cod",
+            "revenue": 1150000
+        }
+    ],
+    "previous_has_data": true,
+    "product_breakdowns": {
+        "best_sellers": [
+            {
+                "image": null,
+                "name": "Produk KACA",
+                "order_count": 1,
+                "parent_sku": "GOLD-JK-KACA",
+                "product_id": 3,
+                "revenue": 500000,
+                "units": 2
+            },
+            {
+                "image": null,
+                "name": "Produk PUTIH",
+                "order_count": 1,
+                "parent_sku": "GOLD-SL-PUTIH",
+                "product_id": 1,
+                "revenue": 600000,
+                "units": 1
+            },
+            {
+                "image": null,
+                "name": "Produk HITAM",
+                "order_count": 1,
+                "parent_sku": "GOLD-SL-HITAM",
+                "product_id": 2,
+                "revenue": 400000,
+                "units": 1
+            },
+            {
+                "image": null,
+                "name": "Produk POLOS",
+                "order_count": 1,
+                "parent_sku": "GOLD-SL-POLOS",
+                "product_id": 4,
+                "revenue": 650000,
+                "units": 1
+            },
+            {
+                "image": null,
+                "name": "Produk FOST",
+                "order_count": 1,
+                "parent_sku": "GOLD-SL-FOST",
+                "product_id": 5,
+                "revenue": 2000000,
+                "units": 1
+            }
+        ],
+        "most_clicked": [],
+        "most_viewed": []
+    },
+    "range": {
+        "compare_from_date": "01 Jul 2026",
+        "compare_label": "vs 1 Jul 2026 00:00 - 31 Jul 2026 23:59",
+        "compare_to_date": "31 Jul 2026",
+        "from": "2026-08-01T00:00:00+07:00",
+        "from_date": "01 Agt 2026",
+        "from_date_iso": "2026-08-01",
+        "granularity": "day",
+        "input_diabaikan": [],
+        "is_running": false,
+        "label": "Rentang kustom",
+        "period": "custom",
+        "previous_from": "2026-07-01T00:00:00+07:00",
+        "previous_to": "2026-07-31T23:59:59+07:00",
+        "range_detail": "1 Agt 2026 00:00 - 31 Agt 2026 23:59",
+        "rentang_dipotong": false,
+        "to": "2026-08-31T23:59:59+07:00",
+        "to_date": "31 Agt 2026",
+        "to_date_iso": "2026-08-31"
+    },
+    "return_shipping_costs": [
+        {
+            "completed_at": "2026-08-18T09:00:00+07:00",
+            "fault_party": "other",
+            "order_id": 7,
+            "order_number": "ORD-GOLD-F",
+            "reason": "Uji golden",
+            "return_shipping_cost": 15000
+        },
+        {
+            "completed_at": "2026-08-26T10:00:00+07:00",
+            "fault_party": "other",
+            "order_id": 8,
+            "order_number": "ORD-GOLD-G",
+            "reason": "Uji golden",
+            "return_shipping_cost": 30000
+        }
+    ],
+    "sections": [
+        {
+            "key": "sales",
+            "kpis": [
+                {
+                    "change_percent": 1550,
+                    "detail": null,
+                    "format": "currency",
+                    "key": "omzet",
+                    "label": "Penjualan Gross",
+                    "previous": 300000,
+                    "value": 4950000
+                },
+                {
+                    "change_percent": 400,
+                    "detail": null,
+                    "format": "number",
+                    "key": "orders",
+                    "label": "Jumlah Pesanan",
+                    "previous": 1,
+                    "value": 5
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Jenis model yang terjual, tanpa membedakan desain. Satu model dengan dua desain tetap dihitung satu.",
+                    "format": "number",
+                    "key": "models",
+                    "label": "Model Produk Terjual",
+                    "previous": 1,
+                    "value": 2
+                },
+                {
+                    "change_percent": 400,
+                    "detail": "Model beserta desainnya. Satu model dengan dua desain dihitung dua.",
+                    "format": "number",
+                    "key": "sub_models",
+                    "label": "Sub Model Terjual",
+                    "previous": 1,
+                    "value": 5
+                },
+                {
+                    "change_percent": 400,
+                    "detail": "Produk berbeda yang terjual, dibedakan menurut varian ukuran. Produk yang dijual tanpa varian dihitung memakai kode SKU induknya.",
+                    "format": "number",
+                    "key": "products",
+                    "label": "Produk Terjual",
+                    "previous": 1,
+                    "value": 5
+                },
+                {
+                    "change_percent": 500,
+                    "detail": null,
+                    "format": "number",
+                    "key": "units",
+                    "label": "Jumlah Unit Terjual",
+                    "previous": 1,
+                    "value": 6
+                },
+                {
+                    "change_percent": 175,
+                    "detail": null,
+                    "format": "currency",
+                    "key": "avg_unit_price",
+                    "label": "Harga Rata-rata per Unit",
+                    "previous": 300000,
+                    "value": 825000
+                },
+                {
+                    "change_percent": 230,
+                    "detail": null,
+                    "format": "currency",
+                    "key": "aov",
+                    "label": "Rata-rata Nilai Pesanan",
+                    "previous": 300000,
+                    "value": 990000
+                },
+                {
+                    "change_percent": 100,
+                    "detail": null,
+                    "format": "number",
+                    "key": "completed_orders",
+                    "label": "Pesanan Selesai",
+                    "previous": 1,
+                    "value": 2
+                }
+            ],
+            "title": "Penjualan"
+        },
+        {
+            "key": "traffic",
+            "kpis": [
+                {
+                    "change_percent": 100,
+                    "detail": null,
+                    "format": "number",
+                    "key": "visitors",
+                    "label": "Pengunjung Unik",
+                    "previous": 0,
+                    "value": 8
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "5 pembeli dari 8 pengunjung",
+                    "format": "percent",
+                    "key": "conversion",
+                    "label": "Pengunjung yang Membeli",
+                    "previous": 0,
+                    "value": 62.5
+                },
+                {
+                    "change_percent": 400,
+                    "detail": null,
+                    "format": "number",
+                    "key": "new_customers",
+                    "label": "Pelanggan Baru",
+                    "previous": 1,
+                    "value": 5
+                },
+                {
+                    "change_percent": 0,
+                    "detail": null,
+                    "format": "number",
+                    "key": "repeat_customers",
+                    "label": "Pelanggan Ulang",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
+                    "change_percent": 0,
+                    "detail": null,
+                    "format": "percent",
+                    "key": "repeat_order_rate",
+                    "label": "Rasio Pelanggan Ulang",
+                    "previous": 0,
+                    "value": 0
+                }
+            ],
+            "title": "Kunjungan & Pelanggan"
+        },
+        {
+            "key": "operations",
+            "kpis": [
+                {
+                    "change_percent": null,
+                    "detail": "Seluruh pesanan yang belum selesai saat laporan dibangun: menunggu konfirmasi, sedang diproses, atau sudah dikirim. Tidak dibatasi periode.",
+                    "format": "number",
+                    "key": "open_orders",
+                    "label": "Pesanan Belum Selesai (kondisi saat ini)",
+                    "previous": null,
+                    "value": 2
+                },
+                {
+                    "change_percent": null,
+                    "detail": "Pesanan yang sedang dikirim saat laporan dibangun. Tidak dibatasi periode.",
+                    "format": "number",
+                    "key": "dispatched_orders",
+                    "label": "Dalam Pengiriman (kondisi saat ini)",
+                    "previous": null,
+                    "value": 0
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Pesanan yang DIBUAT pada periode terpilih dan sampai sekarang belum selesai. Berbeda dari antrean saat ini, yang menghitung seluruh pesanan terbuka tanpa melihat tanggal pembuatan.",
+                    "format": "number",
+                    "key": "open_orders_in_period",
+                    "label": "Pesanan Dibuat Periode Ini yang Masih Terbuka",
+                    "previous": 0,
+                    "value": 2
+                },
+                {
+                    "change_percent": 0,
+                    "detail": "Waktu dari pesanan masuk sampai dikonfirmasi admin.",
+                    "format": "hours",
+                    "key": "avg_confirm_hours",
+                    "label": "Rata-rata Waktu Konfirmasi",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
+                    "change_percent": 0,
+                    "detail": "Waktu dari dikonfirmasi sampai pesanan siap diserahkan ke kurir.",
+                    "format": "days",
+                    "key": "avg_process_days",
+                    "label": "Rata-rata Waktu Proses",
+                    "previous": 0,
+                    "value": 0
+                }
+            ],
+            "title": "Operasional"
+        },
+        {
+            "key": "payments",
+            "kpis": [
+                {
+                    "change_percent": 1243.3,
+                    "detail": "Penjualan Gross dikurangi refund retur yang benar-benar selesai.",
+                    "format": "currency",
+                    "key": "net_revenue",
+                    "label": "Penjualan Bersih",
+                    "previous": 300000,
+                    "value": 4030000
+                },
+                {
+                    "change_percent": 1066.7,
+                    "detail": "Pembayaran yang dana-nya benar-benar lunas pada periode.",
+                    "format": "currency",
+                    "key": "payments_received",
+                    "label": "Pembayaran Diterima",
+                    "previous": 300000,
+                    "value": 3500000
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.",
+                    "format": "currency",
+                    "key": "cod_paid",
+                    "label": "COD Selesai",
+                    "previous": 0,
+                    "value": 500000
+                },
+                {
+                    "change_percent": null,
+                    "detail": "Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun. Tidak dibatasi periode. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.",
+                    "format": "number",
+                    "key": "payment_pending_count",
+                    "label": "Pembayaran Transfer Pending (kondisi saat ini)",
+                    "previous": null,
+                    "value": 0
+                }
+            ],
+            "title": "Pembayaran"
+        },
+        {
+            "key": "returns_cancellations",
+            "kpis": [
+                {
+                    "change_percent": 100,
+                    "detail": "Jumlah pesanan berbeda yang returnya selesai pada periode dan barangnya benar benar kembali. Satu pesanan dengan dua kasus retur tetap dihitung satu. Refund tanpa barang kembali tidak masuk hitungan ini.",
+                    "format": "number",
+                    "key": "returns",
+                    "label": "Pesanan dengan Retur Barang Selesai",
+                    "previous": 0,
+                    "value": 2
+                },
+                {
+                    "change_percent": 100,
+                    "detail": null,
+                    "format": "currency",
+                    "key": "return_value",
+                    "label": "Nilai Retur",
+                    "previous": 0,
+                    "value": 2650000
+                },
+                {
+                    "change_percent": 0,
+                    "detail": null,
+                    "format": "number",
+                    "key": "returns_created",
+                    "label": "Retur Diajukan",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
+                    "change_percent": null,
+                    "detail": "Kasus retur yang masih terbuka saat laporan dibuat. Tidak dibatasi periode.",
+                    "format": "number",
+                    "key": "returns_open",
+                    "label": "Retur Aktif (kondisi saat ini)",
+                    "previous": null,
+                    "value": 0
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Jumlah kasus retur yang selesai pada periode, termasuk refund tanpa barang kembali. Satu pesanan bisa punya lebih dari satu kasus.",
+                    "format": "number",
+                    "key": "returns_completed",
+                    "label": "Kasus Retur Selesai",
+                    "previous": 0,
+                    "value": 2
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Pesanan yang paketnya kembali sebelum diterima pembeli dan belum pernah lunas. Barang kembali ke gudang tanpa menambah stok.",
+                    "format": "number",
+                    "key": "refused_orders",
+                    "label": "Pesanan Retur Paket",
+                    "previous": 0,
+                    "value": 1
+                },
+                {
+                    "change_percent": 100,
+                    "detail": null,
+                    "format": "currency",
+                    "key": "refund_given",
+                    "label": "Refund Diberikan",
+                    "previous": 0,
+                    "value": 150000
+                },
+                {
+                    "change_percent": 0,
+                    "detail": "Retur diajukan dibanding pesanan yang masuk proses.",
+                    "format": "percent",
+                    "key": "return_rate_created",
+                    "label": "Rasio Retur Diajukan",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Retur yang selesai pada periode dibanding pesanan yang selesai pada periode. Keduanya dihitung dari waktu penyelesaian, bukan waktu pembuatan.",
+                    "format": "percent",
+                    "key": "return_rate_completed",
+                    "label": "Rasio Retur Selesai",
+                    "previous": 0,
+                    "value": 100
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Total ongkir retur yang DITANGGUNG TOKO dari kasus retur selesai periode ini (bukan dibayar pembeli).",
+                    "format": "currency",
+                    "key": "return_shipping_cost_total",
+                    "label": "Ongkir Retur (Toko)",
+                    "previous": 0,
+                    "value": 45000
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Jumlah kasus retur selesai yang ongkirnya ditanggung toko.",
+                    "format": "number",
+                    "key": "return_shipping_cost_cases",
+                    "label": "Kasus Retur (Ongkir Toko)",
+                    "previous": 0,
+                    "value": 2
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Ongkir kirim dan biaya layanan COD yang tetap ditagih J&T untuk paket yang kembali sebelum diterima pembeli. Pembeli tidak membayar, jadi toko yang menanggung. Ongkir perjalanan balik belum termasuk karena tagihannya belum tercatat otomatis.",
+                    "format": "currency",
+                    "key": "refused_borne_cost",
+                    "label": "Ongkir & COD Ditanggung Toko",
+                    "previous": 0,
+                    "value": 35000
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Dihitung dari catatan pembatalan pada periode.",
+                    "format": "number",
+                    "key": "cancelled_orders",
+                    "label": "Pesanan Dibatalkan",
+                    "previous": 0,
+                    "value": 1
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Dibatalkan pembeli lewat halaman pesanan.",
+                    "format": "number",
+                    "key": "cancelled_by_customer",
+                    "label": "Dibatalkan Pelanggan",
+                    "previous": 0,
+                    "value": 1
+                },
+                {
+                    "change_percent": 0,
+                    "detail": "Dibatalkan oleh admin toko.",
+                    "format": "number",
+                    "key": "cancelled_by_store",
+                    "label": "Dibatalkan Toko",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Total nilai pesanan yang dibatalkan pada periode. Tidak termasuk dalam Penjualan Gross.",
+                    "format": "currency",
+                    "key": "cancelled_value",
+                    "label": "Nilai Pesanan Dibatalkan",
+                    "previous": 0,
+                    "value": 400000
+                },
+                {
+                    "change_percent": 100,
+                    "detail": "Pesanan yang dibatalkan pada periode dibanding pesanan yang dibuat pada periode yang sama. Pembatalan atas pesanan lama tidak ikut dihitung supaya rasionya tidak melewati 100 persen.",
+                    "format": "percent",
+                    "key": "cancellation_rate",
+                    "label": "Rasio Pembatalan",
+                    "previous": 0,
+                    "value": 16.67
+                }
+            ],
+            "title": "Retur & Pembatalan"
+        }
+    ],
+    "top_products": [
+        {
+            "image": null,
+            "name": "Produk FOST",
+            "order_count": 1,
+            "parent_sku": "GOLD-SL-FOST",
+            "revenue": 2000000,
+            "units": 1
+        },
+        {
+            "image": null,
+            "name": "Produk POLOS",
+            "order_count": 1,
+            "parent_sku": "GOLD-SL-POLOS",
+            "revenue": 650000,
+            "units": 1
+        },
+        {
+            "image": null,
+            "name": "Produk PUTIH",
+            "order_count": 1,
+            "parent_sku": "GOLD-SL-PUTIH",
+            "revenue": 600000,
+            "units": 1
+        },
+        {
+            "image": null,
+            "name": "Produk KACA",
+            "order_count": 1,
+            "parent_sku": "GOLD-JK-KACA",
+            "revenue": 500000,
+            "units": 2
+        },
+        {
+            "image": null,
+            "name": "Produk HITAM",
+            "order_count": 1,
+            "parent_sku": "GOLD-SL-HITAM",
+            "revenue": 400000,
+            "units": 1
+        }
+    ],
+    "versi_kontrak": "1.0.0"
+}

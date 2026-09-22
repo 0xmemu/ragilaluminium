@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Pembukuan toko & penjualan - sumber kebenaran: orders + order_items (+ page views).
+ *
+ * FROZEN v1.0.0 (ADR-026): berkas ini memegang Kontrak Perhitungan Beku lapis 1 sampai 7.
+ * Perubahan formula, METRIC_BASIS, atau date_contract wajib memperbarui
+ * tests/Expectations/store-performance-golden-v1.json di PR yang sama
+ * (GOLDEN_UPDATE=1 php artisan test --filter=StorePerformanceGoldenTest)
+ * dan menaikkan versi kontrak di ADR-026 beserta komentar FROZEN ini.
  */
 class StorePerformanceService
 {

@@ -48,6 +48,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * tidak dihitung retroaktif supaya angka historis tidak berubah.
  *
  * Urutan baris: pesanan terbaru dulu (persis template owner).
+ *
+ * FROZEN v1.0.0 (ADR-026): berkas ini memegang lapis 8 Kontrak Perhitungan Beku
+ * (EXPORT_BASIS, Kas Bersih per Produk). Perubahan kolom uang atau formula wajib
+ * memperbarui tests/Expectations/store-performance-golden-v1.json bila angka
+ * Performa Toko ikut berubah, menjaga EXPORT_BASIS, dan menaikkan versi kontrak
+ * di ADR-026 beserta komentar FROZEN ini.
  */
 class OrderExport implements WithMultipleSheets
 {
