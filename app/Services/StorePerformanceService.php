@@ -65,6 +65,10 @@ class StorePerformanceService
         // --- Kunjungan & pelanggan ---
         'visitors' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
         'conversion' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
+        // Pembilang dari rasio konversi: jumlah pembeli unik pada pesanan
+        // berstatus omzet dalam rentang, dihitung per nomor telepon. Dipakai
+        // drawer Pengunjung pada baris Pembeli Unik.
+        'buyers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
         'new_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
         'repeat_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
         'repeat_order_rate' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
@@ -86,6 +90,11 @@ class StorePerformanceService
         // cair, jadi cakupannya melampaui periode terpilih.
         'cod_pending_amount' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
         'cod_pending_count' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
+        // Versi terbatas periode dari dua angka di atas: dana COD belum cair
+        // untuk pesanan yang DIBUAT dalam rentang terpilih. Dipakai halaman
+        // pada baris Belum Masuk (periode ini) di drawer Arus Kas.
+        'cod_pending_in_period_amount' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'cod_pending_in_period_count' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
 
         // --- Retur & pembatalan ---
         'returns' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],

@@ -129,25 +129,129 @@ class StorePerformanceMetricBasisTest extends TestCase
      * Tanpa test ini, metrik baru bisa lolos tanpa cakupan dan pembacanya tidak
      * punya cara tahu angkanya periode atau keadaan sekarang.
      */
-    public function test_setiap_kpi_punya_deklarasi_cakupan(): void
+    /**
+     * Kunci bagian financial yang TIDAK perlu deklarasi cakupan sendiri, dengan
+     * alasannya. Dua kelompok:
+     * - alias: angkanya sama dengan metrik lain yang sudah dideklarasikan;
+     * - komponen: bagian dari metrik induk, cakupannya mengikuti induknya.
+     *
+     * Daftar ini sengaja eksplisit. Menambah angka uang baru ke bagian financial
+     * memaksa pilihannya sadar: deklarasikan cakupannya, atau sebut di sini
+     * beserta alasannya. Tanpa daftar ini, metrik baru bisa berjalan tanpa
+     * cakupan seperti yang pernah terjadi pada dua angka kas COD dalam periode.
+     *
+     * @var array<string, string>
+     */
+    private const FINANCIAL_TANPA_CAKUPAN_SENDIRI = [
+        // Alias: angkanya sama dengan metrik yang sudah dideklarasikan.
+        'gross_revenue' => 'alias dari omzet',
+        'buyer_orders' => 'alias dari orders',
+        'refund_adjustments' => 'alias dari refund_given',
+        'return_shipping_store' => 'alias dari return_shipping_cost_total',
+        // Komponen: bagian dari metrik induk.
+        'items_before_discount' => 'komponen omzet',
+        'product_discount' => 'komponen omzet, bukan pengurang tagihan',
+        'voucher_discount' => 'komponen omzet',
+        'insurance' => 'komponen omzet',
+        'shipping_raw' => 'komponen pengurang Penjualan Bersih',
+        'shipping_paid_by_customer' => 'komponen omzet',
+        'shipping_subsidy' => 'sudah termasuk di shipping_raw',
+        'cod_fee' => 'komponen omzet sekaligus pengurang',
+        'refused_goods_value' => 'komponen pengurang Penjualan Bersih',
+        'refused_borne_count' => 'komponen refused_borne_cost',
+        'refused_shipping_cost' => 'komponen refused_borne_cost',
+        'refused_cod_fee' => 'komponen refused_borne_cost',
+        // Bukan angka metrik.
+        'definition' => 'teks definisi, bukan angka',
+        'visitors_available_from' => 'tanggal batas data, bukan angka',
+    ];
+
+    /**
+     * Setiap KPI WAJIB punya deklarasi cakupan, termasuk yang hanya hidup di
+     * bagian financial dan tidak pernah menjadi kartu KPI.
+     *
+     * Sebelumnya penjaga ini hanya menelusuri sections[].kpis[], sehingga
+     * cod_pending_in_period_amount dan cod_pending_in_period_count berjalan
+     * tanpa deklarasi: dipakai halaman, tetapi tidak muncul di tabel Dasar
+     * Setiap Metrik dan tidak tertangkap penjaga mana pun.
+     */
+    public function test_setiap_metrik_punya_deklarasi_cakupan(): void
     {
         $payload = app(StorePerformanceService::class)->build('last_7');
 
-        $kpiKeys = [];
+        // Kumpulkan dari dua sumber: kartu KPI dan angka pada bagian financial.
+        $kunci = [];
         foreach ($payload['sections'] as $bagian) {
             foreach ($bagian['kpis'] as $kpi) {
-                $kpiKeys[] = $kpi['key'];
+                $kunci[] = $kpi['key'];
+            }
+        }
+        $this->assertNotEmpty($kunci, 'build() wajib mengembalikan KPI');
+
+        $keuangan = [];
+        foreach ($payload['financial'] as $key => $nilai) {
+            if (is_numeric($nilai)) {
+                $keuangan[] = $key;
+            }
+        }
+        $this->assertNotEmpty($keuangan, 'build() wajib mengembalikan angka financial');
+
+        $terdeklarasi = array_keys(StorePerformanceService::METRIC_BASIS);
+
+        // Angka financial wajib terdeklarasi, atau disebut sadar sebagai alias
+        // atau komponen.
+        $tanpaDeklarasi = [];
+        foreach ($keuangan as $key) {
+            if (in_array($key, $terdeklarasi, true)) {
+                continue;
+            }
+            if (array_key_exists($key, self::FINANCIAL_TANPA_CAKUPAN_SENDIRI)) {
+                continue;
+            }
+            $tanpaDeklarasi[] = $key;
+        }
+
+        // KPI tidak punya alasan untuk dilewatkan.
+        foreach ($kunci as $key) {
+            if (! in_array($key, $terdeklarasi, true)) {
+                $tanpaDeklarasi[] = $key;
             }
         }
 
-        $this->assertNotEmpty($kpiKeys, 'build() wajib mengembalikan KPI');
-
-        $tanpaDeklarasi = array_values(array_diff($kpiKeys, array_keys(StorePerformanceService::METRIC_BASIS)));
         $this->assertSame(
             [],
-            $tanpaDeklarasi,
-            'KPI ini dihitung server tetapi belum dideklarasikan cakupannya: '.implode(', ', $tanpaDeklarasi)
+            array_values(array_unique($tanpaDeklarasi)),
+            'Metrik ini dihitung server tetapi belum dideklarasikan cakupannya,'
+                .' dan tidak disebut sebagai alias atau komponen: '
+                .implode(', ', array_unique($tanpaDeklarasi))
         );
+    }
+
+    /**
+     * Daftar putih di atas tidak boleh basi: setiap kunci yang disebut harus
+     * benar benar ada di payload. Tanpa pemeriksaan ini, kunci yang sudah
+     * dihapus dari kode akan terus tinggal di daftar dan menyamarkan celah baru.
+     */
+    public function test_daftar_putih_financial_tidak_basi(): void
+    {
+        $payload = app(StorePerformanceService::class)->build('last_7');
+
+        foreach (array_keys(self::FINANCIAL_TANPA_CAKUPAN_SENDIRI) as $key) {
+            $this->assertArrayHasKey(
+                $key,
+                $payload['financial'],
+                'Kunci '.$key.' disebut di daftar putih tetapi sudah tidak ada di payload; hapus dari daftar.'
+            );
+        }
+
+        // Dan kunci yang sudah punya deklarasi tidak boleh ikut disebut di daftar.
+        foreach (array_keys(self::FINANCIAL_TANPA_CAKUPAN_SENDIRI) as $key) {
+            $this->assertArrayNotHasKey(
+                $key,
+                StorePerformanceService::METRIC_BASIS,
+                'Kunci '.$key.' sudah dideklarasikan cakupannya, jadi tidak perlu ada di daftar putih.'
+            );
+        }
     }
 
     /**

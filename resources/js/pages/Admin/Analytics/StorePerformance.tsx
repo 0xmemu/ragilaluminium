@@ -563,6 +563,9 @@ function labelTanpaCakupan(label: string): string {
 const LABEL_DASAR_TAMBAHAN: Record<string, string> = {
   cod_pending_amount: "Belum Masuk, nilai",
   cod_pending_count: "Belum Masuk, jumlah pesanan",
+  cod_pending_in_period_amount: "Belum Masuk periode ini, nilai",
+  cod_pending_in_period_count: "Belum Masuk periode ini, jumlah pesanan",
+  buyers: "Pembeli Unik",
 }
 
 
