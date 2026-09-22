@@ -359,3 +359,41 @@ Bukti: 14 test cakupan lulus; penjaga baru dibuktikan NON VAKUM dengan menghapus
 `cod_pending_in_period_amount` lalu test merah dengan pesan yang tepat, lalu dikembalikan.
 Suite performa 1 skipped 138 passed. Suite penuh 1 skipped 1116 passed TANPA kegagalan
 (OrderReturnCtaTest yang dulu selalu merah sudah dibereskan agen lain). tsc dan eslint bersih.
+
+---
+
+## 2026-09-23 17:45 UTC | zcode | Deep | 24d45b71 | selesai
+Lingkup: Batch N+1 Performa Toko, empat item dari instruksi owner 2026-09-22. Berkas:
+StorePerformanceService.php, StorePerformance.tsx, StorePerformanceMetricBasisTest.php,
+StorePerformanceRecognitionFreezeTest.php (baru), TanamEventPengakuan.php (baru), OrderExport.php,
+OrderExportContractTest.php, 11 berkas fixture test, ADR-015, api-and-routes, dokumen HTML lokal.
+Item 1 (P0.4+P0.5, commit 9985fb7a): build() mengirim date_contract (zona waktu, semantik batas,
+periode berjalan, pengakuan) dan metric_basis membawa unit untuk 45 metrik dari kosakata sah;
+tabel Referensi menambah kolom Satuan dan blok Kontrak Tanggal. Invarian keluaran dibuktikan pada
+dua rentang data live: nol angka berubah, hanya 51 kunci baru per rentang.
+Item 2 (P0.2, commit 918e50f5): Pengakuan Penjualan Gross dibekukan menurut keputusan owner,
+yaitu pesanan dibuat dalam periode DAN tercatat mencapai Diproses pada event_logs paling lambat
+akhir periode (recognizedOrderIds, cache per jendela, reset per build). Satu himpunan dipakai
+metrik penjualan, grafik, top produk, pelanggan, dan campuran pembayaran; rasio pembatalan
+memakai penyebut gabungan agar tidak hitung ganda; VALID_ORDER_STATUSES dan SQL mentah
+paidRevenueStatusSql dihapus. Test diskriminatif membuktikan dua arah pembekuan, dan service lama
+dipasang kembali untuk membuktikan 4 dari 5 test merah.
+Item 3 (P0.1, commit 021b47df): label ekspor pesanan diganti Kas Bersih per Produk / KAS BERSIH
+TOKO sebagai KONSEP TERPISAH dari Penjualan Bersih; deklarasi OrderExport::EXPORT_BASIS dijaga
+dua arah (penjaganya langsung menangkap kolom T yang terlewat saat pengerjaan); backlog #3 dan
+#14 ditutup sebagai keputusan di docs/KONTRAK/ANTREAN-PEKERJAAN.md lokal.
+Item 4: dokumen HTML lokal diregenerasi dengan stempel 021b47df, formula pengakuan, 14 anchor
+keluarga penjualan, tabel payload 45 kartu + date_contract, dan catatan revisi.
+TEMUAN TERPISAH (tidak diperbaiki, sesuai syarat owner): semua kueri memakai zona Asia/Jakarta
+(APP_TIMEZONE) tetapi batas akhir rentang INKLUSIF akhir hari (endOfDay + whereBetween), bukan
+end_exclusive. Pergeseran ke end_exclusive akan mengubah angka dan sengaja tidak dikerjakan di
+dalam batch kontrak ini.
+Efek samping pada data: pesanan uji di server 209 tidak punya event pengakuan sehingga laporan
+periode Hari ini menunjukkan nol; periode 30 hari menunjukkan Rp 40.643.746 dari 6 pesanan yang
+berevent, dan kartu-grafik tetap sinkron. Ini perilaku baru yang benar menurut formula, bukan bug.
+Bukti: suite penuh 1 skipped 1125 passed TANPA kegagalan; Vitest 179 lulus; tsc bersih; eslint
+tertarget bersih; push lewat hook build sukses (f933daf1..24d45b71); verifikasi live di browser:
+drawer Referensi menampilkan blok Kontrak Tanggal dan kolom Satuan dengan tata letak rapi.
+Untuk agent berikutnya: fixture pesanan uji yang berstatus penjualan wajib menanam event pengakuan
+(gunakan trait Tests\Concerns\TanamEventPengakuan); logika perhatian dashboard membaca event
+status terbaru sebagai waktu masuk status, jadi simulasi umur status harus memundurkan waktu event.
