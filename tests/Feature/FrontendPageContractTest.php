@@ -185,4 +185,35 @@ class FrontendPageContractTest extends TestCase
             );
         }
     }
+
+    /**
+     * Kartu ulasan di carousel BERANDA tidak menampilkan balasan admin.
+     *
+     * Alasannya ruang: kartunya kecil, dan balasan memakan tempat yang dipakai
+     * foto ulasan. Balasan tetap tampil di halaman ulasan dan di carousel ulasan
+     * halaman produk, jadi yang dijaga di sini hanya beranda yang mematikannya.
+     */
+    public function test_home_review_carousel_hides_admin_reply(): void
+    {
+        $sections = File::get(resource_path('js/components/public/home-sections.tsx'));
+        $carousels = File::get(resource_path('js/components/public/home-carousels.tsx'));
+        $card = File::get(resource_path('js/components/public/testimonial-card.tsx'));
+
+        // Beranda mematikan balasan pada carousel ulasan website.
+        $this->assertMatchesRegularExpression(
+            '/<TestimonialCarousel\b(?:(?!\/>).)*?showAdminReply=\{false\}/s',
+            $sections,
+            'Carousel ulasan di beranda harus mematikan balasan admin.'
+        );
+
+        // Carousel meneruskan pilihannya ke kartu, bukan mengabaikannya.
+        $this->assertStringContainsString('showAdminReply = true', $carousels);
+        $this->assertStringContainsString('showAdminReply={showAdminReply}', $carousels);
+
+        // Kartu memakai prop itu, dan bawaannya tetap menampilkan balasan supaya
+        // halaman ulasan serta halaman produk tidak ikut berubah.
+        $this->assertStringContainsString('showAdminReply = true', $card);
+        $this->assertStringContainsString('adminReply && showAdminReply', $card);
+    }
+
 }

@@ -333,11 +333,14 @@ export function TestimonialCarousel({
   seeMoreHref,
   variant = "review",
   navLabel = "ulasan",
+  showAdminReply = true,
 }: {
   testimonials: Testimonial[]
   seeMoreHref: string
   variant?: "review" | "screenshot"
   navLabel?: string
+  /** Diteruskan ke TestimonialCard; beranda mematikannya. */
+  showAdminReply?: boolean
 }) {
   const items = testimonials.slice(0, 10)
   const { trackRef, trackId, canGoBack, canGoNext, move } = useRailCarousel(items.length, { nextThreshold: 4, scrollFactor: 0.85 })
@@ -367,6 +370,7 @@ export function TestimonialCarousel({
               testimonial={testimonial}
               compact
               variant={variant}
+              showAdminReply={showAdminReply}
               href={testimonial.product?.href ?? routeUrl(variant === "screenshot" ? "reviews.screenshots" : "reviews.website")}
             />
           </div>

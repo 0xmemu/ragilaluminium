@@ -20,6 +20,7 @@ export function TestimonialCard({
   href,
   variant = "review",
   onOpen,
+  showAdminReply = true,
 }: {
   testimonial: Testimonial
   compact?: boolean
@@ -29,6 +30,11 @@ export function TestimonialCard({
   variant?: "review" | "screenshot"
   /** Dipanggil saat gambar screenshot diklik (mode galeri dengan lightbox eksternal). */
   onOpen?: () => void
+  /**
+   * Tampilkan balasan admin di dalam kartu. Dimatikan di carousel beranda:
+   * kartunya kecil, dan balasan memakan ruang yang dipakai foto ulasan.
+   */
+  showAdminReply?: boolean
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
   const [visiblePhotos, setVisiblePhotos] = React.useState(0)
@@ -209,7 +215,7 @@ export function TestimonialCard({
         </div>
       ) : null}
 
-      {adminReply ? (
+      {adminReply && showAdminReply ? (
         <div className="mt-2 rounded-lg border border-border/70 bg-surface-muted p-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Balasan {storeName}

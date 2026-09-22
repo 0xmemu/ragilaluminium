@@ -492,6 +492,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
             seeMoreHref={seeMoreHref}
             variant="review"
             navLabel="ulasan"
+            showAdminReply={false}
           />
         ) : (
           <EmptyState
