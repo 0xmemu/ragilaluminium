@@ -333,3 +333,29 @@ bulan, terjadwal, setelah data produksi berjalan beberapa bulan.
 Bukti: 8 test baru lulus; suite performa 1 skipped 137 passed (1872 assertions); suite frontend 21
 berkas 179 test lulus; tsc dan eslint bersih; build sukses lewat `scripts/prod/build-assets.sh`;
 permintaan rentang masa depan diverifikasi live dipotong ke hari ini dengan pemberitahuan tampil.
+
+---
+
+## 2026-09-22 15:06 UTC | zcode | Standard | 2ce2653e | selesai
+Lingkup: P0.3 dari rekomendasi audit dokumentasi, yaitu menutup lubang pada penjaga
+kelengkapan cakupan metrik. Berkas: `app/Services/StorePerformanceService.php`,
+`resources/js/pages/Admin/Analytics/StorePerformance.tsx`,
+`tests/Feature/StorePerformanceMetricBasisTest.php`.
+Akar masalah: penjaga `test_setiap_kpi_punya_deklarasi_cakupan` hanya menelusuri
+`sections[].kpis[]`, sehingga kunci yang hanya hidup di bagian `financial` tidak pernah
+diperiksa padahal halaman membacanya. Penjaga itu sekarang memeriksa seluruh angka keluaran
+`build()`, ditambah daftar putih eksplisit untuk kunci yang memang tidak perlu cakupan
+sendiri (alias dan komponen), plus test baru yang gagal bila daftar putih itu menua.
+TIGA metrik ternyata lolos tanpa deklarasi: `cod_pending_in_period_amount`,
+`cod_pending_in_period_count` (keduanya ditemukan dari pembacaan manual), dan `buyers`
+(ditemukan OTOMATIS oleh penjaga yang sudah dilebarkan, yang sekaligus membuktikan lebarnya
+memang perlu). Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED untuk METRIC_BASIS, yang bertambah
+tiga deklarasi.
+Untuk agent berikutnya: dokumen `docs/dokumentasi-teknis-ragil-aluminium.html` masih menyebut
+42 kunci cakupan dan 44 nilai terdokumentasi. Setelah commit ini jumlahnya 45 kunci dan tiga
+label baru di tabel Dasar Setiap Metrik, jadi dokumen itu PERLU dibuat ulang. Jangan
+menyalin angkanya dari dokumen, ambil dari `METRIC_BASIS` di kode.
+Bukti: 14 test cakupan lulus; penjaga baru dibuktikan NON VAKUM dengan menghapus deklarasi
+`cod_pending_in_period_amount` lalu test merah dengan pesan yang tepat, lalu dikembalikan.
+Suite performa 1 skipped 138 passed. Suite penuh 1 skipped 1116 passed TANPA kegagalan
+(OrderReturnCtaTest yang dulu selalu merah sudah dibereskan agen lain). tsc dan eslint bersih.
