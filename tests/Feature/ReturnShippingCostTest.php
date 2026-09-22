@@ -17,6 +17,7 @@ use Tests\TestCase;
 class ReturnShippingCostTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeProduct(int $sku, int $stock = 50): Product
     {
@@ -53,7 +54,8 @@ class ReturnShippingCostTest extends TestCase
             'payment_method' => 'cod',
             'cod_flag' => true,
         ]);
-        return $order;
+
+        return $this->tanamEventPengakuan($order);
     }
 
     private function addItem(Order $order, Product $product, int $qty = 1, int $price = 100000): OrderItem

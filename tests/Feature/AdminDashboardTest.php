@@ -17,10 +17,11 @@ use Tests\TestCase;
 class AdminDashboardTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
 
     private function makeOrder(array $overrides = []): Order
     {
-        return Order::create(array_merge([
+        $order = Order::create(array_merge([
             'order_number' => 'RA-DASH-'.uniqid(),
             'customer_name' => 'Budi Santoso',
             'customer_phone' => '08123456789',
@@ -37,6 +38,8 @@ class AdminDashboardTest extends TestCase
             'discount_amount' => 0,
             'total_amount' => 1000000,
         ], $overrides));
+
+        return $this->tanamEventPengakuan($order);
     }
 
     public function test_dashboard_exposes_figma_feature_blocks(): void
@@ -216,6 +219,11 @@ class AdminDashboardTest extends TestCase
             'order_status' => 'processing',
         ]);
         $processing->forceFill(['updated_at' => now()->subDays(2)])->save();
+        // Umur status kini dibaca dari event status terbaru (logika perhatian
+        // dashboard), jadi simulasi umur 2 hari harus memundurkan waktu event
+        // pengakuannya juga.
+        \App\Models\EventLog::where('entity_type', 'order')->where('entity_id', $processing->id)
+            ->update(['created_at' => now()->subDays(2)]);
 
         $delivered = $this->makeOrder([
             'order_number' => 'RA-DASH-ATTENTION-DELIVERED-'.uniqid(),
