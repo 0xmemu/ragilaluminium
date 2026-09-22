@@ -52,68 +52,68 @@ class StorePerformanceService
      */
     public const METRIC_BASIS = [
         // --- Penjualan, semuanya terikat periode ---
-        'omzet' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'models' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'sub_models' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'products' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'units' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'avg_unit_price' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'aov' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'completed_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan selesai'],
+        'omzet' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'models' => ['unit' => 'model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'sub_models' => ['unit' => 'sub model', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'products' => ['unit' => 'produk', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'units' => ['unit' => 'unit', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_unit_price' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'aov' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'completed_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan selesai'],
 
         // --- Kunjungan & pelanggan ---
-        'visitors' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
-        'conversion' => ['scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
+        'visitors' => ['unit' => 'kunjungan', 'scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
+        'conversion' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal kunjungan'],
         // Pembilang dari rasio konversi: jumlah pembeli unik pada pesanan
         // berstatus omzet dalam rentang, dihitung per nomor telepon. Dipakai
         // drawer Pengunjung pada baris Pembeli Unik.
-        'buyers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'new_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'repeat_customers' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'repeat_order_rate' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'buyers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'new_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'repeat_customers' => ['unit' => 'orang', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'repeat_order_rate' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
 
         // --- Operasional ---
         // Dua metrik antrean ini membaca keadaan sekarang, tanpa tanggal.
-        'open_orders' => ['scope' => 'current', 'anchor' => null],
-        'dispatched_orders' => ['scope' => 'current', 'anchor' => null],
-        'open_orders_in_period' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'avg_confirm_hours' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'avg_process_days' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'open_orders' => ['unit' => 'pesanan', 'scope' => 'current', 'anchor' => null],
+        'dispatched_orders' => ['unit' => 'pesanan', 'scope' => 'current', 'anchor' => null],
+        'open_orders_in_period' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_confirm_hours' => ['unit' => 'jam', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'avg_process_days' => ['unit' => 'hari', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
 
         // --- Pembayaran ---
-        'net_revenue' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat dan tanggal retur selesai'],
-        'payments_received' => ['scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
-        'cod_paid' => ['scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
-        'payment_pending_count' => ['scope' => 'current', 'anchor' => null],
+        'net_revenue' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat dan tanggal retur selesai'],
+        'payments_received' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
+        'cod_paid' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pembayaran lunas'],
+        'payment_pending_count' => ['unit' => 'pembayaran', 'scope' => 'current', 'anchor' => null],
         // Dua angka kas COD ini menjumlahkan seluruh pesanan yang uangnya belum
         // cair, jadi cakupannya melampaui periode terpilih.
-        'cod_pending_amount' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
-        'cod_pending_count' => ['scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
+        'cod_pending_amount' => ['unit' => 'rupiah', 'scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
+        'cod_pending_count' => ['unit' => 'pesanan', 'scope' => 'current', 'anchor' => null, 'marker' => 'semua waktu'],
         // Versi terbatas periode dari dua angka di atas: dana COD belum cair
         // untuk pesanan yang DIBUAT dalam rentang terpilih. Dipakai halaman
         // pada baris Belum Masuk (periode ini) di drawer Arus Kas.
-        'cod_pending_in_period_amount' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'cod_pending_in_period_count' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'cod_pending_in_period_amount' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'cod_pending_in_period_count' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
 
         // --- Retur & pembatalan ---
-        'returns' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'return_value' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'returns_created' => ['scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
-        'returns_open' => ['scope' => 'current', 'anchor' => null],
-        'returns_completed' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'refused_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'refund_given' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'return_rate_created' => ['scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
-        'return_rate_completed' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'return_shipping_cost_total' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'return_shipping_cost_cases' => ['scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
-        'refused_borne_cost' => ['scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
-        'cancelled_orders' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
-        'cancelled_by_customer' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
-        'cancelled_by_store' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
-        'cancelled_value' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
-        'cancellation_rate' => ['scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'returns' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_value' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'returns_created' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
+        'returns_open' => ['unit' => 'kasus', 'scope' => 'current', 'anchor' => null],
+        'returns_completed' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'refused_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'refund_given' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_rate_created' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal retur diajukan'],
+        'return_rate_completed' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_shipping_cost_total' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_shipping_cost_cases' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'refused_borne_cost' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat'],
+        'cancelled_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_by_customer' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_by_store' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancelled_value' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
+        'cancellation_rate' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
     ];
 
 
@@ -598,6 +598,17 @@ class StorePerformanceService
             // Cakupan dan tanggal acuan tiap metrik, dipakai halaman untuk
             // memberi penanda cakupan dan untuk tabel Dasar Setiap Metrik.
             'metric_basis' => $this->metricBasisMap(),
+            // Kontrak tanggal laporan: zona waktu dan semantik batas rentang,
+            // supaya pembaca angka tidak perlu menebak kapan hari terakhir
+            // dihitung. Isinya mendeskripsikan kode apa adanya.
+            'date_contract' => [
+                'timezone' => config('app.timezone', 'Asia/Jakarta'),
+                'start_boundary' => 'Inklusif: hari pertama dihitung sejak 00:00:00',
+                'end_boundary' => 'Inklusif: hari terakhir dihitung sampai 23:59:59.999999',
+                'running_period' => 'Periode berjalan dipotong ke waktu laporan dibangun',
+                'comparison' => 'Periode berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, periode selesai dibandingkan penuh',
+                'per_metric' => 'Kolom tanggal tiap metrik tercantum di metric_basis.anchor',
+            ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],
                 ['key' => 'traffic', 'title' => 'Kunjungan & Pelanggan', 'kpis' => $trafficKpis],
@@ -1812,7 +1823,7 @@ class StorePerformanceService
      * Peta cakupan seluruh metrik untuk halaman, termasuk dua angka kas COD
      * yang tidak tampil sebagai KPI kartu tetapi punya cakupan sendiri.
      *
-     * @return array<string, array{scope: string, anchor: string|null, marker: string|null}>
+     * @return array<string, array{scope: string, anchor: string|null, marker: string|null, unit: string|null}>
      */
     public function metricBasisMap(): array
     {
@@ -1824,6 +1835,7 @@ class StorePerformanceService
                 'marker' => $basis['scope'] === 'current'
                     ? ($basis['marker'] ?? 'kondisi saat ini')
                     : null,
+                'unit' => $basis['unit'] ?? null,
             ];
         }
 

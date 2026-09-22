@@ -142,6 +142,12 @@ class StorePerformanceMetricBasisTest extends TestCase
      *
      * @var array<string, string>
      */
+    /** Kosakata unit yang sah. Unit di luar ini berarti salah ketik atau konsep baru yang belum diputuskan. */
+    private const UNIT_SAHIH = [
+        'rupiah', 'pesanan', 'pembayaran', 'unit', 'model', 'sub model', 'produk',
+        'kunjungan', 'orang', 'kasus', 'jam', 'hari', 'persen',
+    ];
+
     private const FINANCIAL_TANPA_CAKUPAN_SENDIRI = [
         // Alias: angkanya sama dengan metrik yang sudah dideklarasikan.
         'gross_revenue' => 'alias dari omzet',
@@ -224,6 +230,55 @@ class StorePerformanceMetricBasisTest extends TestCase
             'Metrik ini dihitung server tetapi belum dideklarasikan cakupannya,'
                 .' dan tidak disebut sebagai alias atau komponen: '
                 .implode(', ', array_unique($tanpaDeklarasi))
+        );
+    }
+
+    /**
+     * Setiap metrik wajib menyebut satuannya, dan satuan itu harus dari
+     * kosakata yang sah. Tanpa unit, jumlah pesanan bisa dibandingkan dengan
+     * rupiah atau jumlah kunjungan tanpa ada yang menyadari.
+     */
+    public function test_setiap_metrik_punya_unit(): void
+    {
+        $payload = app(StorePerformanceService::class)->build('last_7');
+
+        foreach (StorePerformanceService::METRIC_BASIS as $key => $basis) {
+            $this->assertArrayHasKey('unit', $basis, 'Metrik '.$key.' belum punya unit.');
+            $this->assertContains(
+                $basis['unit'],
+                self::UNIT_SAHIH,
+                'Unit metrik '.$key.' tidak dikenal: '.$basis['unit']
+            );
+        }
+
+        // Peta yang dikirim ke payload harus membawa unit yang sama dengan kontrak.
+        foreach ($payload['metric_basis'] as $key => $basis) {
+            $this->assertSame(
+                StorePerformanceService::METRIC_BASIS[$key]['unit'] ?? null,
+                $basis['unit'] ?? null,
+                'Unit '.$key.' di payload berbeda dari kontrak METRIC_BASIS.'
+            );
+        }
+    }
+
+    /**
+     * Kontrak tanggal wajib ikut dalam payload: zona waktu dan semantik batas
+     * rentang tidak boleh rahasia internal service.
+     */
+    public function test_payload_memuat_kontrak_tanggal(): void
+    {
+        $payload = app(StorePerformanceService::class)->build('last_7');
+        $kontrak = $payload['date_contract'] ?? null;
+
+        $this->assertIsArray($kontrak, 'build() wajib mengirim date_contract.');
+        foreach (['timezone', 'start_boundary', 'end_boundary', 'running_period', 'comparison', 'per_metric'] as $kunci) {
+            $this->assertArrayHasKey($kunci, $kontrak, 'date_contract kurang kunci '.$kunci.'.');
+            $this->assertNotSame('', trim((string) $kontrak[$kunci]), 'Kunci '.$kunci.' pada date_contract kosong.');
+        }
+        $this->assertSame(
+            config('app.timezone'),
+            $kontrak['timezone'],
+            'Zona waktu pada kontrak harus sama dengan zona waktu aplikasi.'
         );
     }
 

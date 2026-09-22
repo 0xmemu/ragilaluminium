@@ -130,7 +130,8 @@ interface Report {
    * Cakupan dan tanggal acuan tiap metrik, dari kontrak server. Dipakai tabel
    * Dasar Setiap Metrik di kategori Referensi.
    */
-  metric_basis?: Record<string, { scope: "current" | "period"; anchor: string | null; marker: string | null }>
+  metric_basis?: Record<string, { scope: "current" | "period"; anchor: string | null; marker: string | null; unit: string | null }>
+  date_contract?: Record<string, string>
   /** Ongkir retur per kasus yang ongkirnya ditanggung toko. */
   return_shipping_costs?: Array<{
     order_id: number
@@ -560,6 +561,15 @@ function labelTanpaCakupan(label: string): string {
 }
 
 /** Label untuk metrik ber-cakupan yang tidak tampil sebagai kartu KPI. */
+const LABEL_KONTRAK_TANGGAL: Record<string, string> = {
+  timezone: "Zona Waktu",
+  start_boundary: "Batas Mulai",
+  end_boundary: "Batas Selesai",
+  running_period: "Periode Berjalan",
+  comparison: "Cara Membandingkan",
+  per_metric: "Tanggal Acuan per Metrik",
+}
+
 const LABEL_DASAR_TAMBAHAN: Record<string, string> = {
   cod_pending_amount: "Belum Masuk, nilai",
   cod_pending_count: "Belum Masuk, jumlah pesanan",
@@ -1139,7 +1149,7 @@ function buildCategoryDetail(
       // kontrak, dan memotongnya menyembunyikan metrik bercakupan sekarang yang
       // justru paling mudah salah dibaca sebagai angka periode. Metrik itu
       // ditaruh lebih dulu supaya langsung terlihat.
-      const dasarMetrik: Array<{ label: string; cakupan: string; acuan: string; sekarang: boolean }> =
+      const dasarMetrik: Array<{ label: string; cakupan: string; satuan: string; acuan: string; sekarang: boolean }> =
         Object.entries(report.metric_basis ?? {}).map(([key, basis]) => ({
           label: kpiMap[key] ? labelTanpaCakupan(kpiMap[key].label) : (LABEL_DASAR_TAMBAHAN[key] ?? key),
           cakupan:
@@ -1149,6 +1159,7 @@ function buildCategoryDetail(
                 : "Kondisi saat ini"
               : "Periode terpilih",
           acuan: basis.anchor ?? "Tanpa tanggal",
+          satuan: basis.unit ?? "-",
           sekarang: basis.scope === "current",
         }))
 
@@ -1164,14 +1175,23 @@ function buildCategoryDetail(
           "Dasar cakupan setiap metrik, rentang yang dipakai laporan, penanda kejujuran tiap grafik, dan batas data yang perlu diketahui sebelum membaca angka lain.",
         blocks: [
           {
+            kind: "rows",
+            title: "Kontrak Tanggal",
+            rows: Object.entries(report.date_contract ?? {}).map(([kunci, nilai]) => ({
+              label: LABEL_KONTRAK_TANGGAL[kunci] ?? kunci,
+              value: nilai,
+              sign: "·",
+            })),
+          },
+          {
             kind: "list",
             title: "Dasar Setiap Metrik",
-            head: ["Metrik", "Cakupan", "Acuan Tanggal"],
+            head: ["Metrik", "Cakupan", "Satuan", "Acuan Tanggal"],
             // total sama dengan jumlah baris supaya keterangan "daftar penuh ada
             // di ekspor XLSX" tidak muncul: tabel ini memang utuh di sini, dan
             // memang tidak ada di ekspor.
             total: dasarUrut.length,
-            rows: dasarUrut.map((baris) => [baris.label, baris.cakupan, baris.acuan]),
+            rows: dasarUrut.map((baris) => [baris.label, baris.cakupan, baris.satuan, baris.acuan]),
           },
           {
             kind: "rows",
