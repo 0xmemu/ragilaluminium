@@ -397,3 +397,27 @@ drawer Referensi menampilkan blok Kontrak Tanggal dan kolom Satuan dengan tata l
 Untuk agent berikutnya: fixture pesanan uji yang berstatus penjualan wajib menanam event pengakuan
 (gunakan trait Tests\Concerns\TanamEventPengakuan); logika perhatian dashboard membaca event
 status terbaru sebagai waktu masuk status, jadi simulasi umur status harus memundurkan waktu event.
+
+---
+
+## 2026-09-23 19:05 UTC | zcode | Standard | 37d6610f | selesai
+Lingkup: instruksi owner 2026-09-23, Frozen Contract Perhitungan v1. Berkas:
+ADR-026 (baru), MASTER-ADR.md, StorePerformanceGoldenTest.php (baru),
+tests/Expectations/store-performance-golden-v1.json (baru), .github/PULL_REQUEST_TEMPLATE.md
+(baru), header FROZEN pada StorePerformanceService.php dan OrderExport.php.
+Isi: delapan lapis perhitungan dibekukan versi 1.0.0 (batas rentang, deklarasi metrik,
+pengakuan, rantai uang inti, pembayaran dan kas, retur dan pembatalan, permukaan turunan,
+permukaan ekspor). IncomeDetailQuery di luar beku (konsep terpisah hasil backlog #3);
+end_exclusive ditunda batch tersendiri menunggu keputusan owner soal restatement, sesuai
+instruksi owner. Golden test: dataset deterministik (semua kelas kejadian penentu angka,
+setTestNow 2026-09-30 10:00, periode Agustus 2026), seluruh keluaran build() dibekukan pada
+berkas expectation; angka diverifikasi manual (Gross 4.950.000, Net 4.030.000, Pembayaran
+Diterima 3.500.000, pesanan diakui 5 dari 9, rasio pembatalan 16,67). Disiplin perubahan:
+GOLDEN_UPDATE=1, expectation di PR yang sama, naik versi kontrak di ADR-026 dan komentar
+FROZEN; gerbang juga dipasang di template PR (berkas .github baru).
+Bukti: golden test 4 passed; sabotase satu angka expectation membuktikan test merah dengan
+pesan jalur (.financial.net_revenue 4030001 menjadi 4030000) lalu dipulihkan; suite penuh
+1 skipped 1129 passed TANPA kegagalan; push lewat hook build sukses (0a19b0d5..37d6610f).
+Untuk agent berikutnya: menyentuh StorePerformanceService.php atau OrderExport.php tanpa
+memperbarui expectation = PR ditolak gerbang; versi kontrak disamakan di tiga tempat
+(ADR-026, berkas expectation, komentar FROZEN).
