@@ -27,7 +27,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *  1. 'Laporan Transaksi (Skema A)' -> 1 baris = 1 item; kolom pesanan
  *     (voucher/subsidi/ongkir/COD/asuransi) diulang sebagai referensi dan
  *     TIDAK di-SUM vertikal. Rumus bawaan: N=Diskon % (M/L), O=L-M,
- *     Q=M*P, R=O*P; Net Profit (AC) = net profit PESANAN dialokasikan
+ *     Q=M*P, R=O*P; Kas Bersih (AC) = kas bersih PESANAN dialokasikan
  *     proporsional per subtotal baris (per produk, aman di-SUM); baris
  *     TOTAL menjumlah P/Q/R/AC.
  *  2. 'Rekap Keuangan per Pesanan' -> 1 baris = 1 pesanan; E/F/G menarik
@@ -56,6 +56,61 @@ class OrderExport implements WithMultipleSheets
     public const SHEET_REKAP = 'Rekap Keuangan per Pesanan';
 
     public const SHEET_GUIDE = 'Panduan & Kamus Lengkap';
+
+    /**
+     * Kontrak dasar setiap kolom uang pada ekspor pesanan (keputusan owner
+     * 2026-09-22): setiap kolom uang WAJIB terdaftar di sini beserta basis
+     * hitungnya, dan tidak ada deklarasi untuk kolom yang bukan uang. Penjaganya
+     * OrderExportContractTest membandingkan daftar ini dengan daftar kolom uang
+     * tiap sheet secara dua arah.
+     *
+     * KEPUTUSAN PENTING (menutup backlog #3 dan #14 sebagai keputusan, bukan
+     * bug): "Kas Bersih" pada ekspor ini adalah KONSEP TERPISAH dari
+     * "Penjualan Bersih" pada halaman Performa Toko (StorePerformanceService).
+     * Kas Bersih per pesanan = Penjualan Gross - Total Potongan J&T - Refund
+     * - Ongkir Retur Toko. Bedanya dari Penjualan Bersih: ongkirnya memakai
+     * tagihan ASLI J&T bila sudah dilaporkan, dan NILAI BARANG RETUR tidak
+     * ikut dikurangkan. Dua angka ini tidak boleh disamakan dan tidak saling
+     * dikoreksi.
+     */
+    public const EXPORT_BASIS = [
+        'tx' => [
+            'N' => 'Harga Produk (Normal): harga jual + diskon garis baris',
+            'O' => 'Diskon per Produk: potongan garis baris',
+            'Q' => 'Harga Jual Satuan: N - O',
+            'R' => 'Total Diskon Produk: O x Qty',
+            'S' => 'Subtotal Penjualan Produk: Q x Qty',
+            'T' => 'Subtotal Penjualan Produk: Q x Qty, dipakai juga sebagai basis alokasi kas bersih per baris',
+            'U' => 'Voucher Pesanan: beban toko dari voucher_discount_amount',
+            'V' => 'Subsidi Ongkir Toko: beban toko dari shipping_subsidy_amount',
+            'W' => 'Ongkir Ditanggung Pembeli: shipping_amount',
+            'X' => 'Biaya COD Ditanggung Pembeli: cod_fee_amount',
+            'Y' => 'Asuransi Pengiriman Dibayar Pembeli: shipping_insurance_amount',
+            'Z' => 'Penjualan Gross: subtotal baris pesanan - voucher + ongkir + COD + asuransi; nol bila dibatalkan',
+            'AA' => 'Pengurangan Nilai Pesanan ke J&T: tagihan J&T asli (totalFreight, memuat asuransi) bila sudah dilaporkan, atau asumsi checkout (ongkir + subsidi + asuransi), ditambah biaya COD',
+            'AC' => 'Nilai Refund Pembeli: refund_amount kasus retur selesai',
+            'AD' => 'Ongkir Retur Tambahan: additional_shipping_amount kasus retur selesai',
+            'AE' => 'Kas Bersih per Produk: kas bersih pesanan (Z - AA - AC - AD; bila dibatalkan 0 - AC - AD) dialokasikan proporsional per subtotal baris. KONSEP TERPISAH dari Penjualan Bersih pada Performa Toko',
+        ],
+        'rekap' => [
+            'G' => 'Total Nilai Normal: H + I',
+            'H' => 'Total Diskon Produk: baris Sheet 1 pesanan itu yang tidak Dibatalkan',
+            'I' => 'Total Penjualan Produk: baris Sheet 1 pesanan itu yang tidak Dibatalkan',
+            'J' => 'Voucher Toko: voucher_discount_amount',
+            'K' => 'Subsidi Ongkir Toko: shipping_subsidy_amount',
+            'L' => 'Ongkir Dibayar Pembeli: shipping_amount',
+            'M' => 'Biaya COD Dibayar Pembeli: cod_fee_amount',
+            'N' => 'Asuransi Pengiriman Dibayar Pembeli: shipping_insurance_amount',
+            'O' => 'PENJUALAN GROSS: I - J + L + M + N; nol bila dibatalkan',
+            'P' => 'Ongkir Total ke J&T: tagihan asli J&T bila ada, atau asumsi checkout K + L + N',
+            'Q' => 'Selisih Ongkir J&T: P - K - L - N',
+            'R' => 'Biaya COD ke J&T: M',
+            'S' => 'Total Potongan J&T: P + R',
+            'T' => 'Nilai Refund Pembeli: refund_amount',
+            'U' => 'Ongkir Retur Toko: additional_shipping_amount',
+            'V' => 'KAS BERSIH TOKO: O - S - T - U; bila dibatalkan 0 - T - U. KONSEP TERPISAH dari Penjualan Bersih pada Performa Toko',
+        ],
+    ];
 
     public function __construct(protected Builder $query) {}
 
@@ -336,7 +391,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         'Biaya COD Ditanggung Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
         'Penjualan Gross', 'Pengurangan Nilai Pesanan ke J&T',
         'Kasus Retur / Alasan', 'Nilai Refund Pembeli', 'Ongkir Retur Tambahan',
-        'Net Profit Toko per Produk (Kas Bersih)',
+        'Kas Bersih per Produk',
         'Nama Pelanggan', 'No. Telepon / WA', 'Alamat Pengiriman', 'Kelurahan / Desa',
         'Kecamatan', 'Kabupaten / Kota', 'Provinsi', 'Kode Pos',
     ];
@@ -413,7 +468,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
             $this->trackZeroCells($out[count($out) - 1], $r);
         }
 
-        // Baris TOTAL: Qty/Total Diskon/Subtotal/Net Profit per produk
+        // Baris TOTAL: Qty/Total Diskon/Subtotal/Kas Bersih per produk
         // di-SUM; kolom pesanan level order tetap lewat Rekap.
         $total = array_fill(0, count(self::HEADERS), null);
         $total[0] = 'TOTAL';
@@ -567,7 +622,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         'PENJUALAN GROSS',
         'Ongkir Total ke J&T', 'Selisih Ongkir J&T', 'Biaya COD ke J&T', 'Total Potongan J&T',
         'Nilai Refund Pembeli', 'Ongkir Retur Toko',
-        'NET PROFIT TOKO (KAS BERSIH)',
+        'KAS BERSIH TOKO',
         'Nama Pelanggan', 'No. Telepon / WA', 'Kabupaten / Kota',
     ];
 
@@ -598,7 +653,7 @@ class OrderRekapSheet extends RagilStyledExport implements FromArray
         $rangeSubtotal = $src."\$T\${$firstItem}:\$T\${$lastItem}";
         // Penjualan produk mengecualikan pesanan Dibatalkan (barang tidak
         // pernah dibayar) supaya identitas Rekap berlaku sampai ke TOTAL:
-        // Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit.
+        // Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Kas Bersih Toko.
 
         $out = [
             [
@@ -770,7 +825,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['26. Kasus Retur / Alasan (return_case)', 'Keterangan alasan kendala pesanan (misal: Refund (rusak), Pesanan dibatalkan, atau -).'],
             ['27. Nilai Refund Pembeli (refund_amount)', 'Uang yang dikembalikan ke pembeli jika terjadi klaim barang rusak atau batal.'],
             ['28. Ongkir Retur Tambahan (additional_shipping)', 'Biaya kirim balik dari pembeli ke toko yang dibebankan ke toko jika terjadi retur komplain.'],
-            ['29. Net Profit Toko per Produk (Kas Bersih)', 'Kontribusi laba bersih pada baris produk tersebut: [Net Profit pesanan] dialokasikan proporsional terhadap porsi [Subtotal Penjualan Produk] baris itu dari total subtotal pesanan. Jumlahkan seluruh baris satu pesanan = NET PROFIT pesanan di Sheet 2 (Rekap). Pesanan Dibatalkan: kerugian (-Refund -Ongkir Retur) dialokasikan dengan cara yang sama. Kolom ini aman di-SUM.'],
+            ['29. Kas Bersih per Produk', 'Kontribusi kas bersih pada baris produk tersebut: [Kas Bersih Toko pesanan] dialokasikan proporsional terhadap porsi [Subtotal Penjualan Produk] baris itu dari total subtotal pesanan. Jumlahkan seluruh baris satu pesanan = KAS BERSIH TOKO pesanan di Sheet 2 (Rekap). Pesanan Dibatalkan: kerugian (-Refund -Ongkir Retur) dialokasikan dengan cara yang sama. Kolom ini aman di-SUM. Nama Kas Bersih sengaja dipisah dari Penjualan Bersih pada halaman Performa Toko karena rumus dan cakupannya memang berbeda.'],
             ['30. Nama Pelanggan (customer_name)', 'Nama pembeli / penerima paket yang tertera pada resi dan pesanan.'],
             ['31. No. Telepon / WA (customer_phone)', 'Nomor kontak pelanggan (disimpan dalam format Teks agar angka 0 dan digit panjang tidak terpotong atau berubah eksponensial).'],
             ['32. Alamat Pengiriman (shipping_address)', 'Alamat tujuan pengiriman (jalan, RT/RW, nomor rumah, atau patokan).'],
@@ -778,7 +833,7 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['34. Kode Pos (shipping_postal_code)', 'Kode pos area pengiriman untuk validasi zona tarif ekspedisi.'],
             ['35. Prinsip COD & Ongkir (Pass-Through)', 'Biaya COD dan Ongkir Pembeli diperlakukan sebagai uang titipan: masuk di tagihan pembeli, lalu keluar utuh dipotong J&T. Dampak netronya Rp 0 terhadap laba toko.'],
             ['37. Tagihan J&T Asli & Selisihnya (Sheet 2 kolom N & O)', 'Tagihan J&T (N) memakai angka ASLI dari J&T Cargo yang diambil otomatis dari pelacakan resi (field totalFreight), jadi tidak ada input manual dan tidak ada perhitungan sendiri. Angka itu SUDAH termasuk asuransi (insuredFee), sehingga asuransi tidak ditambahkan lagi di atasnya. Bila J&T belum melaporkan, dipakai asumsi checkout: [Subsidi Ongkir Toko] + [Ongkir Ditanggung Pembeli] + [Asuransi Pengiriman], dan Selisih (O) bernilai 0. Selisih = [Tagihan J&T Asli] - [Subsidi] - [Ongkir Pembeli] - [Asuransi]; nilai POSITIF berarti tagihan J&T lebih besar dari asumsi (ditanggung toko), NEGATIF berarti lebih hemat dari perkiraan.'],
-            ['36. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Net Profit Toko (kini per produk). Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Penjualan Gross, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Net Profit berlaku sampai ke baris TOTAL. Pesanan Dibatalkan tampil dengan seluruh nilai uang 0 di kedua sheet; hanya kolom Retur & Refund yang tetap tercatat.'],
+            ['36. Aturan Agregasi (SUM di Excel)', 'Di Sheet 1, kolom yang boleh di-SUM vertikal: Qty, Total Diskon Produk, Subtotal Penjualan Produk, dan Kas Bersih per Produk. Kolom tingkat pesanan (Voucher, Subsidi, Ongkir, COD, Asuransi, Penjualan Gross, Potongan J&T, Refund, Ongkir Retur) diulang per baris dan TIDAK boleh di-SUM agar tidak terjadi pelipatgandaan; totalnya ada di Sheet 2 (Rekap Keuangan per Pesanan). Di Sheet 2, kolom penjualan (Total Nilai Normal, Total Diskon Produk, Total Penjualan Produk) mengecualikan pesanan Dibatalkan sehingga identitas Penjualan - Voucher - Subsidi - Refund - Ongkir Retur = Kas Bersih Toko berlaku sampai ke baris TOTAL. Pesanan Dibatalkan tampil dengan seluruh nilai uang 0 di kedua sheet; hanya kolom Retur & Refund yang tetap tercatat.'],
         ];
     }
 

@@ -33,11 +33,18 @@ menyesatkan:
 ### 1. Penjualan (Gross)
 
 - `SUM(orders.total_amount)`.
-- Scope `order_status IN (REVENUE_STATUSES)` = `processing, shipped, delivered, completed,
-  return_in_process, return_completed`.
-- Basis waktu: `orders.created_at`.
+- Scope (REVISI 2026-09-22, keputusan owner P0.2): pesanan yang DIBUAT dalam periode DAN
+  tercatat mencapai status `processing` pada `event_logs` paling lambat akhir periode
+  (`StorePerformanceService::recognizedOrderIds`). Daftar status lama
+  (`processing, shipped, delivered, completed, return_in_process, return_completed`)
+  tidak lagi menjadi penyaring, dan status saat ini tidak dipakai sama sekali.
+- Basis waktu: `orders.created_at` (bucket tidak berpindah).
 - **Ini bukan** pembayaran diterima, settlement, atau laba. Semua pesanan (transfer & COD) dihitung
   sejak `processing` (ADR-015 existing, dipertahankan).
+- Konsekuensi pengakuan beku yang disetujui owner: pembatalan SETELAH periode berakhir tidak
+  menghapus pesanan dari laporan periode itu; pesanan yang baru `processing` SETELAH periode
+  berakhir tidak dihitung di periode mana pun; pesanan tanpa catatan event tidak terhitung.
+  Bukti diskriminatif: `StorePerformanceRecognitionFreezeTest`.
 
 ### 2. Penjualan Bersih
 
@@ -317,3 +324,29 @@ Tidak ada keputusan baru lain yang ditambahkan di draft ini.
 - Perubahan yang mengikuti ADR ini selalu disertai test, karena setiap cakupan metrik
   dibuktikan dengan data di luar rentang, bukan dengan perbandingan nilai antar rentang.
 - Tidak mengubah ADR existing.
+## Revisi 2026-09-22 (Batch N+1)
+
+### Kontrak keluaran baru (P0.4 + P0.5)
+
+- `report.date_contract`: zona waktu aplikasi, semantik batas rentang, perilaku periode
+  berjalan, cara pembandingan, dan aturan pengakuan penjualan. Catatan temuan terpisah:
+  batas yang dipakai kode adalah INKLUSIF akhir hari (23:59:59.999999), bukan
+  end_exclusive. Pergeseran ke end_exclusive tidak dikerjakan di dalam batch kontrak ini
+  karena akan membolak-balikkan angka; ia dicatat sebagai pekerjaan tersendiri.
+- `report.metric_basis[*].unit`: satu unit per metrik dari kosakata sah (rupiah, pesanan,
+  pembayaran, unit, model, sub model, produk, kunjungan, orang, kasus, jam, hari, persen).
+  Penjaga: `StorePerformanceMetricBasisTest`.
+- Invarian keluaran dibuktikan pada dua rentang data live sebelum dan sesudah perubahan:
+  hanya kunci baru yang bertambah, nol angka berubah.
+
+### Kas Bersih per Produk (P0.1, ekspor pesanan)
+
+- Kolom "Net Profit Toko per Produk (Kas Bersih)" pada ekspor pesanan diganti nama menjadi
+  "Kas Bersih per Produk" (Sheet 1) dan "KAS BERSIH TOKO" (Sheet 2 Rekap).
+- Statusnya: KONSEP TERPISAH dari Penjualan Bersih Performa Toko, bukan formula ganda yang
+  salah. Bedanya: ongkir memakai tagihan asli J&T bila sudah dilaporkan, dan nilai barang
+  retur tidak dikurangkan.
+- Deklarasinya hidup di `OrderExport::EXPORT_BASIS` dan dijaga dua arah oleh
+  `OrderExportContractTest`: tidak ada kolom uang tanpa deklarasi, tidak ada deklarasi
+  untuk kolom yang bukan uang.
+- Backlog #3 dan #14 ditutup sebagai keputusan, bukan bug.

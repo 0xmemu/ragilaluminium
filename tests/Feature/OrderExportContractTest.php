@@ -21,7 +21,7 @@ use Tests\TestCase;
 /**
  * Kontrak export pesanan FORMAT TEMPLATE OWNER v3 (kontrak owner 2026-09-12):
  * 3 sheet (Skema A per item, Rekap per pesanan, Panduan & Kamus Lengkap),
- * kolom Diskon % (N = M/L), Net Profit per produk (AC = net profit pesanan
+ * kolom Diskon % (N = M/L), Kas Bersih per produk (AC = kas bersih pesanan
  * dialokasikan proporsional per subtotal baris), SUMIF rekap yang
  * mengecualikan pesanan Dibatalkan, baris TOTAL P/Q/R/AC saja, Berat &
  * Volume memakai format modul pengiriman.
@@ -105,7 +105,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Nomor Pesanan', $tx->getCell('A2')->getValue());
         $this->assertSame('Diskon per Produk (%)', $tx->getCell('P2')->getValue());
         $this->assertSame('Harga Jual Satuan', $tx->getCell('Q2')->getValue());
-        $this->assertSame('Net Profit Toko per Produk (Kas Bersih)', $tx->getCell('AE2')->getValue());
+        $this->assertSame('Kas Bersih per Produk', $tx->getCell('AE2')->getValue());
         // Kolom asuransi (W) menyisip setelah Biaya COD (V).
         $this->assertSame('Biaya COD Ditanggung Pembeli', $tx->getCell('X2')->getValue());
         $this->assertSame('Asuransi Pengiriman Dibayar Pembeli', $tx->getCell('Y2')->getValue());
@@ -184,7 +184,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('Selisih Ongkir J&T', $rk->getCell('Q2')->getValue());
         $this->assertSame('Biaya COD ke J&T', $rk->getCell('R2')->getValue());
         $this->assertSame('Total Potongan J&T', $rk->getCell('S2')->getValue());
-        $this->assertSame('NET PROFIT TOKO (KAS BERSIH)', $rk->getCell('V2')->getValue());
+        $this->assertSame('KAS BERSIH TOKO', $rk->getCell('V2')->getValue());
 
         $this->assertSame('ORD-EXP-001', $rk->getCell('A3')->getValue());
         $this->assertSame('=H3+I3', $rk->getCell('G3')->getValue());
@@ -309,15 +309,15 @@ class OrderExportContractTest extends TestCase
         foreach (['H', 'I'] as $col) {
             $this->assertStringContainsString('Dibatalkan', (string) $rk->getCell("{$col}{$rowBatal}")->getValue(), 'pengecualian pesanan batal aktif');
         }
-        // Kolom Net Profit dicari lewat header baris 2 (tahan pergeseran kolom).
+        // Kolom Kas Bersih dicari lewat header baris 2 (tahan pergeseran kolom).
         $netCol = null;
         foreach (range(1, 40) as $ci) {
-            if ($rk->getCell([$ci, 2])->getValue() === 'NET PROFIT TOKO (KAS BERSIH)') {
+            if ($rk->getCell([$ci, 2])->getValue() === 'KAS BERSIH TOKO') {
                 $netCol = Coordinate::stringFromColumnIndex($ci);
                 break;
             }
         }
-        $this->assertNotNull($netCol, 'header NET PROFIT TOKO ditemukan');
+        $this->assertNotNull($netCol, 'header KAS BERSIH TOKO ditemukan');
         // Beban toko pesanan batal = 0; refund tetap terdata di Rekap.
         foreach (['J', 'K', 'L', 'M', 'N', 'P'] as $col) {
             $this->assertEquals(0, (float) $rk->getCell("{$col}{$rowBatal}")->getValue(), "kolom {$col} pesanan batal = 0");
@@ -340,7 +340,7 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('KAMUS KOLOM', $text);
         $this->assertStringContainsString('14. Diskon per Produk (%)', $text);
         $this->assertStringContainsString('23. Asuransi Pengiriman Dibayar Pembeli', $text);
-        $this->assertStringContainsString('29. Net Profit Toko per Produk', $text);
+        $this->assertStringContainsString('29. Kas Bersih per Produk', $text);
         $this->assertStringContainsString('35. Prinsip COD & Ongkir (Pass-Through)', $text);
         $this->assertStringContainsString('36. Aturan Agregasi', $text);
         $this->assertStringContainsString('berat tagih paket', $text);
@@ -537,5 +537,58 @@ class OrderExportContractTest extends TestCase
 
         $this->assertSame('=K3+L3+N3', $rk->getCell('P3')->getValue(), 'record cancelled diabaikan');
         $this->assertEquals(0, (float) $rk->getCell('Q3')->getCalculatedValue());
+    }
+
+    /**
+     * Kontrak dasar kolom uang (keputusan owner 2026-09-22): tidak ada kolom
+     * uang pada ekspor pesanan yang berjalan tanpa deklarasi EXPORT_BASIS,
+     * dan tidak ada deklarasi untuk kolom yang bukan uang. Tanpa penjaga ini,
+     * angka uang baru bisa lolos tanpa basis hitung yang tertulis.
+     */
+    public function test_setiap_kolom_uang_terdeklarasi_di_export_basis(): void
+    {
+        $sheetKunci = [
+            'tx' => new \App\Exports\OrderTxSheet([]),
+            'rekap' => new \App\Exports\OrderRekapSheet([]),
+        ];
+
+        foreach ($sheetKunci as $kunci => $sheet) {
+            $refleksi = new \ReflectionProperty($sheet, 'currencyColumns');
+            $refleksi->setAccessible(true);
+            $kolomUang = $refleksi->getValue($sheet);
+            $deklarasi = array_keys(\App\Exports\OrderExport::EXPORT_BASIS[$kunci]);
+
+            $tanpaDeklarasi = array_values(array_diff($kolomUang, $deklarasi));
+            $this->assertSame(
+                [],
+                $tanpaDeklarasi,
+                'Kolom uang tanpa deklarasi EXPORT_BASIS pada '.$kunci.': '.implode(', ', $tanpaDeklarasi)
+            );
+
+            $deklarasiBasi = array_values(array_diff($deklarasi, $kolomUang));
+            $this->assertSame(
+                [],
+                $deklarasiBasi,
+                'Deklarasi EXPORT_BASIS untuk kolom yang bukan uang pada '.$kunci.': '.implode(', ', $deklarasiBasi)
+            );
+        }
+    }
+
+    /**
+     * Keputusan owner: Kas Bersih pada ekspor pesanan adalah KONSEP TERPISAH
+     * dari Penjualan Bersih pada Performa Toko, bukan formula yang salah.
+     * Deklarasi wajib menyebut pembedanya supaya pembaca tidak menyamakan
+     * dua angka itu.
+     */
+    public function test_kas_bersih_dinyatakan_konsep_terpisah_dari_penjualan_bersih(): void
+    {
+        $this->assertStringContainsString(
+            'Penjualan Bersih',
+            \App\Exports\OrderExport::EXPORT_BASIS['tx']['AE']
+        );
+        $this->assertStringContainsString(
+            'Penjualan Bersih',
+            \App\Exports\OrderExport::EXPORT_BASIS['rekap']['V']
+        );
     }
 }
