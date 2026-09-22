@@ -371,6 +371,10 @@ export function TestimonialCarousel({
               compact
               variant={variant}
               showAdminReply={showAdminReply}
+              // Tiga baris, dan tombol "Lihat selengkapnya" termasuk di
+              // dalamnya karena menempel di ujung baris ketiga, bukan baris
+              // sendiri di bawahnya.
+              messageClampClassName="line-clamp-3"
               href={testimonial.product?.href ?? routeUrl(variant === "screenshot" ? "reviews.screenshots" : "reviews.website")}
             />
           </div>

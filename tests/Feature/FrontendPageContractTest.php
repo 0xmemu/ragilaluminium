@@ -216,4 +216,47 @@ class FrontendPageContractTest extends TestCase
         $this->assertStringContainsString('adminReply && showAdminReply', $card);
     }
 
+    /**
+     * Teks ulasan di carousel beranda dipotong TIGA baris, dan tombol
+     * "Lihat selengkapnya" termasuk di dalam tiga baris itu karena menempel di
+     * ujung baris ketiga, bukan baris sendiri di bawahnya.
+     *
+     * Potongannya diberikan pemanggil, bukan disimpulkan dari prop `compact`,
+     * karena `compact` dipakai bersama oleh daftar ulasan di /reviews/web yang
+     * TIDAK ikut berubah.
+     */
+    public function test_home_review_carousel_clamps_message_to_three_lines(): void
+    {
+        $sections = File::get(resource_path('js/components/public/home-sections.tsx'));
+        $carousels = File::get(resource_path('js/components/public/home-carousels.tsx'));
+        $card = File::get(resource_path('js/components/public/testimonial-card.tsx'));
+
+        // Carousel memotong teks ulasan di tiga baris. Nilainya dipasang pada
+        // pemanggilan TestimonialCard DI DALAM komponen carousel, bukan pada
+        // pemakaian <TestimonialCarousel> di seksi beranda, jadi berlaku untuk
+        // seluruh carousel ulasan yang memakai komponen itu.
+        $this->assertStringContainsString(
+            'messageClampClassName="line-clamp-3"',
+            $carousels,
+            'Carousel ulasan harus memotong teks ulasan di tiga baris.'
+        );
+
+        // Kartu menerima potongan eksplisit dari pemanggil.
+        $this->assertStringContainsString('messageClampClassName', $card);
+        $this->assertMatchesRegularExpression(
+            '/clampClassName=\{messageClampClassName \?\? \(compact \? "line-clamp-4" : "line-clamp-5"\)\}/',
+            $card,
+            'Potongan eksplisit harus didahulukan atas bawaan menurut `compact`.'
+        );
+
+        // Daftar ulasan di /reviews/web TIDAK ikut berubah: ia masih memakai
+        // `compact` dan tidak meminta potongan eksplisit.
+        $reviews = File::get(resource_path('js/pages/Public/Reviews.tsx'));
+        $this->assertStringContainsString('compact', $reviews);
+        $this->assertStringNotContainsString('messageClampClassName', $reviews);
+
+        // Demikian pula carousel "Apa kata pelanggan kami" pada seksi lain.
+        $this->assertStringNotContainsString('messageClampClassName', $sections);
+    }
+
 }

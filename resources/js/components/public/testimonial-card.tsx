@@ -21,6 +21,7 @@ export function TestimonialCard({
   variant = "review",
   onOpen,
   showAdminReply = true,
+  messageClampClassName,
 }: {
   testimonial: Testimonial
   compact?: boolean
@@ -35,6 +36,11 @@ export function TestimonialCard({
    * kartunya kecil, dan balasan memakan ruang yang dipakai foto ulasan.
    */
   showAdminReply?: boolean
+  /**
+   * Potongan tinggi teks ulasan. Bila kosong, dipakai bawaan menurut `compact`.
+   * Carousel memakai potongan lebih pendek karena kartunya sempit.
+   */
+  messageClampClassName?: string
 }) {
   const [previewOpen, setPreviewOpen] = React.useState(false)
   const [visiblePhotos, setVisiblePhotos] = React.useState(0)
@@ -193,7 +199,7 @@ export function TestimonialCard({
           // Kartu di /reviews/web dirender di dalam <Link>, jadi tombolnya
           // memakai elemen non-tombol agar tidak bersarang di dalam <a>.
           insideLink={Boolean(reviewSectionHref)}
-          clampClassName={compact ? "line-clamp-4" : "line-clamp-5"}
+          clampClassName={messageClampClassName ?? (compact ? "line-clamp-4" : "line-clamp-5")}
           className="mt-1 text-xs leading-snug text-foreground"
         />
       ) : null}
