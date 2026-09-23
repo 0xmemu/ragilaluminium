@@ -184,7 +184,7 @@ class ModelProductController extends Controller
             'keywords.*' => ['nullable', 'string', 'max:64'],
             'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
-        ]);
+        ], [], ['name' => 'Nama tampilan', 'product_category' => 'Kategori produk']);
 
         $validated['product_category'] = $validated['product_category'] ?: null;
         $validated['product_model'] = $existing?->product_model

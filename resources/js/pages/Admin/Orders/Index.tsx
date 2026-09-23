@@ -958,10 +958,14 @@ export default function OrdersIndex({
       <Head title={`${title} | Admin`} />
 
       {/* Tabs status pesanan + Ringkasan Pesanan & Nilai sejajar di kanan */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Dulu overflow-x-auto + scrollbar-none: isi 1089px di wadah 884px pada
+            layar 1440px, sehingga tab "Retur Selesai" terpotong dan "Perlu
+            Perhatian" sepenuhnya tersembunyi tanpa petunjuk gulir. Sekarang tab
+            membungkus baris, jadi tidak ada filter yang hilang. */}
+        <div className="min-w-0 flex-1">
           <div
-            className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-1"
+            className="inline-flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-card p-1"
             role="tablist"
             aria-label="Filter status pesanan"
           >
@@ -1024,7 +1028,7 @@ export default function OrdersIndex({
           </div>
         </div>
 
-        <div className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
+        <div className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
           <span><strong className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
           <span className="text-muted-foreground/60">·</span>
           <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>

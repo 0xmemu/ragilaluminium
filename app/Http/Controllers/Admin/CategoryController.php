@@ -142,7 +142,7 @@ protected function validateCategory(Request $request, ?Category $category = null
             'seo_description' => ['nullable', 'string', 'max:500'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], [], ['name' => 'Nama Kategori', 'code' => 'Kode Kategori']);
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['sort_order'] = $data['sort_order'] ?? 0;

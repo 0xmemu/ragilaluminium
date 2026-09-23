@@ -287,7 +287,7 @@ class PromotionController extends Controller
             'targets.*.target_id' => ['required', 'string', 'max:100'],
             'targets.*.excluded' => ['sometimes', 'boolean'],
             'targets.*.override_discount_percent' => ['nullable', 'integer', 'min:1', 'max:90'],
-        ]);
+        ], [], ['name' => 'Nama kampanye']);
     }
 
     /**

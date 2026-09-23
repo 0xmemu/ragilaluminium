@@ -79,7 +79,7 @@ class MediaFolderController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120', 'regex:/^[^\/\\\\:*?"<>|]+$/'],
             'parent_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
-        ]);
+        ], [], ['name' => 'Nama folder']);
 
         $folder = MediaFolder::create([
             'name' => trim($validated['name']),
@@ -98,7 +98,7 @@ class MediaFolderController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120', 'regex:/^[^\/\\\\:*?"<>|]+$/'],
-        ]);
+        ], [], ['name' => 'Nama folder']);
 
         $folder->update(['name' => trim($validated['name'])]);
 

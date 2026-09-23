@@ -87,7 +87,7 @@ class SubModelController extends Controller
             'image_url' => ['nullable', 'url', 'max:1024'],
         ], [
             'code.unique' => 'Kode sub model sudah dipakai untuk model ini.',
-        ]);
+        ], ['product_model' => 'Model produk', 'code' => 'Kode', 'name' => 'Nama sub model']);
 
         $validated['sort_order'] = (int) SubModel::query()
             ->where('product_model', $validated['product_model'])
@@ -152,7 +152,7 @@ class SubModelController extends Controller
             'model_templates' => ['nullable', 'array', 'max:30'],
             'model_templates.*.attribute_name' => ['required_with:model_templates', 'string', 'max:100'],
             'model_templates.*.attribute_value' => ['required_with:model_templates', 'string', 'max:255'],
-        ]);
+        ], [], ['name' => 'Nama sub model']);
         $validated['is_active'] = $request->boolean('is_active');
         $subModel->update($validated);
 

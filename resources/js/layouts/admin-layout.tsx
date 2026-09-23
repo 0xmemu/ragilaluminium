@@ -292,9 +292,15 @@ function AdminPageFrame({
       {!fullWidth && (title || actions) && (
         <div className="relative px-4 pb-5 pt-6 md:px-6 lg:px-8">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <AdminBreadcrumbs items={breadcrumbItems} className="mb-[26px]" />
-              <PageGuide routeName={routeName} className="absolute right-4 top-[30px] md:right-6 lg:right-8" />
+            <div className="min-w-0 sm:flex-1">
+              {/* Panduan sebaris dengan breadcrumb, rata kanan. Sebelumnya
+                  diposisikan absolute di kanan atas sehingga menimpa tombol
+                  aksi header saat baris aksi melebar (Simpan di Beranda,
+                  Tambah di Halaman CMS), dan tombol itu jadi tidak bisa diklik. */}
+              <div className="mb-[26px] flex w-full min-w-0 items-center gap-3">
+                <AdminBreadcrumbs items={breadcrumbItems} className="min-w-0" />
+                <PageGuide routeName={routeName} className="ml-auto shrink-0" />
+              </div>
               {title && backUrl ? (
                 <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                   <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />

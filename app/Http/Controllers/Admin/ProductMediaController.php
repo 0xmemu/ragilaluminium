@@ -244,9 +244,12 @@ class ProductMediaController extends Controller
                 'visibility' => $m->visibility,
             ])->all(),
             // Owner 2026-09-16: form pasang-ke-produk langsung dari halaman detail media.
-            'attachUrl' => route('media.attach', $asset),
+            // Nama route wajib berawalan `admin.`: seluruh route admin didaftarkan
+            // di dalam grup ->name('admin.'), sehingga `media.attach` dan
+            // `media.assets.destroy` tidak pernah terdaftar dan halaman ini 500.
+            'attachUrl' => route('admin.media.attach', $asset),
             'libraryHref' => route('admin.media.library'),
-            'destroyUrl' => route('media.assets.destroy', $asset),
+            'destroyUrl' => route('admin.media.assets.destroy', $asset),
         ]);
     }
 
