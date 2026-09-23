@@ -444,3 +444,26 @@ dengan sebelumnya, panel tiga angka plus Detail perhitungan tampil, keyboard ter
 tetap). Screenshot sebelum/sesudah tema gelap tersimpan di artefak sesi.
 Untuk agent berikutnya: dilarang menambah hitungan bisnis di StorePerformance.tsx, guard
 renderer-pasif.test.ts akan merah; label fallback tetap juga dilarang oleh guard yang sama.
+
+---
+
+## 2026-09-24 10:50 UTC | zcode | Deep UI | 746da576 | selesai
+Lingkup: instruksi owner 2026-09-24, pemetaan scope metrik drawer Performa Toko. Berkas:
+StorePerformance.tsx, tests/frontend/scope-mapping.test.ts (baru), scope-dom.test.ts (baru).
+Fondasi: helper scopeMetrik, displayComparison, kelompokMetrik membaca metric_basis sebagai
+satu-satunya sumber scope; kpiRow menolak delta untuk scope current. Drawer dipecah: Arus Kas
+menjadi D. Kas Periode Terpilih dan E. Posisi Kas Saat Ini (bauran F, ongkir retur G);
+Operasional Antrean Saat Ini vs Metrik Periode Terpilih vs Kondisi Saat Ini; Retur memisahkan
+Retur Aktif Saat Ini dari Retur dan Pembatalan Periode Terpilih; Referensi menambah kolom
+Perbandingan (Periode sebelumnya / Tidak dibandingkan) dari scope. Semua baris manual drawer
+kini membawa data-metric-key, termasuk baris baru jumlah pesanan belum masuk pada kedua
+cakupan supaya mapping satu-ke-satu.
+Golden expectation TIDAK berubah; tidak ada formula, angka, atau kunci kontrak yang tersentuh.
+Bukti: mapping 7 passed; DOM 4 passed; Vitest penuh 25 berkas 202 test; tsc, lint bersih;
+golden 4 passed tanpa perubahan; suite PHP penuh 1 skipped 1129 passed; push hook build sukses
+(89f43f1e..746da576); live: drawer Arus Kas dan Operasional menunjukkan pemisahan, blok
+snapshot tanpa kolom perubahan berisi, screenshot dark dan light tersimpan di artefak sesi.
+Untuk agent berikutnya: helper scope (scopeMetrik/displayComparison/kelompokMetrik) adalah
+satu-satunya jalur menentukan penyajian perbandingan; dilarang menyimpulkan scope dari nilai
+atau label; metrik baru wajib masuk kelompok drawer yang sesuai scope-nya atau test mapping
+merah.
