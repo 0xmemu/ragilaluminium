@@ -290,17 +290,18 @@ function AdminPageFrame({
       className={`admin-main outline-none ${fullWidth ? "h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col" : ""}`}
     >
       {!fullWidth && (title || actions) && (
-        <div className="relative px-4 pb-5 pt-6 md:px-6 lg:px-8">
+        <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
+          {/* Breadcrumb dan Panduan di baris penuh tersendiri supaya Panduan
+              tetap di sudut kanan atas halaman tanpa pernah menimpa tombol
+              aksi header. Dua percobaan sebelumnya gagal: absolute menimpa
+              tombol aksi saat baris aksi melebar, lalu ditaruh di dalam kolom
+              judul sehingga ikut bergeser mengikuti lebar kolom. */}
+          <div className="mb-[26px] flex w-full min-w-0 items-center gap-3">
+            <AdminBreadcrumbs items={breadcrumbItems} className="min-w-0" />
+            <PageGuide routeName={routeName} className="ml-auto shrink-0" />
+          </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0 sm:flex-1">
-              {/* Panduan sebaris dengan breadcrumb, rata kanan. Sebelumnya
-                  diposisikan absolute di kanan atas sehingga menimpa tombol
-                  aksi header saat baris aksi melebar (Simpan di Beranda,
-                  Tambah di Halaman CMS), dan tombol itu jadi tidak bisa diklik. */}
-              <div className="mb-[26px] flex w-full min-w-0 items-center gap-3">
-                <AdminBreadcrumbs items={breadcrumbItems} className="min-w-0" />
-                <PageGuide routeName={routeName} className="ml-auto shrink-0" />
-              </div>
+            <div className="min-w-0">
               {title && backUrl ? (
                 <Link href={backUrl} className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                   <Icon name="arrow-left" className="size-3.5" aria-hidden="true" />
