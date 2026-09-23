@@ -16,7 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * GOLDEN TEST, Kontrak Perhitungan Beku v1.0.0 (ADR-026).
+ * GOLDEN TEST, Kontrak Perhitungan Beku (ADR-026).
  *
  * Dataset uji yang sama harus selalu menghasilkan angka yang sama. Seluruh
  * angka keluaran build() dibekukan pada berkas
@@ -41,7 +41,7 @@ class StorePerformanceGoldenTest extends TestCase
 {
     use RefreshDatabase;
 
-    public const CONTRAK_VERSI = '1.0.0';
+    public const CONTRAK_VERSI = '1.0.1';
 
     private const BERKAS = __DIR__.'/../Expectations/store-performance-golden-v1.json';
 

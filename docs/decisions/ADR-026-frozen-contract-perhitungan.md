@@ -1,7 +1,7 @@
 # ADR-026: Frozen Contract Perhitungan v1
 
 > **STATUS: Accepted (2026-09-23).** Kontrak perhitungan uang dan Performa Toko dibekukan
-> pada versi 1.0.0. Perubahan atas lapis manapun di bawah wajib melewati gerbang yang
+> pada versi 1.0.0 dan kini berada pada versi 1.0.1. Perubahan atas lapis manapun di bawah wajib melewati gerbang yang
 > dijelaskan di bagian "Cara mengubah kontrak".
 
 ## Konteks
@@ -90,3 +90,12 @@ tanpa naik versi.
 - Test golden berjalan di SQLite in-memory, jadi angkanya disiplin untuk laporan, bukan
   untuk ketepatan SQLite versus MySQL; perbedaan dialek ditangani penjaga terpisah
   (`StorePerformanceF10RulesTest`).
+
+## v1.0.1 (2026-09-23)
+
+PATCH: teks penjelasan metrik `payments_received` diperluas untuk
+menjelaskan titik lunas kedua metode, transfer setelah konfirmasi admin dan COD
+saat barang sampai ke pembeli bukan saat setoran kurir. Tidak ada angka, formula,
+cakupan, acuan, satuan, atau urutan yang berubah; expectation diperbarui lewat
+GOLDEN_UPDATE dan versi kontrak disamakan di ADR ini, berkas expectation, dan
+komentar FROZEN.

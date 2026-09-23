@@ -2622,7 +2622,7 @@
                 },
                 {
                     "change_percent": 1066.7,
-                    "detail": "Pembayaran yang dana-nya benar-benar lunas pada periode.",
+                    "detail": "Pembayaran yang dana-nya benar-benar lunas pada periode. Transfer dianggap lunas setelah konfirmasi admin; COD dianggap lunas saat barangnya sampai ke pembeli, bukan saat uang kurir disetor ke toko, jadi angka ini belum tentu sama dengan saldo kas bank.",
                     "format": "currency",
                     "key": "payments_received",
                     "label": "Pembayaran Diterima",
@@ -2852,5 +2852,5 @@
             "units": 1
         }
     ],
-    "versi_kontrak": "1.0.0"
+    "versi_kontrak": "1.0.1"
 }

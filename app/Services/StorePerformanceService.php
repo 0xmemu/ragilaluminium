@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Pembukuan toko & penjualan - sumber kebenaran: orders + order_items (+ page views).
  *
- * FROZEN v1.0.0 (ADR-026): berkas ini memegang Kontrak Perhitungan Beku lapis 1 sampai 7.
+ * FROZEN v1.0.1 (ADR-026): berkas ini memegang Kontrak Perhitungan Beku lapis 1 sampai 7.
  * Perubahan formula, METRIC_BASIS, atau date_contract wajib memperbarui
  * tests/Expectations/store-performance-golden-v1.json di PR yang sama
  * (GOLDEN_UPDATE=1 php artisan test --filter=StorePerformanceGoldenTest)
@@ -481,7 +481,7 @@ class StorePerformanceService
 
         $paymentsKpis = [
             $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi refund retur yang benar-benar selesai.'),
-            $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang dana-nya benar-benar lunas pada periode.'),
+            $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang dana-nya benar-benar lunas pada periode. Transfer dianggap lunas setelah konfirmasi admin; COD dianggap lunas saat barangnya sampai ke pembeli, bukan saat uang kurir disetor ke toko, jadi angka ini belum tentu sama dengan saldo kas bank.'),
             $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
             $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], null, 'number', 'Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun. Tidak dibatasi periode. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
         ];
