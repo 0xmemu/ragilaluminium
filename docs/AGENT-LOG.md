@@ -581,3 +581,22 @@ belum commit: CategoryController.php (penjaga kode sudah dipindah ke versi
 mandiri dan ikut di-commit) dan Categories/Form.tsx (petunjuk kolom kode
 terkunci), serta HomepagePopularTest.php (satu payload form milik test baru
 agent lain).
+
+---
+
+## 2026-09-24 01:05 UTC | zcode-admin-audit | Trivial | d1cee145 | selesai
+Tindak lanjut laporan owner: setelah perbaikan Panduan, tombol itu bergeser ke
+kiri dan terlihat aneh. Penyebab: baris breadcrumb ditaruh di dalam kolom judul,
+jadi ml-auto mendorong Panduan mengikuti lebar kolom kiri, bukan ke sudut kanan
+halaman. Perbaikan: baris breadcrumb dan Panduan dipindah jadi baris penuh di
+atas baris judul, sehingga Panduan kembali ke sudut kanan atas dan tetap tidak
+mungkin menimpa tombol aksi.
+
+Bukti: diukur di 8 halaman layar 1440px dan 3 halaman layar 1280px, tepi kanan
+tombol konsisten di 1237-1412px (mengikuti padding halaman dan scrollbar), nol
+tabrakan, tombol Batal/Urutkan/Simpan/Tambah bisa diklik, diverifikasi visual di
+halaman yang dulu paling parah. typecheck bersih, build sukses.
+
+Untuk agent berikutnya: kalau mengubah struktur header admin-layout, ukur posisi
+dan tabrakan tombol aksi di halaman yang aksinya panjang (Beranda, Halaman CMS,
+Pengaturan Sistem), bukan hanya memeriksa tidak ada error.
