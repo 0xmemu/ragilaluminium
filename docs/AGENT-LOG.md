@@ -421,3 +421,26 @@ pesan jalur (.financial.net_revenue 4030001 menjadi 4030000) lalu dipulihkan; su
 Untuk agent berikutnya: menyentuh StorePerformanceService.php atau OrderExport.php tanpa
 memperbarui expectation = PR ditolak gerbang; versi kontrak disamakan di tiga tempat
 (ADR-026, berkas expectation, komentar FROZEN).
+
+---
+
+## 2026-09-23 21:10 UTC | zcode | Deep UI | 850db814 | selesai
+Lingkup: instruksi owner 2026-09-23, perapian UI Performa Toko dengan renderer pasif.
+Berkas: StorePerformance.tsx, lib/format.ts, components/admin/ui/hint-tip.tsx (baru),
+tests/frontend/renderer-pasif.test.ts (baru), tests/frontend/store-performance-dom.test.ts (baru).
+Perubahan: halaman jadi renderer pasif. Tujuh hitungan frontend dihapus: potongan retur
+gabungan di panel dan di drawer, selisih durasi, rasio porsi penjualan pada payment_mix,
+rasio klik-lihat, dua total reduce pada modal produk terlaris, dan pembagian transfer-COD.
+Label, nilai, hint, satuan, dan delta kartu kini murni dari payload tanpa fallback tetap;
+formatter visual terpusat di lib/format.ts; HintTip satu komponen (hover, fokus, ketukan,
+Esc, fokus tetap); data-metric-key pada kartu, kotak keuangan, grafik, baris drawer, dan
+referensi; panel Ringkasan Keuangan jadi tiga angka plus tombol Detail perhitungan; banner
+periode membawa hint Kontrak Tanggal dari payload. Golden expectation TIDAK berubah.
+Bukti: golden 4 passed tanpa perubahan expectation; suite PHP penuh 1 skipped 1129 passed;
+Vitest 23 berkas 189 test lulus termasuk 4 test guard pasif dan 8 test DOM dari fixture;
+tsc dan eslint bersih; push hook build sukses (c585544c..850db814); live: angka identik
+dengan sebelumnya, panel tiga angka plus Detail perhitungan tampil, keyboard terverifikasi
+(urutan fokus filter ke kartu ke hint, Enter membuka hint dari payload, Esc menutup, fokus
+tetap). Screenshot sebelum/sesudah tema gelap tersimpan di artefak sesi.
+Untuk agent berikutnya: dilarang menambah hitungan bisnis di StorePerformance.tsx, guard
+renderer-pasif.test.ts akan merah; label fallback tetap juga dilarang oleh guard yang sama.
