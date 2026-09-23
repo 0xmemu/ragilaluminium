@@ -255,16 +255,13 @@ type ProductBreakdownGridProps = {
   onViewAll: () => void
 }
 
-function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridProps) {
-  // Hanya interaksi. Peringkat penjualan sudah ada di tabel Produk Terlaris di
-  // sebelah kiri, jadi tidak dibuat ulang di sini.
-  const [tab, setTab] = React.useState<"viewed" | "clicked">("viewed")
-
-  const tabs = [
-    { key: "viewed" as const, label: "Paling Dilihat" },
-    { key: "clicked" as const, label: "Paling Diklik" },
-  ]
-
+function ProductBreakdownGrid({
+  breakdowns,
+  onViewAll,
+  tab,
+}: ProductBreakdownGridProps & { tab: "viewed" | "clicked" }) {
+  // Tab dipilih di header kartu analisis produk (tombolnya di sana); komponen
+  // ini hanya merender konten sesuai tab yang aktif.
   const data = tab === "viewed" ? breakdowns.most_viewed : breakdowns.most_clicked
 
   // Batasi persis 6 produk di kartu ringkas
@@ -273,30 +270,6 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
   return (
     <section className="flex flex-col justify-between">
       <div className="p-5 pb-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-          <HoverHint
-            label="Produk Berdasarkan Interaksi"
-            hint="Peminat katalog (dilihat & diklik) dibanding produk yang dikonversi menjadi penjualan."
-            className="text-sm font-semibold tracking-tight text-foreground"
-          />
-          <div className="flex flex-wrap gap-1">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition",
-                  tab === t.key
-                    ? "bg-foreground text-background shadow-xs font-semibold"
-                    : "bg-surface text-muted-foreground hover:text-foreground border border-border",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         <EngagementList rows={previewRows} />
         {data.length === 0 ? (
@@ -313,7 +286,7 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
             onClick={onViewAll}
             className="w-full text-xs font-semibold"
           >
-            Lihat semua {data.length} produk ({tabs.find((t) => t.key === tab)?.label})
+            Lihat semua {data.length} produk ({tab === "viewed" ? "Paling Dilihat" : "Paling Diklik"})
             <Icon name="arrow-right" className="ml-1.5 size-3.5" aria-hidden="true" />
           </Button>
         </div>
@@ -1851,6 +1824,8 @@ export default function StorePerformance({
   const bukaKategori = (kategori: DetailCategory) => setDetailCategory(kategori)
 
   const [chartTab, setChartTab] = React.useState(0)
+  // Tab kartu analisis produk: Terlaris, Paling Dilihat, Paling Diklik.
+  const [tabProduk, setTabProduk] = React.useState<"terlaris" | "viewed" | "clicked">("terlaris")
 
   function buildExportUrl(): string {
     try {
@@ -2736,22 +2711,46 @@ export default function StorePerformance({
         ) : null}
       </SectionCard>
 
-      {/* LAYER 5: ANALISIS KATALOG PRODUK. Terlaris dan Interaksi kini satu
-          kartu dengan dua bagian berdinding, bukan dua kartu berdampingan. */}
+      {/* LAYER 5: ANALISIS KATALOG PRODUK. Satu kartu, TIGA tab di header:
+          Terlaris, Paling Dilihat, Paling Diklik. Konten berganti mengikuti
+          tab, bukan dua baris bertumpuk. */}
       <div className="mb-5 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        {/* Bagian 1: Produk Terlaris - TAMPIL 6 PRODUK */}
-        <div className="flex flex-col justify-between">
+        <React.Fragment>
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
+            <div className="flex flex-wrap gap-1">
+              {([
+                { key: "terlaris" as const, label: "Terlaris" },
+                { key: "viewed" as const, label: "Paling Dilihat" },
+                { key: "clicked" as const, label: "Paling Diklik" },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTabProduk(t.key)}
+                  aria-pressed={tabProduk === t.key}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition",
+                    tabProduk === t.key
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "bg-surface text-muted-foreground hover:text-foreground border border-border",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+              {tabProduk === "terlaris"
+                ? Math.min(6, report.top_products.length) + " teratas"
+                : (tabProduk === "viewed"
+                    ? report.product_breakdowns.most_viewed.length
+                    : report.product_breakdowns.most_clicked.length) + " produk"}
+            </span>
+          </header>
+
+          {tabProduk === "terlaris" ? (
+        <div>
           <div>
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
-              <HoverHint
-                label="Produk Terlaris"
-                hint="Peringkat produk berdasarkan nilai produk terjual dari pesanan fulfillment."
-                className="text-sm font-semibold tracking-tight text-foreground"
-              />
-              <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
-                {Math.min(6, report.top_products.length)} teratas
-              </span>
-            </header>
             {report.top_products.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -2815,14 +2814,14 @@ export default function StorePerformance({
             </div>
           ) : null}
         </div>
-
-        {/* Bagian 2: Produk Berdasarkan Interaksi */}
-        <div className="border-t-2 border-border">
-          <ProductBreakdownGrid
-            breakdowns={report.product_breakdowns}
-            onViewAll={() => setShowInteractionModal(true)}
-          />
-        </div>
+          ) : (
+            <ProductBreakdownGrid
+              breakdowns={report.product_breakdowns}
+              onViewAll={() => setShowInteractionModal(true)}
+              tab={tabProduk}
+            />
+          )}
+        </React.Fragment>
       </div>
 
       {/* ========================================================================= */}
