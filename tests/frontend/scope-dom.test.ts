@@ -179,6 +179,20 @@ describe("pemetaan scope pada DOM drawer", () => {
     expect(antara).not.toContain("%")
   })
 
+  it("badge scope membedakan kartu periode dari kartu snapshot", () => {
+    const html = renderKategori("arus-kas")
+    const d = html.indexOf("D. Kas Periode Terpilih")
+    const e = html.indexOf("E. Posisi Kas Saat Ini")
+    const blokD = html.slice(d, e)
+    const blokE = html.slice(e)
+    // Kartu periode berbadge "Periode terpilih"; kartu snapshot berbadge
+    // marker dari metric_basis apa adanya (huruf kecil dari payload).
+    expect(blokD).toContain("Periode terpilih")
+    expect(blokE).toContain("semua waktu")
+    // dan snapshot tetap tanpa delta.
+    expect(blokE).not.toContain("%")
+  })
+
   it("baris periode menampilkan delta dari payload", () => {
     const html = renderKategori("pengunjung")
     // visitors +33,3 dari payload.

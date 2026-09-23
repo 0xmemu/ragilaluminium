@@ -411,6 +411,10 @@ type DetailRow = {
   comparison?: DeltaComparison
   /** Kunci metrik payload yang dimuat baris ini, untuk data-metric-key. */
   metricKey?: string
+  /** Cakupan metrik dari metric_basis, sumber badge pembeda kartu. */
+  scope?: "period" | "current"
+  /** Penanda cakupan dari payload, mis. "kondisi saat ini" atau "semua waktu". */
+  marker?: string | null
 }
 
 type DetailBlock =
@@ -626,7 +630,7 @@ function daftarTerbatas<T>(items: T[]): { rows: T[]; total: number } {
   return { rows: items.slice(0, DETAIL_LIST_LIMIT), total: items.length }
 }
 
-export function buildCategoryDetail(
+function bangunKategoriDetail(
   category: DetailCategory,
   report: Report,
   kpiMap: Record<string, Kpi>,
@@ -1308,6 +1312,40 @@ export function buildCategoryDetail(
 }
 
 /**
+ * Membangun isi kategori lalu menganotasi setiap baris dengan scope-nya dari
+ * metric_basis. Anotasi dilakukan di SATU tempat supaya badge pembeda metrik
+ * periode dan metrik kondisi saat ini tidak bisa berbeda antar kategori dan
+ * tidak pernah berasal dari teks yang ditulis manual di renderer.
+ */
+export function buildCategoryDetail(
+  category: DetailCategory,
+  report: Report,
+  kpiMap: Record<string, Kpi>,
+  kunjunganTidakLengkap: boolean,
+  tersediaSejak: string | null,
+): CategoryDetail {
+  const detail = bangunKategoriDetail(category, report, kpiMap, kunjunganTidakLengkap, tersediaSejak)
+  const blokAnotasi = detail.blocks.map((block) =>
+    block.kind === "rows"
+      ? {
+          ...block,
+          rows: block.rows.map((row) =>
+            row.metricKey && report.metric_basis?.[row.metricKey]
+              ? {
+                  ...row,
+                  scope: scopeMetrik(report, row.metricKey),
+                  marker: report.metric_basis?.[row.metricKey]?.marker ?? null,
+                }
+              : row,
+          ),
+        }
+      : block,
+  )
+
+  return { ...detail, blocks: blokAnotasi }
+}
+
+/**
  * Isi drawer: satu kategori pada satu waktu. Pemilih kategori ada di dalam
  * drawer supaya berpindah kategori tidak perlu menutup dan membuka ulang.
  */
@@ -1417,6 +1455,23 @@ export function CategoryDetailPanel({
                           <DeltaBadge percent={row.delta} comparison={row.comparison} />
                         ) : null}
                       </div>
+                      {/* Badge pembeda cakupan: sumbernya metric_basis payload,
+                          bukan teks manual, supaya metrik periode dan metrik
+                          kondisi saat ini tidak pernah terlihat sama. */}
+                      {row.scope ? (
+                        <p className="mt-1.5">
+                          <span
+                            className={cn(
+                              "inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                              row.scope === "current"
+                                ? "border-warning/40 bg-warning/10 text-warning"
+                                : "border-border bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {row.scope === "current" ? (row.marker ?? "Kondisi saat ini") : "Periode terpilih"}
+                          </span>
+                        </p>
+                      ) : null}
                       <p
                         className={cn(
                           "mt-1 font-mono text-lg font-bold tabular-nums tracking-tight",
