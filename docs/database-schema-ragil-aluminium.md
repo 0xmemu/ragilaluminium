@@ -68,7 +68,12 @@ Migration terkait:
 - `name` (`VARCHAR`), NN
 - `short_name` (`VARCHAR`), nullable
 - `description` (`TEXT`), nullable
-- `category_id` (`INTEGER`), NN
+- `category_id` (`BIGINT UNSIGNED`), nullable; **WARISAN (LEGGACY), TIDAK DIPAKAI**:
+  menyimpan ID kategori Shopee lama (nilai saat ini `NULL` atau `0`, tidak ada
+  yang cocok ke `categories.id`). Dipensiunkan lewat keputusan owner 2026-09-03
+  dan tidak pernah ditulis oleh form produk maupun import. Tidak dipakai relasi
+  atau query mana pun. Sumber kebenaran kategori adalah `product_category`
+  yang dicocokkan ke `categories.code`.
 - `product_category` (`VARCHAR`), NN
 - `status` (`VARCHAR`), NN, default 'active'
 - `created_by_user_id` (`INTEGER`), nullable, FK -> users.id
@@ -89,7 +94,7 @@ Indexes:
 - `idx_products_status_category` (IDX on `status`, `product_category`)
 - `idx_products_homepage_popular` (IDX on `homepage_popular`, `homepage_popular_sort`)
 - `idx_products_category_model_design` (IDX on `product_category`, `product_model`, `design_variant`)
-- `idx_products_category_id` (IDX on `category_id`)
+- `idx_products_category_id` (IDX on `category_id`); milik kolom warisan, tidak dipakai query
 
 ### 1.2 `product_variants`
 

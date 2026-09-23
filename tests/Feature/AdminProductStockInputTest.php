@@ -23,7 +23,7 @@ class AdminProductStockInputTest extends TestCase
         $response = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Jendela manual',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             // Create tanpa checklist publish harus tetap menjadi draf arsip.
@@ -75,7 +75,7 @@ class AdminProductStockInputTest extends TestCase
         $create = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Produk varian',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             // Create tanpa checklist publish harus tetap menjadi draf arsip.

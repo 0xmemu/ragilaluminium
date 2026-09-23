@@ -15,8 +15,16 @@ class Category extends Model
         'sort_order' => 'integer',
     ];
 
+    /**
+     * Produk dalam kategori ini, dicocokkan lewat kode kategori.
+     *
+     * products.product_category menyimpan kode kategori (mis. JENDELA) yang
+     * sama dengan categories.code. Inilah relasi aktif; kolom products.category_id
+     * adalah kolom warisan ID kategori Shopee yang dipensiunkan (keputusan owner
+     * 2026-09-03) dan tidak lagi ditulis.
+     */
     public function products()
     {
-        return $this->hasMany(Product::class, 'category_id');
+        return $this->hasMany(Product::class, 'product_category', 'code');
     }
 }

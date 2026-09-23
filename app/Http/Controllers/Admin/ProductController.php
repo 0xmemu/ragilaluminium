@@ -179,10 +179,7 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')],
 
             'description' => ['nullable', 'string'],
-            'product_category' => ['required', Rule::in(array_merge(
-                \App\Support\CategoryUrl::productCategoryCodes(),
-                ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
-            ))],
+            'product_category' => ['required', Rule::in(\App\Support\CategoryUrl::productCategoryCodes())],
             'product_model' => ['required', Rule::in(\App\Support\CatalogLabels::modelCodes())],
             // Sub model OPSIONAL dan TIDAK diikat daftar sub_models: kode baru
             // (mis. ZIGZAG + ORNAMEN) boleh dipakai walau belum terdaftar sebagai
@@ -842,10 +839,7 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($product->id)],
 
             'description' => ['nullable', 'string'],
-            'product_category' => ['required', Rule::in(array_merge(
-                \App\Support\CategoryUrl::productCategoryCodes(),
-                ['WINDOW', 'DOOR', 'BOUVEN'], // legacy data lama tetap valid
-            ))],
+            'product_category' => ['required', Rule::in(\App\Support\CategoryUrl::productCategoryCodes())],
             'product_model' => ['required', Rule::in(\App\Support\CatalogLabels::modelCodes())],
             // Sub model OPSIONAL dan TIDAK diikat daftar sub_models: kode baru
             // (mis. ZIGZAG + ORNAMEN) boleh dipakai walau belum terdaftar sebagai

@@ -19,6 +19,9 @@ class Product extends Model
         'short_name',
         'search_keywords',
         'description',
+        // category_id = kolom warisan ID kategori Shopee, dipensiunkan
+        // (keputusan owner 2026-09-03), tidak lagi ditulis dan tidak dipakai
+        // relasi apa pun. Sumber kebenaran kategori: product_category.
         'category_id',
         'product_category',
         'product_model',
@@ -137,11 +140,6 @@ class Product extends Model
     public function scopeVisible(Builder $query): Builder
     {
         return $query->where('status', 'active')->whereHas('activeVariants');
-    }
-
-    public function scopeCategory(Builder $query, string $category): Builder
-    {
-        return $query->where('product_category', $category);
     }
 
     /** Admin-curated picks for Home “Paling Banyak Dipesan”. */

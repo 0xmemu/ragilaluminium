@@ -20,7 +20,7 @@ class AdminProductWizardTest extends TestCase
             'workflow' => 'wizard',
             'name' => 'Jendela wizard',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             // Create form tetap menyimpan draf sampai checklist publikasi lengkap.

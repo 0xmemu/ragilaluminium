@@ -127,6 +127,20 @@ class CategoryController extends Controller
 
 protected function validateCategory(Request $request, ?Category $category = null): array
     {
+        // Kontrak 2026-09-24: kode kategori adalah kunci pencocokan
+        // products.product_category. Bila kategori sudah dipakai produk, kode
+        // tidak boleh berubah supaya relasi, angka katalog, dan URL publik
+        // tidak patah. Form sudah menonaktifkan kolom ini; penjaga ini untuk
+        // permintaan langsung. Dibaca dari permintaan, bukan dari hasil
+        // penurunan kode, agar penjaga berdiri sendiri.
+        if ($category && filled($request->input('code')) && $category->products()->exists()) {
+            $requested = mb_strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', (string) $request->input('code')));
+            if ($requested !== $category->code) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'code' => 'Kode kategori tidak bisa diubah karena sudah dipakai produk.',
+                ]);
+            }
+        }
         $slugRule = ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'];
         if ($category) {
             $slugRule[] = 'unique:categories,slug,'.$category->id;
