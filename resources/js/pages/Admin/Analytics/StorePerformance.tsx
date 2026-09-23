@@ -2451,6 +2451,7 @@ export default function StorePerformance({
               <HoverHint
                 label={kpiMap["aov"]?.label}
                 hint={kpiHint("aov")}
+                className="text-xs font-medium text-muted-foreground"
               />
             </div>
             <p className="mt-2 font-mono text-xl font-bold tabular-nums text-foreground">
