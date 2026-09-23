@@ -467,3 +467,30 @@ Untuk agent berikutnya: helper scope (scopeMetrik/displayComparison/kelompokMetr
 satu-satunya jalur menentukan penyajian perbandingan; dilarang menyimpulkan scope dari nilai
 atau label; metrik baru wajib masuk kelompok drawer yang sesuai scope-nya atau test mapping
 merah.
+
+---
+
+## 2026-09-24 12:20 UTC | zcode | Deep UI | 97b7501e | selesai
+Lingkup: instruksi owner 2026-09-24, perbaikan presentation drawer Performa Toko.
+Berkas: StorePerformance.tsx saja (renderer CategoryDetailPanel). Kontrak data TIDAK
+berubah: golden expectation utuh, tidak ada formula/angka/payload/metric_basis yang
+tersentuh, UI tetap renderer pasif.
+Perubahan presentation: baris rows drawer kini kartu metrik (label, nilai besar,
+keterangan, delta dari payload dengan pembandingnya); tanda operasi (±) turun ke
+keterangan kartu, bukan lagi kolom utama; formula pindah dari blok paling atas ke
+bagian lipat Dasar perhitungan di bawah (tetap dapat diakses untuk audit); mode
+tabel kompak dipertahankan khusus kategori teknis Referensi (Kontrak Tanggal,
+Rentang Laporan) dan tabel Dasar Setiap Metrik; hint konversi menjelaskan bahwa
+angkanya persentase pembeli unik dibanding pengunjung unik, bukan jumlah orang.
+Pola dibuktikan dulu di satu drawer (Penjualan) lewat screenshot before/after, baru
+disebar; semua drawer memakai renderer sama sehingga ikut berubah.
+Bukti: screenshot before (drawer Penjualan tabel rumus, artefak sesi) vs after
+(Penjualan kartu, Dasar perhitungan terbuka, Retur kartu per kelompok, Referensi
+tabel teknis, Arus Kas kartu); Vitest 25 berkas 202 test lulus tanpa penyesuaian
+(asersi berbasis teks bukan struktur); tsc dan lint bersih; golden 4 passed tanpa
+perubahan expectation; suite PHP penuh 1 skipped 1129 passed; push hook build
+sukses dua kali (591f5bdf..cfdaf8fc..97b7501e); live: interaksi drawer, kategori,
+Esc, dan hint terverifikasi.
+Untuk agent berikutnya: renderer rows punya dua mode, kartu (default) dan tabel
+(mode: tabel untuk Referensi); jangan memunculkan kembali kolom ± sebagai struktur
+utama atau formula di puncak drawer; formula hidup di DasarPerhitungan yang terlipat.
