@@ -414,7 +414,7 @@ type DetailRow = {
 }
 
 type DetailBlock =
-  | { kind: "rows"; title?: string; rows: DetailRow[]; bandingkan?: boolean; sub?: string }
+  | { kind: "rows"; title?: string; rows: DetailRow[]; bandingkan?: boolean; sub?: string; mode?: "kartu" | "tabel" }
   | { kind: "items"; title?: string; items: Array<{ title: string; value: string; desc: string }> }
   | { kind: "list"; title?: string; head: string[]; rows: string[][]; total: number; rowKeys?: string[] }
 
@@ -1226,6 +1226,7 @@ export function buildCategoryDetail(
           {
             kind: "rows",
             title: "Kontrak Tanggal",
+            mode: "tabel",
             rows: Object.entries(report.date_contract ?? {}).map(([kunci, nilai]) => ({
               label: LABEL_KONTRAK_TANGGAL[kunci] ?? kunci,
               value: nilai,
@@ -1246,6 +1247,7 @@ export function buildCategoryDetail(
           {
             kind: "rows",
             title: "Rentang Laporan",
+            mode: "tabel",
             rows: [
               { label: "Periode", value: range.label, sign: "·" },
               { label: "Tanggal Mulai", value: range.from_date, sign: "·" },
@@ -1377,15 +1379,6 @@ export function CategoryDetailPanel({
       </div>
 
       <div className="space-y-4 pt-4">
-        {detail.formula ? (
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground">Rumus</p>
-            <div className="mt-1.5 rounded-lg bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
-              {detail.formula}
-            </div>
-          </div>
-        ) : null}
-
         {detail.blocks.map((block, blockIndex) => (
           <div key={"blok-" + blockIndex} className="overflow-hidden rounded-xl border border-border">
             {block.title ? (
@@ -1394,11 +1387,60 @@ export function CategoryDetailPanel({
               </p>
             ) : null}
 
-            {block.kind === "rows" ? (
+            {block.kind === "rows" && block.mode !== "tabel" ? (
+              /* Pola kartu metrik: label, nilai besar, keterangan, dan
+                 perbandingan. Tanda operasi (±) tidak lagi menjadi kolom
+                 utama; ia turun ke keterangan kartu supaya drawer terbaca
+                 sebagai laporan, bukan lembar kalkulator. */
+              <div className="divide-y divide-border/60">
+                {block.rows.map((row, rowIndex) => {
+                  const barisPenjelas = [row.sub, row.note].filter(Boolean).join(" ")
+                  const operasi = row.sign && row.sign !== "·" ? "Operasi: " + row.sign : null
+                  const hintKartu = [barisPenjelas, operasi].filter(Boolean).join(" ")
+                  return (
+                    <div
+                      key={"kartu-" + blockIndex + "-" + rowIndex}
+                      data-metric-key={row.metricKey}
+                      className={cn("px-4 py-3", row.tone === "primary" && "bg-muted/20")}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <HoverHint
+                          label={row.label}
+                          hint={hintKartu || undefined}
+                          className={cn(
+                            "min-w-0 text-xs",
+                            row.tone === "primary" ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
+                          )}
+                        />
+                        {row.delta !== undefined && row.delta !== null ? (
+                          <DeltaBadge percent={row.delta} comparison={row.comparison} />
+                        ) : null}
+                      </div>
+                      <p
+                        className={cn(
+                          "mt-1 font-mono text-lg font-bold tabular-nums tracking-tight",
+                          row.tone === "primary"
+                            ? "text-primary"
+                            : row.tone === "destructive"
+                              ? "text-destructive"
+                              : "text-foreground",
+                        )}
+                      >
+                        {row.value}
+                      </p>
+                      {barisPenjelas && !operasi ? (
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{barisPenjelas}</p>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+
+            {block.kind === "rows" && block.mode === "tabel" ? (
               <table className="w-full text-xs">
-                {/* Empat kolom ini punya arti berbeda, jadi diberi kepala.
-                    Sebelumnya tanpa kepala, sehingga pembaca tidak bisa tahu
-                    kolom mana uraian, operasi, nilai, dan perubahan. */}
+                {/* Mode tabel kompak untuk kategori teknis (Referensi): empat
+                    kolom kepala dipertahankan karena isinya memang tabular. */}
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="py-2 pr-4 text-left font-medium">Uraian</th>
@@ -1549,7 +1591,34 @@ export function CategoryDetailPanel({
           </div>
         ))}
 
+        {detail.formula ? <DasarPerhitungan formula={detail.formula} /> : null}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Bagian lipat "Dasar perhitungan": formula tetap dapat diakses untuk audit,
+ * tetapi bukan lagi blok pertama yang dilihat admin.
+ */
+export function DasarPerhitungan({ formula }: { formula: string }) {
+  const [terbuka, setTerbuka] = React.useState(false)
+  return (
+    <div className="rounded-xl border border-border">
+      <button
+        type="button"
+        aria-expanded={terbuka}
+        onClick={() => setTerbuka((nilai) => !nilai)}
+        className="flex w-full items-center justify-between px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+      >
+        Dasar perhitungan
+        <Icon name={terbuka ? "chevron-up" : "chevron-down"} className="size-3.5" aria-hidden="true" />
+      </button>
+      {terbuka ? (
+        <p className="border-t border-border px-4 py-3 text-xs leading-relaxed text-foreground">
+          {formula}
+        </p>
+      ) : null}
     </div>
   )
 }
