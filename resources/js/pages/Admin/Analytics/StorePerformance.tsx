@@ -271,7 +271,7 @@ function ProductBreakdownGrid({ breakdowns, onViewAll }: ProductBreakdownGridPro
   const previewRows = data.slice(0, 6)
 
   return (
-    <section className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <section className="flex flex-col justify-between">
       <div className="p-5 pb-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <HoverHint
@@ -2736,10 +2736,11 @@ export default function StorePerformance({
         ) : null}
       </SectionCard>
 
-      {/* LAYER 5: ANALISIS KATALOG PRODUK (PRODUK TERLARIS & INTERAKSI DI PALING BAWAH) */}
-      <div className="mb-5 grid gap-6 xl:grid-cols-2">
-        {/* Kolom Kiri: Produk Terlaris - TAMPIL 6 PRODUK */}
-        <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      {/* LAYER 5: ANALISIS KATALOG PRODUK. Terlaris dan Interaksi kini satu
+          kartu dengan dua bagian berdinding, bukan dua kartu berdampingan. */}
+      <div className="mb-5 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        {/* Bagian 1: Produk Terlaris - TAMPIL 6 PRODUK */}
+        <div className="flex flex-col justify-between">
           <div>
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-5 pb-3">
               <HoverHint
@@ -2815,11 +2816,13 @@ export default function StorePerformance({
           ) : null}
         </div>
 
-        {/* Kolom Kanan: Produk Berdasarkan Interaksi - TAMPIL 6 PRODUK */}
-        <ProductBreakdownGrid
-          breakdowns={report.product_breakdowns}
-          onViewAll={() => setShowInteractionModal(true)}
-        />
+        {/* Bagian 2: Produk Berdasarkan Interaksi */}
+        <div className="border-t-2 border-border">
+          <ProductBreakdownGrid
+            breakdowns={report.product_breakdowns}
+            onViewAll={() => setShowInteractionModal(true)}
+          />
+        </div>
       </div>
 
       {/* ========================================================================= */}
