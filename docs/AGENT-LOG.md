@@ -548,3 +548,36 @@ dan public/build dimiliki root; menjalankannya sebagai www-data gagal EACCES.
 (c) satu perubahan belum commit milik agent lain pada tautan Kembali di
 admin-layout.tsx (mb-1 menjadi mb-5px) sengaja TIDAK ikut di-commit dan tetap ada
 di working tree untuk pemiliknya.
+
+---
+
+## 2026-09-24 00:35 UTC | zcode-admin-audit | Deep | bb3b10b6 | selesai
+Lingkup: eksekusi Opsi B telaah P0 kategori atas keputusan owner, plus tugas
+terpisah untuk audit alias. Sumber kebenaran kategori dipindah ke
+products.product_category yang dicocokkan ke categories.code; kolom warisan
+category_id ditandai dan tidak dipakai apa pun.
+
+Perubahan: Category::products() mencocokkan product_category ke code; penjaga
+hapus kategori kini bekerja (sebelumnya selalu lolos); penjaga baru mengunci
+kode kategori bila sudah dipakai produk (dibaca dari permintaan agar berdiri
+sendiri, tidak bergantung pada refactor agent lain yang belum commit); jalur
+tulis produk menolak kode warisan WINDOW/DOOR/BOUVEN; scopeCategory mati
+dihapus; docs skema menandai category_id warisan; test baru
+CategoryProductRelationTest 9 kasus; dokumen tugas terpisah
+docs/audit-admin/audit-alias-kategori.md.
+
+Bukti: php artisan test 1 skipped 1138 passed 0 gagal (9 test baru termasuk);
+typecheck dan build sukses; live diverifikasi: angka Produk Terkait di halaman
+Kategori admin Jendela 120, Pintu 1, Boven 62 (sebelumnya semuanya 0); form
+edit kategori menampilkan kolom kode terkunci dengan petunjuk jumlah produk;
+katalog publik /, /products/jendela, /products/pintu, /products/boven tetap 200.
+
+Untuk agent berikutnya: (a) tugas audit alias kategori warisan didokumentasikan
+lengkap di docs/audit-admin/audit-alias-kategori.md, termasuk 74 berkas fixture
+test yang memakai kode warisan dan keputusan URL English; jangan hapus peta
+alias sebelum fixture dimigrasi. (b) dua berkas tetap membawa perubahan saya
+yang TIDAK ikut di-commit karena bergantung pada refactor agent lain yang
+belum commit: CategoryController.php (penjaga kode sudah dipindah ke versi
+mandiri dan ikut di-commit) dan Categories/Form.tsx (petunjuk kolom kode
+terkunci), serta HomepagePopularTest.php (satu payload form milik test baru
+agent lain).
