@@ -988,6 +988,7 @@ export function buildCategoryDetail(
               label: "Pengunjung yang Membeli",
               value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
               sign: "=",
+              note: "Ini adalah persentase pembeli unik dibanding pengunjung unik pada periode terpilih, bukan jumlah orang.",
               metricKey: "conversion",
               tone: "primary",
             },
