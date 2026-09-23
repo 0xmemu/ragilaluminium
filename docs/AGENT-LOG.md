@@ -509,3 +509,42 @@ delta. Golden expectation utuh; tidak ada angka atau kontrak yang berubah.
 Bukti: Vitest 25 berkas 203 test lulus; tsc dan lint bersih; golden 4 passed; push
 hook build sukses (8ef4af9c..6f2c3e6e); live diverifikasi: badge terlihat di drawer
 Arus Kas dengan dua gaya berbeda, screenshot di artefak sesi.
+
+---
+
+## 2026-09-23 16:30 UTC | zcode-admin-audit | Deep | c20b06b7 | selesai
+Lingkup: audit konsistensi UI, komponen, dan flow panel admin, lalu perbaikan P1
+atas instruksi owner. Audit read-only; perbaikan dikerjakan sesudah audit selesai.
+
+Audit: 31 menu sidebar dijelajahi lewat klik nyata (bukan slug), 0 error konsol,
+semua URL dan menu aktif benar. 290 nama route diuji terhadap resolver breadcrumb
+dan ditemukan 2 route menyimpang. 6 form tambah diuji sampai submit kosong.
+7 modul add/edit dibandingkan. Luaran: docs/AUDIT-ADMIN (laporan konsistensi,
+telaah P0 kategori, coverage matrix, 26 tangkapan layar, skrip analisis).
+
+Temuan P0: (1) kolom "Produk Terkait" di halaman Kategori selalu 0, karena
+Category::products() membaca products.category_id yang tidak pernah ditulis
+sejak keputusan owner 2026-09-03 memensiunkan ID kategori Shopee; akibat
+lanjutannya penjaga hapus kategori ikut buta sehingga kategori berisi 120 produk
+bisa terhapus. Telaah dampak ubah versus tetap ada di TELAAH-P0-KATEGORI.md,
+menunggu keputusan owner. (2) tombol Panduan menutupi tombol aksi header.
+
+Perbaikan P1 di commit ini: label validasi Indonesia untuk 208 field admin plus
+label khusus form untuk name dan code yang bertabrakan dengan checkout; tombol
+Panduan dipindah ke arus tata letak; baris tab status pesanan membungkus alih-alih
+menggulir tersembunyi; dua nama route di ProductMediaController diberi awalan
+admin. sehingga halaman detail media yang 500 kembali normal.
+
+Bukti: php artisan test 1 skipped 1129 passed 0 gagal; tsc bersih; build sukses;
+live diverifikasi dengan akun admin untuk keempat perbaikan (media attach 200,
+label validasi berbahasa Indonesia, nol tabrakan Panduan di 24 halaman kali dua
+lebar layar, 10 tab pesanan muat penuh).
+
+Untuk agent berikutnya: (a) skrip penyisip label sempat membuat validate() dengan
+4 argumen dan argumen keempat diabaikan PHP tanpa error, jadi label tampak tidak
+bekerja; hitung ulang jumlah argumen setiap kali menyisipkan, jangan diasumsikan.
+(b) build frontend di repo ini dijalankan sebagai root karena node_modules/.vite-temp
+dan public/build dimiliki root; menjalankannya sebagai www-data gagal EACCES.
+(c) satu perubahan belum commit milik agent lain pada tautan Kembali di
+admin-layout.tsx (mb-1 menjadi mb-5px) sengaja TIDAK ikut di-commit dan tetap ada
+di working tree untuk pemiliknya.
