@@ -414,7 +414,7 @@ type DetailRow = {
 }
 
 type DetailBlock =
-  | { kind: "rows"; title?: string; rows: DetailRow[] }
+  | { kind: "rows"; title?: string; rows: DetailRow[]; bandingkan?: boolean; sub?: string }
   | { kind: "items"; title?: string; items: Array<{ title: string; value: string; desc: string }> }
   | { kind: "list"; title?: string; head: string[]; rows: string[][]; total: number; rowKeys?: string[] }
 
@@ -489,19 +489,32 @@ function formatKpiValue(kpi: Kpi): string {
  * Baris dari satu kunci KPI. Mengembalikan null bila kuncinya tidak ada, supaya
  * kategori tidak pernah menampilkan baris kosong atau label kosong.
  */
-function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·"): DetailRow | null {
+function kpiRow(
+  kpiMap: Record<string, Kpi>,
+  key: string,
+  sign: DetailSign = "·",
+  laporan?: Report,
+): DetailRow | null {
   const kpi = kpiMap[key]
   if (!kpi) return null
+  // Status penyajian dibaca dari metric_basis payload, bukan dari nilai atau
+  // label. Metrik bercakupan sekarang tidak pernah diberi delta periode.
+  const status = laporan ? displayComparison(laporan, kpi) : null
+  const delta = status
+    ? status.pakaiDelta
+      ? (kpi.change_percent ?? undefined)
+      : undefined
+    : adalahSnapshot(kpi)
+      ? undefined
+      : (kpi.change_percent ?? undefined)
   return {
     label: kpi.label,
     value: formatKpiValue(kpi),
     sign,
     metricKey: key,
     note: kpi.detail ?? undefined,
-    // Metrik snapshot sengaja tidak diberi perubahan: angkanya keadaan saat
-    // laporan dibangun, jadi tidak ada periode pembanding yang bermakna.
-    delta: adalahSnapshot(kpi) ? undefined : (kpi.change_percent ?? undefined),
-    comparison: kpi.comparison,
+    delta,
+    comparison: delta === undefined ? undefined : kpi.comparison,
   }
 }
 
@@ -511,6 +524,52 @@ function kpiRow(kpiMap: Record<string, Kpi>, key: string, sign: DetailSign = "·
  */
 function adalahSnapshot(kpi?: Kpi): boolean {
   return kpi !== undefined && kpi.previous === null
+}
+
+/**
+ * Cakupan metrik dibaca dari metric_basis payload, satu-satunya sumber.
+ * Dilarang menyimpulkan scope dari nilai, label, kelompok, atau bentuk angka.
+ */
+function scopeMetrik(
+  report: Report,
+  key: string,
+): "period" | "current" {
+  return report.metric_basis?.[key]?.scope === "current" ? "current" : "period"
+}
+
+/**
+ * Status penyajian perbandingan satu metrik. Helper ini TIDAK menghitung apa
+ * pun: ia membaca scope dari metric_basis dan delta dari payload, lalu
+ * memutuskan bagaimana barisnya ditampilkan.
+ */
+function displayComparison(
+  report: Report,
+  kpi: Pick<Kpi, "key" | "previous" | "change_percent"> | undefined,
+): { bandingkan: boolean; pakaiDelta: boolean } {
+  if (!kpi || scopeMetrik(report, kpi.key) === "current") {
+    return { bandingkan: false, pakaiDelta: false }
+  }
+  return { bandingkan: true, pakaiDelta: kpi.change_percent !== null }
+}
+
+/**
+ * Kelompok resmi UI menurut scope. Diperbarui dari payload metric_basis:
+ * kunci yang tidak dikenal masuk "tak-terpetakan" dan test mapping akan merah.
+ */
+export const KELOMPOK_SNAPSHOT = new Set([
+  "open_orders",
+  "dispatched_orders",
+  "returns_open",
+  "payment_pending_count",
+  "cod_pending_amount",
+  "cod_pending_count",
+])
+
+export function kelompokMetrik(report: Report, key: string): "periode" | "kini" | "tak-terpetakan" {
+  const scope = report.metric_basis?.[key]?.scope
+  if (scope === "current") return "kini"
+  if (scope === "period") return "periode"
+  return "tak-terpetakan"
 }
 
 /**
@@ -546,10 +605,11 @@ const LABEL_DASAR_TAMBAHAN: Record<string, string> = {
 function kpiRows(
   kpiMap: Record<string, Kpi>,
   keys: string[],
+  laporan?: Report,
   sign: DetailSign = "·",
 ): DetailRow[] {
   return keys
-    .map((key) => kpiRow(kpiMap, key, sign))
+    .map((key) => kpiRow(kpiMap, key, sign, laporan))
     .filter((row): row is DetailRow => row !== null)
 }
 
@@ -558,7 +618,7 @@ function kpiRows(
  * sekaligus supaya perataannya tidak pernah berbeda.
  */
 function isKolomTeks(judul: string): boolean {
-  return /nama|sku|metode|penanggung|keterangan|uraian|produk/i.test(judul)
+  return /nama|sku|metode|penanggung|keterangan|uraian|produk|cakupan|acuan|perbandingan/i.test(judul)
 }
 
 /** Potong daftar dan sertakan jumlah totalnya supaya sisanya tidak disembunyikan. */
@@ -591,16 +651,17 @@ export function buildCategoryDetail(
   // Dipakai jalur pembentukan Penjualan Gross, yang muncul di kategori
   // Penjualan maupun Arus Kas.
   const pembentukanGross: DetailRow[] = [
-    { label: "Nilai Produk Terjual", value: rp(fin.items_before_discount ?? 0), sign: "+" },
-    { label: "Voucher Toko", value: rp(fin.voucher_discount ?? 0), sign: "−" },
-    { label: "Ongkir Dibayar Pembeli", value: rp(fin.shipping_paid_by_customer ?? 0), sign: "+" },
-    { label: "Asuransi Pengiriman", value: rp(fin.insurance ?? 0), sign: "+" },
-    { label: "Biaya COD Dibayar Pembeli", value: rp(fin.cod_fee ?? 0), sign: "+" },
+    { label: "Nilai Produk Terjual", value: rp(fin.items_before_discount ?? 0), sign: "+", metricKey: "items_before_discount" },
+    { label: "Voucher Toko", value: rp(fin.voucher_discount ?? 0), sign: "−", metricKey: "voucher_discount" },
+    { label: "Ongkir Dibayar Pembeli", value: rp(fin.shipping_paid_by_customer ?? 0), sign: "+", metricKey: "shipping_paid_by_customer" },
+    { label: "Asuransi Pengiriman", value: rp(fin.insurance ?? 0), sign: "+", metricKey: "insurance" },
+    { label: "Biaya COD Dibayar Pembeli", value: rp(fin.cod_fee ?? 0), sign: "+", metricKey: "cod_fee" },
     {
       label: "Total Penjualan Gross",
       value: rp(fin.gross_revenue),
       sign: "=",
       tone: "primary",
+      metricKey: "omzet",
       delta: kpiMap["omzet"]?.change_percent,
     },
   ]
@@ -623,7 +684,7 @@ export function buildCategoryDetail(
               "products",
               "units",
               "completed_orders",
-            ]),
+            ], report),
           },
           {
             kind: "rows",
@@ -681,6 +742,7 @@ export function buildCategoryDetail(
               label: "Tagihan J&T",
               value: rp(fin.shipping_raw ?? 0),
               sign: "−",
+              metricKey: "shipping_raw",
               sub:
                 "Ongkir dibayar pembeli " +
                 rp(fin.shipping_paid_by_customer ?? 0) +
@@ -690,14 +752,15 @@ export function buildCategoryDetail(
                 rp(fin.shipping_subsidy ?? 0),
               note: "Tagihan J&T adalah satu-satunya pengurang ongkir. Baris rincian di atas menjelaskan komposisinya, bukan pengurang tambahan.",
             },
-            { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−" },
-            { label: "Refund diberikan", value: rp(fin.refund_adjustments ?? 0), sign: "−" },
-            { label: "Ongkir retur toko", value: rp(fin.return_shipping_store ?? 0), sign: "−" },
-            { label: "Nilai barang retur paket", value: rp(fin.refused_goods_value ?? 0), sign: "−" },
+            { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−", metricKey: "cod_fee" },
+            { label: "Refund diberikan", value: rp(fin.refund_adjustments ?? 0), sign: "−", metricKey: "refund_given" },
+            { label: "Ongkir retur toko", value: rp(fin.return_shipping_store ?? 0), sign: "−", metricKey: "return_shipping_cost_total" },
+            { label: "Nilai barang retur paket", value: rp(fin.refused_goods_value ?? 0), sign: "−", metricKey: "refused_goods_value" },
             {
               label: "Penjualan Bersih",
               value: rp(fin.net_revenue),
               sign: "=",
+              metricKey: "net_revenue",
               tone: "primary",
               delta: kpiMap["net_revenue"]?.change_percent,
             },
@@ -719,14 +782,18 @@ export function buildCategoryDetail(
         })
       }
 
+      // Posisi kas DIPECAH menurut scope metric_basis: kas yang mengikuti
+      // rentang dan boleh dibandingkan, terpisah dari kondisi saat ini yang
+      // tidak pernah diberi delta periode.
       blocks.push({
         kind: "rows",
-        title: "D. Posisi Kas",
+        title: "D. Kas Periode Terpilih",
         rows: [
           {
-            label: "Pembayaran Diterima (periode ini)",
+            label: "Pembayaran Terverifikasi (periode ini)",
             value: rp(fin.payments_received ?? 0),
             sign: "+",
+            metricKey: "payments_received",
             sub: "COD Selesai " + rp(fin.cod_paid ?? 0),
             note: "Basis waktunya dana benar-benar lunas, berbeda dari hak penjualan barang.",
             delta: kpiMap["payments_received"]?.change_percent,
@@ -735,35 +802,30 @@ export function buildCategoryDetail(
             label: kpiMap["cod_paid"]?.label,
             value: rp(kpiMap["cod_paid"]?.value ?? 0),
             sign: "·",
+            metricKey: "cod_paid",
             sub: "Pesanan COD yang barangnya sudah sampai ke pembeli pada periode terpilih.",
             delta: kpiMap["cod_paid"]?.change_percent,
-          },
-          {
-            label: "Belum Masuk (semua waktu)",
-            value: rp(fin.cod_pending_amount ?? 0),
-            sign: "·",
-            sub:
-              ang(fin.cod_pending_count ?? 0) +
-              " pesanan COD aktif. Angka ini kondisi saat ini, dihitung tanpa batas periode.",
           },
           {
             label: "Belum Masuk (periode ini)",
             value: rp(fin.cod_pending_in_period_amount ?? 0),
             sign: "·",
+            metricKey: "cod_pending_in_period_amount",
             sub:
               ang(fin.cod_pending_in_period_count ?? 0) +
               " pesanan COD aktif yang pesanannya dibuat dalam periode terpilih.",
           },
           {
-            label: "Pembayaran Transfer Pending",
-            value: ang(kpiMap["payment_pending_count"]?.value ?? 0) + " pembayaran",
+            label: "Belum Masuk, jumlah pesanan (periode ini)",
+            value: ang(fin.cod_pending_in_period_count ?? 0) + " pesanan",
             sign: "·",
-            sub: "Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun.",
+            metricKey: "cod_pending_in_period_count",
           },
           {
             label: "Retur Paket Ditanggung Toko",
             value: rp(fin.refused_borne_cost ?? 0),
             sign: "·",
+            metricKey: "refused_borne_cost",
             sub:
               ang(fin.refused_borne_count ?? 0) +
               " pesanan. Ongkir kirim " +
@@ -775,12 +837,40 @@ export function buildCategoryDetail(
           },
         ],
       })
+      blocks.push({
+        kind: "rows",
+        title: "E. Posisi Kas Saat Ini, tidak dibandingkan periode",
+        rows: [
+          {
+            label: "Belum Masuk (semua waktu)",
+            value: rp(fin.cod_pending_amount ?? 0),
+            sign: "·",
+            metricKey: "cod_pending_amount",
+            sub:
+              ang(fin.cod_pending_count ?? 0) +
+              " pesanan COD aktif. Angka ini kondisi saat ini, dihitung tanpa batas periode.",
+          },
+          {
+            label: "Belum Masuk, jumlah pesanan (semua waktu)",
+            value: ang(fin.cod_pending_count ?? 0) + " pesanan",
+            sign: "·",
+            metricKey: "cod_pending_count",
+          },
+          {
+            label: "Pembayaran Transfer Pending",
+            value: ang(kpiMap["payment_pending_count"]?.value ?? 0) + " pembayaran",
+            sign: "·",
+            metricKey: "payment_pending_count",
+            sub: "Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun.",
+          },
+        ],
+      })
 
       if (report.payment_mix.length > 0) {
         const bauran = daftarTerbatas(report.payment_mix)
         blocks.push({
           kind: "list",
-          title: "E. Bauran Metode Pembayaran",
+          title: "F. Bauran Metode Pembayaran",
           head: ["Metode", "Nilai Pesanan", "Pesanan"],
           total: bauran.total,
           rows: bauran.rows.map((row) => [
@@ -796,7 +886,7 @@ export function buildCategoryDetail(
         const ongkirRetur = daftarTerbatas(ongkirReturSemua)
         blocks.push({
           kind: "list",
-          title: "F. Ongkir Retur per Kasus",
+          title: "G. Ongkir Retur per Kasus",
           head: ["Pesanan", "Selesai", "Penanggung", "Ongkir"],
           total: ongkirRetur.total,
           rows: ongkirRetur.rows.map((row) => [
@@ -812,7 +902,7 @@ export function buildCategoryDetail(
         title: "Arus Kas",
         badge: badgePeriode,
         intro:
-          "Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas, termasuk posisi kas dan bauran pembayaran.",
+          "Dari nilai transaksi pembeli sampai uang yang benar-benar masuk kas. Kas periode terpilih dipisah dari posisi kas saat ini.",
         formula: "Penjualan Bersih = Penjualan Gross dikurangi Tagihan J&T dikurangi Retur dan Biaya Retur",
         blocks,
         source: "Data pesanan, retur, pembayaran, dan pengiriman",
@@ -834,8 +924,8 @@ export function buildCategoryDetail(
         blocks: [
           {
             kind: "rows",
-            title: "Antrean Saat Ini, tidak dibandingkan periode",
-            rows: kpiRows(kpiMap, ["open_orders", "dispatched_orders", "returns_open"]),
+            title: "Antrean Saat Ini, tidak dibandingkan",
+            rows: kpiRows(kpiMap, ["open_orders", "dispatched_orders", "returns_open"], report),
           },
           {
             kind: "rows",
@@ -848,12 +938,13 @@ export function buildCategoryDetail(
                 "avg_confirm_hours",
                 "avg_process_days",
               ],
+              report,
             ),
           },
           {
             kind: "rows",
-            title: "Kondisi Saat Ini, tidak dibandingkan periode",
-            rows: kpiRows(kpiMap, ["payment_pending_count"]),
+            title: "Kondisi Saat Ini, tidak dibandingkan",
+            rows: kpiRows(kpiMap, ["payment_pending_count"], report),
           },
         ],
         source: "Data pesanan, pengiriman, dan riwayat perubahan status",
@@ -881,6 +972,7 @@ export function buildCategoryDetail(
               label: kpiMap["visitors"]?.label,
               value: kunjunganTidakLengkap ? "Belum tersedia" : ang(visitors) + " sesi",
               sign: "+",
+              metricKey: "visitors",
               sub: "Dijumlah per hari, bukan hitungan unik sepanjang rentang: satu pengunjung dihitung satu sesi per hari.",
               delta: kunjunganTidakLengkap ? undefined : kpiMap["visitors"]?.change_percent,
             },
@@ -888,12 +980,15 @@ export function buildCategoryDetail(
               label: "Pembeli Unik",
               value: kunjunganTidakLengkap ? "Belum tersedia" : ang(pembeli) + " pembeli",
               sign: "÷",
+              metricKey: "buyers",
               sub: "Dihitung dari nomor telepon berbeda pada pesanan yang sudah masuk proses.",
+              delta: kpiMap["buyers"]?.change_percent,
             },
             {
               label: "Pengunjung yang Membeli",
               value: kunjunganTidakLengkap ? "Belum tersedia" : ang(rate) + "%",
               sign: "=",
+              metricKey: "conversion",
               tone: "primary",
             },
           ],
@@ -901,7 +996,7 @@ export function buildCategoryDetail(
         {
           kind: "rows",
           title: "Pelanggan",
-          rows: kpiRows(kpiMap, ["new_customers", "repeat_customers", "repeat_order_rate"]),
+          rows: kpiRows(kpiMap, ["new_customers", "repeat_customers", "repeat_order_rate"], report),
         },
       ]
 
@@ -948,22 +1043,26 @@ export function buildCategoryDetail(
         }
       }
 
+      // Kelompok drawer mengikuti scope metric_basis: retur aktif sekarang
+      // dipisah dari retur periode supaya tidak berada di tabel ber-delta.
       const kelompok: Array<{ judul: string; kunci: string[] }> = [
         {
-          judul: "Retur Barang",
+          judul: "Retur Periode Terpilih",
           kunci: [
             "returns",
             "return_value",
             "returns_created",
-            "returns_open",
             "returns_completed",
             "return_rate_created",
             "return_rate_completed",
-            "refused_orders",
           ],
         },
         {
-          judul: "Pembatalan Pesanan",
+          judul: "Retur Aktif Saat Ini, tidak dibandingkan",
+          kunci: ["returns_open"],
+        },
+        {
+          judul: "Pembatalan Periode Terpilih",
           kunci: [
             "cancelled_orders",
             "cancelled_by_customer",
@@ -973,11 +1072,12 @@ export function buildCategoryDetail(
           ],
         },
         {
-          judul: "Dampak Beban Biaya",
+          judul: "Dampak Beban Biaya Periode Terpilih",
           kunci: [
             "refund_given",
             "return_shipping_cost_total",
             "return_shipping_cost_cases",
+            "refused_orders",
             "refused_borne_cost",
           ],
         },
@@ -990,7 +1090,7 @@ export function buildCategoryDetail(
         formula:
           "Retur dan Biaya Retur = Refund Pembeli + Ongkir Retur Ditanggung Toko + Nilai Barang Retur Paket",
         blocks: kelompok
-          .map((grup) => ({ kind: "rows" as const, title: grup.judul, rows: kpiRows(kpiMap, grup.kunci) }))
+          .map((grup) => ({ kind: "rows" as const, title: grup.judul, rows: kpiRows(kpiMap, grup.kunci, report) }))
           .filter((block) => block.rows.length > 0),
         source: "Data retur, riwayat pembatalan, dan pesanan",
         notes: [
@@ -1096,10 +1196,11 @@ export function buildCategoryDetail(
       // kontrak, dan memotongnya menyembunyikan metrik bercakupan sekarang yang
       // justru paling mudah salah dibaca sebagai angka periode. Metrik itu
       // ditaruh lebih dulu supaya langsung terlihat.
-      const dasarMetrik: Array<{ kunci: string; label: string; cakupan: string; satuan: string; acuan: string; sekarang: boolean }> =
+      const dasarMetrik: Array<{ kunci: string; label: string; cakupan: string; satuan: string; acuan: string; perbandingan: string; sekarang: boolean }> =
         Object.entries(report.metric_basis ?? {}).map(([key, basis]) => ({
           kunci: key,
           label: kpiMap[key] ? labelTanpaCakupan(kpiMap[key].label) : (LABEL_DASAR_TAMBAHAN[key] ?? key),
+          perbandingan: basis.scope === "current" ? "Tidak dibandingkan" : "Periode sebelumnya",
           cakupan:
             basis.scope === "current"
               ? basis.marker === "semua waktu"
@@ -1134,13 +1235,13 @@ export function buildCategoryDetail(
           {
             kind: "list",
             title: "Dasar Setiap Metrik",
-            head: ["Metrik", "Cakupan", "Satuan", "Acuan Tanggal"],
+            head: ["Metrik", "Cakupan", "Satuan", "Acuan Tanggal", "Perbandingan"],
             // total sama dengan jumlah baris supaya keterangan "daftar penuh ada
             // di ekspor XLSX" tidak muncul: tabel ini memang utuh di sini, dan
             // memang tidak ada di ekspor.
             total: dasarUrut.length,
             rowKeys: dasarUrut.map((baris) => baris.kunci),
-            rows: dasarUrut.map((baris) => [baris.label, baris.cakupan, baris.satuan, baris.acuan]),
+            rows: dasarUrut.map((baris) => [baris.label, baris.cakupan, baris.satuan, baris.acuan, baris.perbandingan]),
           },
           {
             kind: "rows",
