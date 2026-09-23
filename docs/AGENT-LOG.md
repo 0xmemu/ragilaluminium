@@ -494,3 +494,18 @@ Esc, dan hint terverifikasi.
 Untuk agent berikutnya: renderer rows punya dua mode, kartu (default) dan tabel
 (mode: tabel untuk Referensi); jangan memunculkan kembali kolom ± sebagai struktur
 utama atau formula di puncak drawer; formula hidup di DasarPerhitungan yang terlipat.
+
+---
+
+## 2026-09-24 13:10 UTC | zcode | Standard | 6f2c3e6e | selesai
+Lingkup: pembeda visual metrik periode vs snapshot di kartu drawer, atas umpan balik
+owner bahwa pemisahan belum terlihat. Berkas: StorePerformance.tsx, scope-dom.test.ts.
+Perubahan: setiap kartu drawer membawa badge cakupan di bawah labelnya, sumbernya
+metric_basis payload melalui anotasi scope yang dianotasi SATU tempat pada
+buildCategoryDetail (DetailRow mendapat field scope dan marker). Badge periode abu
+Periode terpilih, badge snapshot amber memakai marker payload (kondisi saat ini atau
+semua waktu). Test DOM baru menegaskan badge kedua cakupan dan snapshot tetap tanpa
+delta. Golden expectation utuh; tidak ada angka atau kontrak yang berubah.
+Bukti: Vitest 25 berkas 203 test lulus; tsc dan lint bersih; golden 4 passed; push
+hook build sukses (8ef4af9c..6f2c3e6e); live diverifikasi: badge terlihat di drawer
+Arus Kas dengan dua gaya berbeda, screenshot di artefak sesi.
