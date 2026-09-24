@@ -153,3 +153,37 @@ Test baru: `AdminOrderEditTaxonomyTest` (2), `AdminRouteNameGuardTest` (1),
    dulu (di luar audit UI).
 5. Audit alias kategori lanjutan: tetap mengacu
    `docs/audit-admin/audit-alias-kategori.md` (URL English tetap redirect).
+
+---
+
+## Lampiran progres (2026-09-24 03:55 UTC, setelah ronde "eksekusi semua")
+
+Ronde kedua mengeksekusi seluruh sisa keputusan. Status pada bagian 1 sampai 6
+di atas kini bertambah lampiran ini sebagai status terbaru. Commit ronde kedua:
+`13c9fae2` (39 berkas tumpang tindih), `f622437a` (notifikasi + alias),
+`593f8041` dan `62017c51` (laporan dan log). Semua ter-push, pre-push hook lolos.
+
+| Entri lama | Status terbaru |
+|---|---|
+| 8 temuan "Resolved di working tree, tertahan koordinasi commit" (bagian 4) | **Resolved penuh**: masuk commit `13c9fae2` (add/edit Kategori full-page, paginasi 20/50/100 tiga daftar, tabel primitif + 3 migrasi, konfirmasi hapus InstallationGallery/Model, aksi header PromotionOverview dan WhatsApp, istilah dan all-caps pada 39 berkas) |
+| Blocked: notifikasi id 8 em dash (bagian 6) | **Resolved**: dibuatkan UI hapus notifikasi (route `notifications.destroy` + tombol per baris), lalu baris id 8 dihapus lewat UI itu dengan jejak activity log `notification.deleted`. Tersisa 31 notifikasi, 0 em dash |
+| Deferred: ErrorState Produk/Pelanggan/Imports (bagian 5) | **Resolved**: ketiga halaman kini punya penanganan galat + tombol Coba lagi |
+| Deferred: migrasi tabel beranda sibuk | **Sebagian selesai**: primitif `table.tsx` diperkuat (`TableScroll`, kolom numerik) dan 3 halaman dimigrasi; Pesanan (grid kartu sesuai kontrak), Produk, Pelanggan, Sub Model tetap deferred dengan alasan yang sama |
+| Tugas terpisah: audit alias kategori (bagian 9 poin 5) | **Selesai**: 76 berkas fixture test dimigrasi ke kode kanonik, peta alias dihapus dari helper, 13 pemanggil dikonversi, URL English tetap 301. Dua cacat laten tersingkap dan diperbaiki (label slide promo kanonik, satu slug test) |
+| Keputusan tertunda: bulk Produk/Pesanan (bagian 9 poin 4) | Tetap dibatalkan sesuai B3: tidak ada endpoint massal, tidak dibuat demi tampilan |
+
+Ronde kedua juga menambahkan hal yang bukan temuan audit melainkan fitur
+permintaan owner: pemangkasan otomatis notifikasi (`notifications.prune`,
+retensi `NOTIFICATION_RETENTION_DAYS` default 90 hari, dibaca dari
+`config/operations.php`) dan tombol "Bersihkan lama".
+
+Verifikasi akhir ronde kedua: suite PHP penuh 1 skipped **1152 passed, 0 gagal**
+(naik dari 1147 lewat 5 test baru: NotificationManageTest 5 kasus), vitest 25
+berkas 203 test, typecheck bersih, build sukses, pre-push hook lolos setiap
+push, smoke HTTP katalog 200 dan redirect URL English 301 ke slug kanonik.
+
+Status akhir seluruh 30 temuan: **27 resolved, 6 intentional (dokumentasi,
+bukan pekerjaan), 2 deferred dengan alasan tercatat (migrasi tabel beranda
+sibuk, sheet publik), 0 blocked.** Data produksi berubah hanya dua hal yang
+diizinkan: satu konten em dash via UI admin, dan satu baris notifikasi
+dihapus lewat UI baru.
