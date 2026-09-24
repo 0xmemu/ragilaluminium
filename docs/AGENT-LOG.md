@@ -922,3 +922,13 @@ Bukti:
 - typecheck 0 error; eslint 0 masalah; build Vite sukses.
 - Akun uji (uji.2jam) dihapus; tabel users tetap 1 baris (Febrian),
   sesi non-Febrian 0, sesi yatim 0.
+
+## 2026-09-25 00:15 UTC | zcode | Deep | be8038dd | selesai
+Lingkup: fiksasi kanonik alur retur, refund, dan keuangan toko (app/Http/Controllers/Admin/OrderController.php, resources/js/pages/Admin/Orders/Show.tsx, tests/Feature/AdminReturnWorkflowTest.php, docs/DOMAIN/fiksasi-alur-retur-refund-dan-keuangan.md).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: perhatikan invarian keuangan toko: (1) Penjualan Bersih dan Kas Toko adalah dua konsep terpisah; (2) Refund hanya sah untuk pesanan yang sudah lunas (dicegah di OrderController); (3) Ongkir retur ditanggung toko mengurangi Penjualan Bersih; (4) Paket COD ditolak kurir tidak ada uang masuk dan tidak ada refund, pelunasannya dicegah dan baris payment pending dibatalkan saat retur selesai; (5) Barang retur tidak otomatis menambah stok sistem; (6) Pelanggan tidak memiliki form retur publik di web, pengajuan full manual via WhatsApp.
+Bukti:
+- AdminReturnWorkflowTest: 18 passed (59 assertions) termasuk test_complete_refund_rejected_when_order_unpaid.
+- Suite Return penuh: 98 passed (548 assertions).
+- Typecheck & eslint bersih 0 error/warning.
+- Bebas karakter em dash (U+2014) di seluruh berkas.
