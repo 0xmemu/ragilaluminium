@@ -839,3 +839,14 @@ Bukti:
   elemen Alert).
 - Akun uji (uji.idle, uji.idle2, uji.logout, uji.remember) dihapus semua;
   tabel users tetap 1 baris (Febrian), sesi yatim 0, sesi non-Febrian 0.
+
+## 2026-09-24 13:40 UTC | zcode | Deep | 3cca9f56 | selesai
+Lingkup: standardisasi form alignment ADR-022 dan tata letak konsisten panel admin (Categories/Form, Profile/Edit, StorefrontPlatforms/Edit, CaraPemesanan/Edit, WhatsApp/Edit, Banners/Form, Announcements/Form, Products/Show, VariantEdit, Orders/Show).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: selalu gunakan primitif form dari `@/components/admin/ui/field` (`FieldGrid`, `Field`, `CheckboxField`, `FieldAction`) dan `SectionCard` untuk form admin. Jangan menaruh tombol aksi submit atau kembali redundan di dalam bodi kartu jika sudah berada di `AdminLayout actions`. Gunakan lebar kontainer proporsional (`max-w-4xl` atau `max-w-5xl`) pada form agar tidak menyisakan ruang kosong berlebih di desktop lebar.
+Bukti:
+- eslint 10 berkas bersih 0 error, 0 warning.
+- typecheck lolos 0 error.
+- Vite build sukses.
+- Zero em dash (U+2014) terverifikasi via regex check.
+- Live probe rendering HTTP 200 terverifikasi pada rute /admin/kelola/kategori/create, /admin/profile, /admin/storefront-platforms (kontak & brand), /admin/banners/create, /admin/announcements/create, /admin/orders/1, /admin/kelola/produk/51.
