@@ -578,7 +578,7 @@ function FolderTree({
             }
           }}
           placeholder="Cari folder…"
-          className="h-8 w-full rounded-md border border-border bg-surface pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-8 w-full rounded-md border border-border bg-surface pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/20"
         />
         <Icon
           name="search"
