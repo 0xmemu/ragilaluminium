@@ -705,3 +705,11 @@ button/checkbox.
 
 Bukti: typecheck 0 error; eslint 3 warning pre-existing (dibuktikan dengan
 stash); build sukses; MediaAssetWorkflowTest 3 lulus.
+
+## 2026-09-24, hermes-desktop-ragil: logika tombol mode pilih media
+
+Koreksi owner: ikon mengikuti logika tombol, bukan statis. Commit `11c1050f`
+(push `57cffb62..11c1050f`): mode aktif = ikon centang berlabel Selesai,
+mode nonaktif = ikon kotak seleksi berlabel Pilih Media.
+
+Bukti: typecheck 0 error, build sukses.
