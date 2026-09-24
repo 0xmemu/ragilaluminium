@@ -20,4 +20,9 @@ return [
     // lewat tombol "Bersihkan lama" di /admin/notifications. Default 90 hari
     // supaya konservatif; notifikasi belum dibaca tidak pernah dipangkas.
     'notification_retention_days' => max(1, (int) env('NOTIFICATION_RETENTION_DAYS', 90)),
+
+    // Sesi admin yang login TANPA mencentang "Tetap Masuk Di Perangkat Ini"
+    // otomatis logout setelah idle selama ini (menit). 0 = matikan batas idle.
+    // Yang mencentang remember tidak terkena aturan ini.
+    'admin_session_idle_minutes' => max(0, (int) env('ADMIN_SESSION_IDLE_MINUTES', 30)),
 ];

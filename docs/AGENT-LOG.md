@@ -796,3 +796,46 @@ Solusi di commit `ce6c9ec8` (push `76e19d1d..ce6c9ec8`): gunakan `ring-inset` di
 simetris di keempat sisi tanpa pernah melintasi batas elemen input.
 
 Bukti: typecheck 0 error, build sukses, MediaAssetWorkflowTest 3 passed.
+
+## 2026-09-24, hermes-desktop-ragil: batas idle sesi admin tanpa "Tetap Masuk"
+
+Perintah owner: kalau admin tidak mencentang "Tetap Masuk Di Perangkat Ini",
+sesi harus otomatis logout setelah tidak ada aktivitas beberapa waktu.
+
+Berkas:
+- config/operations.php: `admin_session_idle_minutes` (default 30 menit, 0 = mati).
+  Bisa diubah lewat env `ADMIN_SESSION_IDLE_MINUTES` tanpa sentuh kode.
+- app/Http/Controllers/Auth/LoginController.php: setiap login menulis key
+  session `admin_session_persistent` = nilai checkbox. Ditulis tiap login
+  (true/false) supaya tidak bisa basi setelah logout lalu login berbeda cara.
+- app/Http/Middleware/EnsureUserIsAdmin.php: kalau sesi tidak persisten dan
+  `time() - admin_last_activity` lewat batas, logout + invalidate +
+  regenerateToken lalu redirect ke login dengan flash `status`. Sesi
+  ber-remember tidak dibatasi. `admin_last_activity` hanya di-update di
+  bawah /admin.
+- resources/js/pages/Auth/Login.tsx: flash `status` ditampilkan sebagai Alert
+  inline yang persisten, bukan toast 4 detik milik public-layout. Toast hilang
+  sebelum admin sempat membaca, dan flash `status` sebenarnya sudah dibagikan
+  HandleInertiaRequests tapi tidak pernah dirender halaman login.
+- tests/Feature/AdminSessionIdleTest.php: 5 kasus penjaga.
+
+TEMUAN SAMPING (belum dikerjakan, tidak diminta owner):
+`logout()` tidak mengosongkan kolom `remember_token` di database. Cookie di
+browser tetap dihapus (Max-Age=0) jadi logout normal tetap berhasil, tapi
+salinan cookie yang tertinggal di tempat lain masih bisa dipakai sampai
+kedaluwarsa. Sudah dibuktikan lewat probe (token tetap 60 karakter setelah
+logout). Dibiarkan sesuai keputusan owner bahwa durasi 1 tahun tidak
+menjadi masalah.
+
+Bukti:
+- AdminSessionIdleTest 5 lulus (25 assertion).
+- Suite penuh: 1 skipped, 1157 passed (11800 assertion), naik 5 dari test baru.
+- typecheck 0 error; eslint 0 masalah di dua berkas frontend yang diubah.
+- build sukses.
+- Verifikasi live (curl + age-session.php): login tanpa remember -> /admin
+  HTTP 200; aktivitas digeser 31 menit -> /admin HTTP 302 ke /login; pesan
+  "Sesi berakhir karena tidak ada aktivitas. Silakan masuk kembali." muncul
+  di HTML halaman login. Halaman login tanpa flash tetap bersih (tidak ada
+  elemen Alert).
+- Akun uji (uji.idle, uji.idle2, uji.logout, uji.remember) dihapus semua;
+  tabel users tetap 1 baris (Febrian), sesi yatim 0, sesi non-Febrian 0.

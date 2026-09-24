@@ -1,7 +1,8 @@
-import { Head, useForm } from "@inertiajs/react"
+import { Head, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FormErrorSummary } from "@/components/ui/field"
@@ -10,6 +11,9 @@ import AuthLayout from "@/layouts/auth-layout"
 
 export default function Login({ login = "" }: { login?: string }) {
   const [showPassword, setShowPassword] = React.useState(false)
+  // Pesan "sesi berakhir karena tidak ada aktivitas" dikirim lewat flash
+  // status. Alert di bawah persistent, bukan toast yang hilang sendiri.
+  const idleNotice = usePage<{ flash?: { status?: string | null } }>().props.flash?.status ?? null
   const form = useForm({
     login,
     password: "",
@@ -28,6 +32,8 @@ export default function Login({ login = "" }: { login?: string }) {
     <AuthLayout heading="Masuk Ke Panel Admin">
       <Head title="Login Admin" />
       <form onSubmit={submit} className="flex flex-col gap-4">
+        {idleNotice ? <Alert tone="info" title={idleNotice} /> : null}
+
         <FormErrorSummary title="Username/Password Salah" errors={form.errors} hideMessages />
 
         <Field

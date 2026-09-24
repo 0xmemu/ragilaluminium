@@ -68,6 +68,10 @@ class LoginController extends Controller
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
+            // Penanda batas idle. Ditulis tiap login (true/false) supaya
+            // tidak bisa basi setelah logout lalu login dengan cara berbeda.
+            $request->session()->put('admin_session_persistent', $request->boolean('remember'));
+
             ActivityLogService::record(
                 'auth.login',
                 'user',
