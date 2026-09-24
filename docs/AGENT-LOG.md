@@ -600,3 +600,37 @@ halaman yang dulu paling parah. typecheck bersih, build sukses.
 Untuk agent berikutnya: kalau mengubah struktur header admin-layout, ukur posisi
 dan tabrakan tombol aksi di halaman yang aksinya panjang (Beranda, Halaman CMS,
 Pengaturan Sistem), bukan hanya memeriksa tidak ada error.
+
+---
+
+## 2026-09-24 02:20 UTC | zcode-admin-audit | Deep | 593f8041 | selesai
+Lingkup: satu eksekusi terintegrasi menutup seluruh temuan terbuka dua audit
+plus telaah P0, sesuai keputusan default B1-B13 dari owner. Empat subagent
+paralel (backend/data, sapuan frontend, Hub+Dashboard, struktur/flow) ditambah
+perbaikan residual manual.
+
+Hasil: dari 30 temuan awal (5 selesai sebelum task), 23 terbuka ditangani:
+14 resolved di commit 130ef214, 8 resolved di working tree tertahan koordinasi
+commit (39 berkas tumpang tindih dengan pekerjaan belum commit agent lain,
+sengaja tidak di-commit agar tidak mencuri kredit/perubahan mereka), 6
+intentional sesuai B3/B4/B5/B8/B12, 3 deferred dengan alasan, 1 blocked
+(notifikasi id 8 tidak punya UI hapus; tidak diubah via SQL sesuai stop
+condition). Em dash data cms_pages id 12 dibersihkan lewat UI admin
+(/admin/cara-pemesanan), terverifikasi INSTR=0 dan halaman publik benar.
+
+Verifikasi: suite PHP 1 skipped 1147 passed 0 gagal; vitest 25 berkas 203 test;
+typecheck bersih; build sukses; pre-push hook lolos; browser live dari menu:
+breadcrumb Subsidi Ongkir benar, Panduan kosong tersembunyi, per_page Notifikasi
+berfungsi (combobox kustom, bukan select native), toko 200. Data produksi nol
+mutasi selain satu konten via UI.
+
+Commit: 130ef214 (fitur, 24 berkas bersih), 593f8041 (laporan). Laporan akhir:
+docs/audit-admin/LAPORAN-EKSEKUSI-TUNGGAL.md (status per temuan, intentional/
+deferred/blocked, sisa keputusan owner).
+
+Untuk agent berikutnya: (1) 39 berkas working tree memuat perubahan grup C/B1
+yang live dan terverifikasi tapi belum di-commit; koordinasikan dengan pemilik
+baseline sebelum commit, jangan commit utuh. (2) Kontrol ukuran halaman admin
+adalah combobox kustom Select (tombol + popover role=option), bukan select
+native; uji lewat role=option bukan query select. (3) Notifikasi id 8 butuh
+keputusan owner (UI hapus vs penanganan SQL sekali).
