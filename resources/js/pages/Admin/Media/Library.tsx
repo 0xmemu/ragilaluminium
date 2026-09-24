@@ -930,8 +930,12 @@ export default function MediaLibrary({
               })
             }}
           >
-            <Icon name="selection" className="size-4" aria-hidden="true" />
-            {selectMode ? "Keluar Mode Pilih" : "Pilih Media"}
+            {selectMode ? (
+              <Icon name="check" className="size-4" aria-hidden="true" />
+            ) : (
+              <Icon name="selection" className="size-4" aria-hidden="true" />
+            )}
+            {selectMode ? "Selesai" : "Pilih Media"}
           </Button>
           <Button type="button" onClick={() => setShowUploadModal(true)}>
             <Icon name="upload" className="size-4" aria-hidden="true" /> Unggah Media
