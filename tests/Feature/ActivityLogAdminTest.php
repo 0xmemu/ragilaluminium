@@ -96,12 +96,12 @@ class ActivityLogAdminTest extends TestCase
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'email' => 'admin@ragil.test',
+            'username' => 'admin.ragil',
             'password' => 'secret123',
         ]);
 
         $this->post(route('login.post'), [
-            'email' => 'admin@ragil.test',
+            'login' => 'admin.ragil',
             'password' => 'secret123',
         ])->assertRedirect(route('admin.dashboard'));
 

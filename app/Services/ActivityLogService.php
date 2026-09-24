@@ -271,6 +271,15 @@ class ActivityLogService
             'cms.ketentuan_layanan_updated' => 'Dokumen Ketentuan Layanan diperbarui',
             'cms.kebijakan_privasi_updated' => 'Dokumen Kebijakan Privasi diperbarui',
             'cms.apa_kata_pelanggan_meta_updated' => 'Meta halaman Apa Kata Pelanggan diperbarui',
+            // Balasan admin atas ulasan pelanggan (owner 2026-09-18).
+            'cms.testimonial_replied' => sprintf(
+                'Balasan ulasan disimpan%s',
+                filled($payload['customer_name'] ?? null) ? ' · '.$payload['customer_name'] : ''
+            ),
+            'cms.testimonial_reply_deleted' => sprintf(
+                'Balasan ulasan dihapus%s',
+                filled($payload['customer_name'] ?? null) ? ' · '.$payload['customer_name'] : ''
+            ),
             'cms.hasil_pemasangan_meta_updated' => 'Meta halaman Hasil Pemasangan diperbarui',
             'cms.beranda_how_to_order_updated' => sprintf(
                 'Cara pemesanan di beranda diperbarui (%s langkah)',

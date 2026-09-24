@@ -28,9 +28,10 @@ class LoginController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        // Field email tetap diterima untuk kompatibilitas form dan klien lama.
+        // Login hanya menerima username (keputusan owner 2026-09-24). Field
+        // email tidak lagi diterima sebagai kredensial.
         $request->merge([
-            'login' => trim((string) $request->input('login', $request->input('email', ''))),
+            'login' => trim((string) $request->input('login', '')),
         ]);
 
         $validated = $request->validate([
@@ -49,15 +50,9 @@ class LoginController extends Controller
             ])->onlyInput('login');
         }
 
-        $credentialField = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-        if ($credentialField === 'email' && User::query()->where('email', $identifier)->count() > 1) {
-            return back()->withErrors([
-                'login' => 'Email ini dipakai beberapa akun. Masuk menggunakan username.',
-            ])->onlyInput('login');
-        }
-
+        // Login hanya lewat username, huruf kecil.
         $credentials = [
-            $credentialField => $credentialField === 'username' ? Str::lower($identifier) : $identifier,
+            'username' => Str::lower($identifier),
             'password' => $validated['password'],
         ];
 

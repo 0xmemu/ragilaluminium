@@ -32,7 +32,7 @@ export default function Login({ login = "" }: { login?: string }) {
 
         <Field
           id="login-identifier"
-          label="Email/Username"
+          label="Username"
           required
           error={form.errors.login}
         >
@@ -42,7 +42,7 @@ export default function Login({ login = "" }: { login?: string }) {
             onChange={(event) => form.setData("login", event.target.value)}
             autoComplete="username"
             autoFocus
-            placeholder="Masukkan Email/Username"
+            placeholder="Masukkan Username"
           />
         </Field>
 

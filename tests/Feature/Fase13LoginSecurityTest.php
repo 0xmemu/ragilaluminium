@@ -15,7 +15,7 @@ class Fase13LoginSecurityTest extends TestCase
         return User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'email' => 'admin@ragil.test',
+            'username' => 'admin.ragil',
             'password' => 'secret123',
         ]);
     }
@@ -27,14 +27,14 @@ class Fase13LoginSecurityTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $this->from(route('login'))
                 ->post(route('login.post'), [
-                    'login' => 'admin@ragil.test',
+                    'login' => 'admin.ragil',
                     'password' => 'wrong-password',
                 ]);
         }
 
         $this->from(route('login'))
             ->post(route('login.post'), [
-                'login' => 'admin@ragil.test',
+                'login' => 'admin.ragil',
                 'password' => 'secret123',
             ])
             ->assertRedirect(route('login'))
@@ -51,7 +51,7 @@ class Fase13LoginSecurityTest extends TestCase
         $before = session()->getId();
 
         $this->post(route('login.post'), [
-            'login' => 'admin@ragil.test',
+            'login' => 'admin.ragil',
             'password' => 'secret123',
         ])->assertRedirect(route('admin.dashboard'));
 
