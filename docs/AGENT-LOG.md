@@ -634,3 +634,38 @@ baseline sebelum commit, jangan commit utuh. (2) Kontrol ukuran halaman admin
 adalah combobox kustom Select (tombol + popover role=option), bukan select
 native; uji lewat role=option bukan query select. (3) Notifikasi id 8 butuh
 keputusan owner (UI hapus vs penanganan SQL sekali).
+
+---
+
+## 2026-09-24 03:40 UTC | zcode-admin-audit | Deep | f622437a | selesai
+Lingkup: eksekusi semua sisa keputusan owner setelah laporan eksekusi tunggal.
+Tiga pekerjaan: (1) commit 13c9fae2 mengunci 39 berkas tumpang tindih yang
+sebelumnya sengaja ditunda; (2) Grup D: manajemen notifikasi; (3) Grup E:
+hapus total alias kategori warisan plus ErrorState tiga halaman.
+
+Grup D: route notifications.destroy dan notifications.prune (retensi
+NOTIFICATION_RETENTION_DAYS default 90 hari, dibaca dari config/operations),
+UI hapus per baris dengan ConfirmAction dan tombol Bersihkan lama, activity
+log notification.deleted/notification.pruned, test NotificationManageTest
+5 kasus, dokumen route kanonik diperbarui. Baris id 8 ber-em dash dihapus
+LEWAT UI baru ini (bukan SQL), terverifikasi DB 0 em dash dan jejak log.
+
+Grup E: 76 berkas fixture test dimigrasi ke kode kanonik (134 kemunculan +
+suntingan manual slug/asersi); peta alias dihapus dari CategoryUrl dan
+CatalogLabels serta 13 pemanggil dikonversi; URL English lama tetap 301
+lewat LEGACY_URL_REDIRECT; ErrorState dipasang di Products, Customers,
+Imports. Dua cacat laten tersingkap dan diperbaiki: label slide promo
+salah untuk kode kanonik, satu slug test terlewat.
+
+Bukti: suite PHP penuh 1 skipped 1152 passed 0 gagal; vitest 25 berkas 203
+test; typecheck bersih; build sukses; pre-push hook lolos (cc94c629..
+f622437a); smoke HTTP katalog 200 dan redirect English 301; data produksi:
+31 notifikasi (id 8 terhapus via UI), 0 em dash tersisa, 183 produk dan
+20 pesanan utuh.
+
+Untuk agent berikutnya: (1) fixture test kini 100 persen kode kanonik,
+WINDOW/DOOR/BOUVEN tidak boleh dipakai lagi di test baru; (2) sisa alias
+runtime yang sengaja tidak disentuh tercatat di laporan eksekusi (sinonim
+pencarian CatalogSearch, parsing Shopee, cabang BOUVEN mati di
+HomepagePromotions); (3) routes/web.php masih memuat penghapusan menu CTA
+milik agent lain yang sengaja tidak di-commit.
