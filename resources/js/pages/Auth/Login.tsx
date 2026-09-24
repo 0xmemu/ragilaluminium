@@ -81,7 +81,7 @@ export default function Login({ login = "" }: { login?: string }) {
         <Checkbox
           checked={form.data.remember}
           onChange={(event) => form.setData("remember", event.target.checked)}
-          label="Tetap Masuk Di Perangkat Ini"
+          label="Tetap Login"
           round
           compact
         />

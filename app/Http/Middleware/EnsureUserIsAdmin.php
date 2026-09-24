@@ -21,9 +21,9 @@ class EnsureUserIsAdmin
             abort(403);
         }
 
-        $idleMinutes = (int) config('operations.admin_session_idle_minutes', 30);
+        $idleMinutes = (int) config('operations.admin_session_idle_minutes', 120);
 
-        // Hanya sesi yang login tanpa mencentang "Tetap Masuk Di Perangkat Ini"
+        // Hanya sesi yang login tanpa mencentang "Tetap Login"
         // yang punya batas idle. Key absent (sesi lama sebelum fitur ini)
         // diperlakukan sebagai tidak persisten, jadi aman.
         if ($idleMinutes > 0 && ! $request->session()->get('admin_session_persistent', false)) {

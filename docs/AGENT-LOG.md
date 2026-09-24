@@ -882,3 +882,43 @@ Bukti:
   Perangkat Ini" tetap utuh.
 - Akun uji (uji.diam, uji.diam2) dihapus; tabel users tetap 1 baris (Febrian),
   sesi non-Febrian 0, sesi yatim 0.
+
+## 2026-09-24, hermes-desktop-ragil: batas idle 2 jam + label "Tetap Login"
+
+Dua perintah owner:
+1. Batas idle 30 menit terlalu pendek, harus 2 jam.
+2. Yang mencentang checkbox tetap login terus, dan labelnya diubah dari
+   "Tetap Masuk Di Perangkat Ini" jadi "Tetap Login".
+
+Perubahan:
+- config/operations.php: default `ADMIN_SESSION_IDLE_MINUTES` 30 -> 120.
+  Komentar config ditulis ulang menyebut default 2 jam.
+- app/Http/Middleware/EnsureUserIsAdmin.php: nilai cadangan di pemanggilan
+  `config()` ikut diubah 30 -> 120. Ini penting karena kalau key config
+  hilang, middleware akan jatuh ke 30 menit tanpa owner sadar (nilai ini
+  awalnya tidak terlihat karena config selalu ada).
+- Label checkbox di resources/js/pages/Auth/Login.tsx jadi "Tetap Login".
+  Dua komentar kode (middleware, test) dan satu komentar config diselaraskan
+  supaya tidak lagi menyebut label lama.
+- Perilaku "yang centang tidak dibatasi" SUDAH ada sejak commit 2c3bdcfe
+  (dicek ulang, bukan kode baru): session key `admin_session_persistent`
+  membuat middleware melewati batas idle sepenuhnya.
+
+Test tidak diubah nilai 30 menitnya karena test sengaja memakai override
+`config([...])` dengan angka sendiri supaya uji batas tidak ikut bergeser
+saat default produksi diubah.
+
+Bukti:
+- Config produksi terbaca 120 lewat artisan tinker.
+- Verifikasi live (curl, geser penanda aktivitas di tabel sessions):
+  idle 119 menit -> /admin HTTP 200 (masih masuk, di dalam batas).
+  idle 121 menit -> /admin HTTP 302 ke /login (keluar, lewat batas).
+  Sesi yang mencentang "Tetap Login" dengan idle 100000 menit -> HTTP 200,
+  tidak terbatas.
+- Browser setelah build: label di halaman login adalah "Tetap Login",
+  frasa "Tetap Masuk Di Perangkat Ini" tidak ada lagi di DOM.
+- AdminSessionIdleTest 5 lulus (24 assertion).
+- Suite penuh: 1 skipped, 1157 passed (11823 assertion).
+- typecheck 0 error; eslint 0 masalah; build Vite sukses.
+- Akun uji (uji.2jam) dihapus; tabel users tetap 1 baris (Febrian),
+  sesi non-Febrian 0, sesi yatim 0.

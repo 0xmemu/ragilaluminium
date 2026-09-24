@@ -9,7 +9,7 @@ use Tests\TestCase;
 /**
  * Batas idle sesi admin (keputusan owner 2026-09-24).
  *
- * Admin yang login TANPA mencentang "Tetap Masuk Di Perangkat Ini" harus
+ * Admin yang login TANPA mencentang "Tetap Login" harus
  * otomatis logout setelah idle beberapa waktu. Yang mencentang tidak
  * dibatasi.
  */
