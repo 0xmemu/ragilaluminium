@@ -691,3 +691,17 @@ lain di routes/web.php sengaja dibiarkan di working tree.
 Untuk agent berikutnya: pemakaian aset media kini hanya terlihat dari angka
 "Dipakai Nx" di Media Library; hapus permanen aset lewat UI tidak ada lagi,
 sisa jalur lifecycle adalah arsip/restore.
+
+## 2026-09-24, hermes-desktop-ragil: mode pilih media + pratinjau klik kartu
+
+Keputusan owner 2026-09-24 via komentar di preview pane Media Library:
+pemilihan massal default tidak aktif, klik gambar membuka pratinjau.
+Commit `a6fd69c1` (push `e1bc6e43..a6fd69c1`): klik kartu kini membuka
+overlay pratinjau (gambar public URL atau pemutar video, tutup via Esc/klik
+luar/tombol X); checkbox per kartu dan bilah "Pilih semua di halaman ini"
+hanya muncul saat mode "Pilih Media" dinyalakan dari tombol header
+(AdminLayout actions); keluar mode mengosongkan pilihan; role kartu adaptif
+button/checkbox.
+
+Bukti: typecheck 0 error; eslint 3 warning pre-existing (dibuktikan dengan
+stash); build sukses; MediaAssetWorkflowTest 3 lulus.
