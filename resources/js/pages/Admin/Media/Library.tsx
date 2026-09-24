@@ -707,6 +707,11 @@ export default function MediaLibrary({
   >(null)
   const [folderSaving, setFolderSaving] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
+  // Owner 2026-09-24: pemilihan massal default tidak aktif; klik kartu
+  // membuka pratinjau gambar, bukan memilih. Pemilihan hanya lewat mode
+  // "Pilih Media" yang dinyalakan lewat tombol di header.
+  const [selectMode, setSelectMode] = React.useState(false)
+  const [previewAsset, setPreviewAsset] = React.useState<(typeof assets)[number] | null>(null)
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
   const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
@@ -860,6 +865,15 @@ export default function MediaLibrary({
     return () => window.clearTimeout(timer)
   }, [attachQuery, attachingId, attachSearchNonce])
 
+  React.useEffect(() => {
+    if (!previewAsset) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPreviewAsset(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [previewAsset])
+
   function toggleSelected(id: number) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
@@ -906,6 +920,19 @@ export default function MediaLibrary({
       description="Semua aset media bersama: folder, unggah, salin URL, dan pasang ke produk/banner."
       actions={
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={selectMode ? "secondary" : "outline"}
+            onClick={() => {
+              setSelectMode((v) => {
+                if (v) setSelectedIds([])
+                return !v
+              })
+            }}
+          >
+            <Icon name="check" className="size-4" aria-hidden="true" />
+            {selectMode ? "Keluar Mode Pilih" : "Pilih Media"}
+          </Button>
           <Button type="button" onClick={() => setShowUploadModal(true)}>
             <Icon name="upload" className="size-4" aria-hidden="true" /> Unggah Media
           </Button>
@@ -1064,7 +1091,7 @@ export default function MediaLibrary({
           {/* Pilih semua pada halaman aktif. Kotak centang ini menyatakan
               keadaan halaman sekarang: penuh bila semua kartu terpilih,
               setengah bila sebagian. Hitungan terpilih selalu ditampilkan. */}
-          {assets.length > 0 ? (
+          {selectMode && assets.length > 0 ? (
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-foreground">
                 <input
@@ -1106,21 +1133,24 @@ export default function MediaLibrary({
               return (
                 <div
                   key={asset.id}
-                  role="checkbox"
-                  aria-checked={selectedIds.includes(asset.id)}
+                  role={selectMode ? "checkbox" : "button"}
+                  aria-checked={selectMode ? selectedIds.includes(asset.id) : undefined}
+                  aria-label={selectMode ? `Pilih ${asset.label}` : `Lihat pratinjau ${asset.label}`}
                   tabIndex={0}
                   onClick={(e) => {
                     // Tombol/link di dalam card tetap berfungsi normal.
                     const target = e.target as HTMLElement
                     if (target.closest('button, a, input, [data-no-select]')) return
-                    toggleSelected(asset.id)
+                    if (selectMode) toggleSelected(asset.id)
+                    else setPreviewAsset(asset)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       const target = e.target as HTMLElement
                       if (target.closest('button, a, input, [data-no-select]')) return
                       e.preventDefault()
-                      toggleSelected(asset.id)
+                      if (selectMode) toggleSelected(asset.id)
+                      else setPreviewAsset(asset)
                     }
                   }}
                   className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md ${selectedIds.includes(asset.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
@@ -1163,14 +1193,16 @@ export default function MediaLibrary({
                         <Icon name="rotate-cw" className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(asset.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={() => toggleSelected(asset.id)}
-                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
-                      aria-label={`Pilih ${asset.label}`}
-                    />
+                    {selectMode ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(asset.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleSelected(asset.id)}
+                        className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
+                        aria-label={`Pilih ${asset.label}`}
+                      />
+                    ) : null}
                   </div>
                   <div className="flex items-center justify-between gap-2 p-2.5">
                     <div className="min-w-0">
@@ -1277,6 +1309,44 @@ export default function MediaLibrary({
               </Button>
             </div>
             {attachError ? <p className="mt-2 text-xs text-destructive">{attachError}</p> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {previewAsset ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Pratinjau ${previewAsset.label}`}
+          onClick={() => setPreviewAsset(null)}
+        >
+          <div className="max-h-full w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-white">{previewAsset.label}</p>
+              <button
+                type="button"
+                onClick={() => setPreviewAsset(null)}
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label="Tutup pratinjau"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            {previewAsset.kind === "video" ? (
+              <video
+                src={previewAsset.media_url ?? previewAsset.public_url}
+                controls
+                autoPlay
+                className="max-h-[75vh] w-full rounded-lg bg-black object-contain"
+              />
+            ) : (
+              <img
+                src={previewAsset.public_url}
+                alt={previewAsset.label}
+                className="max-h-[75vh] w-full rounded-lg object-contain"
+              />
+            )}
           </div>
         </div>
       ) : null}
