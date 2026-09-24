@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
@@ -9,6 +9,8 @@ import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Field } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format"
@@ -52,14 +54,27 @@ export interface StatusTab {
   count: number
 }
 
+export interface BankTransferDetails {
+  bank_name: string
+  account_name: string
+  account_number: string
+  notes: string
+}
+
 export interface PaymentsIndexProps {
   title: string
   description?: string
+  bankTransfer?: BankTransferDetails | null
+  bankUpdateUrl?: string
   summary: PaymentSummary
   tabs: StatusTab[]
   activeStatus: string
   activeMethod: string
   searchQuery: string
+  activeDatePreset: string
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
   payments: {
     data: PaymentItem[]
     links: Array<{ url: string | null; label: string; active: boolean }>
@@ -107,17 +122,40 @@ function CopyButton({ text, label = "Salin" }: { text: string; label?: string })
 export default function PaymentsIndex({
   title,
   description,
+  bankTransfer,
+  bankUpdateUrl,
   summary,
   tabs,
   activeStatus,
   activeMethod,
   searchQuery,
+  activeDatePreset,
+  dateFrom: initialDateFrom,
+  dateTo: initialDateTo,
+  periodLabel,
   payments,
 }: PaymentsIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
   const [q, setQ] = React.useState(searchQuery)
+  const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
+  const [rangeTo, setRangeTo] = React.useState(initialDateTo)
+  // Rekening tampil read-only; form hanya aktif setelah admin menekan Ubah/Atur.
+  const [bankEditing, setBankEditing] = React.useState(false)
+  const bankForm = useForm({
+    bank_name: bankTransfer?.bank_name ?? "",
+    account_number: bankTransfer?.account_number ?? "",
+    account_name: bankTransfer?.account_name ?? "",
+    notes: bankTransfer?.notes ?? "",
+  })
   const [evidencePreviewUrl, setEvidencePreviewUrl] = React.useState<string | null>(null)
   const [evidenceLoadError, setEvidenceLoadError] = React.useState(false)
+
+  // Sudah ada rekening terisi? Kalau belum, tampilkan ajakan mengatur.
+  const hasBankDetails = Boolean(
+    bankTransfer?.bank_name?.trim() ||
+      bankTransfer?.account_number?.trim() ||
+      bankTransfer?.account_name?.trim(),
+  )
 
   function visit(params: Record<string, string | undefined>) {
     const next: Record<string, string> = {}
@@ -125,6 +163,11 @@ export default function PaymentsIndex({
       status: activeStatus,
       method: activeMethod,
       q: searchQuery,
+      date_preset: activeDatePreset,
+      // Rentang hanya ikut terkirim saat mode rentang aktif, supaya berpindah
+      // ke periode preset tidak meninggalkan sisa tanggal di URL.
+      date_from: activeDatePreset === "range" ? rangeFrom : undefined,
+      date_to: activeDatePreset === "range" ? rangeTo : undefined,
       ...params,
     }
     Object.entries(merged).forEach(([key, value]) => {
@@ -142,6 +185,15 @@ export default function PaymentsIndex({
   function submitSearch(event: React.FormEvent) {
     event.preventDefault()
     visit({ q: q.trim() })
+  }
+
+  function applyDateRange(event: React.FormEvent) {
+    event.preventDefault()
+    visit({
+      date_preset: "range",
+      date_from: rangeFrom || undefined,
+      date_to: rangeTo || undefined,
+    })
   }
 
   const actions = (
@@ -164,7 +216,7 @@ export default function PaymentsIndex({
           className={cn("size-3.5", refreshing ? "animate-spin" : "")}
           aria-hidden="true"
         />
-        <span>{refreshing ? "Memuat..." : "Refresh data"}</span>
+        <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
       </Button>
     </div>
   )
@@ -181,6 +233,9 @@ export default function PaymentsIndex({
       <Head title={`${title} | Admin`} />
 
       {/* 4 Kartu KPI Ringkasan Kas */}
+      <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+        Ringkasan kas · {periodLabel}
+      </p>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-4 space-y-1 bg-card">
           <p className="text-xs font-medium text-muted-foreground">Total Kas Diterima</p>
@@ -222,6 +277,135 @@ export default function PaymentsIndex({
           </p>
         </Card>
       </div>
+
+      {/* Detail Rekening Bank Transfer - read only sampai admin menekan Ubah */}
+      <Card className="mb-4 p-5 bg-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">Rekening Transfer Bank</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Dipakai pada pesan WhatsApp instruksi transfer dan halaman konfirmasi pesanan
+              pembeli dengan metode transfer.
+            </p>
+          </div>
+          {!bankEditing && hasBankDetails ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setBankEditing(true)}
+            >
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Ubah
+            </Button>
+          ) : null}
+        </div>
+
+        {bankEditing ? (
+          <form
+            className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              bankForm.put(bankUpdateUrl ?? "", {
+                preserveScroll: true,
+                onSuccess: () => setBankEditing(false),
+              })
+            }}
+          >
+            <Field id="bank_name" label="Nama Bank" required error={bankForm.errors.bank_name}>
+              <Input
+                id="bank_name"
+                value={bankForm.data.bank_name}
+                onChange={(event) => bankForm.setData("bank_name", event.target.value)}
+                placeholder="cth. BCA"
+                required
+              />
+            </Field>
+            <Field id="account_number" label="No. Rekening" required error={bankForm.errors.account_number}>
+              <Input
+                id="account_number"
+                value={bankForm.data.account_number}
+                onChange={(event) => bankForm.setData("account_number", event.target.value)}
+                placeholder="cth. 1234567890"
+                className="font-mono"
+                required
+              />
+            </Field>
+            <Field id="account_name" label="Atas Nama" required error={bankForm.errors.account_name}>
+              <Input
+                id="account_name"
+                value={bankForm.data.account_name}
+                onChange={(event) => bankForm.setData("account_name", event.target.value)}
+                placeholder="cth. Ragil Aluminium"
+                required
+              />
+            </Field>
+            <Field id="notes" label="Catatan Transfer (opsional)" error={bankForm.errors.notes}>
+              <Input
+                id="notes"
+                value={bankForm.data.notes}
+                onChange={(event) => bankForm.setData("notes", event.target.value)}
+                placeholder="Instruksi tambahan untuk pembeli"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2 xl:col-span-4">
+              <Button type="submit" disabled={bankForm.processing}>
+                {bankForm.processing ? "Menyimpan..." : "Simpan Rekening"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={bankForm.processing}
+                onClick={() => {
+                  // Buang perubahan yang belum disimpan supaya nilai lama tidak
+                  // tertinggal di form saat dibuka lagi.
+                  bankForm.setData({
+                    bank_name: bankTransfer?.bank_name ?? "",
+                    account_number: bankTransfer?.account_number ?? "",
+                    account_name: bankTransfer?.account_name ?? "",
+                    notes: bankTransfer?.notes ?? "",
+                  })
+                  bankForm.clearErrors()
+                  setBankEditing(false)
+                }}
+              >
+                Batal
+              </Button>
+            </div>
+          </form>
+        ) : hasBankDetails ? (
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Nama Bank", value: bankTransfer?.bank_name, mono: false },
+              { label: "No. Rekening", value: bankTransfer?.account_number, mono: true },
+              { label: "Atas Nama", value: bankTransfer?.account_name, mono: false },
+              { label: "Catatan Transfer", value: bankTransfer?.notes, mono: false },
+            ].map((item) => (
+              <div key={item.label} className="min-w-0">
+                <dt className="text-[13px] font-medium text-muted-foreground">{item.label}</dt>
+                <dd
+                  className={cn(
+                    "mt-1 truncate text-sm font-semibold text-foreground",
+                    item.mono && "font-mono",
+                  )}
+                  title={item.value || undefined}
+                >
+                  {item.value?.trim() ? item.value : "-"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Rekening belum diatur. Pembeli dengan metode transfer belum menerima instruksi pembayaran.
+            </p>
+            <Button type="button" size="sm" onClick={() => setBankEditing(true)}>
+              Atur rekening
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Tabs status pembayaran */}
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -296,7 +480,78 @@ export default function PaymentsIndex({
           <option value="cod">COD (Bayar di Tempat)</option>
           <option value="transfer">Transfer Bank</option>
         </Select>
+        <Select
+          value={activeDatePreset || "all"}
+          onChange={(event) => {
+            const value = event.target.value
+            if (value === "all") {
+              visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
+              return
+            }
+            if (value === "range") {
+              visit({
+                date_preset: "range",
+                date_from: rangeFrom || undefined,
+                date_to: rangeTo || undefined,
+              })
+              return
+            }
+            visit({ date_preset: value, date_from: undefined, date_to: undefined })
+          }}
+          className="w-auto"
+          aria-label="Filter periode pembayaran"
+        >
+          <option value="all">Semua waktu</option>
+          <option value="today">Hari ini</option>
+          <option value="3d">3 hari terakhir</option>
+          <option value="7d">7 hari terakhir</option>
+          <option value="30d">30 hari terakhir</option>
+          <option value="range">Rentang tanggal</option>
+        </Select>
+        {activeDatePreset === "range" ? (
+          <form onSubmit={applyDateRange} className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={rangeFrom}
+              onChange={(event) => setRangeFrom(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal mulai"
+            />
+            <span className="text-xs text-muted-foreground">sampai</span>
+            <Input
+              type="date"
+              value={rangeTo}
+              onChange={(event) => setRangeTo(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal akhir"
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Terapkan
+            </Button>
+          </form>
+        ) : null}
       </ListToolbar>
+
+      {activeDatePreset ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Periode
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {periodLabel}
+            <button
+              type="button"
+              onClick={() =>
+                visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
+              }
+              className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label="Hapus filter periode"
+            >
+              <Icon name="x" className="size-3" aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      ) : null}
 
       {/* Tabel Pembayaran Table-First Desktop */}
       <Card className="overflow-hidden border border-border bg-card">

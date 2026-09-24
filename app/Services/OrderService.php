@@ -209,7 +209,8 @@ class OrderService
                         // COD bayar di tempat: langsung antrean produksi, bukan menunggu pembayaran.
                         'order_status' => 'awaiting_confirmation',
                         'payment_status' => 'pending',
-                        'shipping_status' => 'pending_pickup',
+                        // Pengiriman belum dimulai / resi belum ada (owner 2026-09-16: bukan pending_pickup).
+                        'shipping_status' => 'tracking_pending',
                         'subtotal_amount' => $subtotal,
                         'shipping_amount' => $shippingCost,
                         'shipping_subsidy_amount' => round($shippingSubsidy, 2),
@@ -378,6 +379,9 @@ class OrderService
                     ->where('order_id', $lockedOrder->id)
                     ->where('status', 'completed')
                     ->update(['status' => 'refunded']);
+
+                $lockedOrder->shipping_status = 'cancelled';
+                $lockedOrder->save();
             },
         );
 
@@ -724,6 +728,15 @@ class OrderService
                     'parent_sku' => $line['product']->parent_sku,
                     'variant_sku' => $line['variant']?->variant_sku,
                     'name' => $line['product']->name,
+                    // Snapshot taksonomi baris, sama seperti createFromCart():
+                    // kategori, model, dan sub model produk dicatat saat baris
+                    // dibuat, supaya laporan per kategori/model/sub model tidak
+                    // kehilangan baris pesanan yang ditambahkan admin lewat edit
+                    // pesanan (audit admin 2026-09-23, B13). Baris histori lama
+                    // sengaja tidak disentuh.
+                    'product_category' => $line['product']->product_category,
+                    'product_model' => $line['product']->product_model,
+                    'design_variant' => $line['product']->design_variant,
                     'variation_1_name' => $line['variant']?->variation_1_name,
                     'variation_1_option' => $line['variant']?->variation_1_option,
                     'variation_2_name' => $line['variant']?->variation_2_name,

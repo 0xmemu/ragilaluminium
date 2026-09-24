@@ -1,8 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 import type { Pagination as PaginationData } from "@/types"
 
 interface VoucherCard {
@@ -163,55 +164,71 @@ function VoucherActions({
       <Button asChild variant="secondary" size="xs">
         <Link href={voucher.edit_href}>Edit</Link>
       </Button>
-      <button
-        type="button"
-        className={rowActionTextClass}
-        disabled={busy}
-        onClick={duplicate}
-      >
-        Duplikasi
-      </button>
-      {voucher.published ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Nonaktifkan
-            </button>
-          }
-          title="Nonaktifkan voucher?"
-          description="Kode tidak bisa dipakai di checkout sampai diaktifkan lagi."
-          confirmLabel="Nonaktifkan"
-          processing={busy}
-          onConfirm={unpublish}
-        />
-      ) : (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-primary")} disabled={busy}>
-              Aktifkan
-            </button>
-          }
-          title="Aktifkan voucher ini?"
-          description="Voucher ini akan tersedia untuk dipakai pelanggan."
-          confirmLabel="Aktifkan"
-          processing={busy}
-          onConfirm={publish}
-        />
-      )}
-      {voucher.published || voucher.runnable ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Akhiri
-            </button>
-          }
-          title="Akhiri voucher?"
-          description="Voucher langsung dinonaktifkan dan periode berakhir sekarang."
-          confirmLabel="Akhiri"
-          processing={busy}
-          onConfirm={end}
-        />
-      ) : null}
+      <RowActionsMenu>
+        <DropdownMenuItem asChild>
+          <button
+            type="button"
+            className="w-full text-left"
+            disabled={busy}
+            onClick={duplicate}
+          >
+            Duplikasi
+          </button>
+        </DropdownMenuItem>
+        {voucher.published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Nonaktifkan
+              </button>
+            }
+            title="Nonaktifkan voucher?"
+            description="Kode tidak bisa dipakai di checkout sampai diaktifkan lagi."
+            confirmLabel="Nonaktifkan"
+            processing={busy}
+            onConfirm={unpublish}
+          />
+        ) : (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-primary hover:bg-primary/10"
+                disabled={busy}
+              >
+                Aktifkan
+              </button>
+            }
+            title="Aktifkan voucher ini?"
+            description="Voucher ini akan tersedia untuk dipakai pelanggan."
+            confirmLabel="Aktifkan"
+            processing={busy}
+            onConfirm={publish}
+          />
+        )}
+        {voucher.published || voucher.runnable ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Akhiri
+              </button>
+            }
+            title="Akhiri voucher?"
+            description="Voucher langsung dinonaktifkan dan periode berakhir sekarang."
+            confirmLabel="Akhiri"
+            processing={busy}
+            onConfirm={end}
+          />
+        ) : null}
+      </RowActionsMenu>
     </RowActions>
   )
 }
@@ -254,7 +271,7 @@ export default function VouchersIndex({
       if (key === "q" && !value.trim()) return
       next[key] = value
     })
-    router.get("/admin/vouchers", next, { preserveState: true, replace: true })
+    router.get(routeUrl("admin.vouchers.index"), next, { preserveState: true, replace: true })
   }
 
   return (
@@ -271,7 +288,7 @@ export default function VouchersIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           <Button asChild size="sm">
             <Link href={createHref}>
@@ -283,7 +300,6 @@ export default function VouchersIndex({
       }
     >
       <Head title={`${title} | Admin`} />
-      <ManagePromotionsTabs active="vouchers" />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.</span>

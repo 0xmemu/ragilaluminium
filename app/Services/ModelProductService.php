@@ -11,17 +11,33 @@ use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
 use App\Support\CategoryUrl;
 use App\Support\ModelProductPresentation;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ModelProductService
 {
     /**
-     * @return list<array<string, mixed>>
+     * Baris admin model produk, sudah terpaginasi. Ukuran halaman ditentukan
+     * pemanggil (hanya 20, 50, 100 yang dipakai halaman daftar).
+     *
+     * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    public function adminRows(?string $q = null, ?string $status = null): array
-    {
-        $query = CmsModelProduct::query()->orderBy('sort_order')->orderBy('id');
+    public function adminRows(
+        ?string $q = null,
+        ?string $status = null,
+        ?string $category = null,
+        int $perPage = 20,
+    ): LengthAwarePaginator {
+        // Model aktif mendahului nonaktif (keputusan owner 2026-09-16: nonaktif
+        // "jatuh" dari urutan). Dalam masing-masing kelompok urutan tetap
+        // mengikuti sort_order sehingga model nonaktif yang diaktifkan kembali
+        // muncul di posisi semula. sort_order tersimpan tidak diubah.
+        $query = CmsModelProduct::query()
+            ->with(['mediaAsset', 'galleryAssets'])
+            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', ['active'])
+            ->orderBy('sort_order')
+            ->orderBy('id');
 
         if ($q) {
             $query->where(function ($builder) use ($q) {
@@ -35,10 +51,16 @@ class ModelProductService
             $query->where('status', $status);
         }
 
-        $items = $query->get();
-        $stats = $this->statsByCategoryModel($items);
+        if ($category && $category !== 'all') {
+            $query->where('product_category', $category);
+        }
 
-        return $items->values()->map(function (CmsModelProduct $item, int $index) use ($stats) {
+        $paginator = $query->paginate($perPage);
+        $stats = $this->statsByCategoryModel(collect($paginator->items()));
+        $offset = ($paginator->currentPage() - 1) * $paginator->perPage();
+
+        $position = 0;
+        return $paginator->through(function (CmsModelProduct $item) use ($stats, $offset, &$position) {
             $key = $this->pairKey($item->product_category, $item->product_model);
             $stat = $stats[$key] ?? [
                 'active_count' => 0,
@@ -46,13 +68,15 @@ class ModelProductService
                 'variant_count' => 0,
                 'designs' => [],
             ];
+            $position++;
 
             return [
                 'id' => $item->id,
-                'no' => $index + 1,
+                'no' => $offset + $position,
                 'name' => $item->name,
                 'description' => $item->description,
-                'image_url' => $item->image_url,
+                'image_url' => $item->resolvedImage('card'),
+                'gallery_count' => $item->galleryAssets->count(),
                 'type' => $item->type,
                 'status' => $item->status,
                 'sort_order' => $item->sort_order,
@@ -69,7 +93,7 @@ class ModelProductService
                 'activate_url' => route('admin.model-products.activate', $item),
                 'deactivate_url' => route('admin.model-products.deactivate', $item),
             ];
-        })->all();
+        });
     }
 
     /**
@@ -222,6 +246,7 @@ class ModelProductService
     public function storefrontCards(int $limit = 0, ?string $design = null, ?string $category = null, string $sort = 'popular'): array
     {
         $rows = CmsModelProduct::query()->active()
+            ->with(['mediaAsset', 'galleryAssets'])
             ->when($category, fn ($q) => $q->where('product_category', $category))
             ->get();
         if ($rows->isEmpty()) {
@@ -240,7 +265,7 @@ class ModelProductService
             }
 
             $productQuery = Product::visible()
-                ->where('product_category', $row->product_category)
+                ->whereIn('product_category', $this->productCategoryCandidates($row->product_category))
                 ->where('product_model', $row->product_model)
                 ->when($design, fn ($q) => $q->where('design_variant', $design));
 
@@ -265,7 +290,7 @@ class ModelProductService
                 'design' => $design ? strtolower(str_replace('_', '-', $design)) : null,
             ]);
 
-            $image = $row->image_url;
+            $image = $row->resolvedImage('card');
             if (! $image) {
                 $sample = (clone $productQuery)
                     ->with('mainImage')
@@ -294,6 +319,8 @@ class ModelProductService
                 'desc' => $cmsDescription !== '' ? $cmsDescription : $this->descriptionFor($row->product_model),
                 'keywords' => $cmsKeywords,
                 'image' => $image,
+                'gallery' => $row->galleryPayload('pdp'),
+                'show_product_photos' => (bool) $row->media_show_product_photos,
                 'href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,
                 'category' => $row->product_category,
@@ -462,7 +489,7 @@ class ModelProductService
             ->where(function ($q) use ($pairs) {
                 foreach ($pairs as $pair) {
                     $q->orWhere(function ($inner) use ($pair) {
-                        $inner->where('product_category', $pair['category'])
+                        $inner->whereIn('product_category', $this->productCategoryCandidates($pair['category']))
                             ->where('product_model', $pair['model']);
                     });
                 }
@@ -482,7 +509,8 @@ class ModelProductService
         foreach ($pairs as $pair) {
             $key = $this->pairKey($pair['category'], $pair['model']);
             $group = $products->filter(
-                fn (Product $p) => $p->product_category === $pair['category'] && $p->product_model === $pair['model']
+                fn (Product $p) => in_array((string) $p->product_category, $this->productCategoryCandidates($pair['category']), true)
+                    && $p->product_model === $pair['model']
             );
 
             $designs = $group->pluck('design_variant')->filter()->unique()->values()
@@ -499,6 +527,41 @@ class ModelProductService
         }
 
         return $out;
+    }
+
+    /**
+     * Ringkasan isi wadah satu model (dipakai form edit model produk):
+     * jumlah produk aktif/arsip, varian, dan sub model yang terdeteksi.
+     *
+     * @return array{active_count:int, archived_count:int, variant_count:int, designs:list<string>}
+     */
+    public function containerStats(CmsModelProduct $item): array
+    {
+        $stats = $this->statsByCategoryModel(collect([$item]));
+        $key = $this->pairKey($item->product_category, $item->product_model);
+
+        return $stats[$key] ?? [
+            'active_count' => 0,
+            'archived_count' => 0,
+            'variant_count' => 0,
+            'designs' => [],
+        ];
+    }
+    /**
+     * Kandidat kode product_category untuk satu kode kategori CMS: kode kanonik
+     * ditambah alias warisan (JENDELA => JENDELA/WINDOW/WINDOWS, dst). Dipakai
+     * supaya produk lama berkode English tetap ikut terhitung pada pencocokan
+     * model (kontrak audit admin 2026-09-23, B12). Data kanonik tidak berubah.
+     *
+     * @return list<string>
+     */
+    protected function productCategoryCandidates(?string $category): array
+    {
+        if ($category === null || $category === '') {
+            return [];
+        }
+
+        return CatalogLabels::categoryCodesWithLegacy(CategoryUrl::codeToProductCode($category));
     }
 
     protected function pairKey(?string $category, ?string $model): string

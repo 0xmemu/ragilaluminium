@@ -1,8 +1,8 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -15,6 +15,7 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
+import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -79,39 +80,56 @@ function BannerActions({
       <Button asChild variant="secondary" size="xs">
         <Link href={banner.edit_href}>Edit</Link>
       </Button>
-      {banner.published ? (
+      <RowActionsMenu>
+        {banner.published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Nonaktifkan
+              </button>
+            }
+            title="Nonaktifkan promo?"
+            description="Slide tidak akan tampil di beranda publik."
+            confirmLabel="Nonaktifkan"
+            processing={busy}
+            onConfirm={unpublish}
+          />
+        ) : (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy}
+              onClick={publish}
+            >
+              Aktifkan
+            </button>
+          </DropdownMenuItem>
+        )}
         <ConfirmAction
           trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Nonaktifkan
+            <button
+              type="button"
+              className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+              disabled={busy}
+            >
+              Hapus
             </button>
           }
-          title="Nonaktifkan promo?"
-          description="Slide tidak akan tampil di beranda publik."
-          confirmLabel="Nonaktifkan"
+          title="Hapus promo toko?"
+          description="Banner dihapus permanen beserta file media terkait di penyimpanan."
+          confirmLabel="Hapus permanen"
           processing={busy}
-          onConfirm={unpublish}
+          onConfirm={() => {
+            setBusyId(banner.id)
+            router.delete(banner.destroy_url, { preserveScroll: true, onFinish: () => setBusyId(null) })
+          }}
         />
-      ) : (
-        <Button size="xs" disabled={busy} onClick={publish}>
-          Aktifkan
-        </Button>
-      )}
-      <ConfirmAction
-        trigger={
-          <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-            Hapus
-          </button>
-        }
-        title="Hapus promo toko?"
-        description="Banner dihapus permanen beserta file media terkait di penyimpanan."
-        confirmLabel="Hapus permanen"
-        processing={busy}
-        onConfirm={() => {
-          setBusyId(banner.id)
-          router.delete(banner.destroy_url, { preserveScroll: true, onFinish: () => setBusyId(null) })
-        }}
-      />
+      </RowActionsMenu>
     </RowActions>
   )
 }
@@ -159,7 +177,7 @@ export default function BannersIndex({
       if (key === "q" && !value.trim()) return
       next[key] = value
     })
-    router.get("/admin/banners", next, { preserveState: true, replace: true })
+    router.get(routeUrl("admin.banners.index"), next, { preserveState: true, replace: true })
   }
 
   return (
@@ -176,19 +194,18 @@ export default function BannersIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah Banner
+              Tambah
             </Link>
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
-      <ManagePromotionsTabs active="banners" />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -281,7 +298,7 @@ export default function BannersIndex({
         }
       >
         <div className="w-full sm:w-48">
-          <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+          <label className="text-[11px] font-semibold tracking-tight text-muted-foreground">
             Status
           </label>
           <Select
@@ -307,7 +324,7 @@ export default function BannersIndex({
           }
           action={
             <Button asChild>
-              <Link href={createHref}>Tambah Banner</Link>
+              <Link href={createHref}>Tambah</Link>
             </Button>
           }
         />

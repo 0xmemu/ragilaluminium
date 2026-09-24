@@ -26,7 +26,9 @@ export function Field({
   const errorId = error ? `${id}-error` : undefined
 
   return (
-    <div className={cn("grid gap-1.5", className)}>
+    // content-start: sel yang diregangkan baris grid tidak mendorong kontrol turun,
+    // jadi label+input antar kolom selalu lurus sebaris.
+    <div className={cn("grid min-w-0 content-start gap-1.5", className)}>
       <LabelPrimitive.Root htmlFor={id} className="text-[13px] font-medium text-foreground">
         {label}
         {required ? <span className="ml-1 text-primary" aria-hidden="true">*</span> : null}
@@ -48,6 +50,107 @@ export function Field({
           {error}
         </p>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Grid standar form admin (owner 2026-09-17): content-start menjaga label dan
+ * kontrol antar kolom tetap lurus sebaris, walau salah satu sel punya hint
+ * atau error yang membuat tinggi selnya berbeda.
+ */
+export function FieldGrid({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn("grid min-w-0 content-start gap-4 sm:grid-cols-2 [&>*]:min-w-0", className)}>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Checkbox yang satu baris dengan field lain (owner 2026-09-17). Spacer
+ * setinggi baris label dipakai pada sm+ supaya centang sejajar dengan kontrol
+ * di sebelahnya. Pakai standalone untuk checkbox baris penuh tanpa spacer.
+ */
+export function CheckboxField({
+  id,
+  checked,
+  onChange,
+  label,
+  className,
+  standalone = false,
+  disabled = false,
+}: {
+  id: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: React.ReactNode
+  className?: string
+  standalone?: boolean
+  disabled?: boolean
+}) {
+  const control = (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex cursor-pointer items-center text-sm font-medium",
+        standalone ? "min-h-11 gap-3 font-semibold" : "h-9 min-h-9 gap-2",
+      )}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className={cn("h-4 w-4 accent-primary", standalone ? null : "translate-y-px")}
+      />
+      {label}
+    </label>
+  )
+
+  if (standalone) {
+    return <div className={className}>{control}</div>
+  }
+
+  return (
+    <div className={cn("grid min-w-0 content-start gap-1.5", className)}>
+      <span
+        aria-hidden="true"
+        className="hidden select-none text-[13px] font-medium sm:block"
+      >
+        &nbsp;
+      </span>
+      {control}
+    </div>
+  )
+}
+
+/**
+ * Tombol atau aksi lain yang harus sejajar dengan kontrol field di sebelahnya.
+ */
+export function FieldAction({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn("grid min-w-0 content-start gap-1.5", className)}>
+      <span
+        aria-hidden="true"
+        className="hidden select-none text-[13px] font-medium sm:block"
+      >
+        &nbsp;
+      </span>
+      <div className="flex min-h-9 items-center">{children}</div>
     </div>
   )
 }

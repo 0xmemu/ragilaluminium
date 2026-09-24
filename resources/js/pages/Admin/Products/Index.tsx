@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
@@ -22,6 +23,7 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { Pagination as PaginationData } from "@/types"
@@ -124,6 +126,36 @@ function ProductRowActions({
           </a>
         </DropdownMenuItem>
 
+        {archived ? (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy}
+              onClick={onUnarchive}
+            >
+              Pulihkan
+            </button>
+          </DropdownMenuItem>
+        ) : (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Arsipkan
+              </button>
+            }
+            title="Arsipkan produk?"
+            description={`${product.name} tidak akan tampil di katalog publik.`}
+            confirmLabel="Arsipkan"
+            processing={busy}
+            onConfirm={onArchive}
+          />
+        )}
+
         {archived && product.destroy_url ? (
           <ConfirmAction
             trigger={
@@ -145,24 +177,6 @@ function ProductRowActions({
           />
         ) : null}
       </RowActionsMenu>
-      {archived ? (
-        <Button size="xs" disabled={busy} onClick={onUnarchive}>
-          Pulihkan
-        </Button>
-      ) : (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Arsipkan
-            </button>
-          }
-          title="Arsipkan produk?"
-          description={`${product.name} tidak akan tampil di katalog publik.`}
-          confirmLabel="Arsipkan"
-          processing={busy}
-          onConfirm={onArchive}
-        />
-      )}
     </RowActions>
   )
 }
@@ -228,7 +242,7 @@ function ProductListRow({
       <TableCell className="tabular-nums">{formatNumber(product.stock_total)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.variants_count)}</TableCell>
       <TableCell className="tabular-nums">{formatNumber(product.sold_count)}</TableCell>
-      <TableCell className="sticky right-0 z-10 w-[1%] whitespace-nowrap bg-background text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">
+      <TableCell className="w-[1%] whitespace-nowrap text-right">
         <ProductRowActions
           product={product}
           busy={busy}
@@ -288,7 +302,7 @@ export default function ProductsIndex({
   const hasActiveFilters = activeFilters.length > 0
 
   function resetAllFilters() {
-    router.get("/admin/kelola/produk", {}, { preserveState: false, preserveScroll: true })
+    router.get(routeUrl("admin.products.index"), {}, { preserveState: false, preserveScroll: true })
   }
 
   function visit(params: Record<string, string | undefined>) {
@@ -308,7 +322,7 @@ export default function ProductsIndex({
       if (key === "sort" && value === DEFAULT_SORT) return
       next[key] = value
     })
-    router.get("/admin/kelola/produk", next, { preserveState: true, replace: true })
+    router.get(routeUrl("admin.products.index"), next, { preserveState: true, replace: true })
   }
 
   return (
@@ -325,10 +339,10 @@ export default function ProductsIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           <Button asChild variant="secondary" size="sm">
-            <a href={exportUrl}>Ekspor Produk ke Excel</a>
+            <a href={exportUrl}>Ekspor</a>
           </Button>
           <Button asChild variant="secondary" size="sm">
             <Link href={mediaHref}>Media Library</Link>
@@ -336,7 +350,7 @@ export default function ProductsIndex({
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah produk
+              Tambah
             </Link>
           </Button>
         </div>
@@ -419,7 +433,7 @@ export default function ProductsIndex({
       {/* Konten */}
       {activeFilters.length ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[11px] font-medium text-muted-foreground">
             Filter aktif
           </span>
           {activeFilters.map((filter) => (
@@ -450,42 +464,42 @@ export default function ProductsIndex({
         </div>
       ) : null}
 
-      {!products.length ? (
-        hasActiveFilters ? (
-          <EmptyState
-            className="mt-4"
-            icon="package"
-            title="Tidak ada produk yang cocok"
-            description="Coba ubah atau hapus filter untuk melihat produk lain."
-            action={
-              <Button variant="outline" size="sm" onClick={resetAllFilters}>
-                Reset Filter
-              </Button>
-            }
-          />
+      <Card className="mt-4 overflow-hidden border border-border bg-card">
+        {!products.length ? (
+          hasActiveFilters ? (
+            <EmptyState
+              className="p-8 border-0"
+              icon="package"
+              title="Tidak ada produk yang cocok"
+              description="Coba ubah atau hapus filter untuk melihat produk lain."
+              action={
+                <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                  Reset Filter
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              className="p-8 border-0"
+              title="Belum ada produk"
+              description="Tambah produk baru atau impor katalog dari menu Produk → Import."
+              action={
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild disabled={!canManage}>
+                    <Link href={createHref}>Tambah</Link>
+                  </Button>
+                  <Button asChild variant="secondary">
+                    <Link href={importHref}>Import</Link>
+                  </Button>
+                </div>
+              }
+            />
+          )
         ) : (
-          <EmptyState
-            className="mt-4"
-            title="Belum ada produk"
-            description="Tambah produk baru atau impor katalog dari menu Produk → Import."
-            action={
-              <div className="flex flex-wrap gap-2">
-                <Button asChild disabled={!canManage}>
-                  <Link href={createHref}>Tambah produk</Link>
-                </Button>
-                <Button asChild variant="secondary">
-                  <Link href={importHref}>Import</Link>
-                </Button>
-              </div>
-            }
-          />
-        )
-      ) : (
-        <div className="mt-4">
           <div className="overflow-x-auto">
             <Table className="min-w-[68rem]">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground hover:bg-transparent">
                   <TableHead>Produk</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead>Model</TableHead>
@@ -495,7 +509,7 @@ export default function ProductsIndex({
                   <TableHead>Stok</TableHead>
                   <TableHead>Varian</TableHead>
                   <TableHead>Terjual</TableHead>
-                  <TableHead className="sticky right-0 z-10 bg-background text-right shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]">Aksi</TableHead>
+                  <TableHead className="w-[1%] whitespace-nowrap text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -510,8 +524,8 @@ export default function ProductsIndex({
               </TableBody>
             </Table>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
 
       {pagination.last_page > 1 ? <Pagination pagination={pagination} /> : null}
     </AdminLayout>

@@ -15,10 +15,10 @@ export interface AdminPageGuide {
 export const adminPageGuides: Record<string, AdminPageGuide> = {
   "admin.beranda.index": {
     title: "Tata Letak Beranda",
-    summary: "Aktifkan, nonaktifkan, dan atur urutan section di halaman utama toko.",
+    summary: "Aktifkan, nonaktifkan, dan urutkan section di halaman utama toko.",
     steps: [
-      "Tekan Aktifkan mode geser untuk mengubah urutan section beranda.",
-      "Gunakan tombol naik atau turun, lalu tekan Simpan.",
+      "Tekan Urutkan, lalu pakai ikon tarik di tepi kiri baris untuk memindahkan section.",
+      "Tekan Simpan urutan setelah urutan section selesai diubah.",
       "Gunakan Edit konten untuk membuka pengelolaan section terkait.",
     ],
     notes: [
@@ -47,7 +47,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Atur Keunggulan Toko: pilih ikon, tulis judul singkat dan keterangan.",
       "Atur Langkah Kerja dari konsultasi sampai pengiriman (maksimal 4).",
       "Tulis Daftar Jaminan, satu jaminan per baris.",
-      "Tekan Simpan perubahan, lalu buka Lihat di toko untuk memeriksa hasilnya.",
+      "Tekan Simpan, lalu buka Lihat di toko untuk memeriksa hasilnya.",
     ],
     notes: [
       "Tampilan halaman tetap mengikuti desain toko; Anda hanya mengisi isi.",
@@ -60,7 +60,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
       "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
-      "Gunakan tombol Simpan perubahan di kanan atas untuk menyimpan data.",
+      "Gunakan tombol Simpan di kanan atas untuk menyimpan data.",
     ],
     notes: [
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
@@ -73,7 +73,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
       "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
-      "Gunakan tombol Simpan perubahan di kanan atas untuk menyimpan data.",
+      "Gunakan tombol Simpan di kanan atas untuk menyimpan data.",
     ],
     notes: [
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
@@ -82,16 +82,16 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
   },
   "admin.testimonials.index": {
     title: "Ulasan Pelanggan",
-    summary: "Kelola ulasan pembeli dari transaksi website, tangkapan layar marketplace, dan galeri hasil pemasangan.",
+    summary: "Kelola ulasan pembeli dari transaksi website dan tangkapan layar marketplace.",
     steps: [
       "Ulasan pelanggan website tayang otomatis begitu dikirim, jadi tidak perlu disetujui. Gunakan aksi Sembunyikan di tabel bila ada ulasan yang bermasalah.",
       "Gunakan tab Apa Kata Pelanggan untuk mengelola tangkapan layar ulasan dari Shopee atau WhatsApp.",
-      "Gunakan tab Hasil Pemasangan untuk mengelola foto dan video aplikasi produk.",
+      "Foto dan video hasil pemasangan dikelola di menu Pengaturan Website > Hasil Pemasangan Kami.",
       "Gunakan tombol Urutkan pada tab Apa Kata Pelanggan untuk mengubah urutan tampil di etalase.",
     ],
     notes: [
       "Ulasan website tayang otomatis di halaman produk terkait dan halaman ulasan publik; balasannya bisa ditambahkan kapan pun, termasuk setelah ulasan tayang.",
-      "Foto hasil pemasangan yang diimpor dari produk berstatus read-only dan dapat ditambah dengan foto manual.",
+      "Screenshot marketplace yang baru dibuat langsung tampil di storefront; gunakan aksi Sembunyikan di tabel untuk menyembunyikan.",
     ],
   },
   "admin.dashboard": {
@@ -229,11 +229,35 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
   },
   "admin.promotions.index": {
     title: "Promo Toko",
-    summary: "Kampanye potongan harga per produk untuk periode tertentu.",
+    summary: "Ringkasan semua promosi yang sedang berjalan dari seluruh jenis.",
     steps: [
-      "Buat promo baru lalu pilih produk yang ikut kampanye.",
-      "Aktifkan promo pada tanggal mulainya.",
-      "Pantau dampaknya lewat tombol Impact pada kartu promo.",
+      "Lihat kartu angka di atas untuk tahu berapa promosi yang aktif per jenis.",
+      "Kampanye diskon bertanda Berjalan sedang mengurangi harga di etalase.",
+      "Buka Diskon Reguler atau Flash Sale di tab untuk mengelola kampanye per jenis.",
+    ],
+  },
+  "admin.promotions.show": {
+    title: "Detail Promo Toko",
+    summary: "Rincian satu kampanye: target produk, jumlah yang terjual, dan nilai penjualannya.",
+    steps: [
+      "Pilih rentang Periode kampanye atau Semua waktu untuk melihat angka penjualan.",
+      "Tabel diurutkan dari produk yang paling banyak terjual.",
+      "Produk tanpa penjualan tetap tampil di bawah dengan angka nol.",
+    ],
+    notes: [
+      "Pesanan yang menunggu konfirmasi atau dibatalkan belum dihitung sebagai penjualan.",
+    ],
+  },
+  "admin.settings.index": {
+    title: "Pengaturan Sistem",
+    summary: "Cek kesehatan layanan yang menopang website dari satu halaman.",
+    steps: [
+      "Tekan Jalankan pemeriksaan untuk mengetes database, cache, storage, gateway WhatsApp, dan kredensial J&T.",
+      "Layanan dengan tanda silang perlu ditindaklanjuti; pesan di bawahnya menjelaskan masalahnya.",
+      "Nilai di bagian Konfigurasi aktif dibaca dari environment server dan tidak bisa diubah dari sini.",
+    ],
+    notes: [
+      "Pemeriksaan aman dijalankan kapan pun karena memakai timeout pendek dan tidak mengubah data.",
     ],
   },
   "admin.cod-settings.edit": {
@@ -241,7 +265,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Pengaturan biaya layanan COD yang dibebankan ke pembeli.",
     steps: [
       "Atur persentase biaya COD sesuai kebijakan toko.",
-      "Simpan perubahan dan pastikan layanan COD aktif.",
+      "Simpan dan pastikan layanan COD aktif.",
     ],
     notes: [
       "Nilai biaya (%). Rumus: biaya COD = 4% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400.",
@@ -252,7 +276,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Pengaturan potongan ongkir yang ditanggung toko.",
     steps: [
       "Atur persentase subsidi dan kurir yang mendapat subsidi.",
-      "Simpan perubahan, lalu cek estimasi ongkir di halaman checkout.",
+      "Simpan, lalu cek estimasi ongkir di halaman checkout.",
     ],
     notes: ["Subsidi dihitung dari ongkir kurir, bukan dari harga produk."],
   },
@@ -261,7 +285,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Kelola pertanyaan yang tampil di halaman FAQ toko.",
     steps: [
       "Tambah pertanyaan beserta jawabannya per kategori.",
-      "Susun urutan tampil lewat tombol reorder.",
+      "Susun urutan tampil lewat tombol Urutkan.",
       "Arsipkan pertanyaan yang jarang dipakai tanpa menghapusnya.",
     ],
   },
@@ -321,7 +345,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Gunakan kotak pencarian untuk mencari pelanggan berdasarkan nama, nomor WhatsApp, atau alamat.",
       "Gunakan menu urutkan untuk menyortir pelanggan terbaru, terlama, atau nama A-Z.",
       "Klik nama pelanggan atau tombol Edit untuk mengelola detail profil dan alamat.",
-      "Gunakan tombol Unduh Excel untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
+      "Gunakan tombol Ekspor untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
     ],
     notes: [
       "Status keaktifan pelanggan: Aktif (memiliki transaksi pesanan dalam 90 hari terakhir), Baru (belum pernah memesan), atau Tidak aktif (tidak ada pesanan selama lebih dari 90 hari).",
@@ -334,7 +358,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Perbarui nama lengkap atau detail alamat pengiriman bila diperlukan.",
       "Tinjau daftar riwayat nomor pesanan pelanggan di panel samping.",
-      "Simpan perubahan menggunakan tombol Simpan di kanan atas.",
+      "Tekan tombol Simpan di kanan atas untuk menyimpan data.",
     ],
     notes: [
       "Nomor WhatsApp dikunci sebagai identitas unik pelanggan dan tidak dapat diubah.",

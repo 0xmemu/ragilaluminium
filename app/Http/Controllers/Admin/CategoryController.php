@@ -17,10 +17,25 @@ class CategoryController extends Controller
 {
     public function __construct(protected ActivityLogService $logs) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $q = trim((string) $request->input('q', ''));
+        $status = (string) $request->input('status', 'all');
+        if (! in_array($status, ['all', 'active', 'inactive'], true)) {
+            $status = 'all';
+        }
+
         $categories = Category::query()
             ->withCount('products')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%")
+                        ->orWhere('slug', 'like', "%{$q}%");
+                });
+            })
+            ->when($status === 'active', fn ($query) => $query->where('is_active', true))
+            ->when($status === 'inactive', fn ($query) => $query->where('is_active', false))
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
@@ -31,8 +46,8 @@ class CategoryController extends Controller
                 'slug' => $c->slug,
                 'seo_title' => $c->seo_title,
                 'sort_order' => $c->sort_order,
-                'is_active' => $c->is_active,
-                'products_count' => $c->products_count,
+                'is_active' => (bool) $c->is_active,
+                'products_count' => (int) $c->products_count,
                 'editUrl' => route('admin.categories.edit', $c),
             ])->all();
 
@@ -40,20 +55,32 @@ class CategoryController extends Controller
             'title' => 'Kategori Produk',
             'description' => 'Kelola kategori produk yang tampil di katalog dan form produk.',
             'categories' => $categories,
-            'createHref' => route('admin.categories.create'),
-            // backUrl sengaja tidak dikirim di Index: list sibling ManageProductsTabs
+            'filters' => [
+                'q' => $q,
+                'status' => $status,
+            ],
+            'statusOptions' => [
+                ['value' => 'all', 'label' => 'Semua status'],
+                ['value' => 'active', 'label' => 'Aktif'],
+                ['value' => 'inactive', 'label' => 'Nonaktif'],
+            ],
+            'createUrl' => route('admin.categories.create'),
             'backUrl' => null,
         ]);
     }
 
     public function create(): Response
     {
+        // Kontrak 2026-09-23: tambah dan edit kategori memakai pola yang sama,
+        // yaitu halaman penuh. Sebelumnya tambah memakai panel popup di halaman
+        // index sehingga dua alur berbeda untuk objek yang sama. Komponen
+        // Admin/Categories/Form sudah menerima `category` bernilai null.
         return Inertia::render('Admin/Categories/Form', [
             'title' => 'Tambah Kategori',
-            'description' => 'Buat kategori produk baru.',
+            'description' => 'Buat kategori produk baru untuk katalog dan form produk.',
+            'backUrl' => route('admin.categories.index'),
             'category' => null,
             'submitUrl' => route('admin.categories.store'),
-            'backUrl' => route('admin.categories.index'),
         ]);
     }
 
@@ -68,14 +95,14 @@ class CategoryController extends Controller
 
         $this->flushTaxonomyCaches();
 
-        return redirect()->route('admin.categories.edit', $category)->with('success', 'Kategori dibuat.');
+        return redirect()->route('admin.categories.index')->with('success', 'Kategori "'.$category->name.'" berhasil dibuat.');
     }
 
     public function edit(Category $category): Response
     {
         return Inertia::render('Admin/Categories/Form', [
             'title' => 'Edit Kategori',
-            'description' => 'Ubah kategori produk.',
+            'description' => 'Ubah data, struktur URL, dan optimasi SEO untuk kategori '.$category->name.'.',
             'backUrl' => route('admin.categories.index'),
             'category' => [
                 'id' => $category->id,
@@ -85,7 +112,12 @@ class CategoryController extends Controller
                 'seo_title' => $category->seo_title,
                 'seo_description' => $category->seo_description,
                 'sort_order' => $category->sort_order,
-                'is_active' => $category->is_active,
+                'is_active' => (bool) $category->is_active,
+                'products_count' => $category->products()->count(),
+                'public_url' => route('catalog.category', ['category' => $category->slug]),
+                'products_url' => route('admin.products.index', [
+                    'product_category' => CategoryUrl::codeToProductCode((string) $category->code),
+                ]),
             ],
             'submitUrl' => route('admin.categories.update', $category),
         ]);
@@ -102,7 +134,7 @@ class CategoryController extends Controller
 
         $this->flushTaxonomyCaches();
 
-        return redirect()->route('admin.categories.edit', $category)->with('success', 'Kategori diperbarui.');
+        return redirect()->route('admin.categories.index')->with('success', 'Kategori '.$category->name.' diperbarui.');
     }
 
     public function destroy(Category $category): RedirectResponse
@@ -141,7 +173,8 @@ protected function validateCategory(Request $request, ?Category $category = null
                 ]);
             }
         }
-        $slugRule = ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'];
+
+        $slugRule = ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'];
         if ($category) {
             $slugRule[] = 'unique:categories,slug,'.$category->id;
         } else {
@@ -149,8 +182,8 @@ protected function validateCategory(Request $request, ?Category $category = null
         }
 
         $data = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'unique:categories,code'.($category ? ','.$category->id : '')],
             'name' => ['required', 'string', 'max:100'],
+            'code' => ['nullable', 'string', 'max:50', 'unique:categories,code'.($category ? ','.$category->id : '')],
             'slug' => $slugRule,
             'seo_title' => ['nullable', 'string', 'max:191'],
             'seo_description' => ['nullable', 'string', 'max:500'],
@@ -158,9 +191,49 @@ protected function validateCategory(Request $request, ?Category $category = null
             'is_active' => ['nullable', 'boolean'],
         ], [], ['name' => 'Nama Kategori', 'code' => 'Kode Kategori']);
 
-        $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
-        $data['sort_order'] = $data['sort_order'] ?? 0;
-        $data['is_active'] = $request->boolean('is_active');
+        // Kontrak 2026-09-16 (sama dgn Model Produk): tambah kategori berarti
+        // MENAMBAH kategori baru dari nama. Admin TIDAK perlu mengisi atau memikirkan
+        // kode kategori. Kode dibuat otomatis dari nama (huruf kapital underscore).
+        $code = filled($data['code'] ?? null)
+            ? mb_strtoupper(preg_replace('/[^A-Za-z0-9_]/', '_', (string) $data['code']))
+            : ($category?->code ?? mb_strtoupper(Str::slug((string) $data['name'], '_')));
+
+        // Pastikan kode unik bila baru dibuat
+        if (! $category) {
+            $baseCode = $code;
+            $i = 1;
+            while (Category::where('code', $code)->exists()) {
+                $i++;
+                $code = "{$baseCode}_{$i}";
+            }
+        }
+
+        $slug = filled($data['slug'] ?? null)
+            ? Str::slug((string) $data['slug'])
+            : ($category?->slug ?? Str::slug((string) $data['name']));
+
+        // Pastikan slug unik bila baru dibuat
+        if (! $category) {
+            $baseSlug = $slug;
+            $i = 1;
+            while (Category::where('slug', $slug)->exists()) {
+                $i++;
+                $slug = "{$baseSlug}-{$i}";
+            }
+        }
+
+        $data['code'] = $code;
+        $data['slug'] = $slug;
+        $data['sort_order'] = isset($data['sort_order']) && $data['sort_order'] !== null
+            ? (int) $data['sort_order']
+            : ($category?->sort_order ?? ((int) Category::max('sort_order') + 1));
+        $data['seo_title'] = filled($data['seo_title'] ?? null)
+            ? trim((string) $data['seo_title'])
+            : ($category?->seo_title ?? $data['name'].' Terbaik | Ragil Aluminium');
+        $data['seo_description'] = filled($data['seo_description'] ?? null)
+            ? trim((string) $data['seo_description'])
+            : ($category?->seo_description ?? 'Koleksi produk '.$data['name'].' berkualitas tinggi dan bergaransi resmi dari Ragil Aluminium.');
+        $data['is_active'] = $request->boolean('is_active', true);
 
         return $data;
     }

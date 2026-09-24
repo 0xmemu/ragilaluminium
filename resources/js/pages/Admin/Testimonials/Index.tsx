@@ -488,15 +488,17 @@ export default function TestimonialsIndex({
     (replyOptions.length > 0 && reply !== "all")
   const listTersaring = filters.q.trim() !== "" || filterKunci
 
+  // Halaman ini punya mode Urutkan atau tidak (ada tab tanpa reorder).
+  const reorderTersedia = Boolean(canReorder && reorderUrl)
+  // Kolom ikon tarik hanya dirender saat mode Urutkan aktif dan daftar tidak
+  // tersaring: di luar itu kolomnya disembunyikan total supaya tidak menganga.
+  const dragAktif = reorderTersedia && reorderMode && !listTersaring
+
   const dnd = useRowDragSort({
-    enabled: reorderMode && !listTersaring,
+    enabled: dragAktif,
     count: orderedRows.length,
     onReorder: reorderRows,
   })
-
-  // Kolom handle hanya dirender bila halaman ini memang punya mode urut: tab
-  // tanpa reorder tidak perlu kolom redup yang tidak bisa dipakai.
-  const reorderTersedia = Boolean(canReorder && reorderUrl)
 
   const websiteRows = reorderMode || canReorder ? orderedRows : (rows as WebsiteRow[])
   const showTabs = tabs.length > 0
@@ -515,7 +517,7 @@ export default function TestimonialsIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           {previewUrl ? (
             <Button asChild variant="secondary" size="sm">
@@ -535,10 +537,10 @@ export default function TestimonialsIndex({
               processing={reorderForm.processing}
               size="sm"
               disabled={!orderedRows.length || filterKunci}
-              disabledReason="Kosongkan filter status dulu supaya urutan bisa digeser."
+              disabledReason="Kosongkan filter status dulu supaya tombol Urutkan bisa dipakai."
               onToggle={() => {
                 setReorderMode(true)
-                // Pencarian dibersihkan sekaligus supaya urutan bisa digeser
+                // Pencarian dibersihkan sekaligus supaya urutan bisa diubah
                 // (kontrak owner 2026-09-20).
                 if (filters.q) {
                   setQ("")
@@ -687,7 +689,7 @@ export default function TestimonialsIndex({
               <table className="min-w-full text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                   <tr>
-                    {reorderTersedia ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
+                    {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Pelanggan</th>
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
@@ -706,11 +708,12 @@ export default function TestimonialsIndex({
                 </thead>
                 <tbody>
                   {websiteRows.map((row, index) => (
-                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}>
-                      {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
-                      {reorderTersedia ? (
+                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(dragAktif ? dnd.rowProps(index) : {})}>
+                      {/* Ikon tarik hanya ada saat mode Urutkan aktif, jadi kolomnya
+                          tidak dirender di luar mode itu (kontrak owner 2026-09-20, direvisi). */}
+                      {dragAktif ? (
                         <td className="w-12 px-3 py-3">
-                          <ReorderDragHandle enabled={reorderMode && !listTersaring} />
+                          <ReorderDragHandle enabled />
                         </td>
                       ) : null}
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
@@ -830,7 +833,7 @@ export default function TestimonialsIndex({
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
                       <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
                         {reorderMode ? (
-                          <span className="text-xs text-muted-foreground">Mode urutan</span>
+                          <span className="text-xs text-muted-foreground">Mode Urutkan</span>
                         ) : (
                           <PublishActions
                             published={row.published}
@@ -951,6 +954,8 @@ export default function TestimonialsIndex({
       </section>
 
       {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman. */}
+      {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman.
+          Komponennya dipakai bersama halaman detail pesanan admin. */}
       <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
     </AdminLayout>
   )

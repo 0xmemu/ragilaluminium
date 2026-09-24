@@ -351,7 +351,7 @@ function OrderEditPanel({
     <div className="space-y-4 border-t border-border bg-muted/30 px-5 py-4">
       <FormErrorSummary errors={form.errors} />
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground">
           Produk
         </p>
         <ul className="mt-2 space-y-2">
@@ -404,7 +404,7 @@ function OrderEditPanel({
             onChange={(event) => setNewLine({ ...newLine, qty: Number(event.target.value) || 1 })}
           />
           <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-            Tambah produk
+            Tambah
           </Button>
         </div>
       </div>
@@ -519,7 +519,7 @@ function OrderEditPanel({
 
       <div className="flex items-center gap-2">
         <Button type="button" onClick={submit} disabled={form.processing}>
-          {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+          {form.processing ? "Menyimpan..." : "Simpan"}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Batal
@@ -1004,13 +1004,14 @@ function CopyButton({ text, label = "Salin" }: { text: string; label?: string })
  * berbunyi 'Menunggu pembayaran'. Peta kecil ini memakai istilah pengiriman
  * pesan yang benar.
  */
-const WA_MESSAGE_STATUS: Record<string, { icon: string; title: string; className: string }> = {
-  pending: { icon: "clock", title: "Menunggu tanda kirim", className: "text-muted-foreground/60" },
-  queued: { icon: "clock", title: "Menunggu dikirim", className: "text-muted-foreground/60" },
-  sent: { icon: "check", title: "Terkirim", className: "text-muted-foreground" },
-  delivered: { icon: "checks", title: "Sampai di HP pelanggan", className: "text-muted-foreground" },
-  read: { icon: "checks", title: "Dibaca pelanggan", className: "text-info" },
-  failed: { icon: "warning", title: "Gagal terkirim", className: "text-destructive" },
+const WA_MESSAGE_STATUS: Record<string, { icon: string; title: string; label: string; className: string }> = {
+  pending: { icon: "clock", title: "Menunggu tanda kirim", label: "Menunggu", className: "text-muted-foreground" },
+  queued: { icon: "clock", title: "Menunggu dikirim", label: "Antre", className: "text-muted-foreground" },
+  sent: { icon: "check", title: "Terkirim ke WhatsApp", label: "Terkirim", className: "text-emerald-500 font-medium" },
+  delivered: { icon: "checks", title: "Sampai di HP pelanggan", label: "Terkirim", className: "text-emerald-500 font-medium" },
+  read: { icon: "checks", title: "Dibaca pelanggan", label: "Dibaca", className: "text-sky-400 font-medium" },
+  failed: { icon: "x", title: "Gagal terkirim", label: "Gagal", className: "text-destructive font-medium" },
+  received: { icon: "arrow-down-left", title: "Diterima", label: "Diterima", className: "text-emerald-500 font-medium" },
 }
 
 function waMessageStatus(status: string) {
@@ -1090,6 +1091,19 @@ export default function OrderShow({
   const [notesMode, setNotesMode] = React.useState<"view" | "edit">(order.admin_notes?.trim() ? "view" : "edit")
   const [notesText, setNotesText] = React.useState(order.admin_notes ?? "")
   const [notesBusy, setNotesBusy] = React.useState(false)
+  const [expandedWaIds, setExpandedWaIds] = React.useState<Set<number>>(new Set())
+
+  function toggleWaExpand(id: number) {
+    setExpandedWaIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   function saveAdminNotes(content: string) {
     if (!adminNotesUrl) return
@@ -1187,22 +1201,71 @@ export default function OrderShow({
 
       {/* Ringkasan order - 4 sel proporsional: Nomor order, Pembayaran, Detail penerima, Detail pengiriman */}
       <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
-        <div className="bg-card p-5">
-          <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <p className="font-mono text-xl font-bold tracking-tight text-foreground">{order.order_number}</p>
-            <button
-              type="button"
-              onClick={() => copyText(order.order_number)}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-              aria-label="Salin nomor order"
-              title="Salin nomor order"
-            >
-              <Icon name="copy" className="size-3.5" aria-hidden="true" />
-            </button>
+        <div className="bg-card p-5 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <p className="font-mono text-xl font-bold tracking-tight text-foreground">{order.order_number}</p>
+              <button
+                type="button"
+                onClick={() => copyText(order.order_number)}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Salin nomor order"
+                title="Salin nomor order"
+              >
+                <Icon name="copy" className="size-3.5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="mt-2">
+              <StatusBadge status={order.order_status} />
+            </div>
           </div>
-          <div className="mt-2">
-            <StatusBadge status={order.order_status} />
+
+          <div className="mt-3 border-t border-border/60 pt-2.5">
+            {order.admin_notes?.trim() ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-medium text-muted-foreground">Catatan admin:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesMode("edit")
+                      setNotesText(order.admin_notes ?? "")
+                      setNotesModalOpen(true)
+                    }}
+                    className="text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div
+                  onClick={() => {
+                    setNotesMode("view")
+                    setNotesText(order.admin_notes ?? "")
+                    setNotesModalOpen(true)
+                  }}
+                  className="cursor-pointer rounded-md border border-amber-500/25 bg-amber-500/10 p-2 transition hover:bg-amber-500/15"
+                  title="Klik untuk melihat catatan lengkap"
+                >
+                  <p className="line-clamp-2 overflow-hidden text-xs leading-snug text-amber-900 dark:text-amber-200 break-all break-words">
+                    {order.admin_notes}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNotesMode("edit")
+                  setNotesText("")
+                  setNotesModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Icon name="plus" className="size-3" aria-hidden="true" />
+                <span>Tambah</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1269,7 +1332,14 @@ export default function OrderShow({
             <span className="text-sm font-semibold text-foreground">
               {latestShipping?.carrier_name || (latestShipping?.waybill_number ? "J&T Cargo" : "Pengiriman")}
             </span>
-            <StatusBadge status={order.shipping_status || "pending_pickup"} />
+            <StatusBadge
+              status={
+                latestShipping?.status ||
+                (order.order_status === "awaiting_confirmation" || order.order_status === "pending"
+                  ? order.order_status
+                  : order.shipping_status || "tracking_pending")
+              }
+            />
           </div>
 
           <div className="mt-2 space-y-1 text-xs">
@@ -1329,19 +1399,14 @@ export default function OrderShow({
       ) : null}
       <Card className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         {primaryAction?.next_status ? (
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Button
-              disabled={statusBusy || !can("orders.process", capabilities)}
-              onClick={runPrimary}
-              className="shrink-0"
-              title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
-            >
-              {statusBusy ? "Memproses..." : primaryAction.label}
-            </Button>
-            {primaryAction.hint ? (
-              <p className="truncate text-xs text-muted-foreground">{primaryAction.hint}</p>
-            ) : null}
-          </div>
+          <Button
+            disabled={statusBusy || !can("orders.process", capabilities)}
+            onClick={runPrimary}
+            className="shrink-0"
+            title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+          >
+            {statusBusy ? "Memproses..." : primaryAction.label}
+          </Button>
         ) : null}
 
         {secondaryAction?.href ? (
@@ -1361,56 +1426,7 @@ export default function OrderShow({
           </Button>
         ) : null}
 
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setTrackingOpen(true)}
-          className="shrink-0 inline-flex items-center gap-1.5"
-        >
-          <Icon name="truck" className="size-4" aria-hidden="true" />
-          <span>Lacak Pesanan</span>
-        </Button>
 
-        {order.admin_notes?.trim() ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setNotesMode("view")
-              setNotesText(order.admin_notes ?? "")
-              setNotesModalOpen(true)
-            }}
-            className="shrink-0 inline-flex items-center gap-1.5 border-amber-500/50 bg-amber-500/15 font-semibold text-amber-700 hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
-            title="Lihat dan edit catatan admin"
-          >
-            <Icon name="clipboard-text" className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-            <span>Catatan admin</span>
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setNotesMode("edit")
-              setNotesText("")
-              setNotesModalOpen(true)
-            }}
-            className="shrink-0 inline-flex items-center gap-1.5 border border-dashed border-border text-muted-foreground hover:text-foreground"
-            title="Tambah catatan internal admin"
-          >
-            <Icon name="plus" className="size-3.5" aria-hidden="true" />
-            <span>Tambah catatan</span>
-          </Button>
-        )}
-
-        {order.whatsapp_url ? (
-          <Button asChild variant="ghost">
-            <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" className="size-4 text-success" aria-hidden="true" />
-              Chat WA
-            </a>
-          </Button>
-        ) : null}
 
         {order.whatsapp_status_url || order.whatsapp_url ? (
           <Button asChild variant="secondary" className="shrink-0">
@@ -1432,6 +1448,7 @@ export default function OrderShow({
             {order.testimonial.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
           </Button>
         ) : null}
+
         {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
           can("orders.cancel", capabilities) ? (
             <ConfirmAction
@@ -1628,53 +1645,95 @@ export default function OrderShow({
           )}
         </SectionCard>
         <div id="percakapan-whatsapp" className="scroll-mt-20">
-        <SectionCard title="Percakapan WhatsApp">
+        <SectionCard title="Log WhatsApp">
           {order.whatsapp_messages.length ? (
             <>
             <ul ref={waLogRef} className="max-h-[420px] space-y-2.5 overflow-y-auto pr-1">
               {order.whatsapp_messages.map((message) => {
                 const outbound = message.direction !== "inbound"
+                const isExpanded = expandedWaIds.has(message.id)
+                const waStatus = waMessageStatus(message.status)
 
+                // 1. Pesan Otomatis (Template): tampilkan ringkas sebagai list event + status checklist (owner 2026-09-16)
+                if (message.is_automated) {
+                  return (
+                    <li key={message.id} className="flex justify-end">
+                      <div className="w-full max-w-[92%] rounded-lg border border-border bg-card p-3 shadow-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {message.label || "WA Otomatis"}
+                            </span>
+                            <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">
+                              Otomatis
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 text-xs">
+                            {waStatus ? (
+                              <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                                <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                                <span>{waStatus.label}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground capitalize">{message.status}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span>
+                            {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                          </span>
+                          {message.text ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleWaExpand(message.id)}
+                              className="text-[11px] text-primary hover:underline font-medium"
+                            >
+                              {isExpanded ? "Sembunyikan isi" : "Lihat isi pesan"}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {isExpanded && message.text ? (
+                          <p className="mt-2 border-t border-border pt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+                            {message.text}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  )
+                }
+
+                // 2. Pesan Manual / Non-Template / Balasan Pelanggan: tampilkan teks pesan lengkap
                 return (
                   <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
                     <div
-                      className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+                      className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
                         outbound
                           ? "border-border bg-muted/40"
                           : "border-success/30 bg-success/5"
                       }`}
                     >
-                      <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                        <span>{outbound ? "Toko" : "Pelanggan"}</span>
-                        {message.is_automated ? (
-                          <span className="rounded border border-border px-1 text-[10px]">Otomatis</span>
-                        ) : null}
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
+                        <span>{outbound ? "Toko (Pesan Manual)" : "Pelanggan"}</span>
+                      </div>
+
+                      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
+                        {message.text || message.label || humanize(message.direction)}
                       </p>
 
-                      {message.text ? (
-                        <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
-                          {message.text}
-                        </p>
-                      ) : (
-                        <p className="mt-1 text-[13px] text-muted-foreground">
-                          {message.label || humanize(message.direction)}
-                        </p>
-                      )}
-
-                      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                         <span>
                           {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
                         </span>
-                        {outbound && waMessageStatus(message.status) ? (
-                          <span
-                            title={waMessageStatus(message.status)!.title}
-                            aria-label={waMessageStatus(message.status)!.title}
-                            className={`inline-flex shrink-0 ${waMessageStatus(message.status)!.className}`}
-                          >
-                            <Icon name={waMessageStatus(message.status)!.icon as never} className="size-3.5" />
+                        {outbound && waStatus ? (
+                          <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                            <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span>{waStatus.label}</span>
                           </span>
                         ) : null}
-                      </p>
+                      </div>
                     </div>
                   </li>
                 )
@@ -1972,12 +2031,12 @@ export default function OrderShow({
 
             {notesMode === "view" ? (
               <div className="p-5 space-y-4">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 overflow-hidden">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
                     <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                     <span>Isi Catatan Lengkap:</span>
                   </div>
-                  <p className="mt-2.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                  <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">
                     {order.admin_notes}
                   </p>
                 </div>
@@ -2075,7 +2134,11 @@ export default function OrderShow({
 
       {/* Sheet Samping Khusus: Status Pengiriman & Lacak Pesanan J&T */}
       <Sheet open={trackingOpen} onOpenChange={setTrackingOpen}>
-        <SheetContent side="right" className="w-[min(90vw,28rem)] sm:max-w-md p-0">
+        <SheetContent
+          side="right"
+          title="Status Pengiriman & Lacak Pesanan"
+          className="w-[min(90vw,28rem)] sm:max-w-md p-0"
+        >
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Status Pengiriman & Lacak Pesanan</h3>
@@ -2111,6 +2174,7 @@ export default function OrderShow({
           </div>
         </SheetContent>
       </Sheet>
+
       {/* Popup balas ulasan pelanggan. Komponennya sama dengan yang dipakai
           daftar ulasan, jadi balasan bisa ditulis dari dua tempat. */}
       <ReviewReplyDialog

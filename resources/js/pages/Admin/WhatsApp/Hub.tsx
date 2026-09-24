@@ -1,16 +1,20 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, usePage } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { EmptyState } from "@/components/admin/ui/empty-state"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import { SectionCard } from "@/components/admin/section-card"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
+import { routeUrl } from "@/lib/routes"
+import type { SharedPageProps } from "@/types"
 
 interface Conversation {
   phone: string
   name: string | null
   last_text: string | null
+  last_is_template?: boolean
   last_direction: string
   last_status: string
   last_at: string | null
@@ -19,6 +23,17 @@ interface Conversation {
   order_total: string | number | null
   order_url: string | null
   order_count: number
+}
+
+interface FailedMessage {
+  id: number
+  status: string
+  created_at: string | null
+  recipient: string
+  order_number: string | null
+  order_url: string | null
+  message: string | null
+  error: string | null
 }
 
 interface Props {
@@ -30,13 +45,18 @@ interface Props {
     failed: number
     active_templates: number
   }
+  failed_count: number
+  failed_messages: FailedMessage[]
   range: string
   range_label: string
   range_options: { value: string; label: string }[]
   connection: {
+    configured: boolean
     connected: boolean
-    ready: boolean
     phone: string | null
+    error?: string | null
+    storefront_phone?: string | null
+    last_synced_at?: string | null
   }
   conversations: Conversation[]
 }
@@ -50,7 +70,15 @@ function Metric({ label, value, tone }: { label: string; value: string | number;
   )
 }
 
-export default function WhatsAppHub({ title, description, stats, connection, conversations, range, range_label, range_options }: Props) {
+export default function WhatsAppHub({ title, description, stats, connection, conversations, range, range_label, range_options, failed_count, failed_messages }: Props) {
+  const page = usePage<SharedPageProps>()
+
+  // Panel pesan gagal tampil bila admin datang dari kartu dashboard
+  // (`status=failed`) atau memang ada pesan gagal sepanjang waktu.
+  const failedFilterActive =
+    new URLSearchParams(page.url.split("?")[1] ?? "").get("status") === "failed"
+  const showFailedMessages = failedFilterActive || failed_count > 0
+
   return (
     <AdminLayout
       title={title}
@@ -65,7 +93,7 @@ export default function WhatsAppHub({ title, description, stats, connection, con
             {range_options.map((option) => (
               <Link
                 key={option.value}
-                href={`/admin/whatsapp?range=${option.value}`}
+                href={routeUrl("admin.whatsapp.dashboard", { range: option.value })}
                 preserveScroll
                 className={
                   option.value === range
@@ -80,11 +108,15 @@ export default function WhatsAppHub({ title, description, stats, connection, con
 
           <button
             type="button"
-            onClick={() => router.reload({ only: ["stats", "conversations", "connection"] })}
+            onClick={() =>
+              router.reload({
+                only: ["stats", "conversations", "connection", "failed_count", "failed_messages"],
+              })
+            }
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            Refresh data
+            Muat ulang
           </button>
         </div>
       }
@@ -94,6 +126,55 @@ export default function WhatsAppHub({ title, description, stats, connection, con
       <WhatsAppTabs active="hub" />
 
       <div className="space-y-5">
+      {/* Status sambungan WhatsApp (owner 2026-09-17): terbaca jelas di ringkasan */}
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={
+              connection.connected
+                ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : connection.configured
+                ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-destructive/10 text-destructive"
+                : "flex size-10 shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            }
+          >
+            <Icon name="whatsapp" className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+              {connection.connected
+                ? "WhatsApp Terhubung"
+                : connection.configured
+                ? "WhatsApp Tidak Terhubung"
+                : "WhatsApp Belum Dikonfigurasi"}
+              <span
+                aria-hidden="true"
+                className={
+                  connection.connected
+                    ? "inline-block size-2 rounded-full bg-emerald-500"
+                    : connection.configured
+                    ? "inline-block size-2 rounded-full bg-destructive"
+                    : "inline-block size-2 rounded-full bg-amber-500"
+                }
+              />
+            </p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              {connection.connected
+                ? `Nomor ${connection.storefront_phone ?? connection.phone ?? "-"} dipakai di seluruh website dan untuk mengirim pesan otomatis.`
+                : connection.configured
+                ? `${connection.error ?? "Perangkat WhatsApp sedang tidak aktif."} Nomor di website tetap ${connection.storefront_phone ?? "nomor terakhir"} sampai nomor baru tersambung.`
+                : `Gateway WhatsApp belum disetel. Nomor di website memakai ${connection.storefront_phone ?? "nomor dari pengaturan kontak"}.`}
+            </p>
+          </div>
+        </div>
+        <Link
+          href={routeUrl("admin.whatsapp.pairing")}
+          className="shrink-0 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+        >
+          {connection.connected ? "Kelola sambungan" : "Sambungkan nomor"}
+        </Link>
+      </section>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label={`Pesan Masuk (${range_label})`} value={stats.inbound} />
         <Metric label={`Pesan Terkirim (${range_label})`} value={stats.outbound} />
@@ -104,6 +185,91 @@ export default function WhatsAppHub({ title, description, stats, connection, con
         />
         <Metric label="Template Aktif" value={stats.active_templates} />
       </div>
+
+      {showFailedMessages ? (
+        <SectionCard
+          title="Pesan Gagal"
+          icon="alert-circle"
+          description={`Pesan WhatsApp yang gagal terkirim sepanjang waktu, terbaru lebih dulu. Angka ini tidak dibatasi rentang ${range_label.toLowerCase()}.`}
+          contentClassName="p-0"
+          action={
+            <span className="tabular-nums rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive">
+              {formatNumber(failed_count)} pesan
+            </span>
+          }
+        >
+          {failed_messages.length === 0 ? (
+            <EmptyState
+              icon="check-circle"
+              className="min-h-32 rounded-none border-0 bg-transparent py-8"
+              title="Tidak ada pesan WhatsApp yang gagal."
+              description="Seluruh pesan otomatis terkirim normal sepanjang riwayat."
+            />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px] text-left">
+                  <thead>
+                    <tr className="border-b border-border text-[11px] font-medium text-muted-foreground">
+                      <th className="px-5 py-2.5">Waktu</th>
+                      <th className="px-3 py-2.5">Penerima</th>
+                      <th className="px-3 py-2.5 text-center">Pesanan</th>
+                      <th className="px-3 py-2.5">Pesan</th>
+                      <th className="px-5 py-2.5">Alasan Gagal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failed_messages.map((row) => (
+                      <tr key={row.id} className="border-b border-border/60 last:border-0 align-top">
+                        <td className="whitespace-nowrap px-5 py-3 text-[11px] text-muted-foreground">
+                          {row.created_at ?? "-"}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="font-mono text-[11px] text-foreground">{row.recipient}</span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {row.order_number ? (
+                            row.order_url ? (
+                              <Link
+                                href={row.order_url}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                              >
+                                {row.order_number}
+                                <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
+                              </Link>
+                            ) : (
+                              <span className="text-xs font-medium text-foreground">{row.order_number}</span>
+                            )
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">Tanpa pesanan</span>
+                          )}
+                        </td>
+                        <td className="max-w-[320px] px-3 py-3">
+                          <p className="line-clamp-2 text-xs text-foreground">
+                            {row.message ?? "Pesan tanpa teks"}
+                          </p>
+                        </td>
+                        <td className="max-w-[280px] px-5 py-3">
+                          {row.error ? (
+                            <p className="line-clamp-2 text-[11px] text-destructive">{row.error}</p>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">Alasan tidak tercatat</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {failed_count > failed_messages.length ? (
+                <p className="border-t border-border px-5 py-2.5 text-[11px] text-muted-foreground">
+                  Menampilkan {failed_messages.length} terbaru dari {formatNumber(failed_count)} pesan gagal.
+                </p>
+              ) : null}
+            </>
+          )}
+        </SectionCard>
+      ) : null}
 
       <SectionCard
         title="Percakapan Terakhir"
@@ -142,7 +308,16 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                           className={`mt-0.5 size-3.5 shrink-0 ${row.last_direction === "inbound" ? "text-info" : "text-muted-foreground"}`}
                           aria-hidden="true"
                         />
-                        <span className="line-clamp-2">{row.last_text ?? "Pesan tanpa teks"}</span>
+                        {row.last_is_template ? (
+                          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              Otomatis
+                            </span>
+                            <span className="truncate font-medium text-foreground">{row.last_text}</span>
+                          </span>
+                        ) : (
+                          <span className="line-clamp-2">{row.last_text ?? "Pesan tanpa teks"}</span>
+                        )}
                       </p>
                       {row.last_status === "failed" ? (
                         <p className="mt-1 text-[11px] font-medium text-destructive">Gagal terkirim</p>
@@ -186,20 +361,6 @@ export default function WhatsAppHub({ title, description, stats, connection, con
           </div>
         )}
       </SectionCard>
-
-      {!connection.connected ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
-          <p className="text-xs text-foreground">
-            Nomor WhatsApp toko belum tersambung, sehingga pesan otomatis tidak terkirim.
-          </p>
-          <Link
-            href="/admin/whatsapp/pairing"
-            className="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground"
-          >
-            Sambungkan
-          </Link>
-        </div>
-      ) : null}
       </div>
     </AdminLayout>
   )

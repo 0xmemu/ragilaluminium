@@ -10,6 +10,7 @@ import { Icon } from "@/components/shared/icon"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import {
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { markGroupRows } from "@/lib/search-select"
 import { routeUrl } from "@/lib/routes"
+import type { Pagination as PaginationData } from "@/types"
 
 interface SubModelRow {
   id: number
@@ -58,6 +60,8 @@ interface SubModelsProps {
   description: string
   activeModel: string | null
   activeStatus?: "all" | "active" | "inactive"
+  perPage?: number
+  pagination?: PaginationData | null
   filters?: {
     q: string
     product_model: string
@@ -76,6 +80,8 @@ export default function SubModelsIndex({
   description,
   activeModel,
   activeStatus = "all",
+  perPage = 20,
+  pagination = null,
   filters = { q: "", product_model: activeModel ?? "", status: activeStatus },
   statusOptions = [
     { value: "all", label: "Semua status" },
@@ -122,11 +128,14 @@ export default function SubModelsIndex({
       q: filters?.q ?? "",
       product_model: currentModel,
       status: currentStatus,
+      per_page: String(perPage),
       ...params,
     }
     Object.entries(merged).forEach(([key, value]) => {
       if (!value || value === "all") return
       if (key === "q" && !value.trim()) return
+      // 20 adalah default server, jadi tidak perlu ditulis di URL.
+      if (key === "per_page" && value === "20") return
       next[key] = value
     })
     router.get(routeUrl("admin.sub-models.index"), next, {
@@ -135,20 +144,26 @@ export default function SubModelsIndex({
     })
   }
 
-  // Owner 2026-09-16: mode geser hanya aktif pada filter sub model yang aktif.
-  const canReorder = currentStatus === "active" && Boolean(currentModel) && rows.length > 1
+  // Owner 2026-09-16: tombol Urutkan hanya aktif pada filter sub model yang aktif.
+  // Daftar juga harus memuat seluruh baris dalam satu halaman: payload simpan hanya
+  // berisi baris yang tampil, jadi paginasi ganda akan menulis sort_order parsial.
+  const halamanTunggal = (pagination?.last_page ?? 1) <= 1
+  const canReorder =
+    currentStatus === "active" && Boolean(currentModel) && rows.length > 1 && halamanTunggal
   const reorderDisabledReason =
     currentStatus !== "active"
-      ? "Mode geser hanya aktif pada filter sub model yang aktif."
+      ? "Mode Urutkan hanya aktif pada filter sub model yang aktif."
       : !currentModel
       ? "Pilih satu model dulu; urutan berlaku per model."
+      : !halamanTunggal
+      ? "Perkecil daftar (naikkan ukuran halaman atau persempit filter) supaya urutan bisa disimpan sekaligus."
       : rows.length <= 1
-      ? "Minimal 2 sub model aktif untuk mengatur urutan."
+      ? "Minimal 2 sub model aktif supaya urutannya bisa diubah."
       : undefined
 
   React.useEffect(() => {
     if (currentStatus !== "active" || !currentModel) {
-      // Filter berubah membuat urutan tidak lagi bisa digeser, jadi mode geser
+      // Filter berubah membuat urutan tidak lagi bisa diubah, jadi mode Urutkan
       // ikut dimatikan supaya tombol header tidak menampilkan keadaan palsu.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setReorderMode(false)
@@ -169,8 +184,12 @@ export default function SubModelsIndex({
   // menulis sort_order parsial. Pencarian dibersihkan sendiri oleh tombol Urutkan.
   const listTersaring = (filters?.q ?? "").trim() !== ""
 
+  // Ikon tarik hanya ada saat mode Urutkan aktif dan daftar tidak tersaring
+  // (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && currentStatus === "active" && !listTersaring
+
   const dnd = useRowDragSort({
-    enabled: reorderMode && currentStatus === "active" && !listTersaring,
+    enabled: dragAktif,
     count: rows.length,
     onReorder: reorderRows,
   })
@@ -211,7 +230,12 @@ export default function SubModelsIndex({
   }, [currentModel, currentStatus, filters?.q, modelOptions, statusOptions])
 
   function resetAllFilters() {
-    router.get(routeUrl("admin.sub-models.index"), {}, { preserveState: false, preserveScroll: true })
+    // Ukuran halaman adalah preferensi tampilan, bukan filter: ikut dipertahankan.
+    router.get(
+      routeUrl("admin.sub-models.index"),
+      perPage !== 20 ? { per_page: String(perPage) } : {},
+      { preserveState: false, preserveScroll: true },
+    )
   }
 
   function saveOrder() {
@@ -221,7 +245,7 @@ export default function SubModelsIndex({
     })
   }
 
-  /** Batalkan mode geser: kembalikan urutan ke snapshot server lalu keluar. */
+  /** Batalkan mode Urutkan: kembalikan urutan ke snapshot server lalu keluar. */
   function cancelOrder() {
     setRows(initialRows)
     reorderForm.setData(
@@ -253,8 +277,8 @@ export default function SubModelsIndex({
             disabledReason={reorderDisabledReason}
             onToggle={() => {
               setReorderMode(true)
-              // Urutan tidak bisa digeser saat daftar tersaring, jadi pencarian
-              // dibersihkan sekaligus saat mode geser dinyalakan.
+              // Urutan tidak bisa diubah saat daftar tersaring, jadi pencarian
+              // dibersihkan sekaligus saat mode Urutkan dinyalakan.
               if (listTersaring) visit({ q: "" })
             }}
             onCancel={cancelOrder}
@@ -276,7 +300,7 @@ export default function SubModelsIndex({
       <div className="space-y-4">
         {reorderMode ? (
           <div className="rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-            Tarik ikon titik enam di kiri baris untuk memindahkan, lalu simpan.
+            Mode Urutkan aktif: pakai ikon tarik di tepi kiri baris untuk memindahkan, lalu simpan.
           </div>
         ) : null}
 
@@ -291,7 +315,7 @@ export default function SubModelsIndex({
           summary={
             <span>
               <span className="tabular-nums font-semibold text-foreground">
-                {formatNumber(rows.length)}
+                {formatNumber(pagination?.total ?? rows.length)}
               </span>{" "}
               sub model
             </span>
@@ -322,12 +346,22 @@ export default function SubModelsIndex({
               </option>
             ))}
           </Select>
+          <Select
+            className="w-40"
+            value={String(perPage)}
+            onChange={(event) => visit({ per_page: event.target.value })}
+            aria-label="Baris per halaman"
+          >
+            <option value="20">20 baris</option>
+            <option value="50">50 baris</option>
+            <option value="100">100 baris</option>
+          </Select>
         </ListToolbar>
 
         {/* Filter aktif chips */}
         {activeFilters.length ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] font-medium text-muted-foreground">
               Filter aktif
             </span>
             {activeFilters.map((filter) => (
@@ -379,7 +413,7 @@ export default function SubModelsIndex({
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
-                  <TableHead className="w-12" aria-label="Seret" />
+                  {dragAktif ? <TableHead className="w-12" aria-label="Seret" /> : null}
                   <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead className="text-left">Kode</TableHead>
                   <TableHead className="text-left">Nama Sub Model</TableHead>
@@ -394,18 +428,19 @@ export default function SubModelsIndex({
                   <React.Fragment key={row.id}>
                     {row.groupHeader ? (
                       <TableRow className="bg-surface/60">
-                        <TableCell colSpan={8} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={dragAktif ? 8 : 7} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {row.model_label}
                         </TableCell>
                       </TableRow>
                     ) : null}
-                    <TableRow className={cn(dnd.draggingIndex === index && "opacity-40")} {...(reorderMode ? dnd.rowProps(index) : {})}>
-                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
-                    <TableCell className="w-12">
-                      <ReorderDragHandle
-                        enabled={reorderMode && currentStatus === "active" && !listTersaring}
-                      />
-                    </TableCell>
+                    <TableRow className={cn(dnd.draggingIndex === index && "opacity-40")} {...(dragAktif ? dnd.rowProps(index) : {})}>
+                    {/* Ikon tarik hanya ada saat mode Urutkan aktif, jadi kolomnya tidak
+                        dirender di luar mode itu (kontrak owner 2026-09-20, direvisi). */}
+                    {dragAktif ? (
+                      <TableCell className="w-12">
+                        <ReorderDragHandle enabled />
+                      </TableCell>
+                    ) : null}
                     <TableCell className="w-12 text-center tabular-nums text-muted-foreground">
                       {row.displayNumber}
                     </TableCell>
@@ -463,6 +498,8 @@ export default function SubModelsIndex({
             </Table>
           )}
         </Card>
+
+        <Pagination pagination={pagination} />
       </div>
     </AdminLayout>
   )

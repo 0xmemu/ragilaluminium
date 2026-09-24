@@ -1,8 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -13,7 +13,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 import type { Pagination as PaginationData } from "@/types"
 
 interface AnnouncementCard {
@@ -77,36 +77,53 @@ function AnnouncementActions({
       <Button asChild variant="secondary" size="xs">
         <Link href={announcement.edit_href}>Edit</Link>
       </Button>
-      {announcement.published ? (
+      <RowActionsMenu>
+        {announcement.published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Nonaktifkan
+              </button>
+            }
+            title="Nonaktifkan promo bar?"
+            description="Promo tidak akan tampil di bar merah storefront."
+            confirmLabel="Nonaktifkan"
+            processing={busy}
+            onConfirm={unpublish}
+          />
+        ) : (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy}
+              onClick={publish}
+            >
+              Aktifkan
+            </button>
+          </DropdownMenuItem>
+        )}
         <ConfirmAction
           trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Nonaktifkan
+            <button
+              type="button"
+              className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+              disabled={busy}
+            >
+              Hapus
             </button>
           }
-          title="Nonaktifkan promo bar?"
-          description="Promo tidak akan tampil di bar merah storefront."
-          confirmLabel="Nonaktifkan"
+          title="Hapus bar promo?"
+          description="Promo akan dihapus permanen dari daftar."
+          confirmLabel="Hapus"
           processing={busy}
-          onConfirm={unpublish}
+          onConfirm={remove}
         />
-      ) : (
-        <Button size="xs" disabled={busy} onClick={publish}>
-          Aktifkan
-        </Button>
-      )}
-      <ConfirmAction
-        trigger={
-          <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-            Hapus
-          </button>
-        }
-        title="Hapus bar promo?"
-        description="Promo akan dihapus permanen dari daftar."
-        confirmLabel="Hapus"
-        processing={busy}
-        onConfirm={remove}
-      />
+      </RowActionsMenu>
     </RowActions>
   )
 }
@@ -156,7 +173,7 @@ export default function AnnouncementsIndex({
       if (key === "q" && !value.trim()) return
       next[key] = value
     })
-    router.get("/admin/announcements", next, { preserveState: true, replace: true })
+    router.get(routeUrl("admin.announcements.index"), next, { preserveState: true, replace: true })
   }
 
   return (
@@ -173,19 +190,18 @@ export default function AnnouncementsIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah Bar Promo
+              Tambah
             </Link>
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
-      <ManagePromotionsTabs active="announcements" />
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <h2 className="text-base font-bold">Cara kerja</h2>
@@ -238,7 +254,7 @@ export default function AnnouncementsIndex({
             Aktifkan slide
           </label>
           <div className="w-40">
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+            <label className="text-[11px] font-semibold tracking-tight text-muted-foreground">
               Interval (detik)
             </label>
             <Input
@@ -263,7 +279,7 @@ export default function AnnouncementsIndex({
           description="Tambahkan teks promo dan link tujuan. Item teratas yang aktif akan tampil di bar merah storefront."
           action={
             <Button asChild>
-              <Link href={createHref}>Tambah Bar Promo</Link>
+              <Link href={createHref}>Tambah</Link>
             </Button>
           }
         />

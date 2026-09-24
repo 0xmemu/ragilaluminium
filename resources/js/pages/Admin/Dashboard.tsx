@@ -279,6 +279,18 @@ const ATTENTION_TONE: Record<string, string> = {
   low: "bg-sky-500",
 }
 
+/**
+ * Tujuan kartu antrean tindakan. Khusus kartu "Pesan WhatsApp Gagal", angkanya
+ * memakai cakupan sepanjang waktu, jadi tujuannya daftar pesan gagal pada
+ * halaman WhatsApp (`status=failed`), bukan daftar template pesan.
+ */
+function attentionHref(item: AttentionItem): string {
+  if (item.key === "failed_wa") {
+    return routeUrl("admin.whatsapp.dashboard", { status: "failed" })
+  }
+  return item.href
+}
+
 export default function Dashboard({
   greetingName,
   todayLabel,
@@ -292,7 +304,6 @@ export default function Dashboard({
   quickActions = [],
   recentOrders = [],
   productCount = 0,
-  integrationReadiness = [],
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
   const [refreshing, setRefreshing] = React.useState(false)
@@ -334,7 +345,7 @@ export default function Dashboard({
           className="gap-2 font-medium"
         >
           <Icon name="refresh" className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden="true" />
-          {refreshing ? "Memperbarui..." : "Refresh data"}
+          {refreshing ? "Memperbarui..." : "Muat ulang"}
         </Button>
       }
     >
@@ -343,7 +354,7 @@ export default function Dashboard({
       <div className="space-y-5">
         {refreshError ? (
           <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-2.5 text-xs font-medium text-destructive" role="status">
-            Data belum berhasil diperbarui. Silakan tekan tombol Refresh data sekali lagi.
+            Data belum berhasil diperbarui. Silakan tekan tombol Muat ulang sekali lagi.
           </div>
         ) : null}
 
@@ -361,7 +372,7 @@ export default function Dashboard({
                 {attention.map((item) => (
                   <li key={item.key}>
                     <Link
-                      href={item.href}
+                      href={attentionHref(item)}
                       className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
                     >
                       <span className="flex min-w-0 items-center gap-2.5">

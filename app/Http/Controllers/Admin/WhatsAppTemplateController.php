@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Services\ActivityLogService;
+use App\Services\WhatsAppService;
 use App\Support\WhatsAppAutomationCatalog;
+use App\Support\WhatsAppTemplateSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,30 +39,9 @@ class WhatsAppTemplateController extends Controller
 
         $days = self::HUB_RANGES[$range]['days'];
         $rangeLabel = self::HUB_RANGES[$range]['label'];
-        $connection = app(\App\Services\WhatsAppService::class)->connectionStatus();
-        $gatewayReady = (bool) ($connection['providers']['baileys']['configured'] ?? false);
-
-        // Status sambungan nyata hanya diketahui dari gateway, bukan dari
-        // konfigurasi. Kegagalan menanyakan status tidak boleh membuat
-        // halaman error, jadi dianggap belum diketahui.
-        $connected = false;
-        $connectedPhone = null;
-
-        if ($gatewayReady) {
-            try {
-                $response = \Illuminate\Support\Facades\Http::timeout(4)
-                    ->get(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/status');
-
-                if ($response->successful()) {
-                    $payload = $response->json() ?? [];
-                    $connected = ($payload['status'] ?? null) === 'open';
-                    $rawPhone = (string) ($payload['connected_phone'] ?? ($payload['phone'] ?? ''));
-                    $connectedPhone = $rawPhone === '' ? null : preg_replace('/[:@].*$/', '', $rawPhone);
-                }
-            } catch (\Throwable) {
-                $connected = false;
-            }
-        }
+        // Satu kali cek gateway: sekaligus menyinkronkan nomor WA website
+        // (nomor baru tersambung -> ikut berganti; terputus -> nomor lama tetap).
+        $connection = $this->connectionPayload();
 
         $since = $days === null ? null : now()->subDays($days);
 
@@ -82,7 +63,7 @@ class WhatsAppTemplateController extends Controller
             ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
             ->orderByDesc('id')
             ->limit(400)
-            ->get(['id', 'phone_number', 'direction', 'status', 'content_text', 'created_at']);
+            ->get(['id', 'phone_number', 'direction', 'status', 'content_text', 'internal_template_key', 'created_at']);
 
         $threads = $recent->groupBy('phone_number')->take(12);
         $phones = $threads->keys()->all();
@@ -103,10 +84,18 @@ class WhatsAppTemplateController extends Controller
             $text = trim((string) $last->content_text);
             $text = preg_replace('/\s+/', ' ', $text) ?? '';
 
+            // Owner 2026-09-16: pesan otomatis (template) terlalu panjang untuk
+            // daftar percakapan -> tampilkan NAMA TEMPLATE-nya saja.
+            $templateKey = trim((string) $last->internal_template_key);
+            $isTemplate = $templateKey !== '';
+
             return [
                 'phone' => $phone,
                 'name' => $latestOrder?->customer_name,
-                'last_text' => $text === '' ? null : \Illuminate\Support\Str::limit($text, 90),
+                'last_text' => $isTemplate
+                    ? \App\Support\OrderEventLabels::whatsappTemplate($templateKey)
+                    : ($text === '' ? null : \Illuminate\Support\Str::limit($text, 90)),
+                'last_is_template' => $isTemplate,
                 'last_direction' => $last->direction,
                 'last_status' => $last->status,
                 'last_at' => $last->created_at?->diffForHumans(),
@@ -118,21 +107,54 @@ class WhatsAppTemplateController extends Controller
             ];
         })->values()->all();
 
+        // Daftar pesan gagal terbaru. PENTING: angka `failed_count` sengaja
+        // dihitung dari SELURUH pesan gagal sepanjang waktu, sama seperti angka
+        // dashboard, sehingga parameter rentang tidak mengubahnya (kontrak
+        // audit admin 2026-09-23, B5). Daftar di bawah hanya untuk ditampilkan,
+        // dibatasi 25 baris terbaru.
+        $failedCount = WhatsAppMessage::where('status', 'failed')->count();
+
+        $failedMessages = WhatsAppMessage::query()
+            ->where('status', 'failed')
+            ->with('order:id,order_number')
+            ->orderByDesc('id')
+            ->limit(25)
+            ->get(['id', 'status', 'phone_number', 'order_id', 'content_text', 'error_reason', 'created_at'])
+            ->map(function (WhatsAppMessage $message): array {
+                $order = $message->order;
+                $text = trim((string) $message->content_text);
+                $error = trim((string) $message->error_reason);
+
+                return [
+                    'id' => (int) $message->id,
+                    'status' => (string) $message->status,
+                    // Format Indonesia singkat, mis. "23 Sep 2026, 14.05 WIB".
+                    'created_at' => $message->created_at
+                            ?->timezone(config('app.timezone'))
+                            ->translatedFormat('d M Y, H.i').' WIB',
+                    'recipient' => (string) $message->phone_number,
+                    'order_number' => $order?->order_number,
+                    'order_url' => $order ? route('admin.orders.show', $order->id) : null,
+                    'message' => $text === '' ? null : \Illuminate\Support\Str::limit($text, 120),
+                    'error' => $error === '' ? null : \Illuminate\Support\Str::limit($error, 160),
+                ];
+            })
+            ->values()
+            ->all();
+
         return Inertia::render('Admin/WhatsApp/Hub', [
             'title' => 'WhatsApp',
             'description' => 'Ringkasan percakapan pelanggan dan status pesanan terkini.',
             'stats' => $stats,
+            'failed_count' => $failedCount,
+            'failed_messages' => $failedMessages,
             'range' => $range,
             'range_label' => $rangeLabel,
             'range_options' => collect(self::HUB_RANGES)
                 ->map(fn (array $meta, string $key) => ['value' => $key, 'label' => $meta['label']])
                 ->values()
                 ->all(),
-            'connection' => [
-                'connected' => $connected,
-                'ready' => $gatewayReady,
-                'phone' => $connectedPhone,
-            ],
+            'connection' => $connection,
             'conversations' => $conversations,
         ]);
     }
@@ -167,11 +189,52 @@ class WhatsAppTemplateController extends Controller
 
         return Inertia::render('Admin/WhatsApp/Index', [
             'title' => 'WhatsApp Otomatis',
-            'description' => 'Konfigurasi template pesan WhatsApp yang akan dikirim secara otomatis pada setiap tahapan pesanan.',
+            'description' => 'Template pesan WhatsApp yang dikirim otomatis di setiap tahapan pesanan, urut sesuai alur pesanan.',
             'automations' => $automations,
             'pairingUrl' => route('admin.whatsapp.pairing'),
             'totalTemplates' => count($automations),
+            'replySignature' => WhatsAppService::replySignature(),
+            // Owner 2026-09-17: status WhatsApp (terhubung/terputus) + nomor yang
+            // sedang dipakai seluruh website.
+            'connection' => $this->connectionPayload(),
         ]);
+    }
+
+    /**
+     * Payload kartu status WhatsApp untuk halaman admin.
+     *
+     * Memanggil gateway SEKALI saja: sekaligus menyinkronkan nomor storefront
+     * (nomor baru tersambung menggantikan nomor lama; saat terputus nomor
+     * terakhir tetap dipertahankan).
+     *
+     * @return array{
+     *   configured: bool, connected: bool, phone: string|null, error: string|null,
+     *   storefront_phone: string, last_synced_at: string|null
+     * }
+     */
+    protected function connectionPayload(): array
+    {
+        try {
+            $sync = \App\Support\WhatsAppSessionPhone::sync();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sinkron nomor WhatsApp gagal', ['error' => $e->getMessage()]);
+            $status = \App\Support\WhatsAppSessionPhone::gatewayStatus();
+            $sync = [
+                'configured' => $status['configured'],
+                'connected' => $status['connected'],
+                'gateway_phone' => $status['phone'],
+                'error' => $status['error'],
+            ];
+        }
+
+        return [
+            'configured' => (bool) ($sync['configured'] ?? false),
+            'connected' => (bool) ($sync['connected'] ?? false),
+            'phone' => $sync['gateway_phone'] ?? null,
+            'error' => $sync['error'] ?? null,
+            'storefront_phone' => \App\Support\ConsultationWhatsApp::displayPhone(),
+            'last_synced_at' => \App\Support\WhatsAppSessionPhone::lastSyncedAt(),
+        ];
     }
 
     public function edit(WhatsAppTemplate $template): Response
@@ -193,6 +256,7 @@ class WhatsAppTemplateController extends Controller
                 'body_preview' => $template->body_preview ?: $catalog['default_body'],
             ],
             'variables' => $catalog['variables'],
+            'replySignature' => WhatsAppService::replySignature(),
             'submitUrl' => route('admin.whatsapp.templates.update', $template),
             'backUrl' => route('admin.whatsapp.templates.index'),
             'pairingUrl' => route('admin.whatsapp.pairing'),
@@ -231,8 +295,8 @@ class WhatsAppTemplateController extends Controller
         );
 
         return redirect()
-            ->route('admin.whatsapp.templates.edit', $template)
-            ->with('success', 'Template WhatsApp disimpan.');
+            ->route('admin.whatsapp.templates.index')
+            ->with('success', 'Template WhatsApp '.$template->internal_key.' disimpan.');
     }
 
     public function activate(WhatsAppTemplate $template): RedirectResponse
@@ -275,24 +339,14 @@ class WhatsAppTemplateController extends Controller
 
     protected function ensureAutomationTemplates(): void
     {
-        foreach (WhatsAppAutomationCatalog::all() as $trigger) {
-            $template = WhatsAppTemplate::query()->firstOrCreate(
-                ['internal_key' => $trigger['internal_key']],
-                [
-                    'provider_template_name' => $trigger['default_provider_name'],
-                    'language_code' => 'id',
-                    'category' => 'transactional',
-                    'status' => 'active',
-                    'description' => $trigger['description'],
-                    'body_preview' => $trigger['default_body'],
-                ]
-            );
-
-            // Katalog = sumber naskah resmi; refresh preview/deskripsi tanpa menimpa provider_template_name / status.
-            $template->forceFill([
-                'description' => $trigger['description'],
-                'body_preview' => $trigger['default_body'],
-            ])->save();
-        }
+        // Owner 2026-09-15: katalog hanya seed awal (firstOrCreate). Sebelumnya
+        // forceFill menimpa body_preview tiap halaman index dibuka sehingga
+        // edit admin selalu hilang. Reset naskah default kini manual via edit.
+        //
+        // Owner 2026-09-21: halaman ini dan seeder memakai SATU jalur penulisan
+        // yang sama, WhatsAppTemplateSync. Baris baru dibuat lengkap dengan
+        // naskah awal, baris rusak yang naskahnya kosong dipulihkan, dan naskah
+        // yang sudah terisi tidak pernah ditimpa.
+        WhatsAppTemplateSync::sync();
     }
 }

@@ -242,8 +242,11 @@ export default function ApaKataIndex({
     setReorderMode(false)
   }
 
+  // Kolom ikon tarik hanya dirender saat mode Urutkan aktif dan daftar tidak tersaring.
+  const dragAktif = reorderMode && !listTersaring
+
   const dnd = useRowDragSort({
-    enabled: reorderMode && !listTersaring,
+    enabled: dragAktif,
     count: orderedRows.length,
     onReorder: reorderRows,
   })
@@ -272,10 +275,10 @@ export default function ApaKataIndex({
               dirty={reorderForm.isDirty}
               processing={reorderForm.processing}
               disabled={!orderedRows.length || filterKunci}
-              disabledReason="Kosongkan filter status dulu supaya urutan bisa digeser."
+              disabledReason="Kosongkan filter status dulu supaya tombol Urutkan bisa dipakai."
               onToggle={() => {
                 setReorderMode(true)
-                // Pencarian dibersihkan sekaligus supaya urutan bisa digeser
+                // Pencarian dibersihkan sekaligus supaya urutan bisa diubah
                 // (kontrak owner 2026-09-20).
                 if (filters.q) {
                   setQ("")
@@ -385,7 +388,7 @@ export default function ApaKataIndex({
             <table className="min-w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
                 <tr>
-                  <th className="w-12 px-3 py-3" aria-label="Seret" />
+                  {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                   <th className="px-3 py-3 font-semibold">No</th>
                   <th className="px-3 py-3 font-semibold">Pelanggan</th>
                   <th className="px-3 py-3 font-semibold">Sumber</th>
@@ -397,11 +400,14 @@ export default function ApaKataIndex({
               </thead>
               <tbody>
                 {displayRows.map((row, index) => (
-                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}>
-                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
-                    <td className="w-12 px-3 py-3">
-                      <ReorderDragHandle enabled={reorderMode && !listTersaring} />
-                    </td>
+                  <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(dragAktif ? dnd.rowProps(index) : {})}>
+                    {/* Ikon tarik hanya ada saat mode Urutkan aktif, jadi kolomnya
+                        tidak dirender di luar mode itu (kontrak owner 2026-09-20, direvisi). */}
+                    {dragAktif ? (
+                      <td className="w-12 px-3 py-3">
+                        <ReorderDragHandle enabled />
+                      </td>
+                    ) : null}
                     <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                     <td className="px-3 py-3">
                       <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
@@ -441,7 +447,7 @@ export default function ApaKataIndex({
                     <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
                     <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
                       {reorderMode ? (
-                        <span className="text-xs text-muted-foreground">Mode urutan</span>
+                        <span className="text-xs text-muted-foreground">Mode Urutkan</span>
                       ) : (
                         <PublishActions
                           published={row.published}

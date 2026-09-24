@@ -3,7 +3,8 @@ import * as React from "react"
 
 import { ResourceValue } from "@/components/admin/resource-value"
 import { ResourceContextPanel } from "@/components/admin/resource-context-panel"
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -27,57 +28,96 @@ function rowText(row: ResourceRow): string {
 function RowActionButtons({ actions }: { actions: ResourceRowAction[] }) {
   if (!actions.length) return null
 
+  // Owner 2026-09-16: tombol di kolom aksi hanya Edit dan ...Lainnya.
+  const editIndex = actions.findIndex((a) => a.label.toLowerCase() === "edit")
+  const primaryIndex = editIndex >= 0 ? editIndex : 0
+  const primaryAction = actions[primaryIndex]
+  const secondaryActions = actions.filter((_, i) => i !== primaryIndex)
+
+  const renderAction = (action: ResourceRowAction, inMenu: boolean) => {
+    const key = `${action.label}-${action.href ?? action.url}`
+    const method = action.method ?? (action.href ? "get" : "post")
+
+    if (method === "get" && action.href) {
+      if (inMenu) {
+        return (
+          <DropdownMenuItem key={key} asChild>
+            <Link href={action.href}>{action.label}</Link>
+          </DropdownMenuItem>
+        )
+      }
+      return (
+        <Button key={key} asChild variant="secondary" size="xs">
+          <Link href={action.href}>{action.label}</Link>
+        </Button>
+      )
+    }
+
+    if (!action.url) return null
+
+    const run = () => {
+      if (method === "put") {
+        router.put(action.url!, {}, { preserveScroll: true })
+        return
+      }
+      if (method === "delete") {
+        router.delete(action.url!, { preserveScroll: true })
+        return
+      }
+      router.post(action.url!, {}, { preserveScroll: true })
+    }
+
+    if (action.confirm) {
+      return (
+        <ConfirmAction
+          key={key}
+          trigger={
+            inMenu ? (
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs hover:bg-muted"
+              >
+                {action.label}
+              </button>
+            ) : (
+              <button type="button" className={cn(rowActionTextClass, "min-h-8 px-2")}>
+                {action.label}
+              </button>
+            )
+          }
+          title={action.confirm}
+          description="Tindakan ini akan dijalankan pada record yang dipilih."
+          confirmLabel={action.label}
+          onConfirm={run}
+        />
+      )
+    }
+
+    if (inMenu) {
+      return (
+        <DropdownMenuItem key={key} asChild>
+          <button type="button" className="w-full text-left" onClick={run}>
+            {action.label}
+          </button>
+        </DropdownMenuItem>
+      )
+    }
+
+    return (
+      <Button key={key} type="button" variant="secondary" size="xs" onClick={run}>
+        {action.label}
+      </Button>
+    )
+  }
+
   return (
     <RowActions>
-      {actions.map((action) => {
-        const key = `${action.label}-${action.href ?? action.url}`
-        const method = action.method ?? (action.href ? "get" : "post")
-
-        if (method === "get" && action.href) {
-          return (
-            <Button key={key} asChild variant="secondary" size="xs">
-              <Link href={action.href}>{action.label}</Link>
-            </Button>
-          )
-        }
-
-        if (!action.url) return null
-
-        const run = () => {
-          if (method === "put") {
-            router.put(action.url!, {}, { preserveScroll: true })
-            return
-          }
-          if (method === "delete") {
-            router.delete(action.url!, { preserveScroll: true })
-            return
-          }
-          router.post(action.url!, {}, { preserveScroll: true })
-        }
-
-        if (action.confirm) {
-          return (
-            <ConfirmAction
-              key={key}
-              trigger={
-                <button type="button" className={cn(rowActionTextClass, "min-h-8 px-2")}>
-                  {action.label}
-                </button>
-              }
-              title={action.confirm}
-              description="Tindakan ini akan dijalankan pada record yang dipilih."
-              confirmLabel={action.label}
-              onConfirm={run}
-            />
-          )
-        }
-
-        return (
-          <Button key={key} type="button" variant="secondary" size="xs" onClick={run}>
-            {action.label}
-          </Button>
-        )
-      })}
+      {renderAction(primaryAction, false)}
+      {secondaryActions.length > 0 ? (
+        <RowActionsMenu>
+          {secondaryActions.map((action) => renderAction(action, true))}
+        </RowActionsMenu>
+      ) : null}
     </RowActions>
   )
 }
@@ -131,7 +171,7 @@ function MediaBulkAttachPanel({
     <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-soft">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Media Library</p>
+          <p className="text-xs font-semibold tracking-[0.14em] text-primary">Media Library</p>
           <h2 className="mt-1 text-xl font-semibold">Pasang satu media ke banyak produk</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Aset fisik tetap satu di R2. Yang dibuat per produk hanya attachment dan pengaturan tampilnya.
@@ -518,7 +558,7 @@ export default function ResourceIndex({
                 </Button>
               ) : createHref ? (
                 <Button asChild>
-                  <Link href={createHref}>Tambah record</Link>
+                  <Link href={createHref}>Tambah</Link>
                 </Button>
               ) : null
             }

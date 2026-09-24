@@ -96,7 +96,7 @@ export default function MasalahSolusiIndex({
     router.get(
       routeUrl("admin.masalah-solusi.index"),
       { q: next?.q ?? q },
-      { preserveState: true, preserveScroll: true },
+      { preserveState: true, preserveScroll: true, replace: true },
     )
   }
 
@@ -255,9 +255,9 @@ export default function MasalahSolusiIndex({
 
       {reorderMode ? (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode urutkan aktif: tarik ikon <span className="font-semibold text-foreground">titik enam</span> di kiri baris untuk memindahkan, lalu tekan Simpan urutan.
+          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan, lalu tekan Simpan urutan.
           {!canReorder ? (
-            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa digeser.</span>
+            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa diubah.</span>
           ) : null}
         </p>
       ) : (
@@ -290,7 +290,9 @@ export default function MasalahSolusiIndex({
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs font-medium text-muted-foreground">
-                <th className="w-12 px-3 py-2" />
+                {canReorder ? (
+                  <th className="w-12 px-3 py-2" aria-label="Seret" />
+                ) : null}
                 <th className="w-10 px-3 py-2 text-right">No</th>
                 <th className="px-3 py-2">Masalah</th>
                 <th className="px-3 py-2">Solusi</th>
@@ -309,9 +311,11 @@ export default function MasalahSolusiIndex({
                     )}
                     {...(canReorder ? dnd.rowProps(index) : {})}
                   >
-                    <td className="px-3 py-2.5 align-middle">
-                      <ReorderDragHandle enabled={canReorder} />
-                    </td>
+                    {canReorder ? (
+                      <td className="px-3 py-2.5 align-middle">
+                        <ReorderDragHandle enabled />
+                      </td>
+                    ) : null}
                     <td className="px-3 py-2.5 text-right align-middle tabular-nums text-xs text-muted-foreground">
                       {row.no}
                     </td>
@@ -367,7 +371,7 @@ export default function MasalahSolusiIndex({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={canReorder ? 5 : 4} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     {filters.q
                       ? "Tidak ada yang cocok dengan pencarian."
                       : "Belum ada masalah & solusi."}

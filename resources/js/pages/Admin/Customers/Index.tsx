@@ -1,7 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -102,7 +103,7 @@ export default function CustomersIndex({
         q: next?.q ?? q,
         sort: next?.sort ?? sort,
       },
-      { preserveState: true, preserveScroll: true },
+      { preserveState: true, preserveScroll: true, replace: true },
     )
   }
 
@@ -126,18 +127,42 @@ export default function CustomersIndex({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />
-              Unduh Excel
+              Ekspor
             </a>
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
+
+      {/* 4 Kartu KPI Ringkasan Pelanggan */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground">Provinsi teratas</p>
+          <p className="mt-3 text-xl font-bold">{summary.top_province.name}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{summary.top_province.share_percent}% dari total pelanggan</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground">Total pelanggan</p>
+          <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.total_customers)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground">Peringatan alamat ganda</p>
+          <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.multi_address_customers)} pelanggan</p>
+          <p className="mt-1 text-sm text-muted-foreground">Memiliki lebih dari satu alamat aktif</p>
+        </article>
+        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground">Skor fraud rata-rata</p>
+          <p className="mt-3 text-xl font-bold tabular-nums">{summary.avg_fraud_score} / 100</p>
+          <p className="mt-1 text-sm text-muted-foreground">Status: {summary.avg_fraud_label}</p>
+        </article>
+      </div>
 
       {/* Baris kontrol seragam: search | sort */}
       <ListToolbar
@@ -233,9 +258,11 @@ export default function CustomersIndex({
                           <Button asChild variant="secondary" size="xs">
                             <Link href={row.edit_href}>Edit</Link>
                           </Button>
-                          <Button asChild variant="secondary" size="xs">
-                            <Link href={row.href}>Detail</Link>
-                          </Button>
+                          <RowActionsMenu>
+                            <DropdownMenuItem asChild>
+                              <Link href={row.href}>Detail pelanggan</Link>
+                            </DropdownMenuItem>
+                          </RowActionsMenu>
                         </RowActions>
                       </td>
                     </tr>
@@ -350,29 +377,6 @@ export default function CustomersIndex({
           </div>
         ) : null}
       </section>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Provinsi teratas</p>
-          <p className="mt-3 text-xl font-bold">{summary.top_province.name}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{summary.top_province.share_percent}% dari total pelanggan</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Total pelanggan</p>
-          <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.total_customers)}</p>
-          <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Peringatan alamat ganda</p>
-          <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.multi_address_customers)} pelanggan</p>
-          <p className="mt-1 text-sm text-muted-foreground">Memiliki lebih dari satu alamat aktif</p>
-        </article>
-        <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">Skor fraud rata-rata</p>
-          <p className="mt-3 text-xl font-bold tabular-nums">{summary.avg_fraud_score} / 100</p>
-          <p className="mt-1 text-sm text-muted-foreground">Status: {summary.avg_fraud_label}</p>
-        </article>
-      </div>
     </AdminLayout>
   )
 }

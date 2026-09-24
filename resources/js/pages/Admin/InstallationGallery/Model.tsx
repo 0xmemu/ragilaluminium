@@ -4,12 +4,12 @@ import * as React from "react"
 import { MediaPicker } from "@/components/admin/media-picker"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field } from "@/components/admin/ui/field"
+import { Field, FieldAction } from "@/components/admin/ui/field"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
 
 interface MediaRow {
   id: number
@@ -40,14 +40,14 @@ interface OwnerProduct {
 export default function InstallationGalleryModel({
   title,
   description,
-  categorySlug,
-  modelSlug,
+  categorySlug: _categorySlug,
+  modelSlug: _modelSlug,
   isManual = false,
   backUrl,
   products = [],
   mediaRows = [],
   mediaStoreUrl,
-  pickerUrl,
+  pickerUrl: _pickerUrl,
 }: {
   title: string
   description: string
@@ -112,7 +112,7 @@ export default function InstallationGalleryModel({
           {!isManual ? (
             <Button type="button" onClick={() => setPickerOpen(true)}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah media
+              Tambah
             </Button>
           ) : null}
           <Button asChild variant="secondary">
@@ -169,16 +169,24 @@ export default function InstallationGalleryModel({
                       </Button>
                     ) : null}
                     {row.destroy_url ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        className="text-destructive"
-                        onClick={() => router.delete(row.destroy_url!, { preserveScroll: true })}
-                        disabled={actionForm.processing}
-                      >
-                        Hapus
-                      </Button>
+                      <ConfirmAction
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            className="text-destructive"
+                            disabled={actionForm.processing}
+                          >
+                            Hapus
+                          </Button>
+                        }
+                        title="Hapus media?"
+                        description={`Hapus media "${row.label}" dari daftar hasil pemasangan? Tindakan tidak dapat dibatalkan.`}
+                        confirmLabel="Hapus"
+                        processing={actionForm.processing}
+                        onConfirm={() => router.delete(row.destroy_url!, { preserveScroll: true })}
+                      />
                     ) : null}
                   </div>
                 </div>
@@ -189,7 +197,7 @@ export default function InstallationGalleryModel({
       ) : (
         <EmptyState
           title="Belum ada media hasil pemasangan"
-          description={isManual ? "Kelola galeri manual melalui daftar di bawah." : "Tambahkan media lewat tombol Tambah media di atas."}
+          description={isManual ? "Kelola galeri manual melalui daftar di bawah." : "Tambahkan media lewat tombol Tambah di atas."}
         />
       )}
 
@@ -214,12 +222,12 @@ export default function InstallationGalleryModel({
                 ))}
               </Select>
             </Field>
-            <div className="flex items-end">
+            <FieldAction>
               <Button type="button" variant="secondary" onClick={() => setPickerOpen(true)} disabled={!ownerProductId}>
                 <Icon name="plus" className="size-4" aria-hidden="true" />
                 Pilih media
               </Button>
-            </div>
+            </FieldAction>
           </form>
           {pickedMedia.length ? (
             <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">

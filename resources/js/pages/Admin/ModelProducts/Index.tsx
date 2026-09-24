@@ -9,16 +9,27 @@ import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { Pagination } from "@/components/admin/ui/pagination"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from "@/components/admin/ui/table"
 import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { routeUrl } from "@/lib/routes"
+import type { Pagination as PaginationData } from "@/types"
 
 interface ModelRow {
   id: number
@@ -86,6 +97,8 @@ export default function ModelProductsIndex({
   statusOptions,
   categoryOptions = [],
   rows: initialRows = [],
+  perPage = 20,
+  pagination = null,
   createHref,
   reorderUrl,
   syncUrl,
@@ -97,6 +110,8 @@ export default function ModelProductsIndex({
   statusOptions: Array<{ value: string; label: string }>
   categoryOptions?: Array<{ value: string; label: string }>
   rows: ModelRow[]
+  perPage?: number
+  pagination?: PaginationData | null
   createHref: string
   reorderUrl: string
   syncUrl: string
@@ -129,11 +144,12 @@ export default function ModelProductsIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRows])
 
-  function apply(next?: Partial<{ q: string; status: string; product_category: string; view: string }>) {
+  function apply(next?: Partial<{ q: string; status: string; product_category: string; view: string; per_page: string }>) {
     const view = next?.view ?? viewMode
     const nextQ = next?.q !== undefined ? next.q : q
     const nextStatus = next?.status !== undefined ? next.status : status
     const nextCategory = next?.product_category !== undefined ? next.product_category : (filters.product_category ?? "")
+    const nextPerPage = next?.per_page !== undefined ? next.per_page : String(perPage)
 
     router.get(
       routeUrl("admin.model-products.index"),
@@ -142,6 +158,8 @@ export default function ModelProductsIndex({
         status: nextStatus || undefined,
         product_category: nextCategory || undefined,
         view: view === "grid" ? "grid" : undefined,
+        // 20 adalah default server, jadi tidak perlu ditulis di URL.
+        per_page: nextPerPage && nextPerPage !== "20" ? nextPerPage : undefined,
       },
       { preserveState: true, preserveScroll: true },
     )
@@ -184,7 +202,10 @@ export default function ModelProductsIndex({
     setStatus("")
     router.get(
       routeUrl("admin.model-products.index"),
-      { view: viewMode === "grid" ? "grid" : undefined },
+      {
+        view: viewMode === "grid" ? "grid" : undefined,
+        per_page: perPage !== 20 ? String(perPage) : undefined,
+      },
       { preserveState: false, preserveScroll: true },
     )
   }
@@ -208,7 +229,7 @@ export default function ModelProductsIndex({
   }
 
   function saveReorder() {
-    // Mode geser otomatis nonaktif setelah tersimpan; snapshot baru dari server
+    // Mode Urutkan otomatis nonaktif setelah tersimpan; snapshot baru dari server
     // menimpa rows lokal via useEffect [initialRows]. Query view dipertahankan
     // supaya redirect tetap di tampilan yang sama (grid tidak terlempar ke list).
     reorderForm.put(reorderUrl, {
@@ -217,7 +238,7 @@ export default function ModelProductsIndex({
     })
   }
 
-  /** Batalkan mode geser: kembalikan urutan ke snapshot server lalu keluar. */
+  /** Batalkan mode Urutkan: kembalikan urutan ke snapshot server lalu keluar. */
   function cancelOrder() {
     setRows(initialRows)
     reorderForm.setData(
@@ -232,17 +253,28 @@ export default function ModelProductsIndex({
   }
 
   // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
-  // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
+  // berisi baris yang tampil, jadi daftar tersaring atau berhalaman menulis
+  // sort_order parsial.
+  const halamanTunggal = (pagination?.last_page ?? 1) <= 1
   const listTersaring =
     filters.q.trim() !== "" ||
     filters.status !== "" ||
-    (filters.product_category ?? "") !== ""
+    (filters.product_category ?? "") !== "" ||
+    !halamanTunggal
   // Pencarian dibersihkan sendiri oleh tombol Urutkan, jadi hanya filter lain
   // yang mengunci tombolnya.
-  const filterKunci = filters.status !== "" || (filters.product_category ?? "") !== ""
+  const filterKunci =
+    filters.status !== "" || (filters.product_category ?? "") !== "" || !halamanTunggal
+  const filterKunciReason = !halamanTunggal
+    ? "Naikkan ukuran halaman sampai semua model tampil dalam satu halaman supaya urutan bisa disimpan sekaligus."
+    : "Kosongkan filter status dan kategori dulu supaya tombol Urutkan bisa dipakai."
+
+  // Ikon tarik hanya ada saat mode Urutkan aktif dan daftar tidak tersaring
+  // (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && !listTersaring
 
   const dnd = useRowDragSort({
-    enabled: reorderMode && !listTersaring,
+    enabled: dragAktif,
     count: rows.length,
     onReorder: reorderRows,
     // Urutan hanya berarti untuk model yang tampil di toko; model nonaktif
@@ -316,7 +348,7 @@ export default function ModelProductsIndex({
             title="Tambahkan model dari kombinasi kategori + model produk yang belum terdaftar, dan nonaktifkan model yang sudah tidak punya produk aktif."
           >
             <Icon name="refresh" className="size-4" aria-hidden="true" />
-            Refresh katalog
+            Muat ulang katalog
           </Button>
           {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
@@ -326,11 +358,11 @@ export default function ModelProductsIndex({
             dirty={reorderForm.isDirty}
             processing={reorderForm.processing}
             disabled={!rows.length || filterKunci}
-            disabledReason="Kosongkan filter status dan kategori dulu supaya urutan bisa digeser."
+            disabledReason={filterKunciReason}
             onToggle={() => {
               setReorderMode(true)
-              // Urutan tidak bisa digeser saat daftar tersaring, jadi pencarian
-              // dibersihkan sekaligus saat mode geser dinyalakan.
+              // Urutan tidak bisa diubah saat daftar tersaring, jadi pencarian
+              // dibersihkan sekaligus saat mode Urutkan dinyalakan.
               if (filters.q) {
                 setQ("")
                 apply({ q: "" })
@@ -355,7 +387,7 @@ export default function ModelProductsIndex({
 
       {reorderMode ? (
         <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Tarik ikon titik enam di kiri baris untuk memindahkan, lalu simpan.
+          Mode Urutkan aktif: pakai ikon tarik di tepi kiri baris untuk memindahkan, lalu simpan.
         </div>
       ) : null}
 
@@ -369,7 +401,7 @@ export default function ModelProductsIndex({
         summary={
           <span>
             <span className="tabular-nums font-semibold text-foreground">
-              {formatNumber(rows.length)}
+              {formatNumber(pagination?.total ?? rows.length)}
             </span>{" "}
             model
           </span>
@@ -407,12 +439,22 @@ export default function ModelProductsIndex({
             </option>
           ))}
         </Select>
+        <Select
+          value={String(perPage)}
+          onChange={(event) => apply({ per_page: event.target.value })}
+          className="w-40"
+          aria-label="Baris per halaman"
+        >
+          <option value="20">20 baris</option>
+          <option value="50">50 baris</option>
+          <option value="100">100 baris</option>
+        </Select>
       </ListToolbar>
 
       {/* Filter aktif chips (seragam dengan halaman produk) */}
       {activeFilters.length ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[11px] font-medium text-muted-foreground">
             Filter aktif
           </span>
           {activeFilters.map((filter) => (
@@ -460,14 +502,15 @@ export default function ModelProductsIndex({
                 dnd.targetIndex === index && dnd.draggingIndex !== null && dnd.draggingIndex !== index && "ring-2 ring-primary",
                 reorderMode && row.status !== "active" && "opacity-60",
               )}
-              {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
+              {...(dragAktif ? dnd.rowProps(index) : {})}
             >
-              {/* Geser hanya lewat ikon tarik di tepi kiri kartu (kontrak owner 2026-09-20). */}
-              <span className="absolute left-2 top-2 z-10 rounded-md bg-background/90 shadow-soft">
-                <ReorderDragHandle
-                  enabled={reorderMode && !listTersaring && row.status === "active"}
-                />
-              </span>
+              {/* Ikon tarik hanya ada saat mode Urutkan aktif, dan hanya pada kartu
+                  model aktif: urutan hanya berarti untuk model yang tampil di toko. */}
+              {dragAktif && row.status === "active" ? (
+                <span className="absolute left-2 top-2 z-10 rounded-md bg-background/90 shadow-soft">
+                  <ReorderDragHandle enabled />
+                </span>
+              ) : null}
               <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
                 {row.image_url ? (
                   <img
@@ -499,15 +542,15 @@ export default function ModelProductsIndex({
                 </div>
                 <dl className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-md bg-muted/50 px-2 py-1.5">
-                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Sub model</dt>
+                    <dt className="text-[10px] font-medium tracking-tight text-muted-foreground">Sub model</dt>
                     <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.sub_model_count)}</dd>
                   </div>
                   <div className="rounded-md bg-muted/50 px-2 py-1.5">
-                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Aktif</dt>
+                    <dt className="text-[10px] font-medium tracking-tight text-muted-foreground">Aktif</dt>
                     <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.active_count)}</dd>
                   </div>
                   <div className="rounded-md bg-muted/50 px-2 py-1.5">
-                    <dt className="text-[10px] font-medium uppercase tracking-tight text-muted-foreground">Variasi</dt>
+                    <dt className="text-[10px] font-medium tracking-tight text-muted-foreground">Variasi</dt>
                     <dd className="text-sm font-semibold tabular-nums">{formatNumber(row.variant_count)}</dd>
                   </div>
                 </dl>
@@ -525,46 +568,44 @@ export default function ModelProductsIndex({
         </div>
       ) : (
         <Card className="overflow-hidden border border-border bg-card">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
-                <tr>
-                  <th className="w-12 px-3 py-3" aria-label="Seret" />
-                  <th className="px-3 py-3 text-center">No</th>
-                  <th className="px-4 py-3 text-left">Model Produk</th>
-                  <th className="px-3 py-3 text-center">Jumlah Sub Model</th>
-                  <th className="px-3 py-3 text-center">Produk Aktif</th>
-                  <th className="px-3 py-3 text-center">Produk Arsip</th>
-                  <th className="px-3 py-3 text-center">Total Variasi</th>
-                  <th className="px-3 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TableScroll>
+            <Table>
+              <TableHeader className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
+                <TableRow>
+                  {dragAktif ? <TableHead className="w-12" aria-label="Seret" /> : null}
+                  <TableHead className="text-center">No</TableHead>
+                  <TableHead>Model Produk</TableHead>
+                  <TableHead className="text-center">Jumlah Sub Model</TableHead>
+                  <TableHead className="text-center">Produk Aktif</TableHead>
+                  <TableHead className="text-center">Produk Arsip</TableHead>
+                  <TableHead className="text-center">Total Variasi</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="w-[1%] whitespace-nowrap text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((row, index) => (
-                  <tr
+                  <TableRow
                     key={row.id}
                     className={cn(
-                      "border-t border-border align-top",
+                      "align-top",
                       dnd.draggingIndex === index && "opacity-40",
                       reorderMode && row.status !== "active" && "opacity-60",
                     )}
-                    {...(reorderMode && !listTersaring ? dnd.rowProps(index) : {})}
+                    {...(dragAktif ? dnd.rowProps(index) : {})}
                   >
-                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20).
-                        Baris nonaktif tetap punya handle tapi redup: urutan hanya berarti
-                        untuk model yang tampil di toko. */}
-                    <td className="w-12 px-3 py-3">
-                      <ReorderDragHandle
-                        enabled={
-                          reorderMode && !listTersaring && row.status === "active"
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-center tabular-nums text-muted-foreground">
+                    {/* Ikon tarik hanya ada saat mode Urutkan aktif, dan hanya pada baris
+                        model aktif: urutan hanya berarti untuk model yang tampil di toko.
+                        Baris nonaktif tidak merender ikon sama sekali. */}
+                    {dragAktif ? (
+                      <TableCell className="w-12">
+                        <ReorderDragHandle enabled={row.status === "active"} />
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="text-center text-muted-foreground" numeric>
                       {row.no}
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-3">
                         {row.image_url ? (
                           <img
@@ -586,34 +627,36 @@ export default function ModelProductsIndex({
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-3 text-center align-middle">
+                    </TableCell>
+                    <TableCell className="text-center">
                       <p className="font-semibold tabular-nums">{formatNumber(row.sub_model_count)}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {row.sub_models.length ? row.sub_models.join(", ") : "-"}
                       </p>
-                    </td>
-                    <td className="px-3 py-3 text-center align-middle tabular-nums font-semibold">{formatNumber(row.active_count)}</td>
-                    <td className="px-3 py-3 text-center align-middle tabular-nums text-muted-foreground">{formatNumber(row.archived_count)}</td>
-                    <td className="px-3 py-3 text-center align-middle tabular-nums font-semibold">{formatNumber(row.variant_count)}</td>
-                    <td className="px-3 py-3 text-center align-middle">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold" numeric>{formatNumber(row.active_count)}</TableCell>
+                    <TableCell className="text-center text-muted-foreground" numeric>{formatNumber(row.archived_count)}</TableCell>
+                    <TableCell className="text-center font-semibold" numeric>{formatNumber(row.variant_count)}</TableCell>
+                    <TableCell className="text-center">
                       <div className="inline-flex items-center justify-center">
                         <StatusBadge
                           status={row.status === "active" ? "active" : "inactive"}
                           label={row.status === "active" ? "Aktif" : "Nonaktif"}
                         />
                       </div>
-                    </td>
-                    <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
+                    </TableCell>
+                    <TableCell className="w-[1%] whitespace-nowrap text-right">
                       <ModelActions row={row} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableScroll>
         </Card>
       )}
+
+      <Pagination pagination={pagination} />
     </AdminLayout>
   )
 }

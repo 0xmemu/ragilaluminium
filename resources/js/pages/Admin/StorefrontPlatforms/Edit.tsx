@@ -4,6 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { MediaLibrarySelect } from "@/components/admin/media-library-select"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
@@ -98,8 +99,8 @@ export default function StorefrontPlatformsEdit({
 
   // Logo dan favicon dikelola terpisah supaya admin bisa mengganti salah satu
   // saja tanpa mengunggah ulang berkas yang tidak berubah.
-  const logoForm = useForm<{ logo: File | null }>({ logo: null })
-  const faviconForm = useForm<{ favicon: File | null }>({ favicon: null })
+  const logoForm = useForm<{ logo_asset_id: string }>({ logo_asset_id: "" })
+  const faviconForm = useForm<{ favicon_asset_id: string }>({ favicon_asset_id: "" })
 
   const isProcessing = isKontakTab
     ? kontakForm.processing
@@ -139,7 +140,7 @@ export default function StorefrontPlatformsEdit({
     return (
       <Card className="overflow-hidden p-0">
         <div className="border-b border-border bg-muted/40 px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">{heading}</h2>
+          <h2 className="text-xs font-semibold text-foreground">{heading}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
         </div>
         <table className="w-full text-xs">
@@ -196,7 +197,7 @@ export default function StorefrontPlatformsEdit({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
+            <span>Muat ulang</span>
           </Button>
           {previewUrl ? (
             <Button asChild variant="secondary" size="sm">
@@ -214,7 +215,7 @@ export default function StorefrontPlatformsEdit({
             className="inline-flex items-center gap-1.5"
           >
             <Icon name="check" className="size-3.5" aria-hidden="true" />
-            <span>{isProcessing ? "Menyimpan..." : "Simpan perubahan"}</span>
+            <span>{isProcessing ? "Menyimpan..." : "Simpan"}</span>
           </Button>
         </div>
       }
@@ -257,7 +258,7 @@ export default function StorefrontPlatformsEdit({
             {/* Logo */}
             <Card className="space-y-4 p-5">
               <div className="border-b border-border pb-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Logo Toko</h2>
+                <h2 className="text-xs font-semibold text-foreground">Logo Toko</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Tampil di header situs (tema terang dan gelap) dan footer. PNG
                   transparan lebar minimal 300px paling aman, karena dipakai
@@ -296,21 +297,25 @@ export default function StorefrontPlatformsEdit({
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  logoForm.post(brandSubmitUrl, { forceFormData: true, preserveScroll: true })
+                  logoForm.post(brandSubmitUrl, { preserveScroll: true })
                 }}
                 className="space-y-3"
               >
                 <FormErrorSummary errors={logoForm.errors} />
-                <Field id="brand-logo" label="Unggah Logo Baru" error={logoForm.errors.logo} hint="JPEG, PNG, GIF, SVG, atau WebP. Maksimal 5 MB.">
-                  <Input
-                    id="brand-logo"
-                    type="file"
-                    accept=".jpeg,.jpg,.png,.gif,.svg,.webp"
-                    onChange={(event) => logoForm.setData("logo", event.target.files?.[0] ?? null)}
+                <Field
+                  id="brand-logo"
+                  label="Logo dari Media Library"
+                  error={logoForm.errors.logo_asset_id}
+                  hint="Pilih aset logo (PNG transparan disarankan) dari Media Library. Upload file baru dilakukan di halaman Media Library."
+                >
+                  <MediaLibrarySelect
+                    value={logoForm.data.logo_asset_id ?? ""}
+                    onChange={(value) => logoForm.setData("logo_asset_id", value)}
+                    kind="image"
                   />
                 </Field>
-                <Button type="submit" disabled={logoForm.processing || !logoForm.data.logo}>
-                  {logoForm.processing ? "Mengunggah..." : "Simpan Logo"}
+                <Button type="submit" disabled={logoForm.processing || !logoForm.data.logo_asset_id}>
+                  {logoForm.processing ? "Menyimpan..." : "Simpan Logo"}
                 </Button>
               </form>
             </Card>
@@ -318,7 +323,7 @@ export default function StorefrontPlatformsEdit({
             {/* Favicon */}
             <Card className="space-y-4 p-5">
               <div className="border-b border-border pb-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Favicon</h2>
+                <h2 className="text-xs font-semibold text-foreground">Favicon</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px.
                 </p>
@@ -356,21 +361,25 @@ export default function StorefrontPlatformsEdit({
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  faviconForm.post(brandSubmitUrl, { forceFormData: true, preserveScroll: true })
+                  faviconForm.post(brandSubmitUrl, { preserveScroll: true })
                 }}
                 className="space-y-3"
               >
                 <FormErrorSummary errors={faviconForm.errors} />
-                <Field id="brand-favicon" label="Unggah Favicon Baru" error={faviconForm.errors.favicon} hint="ICO atau PNG persegi. Maksimal 2 MB.">
-                  <Input
-                    id="brand-favicon"
-                    type="file"
-                    accept=".ico,.png"
-                    onChange={(event) => faviconForm.setData("favicon", event.target.files?.[0] ?? null)}
+                <Field
+                  id="brand-favicon"
+                  label="Favicon dari Media Library"
+                  error={faviconForm.errors.favicon_asset_id}
+                  hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library. Upload file baru dilakukan di halaman Media Library."
+                >
+                  <MediaLibrarySelect
+                    value={faviconForm.data.favicon_asset_id ?? ""}
+                    onChange={(value) => faviconForm.setData("favicon_asset_id", value)}
+                    kind="image"
                   />
                 </Field>
-                <Button type="submit" disabled={faviconForm.processing || !faviconForm.data.favicon}>
-                  {faviconForm.processing ? "Mengunggah..." : "Simpan Favicon"}
+                <Button type="submit" disabled={faviconForm.processing || !faviconForm.data.favicon_asset_id}>
+                  {faviconForm.processing ? "Menyimpan..." : "Simpan Favicon"}
                 </Button>
               </form>
             </Card>
@@ -402,7 +411,7 @@ export default function StorefrontPlatformsEdit({
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <Card className="space-y-4 p-5">
               <div className="border-b border-border pb-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                <h2 className="text-xs font-semibold text-foreground">
                   Informasi Kontak & Komunikasi
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -410,13 +419,19 @@ export default function StorefrontPlatformsEdit({
                 </p>
               </div>
 
-              <Field id="phone" label="Nomor Telepon / WhatsApp Konsultasi" error={kontakForm.errors.phone}>
+              <Field
+                id="phone"
+                label="Nomor Telepon / WhatsApp Konsultasi"
+                error={kontakForm.errors.phone}
+                hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp. Bila bot sedang tidak tersambung, nomor terakhir yang pernah tersambung tetap dipakai."
+              >
                 <Input
                   id="phone"
                   value={kontakForm.data.phone}
                   onChange={(e) => kontakForm.setData("phone", e.target.value)}
-                  placeholder="Contoh: 085725116817 atau 6285725116817"
-                  className="font-mono text-xs"
+                  placeholder="Terisi otomatis dari nomor WhatsApp yang tersambung"
+                  className="font-mono text-xs bg-muted text-muted-foreground"
+                  readOnly
                 />
               </Field>
 
@@ -434,7 +449,7 @@ export default function StorefrontPlatformsEdit({
 
             <Card className="space-y-4 p-5">
               <div className="border-b border-border pb-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                <h2 className="text-xs font-semibold text-foreground">
                   Lokasi Workshop & Jam Operasional
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">

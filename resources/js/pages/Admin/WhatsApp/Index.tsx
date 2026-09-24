@@ -22,16 +22,31 @@ interface AutomationRow {
   deactivateUrl: string
 }
 
+interface ConnectionSummary {
+  configured: boolean
+  connected: boolean
+  phone: string | null
+  error?: string | null
+  storefront_phone?: string | null
+  last_synced_at?: string | null
+}
+
 export default function WhatsAppIndex({
   title,
   description,
   automations = [],
   totalTemplates = 0,
+  replySignature = "",
+  connection,
+  pairingUrl,
 }: {
   title: string
   description: string
   automations: AutomationRow[]
   totalTemplates?: number
+  replySignature?: string
+  connection?: ConnectionSummary
+  pairingUrl?: string
 }) {
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
@@ -45,10 +60,82 @@ export default function WhatsAppIndex({
     <AdminLayout
       title={title}
       description={description}
+      actions={
+        pairingUrl ? (
+          <Button asChild variant="secondary" size="sm">
+            <Link href={pairingUrl}>
+              <Icon name="link" className="size-3.5" aria-hidden="true" />
+              {connection?.connected ? "Kelola sambungan" : "Sambungkan nomor"}
+            </Link>
+          </Button>
+        ) : undefined
+      }
     >
       <Head title={`${title} | Admin`} />
 
       <WhatsAppTabs active="templates" />
+
+      {/* Ringkasan status sambungan WhatsApp (owner 2026-09-17) */}
+      {connection ? (
+        <section className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-soft">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className={
+                connection.connected
+                  ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : connection.configured
+                  ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-destructive/10 text-destructive"
+                  : "flex size-10 shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+              }
+            >
+              <Icon name="whatsapp" className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                Status WhatsApp
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                  <span
+                    aria-hidden="true"
+                    className={
+                      connection.connected
+                        ? "inline-block size-2 rounded-full bg-emerald-500"
+                        : connection.configured
+                        ? "inline-block size-2 rounded-full bg-destructive"
+                        : "inline-block size-2 rounded-full bg-amber-500"
+                    }
+                  />
+                  <span
+                    className={
+                      connection.connected
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : connection.configured
+                        ? "text-destructive"
+                        : "text-amber-600 dark:text-amber-400"
+                    }
+                  >
+                    {connection.connected ? "Terhubung" : connection.configured ? "Terputus" : "Belum dikonfigurasi"}
+                  </span>
+                </span>
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                {connection.connected
+                  ? `Nomor ${connection.storefront_phone ?? connection.phone ?? "-"} dipakai di seluruh website dan untuk mengirim template di bawah.`
+                  : connection.configured
+                  ? `${connection.error ?? "Perangkat WhatsApp tidak aktif."} Nomor di website tetap ${connection.storefront_phone ?? "nomor terakhir"} sampai nomor baru tersambung.`
+                  : `Gateway WhatsApp belum dikonfigurasi. Nomor di website memakai ${connection.storefront_phone ?? "nomor dari pengaturan kontak"}.`}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="mb-3 space-y-1 text-xs leading-5 text-muted-foreground">
+        <p>
+          Urutan daftar mengikuti alur pesanan: pesanan dibuat, instruksi pembayaran, pesanan diproses, resi dikirim,
+          pesanan sampai, lalu tindak lanjut masalah dan retur.
+        </p>
+        {replySignature ? <p>Setiap pesan otomatis ditutup footer: {replySignature}</p> : null}
+      </div>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         <div className="hidden grid-cols-[minmax(0,1fr)_8rem_5rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
@@ -112,6 +199,7 @@ export default function WhatsAppIndex({
           <p>Halaman 1 dari 1</p>
         </div>
       </section>
+
     </AdminLayout>
   )
 }

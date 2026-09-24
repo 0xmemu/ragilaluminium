@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"

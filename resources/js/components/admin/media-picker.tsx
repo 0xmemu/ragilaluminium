@@ -1,10 +1,15 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
-import { usePage } from "@inertiajs/react"
-import type { SharedPageProps } from "@/types"
+
+/** Tinggi daftar folder pada dropdown filter dapat diatur dengan menarik tepi bawah. */
+const FOLDER_LIST_HEIGHT_KEY = "media-picker:folder-list-height"
+const FOLDER_LIST_DEFAULT_HEIGHT = 224
+const FOLDER_LIST_MIN_HEIGHT = 120
+const FOLDER_LIST_MAX_HEIGHT = 560
 
 export type PickedMedia = {
   /** MediaAsset id yang sudah tersimpan di Media Library. */
@@ -21,16 +26,6 @@ export type PickedMedia = {
   productNames?: string[]
 }
 
-type UploadResult = {
-  asset: {
-    id: number
-    label: string
-    kind: "image" | "video"
-    status: string
-    public_url: string
-  }
-}
-
 type FolderItem = {
   id: number
   parent_id: number | null
@@ -43,7 +38,12 @@ interface FlattenedFolder {
   name: string
   parent_id: number | null
   depth: number
+  /** Aset langsung di folder ini. */
   assets_count: number
+  /** Aset folder ini + seluruh sub-folder di bawahnya (angka yang tampil di daftar). */
+  assets_total: number
+  /** Jalur lengkap dari akar, mis. "Jendela Swing / 70x60". Dipakai untuk pencarian. */
+  path: string
 }
 
 function buildFolderTree(items: FolderItem[]): FlattenedFolder[] {
@@ -55,23 +55,34 @@ function buildFolderTree(items: FolderItem[]): FlattenedFolder[] {
   }
 
   const out: FlattenedFolder[] = []
-  function traverse(parentId: string, depth: number) {
+  // Mengembalikan total aset subtree agar induk menampilkan angka gabungan
+  // (aset umumnya tersimpan di sub-folder, bukan di folder induknya).
+  function traverse(parentId: string, depth: number, parentPath: string): number {
     const children = byParent[parentId] || []
     // Sort alphabetically
     children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+    let subtreeTotal = 0
     for (const child of children) {
+      const path = depth === 0 ? child.name : parentPath + " / " + child.name
+      const own = child.assets_count ?? 0
+      const index = out.length
       out.push({
         id: child.id,
         name: child.name,
         parent_id: child.parent_id,
         depth,
-        assets_count: child.assets_count ?? 0,
+        assets_count: own,
+        assets_total: own,
+        path,
       })
-      traverse(String(child.id), depth + 1)
+      const nested = traverse(String(child.id), depth + 1, path)
+      out[index].assets_total = own + nested
+      subtreeTotal += own + nested
     }
+    return subtreeTotal
   }
 
-  traverse("root", 0)
+  traverse("root", 0, "")
   return out
 }
 
@@ -84,6 +95,264 @@ function buildFolderTree(items: FolderItem[]): FlattenedFolder[] {
  *   2. Pencarian cerdas (berdasarkan label media atau nama produk).
  *   3. Ikon titik 3 / info di sudut kanan atas kartu untuk cek nama aset & produk yang menggunakannya.
  */
+/**
+ * Combobox filter folder dengan kotak pencarian (owner 2026-09-16):
+ * daftar folder bisa puluhan, jadi select native diganti popover yang
+ * bisa dicari ketik langsung. Dipakai global oleh semua pemakai MediaPicker.
+ */
+function FolderFilterCombobox({
+  folders,
+  inboxCount,
+  value,
+  onChange,
+}: {
+  folders: FlattenedFolder[]
+  inboxCount: number
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState("")
+  // Tinggi daftar diingat agar tidak perlu diatur ulang setiap kali dibuka.
+  const [listHeight, setListHeight] = React.useState(() => {
+    if (typeof window === "undefined") return FOLDER_LIST_DEFAULT_HEIGHT
+    const saved = Number(window.localStorage.getItem(FOLDER_LIST_HEIGHT_KEY))
+    return Number.isFinite(saved) && saved >= FOLDER_LIST_MIN_HEIGHT && saved <= FOLDER_LIST_MAX_HEIGHT
+      ? saved
+      : FOLDER_LIST_DEFAULT_HEIGHT
+  })
+  const [availableHeight, setAvailableHeight] = React.useState(320)
+  const [dragging, setDragging] = React.useState(false)
+  const [popoverStyle, setPopoverStyle] = React.useState<React.CSSProperties>({})
+  const inputRef = React.useRef<HTMLInputElement | null>(null)
+  const wrapRef = React.useRef<HTMLDivElement | null>(null)
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const popoverRef = React.useRef<HTMLDivElement | null>(null)
+
+  function labelFor(val: string) {
+    if (val === "all") return "📁 Semua Folder"
+    if (val === "inbox") return "📥 Inbox (" + inboxCount + ")"
+    const folder = folders.find((f) => String(f.id) === val)
+    return folder ? (folder.depth === 0 ? "📁 " : "↳ ") + folder.name : "📁 Semua Folder"
+  }
+
+  const applyHeight = React.useCallback((next: number) => {
+    const clamped = Math.round(
+      Math.min(FOLDER_LIST_MAX_HEIGHT, Math.max(FOLDER_LIST_MIN_HEIGHT, next)),
+    )
+    setListHeight(clamped)
+    try {
+      window.localStorage.setItem(FOLDER_LIST_HEIGHT_KEY, String(clamped))
+    } catch {
+      // localStorage bisa diblokir; tinggi tetap berlaku untuk sesi ini.
+    }
+  }, [])
+
+  function startResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = listHeight
+    setDragging(true)
+    const onMove = (moveEvent: PointerEvent) => applyHeight(startHeight + (moveEvent.clientY - startY))
+    const onUp = () => {
+      setDragging(false)
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
+
+  // Dropdown dirender lewat portal supaya daftar yang diperpanjang tidak
+  // terpotong oleh area scroll dialog media picker.
+  const positionPopover = React.useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const available = Math.max(220, window.innerHeight - rect.bottom - 16)
+    setAvailableHeight(available)
+    setPopoverStyle({
+      position: "fixed",
+      left: Math.round(rect.left),
+      width: Math.max(Math.round(rect.width), 280),
+      top: Math.round(rect.bottom + 6),
+      maxHeight: Math.round(available),
+      zIndex: 90,
+    })
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) return
+    positionPopover()
+    window.addEventListener("scroll", positionPopover, true)
+    window.addEventListener("resize", positionPopover)
+    return () => {
+      window.removeEventListener("scroll", positionPopover, true)
+      window.removeEventListener("resize", positionPopover)
+    }
+  }, [open, positionPopover])
+
+  React.useEffect(() => {
+    function onDocMouseDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (wrapRef.current?.contains(target)) return
+      if (popoverRef.current?.contains(target)) return
+      setOpen(false)
+      setQuery("")
+    }
+    document.addEventListener("mousedown", onDocMouseDown)
+    return () => document.removeEventListener("mousedown", onDocMouseDown)
+  }, [])
+
+  React.useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
+
+  function pick(val: string) {
+    onChange(val)
+    setOpen(false)
+    setQuery("")
+  }
+
+  const searching = query.trim() !== ""
+
+  // Pencarian folder memakai JALUR lengkap, bukan hanya nama folder, sehingga
+  // mencari "swing" ikut menampilkan sub-folder di dalamnya (mis.
+  // Jendela Swing / 70x60) - di situlah aset biasanya tersimpan.
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return folders
+    return folders.filter((f) => f.path.toLowerCase().includes(q))
+  }, [folders, query])
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 w-full items-center gap-2 rounded-md border border-border bg-surface px-2.5 text-left text-xs font-medium text-foreground outline-none transition hover:border-foreground/25 focus-visible:ring-2 focus-visible:ring-ring"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Filter berdasarkan folder"
+      >
+        <Icon name="folder" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">{labelFor(value)}</span>
+        <Icon name="caret-down" className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </button>
+
+      {open ? createPortal(
+        <div
+          ref={popoverRef}
+          style={popoverStyle}
+          className="flex flex-col rounded-lg border border-border bg-card p-2 shadow-float"
+        >
+          <div className="relative shrink-0">
+            <input
+              ref={inputRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setOpen(false)
+                  setQuery("")
+                }
+                if (event.key === "Enter" && filtered.length > 0) {
+                  event.preventDefault()
+                  pick(String(filtered[0].id))
+                }
+              }}
+              placeholder="Cari folder…"
+              className="h-8 w-full rounded-md border border-border bg-surface pl-7 pr-2.5 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Icon
+              name="search"
+              className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+
+          <div
+            className="mt-2 space-y-0.5 overflow-y-auto"
+            style={{ height: Math.min(listHeight, Math.max(120, availableHeight - 106)) }}
+          >
+            <button
+              type="button"
+              onClick={() => pick("all")}
+              className={cn(
+                "flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition",
+                value === "all" ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted/60",
+              )}
+            >
+              📁 Semua Folder
+            </button>
+            <button
+              type="button"
+              onClick={() => pick("inbox")}
+              className={cn(
+                "flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition",
+                value === "inbox" ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted/60",
+              )}
+            >
+              📥 Inbox ({inboxCount})
+            </button>
+            <div className="my-1 border-t border-border" />
+            {filtered.length === 0 ? (
+              <p className="px-2 py-3 text-center text-[11px] text-muted-foreground">Tidak ada folder yang cocok.</p>
+            ) : (
+              filtered.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => pick(String(f.id))}
+                  style={{ paddingLeft: 8 + f.depth * 14 }}
+                  className={cn(
+                    "flex w-full items-start gap-1.5 rounded-md py-1.5 pr-2 text-left text-xs transition",
+                    String(f.id) === value ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted/60",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">
+                      {f.depth === 0 ? "📁 " : "↳ "}
+                      {f.name}
+                    </span>
+                    {searching && f.depth > 0 ? (
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {f.path.split(" / ").slice(0, -1).join(" / ")}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 pt-0.5 tabular-nums text-[10px] text-muted-foreground">
+                    {f.assets_total}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* Pegangan tarik di tepi bawah: perpanjang/pendekkan daftar folder. */}
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Tarik untuk mengubah tinggi daftar folder"
+            title="Tarik untuk mengubah tinggi daftar. Klik dua kali untuk ukuran default."
+            onPointerDown={startResize}
+            onDoubleClick={() => applyHeight(FOLDER_LIST_DEFAULT_HEIGHT)}
+            className={cn(
+              "mt-1.5 flex h-4 shrink-0 cursor-ns-resize items-center justify-center rounded-b-md text-muted-foreground/50 transition hover:bg-muted/50 hover:text-muted-foreground",
+              dragging && "bg-muted/60 text-muted-foreground",
+            )}
+          >
+            <span className="h-0.5 w-10 rounded-full bg-current" aria-hidden="true" />
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+    </div>
+  )
+}
+
+
 export function MediaPicker({
   open,
   onClose,
@@ -97,8 +366,9 @@ export function MediaPicker({
   multiple?: boolean
   title?: string
 }) {
-  const { csrf } = usePage<SharedPageProps>().props
-  const [tab, setTab] = React.useState<"upload" | "library">("upload")
+  // Owner 2026-09-16: Media Library satu-satunya sumber media. Upload hanya
+  // lewat halaman /admin/media (Library); picker tidak punya tab upload.
+  const [tab] = React.useState<"library">("library")
   const [query, setQuery] = React.useState("")
   const [selectedFolder, setSelectedFolder] = React.useState<string>("all")
   const [folders, setFolders] = React.useState<FolderItem[]>([])
@@ -106,11 +376,7 @@ export function MediaPicker({
   const [assets, setAssets] = React.useState<PickedMedia[]>([])
   const [loading, setLoading] = React.useState(false)
   const [selected, setSelected] = React.useState<PickedMedia[]>([])
-  const [uploading, setUploading] = React.useState(false)
-  const [uploadError, setUploadError] = React.useState<string | null>(null)
-  const [dragOver, setDragOver] = React.useState(false)
   const [activeInfoAsset, setActiveInfoAsset] = React.useState<PickedMedia | null>(null)
-  const inputRef = React.useRef<HTMLInputElement | null>(null)
 
   const searchAssets = React.useCallback((q: string, folderId: string) => {
     setLoading(true)
@@ -169,67 +435,6 @@ export function MediaPicker({
     })
   }
 
-  function uploadFiles(files: FileList | File[]) {
-    const list = Array.from(files)
-    if (!list.length) return
-    setUploading(true)
-    setUploadError(null)
-    Promise.all(
-      list.map(
-        (file) =>
-          new Promise<PickedMedia | null>((resolve) => {
-            const fd = new FormData()
-            fd.append("media", file)
-            const xhr = new XMLHttpRequest()
-            xhr.open("POST", routeUrl("admin.media.upload"))
-            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-            xhr.setRequestHeader("X-CSRF-TOKEN", csrf ?? "")
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const data: UploadResult = JSON.parse(xhr.responseText)
-                  resolve({
-                    assetId: data.asset.id,
-                    label: data.asset.label,
-                    thumbUrl: data.asset.public_url,
-                    kind: data.asset.kind,
-                  })
-                  return
-                } catch {
-                  resolve(null)
-                  return
-                }
-              }
-              let message = "Gagal mengunggah"
-              try {
-                const parsed = JSON.parse(xhr.responseText) as { message?: string }
-                if (parsed.message) message = parsed.message
-              } catch {
-                // keep default
-              }
-              setUploadError(message)
-              resolve(null)
-            }
-            xhr.onerror = () => {
-              setUploadError("Gagal mengunggah (jaringan)")
-              resolve(null)
-            }
-            xhr.send(fd)
-          }),
-      ),
-    ).then((results) => {
-      setUploading(false)
-      const ok = results.filter((r): r is PickedMedia => r !== null)
-      if (ok.length) {
-        if (multiple) setSelected((prev) => [...prev, ...ok])
-        else {
-          onPick(ok)
-          onClose()
-        }
-      }
-    })
-  }
-
   function confirmSelection() {
     if (!selected.length) return
     onPick(selected)
@@ -262,107 +467,18 @@ export function MediaPicker({
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-border px-5 pt-2">
-          {([
-            ["upload", "Unggah file"],
-            ["library", "Dari Media Library"],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={cn(
-                "rounded-t-md px-3 py-2 text-xs font-semibold transition",
-                tab === key ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === "upload" ? (
-            <div
-              onDragOver={(event) => {
-                event.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(event) => {
-                event.preventDefault()
-                setDragOver(false)
-                if (event.dataTransfer.files.length) uploadFiles(event.dataTransfer.files)
-              }}
-              className={cn(
-                "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 text-center transition",
-                dragOver ? "border-primary bg-primary/5" : "border-border bg-surface-muted/40",
-              )}
-            >
-              <Icon name="upload" className="size-10 text-muted-foreground" aria-hidden="true" />
-              <p className="mt-3 text-sm font-medium text-foreground">
-                {uploading ? "Mengunggah..." : "Tarik file ke sini atau pilih dari perangkat"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Gambar atau video. File otomatis diproses WebP dan langsung masuk Media Library.
-              </p>
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                disabled={uploading}
-                className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-50"
-              >
-                {uploading ? "Memproses..." : "Pilih file"}
-              </button>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*,video/*"
-                multiple={multiple}
-                className="hidden"
-                onChange={(event) => {
-                  if (event.target.files?.length) uploadFiles(event.target.files)
-                  event.target.value = ""
-                }}
-              />
-              {uploadError ? <p className="mt-3 text-xs font-medium text-destructive">{uploadError}</p> : null}
-            </div>
-          ) : (
+          {tab === "library" ? (
             <div className="space-y-4">
               {/* Toolbar Kontrol Pencarian & Filter Folder Hierarkis */}
               <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
                 <div className="w-full sm:w-64 shrink-0">
-                  <div className="relative">
-                    <select
+                  <FolderFilterCombobox
+                      folders={flattenedTree}
+                      inboxCount={inboxCount}
                       value={selectedFolder}
-                      onChange={(e) => setSelectedFolder(e.target.value)}
-                      className="h-9 w-full appearance-none rounded-md border border-border bg-surface pl-8 pr-8 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
-                      aria-label="Filter berdasarkan folder"
-                    >
-                      <option value="all">📁 Semua Folder</option>
-                      <option value="inbox">📥 Inbox ({inboxCount})</option>
-                      <option disabled>────────────────────────</option>
-                      {flattenedTree.map((f) => {
-                        const isRoot = f.depth === 0
-                        const prefix = isRoot ? "📁 " : "\u00a0\u00a0".repeat(f.depth) + "↳ "
-                        return (
-                          <option key={f.id} value={String(f.id)}>
-                            {prefix}{f.name} ({f.assets_count})
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <Icon
-                      name="folder"
-                      className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
+                      onChange={setSelectedFolder}
                     />
-                    <Icon
-                      name="caret-down"
-                      className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  </div>
                 </div>
 
                 <div className="relative flex-1">
@@ -462,7 +578,7 @@ export function MediaPicker({
                 </ul>
               )}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Modal / Card Info Media Popover (Jika admin klik titik 3) */}

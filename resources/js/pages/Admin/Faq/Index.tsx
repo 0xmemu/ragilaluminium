@@ -254,8 +254,12 @@ export default function FaqIndex({
     }
   }
 
+  // Ikon tarik hanya ada saat mode Urutkan aktif, tab bukan arsip, dan daftar
+  // tidak tersaring (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && !isArchivedTab && !listTersaring
+
   const dnd = useRowDragSort({
-    enabled: reorderMode && !isArchivedTab && !listTersaring,
+    enabled: dragAktif,
     count: rows.length,
     onReorder: reorderRows,
   })
@@ -306,7 +310,7 @@ export default function FaqIndex({
                 dirty={reorderForm.isDirty}
                 processing={reorderForm.processing}
                 disabled={!rows.length || filterKunci}
-                disabledReason="Kosongkan filter kategori dulu supaya urutan bisa digeser."
+                disabledReason="Kosongkan filter kategori dulu supaya tombol Urutkan bisa dipakai."
                 onToggle={toggleReorder}
                 onCancel={cancelReorder}
                 onSave={saveReorder}
@@ -476,7 +480,7 @@ export default function FaqIndex({
 
       {reorderMode ? (
         <div className="mt-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Tarik ikon <span className="font-semibold">titik enam</span> di kiri baris untuk memindahkan, lalu klik Simpan urutan.
+          Mode Urutkan aktif: pakai <span className="font-semibold">ikon tarik</span> di tepi kiri baris untuk memindahkan, lalu klik Simpan urutan.
         </div>
       ) : null}
 
@@ -514,13 +518,13 @@ export default function FaqIndex({
               const open = openId === row.id
               const editing = editingId === row.id
               return (
-                <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(!listTersaring && reorderMode && !isArchivedTab ? dnd.rowProps(index) : {})}>
+                <li key={row.id} className={cn("p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")} {...(dragAktif ? dnd.rowProps(index) : {})}>
                   <div className="flex flex-wrap items-start gap-3">
-                    {/* Geser hanya lewat ikon tarik di tepi kiri (kontrak owner 2026-09-20). */}
-                    <ReorderDragHandle
-                      enabled={reorderMode && !isArchivedTab && !listTersaring}
-                      className="mt-0.5 shrink-0"
-                    />
+                    {/* Ikon tarik hanya dirender saat mode Urutkan aktif, jadi tidak
+                        ada kolom kosong di luar mode itu (kontrak 2026-09-20, direvisi). */}
+                    {dragAktif ? (
+                      <ReorderDragHandle enabled className="mt-0.5 shrink-0" />
+                    ) : null}
                     <span className="mt-1 tabular-nums text-xs text-muted-foreground">{row.no}</span>
                     <div className="min-w-0 flex-1">
                       {editing ? (
@@ -562,7 +566,7 @@ export default function FaqIndex({
                           </Field>
                           <div className="flex flex-wrap gap-2">
                             <Button type="submit" disabled={editForm.processing}>
-                              {editForm.processing ? "Menyimpan..." : "Simpan perubahan"}
+                              {editForm.processing ? "Menyimpan..." : "Simpan"}
                             </Button>
                             <Button type="button" variant="secondary" onClick={cancelEdit}>
                               Batal

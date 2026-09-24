@@ -9,15 +9,14 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog"
+import { ErrorState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
-import { addReadyCount, playReadySound } from "@/lib/media-live"
 import { routeUrl } from "@/lib/routes"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
@@ -625,7 +624,7 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
 }
 
 // --- Panel tracking upload (persisten walau modal ditutup) ---
-function UploadTracker({ uploads, onDismiss }: { uploads: UploadItem[]; onDismiss: () => void }) {
+function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => void }) {
   const [hidden, setHidden] = React.useState(false)
   const active = uploads.filter((u) => u.status === "uploading").length
   const allDone = uploads.length > 0 && active === 0
@@ -799,14 +798,7 @@ export default function MediaLibrary({
     runSearch()
   }
 
-  // Live status
-  const [liveStatus, setLiveStatus] = React.useState<Record<number, { status: string; error_reason?: string | null }>>({})
-  const [liveThumbs, setLiveThumbs] = React.useState<Record<number, string | null | undefined>>({})
-  const [readyNotice, setReadyNotice] = React.useState<string | null>(null)
-  const liveStatusRef = React.useRef(liveStatus)
-  const notifiedRef = React.useRef<number[]>([])
   const assetsRef = React.useRef(assets)
-  React.useEffect(() => { liveStatusRef.current = liveStatus }, [liveStatus])
   React.useEffect(() => { assetsRef.current = assets }, [assets])
 
   // Attach
@@ -815,10 +807,14 @@ export default function MediaLibrary({
   const [attachQuery, setAttachQuery] = React.useState("")
   const [attachResults, setAttachResults] = React.useState<ProductOption[]>([])
   const [attachSearching, setAttachSearching] = React.useState(false)
+  // Galat pencarian produk dibedakan dari "tidak ditemukan": keduanya dulu
+  // berakhir sebagai daftar kosong, jadi admin tidak tahu bedanya.
+  const [attachSearchError, setAttachSearchError] = React.useState(false)
+  const [attachSearchNonce, setAttachSearchNonce] = React.useState(0)
   const [attachPosition, setAttachPosition] = React.useState("1")
   const [attachCatalog, setAttachCatalog] = React.useState(true)
   const [attachInstallation, setAttachInstallation] = React.useState(false)
-  const [attachVisibility, setAttachVisibility] = React.useState("visible")
+  const [attachVisibility] = React.useState("visible")
   const [attachBusy, setAttachBusy] = React.useState(false)
   const [attachError, setAttachError] = React.useState<string | null>(null)
 
@@ -850,20 +846,40 @@ export default function MediaLibrary({
     if (!query) return
     const timer = window.setTimeout(() => {
       setAttachSearching(true)
+      setAttachSearchError(false)
       fetch(`${routeUrl("admin.media.products.search")}?q=${encodeURIComponent(query)}`, {
         headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(r)))
         .then((b) => setAttachResults(b.products ?? []))
-        .catch(() => setAttachResults([]))
+        .catch(() => {
+          setAttachResults([])
+          setAttachSearchError(true)
+        })
         .finally(() => setAttachSearching(false))
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [attachQuery, attachingId])
+  }, [attachQuery, attachingId, attachSearchNonce])
 
   function toggleSelected(id: number) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
+
+  // Pilihan berlaku untuk halaman aktif saja. Saat daftar berganti (pindah
+  // halaman atau ganti filter), id dari halaman sebelumnya dibuang supaya
+  // aksi massal tidak pernah menyentuh item yang tidak terlihat.
+  const pageAssetIds = React.useMemo(() => assets.map((a) => a.id), [assets])
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedIds((prev) => {
+      const kept = prev.filter((id) => pageAssetIds.includes(id))
+      return kept.length === prev.length ? prev : kept
+    })
+  }, [pageAssetIds])
+
+  const allOnPageSelected =
+    pageAssetIds.length > 0 && pageAssetIds.every((id) => selectedIds.includes(id))
+  const someOnPageSelected = selectedIds.some((id) => pageAssetIds.includes(id))
 
   function runBulkAction(action: "archive" | "delete" | "restore") {
     const form = new FormData()
@@ -1046,18 +1062,34 @@ export default function MediaLibrary({
             </div>
           ) : null}
 
-          {/* Pilih semua */}
+          {/* Pilih semua pada halaman aktif. Kotak centang ini menyatakan
+              keadaan halaman sekarang: penuh bila semua kartu terpilih,
+              setengah bila sebagian. Hitungan terpilih selalu ditampilkan. */}
           {assets.length > 0 ? (
-            <div className="mb-3 flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSelectedIds(assets.map((a) => a.id))}
-                disabled={selectedIds.length === assets.length}
-              >
-                Pilih semua
-              </Button>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-border accent-primary"
+                  checked={allOnPageSelected}
+                  ref={(node) => {
+                    if (node) node.indeterminate = someOnPageSelected && !allOnPageSelected
+                  }}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageAssetIds])))
+                    } else {
+                      setSelectedIds((prev) => prev.filter((id) => !pageAssetIds.includes(id)))
+                    }
+                  }}
+                  aria-label="Pilih semua media di halaman ini"
+                />
+                Pilih semua di halaman ini
+              </label>
+              <span className="text-xs text-muted-foreground" role="status">
+                <span className="tabular-nums font-semibold text-foreground">{selectedIds.length}</span>{" "}
+                dipilih dari {assets.length} media di halaman ini
+              </span>
               {selectedIds.length > 0 ? (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
                   Kosongkan
@@ -1202,6 +1234,22 @@ export default function MediaLibrary({
                     </button>
                   ))}
                 </div>
+              ) : attachSearchError ? (
+                <ErrorState
+                  title="Pencarian produk gagal"
+                  description="Daftar produk belum dapat dimuat. Periksa koneksi lalu coba lagi."
+                  className="min-h-0 p-4"
+                  action={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAttachSearchNonce((n) => n + 1)}
+                    >
+                      Coba lagi
+                    </Button>
+                  }
+                />
               ) : attachQuery.trim() && !attachSearching ? <p className="text-xs text-muted-foreground">Tidak ditemukan</p> : null}
               {attachProduct ? (
                 <div className="grid grid-cols-2 gap-2">
