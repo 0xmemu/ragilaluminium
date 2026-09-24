@@ -874,11 +874,11 @@ function ReturnCasePanel({
                         />
                         <p
                           className="text-[11px] text-muted-foreground"
-                          title="Biaya operasional ongkir pengembalian. Tidak mengurangi Penjualan Bersih."
+                          title="Biaya operasional ongkir pengembalian yang ditanggung toko. Mengurangi Penjualan Bersih."
                         >
                           {item.fault_party === "store"
-                            ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi. Tidak mengurangi Penjualan Bersih."
-                            : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill). Tidak mengurangi Penjualan Bersih."}
+                            ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi. Mengurangi Penjualan Bersih."
+                            : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill). Mengurangi Penjualan Bersih."}
                         </p>
                       </Field>
 

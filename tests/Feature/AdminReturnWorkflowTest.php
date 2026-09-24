@@ -371,6 +371,30 @@ class AdminReturnWorkflowTest extends TestCase
     }
 
     // 10. complete refund -> case completed + order return_completed.
+    public function test_complete_refund_rejected_when_order_unpaid(): void
+    {
+        $admin = $this->admin();
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered', ['payment_status' => 'pending']);
+        $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(1)->toDateTimeString());
+        $this->actingAs($admin)->post(route('admin.orders.returns.store', $order), $this->validCreatePayload($order));
+        $case = OrderReturnCase::where('order_id', $order->id)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.returns.complete', ['order' => $order, 'returnCase' => $case]), [
+                'resolution_type' => 'refund',
+                'admin_notes' => 'mencoba refund pesanan belum dibayar',
+                'refund_amount' => 50000,
+                'return_shipping_cost' => 10000,
+            ])
+            ->assertSessionHasErrors(['refund_amount']);
+
+        $case->refresh();
+        $this->assertSame('open', $case->status);
+    }
+
     public function test_complete_refund_marks_case_and_order_completed(): void
     {
         $admin = $this->admin();

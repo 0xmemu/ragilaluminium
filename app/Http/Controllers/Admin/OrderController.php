@@ -828,6 +828,11 @@ class OrderController extends Controller
         }
 
         if ($validated['resolution_type'] === 'refund') {
+            if ($order->payment_status !== 'paid') {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['refund_amount' => 'Refund hanya dapat diproses untuk pesanan yang sudah lunas.'])
+                    ->withInput();
+            }
             $refund = (float) ($validated['refund_amount'] ?? 0);
             $maxRefund = (float) $order->total_amount;
             if ($refund < 0 || $refund > $maxRefund) {
