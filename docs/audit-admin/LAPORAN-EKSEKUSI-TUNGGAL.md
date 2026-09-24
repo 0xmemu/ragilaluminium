@@ -188,3 +188,16 @@ sibuk, sheet publik), 0 blocked.** Data produksi berubah hanya dua hal yang
 diizinkan: satu konten em dash via UI admin, dan satu baris notifikasi
 dihapus lewat UI baru.
 | Admin F-05: PermissionDeniedState dan 403/404 (bagian 2) | **Resolved** (tambahan ronde ketiga, commit `6e61ceb6`): satu-satunya temuan yang terlewat dari eksekusi tunggal; 403 kini merender PermissionDeniedState, 404/500/503 tetap kartu semula |
+
+### Koreksi konteks F-05 (setelah pertanyaan owner: "memang ada admin terbatas?")
+
+Sistem berada di tahap equal-admin: `AdminCapabilities` menyatakan eksplisit
+belum ada permission granular, semua capability hanya mencerminkan admin vs
+non-admin. Akibatnya 403 di panel praktis tidak bisa terjadi untuk pengguna
+admin saat ini; middleware hanya membedakan admin dan bukan. Render 403 yang
+ditambahkan di commit `6e61ceb6` tetap benar sebagai kesiapan (middleware
+tetap bisa 403 untuk non-admin, dan jalurnya hidup bila stage 2 permission
+granular diterapkan), tetapi nilainya untuk pengguna sekarang lebih kecil
+dari yang dilaporkan. Kategori temuan yang tepat: konsistensi arsitektur,
+bukan P1 kebingungan pengguna. Pelajaran audit: periksa dulu apakah kondisi
+yang dilaporkan bisa terjadi, sebelum menilai kodenya kurang konsisten.
