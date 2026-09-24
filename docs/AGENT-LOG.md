@@ -713,3 +713,22 @@ Koreksi owner: ikon mengikuti logika tombol, bukan statis. Commit `11c1050f`
 mode nonaktif = ikon kotak seleksi berlabel Pilih Media.
 
 Bukti: typecheck 0 error, build sukses.
+
+## 2026-09-24, hermes-desktop-ragil: searchbar khusus folder di Media Library
+
+Keputusan owner (Comment 3 di preview pane Media Library):
+Tambahkan searchbar khusus folder dengan cara kerja sama seperti media picker.
+
+Commit `833b67b7` (push `b6dc18a2..833b67b7`):
+- Menambahkan searchbar folder di sidebar Media Library di bawah header Folder.
+- Pencarian mencocokkan path lengkap folder (nama folder induk dan anak).
+- Tampilan hasil pencarian menampilkan nama folder, breadcrumb path induk, dan
+  jumlah aset total subtree (identik dengan implementasi MediaPicker).
+- Enter memilih hasil pertama, Escape / klik tombol X membersihkan pencarian.
+- Menu aksi 3-titik (buat subfolder, ganti nama, arsipkan, hapus) tetap dapat
+  diakses dari setiap baris hasil pencarian.
+- Navigasi mulus: klik folder memfilter galeri aset; membersihkan query
+  mengembalikan ke tampilan pohon dengan folder aktif tetap terpilih dan induknya
+  terbentang otomatis (auto-expanded).
+
+Bukti: typecheck 0 error, build sukses, MediaAssetWorkflowTest 3 passed.
