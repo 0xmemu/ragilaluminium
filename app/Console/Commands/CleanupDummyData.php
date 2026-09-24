@@ -73,11 +73,11 @@ class CleanupDummyData extends Command
         $this->line('');
         $this->line('--- C. User dev ---');
         $devUsers = DB::table('users')
-            ->whereIn('email', ['qa.admin@example.com', 'dev.agent@ragilaluminium.test', 'febrian@333labs.tech'])
-            ->orWhere('email', 'like', 'tmp-%@ragil.test')
-            ->get(['id', 'name', 'email', 'role']);
+            ->where('status', 'inactive')
+            ->where('username', '!=', 'febrian')
+            ->get(['id', 'name', 'username', 'role']);
         foreach ($devUsers as $u) {
-            $this->line("    #{$u->id} {$u->name} | {$u->email} | {$u->role}");
+            $this->line("    #{$u->id} {$u->name} | {$u->username} | {$u->role} | {$u->status}");
         }
 
         $this->line('');

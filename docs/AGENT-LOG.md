@@ -732,3 +732,55 @@ Commit `833b67b7` (push `b6dc18a2..833b67b7`):
   terbentang otomatis (auto-expanded).
 
 Bukti: typecheck 0 error, build sukses, MediaAssetWorkflowTest 3 passed.
+
+## 2026-09-24, hermes-desktop-ragil: login admin jadi username-only + bersihkan akun
+
+Perintah owner: hapus semua akun login kecuali Febrian, buat login benar-benar
+hanya dengan username (termasuk pembuatan akun), bersihkan dengan rapi.
+
+Commit `b6dc18a2` (push `90a8e8a8..b6dc18a2`):
+- LoginController hanya menerima username. Percabangan email sebagai kredensial
+  dihapus total, termasuk pesan error email dipakai beberapa akun.
+- resources/js/pages/Auth/Login.tsx: label dan placeholder jadi Username.
+- UserFactory tidak lagi mengisi email (test tidak butuh).
+- Test yang login diperbarui: AdminLoginTest, Fase13LoginSecurityTest,
+  ActivityLogAdminTest.
+
+Commit lanjutan (2 berkas):
+- app/Models/User.php: 'email' dibuang dari daftar `$fillable`. Kolom tetap ada
+  di DB (nullable) tapi tidak bisa lagi diisi diam-diam lewat mass assignment.
+- app/Console/Commands/CleanupDummyData.php: target akun dev diubah dari
+  email ke username. Versi lama menyertakan febrian@333labs.tech sebagai
+  akun dev, padahal itu akun owner.
+
+Data produksi (lewat UserController::deactivate() agar tercatat di log aktivitas):
+- 7 akun dinonaktifkan lebih dulu, lalu dihapus permanen.
+- Akun 21 (owner), 22 (agent-ops), 24 (budi) dihapus permanen.
+- stock_movements.changed_by_user_id dan product_price_logs.changed_by_user_id
+  yang ber-FK NO ACTION dinolkan manual sebelum hapus (2 + 0 baris).
+- 113 sesi milik akun yang sudah dihapus dibersihkan dari tabel sessions
+  (driver database). Sesi febrian (18 baris) tidak disentuh.
+- Akun verifikasi sementara (id 46) ikut dihapus setelah dipakai membuktikan
+  login username berhasil secara live.
+
+JEJAK DATA AKUN 22 SEBELUM DIHAPUS (dicek dulu, tidak ada yang live):
+- 31 baris event_logs, 20 di antaranya auth.login.
+- 2 promosi (status ended), 2 promotion_items, 7 product_media untuk produk 156.
+- Produk 156 sendiri berstatus archived, bukan published.
+- FK semua kolom ini delete_rule=SET NULL, jadi riwayatnya tetap ada dengan
+  kolom-panel emptiness (created_by_user_id kosong), tidak ikut terhapus.
+
+Bukti:
+- Tabel users akhir: 1 baris, id 13 username febrian status active role admin.
+- Verifikasi live (browser, 2026-09-24): halaman login hanya menampilkan
+  Username*, tidak ada teks Email sama sekali. Login dengan
+  febrian@333labs.tech ditolak Username/Password Salah. Login dengan
+  username verif.sementara berhasil masuk ke /admin.
+- AdminLoginTest 4 lulus (17 assertion).
+- Suite penuh: 1 skipped, 1152 passed (11763 assertion).
+- typecheck 0 error; build sukses; eslint 0 masalah di berkas yang diubah
+  (19 error pre-existing di resources/js/pages/Public/* sudah ada sebelumnya).
+
+Catatan: pemangkasan sesi tamu (user_id null) dilewati karena kolom
+last_activity di tabel sessions bertipe integer Unix, bukan datetime, dan
+pembersihan itu di luar lingkup perintah owner.
