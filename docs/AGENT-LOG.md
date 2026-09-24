@@ -850,3 +850,35 @@ Bukti:
 - Vite build sukses.
 - Zero em dash (U+2014) terverifikasi via regex check.
 - Live probe rendering HTTP 200 terverifikasi pada rute /admin/kelola/kategori/create, /admin/profile, /admin/storefront-platforms (kontak & brand), /admin/banners/create, /admin/announcements/create, /admin/orders/1, /admin/kelola/produk/51.
+
+## 2026-09-24, hermes-desktop-ragil: koreksi owner, batas idle tanpa pesan
+
+Koreksi owner atas commit `2c3bdcfe`: "gausah pakai toast, just let it be
+logout automatically silently". Batas idle tetap 30 menit, tapi perpindahan ke
+halaman login tidak lagi menampilkan pesan apa pun.
+
+Berkas yang disentuh:
+- app/Http/Middleware/EnsureUserIsAdmin.php: `->with('status', ...)` dibuang,
+  jadi `return redirect()->route('login')` polos tanpa flash.
+- resources/js/pages/Auth/Login.tsx: Alert, `usePage`, dan `idleNotice`
+  dibuang. Berkas ini kembali persis ke bentuk sebelum fitur pesan.
+- tests/Feature/AdminSessionIdleTest.php: assert flash dibuang. Sisa 5 kasus
+  penjaga tetap sama hanya jumlah assertion turun dari 25 ke 24.
+
+Catatan: `flash.status` milik HandleInertiaRequests tidak ikut dibuang karena
+dipakai halaman lain (toast public-layout). Yang dibuang hanya pemanggilnya
+dari halaman login.
+
+Bukti:
+- AdminSessionIdleTest 5 lulus (24 assertion).
+- Suite penuh: 1 skipped, 1157 passed (11823 assertion).
+- typecheck 0 error; eslint 0 masalah di Login.tsx; build Vite sukses.
+- Verifikasi live (curl): setelah aktivitas digeser 31 menit, /admin HTTP 302
+  ke /login, dan frasa "Sesi berakhir" TIDAK ada di HTML. Flash di payload
+  Inertia terbaca `"status":null`. (Field `"status":"live"` yang muncul
+  terpisah milik `flashSalePeriod`, bukan flash pesan.)
+- Browser: halaman login punya 0 elemen role=status/role=alert dan tidak
+  memuat teks "Sesi berakhir"; form Username dan checkbox "Tetap Masuk Di
+  Perangkat Ini" tetap utuh.
+- Akun uji (uji.diam, uji.diam2) dihapus; tabel users tetap 1 baris (Febrian),
+  sesi non-Febrian 0, sesi yatim 0.

@@ -34,10 +34,8 @@ class EnsureUserIsAdmin
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')->with(
-                    'status',
-                    'Sesi berakhir karena tidak ada aktivitas. Silakan masuk kembali.'
-                );
+                // Diam-diam: pemilik memilih batas idle tanpa pesan.
+                return redirect()->route('login');
             }
 
             $request->session()->put('admin_last_activity', time());

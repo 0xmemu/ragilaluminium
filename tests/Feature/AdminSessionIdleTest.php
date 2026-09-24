@@ -46,8 +46,7 @@ class AdminSessionIdleTest extends TestCase
         $this->withSession(['admin_last_activity' => time() - (31 * 60)]);
 
         $this->get(route('admin.dashboard'))
-            ->assertRedirect(route('login'))
-            ->assertSessionHas('status');
+            ->assertRedirect(route('login'));
 
         $this->assertGuest();
     }
