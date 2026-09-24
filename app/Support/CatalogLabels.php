@@ -53,10 +53,6 @@ class CatalogLabels
         'JENDELA' => 'Jendela',
         'PINTU' => 'Pintu',
         'BOVEN' => 'Boven',
-        // Alias lama (English) tetap didukung supaya data/link lama tidak patah.
-        'WINDOW' => 'Jendela',
-        'DOOR' => 'Pintu',
-        'BOUVEN' => 'Boven',
     ];
 
     /** @var array<string, string> */
@@ -126,19 +122,6 @@ class CatalogLabels
         );
     }
 
-    /** Kode kategori + alias legacy (data lama masih WINDOW/DOOR/BOUVEN). */
-    public static function categoryCodesWithLegacy(string $code): array
-    {
-        $code = strtoupper(trim($code));
-        $alias = [
-            'JENDELA' => ['WINDOW', 'WINDOWS'],
-            'PINTU' => ['DOOR', 'DOORS'],
-            'BOVEN' => ['BOUVEN'],
-        ][$code] ?? [];
-
-        return array_values(array_unique(array_merge([$code], $alias)));
-    }
-
     public static function normalizeCategory(?string $code): ?string
     {
         if ($code === null || $code === '' || $code === 'ALL' || $code === 'all') {
@@ -147,23 +130,9 @@ class CatalogLabels
 
         $key = strtoupper(trim((string) $code));
 
-        // Satu kanonik Indonesia: JENDELA/PINTU/BOVEN; alias English (WINDOW/
-        // DOOR/BOUVEN + WINDOWS/DOORS) tetap dipetakan agar query lama jalan.
-        $aliases = [
-            'JENDELA' => 'JENDELA',
-            'WINDOWS' => 'JENDELA',
-            'WINDOW' => 'JENDELA',
-            'PINTU' => 'PINTU',
-            'DOORS' => 'PINTU',
-            'DOOR' => 'PINTU',
-            'BOVEN' => 'BOVEN',
-            'BOUVEN' => 'BOVEN',
-        ];
-        if (isset($aliases[$key])) {
-            return $aliases[$key];
-        }
-
-        // Kode kategori dinamis dari tabel `categories` (bukan daftar tetap).
+        // Kode kanonik Indonesia (JENDELA/PINTU/BOVEN) plus kategori dinamis
+        // dari tabel `categories` (bukan daftar tetap). Tidak ada lagi peta
+        // alias English; kode warisan tidak dikenali.
         $resolved = \App\Support\CategoryUrl::codeToProductCode($key);
         if (isset(self::CATEGORY[$resolved])) {
             return $resolved;

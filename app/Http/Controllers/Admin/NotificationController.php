@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
+use App\Services\ActivityLogService;
 use App\Support\InertiaAdmin;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class NotificationController extends Controller
 {
+    public function __construct(protected ActivityLogService $logs) {}
+
     /**
      * Daftar notifikasi admin (spec F: 1 daftar, klik -> detail).
      */
@@ -76,6 +80,7 @@ class NotificationController extends Controller
             'read_at' => $n->read_at?->toIso8601String(),
             'created_at' => $n->created_at?->toIso8601String(),
             'created_at_label' => $n->created_at?->locale('id')->diffForHumans(),
+            'destroy_url' => route('admin.notifications.destroy', $n),
         ])->all();
 
         // Hitungan per kategori mengikuti filter "belum dibaca" agar badge konsisten.
@@ -102,6 +107,8 @@ class NotificationController extends Controller
             'perPage' => $perPage,
             'pagination' => InertiaAdmin::pagination($paginator),
             'markAllReadUrl' => route('admin.notifications.mark-all-read'),
+            'prune_url' => route('admin.notifications.prune'),
+            'prune_days' => (int) config('operations.notification_retention_days', 90),
         ]);
     }
 
@@ -119,6 +126,54 @@ class NotificationController extends Controller
         AdminNotification::unread()->update(['read_at' => now()]);
 
         return redirect()->back();
+    }
+
+    /**
+     * Hapus satu notifikasi. Dipakai admin untuk membuang baris yang sudah tidak
+     * relevan, misalnya pesan lama yang isinya perlu dibersihkan. Tidak ada
+     * otorisasi tambahan di sini karena seluruh grup route admin sudah dijaga
+     * middleware `auth` + `admin`, sama seperti markRead.
+     */
+    public function destroy(Request $request, AdminNotification $notification): RedirectResponse
+    {
+        $this->logs->record('notification.deleted', 'admin_notification', $notification->id, [
+            'type' => $notification->type,
+            'title' => $notification->title,
+        ]);
+
+        $notification->delete();
+
+        return redirect()->back()->with('success', 'Notifikasi dihapus.');
+    }
+
+    /**
+     * Pangkas notifikasi lama: hanya baris yang SUDAH dibaca dan waktu bacanya
+     * lebih tua dari ambang retensi yang dihapus, jadi notifikasi belum dibaca
+     * tidak pernah tersentuh.
+     *
+     * Catatan: kolom entity_id pada event_logs NOT NULL, sedangkan pangkas adalah
+     * operasi massal tanpa satu baris tertentu. Nilai 0 dipakai sebagai penanda
+     * "tanpa entitas tunggal"; jumlah baris yang terhapus ada di payload.
+     */
+    public function prune(Request $request): RedirectResponse
+    {
+        $days = (int) config('operations.notification_retention_days', 90);
+        $cutoff = now()->subDays($days);
+
+        $deleted = AdminNotification::query()
+            ->whereNotNull('read_at')
+            ->where('read_at', '<', $cutoff)
+            ->delete();
+
+        $this->logs->record('notification.pruned', 'admin_notification', 0, [
+            'deleted' => $deleted,
+            'days' => $days,
+        ]);
+
+        return redirect()->back()->with(
+            'success',
+            $deleted.' notifikasi dibaca yang lebih tua dari '.$days.' hari dihapus.'
+        );
     }
 
     public function poll(Request $request): \Illuminate\Http\JsonResponse

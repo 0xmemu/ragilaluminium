@@ -78,8 +78,7 @@ class CatalogTaxonomy
             }
 
             if ($category) {
-                $legacyCodes = \App\Support\CatalogLabels::categoryCodesWithLegacy($category);
-                $rows = $rows->whereIn('product_category', $legacyCodes);
+                $rows = $rows->where('product_category', $category);
             }
 
             if ($rows->isEmpty()) {

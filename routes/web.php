@@ -349,6 +349,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    // Bersihkan notifikasi lama: hanya baris yang sudah dibaca dan lebih tua dari
+    // ambang retensi. Didaftarkan sebelum route ber-parameter supaya "prune"
+    // tidak tertangkap sebagai id notifikasi.
+    Route::post('notifications/prune', [NotificationController::class, 'prune'])->name('notifications.prune');
+    Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     // Customers (guest buyers - not admin users)
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');

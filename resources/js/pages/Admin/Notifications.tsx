@@ -1,6 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
+import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import {
@@ -63,6 +65,8 @@ export default function Notifications({
   category_counts = {},
   perPage = 20,
   pagination = null,
+  prune_url = null,
+  prune_days = 90,
 }: {
   notifications: NotificationItem[]
   unread_count: number
@@ -71,15 +75,37 @@ export default function Notifications({
   category_counts?: Record<string, number>
   perPage?: number
   pagination?: PaginationData | null
+  prune_url?: string | null
+  prune_days?: number
 }) {
   const capabilities = useAdminCapabilities()
   const canManageNotifications = can("notifications.manage", capabilities)
+  const [busyId, setBusyId] = React.useState<number | null>(null)
+  const [pruning, setPruning] = React.useState(false)
 
   function markRead(id: number) {
     if (!canManageNotifications) return
     router.post(routeUrl("admin.notifications.read", { notification: id }), {}, {
       preserveScroll: true,
       preserveState: true,
+    })
+  }
+
+  function destroyNotification(notification: NotificationItem) {
+    if (!canManageNotifications || !notification.destroy_url) return
+    setBusyId(notification.id)
+    router.delete(notification.destroy_url, {
+      preserveScroll: true,
+      onFinish: () => setBusyId(null),
+    })
+  }
+
+  function pruneOld() {
+    if (!canManageNotifications || !prune_url) return
+    setPruning(true)
+    router.post(prune_url, {}, {
+      preserveScroll: true,
+      onFinish: () => setPruning(false),
     })
   }
 
@@ -223,6 +249,26 @@ export default function Notifications({
                 Tandai semua dibaca
               </Button>
             ) : null}
+
+            {prune_url ? (
+              <ConfirmAction
+                trigger={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!canManageNotifications || pruning}
+                    title={canManageNotifications ? undefined : "Kamu tidak punya akses mengelola notifikasi"}
+                  >
+                    Bersihkan lama
+                  </Button>
+                }
+                title="Bersihkan notifikasi lama?"
+                description={`Menghapus notifikasi yang sudah dibaca lebih dari ${prune_days} hari. Notifikasi belum dibaca tidak dihapus.`}
+                confirmLabel="Bersihkan"
+                processing={pruning}
+                onConfirm={pruneOld}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -286,28 +332,51 @@ export default function Notifications({
                       {n.created_at_label ?? n.created_at}
                     </TableCell>
                     <TableCell className="px-3 py-2 text-right align-top">
-                      {isManualShippingReview(n) ? (
-                        <span className="flex flex-wrap items-center justify-end gap-2">
-                          <Link
-                            href={n.href ?? "#"}
-                            onClick={() => {
-                              if (!n.read_at) markRead(n.id)
-                            }}
-                            className="inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                          >
-                            Review ongkir
-                          </Link>
-                          <Link
-                            href={actionHref(n, "biaya-ongkir")}
-                            onClick={() => {
-                              if (!n.read_at) markRead(n.id)
-                            }}
-                            className="inline-flex h-7 items-center rounded-md border border-border px-2.5 text-xs font-medium text-foreground hover:bg-muted"
-                          >
-                            Edit biaya ongkir
-                          </Link>
-                        </span>
-                      ) : null}
+                      <span className="flex flex-wrap items-center justify-end gap-2">
+                        {isManualShippingReview(n) ? (
+                          <>
+                            <Link
+                              href={n.href ?? "#"}
+                              onClick={() => {
+                                if (!n.read_at) markRead(n.id)
+                              }}
+                              className="inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                            >
+                              Review ongkir
+                            </Link>
+                            <Link
+                              href={actionHref(n, "biaya-ongkir")}
+                              onClick={() => {
+                                if (!n.read_at) markRead(n.id)
+                              }}
+                              className="inline-flex h-7 items-center rounded-md border border-border px-2.5 text-xs font-medium text-foreground hover:bg-muted"
+                            >
+                              Edit biaya ongkir
+                            </Link>
+                          </>
+                        ) : null}
+
+                        {n.destroy_url ? (
+                          <ConfirmAction
+                            trigger={
+                              <button
+                                type="button"
+                                aria-label={`Hapus notifikasi: ${n.title}`}
+                                disabled={!canManageNotifications || busyId === n.id}
+                                title={canManageNotifications ? "Hapus notifikasi" : "Kamu tidak punya akses mengelola notifikasi"}
+                                className="inline-flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
+                              </button>
+                            }
+                            title="Hapus notifikasi ini?"
+                            description={`"${n.title}" akan dihapus permanen dari daftar notifikasi.`}
+                            confirmLabel="Hapus"
+                            processing={busyId === n.id}
+                            onConfirm={() => destroyNotification(n)}
+                          />
+                        ) : null}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}

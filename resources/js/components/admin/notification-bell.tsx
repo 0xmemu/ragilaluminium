@@ -40,6 +40,8 @@ export interface NotificationItem {
   read_at?: string | null
   created_at?: string | null
   created_at_label?: string | null
+  /** URL hapus baris ini; hanya dikirim halaman /admin/notifications. */
+  destroy_url?: string | null
 }
 
 /**

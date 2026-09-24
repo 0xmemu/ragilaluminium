@@ -196,8 +196,9 @@ class ModelProductPresentation
     }
 
     /**
-     * Kandidat kode product_category untuk satu kode kategori: kanonik + alias
-     * warisan (JENDELA => JENDELA/WINDOW/WINDOWS, dst). Data kanonik tidak berubah.
+     * Kandidat kode product_category untuk satu kode kategori. Kode kategori
+     * tabel `categories` identik dengan kode products.product_category, jadi
+     * hasilnya satu kode kanonik. Kode warisan tidak lagi dikenali.
      *
      * @return list<string>
      */
@@ -207,7 +208,9 @@ class ModelProductPresentation
             return [];
         }
 
-        return CatalogLabels::categoryCodesWithLegacy(CategoryUrl::codeToProductCode($category));
+        $code = CategoryUrl::codeToProductCode($category);
+
+        return $code === '' ? [] : [$code];
     }
 
     /** Kunci pasangan kategori|model dengan kategori sudah dinormalkan ke kanonik. */

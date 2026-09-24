@@ -6,61 +6,48 @@ use App\Models\Category;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Pemetaan terpusat antara kode kategori (products.product_category; internal
- * WINDOW/DOOR/BOUVEN) dan slug URL kanonik Bahasa Indonesia (categories.slug:
- * jendela/pintu/boven).
+ * Pemetaan terpusat antara kode kategori (`products.product_category`, kode
+ * kanonik Bahasa Indonesia JENDELA/PINTU/BOVEN) dan slug URL kanonik Bahasa
+ * Indonesia (`categories.slug`: jendela/pintu/boven).
  *
- * Kolom products.product_category TETAP kode internal; hanya slug URL yang
- * dipusatkan ke bentuk Indonesia lewat helper ini. Tabel `categories` (berkode
- * JENDELA/PINTU/BOVEN) adalah sumber slug kanonik.
+ * Kolom products.product_category memakai kode kanonik yang SAMA dengan
+ * `categories.code`; hanya slug URL yang berbeda bentuk (huruf kecil). Tabel
+ * `categories` adalah sumber tunggal slug kanonik. Kode warisan English
+ * (WINDOW/DOOR/BOUVEN) sudah tidak didukung di lapisan data; sisa tautan lama
+ * ditangani di lapisan URL lewat LEGACY_URL_REDIRECT.
  */
 class CategoryUrl
 {
-    /** Map kode categories (Indonesia) -> kode internal products.product_category. */
+    /** Kode kategori kanonik (identitas: categories.code == products.product_category). */
     private const CODE_TO_PRODUCT = [
-        // Kanonik Indonesia: identitas.
         'JENDELA' => 'JENDELA',
         'PINTU' => 'PINTU',
         'BOVEN' => 'BOVEN',
-        // Alias historis English -> kanonik.
-        'WINDOW' => 'JENDELA',
-        'WINDOWS' => 'JENDELA',
-        'DOOR' => 'PINTU',
-        'DOORS' => 'PINTU',
-        'BOUVEN' => 'BOVEN',
     ];
 
-    /** Fallback slug per kode internal, bila baris categories tidak ditemukan. */
-    private const FALLBACK_SLUG_BY_CODE = [
-        'JENDELA' => 'jendela',
-        'PINTU' => 'pintu',
-        'BOVEN' => 'boven',
-        'WINDOW' => 'jendela',
-        'WINDOWS' => 'jendela',
-        'DOOR' => 'pintu',
-        'DOORS' => 'pintu',
-        'BOUVEN' => 'boven',
-    ];
-
-    /** Alias slug English (back-compat) -> kode internal. */
-    private const ALIAS_SLUG_TO_CODE = [
-        'jendela' => 'JENDELA',
-        'window' => 'JENDELA',
-        'windows' => 'JENDELA',
-        'pintu' => 'PINTU',
-        'door' => 'PINTU',
-        'doors' => 'PINTU',
-        'boven' => 'BOVEN',
-        'bouven' => 'BOVEN',
+    /**
+     * Slug English lama yang masih dialihkan ke slug kanonik, HANYA di lapisan
+     * URL (redirect 301 anti duplicate-content). Peta ini tidak pernah dipakai
+     * untuk memetakan kode produk: kode warisan tidak lagi dikenali sebagai
+     * kategori data. Tambah baris di sini bila ada tautan lama lain.
+     *
+     * @var array<string, string>
+     */
+    private const LEGACY_URL_REDIRECT = [
+        'window' => 'jendela',
+        'windows' => 'jendela',
+        'door' => 'pintu',
+        'doors' => 'pintu',
+        'bouven' => 'boven',
     ];
 
     /** TTL cache (detik) peta slug baca-tabel. */
     private const CACHE_TTL = 300;
 
     /**
-     * Bedakan kode ke slug URL kanonik (Indonesia).
-     * Terima kode internal (WINDOW/DOOR/BOUVEN) maupun kode categories
-     * (JENDELA/PINTU/BOVEN); penelusuran tabel didahulukan, lalu fallback.
+     * Bedakan kode ke slug URL kanonik (Indonesia). Menerima kode kanonik
+     * (JENDELA/PINTU/BOVEN) maupun kode kategori baru dari tabel `categories`;
+     * penelusuran tabel didahulukan, lalu fallback bentuk huruf kecil.
      */
     public static function categoryToSlug(string $code): string
     {
@@ -75,13 +62,13 @@ class CategoryUrl
             }
         }
 
-        return self::FALLBACK_SLUG_BY_CODE[$key] ?? strtolower($key);
+        return strtolower($key);
     }
 
     /**
-     * Normalkan slug ke kode product_category internal (WINDOW/DOOR/BOUVEN).
-     * Terima slug Indonesia dari tabel categories + alias English back-compat.
-     * Return null bila tak dikenal.
+     * Normalkan slug ke kode product_category kanonik. Resolusi HANYA lewat
+     * tabel `categories.slug`; return null bila slug tidak dikenal. Alias
+     * English tidak lagi memetakan kode (penanganannya hanya redirect URL).
      */
     public static function categoryFromSlug(string $slug): ?string
     {
@@ -98,13 +85,15 @@ class CategoryUrl
             }
         }
 
-        return self::ALIAS_SLUG_TO_CODE[$key] ?? null;
+        return null;
     }
 
     /**
-     * Slug URL Indonesia kanonik untuk sebuah slug kategori.
-     * Terima slug Indonesia maupun alias English back-compat (window/windows/...).
-     * Return null bila slug tidak dikenal (bukan kategori).
+     * Slug URL Indonesia kanonik untuk sebuah slug kategori. Menerima slug
+     * kanonik dari tabel `categories` maupun alias URL English lama
+     * (window/windows/door/doors/bouven) agar tautan lama tetap dialihkan 301
+     * ke kanonik. Return null bila slug bukan kategori (tidak diakui tabel
+     * maupun peta URL).
      */
     public static function canonicalSlug(string $slug): ?string
     {
@@ -114,11 +103,11 @@ class CategoryUrl
         }
 
         $code = self::categoryFromSlug($key);
-        if ($code === null) {
-            return null;
+        if ($code !== null) {
+            return self::categoryToSlug($code);
         }
 
-        return self::categoryToSlug($code);
+        return self::LEGACY_URL_REDIRECT[$key] ?? null;
     }
 
     /**
@@ -136,9 +125,9 @@ class CategoryUrl
     }
 
     /**
-     * Terjemahkan kode kategori (categories.code, e.g. JENDELA) ke kode internal
-     * products.product_category (e.g. WINDOW). Kategori baru (tidak punya alias
-     * legacy) memetakan ke dirinya sendiri, sehingga admin bebas menambah kategori.
+     * Terjemahkan kode kategori (categories.code, mis. JENDELA) ke kode
+     * products.product_category. Keduanya kini identitas; helper tetap ada
+     * supaya kategori baru dapat memakai pemetaan sendiri bila diperlukan.
      */
     public static function codeToProductCode(string $code): string
     {
@@ -150,7 +139,7 @@ class CategoryUrl
     /**
      * Kode produk (products.product_category) yang didukung tabel categories.
      * Urutan mengikuti sort_order (kanonik navigasi). Dipakai untuk validasi
-     * dinamis di form produk / model produk, bukan daftar tetap WINDOW/DOOR.
+     * dinamis di form produk / model produk, bukan daftar tetap.
      */
     public static function productCategoryCodes(int $limit = 0): array
     {

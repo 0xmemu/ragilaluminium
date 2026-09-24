@@ -548,10 +548,10 @@ class ModelProductService
         ];
     }
     /**
-     * Kandidat kode product_category untuk satu kode kategori CMS: kode kanonik
-     * ditambah alias warisan (JENDELA => JENDELA/WINDOW/WINDOWS, dst). Dipakai
-     * supaya produk lama berkode English tetap ikut terhitung pada pencocokan
-     * model (kontrak audit admin 2026-09-23, B12). Data kanonik tidak berubah.
+     * Kandidat kode product_category untuk satu kode kategori CMS. Setelah kode
+     * warisan dihapus, kode kategori tabel `categories` identik dengan kode
+     * products.product_category, jadi hasilnya satu kode kanonik. Kode warisan
+     * (WINDOW/DOOR/BOUVEN) tidak lagi dikenali.
      *
      * @return list<string>
      */
@@ -561,7 +561,9 @@ class ModelProductService
             return [];
         }
 
-        return CatalogLabels::categoryCodesWithLegacy(CategoryUrl::codeToProductCode($category));
+        $code = CategoryUrl::codeToProductCode($category);
+
+        return $code === '' ? [] : [$code];
     }
 
     protected function pairKey(?string $category, ?string $model): string

@@ -49,9 +49,11 @@ Sumber tunggal kategori untuk: navigasi mega menu (`CatalogTaxonomy::buildMegaMe
 slug URL + pemetaan kode produk (`CategoryUrl::codeToProductCode`/`categoryToSlug`),
 pencarian (`CatalogSearch`), sitemap, breadcrumb, serta validasi form admin
 (`Rule::in(productCategoryCodes())` / `Rule::in(modelCodes())`).
-`products.product_category` tetap kolom kode internal (`VARCHAR`) untuk kompatibilitas
-(legacy `WINDOW`/`DOOR`/`BOUVEN` via `CategoryUrl::codeToProductCode`); **JANGAN dihapus**
-sebelum seluruh pemakai dipindah.
+`products.product_category` adalah kolom kode kategori kanonik (`VARCHAR`) yang
+nilainya SAMA dengan `categories.code` (JENDELA/PINTU/BOVEN). Alias warisan English
+(`WINDOW`/`DOOR`/`BOUVEN` + `WINDOWS`/`DOORS`) **sudah tidak didukung** di lapisan
+data (dihapus 2026-09-24); hanya slug URL English lama yang masih dialihkan 301 ke
+slug kanonik lewat `CategoryUrl` (`LEGACY_URL_REDIRECT`).
 
 Migration terkait:
 - `20260810_100926_create_categories_table.php` — create + seed WINDOW/DOOR/BOUVEN

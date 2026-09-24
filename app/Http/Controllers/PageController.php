@@ -190,7 +190,7 @@ class PageController extends Controller
         $published = CmsTestimonial::query()->published()->withScreenshot();
         if ($modelCategory && $modelCode) {
             $published->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
-                $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
+                $q->where('product_category', $modelCategory)
                     ->where('product_model', $modelCode);
             });
         }
@@ -365,7 +365,7 @@ class PageController extends Controller
         }
 
         $query->whereHas('product', function ($q) use ($modelCategory, $modelCode) {
-            $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($modelCategory))
+            $q->where('product_category', $modelCategory)
                 ->where('product_model', $modelCode);
         });
     }
@@ -607,7 +607,7 @@ class PageController extends Controller
         if ($category !== '' && $model !== '' && $category !== 'LAINNYA') {
             $row = CmsModelProduct::query()
                 ->active()
-                ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category))
+                ->where('product_category', $category)
                 ->where('product_model', $model)
                 ->first(['description', 'keywords']);
             if ($row) {

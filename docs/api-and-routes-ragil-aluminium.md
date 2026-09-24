@@ -224,6 +224,8 @@ Kontrak payload Performa Toko: report.sections berisi lima grup KPI, dan jumlah 
 - `GET /admin/notifications` -> `Admin\NotificationController@index`  (name: `admin.notifications.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/notifications/read-all` -> `Admin\NotificationController@markAllRead`  (name: `admin.notifications.mark-all-read`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/notifications/{notification}/read` -> `Admin\NotificationController@markRead`  (name: `admin.notifications.read`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/notifications/prune` -> `Admin\NotificationController@prune`  (name: `admin.notifications.prune`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `DELETE /admin/notifications/{notification}` -> `Admin\NotificationController@destroy`  (name: `admin.notifications.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders` -> `Admin\OrderController@index`  (name: `admin.orders.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders/export` -> `Admin\OrderController@export`  (name: `admin.orders.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders/{order}` -> `Admin\OrderController@show`  (name: `admin.orders.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

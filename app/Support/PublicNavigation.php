@@ -62,9 +62,10 @@ class PublicNavigation
     public static function canonicalRoute(string $route, array $params = []): array
     {
         $category = match ($route) {
-            'catalog.windows' => 'WINDOW',
-            'catalog.doors' => 'DOOR',
-            'catalog.bouven' => 'BOUVEN',
+            // Nama route warisan English -> kode kategori kanonik Indonesia.
+            'catalog.windows' => 'JENDELA',
+            'catalog.doors' => 'PINTU',
+            'catalog.bouven' => 'BOVEN',
             default => null,
         };
 

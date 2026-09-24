@@ -105,7 +105,7 @@ class CatalogController extends Controller
     protected function designHasProducts(string $categoryCode, string $modelCode, string $designCode): bool
     {
         return Product::visible()
-            ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($categoryCode))
+            ->where('product_category', $categoryCode)
             ->where('product_model', $modelCode)
             ->where('design_variant', $designCode)
             ->exists();
@@ -280,7 +280,7 @@ protected function category(?string $category, Request $request, string $mode = 
         ];
 
         $products = Product::visible()
-            ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
+            ->when($category, fn ($q) => $q->where('product_category', $category))
             ->when($promoOnly, function ($q) use ($promoAttributes) {
                 $ids = app(\App\Services\CampaignService::class)->promoProductIds();
                 if ($ids !== []) {
@@ -463,6 +463,8 @@ protected function category(?string $category, Request $request, string $mode = 
             default => '/products/all',
         };
 
+        // Satu permintaan = satu halaman kartu (paginate). Navigasi antar halaman
+        // memakai nomor halaman di UI; daftar TIDAK menumpuk antar halaman.
         $productCards = InertiaCatalog::productCards($products->getCollection());
         if ($youMightLike !== [] && (int) $products->currentPage() === 1) {
             $likeIds = collect($youMightLike)->pluck('id')->all();
@@ -539,7 +541,7 @@ protected function category(?string $category, Request $request, string $mode = 
             $dims = array_values(array_unique([(float) $matches[1], (float) $matches[2]]));
 
             $nearby = Product::visible()
-                ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
+                ->when($category, fn ($q) => $q->where('product_category', $category))
                 // ADR-021: dimensi milik produk.
                 ->where(function ($q) use ($dims) {
                     foreach ($dims as $dimension) {
@@ -610,7 +612,7 @@ protected function category(?string $category, Request $request, string $mode = 
         }
 
         $matchedModels = Product::visible()
-            ->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)));
+            ->when($category, fn ($q) => $q->where('product_category', $category));
         CatalogSearch::apply($matchedModels, $term);
         $matchedModels = $matchedModels
             ->limit(48)
@@ -620,7 +622,7 @@ protected function category(?string $category, Request $request, string $mode = 
             ->values()
             ->all();
 
-        $flashQuery = Product::visible()->when($category, fn ($q) => $q->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)));
+        $flashQuery = Product::visible()->when($category, fn ($q) => $q->where('product_category', $category));
         $this->scopeFlashSaleActive($flashQuery);
 
         $flashQuery->where(function ($inner) use ($term, $matchedModels) {
@@ -706,7 +708,7 @@ protected function category(?string $category, Request $request, string $mode = 
         }
 
         $products = Product::visible()
-            ->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($categoryCode))
+            ->where('product_category', $categoryCode)
             ->where('product_model', $modelCode)
             ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withPopularityScore()

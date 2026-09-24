@@ -15,4 +15,9 @@ return [
     ],
 
     'failed_job_retention_hours' => max(24, (int) env('QUEUE_FAILED_RETENTION_HOURS', 168)),
+
+    // Umur maksimum notifikasi admin yang sudah dibaca sebelum boleh dipangkas
+    // lewat tombol "Bersihkan lama" di /admin/notifications. Default 90 hari
+    // supaya konservatif; notifikasi belum dibaca tidak pernah dipangkas.
+    'notification_retention_days' => max(1, (int) env('NOTIFICATION_RETENTION_DAYS', 90)),
 ];

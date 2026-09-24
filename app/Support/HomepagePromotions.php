@@ -448,13 +448,19 @@ class HomepagePromotions
         ];
     }
 
+    /**
+     * Label kategori untuk copy slide. Kode kategori sudah kanonik
+     * (JENDELA/PINTU/BOVEN), jadi resolusi dipusatkan ke CatalogLabels supaya
+     * kategori dinamis dari tabel `categories` ikut terbaca. Kode tak dikenal
+     * jatuh ke 'Produk' (bukan kode mentah) agar copy tidak bocor kode internal.
+     */
     private static function categoryLabel(?string $category): string
     {
-        return match (strtoupper((string) $category)) {
-            'WINDOW', 'WINDOWS' => 'Jendela',
-            'DOOR', 'DOORS' => 'Pintu',
-            'BOUVEN', 'BOVEN' => 'Boven',
-            default => 'Produk',
-        };
+        $code = CatalogLabels::normalizeCategory($category);
+        if ($code === null) {
+            return 'Produk';
+        }
+
+        return CatalogLabels::category($code) ?: 'Produk';
     }
 }
