@@ -33,7 +33,7 @@ class InstallationGalleryController extends Controller
         $media = \App\Support\InstallationGallery::installationMedia();
 
         // Grouping: satu baris per model produk (Kasus A+B) + satu grup
-        // mandiri (Kasus C) — bukan per media agar daftar tetap ringkas.
+        // mandiri (Kasus C): bukan per media agar daftar tetap ringkas.
         $groups = collect();
 
         // Kontrak dua status: grup Aktif bila minimal satu medianya visible,

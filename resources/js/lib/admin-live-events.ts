@@ -173,7 +173,7 @@ export function useAdminLiveOrders(handlers: AdminLiveOrderHandlers): {
 export function liveConnectionLabel(state: AdminLiveConnectionState): string | null {
   switch (state) {
     case "connected":
-      return null // normal — jangan tampilkan apa pun
+      return null // normal, jangan tampilkan apa pun
     case "connecting":
       return "Menghubungkan pembaruan langsung…"
     case "reconnecting":

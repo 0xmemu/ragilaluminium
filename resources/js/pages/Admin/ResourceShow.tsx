@@ -82,7 +82,7 @@ export default function ResourceShow({
           disabled={actionForm.processing}
         >
           <Icon name="refresh" className="h-4 w-4" aria-hidden="true" />
-          Segarkan status
+          Muat ulang status
         </Button>
       ) : null}
     </>

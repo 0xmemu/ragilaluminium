@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Card } from "@/components/ui/card"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import AdminLayout from "@/layouts/admin-layout"
+import { routeUrl } from "@/lib/routes"
 
 interface Props {
   title: string
@@ -44,7 +45,7 @@ export default function Pairing({
   qrUrl,
   codeUrl,
   refreshQrUrl,
-  disconnectUrl = "/admin/whatsapp/pairing/disconnect",
+  disconnectUrl = routeUrl("admin.whatsapp.pairing.disconnect"),
   flash,
 }: Props) {
   const [status, setStatus] = useState<string>("unknown")

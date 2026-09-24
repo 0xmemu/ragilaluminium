@@ -119,7 +119,7 @@ export default function VoucherForm({
             <Link href={indexHref}>Batal</Link>
           </Button>
           <Button type="submit" form="voucher-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah"}
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
           </Button>
         </div>
       }
@@ -323,7 +323,7 @@ export default function VoucherForm({
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="starts_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mulai</label>
+                        <label htmlFor="starts_at" className="mb-1 block text-[10px] font-semibold tracking-wide text-muted-foreground">Mulai</label>
                         <Input
                           id="starts_at"
                           type="datetime-local"
@@ -333,7 +333,7 @@ export default function VoucherForm({
                         />
                       </div>
                       <div>
-                        <label htmlFor="ends_at" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Selesai (Kustom)</label>
+                        <label htmlFor="ends_at" className="mb-1 block text-[10px] font-semibold tracking-wide text-muted-foreground">Selesai (Kustom)</label>
                         <Input
                           id="ends_at"
                           type="datetime-local"

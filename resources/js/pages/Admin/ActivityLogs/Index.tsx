@@ -92,7 +92,7 @@ export default function ActivityLogsIndex({
         q: next?.q ?? q,
         sort: next?.sort ?? sort,
       },
-      { preserveState: true, preserveScroll: true },
+      { preserveState: true, preserveScroll: true, replace: true },
     )
   }
 
@@ -132,7 +132,7 @@ export default function ActivityLogsIndex({
           <Button asChild variant="secondary">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />
-              Unduh Excel
+              Ekspor
             </a>
           </Button>
         }

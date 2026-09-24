@@ -12,8 +12,14 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     side?: "left" | "right" | "bottom"
+    /**
+     * Nama aksesibel drawer. Radix memakai Title sebagai aria-labelledby, jadi
+     * teks ini yang dibaca screen reader saat drawer terbuka. Default dipakai
+     * satu-satunya pemanggil tanpa title (drawer navigasi admin di layout).
+     */
+    title?: string
   }
->(({ className, children, side = "right", ...props }, ref) => {
+>(({ className, children, side = "right", title = "Navigasi admin", ...props }, ref) => {
   const sides = {
     left: "inset-y-0 left-0 h-full w-[min(90vw,22rem)] border-r",
     right: "inset-y-0 right-0 h-full w-[min(90vw,26rem)] border-l",
@@ -32,7 +38,7 @@ const SheetContent = React.forwardRef<
         )}
         {...props}
       >
-        <DialogPrimitive.Title className="sr-only">Panel samping</DialogPrimitive.Title>
+        <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
         {children}
         <DialogPrimitive.Close className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground">
           <Icon name="x" className="h-4 w-4" aria-hidden="true" />

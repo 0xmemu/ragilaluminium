@@ -34,7 +34,7 @@ export default function ProfileEdit({
       description="Perbarui nama, username, dan password akun yang sedang login."
       actions={
         <Button type="submit" form="profile-form" disabled={form.processing}>
-          {form.processing ? "Menyimpan..." : "Simpan profil"}
+          {form.processing ? "Menyimpan..." : "Simpan"}
         </Button>
       }
     >

@@ -121,12 +121,19 @@ class ModelProductPresentation
     public static function inspirationByPair(array $pairs): array
     {
         $out = [];
+        $lookup = [];
         foreach ($pairs as $pair) {
             $key = self::pairKey($pair['category'] ?? null, $pair['model'] ?? null);
             if ($key === '') {
                 continue;
             }
             $out[$key] = ['count' => 0, 'href' => null];
+            // Kunci ternormalisasi (kode kanonik) dipakai untuk mencocokkan baris
+            // products yang mungkin masih memakai kode warisan (WINDOW/DOOR).
+            $normalized = self::normalizedPairKey($pair['category'] ?? null, $pair['model'] ?? null);
+            if ($normalized !== '') {
+                $lookup[$normalized][] = $key;
+            }
         }
 
         if ($out === [] || ! self::hasTable('product_media') || ! self::hasTable('products')) {
@@ -144,7 +151,7 @@ class ModelProductPresentation
                         continue;
                     }
                     $q->orWhere(function ($inner) use ($pair) {
-                        $inner->where('products.product_category', $pair['category'])
+                        $inner->whereIn('products.product_category', self::categoryCandidates($pair['category']))
                             ->where('products.product_model', $pair['model']);
                     });
                 }
@@ -157,21 +164,60 @@ class ModelProductPresentation
             ])
             ->get();
 
+        // Agregasi per kunci ternormalisasi (kode kanonik) supaya baris products
+        // yang masih memakai kode warisan (WINDOW/DOOR) ikut terhitung dan tidak
+        // dobel saat satu model punya baris kanonik dan baris warisan sekaligus.
+        $aggregated = [];
         foreach ($rows as $row) {
-            $key = self::pairKey((string) $row->product_category, (string) $row->product_model);
-            if ($key === '' || ! isset($out[$key])) {
+            $normalized = self::normalizedPairKey((string) $row->product_category, (string) $row->product_model);
+            if ($normalized === '' || ! isset($lookup[$normalized])) {
                 continue;
             }
-            $out[$key] = [
-                'count' => (int) $row->photo_count,
-                'href' => InstallationGallery::modelHref(
-                    (string) $row->product_category,
-                    (string) $row->product_model,
-                ) ?: route('installation.index', absolute: false),
-            ];
+
+            $aggregated[$normalized] ??= ['count' => 0, 'href' => null];
+            $aggregated[$normalized]['count'] += (int) $row->photo_count;
+            $aggregated[$normalized]['href'] ??= InstallationGallery::modelHref(
+                (string) $row->product_category,
+                (string) $row->product_model,
+            ) ?: route('installation.index', absolute: false);
+        }
+
+        foreach ($lookup as $normalized => $keys) {
+            $data = $aggregated[$normalized] ?? null;
+            if ($data === null) {
+                continue;
+            }
+            foreach ($keys as $key) {
+                $out[$key] = $data;
+            }
         }
 
         return $out;
+    }
+
+    /**
+     * Kandidat kode product_category untuk satu kode kategori: kanonik + alias
+     * warisan (JENDELA => JENDELA/WINDOW/WINDOWS, dst). Data kanonik tidak berubah.
+     *
+     * @return list<string>
+     */
+    private static function categoryCandidates(?string $category): array
+    {
+        if ($category === null || $category === '') {
+            return [];
+        }
+
+        return CatalogLabels::categoryCodesWithLegacy(CategoryUrl::codeToProductCode($category));
+    }
+
+    /** Kunci pasangan kategori|model dengan kategori sudah dinormalkan ke kanonik. */
+    private static function normalizedPairKey(?string $category, ?string $model): string
+    {
+        if (! filled($category) || ! filled($model)) {
+            return '';
+        }
+
+        return strtoupper(CategoryUrl::codeToProductCode((string) $category)).'|'.strtoupper((string) $model);
     }
 
     public static function pairKey(?string $category, ?string $model): string

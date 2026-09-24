@@ -8,6 +8,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/admin/ui/table"
 import type { Pagination as PaginationData } from "@/types"
+import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
 export interface PickerProduct {
@@ -41,7 +42,7 @@ export function ProductPicker({
   onSelect,
   maxSelection = 100,
   initialSelection = [],
-  endpoint = "/admin/promotions/products",
+  endpoint = routeUrl("admin.promotions.products"),
   className,
 }: ProductPickerProps) {
   const [search, setSearch] = React.useState("")

@@ -1930,7 +1930,7 @@ export default function StorePerformance({
             disabled={refreshing}
           >
             <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-            {refreshing ? "Memuat..." : "Refresh data"}
+            {refreshing ? "Memuat..." : "Muat ulang"}
           </Button>
           <div className="relative" ref={exportRef}>
             <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
@@ -1976,7 +1976,7 @@ export default function StorePerformance({
                   onClick={() => setExportOpen(false)}
                   className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                 >
-                  Unduh XLSX
+                  Ekspor
                 </a>
               </div>
             ) : null}
@@ -3104,7 +3104,11 @@ export default function StorePerformance({
           if (!open) setDetailCategory(null)
         }}
       >
-        <SheetContent side="right" className="w-[min(94vw,44rem)] sm:max-w-none">
+        <SheetContent
+          side="right"
+          title="Detail kategori performa toko"
+          className="w-[min(94vw,44rem)] sm:max-w-none"
+        >
           {detailCategory && detailIsi ? (
             <CategoryDetailPanel
               category={detailCategory}

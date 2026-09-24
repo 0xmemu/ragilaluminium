@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { EmptyState } from "@/components/admin/ui/empty-state"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
@@ -670,6 +670,12 @@ export default function OrdersIndex({
   // bukan satu per baris.
   const [replyTarget, setReplyTarget] = React.useState<ReviewReplyTarget | null>(null)
   const [refreshing, setRefreshing] = React.useState(false)
+  // Galat muat ulang daftar: muncul sebagai ErrorState di area daftar, bukan
+  // sekadar teks, supaya admin punya tombol coba lagi di tempat yang sama.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  // Penanda muat ulang sedang berjalan. Dipakai supaya kegagalan aksi lain di
+  // halaman ini tidak ikut memunculkan panel galat daftar.
+  const reloadInFlight = React.useRef(false)
   const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
   const [exportFrom, setExportFrom] = React.useState("")
   const [exportTo, setExportTo] = React.useState("")
@@ -773,6 +779,38 @@ export default function OrdersIndex({
   function resetAllFilters() {
     router.get(routeUrl("admin.orders.index"), {}, { preserveState: false, preserveScroll: true })
   }
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshOrders() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      only: ["orders", "summary", "tabs"],
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Daftar pesanan belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
+    })
+  }
+
+  // Kegagalan yang bukan galat validasi (respons 500 atau koneksi putus) tidak
+  // masuk ke onError, tetapi Inertia tetap memancarkan event. Keduanya dipetakan
+  // ke panel galat daftar, dan hanya saat muat ulang memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Daftar pesanan belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
 
   function buildExportUrl(): string {
     try {
@@ -906,17 +944,11 @@ export default function OrdersIndex({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => {
-              setRefreshing(true)
-              router.reload({
-                only: ["orders", "summary", "tabs"],
-                onFinish: () => setRefreshing(false),
-              })
-            }}
+            onClick={refreshOrders}
             disabled={refreshing}
           >
             <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-            {refreshing ? "Memuat..." : "Refresh data"}
+            {refreshing ? "Memuat..." : "Muat ulang"}
           </Button>
 
           <div className="relative">
@@ -947,7 +979,7 @@ export default function OrdersIndex({
                   onClick={() => setExportOpen(false)}
                   className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                 >
-                  Unduh XLSX
+                  Ekspor
                 </a>
               </div>
             ) : null}
@@ -1041,7 +1073,7 @@ export default function OrdersIndex({
           value: q,
           onChange: setQ,
           onSubmit: submitSearch,
-          placeholder: "Cari nomor order, nama penerima, no. HP, provinsi, kota...",
+          placeholder: "Cari nomor order, penerima, atau kota...",
         }}
         sort={
           <Select
@@ -1212,7 +1244,17 @@ export default function OrdersIndex({
           </div>
         ) : null}
 
-        {orders.length ? (
+        {refreshError ? (
+          <ErrorState
+            title="Daftar pesanan gagal dimuat ulang"
+            description={refreshError}
+            action={
+              <Button variant="outline" size="sm" onClick={refreshOrders} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : orders.length ? (
           <>
             <div className="overflow-x-auto">
               <div className="space-y-3 xl:min-w-[60rem]">

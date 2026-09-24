@@ -130,7 +130,7 @@ export default function ImportsIndex({
           className={cn("size-3.5", refreshing ? "animate-spin" : "")}
           aria-hidden="true"
         />
-        <span>{refreshing ? "Memuat..." : "Refresh data"}</span>
+        <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
       </Button>
 
       <Button asChild size="sm">
@@ -273,7 +273,7 @@ export default function ImportsIndex({
                           <p className="truncate font-medium text-foreground" title={item.source_file_name}>
                             {item.source_file_name}
                           </p>
-                          <p className="text-[10px] text-muted-foreground uppercase">Format Excel</p>
+                          <p className="text-[10px] text-muted-foreground">Format Excel</p>
                         </div>
                       </div>
                     </td>

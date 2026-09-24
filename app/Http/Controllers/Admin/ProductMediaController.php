@@ -152,7 +152,7 @@ class ProductMediaController extends Controller
             'is_installation' => ['boolean'],
             'installation_caption' => ['nullable', 'string', 'max:280'],
             'visibility' => ['required', 'in:visible,archived,hidden'],
-            // §6 boundary: batasi jenis file — bukan sekadar ukuran. File arbitrer
+            // §6 boundary: batasi jenis file, bukan sekadar ukuran. File arbitrer
             // tidak boleh masuk R2 (admin-only, tapi mimes menutup celah upload bebas).
             'upload' => ['nullable', 'file', 'max:51200', 'mimes:jpeg,png,webp,gif,mp4,webm'],
             'product_variant_id' => [

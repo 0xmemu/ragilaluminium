@@ -37,10 +37,12 @@ export function ErrorState({
   title = "Konten belum dapat dimuat",
   description = "Muat ulang halaman atau coba kembali beberapa saat lagi.",
   action,
+  className,
 }: {
   title?: string
   description?: string
   action?: ReactNode
+  className?: string
 }) {
   return (
     <EmptyState
@@ -48,7 +50,7 @@ export function ErrorState({
       title={title}
       description={description}
       action={action}
-      className="border-destructive/25 bg-destructive/5"
+      className={cn("border-destructive/25 bg-destructive/5", className)}
     />
   )
 }

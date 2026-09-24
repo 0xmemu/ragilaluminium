@@ -36,7 +36,9 @@ class CategoryUrl
         'PINTU' => 'pintu',
         'BOVEN' => 'boven',
         'WINDOW' => 'jendela',
+        'WINDOWS' => 'jendela',
         'DOOR' => 'pintu',
+        'DOORS' => 'pintu',
         'BOUVEN' => 'boven',
     ];
 

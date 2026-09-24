@@ -94,7 +94,11 @@ export function resolveAdminBreadcrumb(
 }
 
 function routeMatches(pattern: string, routeName: string): boolean {
-  const p = pattern.replace(/\/\*$/g, "").replace(/\*/g, ".*")
+  // Titik dan karakter regex lain di-escape supaya pola seperti
+  // admin.shipping.* tidak ikut mencocokkan admin.shipping-subsidy.*
+  // (penyebab breadcrumb Subsidi Ongkir memuat grup Pengiriman palsu).
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+  const p = escaped.replace(/\/\*$/g, "").replace(/\*/g, ".*")
   const regex = new RegExp(`^${p}$`)
   return regex.test(routeName)
 }

@@ -131,8 +131,8 @@ class CatalogLabels
     {
         $code = strtoupper(trim($code));
         $alias = [
-            'JENDELA' => ['WINDOW'],
-            'PINTU' => ['DOOR'],
+            'JENDELA' => ['WINDOW', 'WINDOWS'],
+            'PINTU' => ['DOOR', 'DOORS'],
             'BOVEN' => ['BOUVEN'],
         ][$code] ?? [];
 

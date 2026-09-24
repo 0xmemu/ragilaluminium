@@ -17,6 +17,14 @@ import { adminPageGuides, type AdminPageGuide } from "@/config/admin-page-guides
  * route admin; halaman tanpa panduan terdaftar tidak menampilkan tombol.
  */
 export function PageGuide({ routeName, className }: { routeName?: string; className?: string }) {
+  const guide = React.useMemo(() => lookupGuide(routeName), [routeName])
+
+  // Halaman tanpa panduan terdaftar tidak menampilkan tombol sama sekali,
+  // bukan tombol yang membuka dropdown kosong. Layout memakai flex dengan
+  // breadcrumb, jadi mengembalikan null hanya menyisakan breadcrumb (tanpa
+  // kolom kosong). Lihat komentar berkas di atas.
+  if (!guide) return null
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -33,26 +41,16 @@ export function PageGuide({ routeName, className }: { routeName?: string; classN
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0">
-        <PageGuideContent routeName={routeName} />
+        <PageGuideContent guide={guide} />
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
 
-function PageGuideContent({ routeName }: { routeName?: string }) {
-  const guide = React.useMemo(() => lookupGuide(routeName), [routeName])
-
-  if (!guide) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Panduan untuk halaman ini belum tersedia.
-      </div>
-    )
-  }
-
+function PageGuideContent({ guide }: { guide: AdminPageGuide }) {
   return (
     <div className="p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-primary">
+      <p className="text-xs font-bold text-primary">
         Panduan {guide.title}
       </p>
       <p className="mt-2 text-sm leading-6 text-foreground">{guide.summary}</p>
