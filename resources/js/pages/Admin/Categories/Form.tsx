@@ -1,9 +1,9 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -70,22 +70,18 @@ export default function CategoryForm({ title, description, category, submitUrl, 
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="category-form" onSubmit={submit} className="w-full space-y-6">
+      <form id="category-form" onSubmit={submit} className="w-full max-w-5xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
           {/* Kolom Kiri / Form Utama */}
-          <div className="space-y-6 min-w-0">
+          <div className="min-w-0 space-y-6">
             {/* 1. Identitas Kategori */}
-            <Card className="overflow-hidden border border-border bg-card p-5 sm:p-6 shadow-sm">
-              <div className="border-b border-border/70 pb-4 mb-5">
-                <h2 className="text-base font-bold text-foreground">Identitas Kategori</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Informasi dasar, penamaan, dan struktur URL untuk kategori di katalog website.
-                </p>
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
+            <SectionCard
+              title="Identitas Kategori"
+              description="Informasi dasar, penamaan, dan struktur URL untuk kategori di katalog website."
+            >
+              <FieldGrid>
                 <Field
                   id="cat-name"
                   label="Nama Kategori"
@@ -117,7 +113,7 @@ export default function CategoryForm({ title, description, category, submitUrl, 
                   hint={
                     category
                       ? (category.products_count ?? 0) > 0
-                        ? "Kode terkunci karena sudah dipakai " + (category.products_count ?? 0) + " produk. Kode ini dipakai sebagai penanda kategori di katalog."
+                        ? `Kode terkunci karena sudah dipakai ${category.products_count} produk. Kode ini menjadi awalan SKU produk di dalamnya.`
                         : "Kode identifikasi internal kategori di sistem."
                       : "Dihasilkan otomatis oleh sistem dari nama kategori (tidak perlu diisi manual)."
                   }
@@ -178,18 +174,14 @@ export default function CategoryForm({ title, description, category, submitUrl, 
                     placeholder="0"
                   />
                 </Field>
-              </div>
-            </Card>
+              </FieldGrid>
+            </SectionCard>
 
             {/* 2. SEO & Meta Search */}
-            <Card className="overflow-hidden border border-border bg-card p-5 sm:p-6 shadow-sm">
-              <div className="border-b border-border/70 pb-4 mb-5">
-                <h2 className="text-base font-bold text-foreground">Optimasi Mesin Pencari (SEO)</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Kelola bagaimana halaman kategori ini tampil di hasil pencarian Google.
-                </p>
-              </div>
-
+            <SectionCard
+              title="Optimasi Mesin Pencari (SEO)"
+              description="Kelola bagaimana halaman kategori ini tampil di hasil pencarian Google."
+            >
               <div className="space-y-4">
                 <Field
                   id="cat-seo-title"
@@ -227,7 +219,7 @@ export default function CategoryForm({ title, description, category, submitUrl, 
                 </Field>
 
                 {/* Pratinjau SERP Google */}
-                <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4 space-y-1.5">
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1.5">
                   <p className="text-[11px] font-semibold text-muted-foreground">
                     Pratinjau Hasil Pencarian Google
                   </p>
@@ -239,87 +231,73 @@ export default function CategoryForm({ title, description, category, submitUrl, 
                   </p>
                   <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                     {form.data.seo_description ||
-                      "Jual produk aluminium berkualitas tinggi langsung dari workshop Ragil Aluminium. Bergaransi resmi dan pengiriman aman ke seluruh Indonesia."}
+                      "Jual produk aluminium berkualitas tinggi langsung dari workshop Ragil Aluminium. Bergaransi resmi dan pengerjaan presisi."}
                   </p>
                 </div>
               </div>
-            </Card>
+            </SectionCard>
           </div>
 
           {/* Kolom Kanan / Sidebar Info & Status */}
           <aside className="space-y-6 xl:sticky xl:top-24">
             {/* Status Card */}
-            <Card className="p-5 border border-border bg-card shadow-sm space-y-4">
-              <div className="flex items-center justify-between gap-2 border-b border-border/70 pb-3">
-                <h3 className="text-sm font-bold text-foreground">Status Kategori</h3>
-                <StatusBadge status={form.data.is_active ? "active" : "inactive"} />
-              </div>
-
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={form.data.is_active}
-                  onChange={(e) => form.setData("is_active", e.target.checked)}
-                  className="mt-0.5 size-4 rounded border-border text-primary accent-primary"
-                />
-                <div className="text-xs leading-5">
-                  <span className="font-semibold text-foreground">Kategori Aktif</span>
-                  <p className="text-muted-foreground">
-                    Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik.
-                  </p>
-                </div>
-              </label>
-
-              <div className="pt-2 border-t border-border/60 flex flex-col gap-2">
-                <Button type="submit" form="category-form" disabled={form.processing} className="w-full">
-                  {form.processing
-                    ? "Menyimpan..."
-                    : category
-                    ? "Simpan Perubahan"
-                    : "Simpan Kategori"}
-                </Button>
-                <Button asChild variant="secondary" className="w-full">
-                  <Link href={backUrl}>Kembali ke Kategori</Link>
-                </Button>
-              </div>
-            </Card>
+            <SectionCard
+              title="Status Kategori"
+              action={<StatusBadge status={form.data.is_active ? "active" : "inactive"} />}
+            >
+              <CheckboxField
+                id="cat-is-active"
+                checked={form.data.is_active}
+                onChange={(checked) => form.setData("is_active", checked)}
+                label={
+                  <div className="text-xs leading-5">
+                    <span className="font-semibold text-foreground">Kategori Aktif</span>
+                    <p className="text-muted-foreground">
+                      Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik.
+                    </p>
+                  </div>
+                }
+                standalone
+              />
+            </SectionCard>
 
             {/* Hubungan Produk & Link Eksternal */}
             {category ? (
-              <Card className="p-5 border border-border bg-card shadow-sm space-y-3">
-                <h3 className="text-sm font-bold text-foreground">Produk Terkait</h3>
-                <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
-                  <p className="text-muted-foreground">Jumlah produk aktif:</p>
-                  <p className="text-lg font-bold text-foreground tabular-nums">
-                    {category.products_count ?? 0}{" "}
-                    <span className="text-xs font-normal text-muted-foreground">produk</span>
-                  </p>
-                </div>
+              <SectionCard title="Produk Terkait">
+                <div className="space-y-3">
+                  <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
+                    <p className="text-muted-foreground">Jumlah produk aktif:</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums">
+                      {category.products_count ?? 0}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">produk</span>
+                    </p>
+                  </div>
 
-                <div className="flex flex-col gap-2 pt-1">
-                  {category.products_url ? (
-                    <Button asChild variant="outline" size="sm" className="w-full justify-start text-xs">
-                      <Link href={category.products_url}>
-                        <Icon name="package" className="size-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" />
-                        Lihat produk di kategori ini
-                      </Link>
-                    </Button>
-                  ) : null}
+                  <div className="flex flex-col gap-2 pt-1">
+                    {category.products_url ? (
+                      <Button asChild variant="outline" size="sm" className="w-full justify-start text-xs">
+                        <Link href={category.products_url}>
+                          <Icon name="package" className="size-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" />
+                          Lihat produk di kategori ini
+                        </Link>
+                      </Button>
+                    ) : null}
 
-                  {category.public_url ? (
-                    <Button asChild variant="ghost" size="sm" className="w-full justify-start text-xs">
-                      <a href={category.public_url} target="_blank" rel="noreferrer">
-                        <Icon
-                          name="arrow-up-right"
-                          className="size-3.5 mr-1.5 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        Buka halaman publik
-                      </a>
-                    </Button>
-                  ) : null}
+                    {category.public_url ? (
+                      <Button asChild variant="ghost" size="sm" className="w-full justify-start text-xs">
+                        <a href={category.public_url} target="_blank" rel="noreferrer">
+                          <Icon
+                            name="arrow-up-right"
+                            className="size-3.5 mr-1.5 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                          Buka halaman publik
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-              </Card>
+              </SectionCard>
             ) : null}
           </aside>
         </div>

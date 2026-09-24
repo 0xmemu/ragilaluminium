@@ -1,7 +1,7 @@
 import { Head, useForm } from "@inertiajs/react"
-
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -39,7 +39,6 @@ export default function ProfileEdit({
       }
     >
       <Head title="Profil Saya | Admin" />
-
       <form
         id="profile-form"
         onSubmit={(event) => {
@@ -48,23 +47,21 @@ export default function ProfileEdit({
             onSuccess: () => form.reset("current_password", "password", "password_confirmation"),
           })
         }}
-        className="mx-auto max-w-4xl space-y-6"
+        className="w-full max-w-4xl space-y-6"
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border pb-5">
-            <div>
-              <p className="text-xs font-bold tracking-tight text-muted-foreground">Peran & status</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">{profile.role_label}</p>
+        <SectionCard
+          title="Identitas Akun"
+          description="Semua admin setara; hak akses login diatur lewat status aktif/nonaktif."
+          action={
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">{profile.role_label}</span>
+              <StatusBadge status={profile.status} />
             </div>
-            <StatusBadge status={profile.status} />
-            <p className="w-full text-xs text-muted-foreground sm:ml-auto sm:w-auto">
-              Semua admin setara; akses login diatur lewat status aktif/nonaktif.
-            </p>
-          </div>
-
-          <div className="mt-4 grid gap-4">
+          }
+        >
+          <FieldGrid>
             <Field id="profile-name" label="Nama" required error={form.errors.name}>
               <Input
                 value={form.data.name}
@@ -72,6 +69,7 @@ export default function ProfileEdit({
                 autoComplete="name"
               />
             </Field>
+
             <Field
               id="profile-username"
               label="Username"
@@ -85,52 +83,56 @@ export default function ProfileEdit({
                 autoComplete="username"
               />
             </Field>
-          </div>
-        </section>
+          </FieldGrid>
+        </SectionCard>
 
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
-          <h2 className="text-base font-semibold tracking-tight">Ganti password</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti.
-          </p>
-          <div className="mt-4 grid gap-4">
+        <SectionCard
+          title="Ganti Password"
+          description="Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti."
+        >
+          <div className="space-y-4">
             <Field id="profile-current-password" label="Password saat ini" error={form.errors.current_password}>
               <Input
                 type="password"
                 value={form.data.current_password}
                 onChange={(event) => form.setData("current_password", event.target.value)}
                 autoComplete="current-password"
+                placeholder="Masukkan password saat ini untuk konfirmasi"
               />
             </Field>
-            <Field
-              id="profile-password"
-              label="Password baru"
-              error={form.errors.password}
-              hint="Minimal 8 karakter."
-            >
-              <Input
-                type="password"
-                value={form.data.password}
-                onChange={(event) => form.setData("password", event.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-            <Field
-              id="profile-password-confirmation"
-              label="Ulangi password baru"
-              error={form.errors.password_confirmation}
-            >
-              <Input
-                type="password"
-                value={form.data.password_confirmation}
-                onChange={(event) => form.setData("password_confirmation", event.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-          </div>
-        </section>
 
-        
+            <FieldGrid>
+              <Field
+                id="profile-password"
+                label="Password baru"
+                error={form.errors.password}
+                hint="Minimal 8 karakter."
+              >
+                <Input
+                  type="password"
+                  value={form.data.password}
+                  onChange={(event) => form.setData("password", event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Password baru"
+                />
+              </Field>
+
+              <Field
+                id="profile-password-confirmation"
+                label="Ulangi password baru"
+                error={form.errors.password_confirmation}
+              >
+                <Input
+                  type="password"
+                  value={form.data.password_confirmation}
+                  onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Ulangi password baru"
+                />
+              </Field>
+            </FieldGrid>
+          </div>
+        </SectionCard>
       </form>
     </AdminLayout>
   )

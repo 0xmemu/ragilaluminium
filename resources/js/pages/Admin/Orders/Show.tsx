@@ -1191,10 +1191,80 @@ export default function OrderShow({
     order.shipping_records[0] ??
     null
 
+  const pageActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {order.whatsapp_status_url || order.whatsapp_url ? (
+        <Button asChild variant="secondary" size="sm" className="shrink-0">
+          <a
+            href={order.whatsapp_status_url || order.whatsapp_url || "#"}
+            target="_blank"
+            rel="noreferrer"
+            title="Chat WhatsApp pelanggan dengan naskah sesuai status pesanan"
+          >
+            <Icon name="whatsapp" className="size-3.5 text-success" aria-hidden="true" />
+            Chat WA
+          </a>
+        </Button>
+      ) : null}
+      {order.testimonial && order.testimonial.can_reply && (order.order_status === "delivered" || order.order_status === "completed") ? (
+        <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setReviewReplyOpen(true)}>
+          <Icon name="chat-circle" className="size-3.5" aria-hidden="true" />
+          {order.testimonial.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
+        </Button>
+      ) : null}
+      {secondaryAction?.href ? (
+        <Button asChild variant="secondary" size="sm" className="shrink-0">
+          <a href={secondaryAction.href}>{secondaryAction.label}</a>
+        </Button>
+      ) : null}
+      {secondaryAction?.next_status ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={statusBusy}
+          onClick={() => updateStatus(secondaryAction.next_status!)}
+          className="shrink-0"
+        >
+          {statusBusy ? "Memproses..." : secondaryAction.label}
+        </Button>
+      ) : null}
+      {primaryAction?.next_status ? (
+        <Button
+          size="sm"
+          disabled={statusBusy || !can("orders.process", capabilities)}
+          onClick={runPrimary}
+          className="shrink-0"
+          title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+        >
+          {statusBusy ? "Memproses..." : primaryAction.label}
+        </Button>
+      ) : null}
+      {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
+        can("orders.cancel", capabilities) ? (
+          <ConfirmAction
+            trigger={
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                Batalkan pesanan
+              </Button>
+            }
+            title={ORDER_CANCEL_DIALOG.title}
+            description={ORDER_CANCEL_DIALOG.description}
+            confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
+            processing={statusBusy}
+            reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
+            reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
+            onConfirm={(reason) => updateStatus("cancelled", reason)}
+          />
+        ) : null
+      ) : null}
+    </div>
+  )
+
   return (
     <AdminLayout
       title={`Pesanan ${order.order_number}`}
       description={order.customer_name}
+      actions={pageActions}
       backUrl={routeUrl("admin.orders.index")}
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
@@ -1397,77 +1467,7 @@ export default function OrderShow({
           </div>
         </div>
       ) : null}
-      <Card className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-        {primaryAction?.next_status ? (
-          <Button
-            disabled={statusBusy || !can("orders.process", capabilities)}
-            onClick={runPrimary}
-            className="shrink-0"
-            title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
-          >
-            {statusBusy ? "Memproses..." : primaryAction.label}
-          </Button>
-        ) : null}
-
-        {secondaryAction?.href ? (
-          <Button asChild variant="secondary" className="shrink-0">
-            <a href={secondaryAction.href}>{secondaryAction.label}</a>
-          </Button>
-        ) : null}
-
-        {secondaryAction?.next_status ? (
-          <Button
-            variant="secondary"
-            disabled={statusBusy}
-            onClick={() => updateStatus(secondaryAction.next_status!)}
-            className="shrink-0"
-          >
-            {statusBusy ? "Memproses..." : secondaryAction.label}
-          </Button>
-        ) : null}
-
-
-
-        {order.whatsapp_status_url || order.whatsapp_url ? (
-          <Button asChild variant="secondary" className="shrink-0">
-            <a
-              href={order.whatsapp_status_url || order.whatsapp_url || "#"}
-              target="_blank"
-              rel="noreferrer"
-              title="Chat WhatsApp pelanggan dengan naskah sesuai status pesanan"
-            >
-              <Icon name="whatsapp" className="size-4 text-success" aria-hidden="true" />
-              Chat WA
-            </a>
-          </Button>
-        ) : null}
-
-        {order.testimonial && order.testimonial.can_reply && (order.order_status === "delivered" || order.order_status === "completed") ? (
-          <Button variant="secondary" className="shrink-0" onClick={() => setReviewReplyOpen(true)}>
-            <Icon name="chat-circle" className="size-4" aria-hidden="true" />
-            {order.testimonial.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
-          </Button>
-        ) : null}
-
-        {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
-          can("orders.cancel", capabilities) ? (
-            <ConfirmAction
-              trigger={
-                <Button variant="ghost" className="text-destructive hover:text-destructive">
-                  Batalkan pesanan
-                </Button>
-              }
-              title={ORDER_CANCEL_DIALOG.title}
-              description={ORDER_CANCEL_DIALOG.description}
-              confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
-              processing={statusBusy}
-              reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
-              reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
-              onConfirm={(reason) => updateStatus("cancelled", reason)}
-            />
-          ) : null
-        ) : null}
-      </Card>
+      
 
       {/* Popup input resi: form + verifikasi alamat & pelanggan.
           Sistem tidak menilai benar/salah; admin memastikan data sebelum menyimpan. */}

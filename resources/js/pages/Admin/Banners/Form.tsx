@@ -1,12 +1,11 @@
-import { Head, Link, useForm, usePage } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { Icon } from "@/components/shared/icon"
+import { MediaLibrarySelect } from "@/components/admin/media-library-select"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import AdminLayout from "@/layouts/admin-layout"
-import type { SharedPageProps } from "@/types"
 
 interface BannerFormData {
   id?: number
@@ -15,6 +14,7 @@ interface BannerFormData {
   link_url?: string | null
   sort_order: number
   published: boolean
+  media_asset_id?: number | null
 }
 
 export default function BannerForm({
@@ -22,7 +22,7 @@ export default function BannerForm({
   submitUrl,
   method,
   indexHref,
-  presignUrl,
+  _presignUrl,
   backUrl
 }: {
   backUrl?: string | null
@@ -30,7 +30,7 @@ export default function BannerForm({
   submitUrl: string
   method: "post" | "put"
   indexHref: string
-  presignUrl: string
+  _presignUrl?: string
 }) {
   const isEdit = Boolean(banner?.id)
   const form = useForm<{
@@ -38,141 +38,57 @@ export default function BannerForm({
     link_url: string
     sort_order: number
     published: boolean
-    image: File | null
-    object_key: string
+    media_asset_id: string
   }>({
     title: banner?.title ?? "",
     link_url: banner?.link_url ?? "",
     sort_order: banner?.sort_order ?? 0,
     published: banner?.published ?? false,
-    image: null,
-    object_key: "",
+    media_asset_id: banner?.media_asset_id ? String(banner.media_asset_id) : "",
   })
-  const { csrf } = usePage<SharedPageProps>().props
-  const [uploading, setUploading] = React.useState(false)
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null)
-  const [directError, setDirectError] = React.useState<string | null>(null)
+  const previewUrl = banner?.image_url ?? null
 
-  const previewFile = form.data.image
-  const objectUrl = React.useMemo(
-    () => (previewFile ? URL.createObjectURL(previewFile) : null),
-    [previewFile],
-  )
-
-  React.useEffect(() => {
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [objectUrl])
-
-  const previewUrl = objectUrl ?? banner?.image_url ?? null
-
-  async function uploadDirect(file: File) {
-    setUploading(true)
-    setUploadProgress(0)
-    setDirectError(null)
-    try {
-      const presignRes = await fetch(presignUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "X-CSRF-TOKEN": csrf,
-        },
-        body: JSON.stringify({
-          kind: "image",
-          filename: file.name,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-          context: "banner",
-        }),
-      })
-      if (!presignRes.ok) {
-        const body = await presignRes.json().catch(() => null)
-        throw new Error(body?.message ?? `Gagal menyiapkan upload (${presignRes.status})`)
-      }
-      const presigned = (await presignRes.json()) as { upload_url: string; object_key: string }
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open("PUT", presigned.upload_url)
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            setUploadProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)))
-          }
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
-        }
-        xhr.onerror = () => reject(new Error("Upload gagal - periksa koneksi internet."))
-        xhr.send(file)
-      })
-      setUploadProgress(100)
-      form.setData("object_key", presigned.object_key)
-    } catch (error) {
-      setDirectError(error instanceof Error ? error.message : "Upload gagal - coba lagi.")
-      throw error
-    } finally {
-      setUploading(false)
-      setUploadProgress(null)
-    }
-  }
-
-  async function onSubmit(event: React.FormEvent) {
+  function onSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (form.data.image) {
-      try {
-        await uploadDirect(form.data.image)
-      } catch {
-        return
-      }
-    }
     if (method === "put") {
-      form.transform((data) => ({ ...data, _method: "put", image: null }))
+      form.transform((data) => ({ ...data, _method: "put" }))
       form.post(submitUrl, {
-        forceFormData: true,
         preserveScroll: true,
         onFinish: () => form.transform((data) => data),
       })
       return
     }
-    form.transform((data) => ({ ...data, image: null }))
-    form.post(submitUrl, { forceFormData: true, preserveScroll: true })
+    form.post(submitUrl, { preserveScroll: true })
   }
 
   return (
     <AdminLayout
       backUrl={backUrl}
-      title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
+      title={isEdit ? "Edit Banner Promo" : "Tambah Banner Promo"}
       description="Slide manual beranda (cms_banners): judul, gambar, link, urutan, status published."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
             <Link href={indexHref}>Batal</Link>
           </Button>
-          <Button type="submit" form="banner-form" disabled={uploading || form.processing}>
-            {uploading
-              ? `Mengunggah ${uploadProgress ?? 0}%...`
-              : form.processing
-                ? "Menyimpan..."
-                : isEdit
-                  ? "Simpan perubahan"
-                  : "Tambah promo"}
+          <Button type="submit" form="banner-form" disabled={form.processing}>
+            {form.processing
+              ? "Menyimpan..."
+              : isEdit
+                ? "Simpan"
+                  : "Tambah"}
           </Button>
         </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Banner Promo | Admin`} />
 
-      <form id="banner-form" onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
+      <form id="banner-form" onSubmit={onSubmit} className="w-full max-w-4xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-lg border border-border bg-card">
           {/* Stripe media: thumbnail kiri, upload inline kanan */}
-          <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
+          <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:p-6">
             <div className="aspect-[1024/426] w-full max-w-[280px] shrink-0 overflow-hidden rounded-md border border-border bg-muted">
               {previewUrl ? (
                 <img src={previewUrl} alt="Pratinjau" className="size-full object-cover" />
@@ -185,21 +101,21 @@ export default function BannerForm({
             <div className="grid min-w-0 flex-1 gap-4">
               <Field
                 id="image"
-                label="Upload gambar"
-                error={form.errors.image}
-                hint="Satu gambar sumber dipakai untuk desktop & mobile. Rasio banner paten 2,4:1; rekomendasi resolusi 1600 × 664 px (2048 × 852 px juga bagus) agar tajam di desktop besar dan tidak ter-crop. Gambar otomatis dikonversi WebP agar landing page tetap cepat. Tanpa upload, link produk aktif bisa mengisi gambar dari produk."
+                label="Gambar dari Media Library"
+                error={form.errors.media_asset_id}
+                hint="Pilih aset dari Media Library (rasio banner 2,4:1; rekomendasi 1600 × 664 px). Upload file baru dilakukan di halaman Media Library."
               >
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
+                <MediaLibrarySelect
+                  value={form.data.media_asset_id}
+                  onChange={(value) => form.setData("media_asset_id", value)}
+                  kind="image"
                 />
               </Field>
             </div>
           </div>
 
           {/* Field informasi promo */}
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+          <FieldGrid className="p-5 sm:p-6">
             <Field
               id="title"
               label="Nama / judul promo"
@@ -232,38 +148,16 @@ export default function BannerForm({
                 onChange={(event) => form.setData("sort_order", Number(event.target.value))}
               />
             </Field>
-            <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium sm:self-end">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Status aktif (published)
-            </label>
-          </div>
+            <CheckboxField
+              id="banner-published"
+              checked={form.data.published}
+              onChange={(checked) => form.setData("published", checked)}
+              label="Status aktif (published)"
+            />
+          </FieldGrid>
         </section>
 
         
-        {uploading ? (
-          <div role="status" aria-live="polite">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Upload langsung ke penyimpanan (R2)…</span>
-              <span>{uploadProgress ?? 0}%</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-200"
-                style={{ width: `${uploadProgress ?? 0}%` }}
-              />
-            </div>
-          </div>
-        ) : null}
-        {directError ? (
-          <p role="alert" className="text-xs leading-5 text-destructive">
-            {directError}
-          </p>
-        ) : null}
       </form>
     </AdminLayout>
   )

@@ -2,7 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import AdminLayout from "@/layouts/admin-layout"
 
@@ -82,18 +82,18 @@ export default function AnnouncementForm({
             <Link href={indexHref}>Batal</Link>
           </Button>
           <Button type="submit" form="announcement-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah bar promo"}
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
           </Button>
         </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Bar Promo | Admin`} />
 
-      <form id="announcement-form" onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
+      <form id="announcement-form" onSubmit={onSubmit} className="w-full max-w-4xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+          <FieldGrid className="p-5 sm:p-6">
             <Field
               id="text"
               label="Teks promo"
@@ -201,16 +201,13 @@ export default function AnnouncementForm({
                 onChange={(event) => form.setData("sort_order", Number(event.target.value))}
               />
             </Field>
-            <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium sm:self-end">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Status aktif (published)
-            </label>
-          </div>
+            <CheckboxField
+              id="announcement-published"
+              checked={form.data.published}
+              onChange={(checked) => form.setData("published", checked)}
+              label="Status aktif (published)"
+            />
+          </FieldGrid>
         </section>
 
         

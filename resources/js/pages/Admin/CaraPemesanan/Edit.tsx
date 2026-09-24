@@ -1,9 +1,9 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -125,19 +125,16 @@ export default function CaraPemesananEdit({
 
         <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGrid>
             <Field id="cmspage-title" label="Judul CMS" required error={form.errors.title}>
               <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Terbitkan halaman
-            </label>
+            <CheckboxField
+              id="cmspage-published"
+              checked={form.data.published}
+              onChange={(checked) => form.setData("published", checked)}
+              label="Terbitkan halaman"
+            />
             <Field id="cmspage-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
               <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
             </Field>
@@ -148,7 +145,7 @@ export default function CaraPemesananEdit({
                 onChange={(event) => form.setData("subtitle", event.target.value)}
               />
             </Field>
-          </div>
+          </FieldGrid>
         </section>
 
         <section className="space-y-3">

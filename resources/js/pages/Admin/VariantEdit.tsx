@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusSelect } from "@/components/admin/ui/status-select"
 import AdminLayout from "@/layouts/admin-layout"
@@ -64,7 +64,7 @@ export default function VariantEdit({
     >
       <Head title={`Edit ${variant.variant_sku} | Admin`} />
 
-      <form id="variant-form" onSubmit={submit} className="mx-auto max-w-3xl space-y-6">
+      <form id="variant-form" onSubmit={submit} className="w-full max-w-4xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <SectionCard
@@ -72,7 +72,7 @@ export default function VariantEdit({
           description="Opsi varian menentukan kombinasi yang dipilih pembeli di etalase toko (misal Warna dan Kaca)."
           icon="package"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGrid>
             <Field
               id="edit-variant-sku"
               label="Variant SKU"
@@ -129,7 +129,7 @@ export default function VariantEdit({
                 placeholder="mis. Bening"
               />
             </Field>
-          </div>
+          </FieldGrid>
         </SectionCard>
 
         <SectionCard
@@ -137,7 +137,7 @@ export default function VariantEdit({
           description="Harga satuan dan stok tersedia untuk kombinasi varian ini."
           icon="hand-coins"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGrid>
             <Field
               id="edit-price"
               label="Harga Satuan (Rp)"
@@ -184,7 +184,7 @@ export default function VariantEdit({
                 onChange={(event) => form.setData("status", event.target.value)}
               />
             </Field>
-          </div>
+          </FieldGrid>
         </SectionCard>
 
         <div className="flex items-center justify-end gap-2 border-t border-border pt-4">

@@ -1,9 +1,8 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -30,6 +29,7 @@ export default function WhatsAppEdit({
   description,
   template,
   variables = [],
+  replySignature = "",
   submitUrl,
   backUrl,
   activateUrl,
@@ -39,6 +39,7 @@ export default function WhatsAppEdit({
   description: string
   template: TemplatePayload
   variables: VariableChip[]
+  replySignature?: string
   submitUrl: string
   backUrl: string
   activateUrl: string
@@ -79,31 +80,25 @@ export default function WhatsAppEdit({
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={template.status === "active" ? "active" : "inactive"} />
           <Button type="submit" form="wa-template-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+            {form.processing ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <div className="mb-4">
-        <Button asChild variant="secondary">
-          <Link href={backUrl}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke WhatsApp Otomatis
-          </Link>
-        </Button>
-      </div>
 
-      <form id="wa-template-form" onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+
+      <form id="wa-template-form" onSubmit={submit} className="w-full max-w-5xl grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
         <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGrid>
             <Field id="provider_template_name" label="Nama template provider (Meta/BSP)" required error={form.errors.provider_template_name}>
               <Input
                 id="provider_template_name"
@@ -121,7 +116,7 @@ export default function WhatsAppEdit({
                 required
               />
             </Field>
-          </div>
+          </FieldGrid>
 
           <Field
             id="body_preview"
@@ -155,7 +150,23 @@ export default function WhatsAppEdit({
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="space-y-4 xl:sticky xl:top-24">
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-bold">Pratinjau pesan terkirim</h2>
+            <p className="mt-2 text-pretty text-sm text-muted-foreground">
+              Naskah di atas dikirim apa adanya. Footer otomatis (bila diisi) ditambahkan backend di bawah naskah.
+            </p>
+            <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs leading-5 text-foreground">
+              {replySignature ? `${form.data.body_preview ?? ""}\n\n${replySignature}` : form.data.body_preview ?? ""}
+            </pre>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {replySignature
+                ? "Footer ini berlaku untuk semua template dan bisa diubah lewat env WHATSAPP_REPLY_SIGNATURE."
+                : "Footer otomatis sedang tidak diisi, jadi tidak ada tambahan di bawah naskah. Isi env WHATSAPP_REPLY_SIGNATURE bila ingin menambahkannya lagi."}
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Urutan variabel Meta</h2>
           <p className="mt-2 text-pretty text-sm text-muted-foreground">
             Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend - jangan ganti jadi nama seperti {"{{order_number}}"}.
@@ -174,6 +185,7 @@ export default function WhatsAppEdit({
             ))}
           </div>
           <p className="mt-4 font-mono text-[11px] text-muted-foreground">Key: {template.internal_key}</p>
+          </section>
         </aside>
       </form>
     </AdminLayout>

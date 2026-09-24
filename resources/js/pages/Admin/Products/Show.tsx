@@ -671,7 +671,7 @@ export default function ProductShow({
             <div className="flex min-w-0 flex-1 flex-col justify-between p-4 sm:p-5">
               <div>
                 <h2
-                  className="text-lg font-bold leading-snug text-foreground line-clamp-2 sm:text-xl"
+                  className="text-lg font-normal leading-snug text-foreground line-clamp-2 sm:text-xl"
                   title={product.name}
                 >
                   {product.name}
