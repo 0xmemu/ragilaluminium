@@ -262,8 +262,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/{media}/restore', [ProductMediaController::class, 'restore'])->name('media.restore');
     Route::post('media/{media}/redownload', [ProductMediaController::class, 'redownload'])->name('media.redownload');
     Route::delete('media/{media}', [ProductMediaController::class, 'destroy'])->name('media.destroy');
-    Route::delete('media/assets/{asset}', [ProductMediaController::class, 'destroyAsset'])->name('media.assets.destroy');
-    Route::get('media/{asset}/attach', [ProductMediaController::class, 'attachPage'])->name('media.attach.show');
     Route::post('media/{asset}/attach', [ProductMediaController::class, 'bulkAttach'])->name('media.attach');
     Route::post('media/bulk-action', [ProductMediaController::class, 'bulkAction'])->name('media.bulk-action');
     Route::get('media/products/search', [ProductMediaController::class, 'searchProducts'])->name('media.products.search');

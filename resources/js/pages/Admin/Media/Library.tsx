@@ -56,7 +56,6 @@ interface LibraryAsset {
   public_url: string
   error_reason?: string | null
   context: string
-  attach_url: string
   created_at: string | null
 }
 
@@ -1190,14 +1189,6 @@ export default function MediaLibrary({
                       >
                         <Icon name="link" className="size-3.5" aria-hidden="true" />
                       </button>
-                      <Link
-                        href={asset.attach_url}
-                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
-                        title="Detail"
-                        aria-label={`Detail ${asset.label}`}
-                      >
-                        <Icon name="info" className="size-3.5" aria-hidden="true" />
-                      </Link>
                     </div>
                   </div>
                 </div>

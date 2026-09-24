@@ -85,7 +85,6 @@ class ProductMediaController extends Controller
                 'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
                 'error_reason' => $asset->error_reason,
                 'context' => self::libraryContext($asset->label),
-                'attach_url' => route('admin.media.attach.show', $asset),
                 'created_at' => optional($asset->created_at)?->toIso8601String(),
             ])->values()->all(),
             'folders' => $folderTree,
@@ -212,47 +211,9 @@ class ProductMediaController extends Controller
             ->with('success', 'Media ditambahkan.');
     }
 
-    public function attachPage(Request $request, MediaAsset $asset): Response
-    {
-        $usages = \App\Models\ProductMedia::query()
-            ->where('media_asset_id', $asset->id)
-            ->with('product:id,name,parent_sku,status')
-            ->latest('id')
-            ->limit(50)
-            ->get()
-            ->filter(fn ($m) => $m->product !== null)
-            ->values();
-
-        return Inertia::render('Admin/Media/Attach', [
-            'asset' => [
-                'id' => $asset->id,
-                'label' => $asset->label ?: 'Media #'.$asset->id,
-                'kind' => $asset->kind,
-                'status' => $asset->status,
-                'thumb_url' => $asset->urlFor('thumb'),
-                'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
-                'created_at' => optional($asset->created_at)?->toIso8601String(),
-            ],
-            'usages' => $usages->map(fn ($m) => [
-                'product_id' => $m->product->id,
-                'product_name' => $m->product->name,
-                'parent_sku' => $m->product->parent_sku,
-                'position' => $m->position,
-                'is_main' => (bool) $m->is_main_image,
-                'is_installation' => (bool) $m->is_installation,
-                'show_in_catalog' => (bool) $m->show_in_catalog,
-                'visibility' => $m->visibility,
-            ])->all(),
-            // Owner 2026-09-16: form pasang-ke-produk langsung dari halaman detail media.
-            // Nama route wajib berawalan `admin.`: seluruh route admin didaftarkan
-            // di dalam grup ->name('admin.'), sehingga `media.attach` dan
-            // `media.assets.destroy` tidak pernah terdaftar dan halaman ini 500.
-            'attachUrl' => route('admin.media.attach', $asset),
-            'libraryHref' => route('admin.media.library'),
-            'destroyUrl' => route('admin.media.assets.destroy', $asset),
-        ]);
-    }
-
+            // Nama route wajib berawalan `admin.`: seluruh route admin
+            // didaftarkan di dalam grup ->name('admin.'). Tanpa awalan itu
+            // `media.attach` tidak pernah terdaftar dan pemanggilnya gagal.
     public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse
     {
         $validated = $request->validate([
@@ -344,22 +305,6 @@ class ProductMediaController extends Controller
     /**
      * Hapus permanen aset tunggal dari Media Library (hanya jika tidak digunakan di mana pun).
      */
-    public function destroyAsset(MediaAsset $asset): RedirectResponse
-    {
-        $usedElsewhere = ProductMedia::where('media_asset_id', $asset->id)->exists()
-            || \App\Models\CmsBanner::where('media_asset_id', $asset->id)->exists()
-            || \App\Models\CmsGalleryItem::where('media_asset_id', $asset->id)->exists();
-
-        if ($usedElsewhere) {
-            return redirect()->back()->with('error', 'Aset media tidak dapat dihapus karena masih digunakan oleh produk atau konten website. Lepaskan tautan terlebih dahulu.');
-        }
-
-        $this->deleteAssetFiles($asset);
-        $asset->delete();
-
-        return redirect()->route('admin.media.library')->with('success', 'Aset media berhasil dihapus permanen.');
-    }
-
     /**
      * Pencarian produk untuk panel attach di Media Library (live, debounce).
      */
