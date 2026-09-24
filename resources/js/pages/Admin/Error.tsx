@@ -1,6 +1,7 @@
 import { Head, Link } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
+import { PermissionDeniedState } from "@/components/admin/ui/permission-denied"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -25,6 +26,29 @@ const COPY: Record<number, { title: string; body: string }> = {
 
 export default function AdminError({ status = 404 }: { status?: number }) {
   const copy = COPY[status] ?? COPY[404]
+
+  // B6 (temuan F-05): 403 memakai PermissionDeniedState agar kehilangan akses
+  // terlihat dan terasa berbeda dari 404 (resource tidak ditemukan).
+  if (status === 403) {
+    return (
+      <AdminLayout title={copy.title} description={copy.body}>
+        <Head title={`${copy.title} | Admin`} />
+        <div className="pt-8">
+          <PermissionDeniedState
+            title={copy.title}
+            description={copy.body}
+            backLabel="Ke Dashboard"
+            backHref={routeUrl("admin.dashboard")}
+          />
+          <div className="mx-auto mt-4 flex max-w-xl flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <Link href={routeUrl("admin.orders.index")}>Daftar pesanan</Link>
+            </Button>
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   return (
     <AdminLayout title={copy.title} description={copy.body}>
