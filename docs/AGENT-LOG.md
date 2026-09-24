@@ -669,3 +669,25 @@ runtime yang sengaja tidak disentuh tercatat di laporan eksekusi (sinonim
 pencarian CatalogSearch, parsing Shopee, cabang BOUVEN mati di
 HomepagePromotions); (3) routes/web.php masih memuat penghapusan menu CTA
 milik agent lain yang sengaja tidak di-commit.
+
+## 2026-09-24, hermes-desktop-ragil: hapus halaman attach media + route yatim
+
+Keputusan owner 2026-09-24: halaman detail media `/admin/media/{asset}/attach`
+tidak diperlukan, dibersihkan route dan UI-nya sekalian dengan route yatim
+`media.assets.destroy` yang tersisa dari audit. Commit `badae4db` (push
+`60a94a9f..badae4db`, pre-push lolos): GET `admin.media.attach.show`
+(`attachPage`), DELETE `admin.media.assets.destroy` (`destroyAsset`), properti
+`attach_url` di daftar Media Library, tautan Detail per aset, dan berkas
+`Admin/Media/Attach.tsx` dihapus. POST `admin.media.attach` (`bulkAttach`)
+dipertahankan karena masih dipakai dialog Pasang ke produk di Media Library dan
+dialog di Ulasan. ziggy.js diregenerasi (sekalian mensinkronkan 25 route yang
+sudah ter-commit sebelumnya namun belum masuk berkas hasil generate).
+
+Bukti: 27 test media/guard lulus; typecheck 0 error; build sukses dua kali
+(mandiri + pre-push); route:list tidak lagi memuat kedua route; sisa referensi
+nol di app/routes/resources. Commit per-hunk: penghapusan menu CTA milik agent
+lain di routes/web.php sengaja dibiarkan di working tree.
+
+Untuk agent berikutnya: pemakaian aset media kini hanya terlihat dari angka
+"Dipakai Nx" di Media Library; hapus permanen aset lewat UI tidak ada lagi,
+sisa jalur lifecycle adalah arsip/restore.
