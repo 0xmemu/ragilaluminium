@@ -187,3 +187,4 @@ bukan pekerjaan), 2 deferred dengan alasan tercatat (migrasi tabel beranda
 sibuk, sheet publik), 0 blocked.** Data produksi berubah hanya dua hal yang
 diizinkan: satu konten em dash via UI admin, dan satu baris notifikasi
 dihapus lewat UI baru.
+| Admin F-05: PermissionDeniedState dan 403/404 (bagian 2) | **Resolved** (tambahan ronde ketiga, commit `6e61ceb6`): satu-satunya temuan yang terlewat dari eksekusi tunggal; 403 kini merender PermissionDeniedState, 404/500/503 tetap kartu semula |
