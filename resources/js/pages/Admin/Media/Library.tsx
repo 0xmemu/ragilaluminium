@@ -415,6 +415,45 @@ function FolderNameDialog({
   )
 }
 
+interface FlattenedFolderNode {
+  id: number
+  name: string
+  depth: number
+  assets_count: number
+  assets_total: number
+  path: string
+  node: FolderNode
+}
+
+function buildFlattenedFolders(nodes: FolderNode[]): FlattenedFolderNode[] {
+  const out: FlattenedFolderNode[] = []
+
+  function traverse(list: FolderNode[], depth: number, parentPath: string): number {
+    let subtreeTotal = 0
+    for (const item of list) {
+      const path = depth === 0 ? item.name : `${parentPath} / ${item.name}`
+      const own = item.assets_count ?? 0
+      const index = out.length
+      out.push({
+        id: item.id,
+        name: item.name,
+        depth,
+        assets_count: own,
+        assets_total: own,
+        path,
+        node: item,
+      })
+      const nested = traverse(item.children || [], depth + 1, path)
+      out[index].assets_total = own + nested
+      subtreeTotal += own + nested
+    }
+    return subtreeTotal
+  }
+
+  traverse(nodes, 0, "")
+  return out
+}
+
 function FolderTree({
   nodes,
   currentFolderId,
@@ -428,6 +467,8 @@ function FolderTree({
   onRequestCreate: (parentId: number | null) => void
   onRequestRename: (folderId: number, currentName: string) => void
 }) {
+  const [folderQuery, setFolderQuery] = React.useState("")
+  const [searchMenuFor, setSearchMenuFor] = React.useState<number | null>(null)
   const [expandedIds, setExpandedIds] = React.useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {}
     if (currentFolderId && currentFolderId !== "0") {
@@ -479,17 +520,206 @@ function FolderTree({
     }))
   }
 
+  const flattened = React.useMemo(() => buildFlattenedFolders(nodes), [nodes])
+  const searching = folderQuery.trim() !== ""
+  const filtered = React.useMemo(() => {
+    const q = folderQuery.trim().toLowerCase()
+    if (!q) return flattened
+    return flattened.filter((f) => f.path.toLowerCase().includes(q))
+  }, [flattened, folderQuery])
+
+  function submitSearchFolderAction(folderId: number, action: "rename" | "archive" | "delete", name?: string) {
+    if (action === "delete") {
+      router.delete(routeUrl("admin.media.folders.destroy", { folder: folderId }), {
+        preserveState: true,
+        onSuccess: () => {
+          if (currentFolderId === String(folderId)) {
+            onSelect("")
+          }
+        },
+      })
+      setSearchMenuFor(null)
+      return
+    }
+    const fd = new FormData()
+    if (action === "rename") {
+      if (!name?.trim()) return
+      fd.append("name", name.trim())
+      router.post(routeUrl("admin.media.folders.rename", { folder: folderId }), fd, { preserveState: true })
+    } else {
+      router.post(routeUrl("admin.media.folders.archive", { folder: folderId }), fd, { preserveState: true })
+    }
+    setSearchMenuFor(null)
+  }
+
+  function createSearchSubfolder(parentId: number) {
+    setSearchMenuFor(null)
+    if (!expandedIds[parentId]) {
+      handleToggleExpand(parentId)
+    }
+    window.setTimeout(() => onRequestCreate(parentId), 0)
+  }
+
   return (
-    <FolderTreeList
-      nodes={nodes}
-      currentFolderId={currentFolderId}
-      onSelect={onSelect}
-      expandedIds={expandedIds}
-      onToggleExpand={handleToggleExpand}
-      parentId={null}
-      onRequestCreate={onRequestCreate}
-      onRequestRename={onRequestRename}
-    />
+    <div className="space-y-2">
+      {/* Searchbar khusus folder (cara kerja selaras dengan MediaPicker) */}
+      <div className="relative shrink-0">
+        <input
+          type="search"
+          value={folderQuery}
+          onChange={(e) => setFolderQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setFolderQuery("")
+            }
+            if (e.key === "Enter" && filtered.length > 0) {
+              e.preventDefault()
+              onSelect(String(filtered[0].id))
+            }
+          }}
+          placeholder="Cari folder…"
+          className="h-8 w-full rounded-md border border-border bg-surface pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <Icon
+          name="search"
+          className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        {folderQuery ? (
+          <button
+            type="button"
+            onClick={() => setFolderQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+            aria-label="Bersihkan pencarian folder"
+          >
+            <Icon name="x" className="size-3.5" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+
+      {!searching ? (
+        <FolderTreeList
+          nodes={nodes}
+          currentFolderId={currentFolderId}
+          onSelect={onSelect}
+          expandedIds={expandedIds}
+          onToggleExpand={handleToggleExpand}
+          parentId={null}
+          onRequestCreate={onRequestCreate}
+          onRequestRename={onRequestRename}
+        />
+      ) : filtered.length === 0 ? (
+        <p className="px-2 py-4 text-center text-xs text-muted-foreground">Tidak ada folder yang cocok.</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {filtered.map((f) => {
+            const isActive = String(f.id) === currentFolderId
+            const isMenuOpen = searchMenuFor === f.id
+            return (
+              <li
+                key={f.id}
+                className={cn("group/folder relative flex items-center gap-0.5 rounded-md", isActive && "bg-primary/10")}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelect(String(f.id))}
+                  style={{ paddingLeft: 6 + f.depth * 10 }}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-start gap-1.5 rounded-md py-1.5 pr-1.5 text-left text-xs transition-colors",
+                    isActive ? "text-primary font-semibold" : "text-muted-foreground hover:bg-card-hover",
+                  )}
+                >
+                  <Icon
+                    name={isActive ? "folder-open" : "folder"}
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {f.depth === 0 ? "" : "↳ "}
+                      {f.name}
+                    </span>
+                    {f.depth > 0 ? (
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {f.path.split(" / ").slice(0, -1).join(" / ")}
+                      </span>
+                    ) : null}
+                  </span>
+                  {f.assets_total > 0 ? (
+                    <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                      {f.assets_total}
+                    </span>
+                  ) : null}
+                </button>
+
+                <button
+                  type="button"
+                  aria-label={`Menu folder ${f.name}`}
+                  title="Menu folder"
+                  onClick={() => setSearchMenuFor(isMenuOpen ? null : f.id)}
+                  className={cn(
+                    "mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
+                    isMenuOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
+                  )}
+                >
+                  <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
+                </button>
+
+                {isMenuOpen ? (
+                  <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
+                    <button
+                      type="button"
+                      onClick={() => createSearchSubfolder(f.id)}
+                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                    >
+                      Buat subfolder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchMenuFor(null)
+                        window.setTimeout(() => onRequestRename(f.id, f.name), 0)
+                      }}
+                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                    >
+                      Ganti nama
+                    </button>
+                    <ConfirmAction
+                      trigger={
+                        <button
+                          type="button"
+                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                        >
+                          Arsipkan
+                        </button>
+                      }
+                      title="Arsipkan folder?"
+                      description="Aset di dalamnya ikut diarsipkan."
+                      confirmLabel="Arsipkan"
+                      onConfirm={() => submitSearchFolderAction(f.id, "archive")}
+                    />
+                    <ConfirmAction
+                      trigger={
+                        <button
+                          type="button"
+                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                        >
+                          Hapus folder
+                        </button>
+                      }
+                      title={`Hapus folder "${f.name}"?`}
+                      description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
+                      confirmLabel="Hapus Folder"
+                      onConfirm={() => submitSearchFolderAction(f.id, "delete")}
+                    />
+                  </div>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
   )
 }
 
