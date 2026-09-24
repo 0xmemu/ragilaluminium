@@ -784,3 +784,15 @@ Bukti:
 Catatan: pemangkasan sesi tamu (user_id null) dilewati karena kolom
 last_activity di tabel sessions bertipe integer Unix, bukan datetime, dan
 pembersihan itu di luar lingkup perintah owner.
+
+## 2026-09-24, hermes-desktop-ragil: perbaikan focus ring searchbar folder terpotong
+
+Perbaikan Comment 4: saat searchbar folder aktif, tepian menebal terpotong batas halaman.
+Penyebab: focus ring bawaan (`ring-2`) menggambar bayangan 2px ke arah luar (outset).
+Karena sidebar berada rapat di sisi kiri kontainer flex ber-`overflow-hidden`, bayangan
+2px di sisi kiri terpotong.
+Solusi di commit `ce6c9ec8` (push `76e19d1d..ce6c9ec8`): gunakan `ring-inset` dipadu
+`border-primary` dan `ring-primary/20`. Efek penebalan fokus digambar ke dalam (inset),
+simetris di keempat sisi tanpa pernah melintasi batas elemen input.
+
+Bukti: typecheck 0 error, build sukses, MediaAssetWorkflowTest 3 passed.
