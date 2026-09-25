@@ -682,7 +682,7 @@ export default function OrdersIndex({
     },
   })
 
-  function visit(params: Record<string, string | undefined>) {
+  const visit = React.useCallback((params: Record<string, string | undefined>) => {
     // Setiap navigasi filter membatalkan pilihan preset yang masih menggantung.
     setDateDraft(null)
     const next: Record<string, string> = {}
@@ -709,7 +709,8 @@ export default function OrdersIndex({
       preserveScroll: true,
       replace: true,
     })
-  }
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, activeSort, dateFrom, dateTo, searchQuery])
+
 
   const hasActiveFilters = React.useMemo(() => {
     return (
