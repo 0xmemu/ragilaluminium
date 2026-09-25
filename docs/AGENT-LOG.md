@@ -952,3 +952,13 @@ Bukti:
 - ShippingStatusTest 8 passed (18 assertions).
 - Typecheck & eslint bersih 0 error/warning.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 01:25 UTC | zcode | Standard | d4f03f65 | selesai
+Lingkup: cron polling fallback status pelacakan J&T Cargo (app/Console/Commands/PollJntTracking.php, routes/console.php, tests/Feature/PollJntTrackingCommandTest.php).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: command `shipping:poll-jnt` berjalan otomatis setiap 30 menit (`withoutOverlapping`). Hanya memeriksa resi aktif non-terminal (`status NOT IN delivered, returned, cancelled`), menyaring umur resi maksimal 45 hari, menerapkan batas interval minimal pembaruan 30 menit per resi (`throttle`), dan memberikan jeda 150ms antar resi agar aman dari pemblokiran rate limit kurir.
+Bukti:
+- PollJntTrackingCommandTest 5 passed (12 assertions).
+- ShippingStatusTest 8 passed (18 assertions).
+- Typecheck bersih 0 error.
+- Bebas karakter em dash (U+2014).
