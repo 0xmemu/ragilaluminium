@@ -942,3 +942,13 @@ Bukti:
 - ShippingStatusTest: 8 passed (18 assertions) mencakup skenario webhook kurir duplikat dan event stale pada status terminal.
 - Typecheck & eslint bersih 0 error/warning.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 00:55 UTC | zcode | Standard | b77e32b2 | selesai
+Lingkup: panduan admin alur retur dan notifikasi otomatis kurir returned (resources/js/config/admin-page-guides.ts, resources/js/components/admin/notification-bell.tsx, resources/js/pages/Admin/Notifications.tsx, app/Listeners/CreateAdminNotifications.php, app/Providers/EventServiceProvider.php, tests/Feature/ReturnNotificationTest.php).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: notifikasi `order_returned` kini otomatis dipancarkan saat kurir scan returned (`ShippingStatusUpdated`). Idempoten per `order_id` (webhook duplikat tidak membuat notifikasi kedua). Tautan notifikasi langsung mengarah ke detail order `/admin/orders/{id}`. Panduan admin pada `admin.orders.show` kini mencakup 8 langkah alur retur dan batasan sistem.
+Bukti:
+- ReturnNotificationTest 5 passed (20 assertions).
+- ShippingStatusTest 8 passed (18 assertions).
+- Typecheck & eslint bersih 0 error/warning.
+- Bebas karakter em dash (U+2014).
