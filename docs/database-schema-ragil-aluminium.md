@@ -470,6 +470,10 @@ UQ visitor_hash + visit_date mendeduplikasi visitor per hari; agregasi periode m
 - `status` (`VARCHAR`), NN, default 'pending_pickup'
 - `status_raw` (`VARCHAR`), nullable
 - `last_status_at` (`DATETIME`), nullable
+- `last_polled_at` (`DATETIME`), nullable
+- `poll_attempts` (`INTEGER`), NN, default '0'
+- `next_poll_at` (`DATETIME`), nullable
+- `last_poll_error` (`TEXT`), nullable
 - `tracking_url` (`TEXT`), nullable
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
@@ -477,6 +481,7 @@ UQ visitor_hash + visit_date mendeduplikasi visitor per hari; agregasi periode m
 Indexes:
 - `idx_shipping_records_status` (IDX on `status`)
 - `idx_shipping_records_order` (IDX on `order_id`)
+- `idx_shipping_poll` (IDX on `status`, `next_poll_at`)
 
 ### 3.4a shipping_tracking_events
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminNotification;
 use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Services\Shipping\JntCargoClient;
@@ -39,16 +40,13 @@ class PollJntTrackingCommandTest extends TestCase
     public function test_command_detects_active_shipments_needing_refresh(): void
     {
         $order = $this->makeOrder('shipped');
-        $record = ShippingRecord::create([
+        ShippingRecord::create([
             'order_id' => $order->id,
             'carrier_name' => 'J&T Cargo',
             'waybill_number' => 'JT-ACTIVE-001',
             'status' => 'in_transit',
-            'last_status_at' => now()->subHours(2),
+            'next_poll_at' => now()->subMinutes(10),
         ]);
-        \Illuminate\Support\Facades\DB::table('shipping_records')
-            ->where('id', $record->id)
-            ->update(['updated_at' => now()->subHours(2)]);
 
         $this->artisan('shipping:poll-jnt', ['--dry-run' => true])
             ->expectsOutputToContain('Menemukan 1 resi aktif untuk diperiksa')
@@ -64,7 +62,7 @@ class PollJntTrackingCommandTest extends TestCase
             'carrier_name' => 'J&T Cargo',
             'waybill_number' => 'JT-DEL-001',
             'status' => 'delivered',
-            'updated_at' => now()->subHours(2),
+            'next_poll_at' => now()->subMinutes(10),
         ]);
 
         // 2. Order completed
@@ -74,7 +72,7 @@ class PollJntTrackingCommandTest extends TestCase
             'carrier_name' => 'J&T Cargo',
             'waybill_number' => 'JT-COMP-001',
             'status' => 'delivered',
-            'updated_at' => now()->subHours(2),
+            'next_poll_at' => now()->subMinutes(10),
         ]);
 
         // 3. Order cancelled
@@ -84,7 +82,7 @@ class PollJntTrackingCommandTest extends TestCase
             'carrier_name' => 'J&T Cargo',
             'waybill_number' => 'JT-CANC-001',
             'status' => 'cancelled',
-            'updated_at' => now()->subHours(2),
+            'next_poll_at' => now()->subMinutes(10),
         ]);
 
         $this->artisan('shipping:poll-jnt', ['--dry-run' => true])
@@ -92,25 +90,24 @@ class PollJntTrackingCommandTest extends TestCase
             ->assertSuccessful();
     }
 
-    public function test_command_skips_recently_checked_shipments_within_throttle_window(): void
+    public function test_command_skips_shipments_whose_next_poll_is_in_the_future(): void
     {
         $order = $this->makeOrder('shipped');
-        // Baru saja di-update 5 menit yang lalu (di bawah throttle 30 menit)
+        // Dijadwalkan baru di-poll 20 menit ke depan
         ShippingRecord::create([
             'order_id' => $order->id,
             'carrier_name' => 'J&T Cargo',
-            'waybill_number' => 'JT-THROTTLE-001',
+            'waybill_number' => 'JT-FUTURE-001',
             'status' => 'in_transit',
-            'last_status_at' => now()->subMinutes(5),
-            'updated_at' => now()->subMinutes(5),
+            'next_poll_at' => now()->addMinutes(20),
         ]);
 
-        $this->artisan('shipping:poll-jnt', ['--throttle' => 30, '--dry-run' => true])
+        $this->artisan('shipping:poll-jnt', ['--dry-run' => true])
             ->expectsOutput('Tidak ada resi aktif yang perlu diperiksa.')
             ->assertSuccessful();
     }
 
-    public function test_command_executes_refresh_safely_when_client_enabled(): void
+    public function test_command_executes_refresh_safely_and_reschedules(): void
     {
         $order = $this->makeOrder('shipped');
         $record = ShippingRecord::create([
@@ -118,11 +115,9 @@ class PollJntTrackingCommandTest extends TestCase
             'carrier_name' => 'J&T Cargo',
             'waybill_number' => 'JT-CALL-001',
             'status' => 'in_transit',
-            'last_status_at' => now()->subHours(1),
+            'next_poll_at' => now()->subMinutes(5),
+            'poll_attempts' => 2,
         ]);
-        \Illuminate\Support\Facades\DB::table('shipping_records')
-            ->where('id', $record->id)
-            ->update(['updated_at' => now()->subHours(1)]);
 
         $mockClient = Mockery::mock(JntCargoClient::class);
         $mockClient->shouldReceive('isEnabled')->andReturn(true);
@@ -138,27 +133,57 @@ class PollJntTrackingCommandTest extends TestCase
             ->expectsOutputToContain('Menemukan 1 resi aktif')
             ->expectsOutputToContain('Sukses diperiksa: 1')
             ->assertSuccessful();
+
+        $record->refresh();
+        $this->assertSame(0, $record->poll_attempts, 'poll_attempts direset ke 0');
+        $this->assertNotNull($record->last_polled_at);
+        $this->assertNotNull($record->next_poll_at);
+        $this->assertTrue($record->next_poll_at->isFuture(), 'next_poll_at dijadwalkan di masa depan');
     }
 
-    public function test_command_warns_and_exits_cleanly_when_client_disabled(): void
+    public function test_command_handles_api_failure_with_backoff_and_admin_notification(): void
     {
         $order = $this->makeOrder('shipped');
         $record = ShippingRecord::create([
             'order_id' => $order->id,
             'carrier_name' => 'J&T Cargo',
-            'waybill_number' => 'JT-DIS-001',
+            'waybill_number' => 'JT-FAIL-001',
             'status' => 'in_transit',
+            'next_poll_at' => now()->subMinutes(5),
+            'poll_attempts' => 4, // Percobaan ke-4, kegagalan ini akan menjadi ke-5 -> trigger alert
         ]);
-        \Illuminate\Support\Facades\DB::table('shipping_records')
-            ->where('id', $record->id)
-            ->update(['updated_at' => now()->subHours(1)]);
 
-        $mockClient = \Mockery::mock(JntCargoClient::class);
-        $mockClient->shouldReceive('isEnabled')->andReturn(false);
+        $mockClient = Mockery::mock(JntCargoClient::class);
+        $mockClient->shouldReceive('isEnabled')->andReturn(true);
         $this->app->instance(JntCargoClient::class, $mockClient);
 
+        $mockShipping = Mockery::mock(ShippingService::class);
+        $mockShipping->shouldReceive('refreshStatus')
+            ->once()
+            ->andThrow(new \RuntimeException('Connection timed out to J&T gateway'));
+        $this->app->instance(ShippingService::class, $mockShipping);
+
         $this->artisan('shipping:poll-jnt')
-            ->expectsOutputToContain('Integrasi J&T Cargo tidak aktif')
+            ->expectsOutputToContain('Gagal: 1')
             ->assertSuccessful();
+
+        $record->refresh();
+        $order->refresh();
+
+        // 1. Status order & shipping TIDAK boleh berubah saat API error
+        $this->assertSame('shipped', $order->order_status);
+        $this->assertSame('in_transit', $record->status);
+
+        // 2. Metadata polling mencatat kegagalan & backoff
+        $this->assertSame(5, $record->poll_attempts);
+        $this->assertStringContainsString('Connection timed out', (string) $record->last_poll_error);
+        $this->assertTrue($record->next_poll_at->isFuture());
+
+        // 3. Notifikasi admin dibuat tepat 1 kali
+        $notifs = AdminNotification::where('type', 'shipping_poll_failed')
+            ->where('related_id', $record->id)
+            ->get();
+        $this->assertCount(1, $notifs);
+        $this->assertStringContainsString($record->waybill_number, $notifs->first()->title);
     }
 }

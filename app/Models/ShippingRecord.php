@@ -21,6 +21,10 @@ class ShippingRecord extends Model
         'status',
         'status_raw',
         'last_status_at',
+        'last_polled_at',
+        'poll_attempts',
+        'next_poll_at',
+        'last_poll_error',
         'tracking_url',
     ];
 
@@ -31,6 +35,9 @@ class ShippingRecord extends Model
         'shipping_chargeable_weight_kg' => 'decimal:2',
         'shipping_cost_synced_at' => 'datetime',
         'last_status_at' => 'datetime',
+        'last_polled_at' => 'datetime',
+        'next_poll_at' => 'datetime',
+        'poll_attempts' => 'integer',
     ];
 
     /**
