@@ -119,15 +119,22 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
   },
   "admin.orders.show": {
     title: "Detail Pesanan",
-    summary: "Informasi lengkap satu pesanan: produk, pembayaran, penerima, dan pengiriman.",
+    summary: "Informasi lengkap satu pesanan: produk, pembayaran, penerima, pengiriman, dan penanganan retur.",
     steps: [
       "Periksa ringkasan pesanan dan data penerima sebelum memproses.",
       "Gunakan tombol aksi utama untuk memproses pesanan atau input resi.",
       "Status pengiriman muncul setelah resi tersimpan dan dikirim ke kurir.",
+      "Untuk retur atau komplain: diskusikan dan periksa bukti lewat WhatsApp lebih dulu.",
+      "Catat kasus retur di panel Retur, isi kronologi pembeli, pihak penyebab, dan beban ongkir.",
+      "Pilih resolusi retur (refund, penggantian barang, atau kirim ulang).",
+      "Isi nominal refund hanya jika ada refund riil dan pesanan sudah lunas.",
+      "Pastikan transfer refund dilakukan manual di luar website sebelum menandai retur selesai.",
     ],
     notes: [
       "Input resi membuka popup berisi verifikasi pelanggan dan alamat tujuan.",
       "Perubahan status mengikuti alur pesanan, tidak ada dropdown status manual.",
+      "Website hanya mencatat keputusan admin; website tidak mengirim refund dan tidak memantau rekening bank.",
+      "Refund hanya diizinkan untuk pesanan yang sudah lunas dan tidak melebihi pembayaran riil.",
     ],
   },
   "admin.products.index": {

@@ -26,7 +26,7 @@ class ReturnNotificationTest extends TestCase
     {
         $product = Product::create([
             'parent_sku' => 'NTF-1', 'name' => 'Produk NTF', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'SLIDING',
+            'product_category' => 'JENDELA', 'product_model' => 'SLIDING',
             'design_variant' => 'POLOS', 'status' => 'active', 'stock' => 50,
         ]);
         $order = Order::create([
@@ -137,5 +137,43 @@ class ReturnNotificationTest extends TestCase
 
         $this->assertSame(0, AdminNotification::where('type', 'return_created')->count());
         $this->assertSame(0, OrderReturnCase::count());
+    }
+    public function test_carrier_returned_creates_admin_notification_once(): void
+    {
+        $order = Order::create([
+            'order_number' => 'NTF-COD-'.strtoupper(uniqid()),
+            'customer_name' => 'Siti', 'customer_phone' => '62899999999',
+            'shipping_address_line1' => 'Jl. Merdeka', 'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah', 'shipping_postal_code' => '50111',
+            'order_status' => 'shipped', 'payment_status' => 'pending',
+            'shipping_status' => 'in_transit',
+            'subtotal_amount' => 150000, 'shipping_amount' => 10000,
+            'discount_amount' => 0, 'total_amount' => 160000,
+            'payment_method' => 'cod', 'cod_flag' => true,
+        ]);
+
+        $record = ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JT-COD-1', 'shipping_cost' => 10000,
+            'status' => 'in_transit', 'last_status_at' => now(),
+        ]);
+
+        // 1. Scan returned kurir
+        app(\App\Services\ShippingService::class)->applyCarrierUpdate($record, 'returned', 'Paket ditolak');
+
+        $notifs = AdminNotification::where('type', 'order_returned')
+            ->where('order_id', $order->id)
+            ->get();
+        $this->assertCount(1, $notifs, 'Harus membuat 1 notifikasi admin');
+
+        $notif = $notifs->first();
+        $this->assertStringContainsString('Paket COD Dikembalikan', $notif->title);
+        $this->assertStringContainsString($order->order_number, $notif->title);
+        $this->assertStringContainsString('J&T Cargo', $notif->body);
+        $this->assertSame(route('admin.orders.show', $order), $notif->href);
+
+        // 2. Webhook duplikat / refresh kedua: tetap idempoten (tidak membuat notifikasi kedua)
+        app(\App\Services\ShippingService::class)->applyCarrierUpdate($record, 'returned', 'Paket ditolak lagi');
+        $this->assertSame(1, AdminNotification::where('type', 'order_returned')->where('order_id', $order->id)->count());
     }
 }

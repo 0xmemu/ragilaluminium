@@ -48,6 +48,39 @@ class CreateAdminNotifications
         ]);
     }
 
+    public function notifyOrderReturned(ShippingStatusUpdated $event): void
+    {
+        if ($event->newStatus !== 'returned') {
+            return;
+        }
+
+        $order = $event->order;
+        if (! $order) {
+            return;
+        }
+
+        $exists = AdminNotification::query()
+            ->where('type', 'order_returned')
+            ->where('order_id', $order->id)
+            ->exists();
+        if ($exists) {
+            return;
+        }
+
+        $isCod = (bool) ($order->cod_flag || $order->payment_method === 'cod');
+        $title = $isCod
+            ? 'Paket COD Dikembalikan '.$order->order_number
+            : 'Paket Dikembalikan '.$order->order_number;
+
+        AdminNotification::create([
+            'type' => 'order_returned',
+            'order_id' => $order->id,
+            'title' => $title,
+            'body' => 'Pesanan '.$order->order_number.' ditolak atau dikembalikan oleh J&T Cargo ('.$order->customer_name.' · '.$order->shipping_city.').',
+            'href' => route('admin.orders.show', $order),
+        ]);
+    }
+
     public function notifyOrderCancelled(OrderCancelled $event): void
     {
         $order = $event->order;

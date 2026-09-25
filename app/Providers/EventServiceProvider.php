@@ -41,6 +41,7 @@ class EventServiceProvider extends ServiceProvider
         ShippingStatusUpdated::class => [
             SendShippingStatusWhatsApp::class,
             CreateAdminNotifications::class . '@notifyOrderDelivered',
+            CreateAdminNotifications::class . '@notifyOrderReturned',
             EvaluateProductPopularityThresholds::class,
         ],
         OrderCreated::class => [
