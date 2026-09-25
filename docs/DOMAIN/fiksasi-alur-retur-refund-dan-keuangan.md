@@ -129,14 +129,15 @@ Pergerakan status pembayaran pesanan COD:
 
 ### 3.5 Hakikat Refund: Pembatasan dan Tanpa Kas Otomatis
 1. **Refund Hanya Sah untuk Pesanan Lunas:** Formulir penyelesaian retur admin melarang pemberian refund (`resolution_type = refund`) jika pesanan belum lunas (`payment_status !== 'paid'`). Pesanan yang tidak pernah dibayar (seperti COD ditolak) tidak boleh diberi refund karena akan memotong laba toko atas uang yang tidak pernah diterima.
-2. **Batas Maksimal Refund:** Nominal `refund_amount` tidak boleh melebihi nilai total belanja pesanan (`orders.total_amount`).
-3. **Bukan Mutasi Perbankan Otomatis:** Sistem web Ragil Aluminium tidak memiliki integrasi pengeluaran kas bank otomatis (*disbursement API*). Pengembalian uang riil ke rekening pembeli dilakukan secara manual oleh owner/bendahara toko via m-Banking atau transfer bank langsung. Pengisian `refund_amount` di admin berfungsi sebagai dokumen audit dan pengurang agregat laporan keuangan.
+2. **Batas Maksimal Refund:** Nominal `refund_amount` tidak boleh melebihi nilai total belanja pesanan (`orders.total_amount`) serta tidak boleh melebihi total pembayaran riil yang sudah diselesaikan.
+3. **Isolasi Nilai pada Resolusi Non-Refund:** Resolusi selain refund (`reship`, `compensation`, `no_compensation`) secara mutlak memaksa nilai `refund_amount = 0.0` di database untuk mencegah kebocoran angka pengurang laba fiktif.
+4. **Bukan Mutasi Perbankan Otomatis:** Sistem web Ragil Aluminium tidak memiliki integrasi pengeluaran kas bank otomatis (*disbursement API*). Pengembalian uang riil ke rekening pembeli dilakukan secara manual oleh owner/bendahara toko via m-Banking atau transfer bank langsung. Pengisian `refund_amount` di admin berfungsi sebagai dokumen audit dan pengurang agregat laporan keuangan.
 
 ### 3.6 Perlakuan Stok Barang Retur (Aturan Non-Negotiable)
 1. **Barang Retur TIDAK Otomatis Menambah Stok (Keputusan Owner 19 Sep 2026):**
    Unit produk yang dikembalikan pembeli atau kurir tidak dikembalikan ke stok katalog (`products.stock` / `product_variants.stock`). Barang retur harus diperiksa fisik di workshop untuk memastikan kelayakan atau perbaikan. Admin yang berwenang yang dapat menambahkan stok kembali secara sadar lewat menu edit produk.
 2. **Penggantian Barang Baru (`replacement`):**
-   Apabila kasus retur diselesaikan dengan resolusi penggantian barang, sistem otomatis memotong stok barang pengganti sebanyak 1 kali (`decrement`) dari stok gudang toko.
+   Apabila kasus retur diselesaikan dengan resolusi penggantian barang, sistem otomatis memotong stok barang pengganti sebanyak 1 kali (`decrement`) dari stok gudang toko di dalam transaksi database yang terlindungi kunci.
 3. **Pengiriman Ulang (`reship`):**
    Resolusi kirim ulang tidak memotong stok lagi karena menggunakan unit barang yang sebelumnya sudah disiapkan untuk pesanan tersebut.
 
@@ -166,9 +167,9 @@ flowchart TD
         I --> K[Admin Selesaikan Retur]
         K --> L{Jenis Resolusi?}
         
-        L -- Refund --> M[Syarat: Pesanan Wajib Paid\nInput refund_amount <= total_amount]
+        L -- Refund --> M[Syarat: Pesanan Wajib Paid\nInput refund_amount <= total bayar riil]
         L -- Replacement --> N[Potong Stok Barang Pengganti 1x]
-        L -- Reship / Kompensasi --> O[Tanpa Potong Stok Tambahan]
+        L -- Reship / Kompensasi --> O[Tanpa Potong Stok & Refund Dipaksa Nol]
         
         M --> P[Status: Retur Selesai / return_completed]
         N --> P
@@ -197,6 +198,26 @@ flowchart TD
 
 Penerapan fiksasi ini telah diuji dan diverifikasi langsung pada backend serta frontend repositori:
 1. **Uji Kasus Retur Lolos Penuh:** Seluruh pengujian fitur alur retur (`AdminReturnWorkflowTest`, `ReturnServiceTest`, `OrderReturnCtaTest`, `StorePerformanceRefusedReturnTest`) lulus 100%.
-2. **Penjaga Validasi Refund:** Pengujian unit otomatis mengunci bahwa pesanan belum lunas (`payment_status !== 'paid'`) ditolak saat mencoba diproses refund.
+2. **Penjaga Validasi Refund:** Pengujian unit otomatis mengunci bahwa pesanan belum lunas (`payment_status !== 'paid'`) ditolak saat mencoba diproses refund, dan nominal refund tidak dapat melebihi total pembayaran riil.
 3. **Penyelarasan Teks Antarmuka:** Keterangan tooltip biaya ongkir retur toko pada `resources/js/pages/Admin/Orders/Show.tsx` telah diselaraskan: menyatakan dengan benar bahwa ongkos retur yang ditanggung toko mengurangi Penjualan Bersih.
-4. **Bebas Karakter Terlarang:** Dokumen dan kode 100% bebas dari karakter *em dash* (U+2014).
+4. **Proteksi Konkurensi & Idempotensi:** Pengecekan ganda di dalam transaksi database dengan kunci baris memastikan webhook kurir duplikat tidak membuat kasus ganda.
+5. **Bebas Karakter Terlarang:** Dokumen dan kode 100% bebas dari karakter *em dash* (U+2014).
+
+---
+
+## 7. Batasan Sistem: Apa yang Sengaja TIDAK Dibuat
+
+Prinsip dasar sistem Ragil Aluminium: **website mencatat keputusan yang sudah dibuat admin, bukan menjadi tempat negosiasinya.**
+
+Dengan fiksasi ini, fitur-fitur berikut secara sadar **TIDAK PERLU DIBUAT** dan dilarang dimasukkan:
+
+1. **Formulir retur publik:** Pelanggan tidak diberikan form isian pengajuan mandiri di website.
+2. **Upload bukti retur di website:** Seluruh pengiriman foto, video unboxing, dan bukti fisik dilakukan melalui chat WhatsApp, bukan modul upload di website.
+3. **Modul approval refund bertingkat:** Hak persetujuan dipegang penuh oleh admin yang berwenang tanpa alur persetujuan multi-level yang rumit.
+4. **Payment gateway refund otomatis:** Tidak ada integrasi transfer uang otomatis (disbursement API); transfer uang riil dilakukan secara manual oleh owner/bendahara toko di luar sistem.
+5. **Status transfer bank real-time:** Sistem tidak memantau status mutasi rekening perbankan secara live.
+6. **Sistem gudang untuk inspeksi barang:** Tidak ada modul manajemen gudang (WMS) multi-tahap (seperti penentuan grade, afkir, atau rak penyimpanan) di website.
+7. **Stock return otomatis:** Barang retur yang kembali tidak otomatis dimasukkan ke stok katalog; penambahan unit stok hanya dilakukan secara sadar oleh admin dari menu edit produk.
+8. **Workflow sengketa pelanggan:** Tidak ada modul tiket sengketa (*dispute*) di sistem; mediasi dilakukan langsung melalui WhatsApp.
+9. **Kalkulator kompensasi kompleks:** Tidak ada formula matematis otomatis untuk menghitung nilai kompensasi; nominal kompensasi ditetapkan berdasarkan kesepakatan langsung antara toko dan pelanggan.
+10. **Multi-step customer RMA portal:** Tidak ada portal RMA (*Return Merchandise Authorization*) mandiri bagi pelanggan.
