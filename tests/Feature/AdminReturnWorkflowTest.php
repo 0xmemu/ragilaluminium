@@ -395,6 +395,77 @@ class AdminReturnWorkflowTest extends TestCase
         $this->assertSame('open', $case->status);
     }
 
+    public function test_complete_refund_capped_at_actual_paid_amount(): void
+    {
+        $admin = $this->admin();
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered', ['total_amount' => 110000]);
+        $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(1)->toDateTimeString());
+
+        // Buat record pembayaran completed hanya 60.000
+        \App\Models\Payment::create([
+            'order_id' => $order->id,
+            'payment_method' => 'transfer',
+            'amount' => 60000,
+            'status' => 'completed',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.orders.returns.store', $order), $this->validCreatePayload($order));
+        $case = OrderReturnCase::where('order_id', $order->id)->firstOrFail();
+
+        // Mencoba refund 80.000 (melebihi 60.000 yang dibayar) -> ditolak
+        $this->actingAs($admin)
+            ->post(route('admin.orders.returns.complete', ['order' => $order, 'returnCase' => $case]), [
+                'resolution_type' => 'refund',
+                'admin_notes' => 'mencoba refund di atas pembayaran aktual',
+                'refund_amount' => 80000,
+                'return_shipping_cost' => 10000,
+            ])
+            ->assertSessionHasErrors(['refund_amount']);
+
+        // Refund 50.000 (dalam batas 60.000) -> sukses
+        $this->actingAs($admin)
+            ->post(route('admin.orders.returns.complete', ['order' => $order, 'returnCase' => $case]), [
+                'resolution_type' => 'refund',
+                'admin_notes' => 'refund dalam batas pembayaran',
+                'refund_amount' => 50000,
+                'return_shipping_cost' => 10000,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $case->refresh();
+        $this->assertSame(50000.0, (float) $case->refund_amount);
+        $this->assertSame('completed', $case->status);
+    }
+
+    public function test_non_refund_resolution_forces_zero_refund_amount(): void
+    {
+        $admin = $this->admin();
+        $p = $this->productWithStock();
+        $v = $this->variantWithStock($p);
+        $order = $this->makeOrder('delivered');
+        $this->attachItem($order, $p, $v, 1, 100000);
+        $this->markDelivered($order, now()->subHours(1)->toDateTimeString());
+        $this->actingAs($admin)->post(route('admin.orders.returns.store', $order), $this->validCreatePayload($order));
+        $case = OrderReturnCase::where('order_id', $order->id)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.returns.complete', ['order' => $order, 'returnCase' => $case]), [
+                'resolution_type' => 'reship',
+                'admin_notes' => 'kirim ulang barang',
+                'refund_amount' => 50000, // payload nakal mengirim nominal refund saat reship
+                'return_shipping_cost' => 10000,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $case->refresh();
+        $this->assertSame(0.0, (float) $case->refund_amount, 'refund_amount wajib dipaksa 0 untuk resolusi selain refund');
+        $this->assertSame('completed', $case->status);
+    }
+
     public function test_complete_refund_marks_case_and_order_completed(): void
     {
         $admin = $this->admin();

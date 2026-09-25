@@ -65,6 +65,14 @@ class ReturnService
             if (! $locked) {
                 return;
             }
+            $hasActiveInside = OrderReturnCase::query()
+                ->where('order_id', $locked->id)
+                ->where('status', 'open')
+                ->exists();
+            if ($hasActiveInside) {
+                return;
+            }
+
 
             $locked->load('items');
 

@@ -743,6 +743,10 @@ class OrderController extends Controller
             : ($faultParty === 'store');
 
         $case = DB::transaction(function () use ($order, $validated, $request, $itemsById, $faultParty, $shippingCostBorne): OrderReturnCase {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            if (OrderReturnCase::query()->where('order_id', $locked->id)->where('status', 'open')->exists()) {
+                throw new \DomainException('Sudah ada kasus retur aktif untuk pesanan ini.');
+            }
             $case = OrderReturnCase::create([
                 'order_id' => $order->id,
                 'status' => 'open',
@@ -827,6 +831,8 @@ class OrderController extends Controller
                 ->withInput();
         }
 
+        $refundAmount = 0.0;
+        $replacementAmount = 0.0;
         if ($validated['resolution_type'] === 'refund') {
             if ($order->payment_status !== 'paid') {
                 return redirect()->route('admin.orders.show', $order)
@@ -834,12 +840,16 @@ class OrderController extends Controller
                     ->withInput();
             }
             $refund = (float) ($validated['refund_amount'] ?? 0);
-            $maxRefund = (float) $order->total_amount;
+            $paidSum = (float) $order->payments()->where('status', 'completed')->sum('amount');
+            $maxRefund = $paidSum > 0 ? min((float) $order->total_amount, $paidSum) : (float) $order->total_amount;
             if ($refund < 0 || $refund > $maxRefund) {
                 return redirect()->route('admin.orders.show', $order)
                     ->withErrors(['refund_amount' => 'Refund tidak boleh melebihi total pembayaran pesanan.'])
                     ->withInput();
             }
+            $refundAmount = $refund;
+        } elseif ($validated['resolution_type'] === 'replacement') {
+            $replacementAmount = (float) ($validated['replacement_amount'] ?? 0);
         }
 
         if ($validated['resolution_type'] !== 'replacement') {
@@ -847,7 +857,7 @@ class OrderController extends Controller
         }
 
         // Validasi & stok replacement di dalam transaksi dgn locking.
-        DB::transaction(function () use ($request, $order, $returnCase, $validated, $shippingCost): void {
+        DB::transaction(function () use ($request, $order, $returnCase, $validated, $shippingCost, $refundAmount, $replacementAmount): void {
             $replacement = $validated['replacement_items'] ?? null;
 
             if ($replacement) {
@@ -913,8 +923,8 @@ class OrderController extends Controller
                 'status' => 'completed',
                 'resolution_type' => $validated['resolution_type'],
                 'admin_notes' => trim($validated['admin_notes']),
-                'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
-                'replacement_amount' => (float) ($validated['replacement_amount'] ?? 0),
+                'refund_amount' => $refundAmount,
+                'replacement_amount' => $replacementAmount,
                 'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
                 'return_shipping_cost' => $shippingCost,
                 'completed_at' => now(),
@@ -935,7 +945,7 @@ class OrderController extends Controller
                 [
                     'return_case_id' => $returnCase->id,
                     'resolution_type' => $validated['resolution_type'],
-                    'refund_amount' => (float) ($validated['refund_amount'] ?? 0),
+                    'refund_amount' => $refundAmount,
                 ],
             );
 

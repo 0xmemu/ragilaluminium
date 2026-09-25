@@ -107,4 +107,45 @@ class ShippingStatusTest extends \Tests\TestCase
         $this->post('/webhook/shipping/jnt', ['bizContent' => '{}'])
             ->assertStatus(401);
     }
+
+    public function test_duplicate_returned_update_is_idempotent_and_creates_single_return_case(): void
+    {
+        $order = $this->makeOrder();
+        $record = ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => 'J&T Cargo', 'waybill_number' => 'JT124-DUP',
+            'shipping_cost' => 0, 'status' => 'in_transit',
+        ]);
+        $service = app(ShippingService::class);
+        $service->applyCarrierUpdate($record, 'returned', 'Retur 1');
+        $service->applyCarrierUpdate($record, 'returned', 'Retur 2');
+
+        $this->assertEquals('returned', $record->fresh()->status);
+        $this->assertEquals('return_in_process', $order->fresh()->order_status);
+        $this->assertEquals(1, \App\Models\OrderReturnCase::where('order_id', $order->id)->count());
+    }
+
+    public function test_carrier_update_cannot_reopen_return_completed_order(): void
+    {
+        $order = $this->makeOrder();
+        $order->update(['order_status' => 'return_completed']);
+        $record = ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => 'J&T Cargo', 'waybill_number' => 'JT124-TERM',
+            'shipping_cost' => 0, 'status' => 'in_transit',
+        ]);
+        app(ShippingService::class)->applyCarrierUpdate($record, 'returned', 'Retur terlambat');
+
+        $this->assertEquals('return_completed', $order->fresh()->order_status);
+    }
+
+    public function test_carrier_update_delivered_after_returned_is_ignored_as_regression(): void
+    {
+        $order = $this->makeOrder();
+        $record = ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => 'J&T Cargo', 'waybill_number' => 'JT124-REG',
+            'shipping_cost' => 0, 'status' => 'returned', 'last_status_at' => now()->subMinute(),
+        ]);
+        app(ShippingService::class)->applyCarrierUpdate($record, 'delivered', 'Salah urutan scan', null, now());
+
+        $this->assertEquals('returned', $record->fresh()->status);
+    }
 }
