@@ -1,6 +1,10 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
+import {
+  WhatsAppConnectionCard,
+  type WhatsAppConnectionSummary,
+} from "@/components/admin/whatsapp-connection-card"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
@@ -50,14 +54,7 @@ interface Props {
   range: string
   range_label: string
   range_options: { value: string; label: string }[]
-  connection: {
-    configured: boolean
-    connected: boolean
-    phone: string | null
-    error?: string | null
-    storefront_phone?: string | null
-    last_synced_at?: string | null
-  }
+  connection: WhatsAppConnectionSummary
   conversations: Conversation[]
 }
 
@@ -127,53 +124,7 @@ export default function WhatsAppHub({ title, description, stats, connection, con
 
       <div className="space-y-5">
       {/* Status sambungan WhatsApp (owner 2026-09-17): terbaca jelas di ringkasan */}
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={
-              connection.connected
-                ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                : connection.configured
-                ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-destructive/10 text-destructive"
-                : "flex size-10 shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-            }
-          >
-            <Icon name="whatsapp" className="size-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-              {connection.connected
-                ? "WhatsApp Terhubung"
-                : connection.configured
-                ? "WhatsApp Tidak Terhubung"
-                : "WhatsApp Belum Dikonfigurasi"}
-              <span
-                aria-hidden="true"
-                className={
-                  connection.connected
-                    ? "inline-block size-2 rounded-full bg-emerald-500"
-                    : connection.configured
-                    ? "inline-block size-2 rounded-full bg-destructive"
-                    : "inline-block size-2 rounded-full bg-amber-500"
-                }
-              />
-            </p>
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-              {connection.connected
-                ? `Nomor ${connection.storefront_phone ?? connection.phone ?? "-"} dipakai di seluruh website dan untuk mengirim pesan otomatis.`
-                : connection.configured
-                ? `${connection.error ?? "Perangkat WhatsApp sedang tidak aktif."} Nomor di website tetap ${connection.storefront_phone ?? "nomor terakhir"} sampai nomor baru tersambung.`
-                : `Gateway WhatsApp belum disetel. Nomor di website memakai ${connection.storefront_phone ?? "nomor dari pengaturan kontak"}.`}
-            </p>
-          </div>
-        </div>
-        <Link
-          href={routeUrl("admin.whatsapp.pairing")}
-          className="shrink-0 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
-        >
-          {connection.connected ? "Kelola sambungan" : "Sambungkan nomor"}
-        </Link>
-      </section>
+      <WhatsAppConnectionCard connection={connection} />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label={`Pesan Masuk (${range_label})`} value={stats.inbound} />

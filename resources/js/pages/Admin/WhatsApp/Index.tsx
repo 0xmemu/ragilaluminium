@@ -2,6 +2,10 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
+import {
+  WhatsAppConnectionCard,
+  type WhatsAppConnectionSummary,
+} from "@/components/admin/whatsapp-connection-card"
 import { Button } from "@/components/admin/ui/button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Switch } from "@/components/admin/ui/switch"
@@ -22,14 +26,6 @@ interface AutomationRow {
   deactivateUrl: string
 }
 
-interface ConnectionSummary {
-  configured: boolean
-  connected: boolean
-  phone: string | null
-  error?: string | null
-  storefront_phone?: string | null
-  last_synced_at?: string | null
-}
 
 export default function WhatsAppIndex({
   title,
@@ -45,7 +41,7 @@ export default function WhatsAppIndex({
   automations: AutomationRow[]
   totalTemplates?: number
   replySignature?: string
-  connection?: ConnectionSummary
+  connection?: WhatsAppConnectionSummary
   pairingUrl?: string
 }) {
   const [busyId, setBusyId] = React.useState<number | null>(null)
@@ -77,56 +73,7 @@ export default function WhatsAppIndex({
 
       {/* Ringkasan status sambungan WhatsApp (owner 2026-09-17) */}
       {connection ? (
-        <section className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-soft">
-          <div className="flex min-w-0 items-center gap-3">
-            <span
-              className={
-                connection.connected
-                  ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : connection.configured
-                  ? "flex size-10 shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-destructive/10 text-destructive"
-                  : "flex size-10 shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-              }
-            >
-              <Icon name="whatsapp" className="size-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-                Status WhatsApp
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                  <span
-                    aria-hidden="true"
-                    className={
-                      connection.connected
-                        ? "inline-block size-2 rounded-full bg-emerald-500"
-                        : connection.configured
-                        ? "inline-block size-2 rounded-full bg-destructive"
-                        : "inline-block size-2 rounded-full bg-amber-500"
-                    }
-                  />
-                  <span
-                    className={
-                      connection.connected
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : connection.configured
-                        ? "text-destructive"
-                        : "text-amber-600 dark:text-amber-400"
-                    }
-                  >
-                    {connection.connected ? "Terhubung" : connection.configured ? "Terputus" : "Belum dikonfigurasi"}
-                  </span>
-                </span>
-              </p>
-              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                {connection.connected
-                  ? `Nomor ${connection.storefront_phone ?? connection.phone ?? "-"} dipakai di seluruh website dan untuk mengirim template di bawah.`
-                  : connection.configured
-                  ? `${connection.error ?? "Perangkat WhatsApp tidak aktif."} Nomor di website tetap ${connection.storefront_phone ?? "nomor terakhir"} sampai nomor baru tersambung.`
-                  : `Gateway WhatsApp belum dikonfigurasi. Nomor di website memakai ${connection.storefront_phone ?? "nomor dari pengaturan kontak"}.`}
-              </p>
-            </div>
-          </div>
-        </section>
+        <WhatsAppConnectionCard connection={connection} className="mb-4" actionHref={null} />
       ) : null}
 
       <div className="mb-3 space-y-1 text-xs leading-5 text-muted-foreground">
