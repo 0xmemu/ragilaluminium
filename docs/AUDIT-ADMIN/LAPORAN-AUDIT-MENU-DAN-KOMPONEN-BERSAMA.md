@@ -161,7 +161,7 @@ Akibat yang sudah nyata terlihat: `Orders/Show.tsx` menampilkan status yang sama
 |---|---|---|
 | Pembangun URL filter halaman (`visit`) | **12 berkas**: Categories, SubModels, Vouchers, Notifications, Orders, Payments, Imports, Products, PopularityBoosts, Shipping, Banners, Announcements | Aturan "nilai default tidak ditulis ke URL" dan pemangkasan kata kunci tersebar di 12 tempat. `ResourceIndex.tsx` memakai cara ketiga (`URLSearchParams`) |
 | Mesin mode Urutkan (geser, simpan, batal, sinkron snapshot) | **9 berkas**: ApaKata, Faq, MasalahSolusi, ModelProducts, SubModels, Testimonials, InstallationGallery, Beranda, PopularityBoosts | Blok geser dan penomoran ulang identik. Bahkan ada penamaan yang menyesatkan: `cancelOrder()` di dua berkas sebenarnya membatalkan mode urutkan, bukan membatalkan pesanan |
-| Blok status koneksi WhatsApp | **3 berkas**: Hub, Index, Pairing | Sudah bercabang pada radius, padding, dan bayangan |
+| Blok status koneksi WhatsApp | **3 berkas**: Hub, Index, Pairing | Sudah bercabang pada radius, padding, dan bayangan. Sudah diperbaiki: Hub dan Index kini memakai komponen bersama `components/admin/whatsapp-connection-card.tsx`, termasuk tipe data `WhatsAppConnectionSummary` yang sebelumnya juga diduplikasi |
 
 Ini bukan sekadar kerapian. Komentar panjang di `ApaKata/Index.tsx` dan `InstallationGallery/Index.tsx` mencatat bug sinkronisasi snapshot yang sudah pernah terjadi; setiap perbaikan baru harus diulang di sembilan tempat.
 
