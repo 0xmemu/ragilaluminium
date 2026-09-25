@@ -578,7 +578,7 @@ class StorePerformanceService
                 'refused_shipping_cost' => $current['refused_shipping_cost'],
                 'refused_cod_fee' => $current['refused_cod_fee'],
                 'refused_borne_cost' => $current['refused_borne_cost'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Angka pembayaran diterima dan refund berasal dari pencatatan serta verifikasi manual admin di luar website.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             // Nilai periode pembanding untuk sheet Ringkasan Finansial di
             // ekspor. Layar dan sheet KPI sudah memakai pembanding, sedangkan
@@ -712,11 +712,13 @@ class StorePerformanceService
         $shippingNet = (float) (clone $revenueOrders)->sum('shipping_amount');
         $shippingSubsidy = (float) (clone $revenueOrders)->sum('shipping_subsidy_amount');
         $insurance = (float) (clone $revenueOrders)->sum('shipping_insurance_amount');
-        // Tagihan J&T: pakai angka ASLI dari J&T (totalFreight, diisi otomatis
-        // dari pelacakan resi) bila sudah ada; kalau belum, pakai asumsi
-        // checkout supaya pesanan lama tidak berubah. Asumsi = ongkir pembeli +
-        // subsidi toko + asuransi, SEBANDING dengan totalFreight yang juga
-        // sudah memuat asuransi, supaya tidak terhitung dua kali.
+        // Tagihan J&T: pakai tagihan FINAL dari J&T (totalFreight, diisi
+        // otomatis dari pelacakan resi setelah paket ditimbang) bila sudah ada;
+        // kalau belum, pakai TARIF J&T yang dihitung saat checkout supaya
+        // pesanan lama tidak berubah. Tarif checkout = ongkir pembeli + subsidi
+        // toko + asuransi, SEBANDING dengan totalFreight yang juga sudah
+        // memuat asuransi, supaya tidak terhitung dua kali. Keduanya bersumber
+        // dari sistem J&T yang sama, bedanya hanya waktu perhitungan.
         $actualOngkir = ShippingRecord::actualOngkirByOrder(
             (clone $revenueOrders)->pluck('id')->all()
         );
@@ -725,14 +727,14 @@ class StorePerformanceService
         foreach ((clone $revenueOrders)->get([
             'id', 'shipping_amount', 'shipping_subsidy_amount', 'shipping_insurance_amount',
         ]) as $shippingRow) {
-            $asumsiOngkir = (float) $shippingRow->shipping_amount
+            $ongkirCheckout = (float) $shippingRow->shipping_amount
                 + (float) $shippingRow->shipping_subsidy_amount
                 + (float) $shippingRow->shipping_insurance_amount;
-            $asliOngkir = $actualOngkir[$shippingRow->id] ?? null;
-            $ongkirDasar += $asliOngkir ?? $asumsiOngkir;
+            $ongkirTagihanFinal = $actualOngkir[$shippingRow->id] ?? null;
+            $ongkirDasar += $ongkirTagihanFinal ?? $ongkirCheckout;
 
-            if ($asliOngkir !== null) {
-                $ongkirSelisih += $asliOngkir - $asumsiOngkir;
+            if ($ongkirTagihanFinal !== null) {
+                $ongkirSelisih += $ongkirTagihanFinal - $ongkirCheckout;
             }
         }
         $shippingRaw = $ongkirDasar;
@@ -854,8 +856,8 @@ class StorePerformanceService
         // COD memang tetap keluar sehingga sudah ikut terhitung di shipping_raw
         // dan cod_fee. Jangan kurangkan lagi dari Penjualan Bersih.
         //
-        // Ongkir memakai tagihan ASLI J&T bila sudah dilaporkan, kalau belum
-        // jatuh ke asumsi checkout. Ongkir KAKI BALIK belum ikut dihitung karena
+        // Ongkir memakai tagihan FINAL J&T bila sudah dilaporkan, kalau belum
+        // jatuh ke tarif J&T saat checkout. Ongkir KAKI BALIK belum ikut dihitung karena
         // tagihannya belum tercatat otomatis, jadi tidak ada sumber angka yang
         // bisa dipercaya.
         $refusedCostOrders = (clone $base)
@@ -872,10 +874,10 @@ class StorePerformanceService
         $refusedShippingBorne = 0.0;
         $refusedCodFeeBorne = 0.0;
         foreach ($refusedCostOrders as $refusedOrder) {
-            $asumsiRefused = (float) $refusedOrder->shipping_amount
+            $ongkirCheckoutRefused = (float) $refusedOrder->shipping_amount
                 + (float) $refusedOrder->shipping_subsidy_amount
                 + (float) $refusedOrder->shipping_insurance_amount;
-            $refusedShippingBorne += $refusedActualOngkir[$refusedOrder->id] ?? $asumsiRefused;
+            $refusedShippingBorne += $refusedActualOngkir[$refusedOrder->id] ?? $ongkirCheckoutRefused;
             $refusedCodFeeBorne += (float) $refusedOrder->cod_fee_amount;
         }
         $refusedBorneCost = $refusedShippingBorne + $refusedCodFeeBorne;

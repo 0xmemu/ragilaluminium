@@ -727,7 +727,7 @@ function bangunKategoriDetail(
                 rp(fin.insurance ?? 0) +
                 " · Subsidi ongkir ditanggung toko " +
                 rp(fin.shipping_subsidy ?? 0),
-              note: "Tagihan J&T adalah satu-satunya pengurang ongkir. Baris rincian di atas menjelaskan komposisinya, bukan pengurang tambahan. Selama J&T belum melaporkan tagihan asli, komposisi memakai asumsi checkout (ongkir pembeli + asuransi + subsidi toko). Setelah tagihan asli masuk untuk suatu resi, angka Tagihan J&T mengikuti tagihan asli itu, sehingga tiga komponen rincian bisa tidak menjumlah persis ke angka kepala.",
+              note: "Tagihan J&T adalah satu-satunya pengurang ongkir. Baris rincian di atas menjelaskan komposisinya, bukan pengurang tambahan. Komposisi memakai tarif J&T saat checkout (ongkir pembeli + asuransi + subsidi toko); angka kepala memakai tagihan final J&T setelah paket ditimbang kurir. Keduanya dihitung sistem J&T yang sama, hanya berbeda waktu, sehingga nominalnya bisa berbeda tipis.",
             },
             { label: "Biaya COD ke J&T", value: rp(fin.cod_fee ?? 0), sign: "−", metricKey: "cod_fee" },
             { label: "Refund diberikan", value: rp(fin.refund_adjustments ?? 0), sign: "−", metricKey: "refund_given" },
