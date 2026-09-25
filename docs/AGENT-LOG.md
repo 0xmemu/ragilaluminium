@@ -962,3 +962,13 @@ Bukti:
 - ShippingStatusTest 8 passed (18 assertions).
 - Typecheck bersih 0 error.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 01:50 UTC | zcode | Deep | cb507c3b | selesai
+Lingkup: penguatan cron fallback J&T Cargo dengan kolom pelacakan, backoff bertingkat, dan alert kegagalan berulang (database/migrations/2026_09_25_020000_add_polling_fields_to_shipping_records.php, app/Models/ShippingRecord.php, app/Console/Commands/PollJntTracking.php, docs/database-schema-ragil-aluminium.md, resources/js/components/admin/notification-bell.tsx, resources/js/pages/Admin/Notifications.tsx, tests/Feature/PollJntTrackingCommandTest.php).
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (tambah 4 kolom di `shipping_records`: `last_polled_at`, `poll_attempts`, `next_poll_at`, `last_poll_error` + indeks `idx_shipping_poll`).
+Untuk agent berikutnya: `shipping:poll-jnt` kini menyaring resi berdasarkan `next_poll_at <= now()`, menerapkan interval backoff saat gagal API (maksimal 6 jam), berhenti mencoba bila gagal 20 kali, dan membuat `AdminNotification` type `shipping_poll_failed` idempoten jika gagal >= 5 kali. Status order tidak pernah berubah bila terjadi error jaringan/API.
+Bukti:
+- PollJntTrackingCommandTest 5 passed (24 assertions).
+- ShippingStatusTest 8 passed (18 assertions).
+- Typecheck bersih 0 error.
+- Bebas karakter em dash (U+2014).
