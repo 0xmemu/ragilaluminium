@@ -1,5 +1,6 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
@@ -37,45 +38,52 @@ export default function HowToOrderForm({
     <AdminLayout
       title="Edit Cara Pesan Jendela Anda"
       description="Langkah pemesanan yang tampil di beranda publik."
+      backUrl={indexUrl}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="howto-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={indexUrl}>Kembali</Link>
-          </Button>
-        </div>
+        <Button type="submit" form="howto-form" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan"}
+        </Button>
       }
     >
       <Head title="Edit Cara Pesan | Admin" />
       <form
         id="howto-form"
-        className="mx-auto max-w-3xl space-y-6"
+        className="w-full max-w-4xl space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
           form.put(submitUrl)
         }}
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <SectionCard
+          title="Identitas Section"
+          description="Judul dan subjudul yang tampil di atas daftar langkah pada beranda publik."
+        >
+          <div className="space-y-4">
           <Field id="howto-title" label="Judul section" required error={form.errors.title}>
             <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
           </Field>
           <Field id="howto-subtitle" label="Subjudul" error={form.errors.subtitle}>
             <Input value={form.data.subtitle} onChange={(event) => form.setData("subtitle", event.target.value)} />
           </Field>
-        </section>
+          </div>
+        </SectionCard>
 
-        <section className="space-y-3">
+        <SectionCard
+          title="Langkah Pemesanan"
+          description="Setiap langkah tampil berurutan di beranda publik, maksimal 8 langkah."
+        >
+
           {form.data.steps.map((step, index) => (
-            <article key={index} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="text-sm font-bold">Langkah {index + 1}</p>
+            <SectionCard
+              key={index}
+              title={`Langkah ${index + 1}`}
+              action={
                 <Button
                   type="button"
                   variant="secondary"
-                  className="h-8 px-2 text-xs text-destructive"
+                  size="xs"
+                  className="text-destructive"
                   disabled={form.data.steps.length <= 1}
                   onClick={() =>
                     form.setData(
@@ -86,7 +94,8 @@ export default function HowToOrderForm({
                 >
                   Hapus
                 </Button>
-              </div>
+              }
+            >
               <div className="grid gap-3">
                 <Field id={`step-title-${index}`} label="Judul langkah">
                   <Input value={step.title} onChange={(event) => updateStep(index, { title: event.target.value })} />
@@ -99,7 +108,7 @@ export default function HowToOrderForm({
                   />
                 </Field>
               </div>
-            </article>
+            </SectionCard>
           ))}
           <Button
             type="button"
@@ -109,7 +118,7 @@ export default function HowToOrderForm({
           >
             Tambah
           </Button>
-        </section>
+        </SectionCard>
 
       </form>
     </AdminLayout>
