@@ -103,6 +103,23 @@ Sebelas berkas masih memakai kotak centang mentah dengan pendorong manual `sm:pt
 | `Banners/Index.tsx`, `Announcements/Index.tsx` | Checkbox banner otomatis dan aktifkan slide |
 | `ResourceIndex.tsx` | Tiga toggle lampiran media |
 
+### 5.1 Kartu yang Menyalin Ulang SectionCard
+
+Selain checkbox, ditemukan kartu yang menulis ulang struktur `SectionCard` secara manual, padahal komponen bersama sudah ada. Yang paling jelas: `Products/Show.tsx` mengulang pola yang sama empat kali (ikon dalam kotak abu, judul, garis pemisah, isi) sehingga perubahan gaya kartu harus disunting di empat tempat.
+
+| Berkas | Jumlah kartu | Yang diperbaiki |
+|---|---|---|
+| `Products/Show.tsx` | 4 | Varian, Spesifikasi, Media (dengan aksi), Deskripsi |
+| `SubModelForm.tsx` | 2 | Template spesifikasi produk dan Template default model |
+
+Setelah konversi, kedua berkas kehilangan 96 baris dan hanya menambah 49 baris, karena header kartu tidak lagi ditulis berulang.
+
+### 5.2 Fungsi Kode Mati di Halaman Publik
+
+Pada `Public/OrderStatus.tsx` ditemukan fungsi `_cancelOrder()` yang tidak pernah dipanggil dari mana pun. Fungsi itu juga memakai `window.confirm` bawaan. Fungsi ini sengaja dinamai dengan garis bawah depan sebagai penanda tidak dipakai, jadi bukan bug aktif, tetapi tetap kode mati yang menyimpan dialog konfirmasi gaya lama.
+
+Status: **belum dihapus**, menunggu keputusan bersama temuan yatim lainnya.
+
 ---
 
 ## 6. Temuan D: Tindakan Berbahaya Tanpa Konfirmasi

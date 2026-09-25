@@ -997,3 +997,13 @@ Bukti:
 - Typecheck 0 error; ESLint 0 error/0 warning pada 21 berkas yang diubah; build Vite sukses.
 - PHPUnit penuh 1.172 passed / 1 skipped; filter WhatsApp 70 passed; Vitest 203 passed.
 - Uji browser: dialog konfirmasi pairing berfungsi, sesi WhatsApp produksi tetap tersambung (connected=1, nomor 62881080733754).
+
+## 2026-09-25 03:45 UTC | zcode | Standard | 03ff777c | selesai
+Lingkup: konversi kartu manual ke SectionCard bersama pada halaman Detail Produk dan Form Sub Model.
+Dampak spec: tidak berubah
+Untuk agent berikutnya: gunakan `SectionCard` dari `components/admin/section-card.tsx` untuk setiap kartu berseksi; jangan tulis ulang header kartu (ikon kotak abu + judul + garis pemisah) secara manual. Pola salinan itu ditemukan 6 kali di dua berkas sebelum konversi.
+Bukti:
+- Typecheck 0 error; ESLint 0 error/0 warning pada berkas yang diubah.
+- Vitest 203 passed; FrontendPageContract dan AdminDashboard 21 passed (719 assertions).
+- Uji browser Detail Produk id 51: tab Varian/Spesifikasi/Media tampil, 12 varian terdaftar, tanpa tumpang tindih.
+- Bebas karakter em dash (U+2014).
