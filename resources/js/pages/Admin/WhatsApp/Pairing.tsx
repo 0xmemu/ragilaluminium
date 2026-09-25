@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react"
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Card } from "@/components/ui/card"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
@@ -122,6 +123,9 @@ export default function Pairing({
   const connected = status === "open"
   const unreachable = status === "unreachable"
   const hasLinkedDevice = connected || Boolean(connectedPhone && hasSession)
+  const refreshQrFormRef = React.useRef<HTMLFormElement>(null)
+  const resetFormRef = React.useRef<HTMLFormElement>(null)
+  const pairingCodeFormRef = React.useRef<HTMLFormElement>(null)
   const reconnectingSession = hasSession && !connected
   const showQr = !hasLinkedDevice && !hasSession && (status === "SCAN_QR" || status === "connecting")
 
@@ -136,22 +140,7 @@ export default function Pairing({
 
   const generateLabel = showQr ? "Generate Ulang QR" : "Generate QR & Mulai Pairing"
 
-  const confirmRefreshQr = (e: FormEvent): void => {
-    e.preventDefault()
-    const msg = "Generate QR baru untuk di-scan? Sesi atau pairing saat ini akan diganti dengan QR baru.\n\nLanjutkan?"
-    if (window.confirm(msg)) {
-      ;(e.target as HTMLFormElement).submit()
-    }
-  }
 
-  const confirmPairingCode = (e: FormEvent): void => {
-    e.preventDefault()
-    const target = e.target as HTMLFormElement
-    const msg = `Dapatkan pairing code untuk nomor ${phone.trim()}?\n\nPastikan nomor itu adalah yang benar di HP sebelum melanjutkan.`
-    if (window.confirm(msg)) {
-      target.submit()
-    }
-  }
 
   const handleDisconnectSubmit = (e: FormEvent): void => {
     e.preventDefault()
@@ -352,10 +341,18 @@ export default function Pairing({
               <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
               <span>Refresh Status</span>
             </Button>
-            <form method="post" action={disconnectUrl} onSubmit={handleDisconnectSubmit}>
-              <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10">
-                <span>Reset & Hapus Sesi</span>
-              </Button>
+            <form ref={resetFormRef} method="post" action={disconnectUrl}>
+              <ConfirmAction
+                trigger={
+                  <Button type="button" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10">
+                    <span>Reset & Hapus Sesi</span>
+                  </Button>
+                }
+                title="Reset dan hapus sesi WhatsApp?"
+                description="Sesi WhatsApp di server akan dihapus, sehingga pengiriman pesan otomatis pesanan berhenti sampai admin melakukan pairing ulang. Tindakan ini tidak bisa dibatalkan."
+                confirmLabel="Reset & Hapus Sesi"
+                onConfirm={() => resetFormRef.current?.submit()}
+              />
             </form>
           </div>
         </Card>
@@ -394,11 +391,20 @@ export default function Pairing({
               )}
             </div>
 
-            <form method="post" action={refreshQrUrl} className="mt-2" onSubmit={confirmRefreshQr}>
-              <Button type="submit" className="w-full" disabled={unreachable}>
-                <Icon name="refresh" className="size-4" aria-hidden="true" />
-                <span>{generateLabel}</span>
-              </Button>
+            <form ref={refreshQrFormRef} method="post" action={refreshQrUrl} className="mt-2">
+              <ConfirmAction
+                trigger={
+                  <Button type="button" className="w-full" disabled={unreachable}>
+                    <Icon name="refresh" className="size-4" aria-hidden="true" />
+                    <span>{generateLabel}</span>
+                  </Button>
+                }
+                title="Generate QR baru?"
+                description="QR baru akan mengganti sesi atau pairing yang sedang berjalan. Lanjutkan hanya bila memang ingin pairing ulang."
+                confirmLabel="Generate QR"
+                variant="primary"
+                onConfirm={() => refreshQrFormRef.current?.submit()}
+              />
             </form>
 
             {unreachable ? (
@@ -417,7 +423,7 @@ export default function Pairing({
             <p className="text-sm text-muted-foreground">
               Alternatif jika kamera HP bermasalah: di HP pilih <b>"Tautkan dengan nomor telepon"</b>, lalu masukkan kode 8 digit di bawah.
             </p>
-            <form method="post" action={codeUrl} className="flex gap-2" onSubmit={confirmPairingCode}>
+            <form ref={pairingCodeFormRef} method="post" action={codeUrl} className="flex gap-2">
               <input
                 name="phone"
                 value={phone}
@@ -426,9 +432,18 @@ export default function Pairing({
                 inputMode="tel"
                 className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
               />
-              <Button type="submit" disabled={!phone.trim()}>
-                Dapatkan Kode
-              </Button>
+              <ConfirmAction
+                trigger={
+                  <Button type="button" disabled={!phone.trim()}>
+                    Dapatkan Kode
+                  </Button>
+                }
+                title={`Dapatkan pairing code untuk ${phone.trim()}?`}
+                description="Pastikan nomor itu memang nomor WhatsApp yang benar di HP. Kode hanya berlaku sekali dan segera kedaluwarsa."
+                confirmLabel="Dapatkan Kode"
+                variant="primary"
+                onConfirm={() => pairingCodeFormRef.current?.submit()}
+              />
             </form>
 
             {flash.code && (
