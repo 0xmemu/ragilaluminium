@@ -1021,3 +1021,16 @@ Bukti:
 - Typecheck 0 error; ESLint berkas yang diubah 0 error/0 warning; build Vite sukses 21 detik.
 - Vitest 203 passed; PHPUnit penuh 1.172 passed, 1 skipped (11.907 assertions).
 - Uji browser: dialog konfirmasi Model Produk tampil dan Batal tidak menjalankan aksi (URL tetap); halaman Pengaturan Sistem, Cara Pesan, Detail Produk id 51, Promo Toko, Teruskan Popularitas render normal; sesi WhatsApp produksi tetap tersambung.
+
+## 2026-09-25 05:10 UTC | zcode | Standard | 534c6044 | selesai
+Lingkup: penyatuan kartu status sambungan WhatsApp dan penyeragaman sumber komponen Card pada halaman pairing.
+Dampak spec: tidak berubah
+Untuk agent berikutnya:
+- Komponen bersama baru `resources/js/components/admin/whatsapp-connection-card.tsx` memuat kartu status sambungan WhatsApp sekaligus tipe `WhatsAppConnectionSummary`. Dipakai halaman Ringkasan WhatsApp dan Template Pesan; jangan tulis ulang blok status tiga keadaan itu.
+- Halaman admin tidak lagi mengambil Card dari pohon lama; WhatsApp/Pairing kini memakai `@/components/admin/ui/card` seperti 18 berkas admin lain.
+- Sisa impor pohon lama di halaman admin hanya dua, dan keduanya sah karena padanannya tidak ada di pohon admin: `FileDropzone` (ImportCreate) dan `ResponsiveImage` (Banners Index).
+Bukti:
+- Typecheck 0 error; ESLint bersih pada berkas yang diubah; build Vite sukses 21 detik.
+- Vitest 203 passed.
+- Uji browser: halaman Ringkasan WhatsApp menampilkan "Status WhatsApp Terhubung" dengan nomor dan satu tautan Kelola sambungan; halaman Pairing menampilkan kartu dengan nomor +62 881-8907-33754 dan sesi sehat.
+- Probe 41 rute admin: 41 OK, 0 gagal.
