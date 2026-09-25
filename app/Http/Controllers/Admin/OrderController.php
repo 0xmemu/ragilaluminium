@@ -848,9 +848,9 @@ class OrderController extends Controller
                     ->withInput();
             }
             $refundAmount = $refund;
-        } elseif ($validated['resolution_type'] === 'replacement') {
-            $replacementAmount = (float) ($validated['replacement_amount'] ?? 0);
         }
+
+        $replacementAmount = (float) ($validated['replacement_amount'] ?? 0);
 
         if ($validated['resolution_type'] !== 'replacement') {
             $validated['replacement_items'] = null;
