@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table"
+import { SectionCard } from "@/components/admin/section-card"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
@@ -112,13 +113,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
   const adaFilter = query.trim() !== "" || status !== ""
 
   return (
-    <section className="rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Icon name="package" className="size-3.5" aria-hidden="true" />
-        </span>
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">Varian</h2>
-      </div>
+          <SectionCard title="Varian" icon="package" contentClassName="p-0">
 
       <div className="px-4 sm:px-5">
         <ListToolbar
@@ -217,7 +212,7 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
           </Table>
         </div>
       )}
-    </section>
+    </SectionCard>
   )
 }
 
@@ -234,13 +229,7 @@ function SpecificationTable({ rows }: { rows: AttributeRowData[] }) {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Icon name="sliders" className="size-3.5" aria-hidden="true" />
-        </span>
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">Spesifikasi</h2>
-      </div>
+          <SectionCard title="Spesifikasi" icon="sliders" contentClassName="p-0">
 
       <div className="overflow-x-auto">
         <Table>
@@ -264,7 +253,7 @@ function SpecificationTable({ rows }: { rows: AttributeRowData[] }) {
           </TableBody>
         </Table>
       </div>
-    </section>
+    </SectionCard>
   )
 }
 
@@ -298,18 +287,16 @@ function MediaTable({
 
   return (
     <>
-      <section className="rounded-lg border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:px-5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <Icon name="image" className="size-3.5" aria-hidden="true" />
-            </span>
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Media</h2>
-          </div>
+      <SectionCard
+        title="Media"
+        icon="image"
+        contentClassName="p-0"
+        action={
           <Button asChild variant="secondary" size="sm">
             <Link href={manageHref}>Kelola media</Link>
           </Button>
-        </div>
+        }
+      >
 
         <div className="px-4 sm:px-5">
           <ListToolbar
@@ -447,7 +434,7 @@ function MediaTable({
             </Table>
           </div>
         )}
-      </section>
+      </SectionCard>
 
       {/* Modal Preview Media */}
       <Dialog open={Boolean(previewItem)} onOpenChange={(open) => !open && setPreviewItem(null)}>
@@ -783,13 +770,7 @@ export default function ProductShow({
 
         {tab === "spesifikasi" ? (
           <div className="space-y-4">
-            <section className="rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Icon name="notes" className="size-3.5" aria-hidden="true" />
-                </span>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">Deskripsi</h2>
-              </div>
+                          <SectionCard title="Deskripsi" icon="notes" contentClassName="p-0">
               <div className="px-4 py-3.5 sm:px-5">
                 {description ? (
                   descriptionIsLong && !descriptionExpanded ? (
@@ -824,7 +805,7 @@ export default function ProductShow({
                   </p>
                 )}
               </div>
-            </section>
+            </SectionCard>
 
             <SpecificationTable rows={attributes} />
           </div>

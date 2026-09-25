@@ -1,10 +1,12 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
+import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Textarea } from "@/components/admin/ui/textarea"
 
 import AdminLayout from "@/layouts/admin-layout"
@@ -20,7 +22,6 @@ interface SubModelData {
   code: string
   name: string
   description?: string | null
-  image_url?: string | null
   is_active: boolean
   templates?: TemplateRow[]
   model_templates?: TemplateRow[]
@@ -31,7 +32,6 @@ export default function SubModelForm({
   subModel,
   attributeTemplates = [],
   modelTemplates = [],
-  productModel,
   modelOptions,
   submitUrl,
   indexUrl,
@@ -41,7 +41,6 @@ export default function SubModelForm({
   subModel: SubModelData | null
   attributeTemplates?: Array<TemplateRow & { id?: number }>
   modelTemplates?: Array<TemplateRow & { id?: number }>
-  productModel: string
   modelOptions: Array<{ value: string; label: string }>
   submitUrl: string
   indexUrl: string
@@ -49,11 +48,10 @@ export default function SubModelForm({
 }) {
   const editing = Boolean(subModel)
   const form = useForm<SubModelData>({
-    product_model: subModel?.product_model ?? productModel,
+    product_model: subModel?.product_model ?? "",
     code: subModel?.code ?? "",
     name: subModel?.name ?? "",
     description: subModel?.description ?? "",
-    image_url: subModel?.image_url ?? "",
     is_active: subModel?.is_active ?? true,
     templates: attributeTemplates.map((row) => ({
       attribute_name: row.attribute_name,
@@ -92,7 +90,7 @@ export default function SubModelForm({
             <Link href={indexUrl}>Batal</Link>
           </Button>
           <Button type="submit" form="sub-model-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : editing ? "Simpan perubahan" : "Tambah sub model"}
+            {form.processing ? "Menyimpan..." : editing ? "Simpan" : "Tambah"}
           </Button>
         </div>
       }
@@ -102,7 +100,7 @@ export default function SubModelForm({
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per field */}
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="rounded-lg border border-border">
           <table className="w-full">
             <tbody className="divide-y divide-border">
               <tr>
@@ -110,34 +108,30 @@ export default function SubModelForm({
                   Model produk <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
-                  <Select
+                  {/* Pemilih bercari (kontrak 2026-09-16): form tambah selalu
+                      kosong, admin mencari & memilih model sendiri. */}
+                  <SearchSelect
+                    id="sub-model-product-model"
+                    options={modelOptions}
                     value={form.data.product_model}
-                    onChange={(event) => {
-                      form.setData("product_model", event.target.value)
-                    }}
-                    disabled={editing}
-                    className="h-8 text-xs"
-                  >
-                    {modelOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                  {form.errors.product_model ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p>
-                  ) : null}
+                    onValueChange={(value) => form.setData("product_model", value)}
+                    placeholder="Pilih model"
+                    searchPlaceholder="Cari model"
+                    emptyMessage="Model tidak ditemukan."
+                    error={form.errors.product_model}
+                    className="w-72"
+                  />
                 </td>
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kode (dipakai di URL &amp; data produk) <span className="text-destructive">*</span>
+                  Kode (dipakai di URL &amp; data produk) {editing ? null : <span className="text-muted-foreground font-normal text-[11px]">(opsional)</span>}
                 </th>
                 <td className="px-4 py-2.5">
                   <Input
                     value={form.data.code}
                     onChange={(event) => form.setData("code", event.target.value)}
-                    placeholder="contoh: JALUSI, SERIES_D"
+                    placeholder={editing ? "" : "Otomatis dibuat dari nama jika dikosongkan"}
                     className="h-8 w-72 text-xs font-mono"
                     disabled={editing}
                   />
@@ -146,7 +140,9 @@ export default function SubModelForm({
                   ) : null}
                   {editing ? (
                     <p className="mt-1 text-xs text-muted-foreground">Kode tidak bisa diubah setelah dibuat.</p>
-                  ) : null}
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">Dibuat otomatis dari nama jika dikosongkan.</p>
+                  )}
                 </td>
               </tr>
               <tr>
@@ -179,20 +175,6 @@ export default function SubModelForm({
                   ) : null}
                 </td>
               </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">URL gambar</th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.image_url ?? ""}
-                    onChange={(event) => form.setData("image_url", event.target.value)}
-                    placeholder="https://..."
-                    className="h-8 w-96 text-xs font-mono"
-                  />
-                  {form.errors.image_url ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.image_url}</p>
-                  ) : null}
-                </td>
-              </tr>
               {editing ? (
                 <tr>
                   <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status</th>
@@ -214,14 +196,10 @@ export default function SubModelForm({
 
         {editing ? (
           <>
-          <section className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border p-5">
-              <h2 className="text-base font-semibold">Template spesifikasi produk</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Spesifikasi ini otomatis terpasang ke produk baru (atau import tanpa kolom Spesifikasi) yang memakai sub model ini. Ditambahkan hanya bila produk belum punya spesifikasi. Kosongkan untuk mematikan.
-              </p>
-            </div>
-            <div className="p-5">
+          <SectionCard
+          title="Template spesifikasi produk"
+          description="Spesifikasi ini otomatis terpasang ke produk baru (atau import tanpa kolom Spesifikasi) yang memakai sub model ini. Ditambahkan hanya bila produk belum punya spesifikasi. Kosongkan untuk mematikan."
+        >
               {(form.data.templates ?? []).length === 0 ? (
                 <p className="text-xs text-muted-foreground">Belum ada baris template. Tambahkan, mis. Material → Aluminium.</p>
               ) : null}
@@ -258,19 +236,14 @@ export default function SubModelForm({
                 className="mt-3"
                 onClick={() => form.setData("templates", [...(form.data.templates ?? []), { attribute_name: "", attribute_value: "" }])}
               >
-                Tambah baris template
+                Tambah
               </Button>
-            </div>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border p-5">
-              <h2 className="text-base font-semibold">Template default model</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Dipakai bila sub model tidak punya template sendiri - berlaku untuk semua produk model ini tanpa sub model tertentu. Berguna untuk nilai bersama seperti Material.
-              </p>
-            </div>
-            <div className="p-5">
+          <SectionCard
+          title="Template default model"
+          description="Dipakai bila sub model tidak punya template sendiri - berlaku untuk semua produk model ini tanpa sub model tertentu. Berguna untuk nilai bersama seperti Material."
+        >
               {(form.data.model_templates ?? []).length === 0 ? (
                 <p className="text-xs text-muted-foreground">Belum ada template default untuk model ini.</p>
               ) : null}
@@ -313,10 +286,9 @@ export default function SubModelForm({
                 className="mt-3"
                 onClick={() => form.setData("model_templates", [...(form.data.model_templates ?? []), { attribute_name: "", attribute_value: "" }])}
               >
-                Tambah baris template default
+                Tambah
               </Button>
-            </div>
-          </section>
+          </SectionCard>
           </>
         ) : null}
 
