@@ -181,7 +181,7 @@ export default function ShippingIndex({
 
         <Card className="p-4 space-y-1 bg-card">
           <p className="text-xs font-medium text-muted-foreground">Menunggu Penjemputan</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">
+          <p className="font-mono text-lg font-bold tabular-nums text-warning-foreground">
             {formatNumber(summary.total_pending_pickup)}
           </p>
           <p className="text-[11px] text-muted-foreground">

@@ -469,7 +469,7 @@ export default function PromotionForm({
 
                 {periodMode === "now" ? (
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center justify-between rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
                       <div className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="font-semibold">Mulai Sekarang</span>
