@@ -240,6 +240,14 @@ Catatan penting: ESLint pada **seluruh** direktori admin masih melaporkan 10 err
 - Halaman Model Produk: dialog konfirmasi Muat ulang katalog terbuka dengan penjelasan dampak, tombol Batal menutup tanpa mengirim permintaan.
 - Halaman Detail Produk id 51: tab Varian, Spesifikasi, dan Media tampil, 12 varian terdaftar, `SectionCard` baru tanpa masalah tata letak.
 
+### 7.4 Pemeriksaan Rujukan Rute
+
+Seluruh nama rute admin yang dipanggil antarmuka dicocokkan dengan 290 rute yang benar-benar terdaftar di Laravel.
+
+Hasil: **bersih, kecuali satu**. Satu-satunya rujukan yang tidak punya rute adalah `admin.imports.retry` di `ResourceShow.tsx:63`. Karena `routeUrl` gagal dan jatuh ke beranda, tombol itu akan mengirim permintaan ke halaman depan, bukan menjalankan ulang impor. Tetapi cabang itu sudah tidak bisa dijangkau dari rute mana pun, jadi ini kode mati, bukan bug aktif.
+
+Tidak ditemukan pula handler `onClick` yang badan fungsinya kosong di seluruh halaman admin.
+
 ---
 
 ## 8. Pekerjaan yang Menunggu Keputusan
