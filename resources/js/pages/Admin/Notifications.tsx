@@ -23,36 +23,12 @@ import {
   dedupeManualShippingReviews,
   isManualShippingReview,
   type NotificationItem,
+  NOTIFICATION_TYPE_COLORS,
+  NOTIFICATION_TYPE_ICONS,
 } from "@/components/admin/notification-bell"
 import type { Pagination as PaginationData } from "@/types"
 
-const typeIcons: Record<string, string> = {
-  order_created: "bell",
-  order_delivered: "check-circle",
-  order_cancelled: "x",
-  order_returned: "arrow-counter-clockwise",
-  return_created: "arrow-counter-clockwise",
-  shipping_poll_failed: "warning",
-  whatsapp_inbound: "whatsapp",
-  whatsapp_logged_out: "warning",
-  media_failed: "warning",
-  media_cleanup: "bell",
-  product_popularity_boost_disabled: "trend-up",
-}
 
-const typeColors: Record<string, string> = {
-  order_created: "bg-primary/10 text-primary",
-  order_delivered: "bg-success/10 text-success",
-  order_cancelled: "bg-destructive/10 text-destructive",
-  order_returned: "bg-destructive/10 text-destructive",
-  return_created: "bg-warning/10 text-warning-foreground",
-  shipping_poll_failed: "bg-destructive/10 text-destructive",
-  whatsapp_inbound: "bg-success/10 text-success",
-  whatsapp_logged_out: "bg-destructive/10 text-destructive",
-  media_failed: "bg-destructive/10 text-destructive",
-  media_cleanup: "bg-warning/10 text-warning-foreground",
-  product_popularity_boost_disabled: "bg-info/10 text-info",
-}
 
 type CategoryKey = "all" | "orders" | "messages" | "system"
 
@@ -306,10 +282,10 @@ export default function Notifications({
                       <span
                         className={cn(
                           "mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full",
-                          typeColors[n.type] ?? "bg-muted text-muted-foreground",
+                          NOTIFICATION_TYPE_COLORS[n.type] ?? "bg-muted text-muted-foreground",
                         )}
                       >
-                        <Icon name={typeIcons[n.type] ?? "bell"} className="h-4 w-4" aria-hidden="true" />
+                        <Icon name={NOTIFICATION_TYPE_ICONS[n.type] ?? "bell"} className="h-4 w-4" aria-hidden="true" />
                       </span>
                     </TableCell>
                     <TableCell className="px-3 py-2 align-top">

@@ -13,7 +13,12 @@ import {
 } from "@/components/admin/ui/dropdown-menu"
 import { routeUrl } from "@/lib/routes"
 
-const typeIcons: Record<string, string> = {
+/**
+ * Ikon dan warna per jenis notifikasi admin. Satu peta untuk seluruh panel:
+ * lonceng header dan halaman Notifikasi memakai daftar yang sama supaya tidak
+ * ada jenis yang tampil beda antar keduanya.
+ */
+export const NOTIFICATION_TYPE_ICONS: Record<string, string> = {
   order_created: "bell",
   order_delivered: "check-circle",
   order_cancelled: "x",
@@ -21,11 +26,13 @@ const typeIcons: Record<string, string> = {
   return_created: "arrow-counter-clockwise",
   shipping_poll_failed: "warning",
   whatsapp_inbound: "whatsapp",
+  whatsapp_logged_out: "warning",
   media_failed: "warning",
   media_cleanup: "bell",
+  product_popularity_boost_disabled: "trend-up",
 }
 
-const typeColors: Record<string, string> = {
+export const NOTIFICATION_TYPE_COLORS: Record<string, string> = {
   order_created: "bg-primary/10 text-primary",
   order_delivered: "bg-success/10 text-success",
   order_cancelled: "bg-destructive/10 text-destructive",
@@ -33,9 +40,13 @@ const typeColors: Record<string, string> = {
   return_created: "bg-warning/10 text-warning-foreground",
   shipping_poll_failed: "bg-destructive/10 text-destructive",
   whatsapp_inbound: "bg-success/10 text-success",
+  whatsapp_logged_out: "bg-destructive/10 text-destructive",
   media_failed: "bg-destructive/10 text-destructive",
   media_cleanup: "bg-warning/10 text-warning-foreground",
+  product_popularity_boost_disabled: "bg-info/10 text-info",
 }
+
+
 
 export interface NotificationItem {
   id: number
@@ -210,10 +221,10 @@ export function NotificationBell({
               >
                 <span
                   className={`mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full ${
-                    typeColors[n.type] ?? "bg-muted text-muted-foreground"
+                    NOTIFICATION_TYPE_COLORS[n.type] ?? "bg-muted text-muted-foreground"
                   }`}
                 >
-                  <Icon name={typeIcons[n.type] ?? "bell"} className="h-4 w-4" aria-hidden="true" />
+                  <Icon name={NOTIFICATION_TYPE_ICONS[n.type] ?? "bell"} className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-foreground">
