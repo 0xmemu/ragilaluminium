@@ -932,3 +932,13 @@ Bukti:
 - Suite Return penuh: 98 passed (548 assertions).
 - Typecheck & eslint bersih 0 error/warning.
 - Bebas karakter em dash (U+2014) di seluruh berkas.
+
+## 2026-09-25 00:35 UTC | zcode | Deep | ae37834b | selesai
+Lingkup: penguatan idempotensi webhook kurir, batas refund riil, dan proteksi race condition retur (app/Services/ReturnService.php, app/Http/Controllers/Admin/OrderController.php, tests/Feature/ShippingStatusTest.php, tests/Feature/AdminReturnWorkflowTest.php).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: perhatikan bahwa (1) `openRefusedReturnCase` dan `createReturn` kini memiliki perlindungan ganda di dalam `lockForUpdate` transaksi database untuk mencegah pembuatan kasus retur duplikat saat ada request konkuren dari webhook dan admin; (2) `completeReturn` mengunci bahwa nominal refund tidak hanya dibatasi oleh total_amount tetapi juga dibatasi oleh total pembayaran riil (`payments completed`), serta resolusi non-refund secara mutlak memaksa `refund_amount = 0.0`; (3) Status `return_completed` dan regresi webhook kurir (mis. scan `delivered` setelah `returned`) ditolak otomatis oleh state machine.
+Bukti:
+- AdminReturnWorkflowTest: 20 passed (69 assertions).
+- ShippingStatusTest: 8 passed (18 assertions) mencakup skenario webhook kurir duplikat dan event stale pada status terminal.
+- Typecheck & eslint bersih 0 error/warning.
+- Bebas karakter em dash (U+2014).
