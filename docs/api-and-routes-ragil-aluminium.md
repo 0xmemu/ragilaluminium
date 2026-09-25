@@ -436,4 +436,4 @@ Order menyimpan `shipping_amount` (ongkir net setelah subsidi, tanpa asuransi), 
 
 Tampilan checkout: baris "Ongkos Kirim" menampilkan `net` sebagai angka yang dibayar dengan `gross` dicoret di bawahnya, dan label `(subsidi N%)` memakai persentase asli dari setelan, sehingga `gross - subsidi = net` dapat diverifikasi pembeli. Biaya asuransi tidak ditampilkan sebagai baris terpisah karena sudah menyatu ke tarif.
 
-Asuransi saling meniadakan di laba bersih: ditambahkan ke total pembeli, lalu dikurangi lagi sebagai potongan J&T. Perbaikan yang menyentuh hanya satu sisi membuat laba bersih salah.
+Asuransi saling meniadakan di penjualan bersih: ditambahkan ke total pembeli, lalu dikurangi lagi sebagai potongan J&T. Perbaikan yang menyentuh hanya satu sisi membuat penjualan bersih salah.

@@ -86,6 +86,8 @@ Begitu pesanan berstatus `return_in_process` atau `return_completed`:
 ## 3. PILAR 2: Fiksasi Alur Keuangan Toko (Store Finance & Accounting Flow)
 
 ### 3.1 Prinsip Pemisahan: Penjualan Bersih vs Arus Kas Nyata
+
+> **Disclaimer Resmi:** Seluruh angka pembayaran diterima dan pengembalian dana (refund) yang tercatat di sistem berasal dari pencatatan serta verifikasi manual admin di luar website (melalui mutasi rekening bank / m-Banking), bukan transaksi otomatis perbankan.
 Sistem keuangan Ragil Aluminium memisahkan dua konsep yang sering disalahartikan:
 1. **Penjualan Bersih (*Net Revenue*):** Hak ekonomi toko atas barang yang telah diproses dan dikirimkan setelah dikurangi seluruh biaya pihak ketiga dan kerugian retur. Penjualan diakui sejak pesanan masuk tahap Diproses (`processing`).
 2. **Arus Kas / Pembayaran Diterima (*Payments Received*):** Uang riil yang sudah benar-benar masuk ke rekening kas/bank toko.

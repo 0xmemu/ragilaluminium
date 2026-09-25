@@ -885,6 +885,7 @@ function bangunKategoriDetail(
         source: "Data pesanan, retur, pembayaran, dan pengiriman",
         notes: [
           fin.definition,
+          "Angka pembayaran diterima dan refund berasal dari pencatatan serta verifikasi manual admin di luar website (transfer bank/m-Banking), bukan mutasi otomatis perbankan.",
           "Kas Diterima memakai basis waktu dana benar-benar lunas, berbeda dari hak penjualan barang.",
           "Baris Belum Masuk dan Pembayaran Transfer Pending adalah kondisi saat ini, bukan angka periode.",
           "Ongkir dan biaya COD pada paket yang kembali sudah tercakup di Tagihan J&T dan Biaya COD ke J&T, jadi tidak dikurangkan dua kali.",

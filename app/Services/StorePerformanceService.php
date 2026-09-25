@@ -578,7 +578,7 @@ class StorePerformanceService
                 'refused_shipping_cost' => $current['refused_shipping_cost'],
                 'refused_cod_fee' => $current['refused_cod_fee'],
                 'refused_borne_cost' => $current['refused_borne_cost'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Angka pembayaran diterima dan refund berasal dari pencatatan serta verifikasi manual admin di luar website.',
             ],
             // Nilai periode pembanding untuk sheet Ringkasan Finansial di
             // ekspor. Layar dan sheet KPI sudah memakai pembanding, sedangkan
