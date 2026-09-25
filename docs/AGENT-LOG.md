@@ -1089,3 +1089,49 @@ Bukti:
   `?view=list`, lalu pencarian menjadi `?q=promo&view=list` (tampilan tidak
   hilang). Notifikasi: `?category=orders&unread=1` lalu tab Semua menghasilkan
   `?unread=1` (kategori dibuang, penanda belum dibaca tetap).
+
+## 2026-09-25 18:30 UTC | zcode | Standard | c5ac29a5 | selesai
+Lingkup: penyatuan siklus hidup mode Urutkan (reorder mode) pada halaman daftar
+admin ke hook bersama `resources/js/hooks/use-reorder-mode.ts` plus berkas uji
+`tests/frontend/reorder-mode.test.ts`. Enam halaman daftar admin dimigrasikan:
+`ApaKata/Index.tsx`, `Faq/Index.tsx`, `MasalahSolusi/Index.tsx`,
+`ModelProducts/Index.tsx`, `SubModels.tsx`, dan `Testimonials/Index.tsx`.
+
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Siklus hidup mode Urutkan (salinan baris lokal `orderedRows`, sinkronisasi
+  snapshot server dengan form Inertia via `setData("rows", ...)` dan
+  `setDefaults("rows", ...)`, penomoran ulang baris `no`, fungsi `move`,
+  `save`, dan `cancel`) kini terpusat di `resources/js/hooks/use-reorder-mode.ts`.
+- Tiga helper murni diekspor dan diuji terpisah: `moveRow` (geser aman tanpa
+  mutasi), `numberRows` (penomoran ulang `no` dan `sort_order`), dan
+  `buildReorderItems` (penyusun payload `{ id, sort_order }`).
+- TEMUAN PENTING INERTIA useForm: memanggil `form.setData({ rows: ... })` (bentuk
+  objek tunggal) menimpa seluruh data form sehingga kunci lain (mis. `status`)
+  hilang, padahal `setDefaults` menggabungkan (merge) kunci. Akibatnya `data`
+  dan `defaults` tidak sama dan `isDirty` menjadi true seketika saat masuk mode
+  urut. Hook ini selalu memanggil bentuk dua argumen `form.setData("rows", items)`
+  dan `form.setDefaults("rows", items)` sehingga kunci saudara tetap utuh dan
+  `isDirty` tetap false sampai ada baris yang benar-benar digeser.
+- Tiga berkas lain yang memuat mode urut sengaja tidak disentuh:
+  `InstallationGallery/Index.tsx`, `Beranda/Popular.tsx`, dan
+  `Products/PopularityBoosts.tsx`. Ketiganya sedang aktif dimodifikasi oleh sesi
+  lain di working tree bersama. Begitu pekerjaan mereka selesai dan di-commit,
+  ketiganya dapat dimigrasikan dengan pola yang sama.
+
+Bukti:
+- `npm run typecheck`: 0 error.
+- Vitest: 27 berkas, 225 tes lulus (10 tes baru di `reorder-mode.test.ts`).
+- ESLint: bersih (0 error, 0 warning) pada 8 berkas yang diubah/dibuat.
+- Build Vite: sukses dalam 20.89 detik.
+- Uji browser live (`ra.333labs.tech`):
+  - Model Produk (`/admin/kelola/model-produk`): klik Urutkan -> tombol berubah
+    jadi Urungkan, baris digeser lewat DnD -> nomor tampil berganti (1, 2) dan
+    tombol berubah jadi Simpan urutan, baris digeser balik -> tombol kembali
+    Urungkan, klik Urungkan -> keluar mode urut dan jumlah draggable kembali 0.
+  - Masalah & Solusi (`/admin/masalah-solusi`): 4 baris draggable saat aktif,
+    bisa masuk dan keluar mode bersih.
+  - Sering Ditanyakan (`/admin/faq`): 7 baris draggable saat aktif, tombol awal
+    Urutkan -> saat aktif menjadi Urungkan (isDirty false terbukti terjaga) ->
+    bisa dibatalkan kembali ke Urutkan.
