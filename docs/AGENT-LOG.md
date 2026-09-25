@@ -972,3 +972,14 @@ Bukti:
 - ShippingStatusTest 8 passed (18 assertions).
 - Typecheck bersih 0 error.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 02:40 UTC | zcode | Deep | 00d87ca4 | selesai
+Lingkup: penerapan Metode A perhitungan dimensi & berat ongkir pengiriman (app/Services/Shipping/ShipmentPackageCalculator.php, config/shipping.php, app/Support/ShippingPalletSettings.php, tests/Unit/ShipmentPackageCalculatorTest.php, docs/DOMAIN/pengiriman-ongkir-asuransi.md).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: per 2026-09-25, perhitungan paket pengiriman resmi memakai **Metode A**: volume total adalah akumulasi volume paket produk `sum(P x L x T x qty)` dan berat total `sum(berat x qty)` tanpa tambahan ukuran packing kayu/pallet (allowance default `0.0 cm`). Rumus ini mengikuti pendekatan multi-koli J&T Cargo di mana berat tagih adalah `max(berat_aktual_total, volume_total / 5000)`.
+Bukti:
+- ShipmentPackageCalculatorTest 10 passed (48 assertions).
+- Shipping, Checkout, Order test suites: 204 passed (1609 assertions).
+- StorePerformanceGoldenTest 4 passed (13 assertions).
+- Typecheck & eslint bersih 0 error/warning.
+- Bebas karakter em dash (U+2014).
