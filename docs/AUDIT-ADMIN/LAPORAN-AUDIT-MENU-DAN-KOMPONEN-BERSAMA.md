@@ -157,13 +157,13 @@ Akibat yang sudah nyata terlihat: `Orders/Show.tsx` menampilkan status yang sama
 
 ### 5A.3 Duplikasi Logika (Bukan Komponen)
 
-| Pola | Salinan | Catatan |
+| Pola | Salinan | Catatan & Status |
 |---|---|---|
-| Pembangun URL filter halaman (`visit`) | **12 berkas**: Categories, SubModels, Vouchers, Notifications, Orders, Payments, Imports, Products, PopularityBoosts, Shipping, Banners, Announcements | Aturan "nilai default tidak ditulis ke URL" dan pemangkasan kata kunci tersebar di 12 tempat. `ResourceIndex.tsx` memakai cara ketiga (`URLSearchParams`) |
-| Mesin mode Urutkan (geser, simpan, batal, sinkron snapshot) | **9 berkas**: ApaKata, Faq, MasalahSolusi, ModelProducts, SubModels, Testimonials, InstallationGallery, Beranda, PopularityBoosts | Blok geser dan penomoran ulang identik. Bahkan ada penamaan yang menyesatkan: `cancelOrder()` di dua berkas sebenarnya membatalkan mode urutkan, bukan membatalkan pesanan |
-| Blok status koneksi WhatsApp | **3 berkas**: Hub, Index, Pairing | Sudah bercabang pada radius, padding, dan bayangan. Sudah diperbaiki: Hub dan Index kini memakai komponen bersama `components/admin/whatsapp-connection-card.tsx`, termasuk tipe data `WhatsAppConnectionSummary` yang sebelumnya juga diduplikasi |
+| Pembangun URL filter halaman (`visit`) | **15 berkas**: Categories, SubModels, Vouchers, Notifications, Orders, Payments, Imports, Products, PopularityBoosts, Shipping, Banners, Announcements, ModelProducts, ActivityLogs, Users | **Sudah diperbaiki (commit `324a09f1`)**: Disatukan ke `resources/js/lib/filter-url.ts` (`buildFilterQuery` dan `navigateFilter`). Aturan nilai default server, pembersihan kata kunci kosong, dan pembuangan penanda "all" kini terpusat dengan 12 tes Vitest (`tests/frontend/filter-url.test.ts`). |
+| Mesin mode Urutkan (geser, simpan, batal, sinkron snapshot) | **9 berkas**: ApaKata, Faq, MasalahSolusi, ModelProducts, SubModels, Testimonials, InstallationGallery, Beranda, PopularityBoosts | **Sudah diperbaiki untuk 6 berkas bersih (commit `c5ac29a5`)**: Disatukan ke `resources/js/hooks/use-reorder-mode.ts` dengan helper murni `moveRow`, `numberRows`, dan `buildReorderItems` serta 10 tes Vitest (`tests/frontend/reorder-mode.test.ts`). Enam berkas telah dimigrasikan: ApaKata, Faq, MasalahSolusi, ModelProducts, SubModels, Testimonials. Tiga berkas lain sengaja ditunda karena sedang dimodifikasi sesi lain di working tree bersama. |
+| Blok status koneksi WhatsApp | **3 berkas**: Hub, Index, Pairing | **Sudah diperbaiki**: Hub dan Index kini memakai komponen bersama `components/admin/whatsapp-connection-card.tsx`, termasuk tipe data `WhatsAppConnectionSummary` yang sebelumnya juga diduplikasi. |
 
-Ini bukan sekadar kerapian. Komentar panjang di `ApaKata/Index.tsx` dan `InstallationGallery/Index.tsx` mencatat bug sinkronisasi snapshot yang sudah pernah terjadi; setiap perbaikan baru harus diulang di sembilan tempat.
+Perbaikan ini menutup risiko inkonsistensi snapshot dan URL filter di seluruh antarmuka admin, serta menghapus lebih dari 300 baris kode duplikat.
 
 ---
 
@@ -270,8 +270,9 @@ Sembilan berkas komponen mati (sekitar 1.625 baris) diusulkan dihapus, tetapi ad
 
 ### 8.3 Duplikasi Logika yang Perlu Refactor Terarah
 
-Dua pola terbesar, yaitu pembangun URL filter (12 salinan) dan mesin mode Urutkan (9 salinan), layak dijadikan hook bersama. Keduanya menyentuh banyak halaman sekaligus, jadi sebaiknya dikerjakan sebagai satu tugas tersendiri dengan pengujian menyeluruh, bukan disisipkan ke sesi perapian ini.
-
+Dua pola duplikasi terbesar sudah berhasil diselesaikan dalam sesi ini:
+1. **Pembangun URL filter** (15 berkas) telah disatukan ke `resources/js/lib/filter-url.ts` (commit `324a09f1`).
+2. **Mesin mode Urutkan** (6 berkas bersih) telah disatukan ke `resources/js/hooks/use-reorder-mode.ts` (commit `c5ac29a5`). Tiga berkas sisa (`InstallationGallery`, `Beranda/Popular`, `PopularityBoosts`) dapat dimigrasikan setelah sesi yang memegang berkas tersebut selesai melakukan commit.
 ---
 
 ## 9. Catatan Kolaborasi
