@@ -64,7 +64,7 @@ function discountLabel(voucher: VoucherCard): string {
 
 function VoucherUnusableReason({ reason }: { reason: string }) {
   return (
-    <p className="mt-2 inline-flex items-start gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">
+    <p className="mt-2 inline-flex items-start gap-1 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] font-medium text-warning-foreground">
       <span aria-hidden="true">&#9888;</span>
       <span>{reason}</span>
     </p>

@@ -27,14 +27,14 @@ const typeIcons: Record<string, string> = {
 
 const typeColors: Record<string, string> = {
   order_created: "bg-primary/10 text-primary",
-  order_delivered: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  order_delivered: "bg-success/10 text-success",
   order_cancelled: "bg-destructive/10 text-destructive",
   order_returned: "bg-destructive/10 text-destructive",
-  return_created: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  return_created: "bg-warning/10 text-warning-foreground",
   shipping_poll_failed: "bg-destructive/10 text-destructive",
-  whatsapp_inbound: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  whatsapp_inbound: "bg-success/10 text-success",
   media_failed: "bg-destructive/10 text-destructive",
-  media_cleanup: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  media_cleanup: "bg-warning/10 text-warning-foreground",
 }
 
 export interface NotificationItem {

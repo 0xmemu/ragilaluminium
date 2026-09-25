@@ -275,8 +275,8 @@ function DensityChip({ label, value }: { label: string; value: React.ReactNode }
 
 const ATTENTION_TONE: Record<string, string> = {
   high: "bg-destructive",
-  medium: "bg-amber-500",
-  low: "bg-sky-500",
+  medium: "bg-warning",
+  low: "bg-info",
 }
 
 /**

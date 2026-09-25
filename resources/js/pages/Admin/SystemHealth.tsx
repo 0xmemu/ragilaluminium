@@ -120,8 +120,8 @@ interface BackupStatus {
 }
 
 const STATUS_META: Record<HealthStatus, { label: string; dot: string; text: string }> = {
-  healthy: { label: "Sehat", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
-  warning: { label: "Perlu Perhatian", dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
+  healthy: { label: "Sehat", dot: "bg-success", text: "text-success" },
+  warning: { label: "Perlu Perhatian", dot: "bg-warning", text: "text-warning-foreground" },
   failed: { label: "Gagal", dot: "bg-destructive", text: "text-destructive" },
   offline: { label: "Offline", dot: "bg-destructive", text: "text-destructive" },
   not_configured: { label: "Belum Dikonfigurasi", dot: "bg-muted-foreground/50", text: "text-muted-foreground" },
@@ -584,7 +584,7 @@ export default function SystemHealth({
       <div className="space-y-6">
         {/* Warning jika data stale */}
         {isStale ? (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+          <p className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning-foreground">
             Data mungkin sudah lama. Pemeriksaan terakhir {Math.round((staleMs ?? 0) / 60000)} menit lalu.
           </p>
         ) : null}
