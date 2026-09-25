@@ -4,6 +4,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -217,20 +218,11 @@ export default function PromotionOverview({
                       </Link>
                       <p className="mt-0.5 text-xs text-muted-foreground">{campaign.type_label}</p>
                     </div>
-                    {campaign.live ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                        Berjalan
-                      </span>
-                    ) : campaign.scheduled ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                        Terjadwal
-                      </span>
-                    ) : (
-                      <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        {STATUS_LABELS[campaign.status] ?? campaign.status}
-                      </span>
-                    )}
+                    <StatusBadge
+                      status={campaign.live ? "active" : campaign.scheduled ? "scheduled" : campaign.status}
+                      tone={campaign.live ? "success" : campaign.scheduled ? "info" : "neutral"}
+                      label={campaign.live ? "Berjalan" : campaign.scheduled ? "Terjadwal" : (STATUS_LABELS[campaign.status] ?? campaign.status)}
+                    />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="font-semibold tabular-nums text-primary">{campaign.discount_percent}%</span>

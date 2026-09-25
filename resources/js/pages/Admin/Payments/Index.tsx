@@ -3,6 +3,7 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -87,37 +88,6 @@ export interface PaymentsIndexProps {
   }
 }
 
-function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
-      aria-label={label}
-      title={copied ? "Tersalin!" : label}
-    >
-      {copied ? (
-        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
-      ) : (
-        <Icon name="copy" className="size-3" aria-hidden="true" />
-      )}
-    </button>
-  )
-}
 
 export default function PaymentsIndex({
   title,

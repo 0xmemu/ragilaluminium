@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { SectionCard } from "@/components/admin/section-card"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { Checkbox } from "@/components/admin/ui/checkbox"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -961,37 +962,6 @@ function ReturnCasePanel({
         </div>
       </SectionCard>
     </div>
-  )
-}
-function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
-      aria-label={label}
-      title={copied ? "Tersalin!" : label}
-    >
-      {copied ? (
-        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
-      ) : (
-        <Icon name="copy" className="size-3" aria-hidden="true" />
-      )}
-    </button>
   )
 }
 

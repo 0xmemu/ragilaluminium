@@ -5,6 +5,7 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -78,55 +79,6 @@ function TargetChip({ label }: { label: string }) {
   )
 }
 
-function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-        return
-      }
-    } catch {
-      // fallback to execCommand below
-    }
-    try {
-      const textarea = document.createElement("textarea")
-      textarea.value = text
-      textarea.style.position = "fixed"
-      textarea.style.opacity = "0"
-      document.body.appendChild(textarea)
-      textarea.focus()
-      textarea.select()
-      document.execCommand("copy")
-      document.body.removeChild(textarea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
-      aria-label={label}
-      title={copied ? "Tersalin!" : label}
-    >
-      {copied ? (
-        <Icon name="check" className="size-3 text-success" aria-hidden="true" />
-      ) : (
-        <Icon name="copy" className="size-3" aria-hidden="true" />
-      )}
-    </button>
-  )
-}
 
 function VoucherActions({
   voucher,

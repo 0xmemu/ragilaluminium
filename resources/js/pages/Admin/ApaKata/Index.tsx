@@ -10,7 +10,7 @@ import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -313,38 +313,37 @@ export default function ApaKataIndex({
           </summary>
           <div className="border-t border-border p-5 sm:p-6">
           <form
-  id="apk-meta-form"
-            className="grid gap-4 sm:grid-cols-2"
+            id="apk-meta-form"
+            className="space-y-4"
             onSubmit={(event) => {
               event.preventDefault()
               metaForm.put(metaUrl)
             }}
           >
-            <Field id="apk-title" label="Judul CMS">
-              <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
+            <FieldGrid>
+              <Field id="apk-title" label="Judul CMS">
+                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+              </Field>
+              <CheckboxField
+                id="apk-published"
                 checked={metaForm.data.published}
-                onChange={(event) => metaForm.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
+                onChange={(checked) => metaForm.setData("published", checked)}
+                label="Terbitkan halaman"
               />
-              Terbitkan halaman
-            </label>
-            <Field id="apk-heading" label="Judul hero" className="sm:col-span-2">
-              <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
-            </Field>
-            <Field id="apk-subtitle" label="Subjudul" className="sm:col-span-2">
-              <Textarea
-                rows={2}
-                value={metaForm.data.subtitle}
-                onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-              />
-            </Field>
+              <Field id="apk-heading" label="Judul hero" className="sm:col-span-2">
+                <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
+              </Field>
+              <Field id="apk-subtitle" label="Subjudul" className="sm:col-span-2">
+                <Textarea
+                  rows={2}
+                  value={metaForm.data.subtitle}
+                  onChange={(event) => metaForm.setData("subtitle", event.target.value)}
+                />
+              </Field>
+            </FieldGrid>
             {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
                 bukan daftar item di bawahnya. */}
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={metaForm.processing}>
                 {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
               </Button>

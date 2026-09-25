@@ -8,7 +8,7 @@ import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -224,18 +224,15 @@ export default function BannersIndex({
             event.preventDefault()
             autoForm.put(autoPromotions.updateUrl, { preserveScroll: true })
           }}
-          className="mt-4 grid gap-4 md:grid-cols-[1fr_10rem_auto] md:items-end"
+          className="mt-4 grid gap-4 content-start md:grid-cols-[1fr_10rem_auto]"
         >
           <FormErrorSummary errors={autoForm.errors} className="md:col-span-3" />
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={autoForm.data.enabled}
-              onChange={(event) => autoForm.setData("enabled", event.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Gunakan banner otomatis dari produk
-          </label>
+          <CheckboxField
+            id="auto-enabled"
+            checked={autoForm.data.enabled}
+            onChange={(checked) => autoForm.setData("enabled", checked)}
+            label="Gunakan banner otomatis dari produk"
+          />
           <Field id="auto-max-slides" label="Maks. slide" error={autoForm.errors.max_slides}>
             <Input
               type="number"
@@ -245,9 +242,11 @@ export default function BannersIndex({
               onChange={(event) => autoForm.setData("max_slides", Number(event.target.value))}
             />
           </Field>
-          <Button type="submit" disabled={autoForm.processing}>
-            {autoForm.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+          <FieldAction>
+            <Button type="submit" disabled={autoForm.processing}>
+              {autoForm.processing ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </FieldAction>
           <p className="text-xs text-muted-foreground md:col-span-3">
             Kandidat produk:{" "}
             <span className="font-semibold text-foreground">{autoPromotions.candidate_count}</span>

@@ -3,8 +3,9 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { PrintCustomerArea, usePrintCustomer } from "@/components/shared/print-customer-detail"
@@ -159,11 +160,10 @@ export default function CustomerEdit({
         </dl>
       </section>
 
-      <form id="customer-form" onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-base font-bold">Edit data pelanggan</h3>
-          <FormErrorSummary errors={form.errors} />
-          <div className="grid gap-4 sm:grid-cols-2">
+      <form id="customer-form" onSubmit={submit} className="w-full max-w-5xl grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <SectionCard title="Data Pelanggan" description="Informasi kontak dan alamat pengiriman utama pelanggan.">
+          <FormErrorSummary errors={form.errors} className="mb-4" />
+          <FieldGrid>
             <Field id="name" label="Nama lengkap" required error={form.errors.name}>
               <Input id="name" value={form.data.name} onChange={(e) => form.setData("name", e.target.value)} required />
             </Field>
@@ -208,12 +208,12 @@ export default function CustomerEdit({
                 onChange={(e) => form.setData("default_country", e.target.value)}
               />
             </Field>
-          </div>
+          </FieldGrid>
 
-        </section>
+        </SectionCard>
 
-        <aside className="rounded-xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
-          <h3 className="text-base font-bold">Riwayat pesanan</h3>
+        <aside className="space-y-4 xl:sticky xl:top-24">
+        <SectionCard title="Riwayat Pesanan">
           {orders.length ? (
             <ul className="mt-4 space-y-3">
               {orders.map((order) => (
@@ -234,6 +234,7 @@ export default function CustomerEdit({
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">Belum ada pesanan.</p>
           )}
+          </SectionCard>
         </aside>
       </form>
       {printing ? (

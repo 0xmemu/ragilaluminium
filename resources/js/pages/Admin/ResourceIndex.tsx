@@ -9,7 +9,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field } from "@/components/admin/ui/field"
+import { CheckboxField, Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
@@ -264,9 +264,28 @@ function MediaBulkAttachPanel({
               <option value="visible">Visible</option>
               <option value="hidden">Hidden</option>
             </Select>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.data.show_in_catalog} onChange={(event) => form.setData("show_in_catalog", event.target.checked)} /> Galeri katalog</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.data.is_installation} onChange={(event) => form.setData("is_installation", event.target.checked)} /> Hasil pemasangan</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.data.is_main_image} disabled={selectedAsset.kind === "video"} onChange={(event) => form.setData("is_main_image", event.target.checked)} /> Gambar utama</label>
+            <CheckboxField
+              id="attach-show-in-catalog"
+              checked={form.data.show_in_catalog}
+              onChange={(checked) => form.setData("show_in_catalog", checked)}
+              label="Galeri katalog"
+              standalone
+            />
+            <CheckboxField
+              id="attach-is-installation"
+              checked={form.data.is_installation}
+              onChange={(checked) => form.setData("is_installation", checked)}
+              label="Hasil pemasangan"
+              standalone
+            />
+            <CheckboxField
+              id="attach-is-main-image"
+              checked={form.data.is_main_image}
+              disabled={selectedAsset.kind === "video"}
+              onChange={(checked) => form.setData("is_main_image", checked)}
+              label="Gambar utama"
+              standalone
+            />
             <Button type="submit" className="w-full" disabled={form.processing || !form.data.product_ids.length}>
               {form.processing ? "Memasang..." : `Pasang ke ${form.data.product_ids.length || "produk"}`}
             </Button>

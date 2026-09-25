@@ -5,6 +5,7 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
@@ -173,37 +174,6 @@ function formatRelativeAge(iso: string | null | undefined): string {
   return remHours > 0 ? `${days} hari ${remHours} jam` : `${days} hari`
 }
 
-function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-      title={copied ? "Tersalin!" : `${label} ${text}`}
-      aria-label={copied ? "Tersalin!" : `${label} ${text}`}
-    >
-      <Icon
-        name={copied ? "check" : "copy"}
-        className={cn("size-3", copied ? "text-success" : "text-muted-foreground")}
-        aria-hidden="true"
-      />
-    </button>
-  )
-}
 
 function variationLabel(item: OrderItemPreview): string {
   return [
@@ -402,7 +372,7 @@ function OrderCardRow({
                           {variationLabel(item) || item.variant_sku || "-"}
                         </span>
                         {item.variant_sku ? (
-                          <CopyButton text={item.variant_sku} label="Salin SKU" />
+                          <CopyButton text={item.variant_sku} label="Salin SKU" compact showTextInTitle />
                         ) : null}
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -493,7 +463,7 @@ function OrderCardRow({
               <span className="font-mono text-xs text-foreground font-medium">
                 {order.shipping_track.waybill_number}
               </span>
-              <CopyButton text={order.shipping_track.waybill_number} label="Salin resi" />
+              <CopyButton text={order.shipping_track.waybill_number} label="Salin resi" compact showTextInTitle />
             </div>
           ) : (
             <p className="mt-0.5 text-xs text-muted-foreground">Belum ada resi</p>

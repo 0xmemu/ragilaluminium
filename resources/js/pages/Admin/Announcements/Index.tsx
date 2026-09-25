@@ -5,6 +5,7 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { CheckboxField, Field, FieldAction } from "@/components/admin/ui/field"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -243,32 +244,27 @@ export default function AnnouncementsIndex({
         <p className="mt-1 text-sm text-muted-foreground">
           Aktifkan rotasi otomatis antar beberapa bar promo aktif di header storefront.
         </p>
-        <form onSubmit={saveSlide} className="mt-4 flex flex-wrap items-end gap-4">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={slideEnabled}
-              onChange={(event) => setSlideEnabled(event.target.checked)}
-            />
-            Aktifkan slide
-          </label>
-          <div className="w-40">
-            <label className="text-[11px] font-semibold tracking-tight text-muted-foreground">
-              Interval (detik)
-            </label>
+        <form onSubmit={saveSlide} className="mt-4 grid gap-4 content-start sm:grid-cols-[auto_10rem_auto]">
+          <CheckboxField
+            id="slide-enabled"
+            checked={slideEnabled}
+            onChange={(checked) => setSlideEnabled(checked)}
+            label="Aktifkan slide"
+          />
+          <Field id="slide-interval" label="Interval (detik)">
             <Input
               type="number"
               min={2}
               max={30}
               value={slideInterval}
               onChange={(event) => setSlideInterval(Number(event.target.value))}
-              className="mt-1.5"
             />
-          </div>
-          <Button type="submit" variant="secondary" disabled={savingSlide}>
-            {savingSlide ? "Menyimpan..." : "Simpan"}
-          </Button>
+          </Field>
+          <FieldAction>
+            <Button type="submit" variant="secondary" disabled={savingSlide}>
+              {savingSlide ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </FieldAction>
         </form>
       </section>
 

@@ -2,13 +2,12 @@ import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { HintTip } from "@/components/admin/ui/hint-tip"
+import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
 import AdminLayout from "@/layouts/admin-layout"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
-import { cn } from "@/lib/utils"
 
 interface CodSettingsData {
   enabled: boolean
@@ -17,37 +16,6 @@ interface CodSettingsData {
   max_order_amount: number | null
 }
 
-function HoverHint({
-  label,
-  hint,
-  className,
-}: {
-  label: React.ReactNode
-  hint?: string
-  className?: string
-}) {
-  if (!hint) return <span className={className}>{label}</span>
-  return (
-    <TooltipProvider delayDuration={100}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            tabIndex={0}
-            className={cn(
-              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
-              className,
-            )}
-          >
-            {label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-sm text-xs font-normal leading-relaxed">
-          {hint}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
 
 export default function CodSettingsEdit({
   title,
@@ -100,7 +68,7 @@ export default function CodSettingsEdit({
             disabled={form.processing || !canManage}
             title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
           >
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
+            {form.processing ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       }
@@ -123,15 +91,13 @@ export default function CodSettingsEdit({
                   Status layanan COD
                 </th>
                 <td className="px-4 py-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-border"
-                      checked={form.data.enabled}
-                      onChange={(event) => form.setData("enabled", event.target.checked)}
-                    />
-                    Layanan COD aktif
-                  </label>
+                  <CheckboxField
+                    id="cod-enabled"
+                    checked={form.data.enabled}
+                    onChange={(checked) => form.setData("enabled", checked)}
+                    label="Layanan COD aktif"
+                    standalone
+                  />
                   <p className="mt-1 text-xs text-muted-foreground">
                     Aktifkan atau nonaktifkan Bayar di Tempat untuk seluruh pelanggan.
                   </p>
@@ -139,7 +105,7 @@ export default function CodSettingsEdit({
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  <HoverHint
+                  <HintTip
                     label="Biaya penanganan (handling fee)"
                     hint="Nilai biaya (%). Rumus: biaya COD = persen x (subtotal produk setelah voucher + TOTAL ongkos kirim yang dibayar pembeli, SUDAH TERMASUK asuransi). Subtotal produk memakai harga setelah diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, total ongkos kirim Rp 21.000 (termasuk asuransi). Biaya COD = 4% x (Rp 90.000 + Rp 21.000) = Rp 4.440."
                   />
@@ -148,6 +114,7 @@ export default function CodSettingsEdit({
                   <Input
                     id="fee_value"
                     type="number"
+                    aria-label="Nilai biaya penanganan COD dalam persen"
                     min={0}
                     step="0.01"
                     value={form.data.fee_value}
@@ -171,6 +138,7 @@ export default function CodSettingsEdit({
                   <Input
                     id="max_order_amount"
                     type="number"
+                    aria-label="Limit nilai transaksi COD"
                     min={0}
                     step="1"
                     value={form.data.max_order_amount}

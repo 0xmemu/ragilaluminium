@@ -4,7 +4,7 @@ import * as React from "react"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldAction, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
@@ -29,7 +29,7 @@ function AttributeRow({ attribute }: { attribute: AttributeRowData }) {
         event.preventDefault()
         form.put(attribute.updateUrl, { preserveScroll: true })
       }}
-      className="grid gap-3 border-b border-border p-4 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end"
+      className="grid gap-3 border-b border-border p-4 sm:grid-cols-[1fr_1.5fr_auto] content-start"
     >
       <Field
         id={`attribute-name-${attribute.id}`}
@@ -53,9 +53,11 @@ function AttributeRow({ attribute }: { attribute: AttributeRowData }) {
           placeholder="mis. Aluminium, 3 inch"
         />
       </Field>
-      <Button type="submit" variant="secondary" size="sm" disabled={form.processing}>
-        {form.processing ? "Menyimpan..." : "Simpan"}
-      </Button>
+      <FieldAction>
+        <Button type="submit" variant="secondary" size="sm" disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </FieldAction>
     </form>
   )
 }
@@ -112,7 +114,7 @@ export default function Attributes({
         >
           <form id="attribute-create-form" onSubmit={submit} className="space-y-4">
             <FormErrorSummary errors={form.errors} />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <FieldGrid>
               <Field
                 id="new-attribute-name"
                 label="Nama spesifikasi"
@@ -139,7 +141,7 @@ export default function Attributes({
                   placeholder="mis. Aluminium"
                 />
               </Field>
-            </div>
+            </FieldGrid>
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={form.processing}>
                 {form.processing ? "Menyimpan..." : "Tambah"}

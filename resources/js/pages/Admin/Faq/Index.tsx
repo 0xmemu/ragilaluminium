@@ -9,7 +9,7 @@ import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -368,41 +368,40 @@ export default function FaqIndex({
             Judul hero dan status terbit - jarang diubah. Tutup panel ini setelah selesai.
           </p>
           <form
-  id="faq-meta-form"
-            className="mt-4 grid gap-4 sm:grid-cols-2"
+            id="faq-meta-form"
+            className="mt-4 space-y-4"
             onSubmit={(event) => {
               event.preventDefault()
               metaForm.put(metaUrl)
             }}
           >
-            <Field id="faq-title" label="Judul CMS">
-              <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
+            <FieldGrid>
+              <Field id="faq-title" label="Judul CMS">
+                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+              </Field>
+              <CheckboxField
+                id="faq-published"
                 checked={metaForm.data.published}
-                onChange={(event) => metaForm.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
+                onChange={(checked) => metaForm.setData("published", checked)}
+                label="Terbitkan halaman"
               />
-              Terbitkan halaman
-            </label>
-            <Field id="faq-heading" label="Judul hero" className="sm:col-span-2">
-              <Input
-                value={metaForm.data.heading}
-                onChange={(event) => metaForm.setData("heading", event.target.value)}
-              />
-            </Field>
-            <Field id="faq-subtitle" label="Subjudul" className="sm:col-span-2">
-              <Textarea
-                rows={2}
-                value={metaForm.data.subtitle}
-                onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-              />
-            </Field>
+              <Field id="faq-heading" label="Judul hero" className="sm:col-span-2">
+                <Input
+                  value={metaForm.data.heading}
+                  onChange={(event) => metaForm.setData("heading", event.target.value)}
+                />
+              </Field>
+              <Field id="faq-subtitle" label="Subjudul" className="sm:col-span-2">
+                <Textarea
+                  rows={2}
+                  value={metaForm.data.subtitle}
+                  onChange={(event) => metaForm.setData("subtitle", event.target.value)}
+                />
+              </Field>
+            </FieldGrid>
             {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
                 bukan daftar FAQ di bawahnya. Ikut tersembunyi bersama formnya. */}
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={metaForm.processing}>
                 {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
               </Button>

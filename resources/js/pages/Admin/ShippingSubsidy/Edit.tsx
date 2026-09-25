@@ -2,7 +2,7 @@ import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -79,15 +79,13 @@ export default function ShippingSubsidyEdit({
                   Status subsidi ongkir
                 </th>
                 <td className="px-4 py-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-border"
-                      checked={form.data.enabled}
-                      onChange={(event) => form.setData("enabled", event.target.checked)}
-                    />
-                    Subsidi ongkir aktif
-                  </label>
+                  <CheckboxField
+                    id="subsidy-enabled"
+                    checked={form.data.enabled}
+                    onChange={(checked) => form.setData("enabled", checked)}
+                    label="Subsidi ongkir aktif"
+                    standalone
+                  />
                   <p className="mt-1 text-xs text-muted-foreground">
                     Aktifkan untuk memberikan potongan biaya pengiriman kepada pembeli.
                   </p>
@@ -102,6 +100,7 @@ export default function ShippingSubsidyEdit({
                     <Input
                       id="subsidy_value"
                       type="number"
+                      aria-label="Persentase subsidi ongkir"
                       min={0}
                       max={100}
                       step="0.01"
@@ -131,20 +130,20 @@ export default function ShippingSubsidyEdit({
                   Kurir terhubung
                 </th>
                 <td className="px-4 py-2.5">
-                  <label className="flex cursor-pointer items-start gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-4 rounded border-border"
-                      checked={form.data.jnt_enabled}
-                      onChange={(event) => form.setData("jnt_enabled", event.target.checked)}
-                    />
-                    <span>
-                      J&T Cargo
-                      <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                        Skema subsidi menggunakan aturan kurir tersimpan. Hanya kurir yang dicentang yang mendapat subsidi.
+                  <CheckboxField
+                    id="subsidy-jnt-enabled"
+                    checked={form.data.jnt_enabled}
+                    onChange={(checked) => form.setData("jnt_enabled", checked)}
+                    standalone
+                    label={
+                      <span>
+                        J&T Cargo
+                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                          Skema subsidi menggunakan aturan kurir tersimpan. Hanya kurir yang dicentang yang mendapat subsidi.
+                        </span>
                       </span>
-                    </span>
-                  </label>
+                    }
+                  />
                 </td>
               </tr>
             </tbody>

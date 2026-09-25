@@ -29,6 +29,7 @@ import {
 } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { HintTip } from "@/components/admin/ui/hint-tip"
 
 interface Kpi {
@@ -202,37 +203,6 @@ function HoverHint({
   return <HintTip label={label} hint={hint} className={className} />
 }
 
-function CopySkuButton({ sku }: { sku: string }) {
-  const [copied, setCopied] = React.useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      await navigator.clipboard.writeText(sku)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground transition hover:text-foreground hover:bg-muted"
-      title={copied ? "Tersalin!" : "Salin SKU " + sku}
-      aria-label={"Salin SKU " + sku}
-    >
-      <Icon
-        name={copied ? "check" : "copy"}
-        className={cn("size-3", copied ? "text-success" : "text-muted-foreground")}
-        aria-hidden="true"
-      />
-    </button>
-  )
-}
 
 type ProductBreakdown = {
   product_id: number
@@ -312,7 +282,7 @@ function EngagementList({ rows }: { rows: ProductBreakdown[] }) {
             <p className="truncate text-xs font-normal text-foreground" title={p.name}>{p.name}</p>
             <div className="flex items-center gap-1">
               <span className="truncate font-mono text-xs text-muted-foreground">{p.parent_sku}</span>
-              <CopySkuButton sku={p.parent_sku} />
+              <CopyButton text={p.parent_sku} label="Salin SKU" compact showTextInTitle />
             </div>
           </div>
           <div className="text-right text-xs tabular-nums">
@@ -2780,7 +2750,7 @@ export default function StorePerformance({
                           <p className="truncate font-normal text-foreground" title={product.name}>{product.name}</p>
                           <div className="flex items-center gap-1">
                             <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
-                            <CopySkuButton sku={product.parent_sku} />
+                            <CopyButton text={product.parent_sku} label="Salin SKU" compact showTextInTitle />
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">{formatNumber(product.units)}</td>
@@ -2894,7 +2864,7 @@ export default function StorePerformance({
                           </Link>
                           <div className="flex items-center gap-1 mt-0.5">
                             <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
-                            <CopySkuButton sku={product.parent_sku} />
+                            <CopyButton text={product.parent_sku} label="Salin SKU" compact showTextInTitle />
                           </div>
                         </td>
                         <td className="px-4 py-2.5 text-right font-medium tabular-nums text-foreground">
@@ -3043,7 +3013,7 @@ export default function StorePerformance({
                           </Link>
                           <div className="flex items-center gap-1 mt-0.5">
                             <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
-                            <CopySkuButton sku={product.parent_sku} />
+                            <CopyButton text={product.parent_sku} label="Salin SKU" compact showTextInTitle />
                           </div>
                         </td>
                         <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-foreground">

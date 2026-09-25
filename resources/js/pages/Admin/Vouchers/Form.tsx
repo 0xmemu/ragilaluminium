@@ -2,7 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
@@ -212,15 +212,13 @@ export default function VoucherForm({
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Tumpuk (stackable)</th>
                 <td className="px-4 py-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-border"
-                      checked={form.data.stackable}
-                      onChange={(event) => form.setData("stackable", event.target.checked)}
-                    />
-                    Bisa ditumpuk dengan voucher lain
-                  </label>
+                  <CheckboxField
+                    id="voucher-stackable"
+                    checked={form.data.stackable}
+                    onChange={(checked) => form.setData("stackable", checked)}
+                    label="Bisa ditumpuk dengan voucher lain"
+                    standalone
+                  />
                 </td>
               </tr>
               <tr>
@@ -387,15 +385,13 @@ export default function VoucherForm({
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Publikasi</th>
                 <td className="px-4 py-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-border"
-                      checked={form.data.publish_now}
-                      onChange={(event) => form.setData("publish_now", event.target.checked)}
-                    />
-                    Langsung aktifkan setelah disimpan
-                  </label>
+                  <CheckboxField
+                    id="voucher-publish-now"
+                    checked={form.data.publish_now}
+                    onChange={(checked) => form.setData("publish_now", checked)}
+                    label="Langsung aktifkan setelah disimpan"
+                    standalone
+                  />
                 </td>
               </tr>
             </tbody>

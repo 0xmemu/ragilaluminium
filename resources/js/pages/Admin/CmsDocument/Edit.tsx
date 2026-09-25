@@ -2,8 +2,9 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
@@ -73,7 +74,7 @@ export default function CmsDocumentEdit({
       <Head title={`${title} | Admin`} />
       <form
         id="cms-document-form"
-        className="space-y-6"
+        className="w-full max-w-5xl space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
           form.put(submitUrl)
@@ -81,24 +82,26 @@ export default function CmsDocumentEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6 sm:grid-cols-2">
-          <Field id="doc-title" label="Judul CMS" required error={form.errors.title}>
-            <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
-          </Field>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-            <input
-              type="checkbox"
+        <SectionCard
+          title="Meta Dokumen"
+          description="Informasi dasar, judul, dan status publikasi halaman dokumen."
+        >
+          <FieldGrid>
+            <Field id="doc-title" label="Judul CMS" required error={form.errors.title}>
+              <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+            </Field>
+            <CheckboxField
+              id="doc-published"
               checked={form.data.published}
-              onChange={(event) => form.setData("published", event.target.checked)}
-              className="h-4 w-4 accent-primary"
+              onChange={(checked) => form.setData("published", checked)}
+              label="Terbitkan halaman"
             />
-            Terbitkan halaman
-          </label>
-          <Field id="doc-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
-            <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
-          </Field>
-          <p className="font-mono text-[11px] text-muted-foreground sm:col-span-2">Slug: {document.slug}</p>
-        </section>
+            <Field id="doc-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
+              <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
+            </Field>
+            <p className="font-mono text-[11px] text-muted-foreground sm:col-span-2">Slug: {document.slug}</p>
+          </FieldGrid>
+        </SectionCard>
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.85fr)] xl:items-start">
           <Field

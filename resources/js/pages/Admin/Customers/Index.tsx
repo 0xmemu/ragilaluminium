@@ -5,12 +5,12 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
-import { EmptyState } from "@/components/admin/ui/empty-state"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/admin/ui/tooltip"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -33,37 +33,6 @@ interface CustomerRow {
   edit_href: string
 }
 
-function HoverHint({
-  label,
-  hint,
-  className,
-}: {
-  label: React.ReactNode
-  hint?: string
-  className?: string
-}) {
-  if (!hint) return <span className={className}>{label}</span>
-  return (
-    <TooltipProvider delayDuration={100}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            tabIndex={0}
-            className={cn(
-              "cursor-help underline decoration-muted-foreground/40 decoration-dotted underline-offset-[3px] transition hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
-              className,
-            )}
-          >
-            {label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-xs font-normal leading-relaxed">
-          {hint}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
 
 interface Summary {
   top_province: { name: string; share_percent: number }
@@ -95,6 +64,43 @@ export default function CustomersIndex({
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
+  // Galat muat ulang daftar: tampil sebagai ErrorState di area daftar, dengan
+  // tombol "Coba lagi" yang mengulang muat ulang. Penanda muat ulang dipakai
+  // agar kegagalan aksi lain tidak ikut memunculkan panel galat ini.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  const [refreshing, setRefreshing] = React.useState(false)
+  const reloadInFlight = React.useRef(false)
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshCustomers() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Daftar pelanggan belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
+    })
+  }
+
+  // Respons 500 atau koneksi putus tidak masuk ke onError, tetapi Inertia tetap
+  // memancarkan event. Keduanya dipetakan ke panel galat, hanya saat muat ulang
+  // memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Daftar pelanggan belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
 
   function apply(next?: Partial<{ q: string; sort: string }>) {
     router.get(
@@ -123,11 +129,12 @@ export default function CustomersIndex({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => router.reload()}
+            disabled={refreshing}
+            onClick={refreshCustomers}
             className="inline-flex items-center gap-1.5"
           >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
+            <Icon name="refresh" className={cn("size-3.5", refreshing ? "animate-spin" : "")} aria-hidden="true" />
+            <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
           </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={exportUrl}>
@@ -192,7 +199,18 @@ export default function CustomersIndex({
       />
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        {rows.length ? (
+        {refreshError ? (
+          <ErrorState
+            title="Daftar pelanggan gagal dimuat ulang"
+            description={refreshError}
+            className="border-0"
+            action={
+              <Button variant="outline" size="sm" onClick={refreshCustomers} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
@@ -203,7 +221,7 @@ export default function CustomersIndex({
                     <th className="px-3 py-3 font-semibold">Kontak WhatsApp</th>
                     <th className="px-3 py-3 font-semibold">Alamat</th>
                     <th className="px-3 py-3 font-semibold">
-                      <HoverHint
+                      <HintTip
                         label="Status"
                         hint="Status keaktifan pelanggan: Aktif (memiliki pesanan dalam 90 hari terakhir), Baru (belum ada riwayat pesanan), atau Tidak aktif (tidak ada pesanan lebih dari 90 hari)."
                       />
