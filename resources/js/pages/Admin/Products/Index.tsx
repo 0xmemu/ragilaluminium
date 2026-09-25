@@ -1,4 +1,5 @@
 import { Head, Link, router } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
@@ -306,23 +307,12 @@ export default function ProductsIndex({
   }
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      q: searchQuery,
-      product_category: filters.product_category,
-      product_model: filters.product_model,
-      status: filters.status,
-      sort: activeSort,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      // Urutan default tidak ditulis ke URL supaya tautan tetap bersih.
-      if (key === "sort" && value === DEFAULT_SORT) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.products.index"), next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.products.index",
+      { q: searchQuery, product_category: filters.product_category, product_model: filters.product_model, status: filters.status, sort: activeSort },
+      params,
+      { defaults: { sort: DEFAULT_SORT } },
+    )
   }
 
   return (

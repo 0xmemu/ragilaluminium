@@ -23,6 +23,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 
 interface Category {
   id: number
@@ -67,18 +68,11 @@ export default function CategoriesIndex({
   const [q, setQ] = React.useState(filters?.q ?? "")
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      q: filters?.q ?? "",
-      status: filters?.status ?? "all",
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.categories.index"), next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.categories.index",
+      { q: filters?.q ?? "", status: filters?.status ?? "all" },
+      params,
+    )
   }
 
   const activeFilters = React.useMemo(() => {

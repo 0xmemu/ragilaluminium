@@ -28,7 +28,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface ModelRow {
@@ -145,23 +145,24 @@ export default function ModelProductsIndex({
   }, [initialRows])
 
   function apply(next?: Partial<{ q: string; status: string; product_category: string; view: string; per_page: string }>) {
-    const view = next?.view ?? viewMode
-    const nextQ = next?.q !== undefined ? next.q : q
-    const nextStatus = next?.status !== undefined ? next.status : status
-    const nextCategory = next?.product_category !== undefined ? next.product_category : (filters.product_category ?? "")
-    const nextPerPage = next?.per_page !== undefined ? next.per_page : String(perPage)
-
-    router.get(
-      routeUrl("admin.model-products.index"),
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.status !== undefined) dikirim.status = next.status
+    if (next?.product_category !== undefined) dikirim.product_category = next.product_category
+    if (next?.view !== undefined) dikirim.view = next.view
+    if (next?.per_page !== undefined) dikirim.per_page = next.per_page
+    navigateFilter(
+      "admin.model-products.index",
       {
-        q: nextQ || undefined,
-        status: nextStatus || undefined,
-        product_category: nextCategory || undefined,
-        view: view === "grid" ? "grid" : undefined,
-        // 20 adalah default server, jadi tidak perlu ditulis di URL.
-        per_page: nextPerPage && nextPerPage !== "20" ? nextPerPage : undefined,
+        q: filters.q ?? "",
+        status: filters.status ?? "",
+        product_category: filters.product_category ?? "",
+        view: viewMode,
+        per_page: String(perPage),
       },
-      { preserveState: true, preserveScroll: true },
+      dikirim,
+      { defaults: { per_page: "20", view: "list" }, replace: false },
     )
   }
 
@@ -200,13 +201,12 @@ export default function ModelProductsIndex({
   function resetAllFilters() {
     setQ("")
     setStatus("")
-    router.get(
-      routeUrl("admin.model-products.index"),
-      {
-        view: viewMode === "grid" ? "grid" : undefined,
-        per_page: perPage !== 20 ? String(perPage) : undefined,
-      },
-      { preserveState: false, preserveScroll: true },
+    // Filter dibuang, preferensi tampilan (mode dan jumlah baris) tetap dibawa.
+    navigateFilter(
+      "admin.model-products.index",
+      { view: viewMode, per_page: String(perPage) },
+      {},
+      { defaults: { per_page: "20", view: "list" }, preserveState: false, replace: false },
     )
   }
 

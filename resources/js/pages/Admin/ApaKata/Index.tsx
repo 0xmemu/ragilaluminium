@@ -17,7 +17,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 
@@ -203,11 +203,11 @@ export default function ApaKataIndex({
   }, [rows])
 
   function apply(next?: Partial<{ q: string; published: string }>) {
-    const params: Record<string, string> = {
-      q: next?.q ?? q,
-      published: next?.published ?? published,
-    }
-    router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.published !== undefined) dikirim.published = next.published
+    navigateFilter(indexRoute, { q, published }, dikirim, { replace: false })
   }
 
   function reorderRows(from: number, to: number) {

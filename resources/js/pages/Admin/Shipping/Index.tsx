@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatDateTime, formatNumber } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 
 export interface ShippingItem {
@@ -85,23 +85,11 @@ export default function ShippingIndex({
   const [q, setQ] = React.useState(searchQuery)
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      status: activeStatus,
-      carrier_name: activeCarrier,
-      q: searchQuery,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.shipping.index"), next, {
-      preserveState: true,
-      preserveScroll: true,
-      replace: true,
-    })
+    navigateFilter(
+      "admin.shipping.index",
+      { status: activeStatus, carrier_name: activeCarrier, q: searchQuery },
+      params,
+    )
   }
 
   function submitSearch(event: React.FormEvent) {

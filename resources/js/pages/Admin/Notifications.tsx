@@ -17,6 +17,7 @@ import {
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import AdminLayout from "@/layouts/admin-layout"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import {
@@ -99,23 +100,18 @@ export default function Notifications({
   }
 
   function visit(params: { category?: string; unread?: string | undefined; per_page?: string }) {
-    const merged: Record<string, string | undefined> = {
-      category: params.category !== undefined ? params.category : active_category,
-      unread: params.unread !== undefined ? params.unread : unread_only ? "1" : undefined,
-      per_page: params.per_page !== undefined ? params.per_page : String(perPage),
-    }
-    const next: Record<string, string> = {}
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      // 20 adalah default server, jadi tidak perlu ditulis di URL.
-      if (key === "per_page" && value === "20") return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.notifications.index"), next, {
-      preserveScroll: true,
-      preserveState: true,
-      replace: true,
-    })
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini, supaya
+    // argumen kosong tetap berarti pertahankan nilai sekarang.
+    const dikirim: Record<string, string | undefined> = {}
+    if (params.category !== undefined) dikirim.category = params.category
+    if (params.unread !== undefined) dikirim.unread = params.unread
+    if (params.per_page !== undefined) dikirim.per_page = params.per_page
+    navigateFilter(
+      "admin.notifications.index",
+      { category: active_category, unread: unread_only ? "1" : undefined, per_page: String(perPage) },
+      dikirim,
+      { defaults: { per_page: "20" } },
+    )
   }
 
   const visibleNotifications = dedupeManualShippingReviews(notifications)

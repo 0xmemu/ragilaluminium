@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
@@ -15,7 +16,6 @@ import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
 export interface PaymentItem {
@@ -128,28 +128,11 @@ export default function PaymentsIndex({
   )
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      status: activeStatus,
-      method: activeMethod,
-      q: searchQuery,
-      date_preset: activeDatePreset,
-      // Rentang hanya ikut terkirim saat mode rentang aktif, supaya berpindah
-      // ke periode preset tidak meninggalkan sisa tanggal di URL.
-      date_from: activeDatePreset === "range" ? rangeFrom : undefined,
-      date_to: activeDatePreset === "range" ? rangeTo : undefined,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.payments.index"), next, {
-      preserveState: true,
-      preserveScroll: true,
-      replace: true,
-    })
+    navigateFilter(
+      "admin.payments.index",
+      { status: activeStatus, method: activeMethod, q: searchQuery, date_preset: activeDatePreset, date_from: activeDatePreset === "range" ? rangeFrom : undefined, date_to: activeDatePreset === "range" ? rangeTo : undefined },
+      params,
+    )
   }
 
   function submitSearch(event: React.FormEvent) {

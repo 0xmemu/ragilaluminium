@@ -16,7 +16,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface VoucherCard {
@@ -210,20 +210,12 @@ export default function VouchersIndex({
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      view: viewMode,
-      q: searchQuery,
-      status: activeStatus,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "view" && value === "list") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.vouchers.index"), next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.vouchers.index",
+      { view: viewMode, q: searchQuery, status: activeStatus },
+      params,
+      { defaults: { view: "list" } },
+    )
   }
 
   return (

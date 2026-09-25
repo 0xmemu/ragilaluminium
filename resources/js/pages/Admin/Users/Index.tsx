@@ -11,7 +11,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface UserRow {
@@ -52,15 +52,12 @@ export default function UsersIndex({
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
   function apply(next?: Partial<{ q: string; status: string; sort: string }>) {
-    router.get(
-      routeUrl("admin.users.index"),
-      {
-        q: next?.q ?? q,
-        status: next?.status ?? status,
-        sort: next?.sort ?? sort,
-      },
-      { preserveState: true, preserveScroll: true },
-    )
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.status !== undefined) dikirim.status = next.status
+    if (next?.sort !== undefined) dikirim.sort = next.sort
+    navigateFilter("admin.users.index", { q, status, sort }, dikirim, { replace: false })
   }
 
   function postStatus(url: string, id: number) {

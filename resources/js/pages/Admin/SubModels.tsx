@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
@@ -123,25 +124,12 @@ export default function SubModelsIndex({
   }, [initialRows])
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      q: filters?.q ?? "",
-      product_model: currentModel,
-      status: currentStatus,
-      per_page: String(perPage),
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      // 20 adalah default server, jadi tidak perlu ditulis di URL.
-      if (key === "per_page" && value === "20") return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.sub-models.index"), next, {
-      preserveState: true,
-      replace: true,
-    })
+    navigateFilter(
+      "admin.sub-models.index",
+      { q: filters?.q ?? "", product_model: currentModel, status: currentStatus, per_page: String(perPage) },
+      params,
+      { defaults: { per_page: "20" } },
+    )
   }
 
   // Owner 2026-09-16: tombol Urutkan hanya aktif pada filter sub model yang aktif.

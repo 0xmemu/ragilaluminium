@@ -14,7 +14,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface AnnouncementCard {
@@ -167,14 +167,11 @@ export default function AnnouncementsIndex({
   }
 
   function visit(params: Record<string, string | undefined>) {
-    const merged = { q: searchQuery, status: activeStatus, ...params }
-    const next: Record<string, string> = {}
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.announcements.index"), next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.announcements.index",
+      { q: searchQuery, status: activeStatus },
+      params,
+    )
   }
 
   return (

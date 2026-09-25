@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { RowActions } from "@/components/admin/row-actions"
@@ -11,7 +11,7 @@ import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -85,14 +85,14 @@ export default function ActivityLogsIndex({
   const canView = can("activity_logs.view", capabilities)
 
   function apply(next?: Partial<{ q: string; sort: string }>) {
-    router.get(
-      routeUrl("admin.activity-logs.index"),
-      {
-        category: category === "all" ? undefined : category,
-        q: next?.q ?? q,
-        sort: next?.sort ?? sort,
-      },
-      { preserveState: true, preserveScroll: true, replace: true },
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.sort !== undefined) dikirim.sort = next.sort
+    navigateFilter(
+      "admin.activity-logs.index",
+      { category: category === "all" ? undefined : category, q, sort },
+      dikirim,
     )
   }
 

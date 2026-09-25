@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
@@ -15,7 +16,6 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -164,20 +164,12 @@ export default function BannersIndex({
   })
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      view: viewMode,
-      q: searchQuery,
-      status: activeStatus,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "view" && value === "grid") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.banners.index"), next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.banners.index",
+      { view: viewMode, q: searchQuery, status: activeStatus },
+      params,
+      { defaults: { view: "grid" } },
+    )
   }
 
   return (

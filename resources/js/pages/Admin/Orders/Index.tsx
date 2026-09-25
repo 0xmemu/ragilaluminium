@@ -23,6 +23,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDate, formatNumber, humanize } from "@/lib/format"
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 // import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -685,30 +686,26 @@ export default function OrdersIndex({
   const visit = React.useCallback((params: Record<string, string | undefined>) => {
     // Setiap navigasi filter membatalkan pilihan preset yang masih menggantung.
     setDateDraft(null)
-    const next: Record<string, string> = {}
-    const merged = {
-      order_status: activeStatus,
-      q: searchQuery,
-      sort: activeSort,
-      payment_status: activePaymentStatus,
-      shipping_status: activeShippingStatus,
-      older_than: activeOlderThan,
-      date_preset: activeDatePreset,
-      date_from: activeDatePreset === "range" ? dateFrom : "",
-      date_to: activeDatePreset === "range" ? dateTo : "",
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all" || (key === "sort" && value === "newest")) return
-      if (key === "q" && !value.trim()) return
-      if ((key === "date_from" || key === "date_to") && merged.date_preset !== "range") return
-      next[key] = value
-    })
-    router.get(routeUrl("admin.orders.index"), next, {
-      preserveState: true,
-      preserveScroll: true,
-      replace: true,
-    })
+    navigateFilter(
+      "admin.orders.index",
+      {
+        order_status: activeStatus,
+        q: searchQuery,
+        sort: activeSort,
+        payment_status: activePaymentStatus,
+        shipping_status: activeShippingStatus,
+        older_than: activeOlderThan,
+        date_preset: activeDatePreset,
+        date_from: activeDatePreset === "range" ? dateFrom : "",
+        date_to: activeDatePreset === "range" ? dateTo : "",
+      },
+      params,
+      {
+        shouldDrop: (key, value, merged) =>
+          (key === "sort" && value === "newest") ||
+          ((key === "date_from" || key === "date_to") && merged.date_preset !== "range"),
+      },
+    )
   }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, activeSort, dateFrom, dateTo, searchQuery])
 
 
