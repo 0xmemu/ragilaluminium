@@ -983,3 +983,17 @@ Bukti:
 - StorePerformanceGoldenTest 4 passed (13 assertions).
 - Typecheck & eslint bersih 0 error/warning.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 03:20 UTC | zcode | Deep | 47265b87 | selesai-sebagian
+Lingkup: audit menu dan komponen bersama panel admin; konsolidasi CopyButton dan HintTip; migrasi checkbox manual ke primitif ADR-022; pengaman konfirmasi tindakan destruktif di halaman pairing WhatsApp.
+Dampak spec: tidak berubah
+Untuk agent berikutnya:
+- Komponen bersama baru: `resources/js/components/admin/ui/copy-button.tsx` (Clipboard API dengan fallback execCommand). Gunakan ini, jangan tulis ulang fungsi salin di halaman.
+- Enam berkas halaman YATIM terdeteksi dan BELUM dihapus, menunggu keputusan owner: Admin/Media/Index, Admin/Attributes, Admin/VariantEdit, Admin/InstallationGallery/Model, Admin/ApaKata/Index, Admin/Beranda/KontakForm. Semuanya sisa penggabungan; rutenya sekarang mengalihkan ke halaman lain.
+- Sisa error ESLint di direktori admin (10 error, 18 warning) berasal dari berkas milik pekerjaan lain yang belum di-commit, bukan dari perubahan sesi ini.
+- PELAJARAN: `git add <direktori>` menyeret berkas agen lain di working tree bersama. Stage per berkas selalu.
+Bukti:
+- 33 dari 33 rute menu admin HTTP 200.
+- Typecheck 0 error; ESLint 0 error/0 warning pada 21 berkas yang diubah; build Vite sukses.
+- PHPUnit penuh 1.172 passed / 1 skipped; filter WhatsApp 70 passed; Vitest 203 passed.
+- Uji browser: dialog konfirmasi pairing berfungsi, sesi WhatsApp produksi tetap tersambung (connected=1, nomor 62881080733754).
