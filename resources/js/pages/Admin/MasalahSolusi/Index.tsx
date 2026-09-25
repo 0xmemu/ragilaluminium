@@ -17,6 +17,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 
 interface Row {
   id: number
@@ -58,8 +59,6 @@ export default function MasalahSolusiIndex({
   previewUrl: string
 }) {
   const [q, setQ] = React.useState(filters.q)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
   const metaForm = useForm({
@@ -71,26 +70,24 @@ export default function MasalahSolusiIndex({
   const reorderForm = useForm({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah.
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows: rows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: initialRows,
+    form: reorderForm,
+    url: reorderUrl,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    numbering: true,
+    submitOptions: { preserveScroll: true },
+  })
 
-  React.useEffect(() => {
-    // Inertia refresh replaces the editable rows with the server snapshot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRows(initialRows)
-    // setDefaults, bukan setData: `isDirty` membandingkan data dengan defaults,
-    // jadi defaults harus ikut pindah ke snapshot server. Kalau tidak, memuat
-    // ulang daftar (misalnya karena pencarian dibersihkan saat mode urut
-    // dinyalakan) langsung membuat tombol Simpan urutan muncul tanpa ada geseran.
-    reorderForm.setData(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    reorderForm.setDefaults(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRows])
 
   function apply(next?: Partial<{ q: string }>) {
     router.get(
@@ -100,18 +97,6 @@ export default function MasalahSolusiIndex({
     )
   }
 
-  function reorderRows(from: number, to: number) {
-    if (from === to) return
-    const next = [...rows]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
 
   // Meta halaman jarang diubah, jadi formnya dilipat supaya daftar item langsung
   // terlihat begitu halaman dibuka (kontrak: flow setting sederhana).
@@ -139,26 +124,8 @@ export default function MasalahSolusiIndex({
     }
   }
 
-  function saveReorder() {
-    reorderForm.put(reorderUrl, {
-      preserveScroll: true,
-      onSuccess: () => setReorderMode(false),
-    })
-  }
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
-  function cancelReorder() {
-    setRows(initialRows)
-    reorderForm.setData(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    reorderForm.setDefaults(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    setReorderMode(false)
-  }
 
   return (
     <AdminLayout

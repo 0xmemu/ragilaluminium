@@ -20,6 +20,7 @@ import { humanize } from "@/lib/format"
 import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 
 interface ApaKataRow {
   id: number
@@ -150,8 +151,6 @@ export default function ApaKataIndex({
   const [q, setQ] = React.useState(filters.q)
   const [published, setPublished] = React.useState(filters.published)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [orderedRows, setOrderedRows] = React.useState<ApaKataRow[]>(rows)
   // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
   // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
   // Pencarian tidak dikunci karena tombol Urutkan membersihkannya sendiri.
@@ -169,6 +168,23 @@ export default function ApaKataIndex({
       sort_order: row.sort_order ?? index,
     })),
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah.
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: rows,
+    form: reorderForm,
+    url: reorderUrl as string,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    numbering: true,
+    submitOptions: { preserveScroll: true },
+  })
 
   React.useEffect(() => {
     if (!pageMeta) return
@@ -182,25 +198,6 @@ export default function ApaKataIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageMeta])
 
-  React.useEffect(() => {
-    const next = rows
-    // Keep the reorder editor aligned with the loaded rows.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrderedRows(next)
-    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
-    // defaults, jadi keduanya harus berisi snapshot server yang sama.
-    reorderForm.setData({
-      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    reorderForm.setDefaults({
-      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    // Mode urut tidak direset di sini: menyalakan mode urut membersihkan
-    // pencarian dan itu memuat ulang rows, sehingga mode urut akan langsung
-    // mati sendiri. Reset terjadi lewat onSuccess simpan dan tombol Urungkan.
-    // `useForm` returns a new facade on every render; rows define the editor snapshot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows])
 
   function apply(next?: Partial<{ q: string; published: string }>) {
     // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
@@ -210,37 +207,9 @@ export default function ApaKataIndex({
     navigateFilter(indexRoute, { q, published }, dikirim, { replace: false })
   }
 
-  function reorderRows(from: number, to: number) {
-    if (from === to) return
-    const next = [...orderedRows]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setOrderedRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
 
-  function saveReorder() {
-    reorderForm.put(reorderUrl as string, {
-      preserveScroll: true,
-      onSuccess: () => setReorderMode(false),
-    })
-  }
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
-  function cancelReorder() {
-    setOrderedRows(rows)
-    reorderForm.setData({
-      rows: rows.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    reorderForm.setDefaults({
-      rows: rows.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    setReorderMode(false)
-  }
 
   // Kolom ikon tarik hanya dirender saat mode Urutkan aktif dan daftar tidak tersaring.
   const dragAktif = reorderMode && !listTersaring

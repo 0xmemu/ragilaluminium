@@ -28,6 +28,7 @@ import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 import type { Pagination as PaginationData } from "@/types"
 
 interface TabItem {
@@ -371,10 +372,6 @@ export default function TestimonialsIndex({
   const [reply, setReply] = React.useState(filters.reply ?? "all")
   const [replyTarget, setReplyTarget] = React.useState<WebsiteRow | null>(null)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [orderedRows, setOrderedRows] = React.useState<WebsiteRow[]>(
-    tab === "website" || tab === "eksternal" ? (rows as WebsiteRow[]) : [],
-  )
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
   const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index" || tab === "eksternal"
@@ -388,29 +385,29 @@ export default function TestimonialsIndex({
       sort_order: row.sort_order ?? index,
     })),
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah. Sinkronisasi hanya berlaku di tab
+  // yang menyusun daftar website, karena tab lain tidak memakai urutan ini.
+  const snapshotRows = rows as WebsiteRow[]
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: snapshotRows,
+    form: reorderForm,
+    url: reorderUrl as string,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    numbering: true,
+    submitOptions: { preserveScroll: true },
+    syncEnabled: tab === "website" || tab === "eksternal",
+  })
 
 
 
-  React.useEffect(() => {
-    if (tab !== "website" && tab !== "eksternal") return
-    const next = rows as WebsiteRow[]
-    // Keep the reorder editor aligned with the active website testimonial tab.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrderedRows(next)
-    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
-    // defaults, jadi keduanya harus berisi snapshot server yang sama.
-    reorderForm.setData({
-      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    reorderForm.setDefaults({
-      rows: next.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    // Mode urut tidak direset di sini: menyalakan mode urut membersihkan
-    // pencarian dan itu memuat ulang rows, sehingga mode urut akan langsung
-    // mati sendiri. Reset terjadi lewat onSuccess simpan dan tombol Urungkan.
-    // `useForm` returns a new facade on every render; rows define the editor snapshot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows])
 
   function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string; reply: string }>) {
     const params: Record<string, string> = {
@@ -439,45 +436,15 @@ export default function TestimonialsIndex({
     router.get(routeUrl(indexRoute), {}, { preserveState: false, preserveScroll: true })
   }
 
-  function reorderRows(from: number, to: number) {
-    if (from === to) return
-    const next = [...orderedRows]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setOrderedRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
 
-  function saveReorder() {
-    reorderForm.put(reorderUrl as string, {
-      preserveScroll: true,
-      onSuccess: () => setReorderMode(false),
-    })
-  }
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
-  function cancelReorder() {
-    const snapshot = rows as WebsiteRow[]
-    setOrderedRows(snapshot)
-    reorderForm.setData({
-      rows: snapshot.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    reorderForm.setDefaults({
-      rows: snapshot.map((row, index) => ({ id: row.id, sort_order: index })),
-    })
-    setReorderMode(false)
-  }
 
   React.useEffect(() => {
     // Pindah tab berarti daftar dan endpoint urutannya berganti, jadi mode urut
     // dibatalkan supaya tidak menyimpan ke daftar yang salah.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReorderMode(false)
-  }, [tab, indexRoute])
+  }, [tab, indexRoute, setReorderMode])
 
   const channelOptionsList = channelOptions ?? []
   // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya

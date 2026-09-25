@@ -28,6 +28,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -119,30 +120,28 @@ export default function ModelProductsIndex({
   const [q, setQ] = React.useState(filters.q)
   const [status, setStatus] = React.useState(filters.status)
   const [viewMode, setViewMode] = React.useState<ViewMode>(initialViewMode)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [rows, setRows] = React.useState(initialRows)
   const [busyId, setBusyId] = React.useState<number | null>(null)
   const reorderForm = useForm({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah.
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows: rows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelOrder,
+  } = useReorderMode({
+    snapshot: initialRows,
+    form: reorderForm,
+    url: reorderUrl,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    numbering: true,
+    submitOptions: { preserveState: true },
+  })
 
-  React.useEffect(() => {
-    // Inertia refresh replaces the editable rows with the server snapshot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRows(initialRows)
-    // Data dan defaults dipindah bersama: `isDirty` membandingkan data dengan
-    // defaults, jadi keduanya harus berisi snapshot server yang sama.
-    reorderForm.setData(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    reorderForm.setDefaults(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRows])
 
   function apply(next?: Partial<{ q: string; status: string; product_category: string; view: string; per_page: string }>) {
     // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
@@ -215,42 +214,9 @@ export default function ModelProductsIndex({
     apply({ view: mode })
   }
 
-  function reorderRows(from: number, to: number) {
-    if (from === to) return
-    const next = [...rows]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
 
-  function saveReorder() {
-    // Mode Urutkan otomatis nonaktif setelah tersimpan; snapshot baru dari server
-    // menimpa rows lokal via useEffect [initialRows]. Query view dipertahankan
-    // supaya redirect tetap di tampilan yang sama (grid tidak terlempar ke list).
-    reorderForm.put(reorderUrl, {
-      onSuccess: () => setReorderMode(false),
-      preserveState: true,
-    })
-  }
 
   /** Batalkan mode Urutkan: kembalikan urutan ke snapshot server lalu keluar. */
-  function cancelOrder() {
-    setRows(initialRows)
-    reorderForm.setData(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    reorderForm.setDefaults(
-      "rows",
-      initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-    )
-    setReorderMode(false)
-  }
 
   // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
   // berisi baris yang tampil, jadi daftar tersaring atau berhalaman menulis

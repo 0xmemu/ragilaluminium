@@ -16,6 +16,7 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -78,8 +79,6 @@ export default function FaqIndex({
 
   const [q, setQ] = React.useState(filters.q)
   const [category, setCategory] = React.useState(filters.category)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [rows, setRows] = React.useState(initialRows)
   const [openId, setOpenId] = React.useState<number | null>(null)
   const [editingId, setEditingId] = React.useState<number | null>(null)
   const [busyId, setBusyId] = React.useState<number | null>(null)
@@ -107,31 +106,33 @@ export default function FaqIndex({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
     status,
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah.
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows: rows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: initialRows,
+    form: reorderForm,
+    url: reorderUrl,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    numbering: true,
+    beforeSave: () => reorderForm.setData("status", status),
+    submitOptions: { preserveScroll: true },
+    onSync: () => setEditingId(null),
+  })
 
-  React.useEffect(() => {
-    // Inertia refresh replaces the editable rows with the server snapshot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRows(initialRows)
-    setEditingId(null)
-    reorderForm.setData({
-      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-      status,
-    })
-    reorderForm.setDefaults({
-      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-      status,
-    })
-    // `useForm` returns a new facade on every render; the server snapshot is the only dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRows, status])
 
   React.useEffect(() => {
     // Pindah tab membatalkan mode urut. Mode urut tidak boleh direset saat rows
     // berganti, karena menyalakan mode urut membersihkan pencarian dan itu
     // memuat ulang rows, sehingga mode urut akan langsung mati sendiri.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReorderMode(false)
-  }, [status])
+  }, [status, setReorderMode])
 
   React.useEffect(() => {
     // Query flags are navigation inputs, while the local state drives the panel.
@@ -200,40 +201,9 @@ export default function FaqIndex({
     })
   }
 
-  function reorderRows(from: number, to: number) {
-    if (from === to) return
-    const next = [...rows]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
-  }
 
-  function saveReorder() {
-    reorderForm.setData("status", status)
-    reorderForm.put(reorderUrl, {
-      preserveScroll: true,
-      onSuccess: () => setReorderMode(false),
-    })
-  }
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
-  function cancelReorder() {
-    setRows(initialRows)
-    reorderForm.setData({
-      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-      status,
-    })
-    reorderForm.setDefaults({
-      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-      status,
-    })
-    setReorderMode(false)
-  }
 
   // Geser-urut hanya sahih saat daftar memuat seluruh baris tab ini: payload
   // simpan hanya berisi baris yang tampil, jadi daftar tersaring akan menulis
