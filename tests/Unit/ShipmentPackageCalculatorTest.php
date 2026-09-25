@@ -101,4 +101,81 @@ class ShipmentPackageCalculatorTest extends TestCase
         $this->assertSame(18.0, $volMenang['chargeable_weight_kg'], 'volumetrik lebih besar');
     }
 
+
+    public function test_default_constructor_uses_zero_allowance_and_metode_a(): void
+    {
+        $calculator = new ShipmentPackageCalculator();
+        $result = $calculator->calculate([[
+            'weight_kg' => 8.8,
+            'height_cm' => 40,
+            'length_cm' => 100,
+            'width_cm' => 15,
+            'quantity' => 1,
+        ]]);
+
+        // Tanpa tambahan packing kayu (+6cm): dimensi persis sama dengan ukuran produk
+        $this->assertSame(100.0, $result['length_cm']);
+        $this->assertSame(15.0, $result['width_cm']);
+        $this->assertSame(40.0, $result['height_cm']);
+        $this->assertSame(60000.0, $result['volume_cm3']);
+        $this->assertSame(12.0, $result['volumetric_weight_kg']);
+        $this->assertSame(12.0, $result['chargeable_weight_kg']);
+        $this->assertSame(8.8, $result['actual_weight_kg']);
+        $this->assertSame(1, $result['package_count']);
+    }
+
+    public function test_metode_a_menjumlahkan_volume_dan_berat_aktual_multi_produk(): void
+    {
+        // Item 1: Jendela 100 x 15 x 40 cm, 8.8 kg, qty 1 -> vol 60.000 cm3
+        // Item 2: Boven 50 x 10 x 30 cm, 4.0 kg, qty 1 -> vol 15.000 cm3
+        // Total volume = 75.000 cm3 -> volumetrik 15.0 kg
+        // Total berat = 12.8 kg -> berat tagih 15.0 kg
+        $calculator = new ShipmentPackageCalculator();
+        $result = $calculator->calculate([
+            [
+                'weight_kg' => 8.8,
+                'height_cm' => 40,
+                'length_cm' => 100,
+                'width_cm' => 15,
+                'quantity' => 1,
+            ],
+            [
+                'weight_kg' => 4.0,
+                'height_cm' => 30,
+                'length_cm' => 50,
+                'width_cm' => 10,
+                'quantity' => 1,
+            ],
+        ]);
+
+        $this->assertSame(75000.0, $result['volume_cm3']);
+        $this->assertSame(12.8, $result['actual_weight_kg']);
+        $this->assertSame(15.0, $result['volumetric_weight_kg']);
+        $this->assertSame(15.0, $result['chargeable_weight_kg']);
+        $this->assertSame(100.0, $result['length_cm']);
+        $this->assertSame(40.0, $result['height_cm']);
+        $this->assertSame(18.75, $result['width_cm'], 'lebar efektif agar P x L x T = volume total');
+        $this->assertSame(2, $result['package_count']);
+    }
+
+    public function test_metode_a_multi_quantity_produk_sama(): void
+    {
+        $calculator = new ShipmentPackageCalculator();
+        $result = $calculator->calculate([[
+            'weight_kg' => 8.8,
+            'height_cm' => 40,
+            'length_cm' => 100,
+            'width_cm' => 15,
+            'quantity' => 2,
+        ]]);
+
+        $this->assertSame(120000.0, $result['volume_cm3']);
+        $this->assertSame(17.6, $result['actual_weight_kg']);
+        $this->assertSame(24.0, $result['volumetric_weight_kg']);
+        $this->assertSame(24.0, $result['chargeable_weight_kg']);
+        $this->assertSame(100.0, $result['length_cm']);
+        $this->assertSame(30.0, $result['width_cm']);
+        $this->assertSame(40.0, $result['height_cm']);
+        $this->assertSame(2, $result['package_count']);
+    }
 }

@@ -10,7 +10,7 @@ namespace App\Support;
  */
 class ShippingPalletSettings
 {
-    public const DEFAULT_ALLOWANCE_PER_SIDE_CM = 3.0;
+    public const DEFAULT_ALLOWANCE_PER_SIDE_CM = 0.0;
 
     public static function allowancePerSideCm(): float
     {

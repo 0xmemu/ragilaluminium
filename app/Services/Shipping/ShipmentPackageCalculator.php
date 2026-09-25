@@ -3,13 +3,18 @@
 namespace App\Services\Shipping;
 
 /**
- * Builds one provisional pallet package for the current cart.
+ * Builds one provisional package for the current cart/order lines.
  * Product dimensions use the Ragil convention: height, length, width/depth.
+ *
+ * Keputusan owner 2026-09-25 (Metode A):
+ * - Memakai berat dan dimensi paket aktual per produk.
+ * - Tanpa tambahan ukuran packing kayu/pallet (allowance default 0).
+ * - Per pesanan menjumlahkan volume paket masing-masing produk (pendekatan standar multi-koli J&T Cargo).
  */
 final class ShipmentPackageCalculator
 {
     public function __construct(
-        private readonly float $allowancePerSideCm = 3.0,
+        private readonly float $allowancePerSideCm = 0.0,
         private readonly float $volumetricDivisor = 5000.0,
     ) {}
 
@@ -17,6 +22,7 @@ final class ShipmentPackageCalculator
     public function calculate(array $items): array
     {
         $items = array_values(array_filter($items, static fn (array $item): bool => ($item['quantity'] ?? 0) > 0));
+
         if ($items === []) {
             return [
                 'length_cm' => 0.0,
@@ -27,6 +33,7 @@ final class ShipmentPackageCalculator
                 'actual_weight_kg' => 0.0,
                 'volumetric_weight_kg' => 0.0,
                 'chargeable_weight_kg' => 0.0,
+                'package_count' => 0,
                 'packing_source' => 'catalog_default',
             ];
         }
@@ -50,26 +57,44 @@ final class ShipmentPackageCalculator
                 'actual_weight_kg' => 0.0,
                 'volumetric_weight_kg' => 0.0,
                 'chargeable_weight_kg' => 0.0,
+                'package_count' => array_sum(array_map(static fn (array $i): int => (int) ($i['quantity'] ?? 1), $items)),
                 'packing_source' => 'manual_review',
                 'manual_review' => true,
                 'invalid_fields' => $invalid,
             ];
         }
 
-        // Provisional layout for pallet standing items side by side:
-        // largest height/length, accumulated width for every unit.
-        $innerHeight = max(array_map(static fn (array $i): float => (float) $i['height_cm'], $items));
-        $innerLength = max(array_map(static fn (array $i): float => (float) $i['length_cm'], $items));
-        $innerWidth = array_sum(array_map(static fn (array $i): float => (float) $i['width_cm'] * (int) $i['quantity'], $items));
         $productWeight = array_sum(array_map(static fn (array $i): float => (float) $i['weight_kg'] * (int) $i['quantity'], $items));
+        $packageCount = array_sum(array_map(static fn (array $i): int => (int) $i['quantity'], $items));
 
-        // Allowance pallet seragam dari config/shipping.php (tanpa berat pallet:
-        // pemakaian pallet berubah mengikuti qty, jadi tidak ada berat tetap).
+        // Metode A (keputusan owner 2026-09-25):
+        // Total volume adalah penjumlahan volume paket masing-masing produk: sum(P * L * T * qty).
+        $totalVolume = array_sum(array_map(
+            static fn (array $i): float => (float) $i['length_cm'] * (float) $i['width_cm'] * (float) $i['height_cm'] * (int) $i['quantity'],
+            $items
+        ));
+
+        $maxHeight = max(array_map(static fn (array $i): float => (float) $i['height_cm'], $items));
+        $maxLength = max(array_map(static fn (array $i): float => (float) $i['length_cm'], $items));
+
         $allowance = $this->allowancePerSideCm;
-        $length = $innerLength + (2 * $allowance);
-        $width = $innerWidth + (2 * $allowance);
-        $height = $innerHeight + (2 * $allowance);
-        $volume = $length * $width * $height;
+
+        if ($allowance > 0.0) {
+            // Kompatibilitas mundur bila allowance kayu secara eksplisit diset > 0
+            $innerWidth = array_sum(array_map(static fn (array $i): float => (float) $i['width_cm'] * (int) $i['quantity'], $items));
+            $length = $maxLength + (2 * $allowance);
+            $width = $innerWidth + (2 * $allowance);
+            $height = $maxHeight + (2 * $allowance);
+            $volume = $length * $width * $height;
+        } else {
+            // Metode A murni: volume total adalah jumlah volume paket masing-masing
+            $length = $maxLength;
+            $height = $maxHeight;
+            // Lebar efektif agar panjang x lebar x tinggi = volume total
+            $width = ($length > 0 && $height > 0) ? round($totalVolume / ($length * $height), 3) : 0.0;
+            $volume = $totalVolume;
+        }
+
         $actual = $productWeight;
         $volumetric = $volume / $this->volumetricDivisor;
 
@@ -82,6 +107,7 @@ final class ShipmentPackageCalculator
             'actual_weight_kg' => round($actual, 3),
             'volumetric_weight_kg' => round($volumetric, 3),
             'chargeable_weight_kg' => round(max($actual, $volumetric), 3),
+            'package_count' => $packageCount,
             'packing_source' => 'product_profile',
             'manual_review' => false,
             'invalid_fields' => [],

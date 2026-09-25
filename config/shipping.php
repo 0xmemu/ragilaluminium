@@ -47,7 +47,7 @@ return [
     | Dipakai ShipmentPackageCalculator; nilai per produk sudah dihapus.
     | Ini asumsi kemasan fisik Ragil (keputusan owner), bukan aturan J&T.
     */
-    'pallet_allowance_per_side_cm' => (float) env('SHIPPING_PALLET_ALLOWANCE_CM', 3.0),
+    'pallet_allowance_per_side_cm' => (float) env('SHIPPING_PALLET_ALLOWANCE_CM', 0.0),
 
     /*
     | Estimasi waktu tiba (OrderEta): hari produksi + rentang pengiriman.
