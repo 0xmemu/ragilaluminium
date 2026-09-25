@@ -1007,3 +1007,17 @@ Bukti:
 - Vitest 203 passed; FrontendPageContract dan AdminDashboard 21 passed (719 assertions).
 - Uji browser Detail Produk id 51: tab Varian/Spesifikasi/Media tampil, 12 varian terdaftar, tanpa tumpang tindih.
 - Bebas karakter em dash (U+2014).
+
+## 2026-09-25 04:30 UTC | zcode | Deep | 2237ce06 | selesai
+Lingkup: konfirmasi tindakan destruktif yang masih berjalan satu klik; token warna tema; peta jenis notifikasi bersama; SectionCard pada Form Cara Pesan; laporan audit komponen diperluas.
+Dampak spec: tidak berubah
+Untuk agent berikutnya:
+- Empat jalur destruktif kini berkonfirmasi: lepas media hasil pemasangan (ProductForm), Hapus Catatan (Orders Index & Show), Muat ulang katalog (ModelProducts Index), dan aksi non-GET generik di ResourceIndex (default kini fail-closed).
+- Warna status admin memakai token tema (bg-success, bg-warning, bg-info, text-warning-foreground), bukan kelas mentah emerald/amber/sky. Palet token sudah dituning per mode terang/gelap di resources/css/app.css.
+- Peta ikon dan warna jenis notifikasi diekspor dari components/admin/notification-bell.tsx; jangan salin ulang di halaman.
+- TEMUAN BELUM DIKERJAKAN menunggu keputusan owner: 6 berkas halaman yatim, 9 berkas komponen mati (±1.625 baris), dan 2 duplikasi logika besar (pembangun URL filter 12 salinan, mesin mode Urutkan 9 salinan). Rincian di docs/AUDIT-ADMIN/LAPORAN-AUDIT-MENU-DAN-KOMPONEN-BERSAMA.md bagian 5A dan 8.
+- PELAJARAN: `git add <direktori>` menyeret berkas agen lain di working tree bersama. Stage per berkas selalu. Tiga berkas yang saya sentuh sedang termodifikasi pekerjaan lain; perubahan mereka tidak saya ubah.
+Bukti:
+- Typecheck 0 error; ESLint berkas yang diubah 0 error/0 warning; build Vite sukses 21 detik.
+- Vitest 203 passed; PHPUnit penuh 1.172 passed, 1 skipped (11.907 assertions).
+- Uji browser: dialog konfirmasi Model Produk tampil dan Batal tidak menjalankan aksi (URL tetap); halaman Pengaturan Sistem, Cara Pesan, Detail Produk id 51, Promo Toko, Teruskan Popularitas render normal; sesi WhatsApp produksi tetap tersambung.

@@ -122,6 +122,51 @@ Status: **belum dihapus**, menunggu keputusan bersama temuan yatim lainnya.
 
 ---
 
+## 5A. Temuan E: Komponen Bersama yang Mati dan Pohon Kembar
+
+Setiap komponen di `resources/js/components/admin/` dihitung jumlah pengimpornya di seluruh `resources/js`.
+
+### 5A.1 Komponen Mati Total
+
+Sembilan berkas, sekitar 1.625 baris kode, tidak diimpor siapa pun:
+
+| Berkas | Baris | Padanan/Akibat |
+|---|---|---|
+| `admin/product-edit/media-panel.tsx` | 841 | Panel pemilih media ketiga; `media-picker.tsx` yang aktif memanggil endpoint yang sama |
+| `admin/ui/chart.tsx` | 367 | Pembungkus Recharts tidak dipakai; setiap halaman menata tema grafiknya sendiri |
+| `admin/ui/form.tsx` | 178 | Pembungkus react-hook-form; 43 halaman memakai `useForm` Inertia, jadi ini menyesatkan seolah ada dua konvensi form |
+| `admin/product-edit/variant-panel.tsx` | 97 | Panel varian sisa refactor |
+| `admin/ui/tabs.tsx` | 53 | Primitif tab mati padahal dua komponen tab tulis-tangan justru ada |
+| `admin/ui/badge.tsx` | 36 | Mengekspor nama `badgeVariants` yang sama dengan `status-badge.tsx`, rawan salah pilih impor |
+| `admin/ui/separator.tsx` | 29 | Mati, kembarannya di `components/ui/` juga mati |
+| `admin/ui/label.tsx` | 24 | Mati transitif: hanya diimpor `form.tsx` yang mati |
+| `components/ui/{badge,confirm-action,price,separator,status-select,switch,tabs,tooltip}.tsx` | 349 | Delapan berkas di pohon lama, tampak aktif padahal tidak dipakai |
+
+### 5A.2 Duplikasi Komponen Bersama
+
+| Pasangan | Temuan |
+|---|---|
+| `manage-products-tabs.tsx` (4 impor) dan `whatsapp-tabs.tsx` (3 impor) | Isi kedua berkas identik baris per baris; hanya daftar tab, nama fungsi, dan label aksesibilitas yang berbeda |
+| `media-library-select.tsx`, `media-picker.tsx`, dan `media-panel.tsx` | Tiga pemilih media ke endpoint yang sama; satu di antaranya sudah mati |
+| `admin/ui/status-badge.tsx` dan `components/ui/status-badge.tsx` | Dua peta nada berbeda: yang admin memakai gaya batas dan lapisan tipis, yang publik memakai token |
+| `admin/ui/breadcrumb.tsx` dan `components/ui/breadcrumbs.tsx` | Dua komponen remah roti di dua pohon berbeda |
+| `admin/ui/flash-messages.tsx` dan `components/shared/flash-messages.tsx` | Dua salinan komponen pesan kilat, hanya berbeda dua baris |
+| `admin/ui/ProductPicker.tsx` | Bersaing dengan `search-select.tsx` untuk fungsi memilih produk, dan mendefinisikan pemformat mata uang lokal padahal `lib/format.ts` sudah ada |
+
+Akibat yang sudah nyata terlihat: `Orders/Show.tsx` menampilkan status yang sama dengan **dua palet berbeda** dalam satu halaman, karena berkas itu mengimpor `StatusBadge` dari pohon admin sekaligus panel pelacakan dari komponen bersama yang memakai `StatusBadge` pohon publik.
+
+### 5A.3 Duplikasi Logika (Bukan Komponen)
+
+| Pola | Salinan | Catatan |
+|---|---|---|
+| Pembangun URL filter halaman (`visit`) | **12 berkas**: Categories, SubModels, Vouchers, Notifications, Orders, Payments, Imports, Products, PopularityBoosts, Shipping, Banners, Announcements | Aturan "nilai default tidak ditulis ke URL" dan pemangkasan kata kunci tersebar di 12 tempat. `ResourceIndex.tsx` memakai cara ketiga (`URLSearchParams`) |
+| Mesin mode Urutkan (geser, simpan, batal, sinkron snapshot) | **9 berkas**: ApaKata, Faq, MasalahSolusi, ModelProducts, SubModels, Testimonials, InstallationGallery, Beranda, PopularityBoosts | Blok geser dan penomoran ulang identik. Bahkan ada penamaan yang menyesatkan: `cancelOrder()` di dua berkas sebenarnya membatalkan mode urutkan, bukan membatalkan pesanan |
+| Blok status koneksi WhatsApp | **3 berkas**: Hub, Index, Pairing | Sudah bercabang pada radius, padding, dan bayangan |
+
+Ini bukan sekadar kerapian. Komentar panjang di `ApaKata/Index.tsx` dan `InstallationGallery/Index.tsx` mencatat bug sinkronisasi snapshot yang sudah pernah terjadi; setiap perbaikan baru harus diulang di sembilan tempat.
+
+---
+
 ## 6. Temuan D: Tindakan Berbahaya Tanpa Konfirmasi
 
 Ini temuan paling berisiko dari seluruh audit.
@@ -134,6 +179,31 @@ Perbaikan: ketiga tombol kini memakai komponen `ConfirmAction` bersama, dengan j
 
 Bukti pengujian langsung di browser: dialog konfirmasi Putuskan Sambungan terbuka benar, tombol Batal menutup dialog tanpa mengirim form, dan sesi WhatsApp produksi tetap tersambung (`connected => 1`, nomor `62881080733754`) setelah pengujian.
 
+### 6.1 Sidik Menyeluruh Tindakan Destruktif
+
+Setelah pairing diperbaiki, seluruh 71 berkas halaman admin disisir ulang dengan dua lapis pemeriksaan: pencocokan label destruktif yang tidak berdekatan dengan `ConfirmAction`, dan pelacakan fungsi bermutasi yang dipanggil dari `onClick` jauh dari definisinya. Setiap kandidat ditelusuri ke rute, controller, dan service di backend untuk memastikan sifatnya benar-benar merusak.
+
+Hasilnya: **26 berkas sudah memakai `ConfirmAction`**, **14 berkas memanggil `router.delete` dan semuanya sudah di belakang konfirmasi**, dan **nol berkas masih memakai `window.confirm`** di area admin. Namun ditemukan **empat jalur yang masih berjalan satu klik**, dan semuanya sudah diperbaiki:
+
+| Jalur | Tindakan nyata | Akibat tanpa konfirmasi | Perbaikan |
+|---|---|---|---|
+| `ProductForm.tsx` tombol lepas media hasil pemasangan | `POST` arsip media | Foto hilang dari daftar media produk dan dari halaman publik hasil pemasangan. Rute pemulihan ada di backend tetapi tidak punya pemanggil di antarmuka, sehingga penghapusan praktis satu arah | `ConfirmAction` |
+| `Orders/Index.tsx` dan `Orders/Show.tsx` tombol Hapus Catatan | `PUT` catatan internal bernilai kosong | Catatan internal admin hilang permanen dari database, tanpa riwayat, dan modal langsung tertutup sehingga tidak ada kesempatan membatalkan | `ConfirmAction` di dua tempat |
+| `ModelProducts/Index.tsx` tombol Muat ulang katalog | `POST` sinkronisasi katalog | Bukan hanya menambah model baru: model yang tidak lagi punya produk aktif otomatis berstatus nonaktif sehingga hilang dari katalog dan beranda publik | `ConfirmAction` dengan penjelasan dampak |
+| `ResourceIndex.tsx` aksi baris generik | `POST` atau `DELETE` generik | Pengaman konfirmasi bergantung pada penanda `action.confirm` yang **tidak pernah dikirim server mana pun** di seluruh backend. Jalur ini kini dorman karena `row.actions` selalu kosong, tetapi menjadi lubang begitu ada controller yang mengisinya | Default aman dibalik: setiap metode non-GET wajib dikonfirmasi, teks dari server dipakai sebagai judul bila tersedia |
+
+Bukti pengujian langsung di browser: dialog konfirmasi Muat ulang katalog terbuka dengan penjelasan dampaknya, tombol Batal menutup dialog tanpa mengirim permintaan, dan halaman tetap di rute yang sama.
+
+### 6.2 Tindakan yang Terverifikasi Aman (Bukan Temuan)
+
+Pemeriksaan yang sama menyaring sejumlah hal yang tampak berisiko tetapi sebenarnya tidak:
+
+- Tombol Hapus dan Kosongkan di `TentangKami/Edit`, `CaraPemesanan/Edit`, `Beranda/HowToOrderForm`, `MasalahSolusi/Form`, `ModelProducts/Form`, `PromotionForm`, `SubModelForm`, `Vouchers/Form`, dan `Announcements/Form` hanya mengubah keadaan form di layar; tidak ada perubahan tersimpan sebelum admin menekan Simpan.
+- Aksi Pulihkan, Aktifkan, dan Reset filter bersifat memulihkan atau tidak merusak.
+- `Orders/Index.tsx` tombol aksi sekunder tidak pernah membawa status berikutnya, sehingga tidak ada mutasi tak terduga dari jalur itu.
+- `WhatsApp/Edit.tsx` dan `WhatsApp/Index.tsx` tombol Nonaktifkan template bersifat reversibel (tombol Aktifkan tersedia). Ini tetap dicatat sebagai ketidakseragaman gaya, bukan risiko data.
+- `ResourceShow.tsx` tombol Jalankan ulang menunjuk rute yang tidak ada sehingga `routeUrl` gagal dan jatuh ke beranda, tetapi cabang itu sudah tidak terjangkau dari rute mana pun, jadi tetap kode mati.
+
 ---
 
 ## 7. Hasil Verifikasi
@@ -143,33 +213,40 @@ Bukti pengujian langsung di browser: dialog konfirmasi Putuskan Sambungan terbuk
 | Pemeriksaan | Hasil |
 |---|---|
 | TypeScript (`npm run typecheck`) | 0 error |
-| ESLint pada 21 berkas yang diubah | 0 error, 0 warning |
+| ESLint pada seluruh berkas yang diubah sesi ini | 0 error, 0 warning |
 | Karakter em dash pada berkas yang diubah | 0 kemunculan |
 | Build Vite | Sukses 21 detik |
 
-Catatan penting: ESLint pada **seluruh** direktori admin masih melaporkan 10 error dan 18 warning, tetapi semuanya berada di berkas milik pekerjaan lain yang belum di-commit (`media-picker.tsx`, `media-panel.tsx`, `ProductForm.tsx`, `InstallationGallery/Model.tsx`, dan sejenisnya). Berkas-berkas itu tidak disentuh dalam sesi ini.
+Catatan penting: ESLint pada **seluruh** direktori admin masih melaporkan 10 error dan 18 warning, tetapi semuanya berada di berkas milik pekerjaan lain yang belum di-commit (`media-picker.tsx`, `media-panel.tsx`, `ProductForm.tsx` bagian efek lama, `InstallationGallery/Model.tsx`, dan sejenisnya). Berkas-berkas itu tidak disentuh dalam sesi ini. Berkas `ProductForm.tsx` sendiri disentuh, tetapi 7 warning di dalamnya sudah ada sebelum perubahan dan berasal dari efek React lama, bukan dari tombol konfirmasi yang ditambahkan.
 
 ### 7.2 Pengujian Otomatis
 
 | Suite | Hasil |
 |---|---|
 | PHPUnit penuh (sebelum perubahan) | 1.172 passed, 1 skipped, 0 failed (11.895 assertions) |
+| PHPUnit penuh (setelah pemecahan warna dan komponen) | 1.172 passed, 1 skipped, 0 failed (11.907 assertions) |
 | PHPUnit filter admin dan kontrak halaman | 260 passed (3.842 assertions) |
 | PHPUnit filter WhatsApp | 70 passed (531 assertions) |
 | Vitest frontend | 25 berkas, 203 test, semua lulus |
 
 ### 7.3 Pengujian Langsung di Browser
 
-- Halaman Teruskan Popularitas: pil status Aktif tampil benar sebagai `StatusBadge`.
+- Halaman Teruskan Popularitas: pil status Aktif tampil benar sebagai `StatusBadge` bersama.
 - Halaman Promo Toko: pil Berjalan dan Terjadwal tampil dengan warna benar.
-- Halaman Daftar Pesanan: 20 pesanan tampil, tombol salin SKU bekerja, kotak dialog tidak tumpang tindih (diukur lewat koordinat elemen, jarak antar tombol 5 piksel, tidak ada irisan).
+- Halaman Daftar Pesanan: 20 pesanan tampil, tombol salin SKU bekerja, kotak dialog tidak tumpang tindih (diukur lewat koordinat elemen: jarak antar tombol 5 piksel, tidak ada irisan).
 - Halaman Pairing WhatsApp: dialog konfirmasi berfungsi, sesi produksi tidak terganggu.
+- Halaman Pengaturan Sistem: peta status memakai token tema, grafik dan kartu render normal.
+- Form Cara Pesan: dua `SectionCard` tampil, tombol Kembali hanya muncul sekali di remah roti.
+- Halaman Model Produk: dialog konfirmasi Muat ulang katalog terbuka dengan penjelasan dampak, tombol Batal menutup tanpa mengirim permintaan.
+- Halaman Detail Produk id 51: tab Varian, Spesifikasi, dan Media tampil, 12 varian terdaftar, `SectionCard` baru tanpa masalah tata letak.
 
 ---
 
 ## 8. Pekerjaan yang Menunggu Keputusan
 
-Enam berkas halaman yatim **belum dihapus**. Alasannya: menghapus kode orang lain bukan wewenang saya tanpa persetujuan, apalagi berkas itu berada di working tree bersama yang sedang dipakai agen lain.
+### 8.1 Berkas Halaman Yatim
+
+Enam berkas halaman yatim **belum dihapus**. Alasannya: menghapus kode orang lain bukan wewenang saya tanpa persetujuan, apalagi berkas itu berada di working tree bersama yang sedang dipakai agen lain. Tiga di antaranya bahkan sedang dalam keadaan termodifikasi oleh pekerjaan lain yang belum di-commit (`product-edit/media-panel.tsx`, `product-edit/variant-panel.tsx`, `Beranda/KontakForm.tsx`).
 
 Pilihan yang tersedia:
 
@@ -178,6 +255,14 @@ Pilihan yang tersedia:
 3. **Biarkan** sebagai catatan, tanpa perubahan.
 
 Untuk kerapian jangka panjang, pilihan 2 paling aman: menghapus yang pasti mati lebih dulu, lalu memutuskan dua sisanya setelah memeriksa riwayat penggabungan.
+
+### 8.2 Komponen Bersama yang Mati
+
+Sembilan berkas komponen mati (sekitar 1.625 baris) diusulkan dihapus, tetapi ada satu catatan penting: `admin/product-edit/media-panel.tsx` justru memuat **satu-satunya padanan berkonfirmasi** untuk tombol lepas media di `ProductForm.tsx` yang baru diperbaiki. Menghapusnya aman karena berkas itu sendiri tidak dipakai, tetapi urutannya sebaiknya setelah tombol di `ProductForm.tsx` dipastikan berjalan di lingkungan nyata.
+
+### 8.3 Duplikasi Logika yang Perlu Refactor Terarah
+
+Dua pola terbesar, yaitu pembangun URL filter (12 salinan) dan mesin mode Urutkan (9 salinan), layak dijadikan hook bersama. Keduanya menyentuh banyak halaman sekaligus, jadi sebaiknya dikerjakan sebagai satu tugas tersendiri dengan pengujian menyeluruh, bukan disisipkan ke sesi perapian ini.
 
 ---
 
