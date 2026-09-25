@@ -1034,3 +1034,58 @@ Bukti:
 - Vitest 203 passed.
 - Uji browser: halaman Ringkasan WhatsApp menampilkan "Status WhatsApp Terhubung" dengan nomor dan satu tautan Kelola sambungan; halaman Pairing menampilkan kartu dengan nomor +62 881-8907-33754 dan sesi sehat.
 - Probe 41 rute admin: 41 OK, 0 gagal.
+
+## 2026-09-25 17:46 UTC | zcode | Standard | 324a09f1 | selesai
+Lingkup: penyatuan penyusun URL filter pada halaman daftar admin. Berkas baru
+`resources/js/lib/filter-url.ts` (fungsi penyusun query dan fungsi navigasi) plus
+tes Vitest, dan lima belas halaman daftar admin dimigrasikan ke sana.
+
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Aturan penyusunan URL filter kini hanya ada satu tempat:
+  `resources/js/lib/filter-url.ts`. Jangan tulis ulang blok "gabungkan keadaan
+  filter, buang nilai kosong, buang penanda all" di halaman baru; panggil
+  `navigateFilter` (navigasi) atau `buildFilterQuery` (hanya menyusun query).
+- Tiga opsi yang membedakan halaman sah dan dipakai: `defaults` (nilai default
+  server tidak ditulis ke URL, mis. `per_page "20"` dan `view`), `shouldDrop`
+  (aturan lintas kunci, mis. rentang tanggal hanya sahih saat preset range
+  aktif, dan urutan `newest` tidak ditulis), `preserveState` (hanya tombol reset
+  filter yang memakai false).
+- Tiga halaman memakai perbedaan yang mudah terlewat dan sudah dijaga: Pesanan
+  (urutan `newest` dibuang, tanggal hanya saat preset range), Notifikasi (argumen
+  kosong berarti "pertahankan nilai sekarang", bukan menimpa), Model Produk dan
+  Pengguna (navigasi tanpa `replace`, jadi tombol kembali browser bekerja).
+- PENTING soal working tree bersama. Tiga berkas yang saya ubah ternyata juga
+  memuat pekerjaan belum-commit milik sesi lain: `Imports/Index.tsx` dan
+  `Products/Index.tsx` (panel galat muat ulang ErrorState plus tombol Coba lagi)
+  dan `Users/Index.tsx` (pindah aksi baris ke menu RowActionsMenu). `git add`
+  berkas itu akan menyeret pekerjaan orang lain, jadi yang saya staging adalah
+  versi "HEAD ditambah perubahan saya saja" lewat `git hash-object -w` dan
+  `git update-index --cacheinfo`. Working tree tidak disentuh, pekerjaan mereka
+  tetap belum-commit. `Products/PopularityBoosts.tsx` (+440 baris) milik sesi
+  lain dan TIDAK saya commit sama sekali.
+- Dua galat ESLint pra-eksisting yang masih ada di `Products/Index.tsx`
+  (`rowActionTextClass` dan `cn` impor tak terpakai) sudah ada di HEAD sebelum
+  perubahan siapa pun, dan sengaja tidak saya sentuh agar commit tetap sempit.
+  Sesi yang memakai `cn` di berkas itu akan sekaligus menutup satu galat.
+- Sisa halaman yang belum dimigrasikan dan alasannya: `Testimonials/Index.tsx`
+  (bentuk parameter bersyarat, mis. `tab`, `channel` hanya saat tab website, dan
+  `reply`), `Media/History.tsx` (tiap kunci punya jalur sendiri), dan
+  `ModelProducts`/`Users` sudah selesai. Kandidat berikutnya kalau mau lanjut.
+
+Bukti:
+- `npm run typecheck`: 0 error. Build Vite sukses 21 detik. Vitest 26 berkas,
+  215 tes lulus (tes baru `tests/frontend/filter-url.test.ts` berisi 12 kasus).
+- ESLint pada berkas yang diubah: bersih, kecuali dua galat pra-eksisting di
+  `Products/Index.tsx` yang terbukti juga muncul pada versi HEAD berkas itu.
+- Versi index tiga berkas campuran diperiksa dengan
+  `npx eslint --stdin --stdin-filename <path>`: `Imports` dan `Users` bersih,
+  `Products` sama persis dengan status HEAD.
+- Uji browser live (ra.333labs.tech) setelah build: Kategori, Pesanan, Sub Model,
+  Voucher, Bar Promo, Pembayaran, Import, Teruskan Popularitas, Pengguna, Log
+  Aktivitas, Model Produk, Banner, dan Notifikasi semuanya menulis filter ke URL
+  dan mempertahankan filter lain. Contoh: Banners tombol List menghasilkan
+  `?view=list`, lalu pencarian menjadi `?q=promo&view=list` (tampilan tidak
+  hilang). Notifikasi: `?category=orders&unread=1` lalu tab Semua menghasilkan
+  `?unread=1` (kategori dibuang, penanda belum dibaca tetap).
