@@ -77,3 +77,10 @@ Schedule::call(function (): void {
 })->name('system-health-prune')
     ->dailyAt('03:15')
     ->withoutOverlapping();
+
+// Fallback penarikan status pelacakan J&T Cargo terjadwal untuk resi aktif.
+// Mencegah paket menggantung bila webhook J&T sewaktu-waktu macet atau gagal kirim.
+Schedule::command('shipping:poll-jnt', [
+    '--limit' => 30,
+    '--throttle' => 30,
+])->everyThirtyMinutes()->withoutOverlapping();
