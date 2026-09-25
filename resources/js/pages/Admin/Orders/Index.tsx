@@ -1446,16 +1446,24 @@ export default function OrdersIndex({
                 </div>
 
                 <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10"
-                    disabled={notesBusy}
-                    onClick={deleteAdminNotes}
-                  >
-                    Hapus Catatan
-                  </Button>
+                  <ConfirmAction
+                    trigger={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        disabled={notesBusy}
+                      >
+                        Hapus Catatan
+                      </Button>
+                    }
+                    title="Hapus catatan internal?"
+                    description="Isi catatan internal pesanan ini akan dihapus permanen dan tidak bisa dikembalikan."
+                    confirmLabel="Hapus Catatan"
+                    processing={notesBusy}
+                    onConfirm={deleteAdminNotes}
+                  />
 
                   <div className="flex items-center gap-2">
                     <Button

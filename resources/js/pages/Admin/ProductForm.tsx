@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SearchSelect } from "@/components/admin/ui/search-select"
@@ -1394,15 +1395,22 @@ export default function ProductForm({
                         </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => removeInst(media.id, media.archive_url)}
-                        className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
-                        aria-label={`Lepas ${media.label || "media"}`}
-                        title="Lepas dari hasil pemasangan"
-                      >
-                        <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                      </button>
+                      <ConfirmAction
+                        trigger={
+                          <button
+                            type="button"
+                            className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                            aria-label={`Lepas ${media.label || "media"}`}
+                            title="Lepas dari hasil pemasangan"
+                          >
+                            <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                          </button>
+                        }
+                        title="Lepas media dari hasil pemasangan?"
+                        description={`${media.label || "Media ini"} akan diarsipkan sehingga hilang dari daftar media produk dan dari halaman publik hasil pemasangan. Tindakan ini tidak bisa dibatalkan dari halaman ini.`}
+                        confirmLabel="Lepas media"
+                        onConfirm={() => removeInst(media.id, media.archive_url)}
+                      />
                     </li>
                   ))}
                 </ul>

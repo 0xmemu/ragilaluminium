@@ -341,15 +341,21 @@ export default function ModelProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.post(syncUrl)}
-            title="Tambahkan model dari kombinasi kategori + model produk yang belum terdaftar, dan nonaktifkan model yang sudah tidak punya produk aktif."
-          >
-            <Icon name="refresh" className="size-4" aria-hidden="true" />
-            Muat ulang katalog
-          </Button>
+          // Aksi massal: selain menambah model baru, sinkronisasi juga menonaktifkan
+          // model yang tidak lagi punya produk aktif. Konfirmasi dulu agar tidak
+          // menghilangkan model dari katalog tanpa disadari.
+          <ConfirmAction
+            trigger={
+              <Button type="button" variant="secondary">
+                <Icon name="refresh" className="size-4" aria-hidden="true" />
+                Muat ulang katalog
+              </Button>
+            }
+            title="Muat ulang katalog dari produk?"
+            description="Model baru dari kombinasi kategori dan model produk akan ditambahkan, dan model yang sudah tidak punya produk aktif akan berstatus nonaktif sehingga hilang dari katalog serta beranda publik."
+            confirmLabel="Muat ulang katalog"
+            onConfirm={() => router.post(syncUrl)}
+          />
           {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
               yang benar-benar digeser. */}

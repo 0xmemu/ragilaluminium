@@ -67,7 +67,9 @@ function RowActionButtons({ actions }: { actions: ResourceRowAction[] }) {
       router.post(action.url!, {}, { preserveScroll: true })
     }
 
-    if (action.confirm) {
+    // Default aman: setiap metode non-GET wajib dikonfirmasi. Teks
+    // dari server dipakai sebagai judul dialog bila tersedia.
+    if (typeof action.confirm === "string" || method !== "get") {
       return (
         <ConfirmAction
           key={key}
@@ -85,7 +87,7 @@ function RowActionButtons({ actions }: { actions: ResourceRowAction[] }) {
               </button>
             )
           }
-          title={action.confirm}
+          title={action.confirm || "Jalankan tindakan ini?"}
           description="Tindakan ini akan dijalankan pada record yang dipilih."
           confirmLabel={action.label}
           onConfirm={run}
