@@ -1254,3 +1254,14 @@ Bukti:
 - Tangkapan layar kedua halaman setelah build: 100039 baris tiga kartu tetap
   kompak, 100040 dua kartu kompak plus kartu WhatsApp bergulir.
 - typecheck 0 error, eslint 0 masalah di Show.tsx, build Vite sukses.
+
+## 2026-09-27 00:15 UTC | zcode | Trivial | - | selesai
+Lingkup: pencatatan kontrak nomor uji coba WhatsApp dari owner.
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- NOMOR TEST WHATSAPP (kontrak keras 2026-09-27): Setiap pengujian pesan WhatsApp, pesanan uji coba (dummy order) yang menyentuh alur WhatsApp/lacak pesanan, atau simulasi kirim pesan/notifikasi WAJIB menggunakan nomor `085725116817` (format normal: `6285725116817`).
+- DILARANG KERAS menggunakan nomor sembarang / acak / palsu (seperti `081200000001`, `081234567890`, dll) agar tidak menyasar nomor orang lain dan pengujian selalu terarah ke perangkat uji owner.
+
+Bukti:
+- Dicatat pada berkas kontrak kanonik lokal (docs/KONTRAK/PREFERENSI-OWNER.md, docs/KONTRAK/MEMORY-kontrak-owner.md), AGENTS.md lokal, dan AGENTS.md VPS.
