@@ -1281,3 +1281,23 @@ Bukti:
   sempat terukur 0 px); di 100040 hasil setelah perbaikan sama, 14 px dan
   14 px. 14 px adalah ritme jarak antarkartu halaman ini.
 - typecheck 0 error, eslint bersih di Show.tsx, build Vite sukses.
+
+## 2026-09-27 00:35 UTC | zcode | Standard | 333dc899 | selesai
+Lingkup: penyeragaman format nomor telepon pelanggan dan toko di seluruh antarmuka publik/storefront menjadi 08xxx (bukan 62xxx atau +62xxx), dengan normalisasi backend tetap berjalan.
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- KONTRAK FORMAT NOMOR TELEPON PELANGGAN (2026-09-27): Seluruh nomor yang diperlihatkan ke pelanggan (display phone, footer, about, halaman pelacakan pesanan phoneMasked, cetak resi dan faktur pelanggan) atau input/placeholder bagi pelanggan (checkout address form, form lacak pesanan) WAJIB berformat lokal 08xxx (misalnya 085725116817 atau 0857-2511-6817), BUKAN 62xxx atau +62xxx.
+- Normalisasi internal backend tetap berjalan via PhoneNumber::normalize() yang menghasilkan format E.164 tanpa plus (628xxx) untuk penyimpanan database, integrasi WhatsApp API, dan J&T API.
+- Untuk menampilkan nomor ke pelanggan, gunakan PhoneNumber::formatDisplay($phone) di PHP (menghasilkan format 08xx-xxxx-xxxx) atau PhoneNumber::toLocal($phone) (format polos 08xxx), serta formatPhoneLocal(phone, grouped?) di TypeScript (resources/js/lib/format.ts).
+- Pada halaman pelacakan pesanan (OrderTrackingViewModel::recipient()), masking nomor penerima kini menampilkan 0857••••17, bukan 628••••17.
+- Input placeholder di formulir checkout dan lacak pesanan menggunakan nomor uji coba resmi owner: 085725116817.
+
+Bukti:
+- PHPUnit: tests/Unit/PhoneNumberTest.php baru (4 tes lulus), ConsultationWhatsAppTest (6 tes lulus), WhatsAppSessionPhoneTest (10 tes lulus), CheckoutPrefillTest (3 tes lulus), OrderReturnCtaTest (10 tes lulus).
+- Vitest: 28 berkas, 230 tes lulus (termasuk 8 tes pada tests/frontend/format.test.ts).
+- Typecheck 0 error, ESLint bersih pada berkas yang diubah, build Vite sukses dalam 26,33 detik.
+- Uji browser live (ra.333labs.tech):
+  1. Halaman /order/status: placeholder menampilkan 085725116817, hint contoh 085725116817.
+  2. Lacak pesanan ORD26090011: detail penerima menampilkan masking 0857••••17 (bukan 628...).
+  3. Footer toko di beranda publik: nomor telepon toko menampilkan 0881-0807-33754 (bukan +62...), tautan tel dialable tel:0881080733754.

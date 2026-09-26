@@ -166,3 +166,27 @@ export function formatJamIso(iso: string): string {
   if (Number.isNaN(waktu.getTime())) return iso
   return waktu.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }) + " WIB"
 }
+
+/**
+ * Format nomor telepon untuk tampilan pelanggan (format 08xxx, bukan 62xxx).
+ * Mengubah awalan 62 atau +62 menjadi 08.
+ * Bila grouped = true, format sebagai 08xx-xxxx-xxxx.
+ */
+export function formatPhoneLocal(value: string | null | undefined, grouped = false): string {
+  if (!value) return ""
+  const digits = value.replace(/\D/g, "")
+  if (!digits) return value.trim()
+  let local = digits
+  if (local.startsWith("62")) {
+    local = "0" + local.slice(2)
+  } else if (!local.startsWith("0")) {
+    local = "0" + local
+  }
+  if (!grouped || local.length < 9) {
+    return local
+  }
+  const prefix = local.slice(0, 4)
+  const mid = local.slice(4, 8)
+  const rest = local.slice(8)
+  return rest ? `${prefix}-${mid}-${rest}` : `${prefix}-${mid}`
+}

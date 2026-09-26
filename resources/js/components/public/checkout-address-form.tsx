@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { formatPhoneLocal } from "@/lib/format"
 import { WilayahSearchSelect } from "@/components/public/wilayah-search-select"
 import type { CheckoutController } from "@/hooks/use-checkout"
 import type { CheckoutDetails } from "@/types"
@@ -62,7 +63,7 @@ export function CheckoutAddressForm({
           </div>
           <div>
             <dt className="text-muted-foreground">Nomor HP/WhatsApp</dt>
-            <dd className="mt-0.5 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{details.phone}</dd>
+            <dd className="mt-0.5 font-semibold text-foreground break-words [overflow-wrap:anywhere]">{formatPhoneLocal(details.phone, true)}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-muted-foreground">Alamat</dt>
@@ -96,7 +97,7 @@ export function CheckoutAddressForm({
                 onBlur={() => c.prefillFromLastOrder()}
                 autoComplete="tel"
                 inputMode="tel"
-                placeholder="08XXXXXXXXXX"
+                placeholder="085725116817"
                 className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>

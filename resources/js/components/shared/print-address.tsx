@@ -1,3 +1,4 @@
+import { formatPhoneLocal } from "@/lib/format"
 import { createPortal } from "react-dom"
 import * as React from "react"
 
@@ -85,7 +86,7 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
         </strong>
       </div>
       <p style={{ fontWeight: 700, fontSize: 17, margin: 0 }}>{data.customer_name || ""}</p>
-      <p style={{ margin: "2px 0 0" }}>{data.customer_phone || ""}</p>
+      <p style={{ margin: "2px 0 0" }}>{formatPhoneLocal(data.customer_phone, true) || ""}</p>
       <p style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{fullAddress(data) || "-"}</p>
       {data.order_number ? (
         <p style={{ marginTop: 14, fontSize: 12, color: "#555" }}>

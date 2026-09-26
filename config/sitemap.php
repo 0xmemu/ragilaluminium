@@ -475,7 +475,7 @@ return [
         'short_name' => 'Ragil Aluminium',
         'tagline' => 'Pusat Belanja Jendela Aluminium',
         'email' => 'ragilaluminium29@gmail.com',
-        'phone' => env('BRAND_PHONE', '+62 851-9966-6810'),
+        'phone' => env('BRAND_PHONE', '0851-9966-6810'),
         'address' => env(
             'BRAND_ADDRESS',
             'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin Mandiraja, Desa Mandiraja Wetan, Kec. Mandiraja, Kab. Banjarnegara, Jawa Tengah 53473'

@@ -395,7 +395,7 @@ class CheckoutController extends Controller
             'found' => true,
             'details' => [
                 'name' => $order->customer_name,
-                'phone' => $order->customer_phone,
+                'phone' => PhoneNumber::toLocal($order->customer_phone) ?? $order->customer_phone,
                 'province' => $order->shipping_province,
                 'city' => $order->shipping_city,
                 'district' => $order->shipping_district,

@@ -103,15 +103,15 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
             // Matikan Baileys agar activeSessionPhone() tidak menimpa dgn nomor
             // session live dari environment dev.
             'services.whatsapp.baileys.base_url' => null,
-            'sitemap.brand.phone' => '+62 851-9966-6810',
+            'sitemap.brand.phone' => '0851-9966-6810',
         ]);
 
         $this->get(route('about'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Public/About')
-                ->where('brand.phone', '+62 817-7637-0707')
-                ->where('consultationWhatsApp.phone', '+62 817-7637-0707')
+                ->where('brand.phone', '0817-7637-0707')
+                ->where('consultationWhatsApp.phone', '0817-7637-0707')
                 ->where('consultationWhatsApp.directUrl', fn ($url) => is_string($url) && str_starts_with($url, 'https://wa.me/6281776370707')));
     }
 
@@ -121,12 +121,12 @@ class ConsultationWhatsAppTest extends \Tests\TestCase
         config([
             'services.whatsapp.business_phone' => null,
             'services.whatsapp.baileys.base_url' => null,
-            'sitemap.brand.phone' => '+62 851-9966-6810',
+            'sitemap.brand.phone' => '0851-9966-6810',
         ]);
 
         $this->get(route('about'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('brand.phone', '+62 851-9966-6810'));
+                ->where('brand.phone', '0851-9966-6810'));
     }
 }

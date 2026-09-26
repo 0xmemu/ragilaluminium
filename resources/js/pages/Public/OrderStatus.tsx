@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import PublicLayout from "@/layouts/public-layout"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder, SharedPageProps } from "@/types"
 
@@ -408,14 +407,14 @@ export default function OrderStatus({
                   label="Nomor HP/WhatsApp"
                   required
                   error={form.errors.customer_phone}
-                  hint="Nomor yang dipakai saat checkout. Boleh ditulis diawali 08 atau 62, keduanya dikenali. Contoh: 081234567890."
+                  hint="Nomor yang dipakai saat checkout. Boleh ditulis diawali 08 atau 62, keduanya dikenali. Contoh: 085725116817."
                 >
                   <Input
                     type="tel"
                     inputMode="tel"
                     value={form.data.customer_phone}
                     onChange={(event) => form.setData("customer_phone", event.target.value)}
-                    placeholder="081234567890"
+                    placeholder="085725116817"
                     autoComplete="tel"
                   />
                 </Field>

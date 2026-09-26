@@ -7,6 +7,7 @@ import {
   humanize,
   productName,
   stripHtml,
+  formatPhoneLocal,
   telephoneHref,
 } from "@/lib/format"
 
@@ -56,5 +57,14 @@ describe("format helpers", () => {
     expect(telephoneHref("+---()")).toBeNull()
     expect(telephoneHref("+62 812 **** 7890")).toBeNull()
     expect(telephoneHref("123456")).toBeNull()
+  })
+  it("formats phone number for customer display in 08xxx format", () => {
+    expect(formatPhoneLocal("6285725116817")).toBe("085725116817")
+    expect(formatPhoneLocal("6285725116817", true)).toBe("0857-2511-6817")
+    expect(formatPhoneLocal("+62 857-2511-6817")).toBe("085725116817")
+    expect(formatPhoneLocal("+62 857-2511-6817", true)).toBe("0857-2511-6817")
+    expect(formatPhoneLocal("085725116817", true)).toBe("0857-2511-6817")
+    expect(formatPhoneLocal(null)).toBe("")
+    expect(formatPhoneLocal("")).toBe("")
   })
 })

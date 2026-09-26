@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom"
 import * as React from "react"
 
-import { formatCurrency, formatDateTime } from "@/lib/format"
+import { formatCurrency, formatDateTime, formatPhoneLocal } from "@/lib/format"
 
 const LOGO_URL = "/images/brand/dark-mark.png"
 
@@ -252,7 +252,7 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <span style={{ ...label, width: 56, flexShrink: 0 }}>No. HP</span>
-              <span style={value}>{data.customer_phone || "-"}</span>
+              <span style={value}>{formatPhoneLocal(data.customer_phone, true) || "-"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ ...label, color: "#333333", fontWeight: 700 }}>Alamat lengkap</span>

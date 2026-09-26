@@ -466,9 +466,11 @@ class OrderTrackingViewModel
     public function recipient(): array
     {
         $phone = (string) $this->order->customer_phone;
-        $masked = $phone;
-        if (strlen($phone) >= 7) {
-            $masked = substr($phone, 0, 3).'••••'.substr($phone, -2);
+        // Format tampilan pelanggan wajib 08xxx (bukan 62xxx).
+        $local = PhoneNumber::toLocal($phone) ?? $phone;
+        $masked = $local;
+        if (strlen($local) >= 7) {
+            $masked = substr($local, 0, 4).'••••'.substr($local, -2);
         }
         $address = trim(implode(', ', array_filter([
             (string) $this->order->shipping_city,
