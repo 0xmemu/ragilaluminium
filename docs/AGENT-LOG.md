@@ -1265,3 +1265,19 @@ Untuk agent berikutnya:
 
 Bukti:
 - Dicatat pada berkas kontrak kanonik lokal (docs/KONTRAK/PREFERENSI-OWNER.md, docs/KONTRAK/MEMORY-kontrak-owner.md), AGENTS.md lokal, dan AGENTS.md VPS.
+
+## 2026-09-26 20:25 UTC | zcode | Trivial | - | selesai
+Lingkup: lanjutan keluhan padding di halaman detail pesanan (100039, 100040).
+Dampak spec: tidak berubah
+
+Akar: panel Kasus Retur dirender di luar pembungkus konten yang membaurkan
+jarak antarkartu (kelas space-y-4), sehingga kartu retur menempel 0 px ke
+baris tiga kartu di atasnya. Perbaikan: tambah kelas jarak atas (mt-4) pada
+pembungkus panel retur (#return-case) di resources/js/pages/Admin/Orders/Show.tsx.
+
+Bukti:
+- Pengukuran DOM live setelah build: di 100039 jarak baris tiga kartu ke kartu
+  retur 14 px dan kartu retur ke kartu isi pesanan 14 px (sebelum perbaikan
+  sempat terukur 0 px); di 100040 hasil setelah perbaikan sama, 14 px dan
+  14 px. 14 px adalah ritme jarak antarkartu halaman ini.
+- typecheck 0 error, eslint bersih di Show.tsx, build Vite sukses.

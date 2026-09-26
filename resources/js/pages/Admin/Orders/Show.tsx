@@ -722,7 +722,7 @@ function ReturnCasePanel({
   const showCreate = eligibility?.eligible === true
 
   return (
-    <div id="return-case">
+    <div id="return-case" className="mt-4">
       <SectionCard title="Retur & penyelesaian">
         <div className="space-y-4">
           {/* Galat tingkat form dari server: kasus aktif ganda dan jumlah item
