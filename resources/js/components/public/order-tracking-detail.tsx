@@ -417,18 +417,24 @@ function stepClass(state: string) {
 }
 
 /**
- * StatusSummary horizontal 4 makro STABIL (kontrak): Dikonfirmasi -> Disiapkan
- * -> Dikirim -> Selesai. Sumber TUNGGAL: order.vm.summary.steps (backend).
+ * StatusSummary horizontal. Sumber TUNGGAL: order.vm.summary.steps (backend).
  * frontend hanya render; TIDAK menghitung status sendiri.
+ *
+ * Jumlah kolom MENGIKUTI jumlah langkah: pengiriman normal 4 makro
+ * (Dikonfirmasi -> Disiapkan -> Dikirim -> Selesai), alur retur 3 langkah
+ * (Pengembalian diterima -> Sedang ditangani -> Selesai). Sebelumnya kolom
+ * dipatok 4 sehingga alur retur menyisakan satu kolom kosong dan label akses
+ * tetap menyebut 4 makro.
  */
 function StatusSummary({ order }: { order: PublicOrder }) {
   const steps = order.vm?.summary?.steps ?? []
   if (steps.length === 0) return null
+  const returnFlow = order.vm?.returnFlow
 
   return (
     <ol
-      className="grid grid-cols-4 w-full"
-      aria-label="Progres pesanan"
+      className={cn("grid w-full", steps.length === 3 ? "grid-cols-3" : "grid-cols-4")}
+      aria-label={returnFlow ? "Progres pengembalian barang" : "Progres pesanan"}
     >
       {steps.map((step, index) => {
         const Glyph = SUMMARY_ICONS[step.icon] ?? Package
@@ -668,69 +674,6 @@ function SupportAction({ className }: { className?: string }) {
 /**
  * Card 5: Trust Assurance
  */
-/**
- * Alur pengembalian barang untuk pelanggan.
- *
- * Sumber TUNGGAL: order.vm.returnFlow (backend). Komponen ini tidak menghitung
- * status sendiri. Muncul hanya saat pesanan sudah masuk status retur.
- */
-function ReturnFlowCard({ order }: { order: PublicOrder }) {
-  const flow = order.vm?.returnFlow
-  if (!flow) return null
-
-  return (
-    <section className="order-tracking__return-flow rounded-[14px] border border-border bg-surface p-4 shadow-sm lg:p-5">
-      <p className="text-sm font-bold text-foreground">{flow.title}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{flow.description}</p>
-
-      <ol className="mt-4">
-        {flow.steps.map((step, index) => {
-          const Glyph = SUMMARY_ICONS[step.icon] ?? Package
-          const active = step.state === "completed" || step.state === "current"
-          const isLast = index === flow.steps.length - 1
-          return (
-            <li key={step.key} className="relative flex gap-3 pb-4 last:pb-0">
-              {/* Garis penghubung antar lingkaran, berhenti di tepi ikon supaya
-                  tidak menembus lingkarannya. */}
-              {!isLast ? (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute left-[21px] top-11 bottom-0 w-[2px]",
-                    step.state === "completed" ? "bg-[#2b734e]" : "bg-border/60",
-                  )}
-                />
-              ) : null}
-              <span
-                className={cn(
-                  "relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full",
-                  stepClass(step.state),
-                )}
-              >
-                {step.state === "completed" ? (
-                  <Check className="size-5" weight="bold" />
-                ) : (
-                  <Glyph
-                    className="size-5"
-                    weight={step.state === "current" ? "bold" : "regular"}
-                  />
-                )}
-              </span>
-              <span
-                className={cn(
-                  "pt-3 text-xs leading-tight",
-                  active ? "font-semibold text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {step.label}
-              </span>
-            </li>
-          )
-        })}
-      </ol>
-    </section>
-  )
-}
 
 /**
  * Kartu tindakan khusus pesanan yang sudah Sampai: ajakan mengulas plus jalur
@@ -808,11 +751,6 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
         {/* Pesanan Sampai: sapaan "sudah sampai" + tombol Beri Ulasan dan Chat WhatsApp */}
         <div className="order-1 lg:order-none">
           <DeliveredActions order={order} />
-        </div>
-
-        {/* Alur pengembalian barang, hanya saat status pesanan sudah retur */}
-        <div className="order-2 lg:order-none">
-          <ReturnFlowCard order={order} />
         </div>
 
         {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}

@@ -98,7 +98,6 @@ class StorePerformanceTask1Test extends TestCase
             'resolution_type' => $status === 'completed' ? 'refund' : null,
             'refund_amount' => $refund,
             'replacement_amount' => 0,
-            'additional_shipping_amount' => 0,
         ];
 
         if ($createdAt) {

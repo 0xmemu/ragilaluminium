@@ -281,7 +281,6 @@ class OrderLifecycleReturnRefundTest extends TestCase
             'resolution_type' => null,
             'refund_amount' => 0,
             'replacement_amount' => 0,
-            'additional_shipping_amount' => 0,
             'created_by_user_id' => $admin->id,
             'updated_by_user_id' => $admin->id,
         ]);
@@ -299,8 +298,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
                 'admin_notes' => 'Tindakan: refund & penggantian. Refund 100rb, selisih harga unit 50rb, ongkir balik 20rb.',
                 'refund_amount' => 100000,
                 'replacement_amount' => 50000,
-                'additional_shipping_amount' => 20000,
-                'return_shipping_cost' => 0,
+                'return_shipping_cost' => 20000,
                 'returned_items' => [
                     ['id' => $returnItem->id, 'returned_quantity' => 2],
                 ],
@@ -313,7 +311,7 @@ class OrderLifecycleReturnRefundTest extends TestCase
         $this->assertSame('refund', $case->resolution_type);
         $this->assertSame(100000.0, (float) $case->refund_amount);
         $this->assertSame(50000.0, (float) $case->replacement_amount);
-        $this->assertSame(20000.0, (float) $case->additional_shipping_amount);
+        $this->assertSame(20000.0, (float) $case->return_shipping_cost);
         $this->assertStringContainsString('selisih harga', (string) $case->admin_notes);
         $this->assertNotNull($case->completed_at);
         $this->assertSame(2, $case->items()->first()->returned_quantity);

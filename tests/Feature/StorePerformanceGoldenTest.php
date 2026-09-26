@@ -319,7 +319,6 @@ class StorePerformanceGoldenTest extends TestCase
             'resolution_type' => $jenis,
             'refund_amount' => $refund,
             'return_shipping_cost' => $ongkirRetur,
-            'additional_shipping_amount' => $ongkirRetur,
             'completed_at' => Carbon::parse($selesai),
         ]);
     }

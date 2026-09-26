@@ -554,7 +554,6 @@ interface ReturnCase {
   admin_notes?: string | null
   refund_amount?: number
   replacement_amount?: number
-  additional_shipping_amount?: number
   completed_at?: string | null
   items: ReturnCaseItem[]
 }
@@ -632,6 +631,15 @@ function ReturnCasePanel({
     >
   >({})
   const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
+  // Galat validasi dari server untuk form penyelesaian. Form ini dikirim
+  // dengan router.post mentah (bukan useForm), jadi tanpa penampung ini
+  // setiap penolakan server hanya memuat ulang halaman tanpa pesan apa pun
+  // dan admin mengira tindakannya berhasil.
+  const [completionError, setCompletionError] = React.useState<string | null>(null)
+  // Form penyelesaian per kasus retur. Tombol simpannya kini dibungkus dialog
+  // konfirmasi, jadi pengiriman dipicu lewat ref ini supaya validasi bawaan
+  // peramban (field wajib) tetap berjalan sebelum dialog terbuka.
+  const formSelesaiRef = React.useRef<Record<number, HTMLFormElement | null>>({})
 
   const { deadline, expired } = returnDeadline(order, eligibility)
 
@@ -687,17 +695,39 @@ function ReturnCasePanel({
         quantity: Number(r.quantity) || 1,
       }))
     }
+    setCompletionError(null)
     router.post(routeUrl("admin.orders.returns.complete", { order: order.id, returnCase: caseItem.id }), payload, {
       preserveScroll: true,
+      onError: (errors) => {
+        const pesan = Object.values(errors).filter(Boolean)
+        setCompletionError(
+          pesan.length > 0
+            ? pesan.join(" ")
+            : "Penyelesaian retur belum berhasil disimpan. Periksa kembali isian form.",
+        )
+      },
     })
   }
 
+  // Batas refund yang sah menurut backend: nilai terkecil antara total
+  // pesanan dan jumlah pembayaran yang benar-benar sudah dicatat lunas.
+  // Batas ini dipakai di layar supaya admin tidak mengisi angka yang akan
+  // ditolak server.
+  const totalDibayar = (order.payments ?? [])
+    .filter((bayar) => bayar.status === "completed")
+    .reduce((jumlah, bayar) => jumlah + bayar.amount, 0)
+  const maksRefund =
+    totalDibayar > 0 ? Math.min(order.total_amount, totalDibayar) : order.total_amount
+  const bolehRefund = order.payment_status === "paid"
   const showCreate = eligibility?.eligible === true
 
   return (
     <div id="return-case">
       <SectionCard title="Retur & penyelesaian">
         <div className="space-y-4">
+          {/* Galat tingkat form dari server: kasus aktif ganda dan jumlah item
+              yang melebihi pesanan. Tanpa ini keduanya gagal tanpa pesan. */}
+          <FormErrorSummary errors={form.errors} />
           {deadline ? (
             <p className={`text-xs ${expired ? "text-destructive" : "text-muted-foreground"}`}>
               Waktu sampai: {new Date(deadline).toLocaleString("id-ID")} · Batas retur 48 jam.
@@ -748,6 +778,9 @@ function ReturnCasePanel({
                 <div className="mt-3 border-t border-border pt-3">
                   {completion[item.id] ? (
                     <form
+                      ref={(node) => {
+                        formSelesaiRef.current[item.id] = node
+                      }}
                       className="space-y-3"
                       onSubmit={(event) => {
                         event.preventDefault()
@@ -765,7 +798,14 @@ function ReturnCasePanel({
                               }))
                             }
                           >
-                            <option value="refund">Refund</option>
+                            {/* Refund hanya sah untuk pesanan lunas (kontrak
+                                retur): uang yang tidak pernah diterima tidak
+                                boleh dikembalikan. Aturannya ditegakkan backend;
+                                di sini ditampilkan supaya admin tidak memilih
+                                resolusi yang pasti ditolak. */}
+                            <option value="refund" disabled={!bolehRefund}>
+                              Refund{bolehRefund ? "" : " (pesanan belum lunas)"}
+                            </option>
                             <option value="replacement">Ganti barang</option>
                             <option value="reship">Kirim ulang</option>
                             <option value="compensation">Kompensasi</option>
@@ -791,7 +831,7 @@ function ReturnCasePanel({
                           <Input
                             type="number"
                             min="0"
-                            max={order.total_amount}
+                            max={maksRefund}
                             value={completion[item.id].refund_amount}
                             onChange={(event) =>
                               setCompletion((current) => ({
@@ -804,7 +844,9 @@ function ReturnCasePanel({
                             className="text-[11px] text-muted-foreground"
                             title="Pengembalian dana kepada pelanggan. Mengurangi Penjualan Bersih saat retur selesai."
                           >
-                            Maksimum {formatCurrency(order.total_amount)} · refund mengurangi Penjualan Bersih
+                            {bolehRefund
+                              ? `Maksimum ${formatCurrency(maksRefund)} · refund mengurangi Penjualan Bersih`
+                              : "Pesanan ini belum tercatat lunas, jadi refund belum bisa diproses. Pilih resolusi lain atau catat pelunasan lebih dulu."}
                           </p>
                         </Field>
                       ) : null}
@@ -883,9 +925,32 @@ function ReturnCasePanel({
                         </p>
                       </Field>
 
-                      <Button type="submit" size="sm" disabled={!can("returns.complete", capabilities)} title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses menyelesaikan retur"}>
-                        Tandai retur selesai
-                      </Button>
+                      {completionError ? (
+                        <p role="alert" className="rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                          {completionError}
+                        </p>
+                      ) : null}
+                      {/* Penyelesaian retur bersifat terminal: kasus dikunci,
+                          pesanan masuk Retur Selesai, stok pengganti dipotong,
+                          dan pembayaran menggantung dibatalkan. Pola repo
+                          memakai ConfirmAction untuk aksi ireversibel, jadi
+                          tombol simpan pun dikonfirmasi lebih dulu. */}
+                      <ConfirmAction
+                        trigger={
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!can("returns.complete", capabilities)}
+                            title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses menyelesaikan retur"}
+                          >
+                            Tandai retur selesai
+                          </Button>
+                        }
+                        title="Selesaikan kasus retur ini?"
+                        description="Kasus retur dikunci dan pesanan berpindah ke Retur Selesai. Tindakan ini tidak bisa dibatalkan atau diulang."
+                        confirmLabel="Tandai retur selesai"
+                        onConfirm={() => formSelesaiRef.current[item.id]?.requestSubmit()}
+                      />
                     </form>
                   ) : (
                     <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>

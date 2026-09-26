@@ -420,8 +420,8 @@ Ledger internal retur yang diisi admin. issue pada orders.order_status bukan buk
 - reason (VARCHAR), NN
 - resolution_type (VARCHAR), nullable
 - customer_notes, admin_notes (TEXT), nullable
-- refund_amount, replacement_amount, additional_shipping_amount (NUMERIC), NN, default 0
-- completed_at (DATETIME), nullable
+- refund_amount, replacement_amount, return_shipping_cost (NUMERIC), NN, default 0
+- completed_at (DATETIME), nullable, WAJIB terisi saat status completed; dijaga model (OrderReturnCase::booted()) dan data lama sudah diisi migrasi 2026-09-26
 - created_by_user_id, updated_by_user_id (INTEGER), nullable, FK -> users.id
 - created_at, updated_at (DATETIME), nullable
 
@@ -432,6 +432,7 @@ Indexes:
 - `idx_return_cases_completed_at` (IDX on `completed_at`)
 - `idx_return_cases_status_completed` (IDX on `status`, `completed_at`) - Performa Toko: retur selesai dalam rentang
 - `idx_return_cases_created_at` (IDX on `created_at`) - Performa Toko: retur diajukan dalam rentang
+Catatan 2026-09-26: kolom `additional_shipping_amount` DIBUANG karena formulir admin tidak pernah mengisinya (ekspor pesanan selalu membaca nol dan angkanya berbeda dari Performa Toko). Satu-satunya kolom ongkir retur yang ditanggung toko adalah `return_shipping_cost`.
 
 ### 3.2b order_return_items
 
@@ -935,7 +936,7 @@ Indexes:
 
 ## Return case ledger (2026-08-15)
 
-order_return_cases stores the admin-managed return record independently from orders.order_status: reason, customer/admin notes, resolution type, refund/replacement/additional shipping amounts, actors, and completion timestamp. order_return_items stores requested and returned quantities by order_item_id. Source order and order item history remain immutable; return_in_process and return_completed are audit status milestones only.
+order_return_cases stores the admin-managed return record independently from orders.order_status: reason, customer/admin notes, resolution type, refund/replacement amounts, the store-borne return shipping cost (return_shipping_cost, single column), actors, and completion timestamp (mandatory once the case is completed). order_return_items stores requested and returned quantities by order_item_id. Source order and order item history remain immutable; return_in_process and return_completed are audit status milestones only.
 
 
 ## Import Produk   kontrak aktivasi dan data shipping (2026-08-15)

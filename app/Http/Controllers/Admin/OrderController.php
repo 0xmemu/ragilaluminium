@@ -13,6 +13,7 @@ use App\Services\PaymentService;
 use App\Services\ReturnService;
 use App\Services\ShippingService;
 use App\Support\ExportSafety;
+use App\Support\StockLedger;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\OrderExport;
 use App\Support\InertiaAdmin;
@@ -506,7 +507,7 @@ class OrderController extends Controller
                     'admin_notes' => $case->admin_notes,
                     'refund_amount' => (float) $case->refund_amount,
                     'replacement_amount' => (float) $case->replacement_amount,
-                    'additional_shipping_amount' => (float) $case->additional_shipping_amount,
+                    'return_shipping_cost' => (float) $case->return_shipping_cost,
                     'completed_at' => optional($case->completed_at)?->toIso8601String(),
                     'items' => $case->items->map(fn ($item) => [
                         'id' => $item->id,
@@ -832,7 +833,6 @@ class OrderController extends Controller
             'admin_notes' => ['required', 'string', 'max:5000'],
             'refund_amount' => ['nullable', 'numeric', 'min:0'],
             'replacement_amount' => ['nullable', 'numeric', 'min:0'],
-            'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
             'return_shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'returned_items' => ['nullable', 'array'],
             'returned_items.*.id' => ['required', 'integer'],
@@ -879,36 +879,47 @@ class OrderController extends Controller
 
         // Validasi & stok replacement di dalam transaksi dgn locking.
         DB::transaction(function () use ($request, $order, $returnCase, $validated, $shippingCost, $refundAmount, $replacementAmount): void {
+            // Kunci baris kasus retur dan periksa ulang statusnya di DALAM
+            // transaksi. Pemeriksaan di luar transaksi memakai model hasil
+            // route-model binding, jadi dua permintaan paralel bisa sama-sama
+            // lolos dan memotong stok barang pengganti dua kali.
+            $caseTerkunci = OrderReturnCase::query()->lockForUpdate()->find($returnCase->id);
+            if (! $caseTerkunci || $caseTerkunci->status !== 'open') {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['return' => 'Kasus retur sudah diselesaikan.']
+                );
+            }
             $replacement = $validated['replacement_items'] ?? null;
 
             if ($replacement) {
                 foreach ($replacement as $row) {
                     $product = \App\Models\Product::query()->lockForUpdate()->find((int) $row['product_id']);
                     if (! $product) {
-                        throw new \Illuminate\Validation\ValidationException(
-                            request(), ['replacement_items' => 'Produk pengganti tidak ditemukan.']
+                        throw \Illuminate\Validation\ValidationException::withMessages(
+                            ['replacement_items' => 'Produk pengganti tidak ditemukan.']
                         );
                     }
                     if ($row['variant_id']) {
                         $variant = \App\Models\ProductVariant::query()->lockForUpdate()->find((int) $row['variant_id']);
                         if (! $variant || (int) $variant->product_id !== (int) $product->id) {
-                            throw new \Illuminate\Validation\ValidationException(
-                                request(), ['replacement_items' => 'Varian pengganti tidak cocok dengan produk.']
+                            throw \Illuminate\Validation\ValidationException::withMessages(
+                                ['replacement_items' => 'Varian pengganti tidak cocok dengan produk.']
                             );
                         }
                         $stock = (int) $variant->stock;
                         if ($stock < (int) $row['quantity']) {
-                            throw new \Illuminate\Validation\ValidationException(
-                                request(), ['replacement_items' => 'Stok pengganti tidak mencukupi (tersedia '.$stock.').']
+                            throw \Illuminate\Validation\ValidationException::withMessages(
+                                ['replacement_items' => 'Stok pengganti tidak mencukupi (tersedia '.$stock.').']
                             );
                         }
                     } else {
-                        $stock = (int) $product->stock;
-                        if ($stock < (int) $row['quantity']) {
-                            throw new \Illuminate\Validation\ValidationException(
-                                request(), ['replacement_items' => 'Stok pengganti tidak mencukupi (tersedia '.$stock.').']
-                            );
-                        }
+                        // Stok hanya tersimpan di varian (tabel products tidak
+                        // punya kolom stock), jadi penggantian tanpa varian
+                        // tidak bisa dihitung. Ditolak dengan pesan jelas,
+                        // bukan gagal SQL di tengah transaksi.
+                        throw \Illuminate\Validation\ValidationException::withMessages(
+                            ['replacement_items' => 'Item pengganti wajib memakai varian karena stok hanya tersimpan di varian.']
+                        );
                     }
                 }
 
@@ -929,14 +940,23 @@ class OrderController extends Controller
                         'replacement_quantity' => (int) $row['quantity'],
                     ]);
 
-                    // Kurangi stok tepat satu kali. Idempotensi dijamin blok atas
-                    // (case status !== 'open' -> reject) sehingga tidak dobel dekremen.
-                    $product = \App\Models\Product::find((int) $row['product_id']);
-                    if ($row['variant_id']) {
-                        \App\Models\ProductVariant::find((int) $row['variant_id'])->decrement('stock', (int) $row['quantity']);
-                    } else {
-                        $product->decrement('stock', (int) $row['quantity']);
+                    // Potong stok pengganti tepat satu kali lewat buku besar
+                    // stok supaya setiap mutasi tercatat (before/after/delta).
+                    // Idempotensi dijamin kunci baris kasus retur di atas.
+                    $variantPengganti = \App\Models\ProductVariant::find((int) $row['variant_id']);
+                    if (! $variantPengganti) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(
+                            ['replacement_items' => 'Varian pengganti tidak ditemukan.']
+                        );
                     }
+                    StockLedger::apply(
+                        $variantPengganti,
+                        -1 * (int) $row['quantity'],
+                        'return_replacement_out',
+                        'return_case',
+                        (int) $returnCase->id,
+                        'Penggantian barang retur',
+                    );
                 }
             }
 
@@ -946,7 +966,6 @@ class OrderController extends Controller
                 'admin_notes' => trim($validated['admin_notes']),
                 'refund_amount' => $refundAmount,
                 'replacement_amount' => $replacementAmount,
-                'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
                 'return_shipping_cost' => $shippingCost,
                 'completed_at' => now(),
                 'updated_by_user_id' => $request->user()->id,
@@ -1510,14 +1529,11 @@ class OrderController extends Controller
     private function secondaryActionFor(Order $order): ?array
     {
         return match ($order->order_status) {
-            // Perlu Perhatian → Lanjutkan Proses (primary) + Proses Retur (sekunder).
-            'issue' => [
-                'label' => 'Catat Retur',
-                'next_status' => null,
-                'kind' => 'start_return',
-                'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
-                'href' => route('admin.orders.show', $order).'#return-case',
-            ],
+            // Perlu Perhatian TIDAK punya aksi retur: panel retur tidak
+            // dirender pada status ini dan kontrak menetapkan retur hanya dari
+            // Sampai. Tautan lama menunjuk #return-case yang tidak ada sehingga
+            // tombolnya mati. Jalurnya: kembalikan pesanan ke Sampai lebih dulu
+            // lewat aksi utama, baru catat retur.
             // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
             'delivered' => [
                 'label' => 'Catat Retur',

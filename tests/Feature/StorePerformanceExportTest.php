@@ -326,7 +326,7 @@ class StorePerformanceExportTest extends TestCase
         $this->assertStringStartsWith('=SUBTOTAL(109', (string) $rpRows[3]['M'], 'Total Row memakai SUBTOTAL');
 
         // Penjualan Bersih per baris = rumus alur uang (COD dikurangkan).
-        $this->assertSame('=N2-M2+O2+P2+Q2', $rpRows[2]['R']);
+        $this->assertSame('=N2-M2+O2+P2+Q2+Z2', $rpRows[2]['R']);
 
         // Excel Table terpasang dengan nama yang benar.
         $this->assertContains('TabelPesanan', $rp->getTableNames());
@@ -901,7 +901,7 @@ class StorePerformanceExportTest extends TestCase
         foreach (['G', 'I', 'N'] as $col) {
             $this->assertEquals(0, (float) $rp->getCell($col.'2')->getValue(), "kolom {$col} baris batal = 0");
         }
-        $this->assertSame('=N2-M2+O2+P2+Q2', $rp->getCell('R2')->getValue(), 'rumus net tetap terpasang (hasil 0 di Excel)');
+        $this->assertSame('=N2-M2+O2+P2+Q2+Z2', $rp->getCell('R2')->getValue(), 'rumus net tetap terpasang (hasil 0 di Excel)');
         $this->assertSame('Batal Konteks', $rp->getCell('W2')->getValue(), 'identitas di kolom W');
 
         // Laba Rugi tetap berumus ke tabel; totalnya tidak terganggu baris nol.

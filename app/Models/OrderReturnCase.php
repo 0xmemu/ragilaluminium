@@ -20,7 +20,6 @@ class OrderReturnCase extends Model
         'admin_notes',
         'refund_amount',
         'replacement_amount',
-        'additional_shipping_amount',
         'return_shipping_cost',
         'completed_at',
         'created_by_user_id',
@@ -30,10 +29,22 @@ class OrderReturnCase extends Model
     protected $casts = [
         'refund_amount' => 'decimal:2',
         'replacement_amount' => 'decimal:2',
-        'additional_shipping_amount' => 'decimal:2',
         'return_shipping_cost' => 'decimal:2',
         'completed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Setiap jalur tulis wajib meninggalkan completed_at saat kasus
+        // dinyatakan selesai. Seluruh angka refund dan ongkir retur di laporan
+        // disaring dari kolom ini, jadi kasus selesai tanpa tanggal akan hilang
+        // diam-diam dari Refund Diberikan, Ongkir Retur, dan Penjualan Bersih.
+        static::saving(function (self $case): void {
+            if ($case->status === 'completed' && $case->completed_at === null) {
+                $case->completed_at = now();
+            }
+        });
+    }
 
     public function order(): BelongsTo
     {

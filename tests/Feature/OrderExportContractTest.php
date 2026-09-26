@@ -255,7 +255,7 @@ class OrderExportContractTest extends TestCase
         // Pesanan batal setelah dibayar lalu diretur: refund TETAP terdata.
         $caseBatal = new OrderReturnCase([
             'status' => 'completed', 'reason' => 'rusak', 'resolution_type' => 'refund',
-            'refund_amount' => 150000, 'additional_shipping_amount' => 0,
+            'refund_amount' => 150000, 'return_shipping_cost' => 0,
         ]);
         $caseBatal->order_id = $batal->id;
         $caseBatal->save();
@@ -267,7 +267,7 @@ class OrderExportContractTest extends TestCase
         $item = $this->makeItem($retur, 'RA-Y', 'RA-Y-1', 'Produk Y', 500000, 1, 0);
         $case = new OrderReturnCase([
             'status' => 'completed', 'reason' => 'pecah', 'resolution_type' => 'refund',
-            'refund_amount' => 300000, 'additional_shipping_amount' => 25000,
+            'refund_amount' => 300000, 'return_shipping_cost' => 25000,
         ]);
         $case->order_id = $retur->id;
         $case->save();

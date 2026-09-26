@@ -1722,7 +1722,7 @@ class StorePerformanceService
      *
      * @return list<int>
      */
-    protected function recognizedOrderIds(Carbon $from, Carbon $to): array
+    public function recognizedOrderIds(Carbon $from, Carbon $to): array
     {
         $kunci = $from->format('YmdHis').'|'.$to->format('YmdHis');
         if (array_key_exists($kunci, $this->recognizedCache)) {

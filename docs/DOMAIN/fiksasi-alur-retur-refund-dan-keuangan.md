@@ -135,9 +135,15 @@ Pergerakan status pembayaran pesanan COD:
 3. **Isolasi Nilai pada Resolusi Non-Refund:** Resolusi selain refund (`reship`, `compensation`, `no_compensation`) secara mutlak memaksa nilai `refund_amount = 0.0` di database untuk mencegah kebocoran angka pengurang laba fiktif.
 4. **Bukan Mutasi Perbankan Otomatis:** Sistem web Ragil Aluminium tidak memiliki integrasi pengeluaran kas bank otomatis (*disbursement API*). Pengembalian uang riil ke rekening pembeli dilakukan secara manual oleh owner/bendahara toko via m-Banking atau transfer bank langsung. Pengisian `refund_amount` di admin berfungsi sebagai dokumen audit dan pengurang agregat laporan keuangan.
 
+### 3.5a Kolom Tunggal dan Penanda Tanggal Selesai (Aturan Penjaga Laporan)
+
+1. **Satu Kolom untuk Ongkir Retur:** Nilai ongkir retur yang ditanggung toko HANYA disimpan di `order_return_cases.return_shipping_cost`. Kolom `additional_shipping_amount` sudah dibuang dari skema karena tidak pernah diisi formulir admin, sehingga ekspor pesanan selalu membacanya sebagai nol dan angkanya berbeda dari Performa Toko.
+2. **Tanggal Selesai Wajib Terisi:** Kasus retur berstatus `completed` wajib punya `completed_at`. Seluruh angka refund dan ongkir retur di laporan disaring dari kolom itu, sehingga kasus selesai tanpa tanggal akan hilang diam-diam dari Refund Diberikan, Ongkir Retur (Toko), dan Penjualan Bersih. Penjagaan dipasang di model (`OrderReturnCase::booted()`), dan data lama yang kosong sudah diisi dari waktu perubahan terakhir (migrasi 2026-09-26).
+3. **Satu Rumus Penjualan Bersih:** Ekspor Performa Toko memakai rumus Penjualan Bersih yang sama dengan KPI layar, termasuk pengurang nilai barang retur paket (kolom tersendiri di Tabel Pesanan). Himpunan pesanan yang dihitung baris ekspor juga mengikuti himpunan pengakuan penjualan, dan refund/ongkir retur mengikuti tanggal selesai retur; pesanan lama yang returnya selesai pada rentang laporan masuk sebagai baris koreksi periode. Dengan itu SUM kolom uang Tabel Pesanan tidak pernah berbeda dari KPI.
+
 ### 3.6 Perlakuan Stok Barang Retur (Aturan Non-Negotiable)
 1. **Barang Retur TIDAK Otomatis Menambah Stok (Keputusan Owner 19 Sep 2026):**
-   Unit produk yang dikembalikan pembeli atau kurir tidak dikembalikan ke stok katalog (`products.stock` / `product_variants.stock`). Barang retur harus diperiksa fisik di workshop untuk memastikan kelayakan atau perbaikan. Admin yang berwenang yang dapat menambahkan stok kembali secara sadar lewat menu edit produk.
+   Unit produk yang dikembalikan pembeli atau kurir tidak dikembalikan ke stok katalog (stok hanya tersimpan di `product_variants.stock`; tabel `products` tidak punya kolom stok, jadi setiap penggantian barang wajib memakai varian). Barang retur harus diperiksa fisik di workshop untuk memastikan kelayakan atau perbaikan. Admin yang berwenang yang dapat menambahkan stok kembali secara sadar lewat menu edit produk.
 2. **Penggantian Barang Baru (`replacement`):**
    Apabila kasus retur diselesaikan dengan resolusi penggantian barang, sistem otomatis memotong stok barang pengganti sebanyak 1 kali (`decrement`) dari stok gudang toko di dalam transaksi database yang terlindungi kunci.
 3. **Pengiriman Ulang (`reship`):**

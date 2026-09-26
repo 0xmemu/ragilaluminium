@@ -95,7 +95,7 @@ class OrderExport implements WithMultipleSheets
             'Z' => 'Penjualan Gross: subtotal baris pesanan - voucher + ongkir + COD + asuransi; nol bila dibatalkan',
             'AA' => 'Pengurangan Nilai Pesanan ke J&T: tagihan J&T asli (totalFreight, memuat asuransi) bila sudah dilaporkan, atau asumsi checkout (ongkir + subsidi + asuransi), ditambah biaya COD',
             'AC' => 'Nilai Refund Pembeli: refund_amount kasus retur selesai',
-            'AD' => 'Ongkir Retur Tambahan: additional_shipping_amount kasus retur selesai',
+            'AD' => 'Ongkir Retur Toko: return_shipping_cost kasus retur selesai',
             'AE' => 'Kas Bersih per Produk: kas bersih pesanan (Z - AA - AC - AD; bila dibatalkan 0 - AC - AD) dialokasikan proporsional per subtotal baris. KONSEP TERPISAH dari Penjualan Bersih pada Performa Toko',
         ],
         'rekap' => [
@@ -113,7 +113,7 @@ class OrderExport implements WithMultipleSheets
             'R' => 'Biaya COD ke J&T: M',
             'S' => 'Total Potongan J&T: P + R',
             'T' => 'Nilai Refund Pembeli: refund_amount',
-            'U' => 'Ongkir Retur Toko: additional_shipping_amount',
+            'U' => 'Ongkir Retur Toko: return_shipping_cost',
             'V' => 'KAS BERSIH TOKO: O - S - T - U; bila dibatalkan 0 - T - U. KONSEP TERPISAH dari Penjualan Bersih pada Performa Toko',
         ],
     ];
@@ -145,7 +145,7 @@ class OrderExport implements WithMultipleSheets
                 'items:id,order_id,parent_sku,variant_sku,name,variation_1_name,variation_1_option,variation_2_name,variation_2_option,unit_price,quantity,line_discount,discount_source',
                 'payments:id,order_id,status,paid_at',
                 'shippingRecords:id,order_id,waybill_number,shipping_cost,shipping_freight,shipping_insured_fee,shipping_chargeable_weight_kg,status',
-                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,additional_shipping_amount',
+                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,return_shipping_cost',
             ])
             ->latest('created_at')
             ->latest('id')
@@ -161,7 +161,7 @@ class OrderExport implements WithMultipleSheets
             $completedCase = $order->returnCases->firstWhere('status', 'completed');
             $runningCase = $order->returnCases->firstWhere('status', 'open');
             $refund = (float) ($completedCase->refund_amount ?? 0);
-            $returOngkir = (float) ($completedCase->additional_shipping_amount ?? 0);
+            $returOngkir = (float) ($completedCase->return_shipping_cost ?? 0);
 
             $returnType = '-';
             if ($runningCase) {

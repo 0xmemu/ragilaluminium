@@ -517,9 +517,17 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0), false, -1 * $num($fin['refund_adjustments'] ?? 0), -1 * $num($finPrev['refund_adjustments'] ?? 0));
         $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0), false, -1 * $num($fin['return_shipping_store'] ?? 0), -1 * $num($finPrev['return_shipping_store'] ?? 0));
         // Nilai barang pesanan yang ditolak kurir sebelum lunas: pengurang
-        // penjualan (barang kembali, transaksi batal). Selalu dari payload
-        // karena tidak ada kolom tabel untuknya.
-        $rowRetDitolak = $money('Nilai Barang Retur Paket', -1 * $num($fin['refused_goods_value'] ?? 0), false, -1 * $num($finPrev['refused_goods_value'] ?? 0));
+        // penjualan (barang kembali, transaksi batal). Dibaca dari kolom
+        // Tabel Pesanan seperti baris beban lain, supaya SATU sumber angka
+        // dengan rumus Penjualan Bersih per baris dan dengan KPI layar.
+        $rowRetDitolak = $moneyRow(
+            'Nilai Barang Retur Paket',
+            $sum('Nilai Barang Retur Paket'),
+            -1 * $num($fin['refused_goods_value'] ?? 0),
+            false,
+            -1 * $num($fin['refused_goods_value'] ?? 0),
+            -1 * $num($finPrev['refused_goods_value'] ?? 0),
+        );
         // Beban nyata paket yang tidak diterima pembeli: ongkir kirim yang
         // sudah ditagih J&T dan biaya layanan COD yang hangus. Pembeli tidak
         // membayar, jadi keduanya keluar dari kas toko.
@@ -527,10 +535,12 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowRefusedShip = $money('Ongkir Kirim Ditanggung Toko', -1 * $num($fin['refused_shipping_cost'] ?? 0), false, -1 * $num($finPrev['refused_shipping_cost'] ?? 0));
         // Baris keterangan saja, TIDAK dijumlahkan ke JUMLAH BEBAN TOKO.
         $rowRefusedCod = $money('Biaya Layanan COD Ditanggung Toko', -1 * $num($fin['refused_cod_fee'] ?? 0), false, -1 * $num($finPrev['refused_cod_fee'] ?? 0));
-        // HANYA baris refund, ongkir J&T, dan retur yang dijumlahkan. Dua baris
-        // paket ditolak di atas sengaja TIDAK ikut: keduanya bagian dari Ongkir
-        // ke J&T dan Biaya COD, jadi menjumlahkannya lagi membuat Penjualan
-        // Bersih di Excel lebih kecil daripada di layar (temuan audit 2026-09-20).
+        // Seluruh baris beban yang dijumlahkan berasal dari kolom Tabel
+        // Pesanan: ongkir J&T, biaya COD ke J&T, refund, ongkir retur, dan
+        // nilai barang retur paket. Dua baris keterangan paket ditolak di
+        // bawah sengaja TIDAK ikut: keduanya bagian dari Ongkir ke J&T dan
+        // Biaya COD, jadi menjumlahkannya lagi membuat Penjualan Bersih di
+        // Excel lebih kecil daripada di layar (temuan audit 2026-09-20).
         // Jumlah beban dibaca dari komponen payload yang sama dengan rumus
         // kolom B, supaya kolom C sebanding dengan kolom B.
         $bebanDari = static function (array $f) use ($num): float {
@@ -671,6 +681,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'K' => 16, 'L' => 12, 'M' => 15, 'N' => 19, 'O' => 17,
             'P' => 15, 'Q' => 14, 'R' => 16, 'S' => 17, 'T' => 15,
             'U' => 30, 'V' => 24, 'W' => 22, 'X' => 18, 'Y' => 20,
+            'Z' => 18,
         ];
     }
 
@@ -689,6 +700,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'Uang Sudah Masuk', 'Belum Masuk',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
             'Nama Pelanggan', 'Nomor HP / WA', 'Kota Pengiriman',
+            'Nilai Barang Retur Paket',
         ];
     }
 
@@ -722,9 +734,10 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 -1 * $num($row['shipping_raw'] ?? 0),
                 -1 * $num($row['refund_amount'] ?? 0),
                 -1 * $num($row['return_shipping_store'] ?? 0),
-                // Penjualan Bersih per baris = rumus alur uang. Kolom O, P, Q
-                // sudah negatif; kolom M (Biaya COD, positif) dikurangkan.
-                '=N{r}-M{r}+O{r}+P{r}+Q{r}',
+                // Penjualan Bersih per baris = rumus alur uang. Kolom O, P, Q,
+                // dan Z (nilai barang retur paket) sudah negatif; kolom M
+                // (Biaya COD, positif) dikurangkan.
+                '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}',
                 $num($row['paid_amount'] ?? 0),
                 $num($row['outstanding'] ?? 0),
                 $num($row['shipping_subsidy'] ?? 0),
@@ -732,10 +745,15 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 $guard($row['customer_name'] ?? '-'),
                 $guard($row['customer_phone'] ?? '-'),
                 $guard($row['city'] ?? '-'),
+                // Paket yang ditolak kurir sebelum lunas: pengurang Penjualan
+                // Bersih. Selalu negatif, sejajar kolom beban lain, supaya
+                // rumus Penjualan Bersih per baris menjumlahkan kolom beban
+                // tanpa membalik tandanya lagi.
+                -1 * $num($row['refused_goods_value'] ?? 0),
             ];
 
             $rows[] = $out;
-            for ($c = 7; $c <= 22; $c++) {
+            for ($c = 7; $c <= 26; $c++) {
                 $this->registerNumber($r, $c, '#,##0');
             }
             $this->trackZeroCells($out, $r);
@@ -754,7 +772,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
 
         if ($count === 0) {
             parent::afterSheet($event);
-            $sheet->getStyle('A1:Y1')->applyFromArray([
+            $sheet->getStyle('A1:Z1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
             ]);
@@ -770,7 +788,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 str_replace(
                     '{r}',
                     (string) $rowNum,
-                    '=N{r}-M{r}+O{r}+P{r}+Q{r}'
+                    '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}'
                 )
             );
         }
@@ -779,7 +797,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
         // lalu Excel Table membungkus seluruh rentang termasuk baris total.
         $totalRow = 2 + $count;
         $sheet->setCellValue('A'.$totalRow, 'JUMLAH');
-        $sumCols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
+        $sumCols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'Z'];
         foreach ($sumCols as $col) {
             $sheet->setCellValue($col.$totalRow, '=SUBTOTAL(109,'.$col.'2:'.$col.($totalRow - 1).')');
         }
@@ -787,12 +805,12 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             $this->registerNumber($totalRow, $i + 7, '#,##0');
         }
 
-        // Excel Table: rentang A1:Y{totalRow}, Total Row dihidupkan lewat
+        // Excel Table: rentang A1:Z{totalRow}, Total Row dihidupkan lewat
         // XML (setShowTotalsRow). Kolom uang diberi totalsRowFunction=sum.
-        $table = new Table('A1:Y'.$totalRow, $this->tableName('TabelPesanan'));
+        $table = new Table('A1:Z'.$totalRow, $this->tableName('TabelPesanan'));
         $table->setShowTotalsRow(true);
 
-        foreach (range('A', 'Y') as $colLetter) {
+        foreach (range('A', 'Z') as $colLetter) {
             $c = new TableColumn($colLetter, $table);
             if (in_array($colLetter, $sumCols, true)) {
                 $c->setTotalsRowFunction('sum');
@@ -807,13 +825,13 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
         parent::afterSheet($event);
 
         // Header Tabel dicat navy (gaya referensi); zebra manual per baris.
-        $sheet->getStyle('A1:Y1')->applyFromArray([
+        $sheet->getStyle('A1:Z1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
         ]);
         for ($row = 2; $row < $totalRow; $row++) {
             if ($row % 2 === 0) {
-                $sheet->getStyle('A'.$row.':Y'.$row)->applyFromArray([
+                $sheet->getStyle('A'.$row.':Z'.$row)->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
                 ]);
             }
