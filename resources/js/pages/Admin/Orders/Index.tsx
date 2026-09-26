@@ -989,10 +989,10 @@ export default function OrdersIndex({
               // Kontrak owner 2026-09-26: letak di kanan atas tab (-right-1 -top-1),
               // bertambah saat pesanan masuk/berganti status, dan hanya berkurang bila
               // pesanan tersebut dilihat detailnya atau ditindaklanjuti.
-              const badgeCount = tab.new_count ?? 0
-              const badgeTitle = tab.key === "all"
-                ? `${formatNumber(badgeCount)} pesanan baru yang belum dilihat admin`
-                : `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
+              // Tab "Semua" (all) tidak menampilkan badge merah; penanda merah hanya
+              // difokuskan pada tab status spesifik yang relevan.
+              const badgeCount = tab.key === "all" ? 0 : (tab.new_count ?? 0)
+              const badgeTitle = `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
               return (
                 <button
                   key={tab.key}

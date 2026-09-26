@@ -181,8 +181,10 @@ class OrderController extends Controller
                 ? (clone $base)->count()
                 : (int) ($tabCounts[$tab['key']] ?? 0);
 
+            // Tab "all" (Semua) tidak menampilkan badge merah; badge hanya
+            // difokuskan pada tab status spesifik yang relevan.
             $newCount = $tab['key'] === 'all'
-                ? (int) $unseenCounts->sum()
+                ? 0
                 : (int) ($unseenCounts[$tab['key']] ?? 0);
 
             return [

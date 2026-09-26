@@ -1159,3 +1159,16 @@ Bukti:
   1. Tab Semua dan Perlu Konfirmasi menampilkan badge merah angka 1 di pojok kanan atas tab.
   2. Tab Perlu Konfirmasi diklik: filter berganti, badge merah tetap 1 (tidak hilang).
   3. Detail pesanan `ORD26090011` dibuka via rute detail, lalu kembali ke daftar: badge merah di Semua dan Perlu Konfirmasi hilang dengan bersih.
+
+## 2026-09-26 10:05 UTC | zcode | Trivial | 70e9db82 | selesai
+Lingkup: pengecualian tab Semua (`all`) dari penanda badge merah pada filter status pesanan admin (`/admin/orders`).
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Tab Semua (`all`) sengaja disetel tidak pernah menampilkan badge merah (`new_count = 0`), baik di backend maupun frontend, agar antarmuka tidak bising dan fokus admin langsung tertuju ke tab status spesifik (mis. Perlu Konfirmasi, Diproses, Dikirim).
+
+Bukti:
+- PHPUnit `AdminOrderStatusNewBadgeTest`: 4 tes lulus (62 assertions) memverifikasi tab Semua tetap 0 saat pesanan baru dibuat atau berganti status.
+- Typecheck `npm run typecheck`: 0 error.
+- ESLint `resources/js/pages/Admin/Orders/Index.tsx`: bersih (0 error, 0 warning).
+- Uji browser live (`ra.333labs.tech/admin/orders`): tab Semua 20 bersih tanpa badge merah, tab Perlu Konfirmasi 5 tetap memiliki badge merah 1 di kanan atas.

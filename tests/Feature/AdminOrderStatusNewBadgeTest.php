@@ -48,7 +48,7 @@ class AdminOrderStatusNewBadgeTest extends TestCase
         ]);
     }
 
-    public function test_pesanan_baru_dibuat_memunculkan_badge_merah_di_tab_statusnya_dan_tab_semua(): void
+    public function test_pesanan_baru_dibuat_memunculkan_badge_merah_di_tab_statusnya_tetapi_tab_semua_tetap_nol(): void
     {
         $admin = $this->admin();
         $this->createOrder('awaiting_confirmation', null, 'RA-NEW-1');
@@ -61,7 +61,7 @@ class AdminOrderStatusNewBadgeTest extends TestCase
             $this->assertSame(1, $tabs['awaiting_confirmation']['new_count']);
             $this->assertSame(0, $tabs['processing']['new_count']);
             $this->assertSame(0, $tabs['shipped']['new_count']);
-            $this->assertSame(1, $tabs['all']['new_count']);
+            $this->assertSame(0, $tabs['all']['new_count']);
         });
     }
 
@@ -77,7 +77,7 @@ class AdminOrderStatusNewBadgeTest extends TestCase
         $response->assertInertia(function (Assert $page) {
             $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
             $this->assertSame(1, $tabs['awaiting_confirmation']['new_count']);
-            $this->assertSame(1, $tabs['all']['new_count']);
+            $this->assertSame(0, $tabs['all']['new_count']);
         });
 
         // admin_seen_status pada database tetap null
@@ -135,7 +135,7 @@ class AdminOrderStatusNewBadgeTest extends TestCase
                 $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
                 $this->assertSame(1, $tabs['shipped']['new_count']);
                 $this->assertSame(0, $tabs['processing']['new_count']);
-                $this->assertSame(1, $tabs['all']['new_count']);
+                $this->assertSame(0, $tabs['all']['new_count']);
             });
 
         // Saat admin membuka detail pesanan yang baru dikirim tersebut:
