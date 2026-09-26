@@ -1223,3 +1223,34 @@ Bukti:
   4. Tombol "Tandai retur selesai" membuka dialog konfirmasi dengan tombol Batal.
   5. Halaman lacak pelanggan: stepper memakai 3 kolom dengan label akses "Progres pengembalian barang", tiga langkah retur tampil sekali saja, tombol Pengembalian Barang dan Beri Ulasan tersembunyi, lencana "Retur selesai".
 - Data verifikasi (pesanan sementara dan kasus returnya) sudah dihapus setelah pengujian.
+
+## 2026-09-27, hermes-desktop-ragil: perbaikan kartu log terebentang di detail pesanan
+
+Laporan owner: UI berantakan di /admin/orders/100039 dan /admin/orders/100040.
+
+Akar masalah: baris tiga kartu (Riwayat pesanan, Log perubahan status, Log
+WhatsApp) memakai `grid lg:grid-cols-3` tanpa `items-start`. Karena itu semua
+kartu dipaksa setinggi kartu tertinggi di barisnya. Kartu Log WhatsApp sengaja
+dibuat area bergulir tinggi tetap 420px (commit 043a5c7a, permintaan lama), jadi
+pada pesanan yang punya percakapan WhatsApp panjang (mis. 100040), dua kartu
+lain ikut terhampar sekitar 500px dan sisanya ruang kosong besar. Pada pesanan
+tanpa percakapan (100039) barisnya tampak normal, karena kartu tertingginya
+pendek.
+
+Perbaikan: satu baris, `items-start` pada section grid tiga kartu di
+resources/js/pages/Admin/Orders/Show.tsx. Kartu kini mengikuti tinggi isinya
+masing-masing; kartu WhatsApp tetap bergulir 420px.
+
+Dua hal lain yang dicek dan BUKAN bug:
+- Deretan gar vertikal di kartu "Kasus #11 · rusak" (100040) adalah isi kolom
+  catatan (`customer_notes`) sendiri: `jjjjjjjjjjjjjjjj`, isian uji owner.
+- Tombol "+ Tambah" di kartu Nomor order adalah aksi tambah catatan admin,
+  memang ada di situ.
+
+Bukti:
+- Pengukuran DOM setelah perbaikan di 100040: Riwayat pesanan 127px, Log
+  perubahan status 130px, Log WhatsApp 499px, tidak ada lagi kartu kosong
+  setinggi 500px.
+- Tangkapan layar kedua halaman setelah build: 100039 baris tiga kartu tetap
+  kompak, 100040 dua kartu kompak plus kartu WhatsApp bergulir.
+- typecheck 0 error, eslint 0 masalah di Show.tsx, build Vite sukses.

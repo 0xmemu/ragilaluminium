@@ -1618,7 +1618,7 @@ export default function OrderShow({
       </DialogPrimitive.Root>
 
       {/* Riwayat - 3 kolom */}
-      <section className="mt-4 grid gap-4 lg:grid-cols-3">
+      <section className="mt-4 grid items-start gap-4 lg:grid-cols-3">
         <SectionCard title="Riwayat pesanan">
           <ol className="space-y-2.5 text-[13px]">
             <li className="flex justify-between gap-3">
