@@ -1192,3 +1192,34 @@ Bukti:
   1. Drawer dibuka: bilah kepala dan pilihan kategori tampil bersih tanpa ada tooltip yang terbuka sendiri.
   2. Kursor diarahkan ke ikon info di bilah kepala: tooltip muncul ke arah bawah (`top: 38.8px`, tidak terpotong, teks lengkap terlihat).
   3. Kursor diarahkan ke baris metrik pertama di drawer ("Nilai Produk Terjual"): tooltip muncul ke bawah label (`top: 277.5px`), tidak bertabrakan dengan bilah lengket kategori (`sticky category bar`), teks penjelasan lengkap dan rapi.
+
+## 2026-09-26 17:05 UTC | zcode | Deep | ca53d667 | selesai
+Lingkup: penyeragaman alur retur, refund, dan keuangan dengan pesanan, produk, dan UI pelanggan setelah audit menyeluruh (commit ca53d667).
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (kolom `additional_shipping_amount` pada tabel `order_return_cases` dibuang, kolom baru `Nilai Barang Retur Paket` pada Tabel Pesanan ekspor, dokumen kanonik `docs/DOMAIN/fiksasi-alur-retur-refund-dan-keuangan.md` dan `docs/database-schema-ragil-aluminium.md` diperbarui).
+
+Untuk agent berikutnya:
+- Tanggal selesai retur (`order_return_cases.completed_at`) WAJIB terisi saat kasus berstatus `completed`. Seluruh angka refund dan ongkir retur di laporan disaring dari kolom itu, jadi kasus selesai tanpa tanggal hilang diam-diam dari Refund Diberikan, Ongkir Retur (Toko), dan Penjualan Bersih. Penjagaan ada di `OrderReturnCase::booted()`; data lama sudah diisi migrasi `2026_09_26_020000`.
+- Ongkir retur yang ditanggung toko HANYA memakai kolom `return_shipping_cost`. Kolom `additional_shipping_amount` sudah dibuang dari skema karena formulir admin tidak pernah mengisinya, sehingga ekspor pesanan (`app/Exports/OrderExport.php`, kolom AD dan U) selalu membacanya nol dan angkanya berbeda dari Performa Toko.
+- Rumus Penjualan Bersih dan himpunan baris ekspor sekarang mengikuti KPI layar: `app/Support/IncomeDetailQuery.php` memakai `StorePerformanceService::recognizedOrderIds()` (kini public), menambahkan kolom `Nilai Barang Retur Paket` (kolom Z Tabel Pesanan) ke rantai rumus, dan menambahkan baris koreksi periode untuk retur yang selesai di rentang padahal pesanannya lebih lama. SUM kolom uang Tabel Pesanan sekarang sama dengan KPI; penjaganya `tests/Feature/ReturnRefundIntegrityTest.php`.
+- Enam panggilan validasi di `OrderController::completeReturn` sebelumnya memakai `new ValidationException(request(), [...])`. Bentuk itu meledak dengan "Method Illuminate\Http\Request::errors does not exist" sehingga jalur validasi tidak pernah bisa menampilkan pesannya. Pola yang benar di berkas ini sekarang `ValidationException::withMessages([...])`.
+- Potong stok barang pengganti lewat `StockLedger::apply()` dengan tipe gerak `return_replacement_out` dan rujukan `return_case`. Jalur retur kini meninggalkan baris `stock_movements` seperti jalur stok lain.
+- Baris kasus retur dikunci (`lockForUpdate`) dan statusnya diperiksa ulang DI DALAM transaksi `completeReturn`, supaya dua permintaan paralel tidak memotong stok dua kali.
+- Cabang penggantian tanpa varian ditolak dengan pesan jelas. Tabel `products` memang tidak punya kolom stok; stok hanya ada di `product_variants`. Dokumen kanonik sudah dikoreksi.
+- Formulir penyelesaian retur: galat server kini tampil (sebelumnya `router.post` mentah tanpa penampil galat), opsi refund dimatikan bila pesanan belum lunas, batas nominal refund mengikuti nilai terkecil antara total pesanan dan total pembayaran lunas, dan tombol simpan dibungkus dialog konfirmasi karena aksinya terminal.
+- Aksi `secondaryActionFor('issue')` yang menunjuk `#return-case` DIHAPUS: panel retur tidak dirender pada status `issue`, jadi tautannya mati. Retur tetap hanya dari status Sampai sesuai kontrak.
+- Stepper pelanggan memakai jumlah kolom sesuai jumlah langkah (3 untuk alur retur, 4 untuk pengiriman). Kartu `ReturnFlowCard` dihapus karena tiga langkah yang sama sudah tampil di stepper ringkasan; penjaganya `tests/frontend/order-tracking-summary.test.ts`. Komponen arsip mati `components/public/archive/return-block-card.tsx` dan folder `archive` ikut dibuang.
+
+Bukti:
+- PHPUnit: seluruh suite 1.184 tes lulus, 1 skipped, 11.997 assertions. Suite terdampak dijalankan terpisah: 104 tes lulus (688 assertions).
+- Test pengunci baru `tests/Feature/ReturnRefundIntegrityTest.php`: 8 tes lulus (28 assertions) menutup buku besar stok pengganti, penolakan tanpa varian, tolak dobel eksekusi, isi otomatis completed_at, refund tanpa tanggal tetap masuk laporan, SUM kolom uang tabel sama dengan KPI, refund/ongkir retur jendela retur ikut ekspor, dan tidak ada kolom ongkir retur kedua.
+- Vitest: 28 berkas, 229 tes lulus (4 tes baru `tests/frontend/order-tracking-summary.test.ts`).
+- Typecheck 0 error; ESLint bersih pada berkas yang diubah/dibuat; build Vite sukses 26,27 detik.
+- Verifikasi silang di worktree terisolasi (`git worktree` di HEAD): versi index lulus 58 tes terdampak; baseline HEAD menghasilkan 29 error dan 30 failure dari berkas milik sesi lain, versi ini 29 error dan 26 failure, jadi tidak ada regresi.
+- Migrasi produksi dijalankan: kasus retur id=1 yang `completed_at`-nya kosong kini terisi 2026-08-24, dan kolom `additional_shipping_amount` sudah tidak ada di skema.
+- Uji browser live (`ra.333labs.tech`):
+  1. Panel retur pada pesanan Sampai yang belum lunas: peringatan "belum tercatat lunas" tampil, opsi refund berstatus `aria-disabled=true`, catatan batas refund menampilkan pesan belum lunas.
+  2. Kirim penyelesaian dengan ongkir kosong (pihak penyebab toko): pesan galat "Ongkir retur wajib diisi karena kesalahan ada di toko." kini tampil di panel, kasus tetap Open. Sebelumnya gagal senyap.
+  3. Kirim penyelesaian yang sah: pesanan berpindah ke Retur selesai, kasus jadi Selesai, pembayaran COD menggantung dibatalkan, `completed_at` terisi, ongkir retur 20.000 masuk laporan.
+  4. Tombol "Tandai retur selesai" membuka dialog konfirmasi dengan tombol Batal.
+  5. Halaman lacak pelanggan: stepper memakai 3 kolom dengan label akses "Progres pengembalian barang", tiga langkah retur tampil sekali saja, tombol Pengembalian Barang dan Beri Ulasan tersembunyi, lencana "Retur selesai".
+- Data verifikasi (pesanan sementara dan kasus returnya) sudah dihapus setelah pengujian.
