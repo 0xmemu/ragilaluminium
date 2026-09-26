@@ -90,6 +90,14 @@ class OrderController extends Controller
             ->groupBy('order_status')
             ->pluck('total', 'order_status');
 
+        // Pesanan "baru" (belum dilihat atau ditangani admin pada status saat ini).
+        // Dikelompokkan per status untuk badge merah di kanan atas tab status.
+        $unseenCounts = Order::query()
+            ->unseenByAdmin()
+            ->select('order_status', DB::raw('count(*) as total'))
+            ->groupBy('order_status')
+            ->pluck('total', 'order_status');
+
         // Pesanan yang ulasan pelanggannya menunggu dibalas, dikelompokkan per
         // status. Dipakai titik notifikasi di tab status supaya admin tahu ada
         // yang perlu dibalas tanpa membuka tiap pesanan. Satu query untuk semua
@@ -168,15 +176,20 @@ class OrderController extends Controller
             ? collect()
             : CmsTestimonial::query()->whereIn('order_id', $pageOrders->pluck('id')->all())->get()->keyBy('order_id');
 
-        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts) {
+        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts, $unseenCounts) {
             $count = $tab['key'] === 'all'
                 ? (clone $base)->count()
                 : (int) ($tabCounts[$tab['key']] ?? 0);
+
+            $newCount = $tab['key'] === 'all'
+                ? (int) $unseenCounts->sum()
+                : (int) ($unseenCounts[$tab['key']] ?? 0);
 
             return [
                 'key' => $tab['key'],
                 'label' => $tab['label'],
                 'count' => $count,
+                'new_count' => $newCount,
                 // Nol berarti tidak ada titik notifikasi di tab ini.
                 'awaiting_review_count' => $tab['key'] === 'all'
                     ? (int) $awaitingReviewCounts->sum()
@@ -303,6 +316,12 @@ class OrderController extends Controller
 
     public function show(Order $order): Response
     {
+        $order->markAdminSeen();
+        AdminNotification::query()
+            ->where('order_id', $order->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
         $order->load([
             'items.product.mainImage',
             'payments',
@@ -1328,6 +1347,7 @@ class OrderController extends Controller
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
             'attention' => $this->customerAttention($order, $refusedByPhone),
+            'is_unseen' => $order->admin_seen_status !== $order->order_status,
             // Ulasan pelanggan pesanan ini, bila ada: dipakai tombol Balas di
             // kolom Aksi. Null berarti pesanan belum diulas.
             'review' => $this->testimonialPayload($testimonial),
@@ -1523,6 +1543,7 @@ class OrderController extends Controller
             : null;
 
         $order->update(['admin_notes' => $note]);
+        $order->markAdminSeen();
 
         return back()->with('success', $note === null
             ? 'Catatan internal dihapus.'

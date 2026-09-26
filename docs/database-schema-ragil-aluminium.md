@@ -347,6 +347,7 @@ Indexes:
 - `shipping_postal_code` (`VARCHAR`), NN
 - `shipping_country` (`VARCHAR`), NN, default 'Indonesia'
 - `order_status` (`VARCHAR`), NN
+- `admin_seen_status` (`VARCHAR`), nullable, IDX - status pesanan terakhir yang sudah dilihat/ditangani admin; bila null atau berbeda dengan order_status, pesanan dihitung sebagai baru untuk tab status terkait (migrasi 2026-09-26)
 - `payment_status` (`VARCHAR`), NN, default 'pending'
 - `shipping_status` (`VARCHAR`), NN, default 'pending_pickup'
 - `subtotal_amount` (`NUMERIC`), NN
@@ -372,6 +373,7 @@ Indexes:
 
 Indexes:
 - `idx_orders_statuses` (IDX on `order_status`, `payment_status`, `shipping_status`)
+- `idx_orders_admin_seen_status` (IDX on `admin_seen_status`)
 - `idx_orders_customer_phone` (IDX on `customer_phone`)
 - `idx_orders_created_at` (IDX on `created_at`)
 - `idx_orders_created_status` (IDX on `created_at`, `order_status`) - Performa Toko: pesanan dibuat dalam rentang beserta statusnya

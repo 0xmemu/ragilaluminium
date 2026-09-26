@@ -29,6 +29,7 @@ class Order extends Model
         'shipping_postal_code',
         'shipping_country',
         'order_status',
+        'admin_seen_status',
         'payment_status',
         'shipping_status',
         'subtotal_amount',
@@ -101,5 +102,28 @@ class Order extends Model
     public function scopeNeedsAttention(Builder $query): Builder
     {
         return $query->whereIn('order_status', ['issue', 'return_in_process']);
+    }
+
+    /**
+     * Scope pesanan yang belum dilihat atau ditindaklanjuti admin pada statusnya saat ini.
+     * Mencakup pesanan baru (admin_seen_status null) atau pesanan yang baru berganti
+     * status (admin_seen_status != order_status).
+     */
+    public function scopeUnseenByAdmin(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('admin_seen_status')
+              ->orWhereColumn('admin_seen_status', '!=', 'order_status');
+        });
+    }
+
+    /**
+     * Tandai pesanan sudah dilihat atau ditangani admin pada status saat ini.
+     */
+    public function markAdminSeen(): void
+    {
+        if ($this->admin_seen_status !== $this->order_status) {
+            $this->update(['admin_seen_status' => $this->order_status]);
+        }
     }
 }

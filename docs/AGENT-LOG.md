@@ -1135,3 +1135,27 @@ Bukti:
   - Sering Ditanyakan (`/admin/faq`): 7 baris draggable saat aktif, tombol awal
     Urutkan -> saat aktif menjadi Urungkan (isDirty false terbukti terjaga) ->
     bisa dibatalkan kembali ke Urutkan.
+
+## 2026-09-26 09:50 UTC | zcode | Standard | cf4816d3 | selesai
+Lingkup: perbaikan posisi dan logika penanda badge merah pada deretan tab status pesanan admin (`/admin/orders`).
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (penambahan kolom penanda status dilihat admin `admin_seen_status` pada tabel `orders` dan pembaruan dokumen kanonik `docs/database-schema-ragil-aluminium.md`).
+
+Untuk agent berikutnya:
+- Kolom penanda status dilihat admin (`admin_seen_status`) pada tabel pesanan (`orders`) mencatat status pesanan terakhir yang sudah dibuka detailnya atau ditindaklanjuti oleh admin.
+- Nilai awal kolom ini kosong (`null`) saat pesanan baru dibuat. Bila status pesanan berganti (misalnya dari Diproses ke Dikirim), status pesanan saat ini (`order_status`) menjadi tidak sama dengan penanda status dilihat admin (`admin_seen_status`), sehingga pesanan tersebut dihitung sebagai pesanan baru di tab status tujuannya.
+- Penanda badge merah menumpuk di pojok kanan atas tab (`-right-1 -top-1`), bukan lagi di kiri atas, dan menampilkan jumlah pesanan baru di status tersebut (`new_count`).
+- Membuka tab daftar status pesanan TIDAK mengurangi atau menghilangkan badge merah. Badge hanya berkurang atau hilang saat admin membuka halaman detail pesanan terkait (`/admin/orders/{order}`) atau melakukan tindakan pada pesanan tersebut (misalnya menyimpan catatan admin atau mengonfirmasi pembayaran).
+- Pemanggilan detail pesanan di controller `OrderController@show` otomatis memperbarui `admin_seen_status` menjadi sama dengan `order_status` saat ini via method pembantu `$order->markAdminSeen()`.
+
+Bukti:
+- Migrasi forward-only `2026_09_26_010000_add_admin_seen_status_to_orders_table` selesai sukses.
+- Typecheck `npm run typecheck`: 0 error.
+- ESLint `resources/js/pages/Admin/Orders/Index.tsx`: bersih (0 error, 0 warning).
+- Vitest `npm run test`: 27 berkas, 225 tes lulus.
+- PHPUnit `AdminOrderStatusNewBadgeTest`: 4 tes lulus (62 assertions) menguji pembuatan pesanan baru, proteksi klik tab daftar, pembukaan detail pesanan, dan perpindahan status ke tab tujuan.
+- PHPUnit `AdminOrderReviewIndicatorTest`: 7 tes lulus (77 assertions) memastikan kompatibilitas penanda ulasan tetap utuh.
+- Seluruh rangkaian pengujian pesanan (208 tes PHPUnit): 100% lulus.
+- Uji browser live (`ra.333labs.tech/admin/orders`):
+  1. Tab Semua dan Perlu Konfirmasi menampilkan badge merah angka 1 di pojok kanan atas tab.
+  2. Tab Perlu Konfirmasi diklik: filter berganti, badge merah tetap 1 (tidak hilang).
+  3. Detail pesanan `ORD26090011` dibuka via rute detail, lalu kembali ke daftar: badge merah di Semua dan Perlu Konfirmasi hilang dengan bersih.

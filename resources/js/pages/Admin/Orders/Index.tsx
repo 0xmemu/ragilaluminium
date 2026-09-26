@@ -73,6 +73,8 @@ interface OrderCard {
     label: string
     hint: string
   } | null
+  /** Penanda pesanan baru / belum dilihat admin pada statusnya saat ini. */
+  is_unseen?: boolean
   shipping_address_line1?: string | null
   shipping_address_line2?: string | null
   shipping_village?: string | null
@@ -122,6 +124,8 @@ interface StatusTab {
   key: string
   label: string
   count: number
+  /** Jumlah pesanan baru atau belum dilihat/ditangani admin pada status ini. 0 = tidak ada penanda. */
+  new_count?: number
   /** Jumlah ulasan pelanggan pada status ini yang belum dibalas. 0 = tidak ada penanda. */
   awaiting_review_count?: number
 }
@@ -286,6 +290,14 @@ function OrderCardRow({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="truncate font-medium text-foreground">{order.customer_name}</span>
+          {order.is_unseen ? (
+            <span
+              className="inline-flex shrink-0 items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive"
+              title="Pesanan baru pada status ini, belum dilihat/ditangani admin"
+            >
+              Baru
+            </span>
+          ) : null}
           {order.attention ? (
             <span
               className="inline-flex shrink-0 items-center text-warning"
@@ -971,15 +983,16 @@ export default function OrdersIndex({
           >
             {tabs.map((tab) => {
               const active = tab.key === activeStatus
-              // Tab retur punya penanda sendiri karena pesanannya menunggu tindakan.
-              const isReturnTab = tab.key === "return_in_process"
-              const reviewCount = tab.awaiting_review_count ?? 0
-              // Satu tab hanya memuat satu badge. Tab retur diutamakan karena
-              // pesanannya memang menunggu tindakan admin.
-              const badgeCount = isReturnTab ? tab.count : reviewCount
-              const badgeTitle = isReturnTab
-                ? `${formatNumber(tab.count)} pesanan menunggu diproses returnya`
-                : `${formatNumber(reviewCount)} ulasan pelanggan belum dibalas`
+              // Penanda notifikasi merah menumpuk di pojok kanan atas tab.
+              // Mengindikasikan ada pesanan yang "baru" masuk ke status ini dan
+              // belum pernah dilihat atau ditindaklanjuti oleh admin.
+              // Kontrak owner 2026-09-26: letak di kanan atas tab (-right-1 -top-1),
+              // bertambah saat pesanan masuk/berganti status, dan hanya berkurang bila
+              // pesanan tersebut dilihat detailnya atau ditindaklanjuti.
+              const badgeCount = tab.new_count ?? 0
+              const badgeTitle = tab.key === "all"
+                ? `${formatNumber(badgeCount)} pesanan baru yang belum dilihat admin`
+                : `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
               return (
                 <button
                   key={tab.key}
@@ -1003,16 +1016,10 @@ export default function OrdersIndex({
                   >
                     {formatNumber(tab.count)}
                   </span>
-                  {/* Penanda notifikasi: MENUMPUK di pojok kiri atas tab, bukan
-                      elemen di dalam deretan label, meniru badge lonceng
-                      notifikasi di header. Pil angka di atas tetap menunjukkan
-                      jumlah pesanan; badge ini menunjukkan ada yang menunggu
-                      tindakan. Dua hal berbeda, jadi keduanya ditampilkan.
-                      Posisi kiri atas dipilih supaya tidak bertabrakan dengan
-                      pil angka yang ada di kanan label. */}
+                  {/* Badge notifikasi: menumpuk di pojok kanan atas tab */}
                   {badgeCount > 0 ? (
                     <span
-                      className="pointer-events-none absolute -left-1 -top-1 z-10 flex h-4 min-w-4"
+                      className="pointer-events-none absolute -right-1 -top-1 z-10 flex h-4 min-w-4"
                       aria-label={badgeTitle}
                       title={badgeTitle}
                     >
