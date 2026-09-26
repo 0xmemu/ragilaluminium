@@ -1172,3 +1172,23 @@ Bukti:
 - Typecheck `npm run typecheck`: 0 error.
 - ESLint `resources/js/pages/Admin/Orders/Index.tsx`: bersih (0 error, 0 warning).
 - Uji browser live (`ra.333labs.tech/admin/orders`): tab Semua 20 bersih tanpa badge merah, tab Perlu Konfirmasi 5 tetap memiliki badge merah 1 di kanan atas.
+
+## 2026-09-26 12:30 UTC | zcode | Standard | 7fec9cee | selesai
+Lingkup: perbaikan arah munculnya penjelasan melayang (hover tooltip) pada ikon info di bagian paling atas drawer rincian performa toko (`/admin/analytics/store-performance`), pencegahan tooltip terbuka otomatis saat drawer dibuka, serta penyeragaman ketersediaan penjelasan melayang untuk seluruh metrik dan indikator kinerja utama (KPI) di dalam drawer dan halaman utama.
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Komponen penjelasan melayang (`HintTip` di `resources/js/components/admin/ui/hint-tip.tsx`) kini mendukung penentuan arah kemunculan (`side: "top" | "bottom" | "auto"`, bawaan "auto"). Bila pemicu berada dekat batas atas layar (`rect.top < 240px`), kotak penjelasan otomatis muncul ke arah bawah (`top-full mt-1.5`) agar tidak terpotong oleh batas atas layar atau wadah drawer bergulir (`overflow-y-auto`).
+- Pada wadah drawer (`SheetContent`), ditambahkan penangan pembatalan fokus otomatis `onOpenAutoFocus={(e) => e.preventDefault()}` agar pustaka antarmuka Radix tidak otomatis memfokuskan tombol ikon info di bilah kepala drawer saat pertama kali dibuka, yang sebelumnya memicu tooltip langsung terbuka menutupi kategori.
+- Pada fungsi penyusun rincian baris (`kpiRow` dan `buildCategoryDetail`), bila rekaman data belum memiliki catatan khusus, sistem otomatis melengkapi keterangan dari dasar acuan metrik resmi (`report.metric_basis`), mencakup cakupan waktu, dasar acuan tanggal pengakuan, dan satuan.
+- Seluruh baris metrik di dalam drawer (pembentukan penjualan kotor, pengurang, kas periode, kas berjalan, kontrak tanggal, dan rentang laporan) serta metrik turunan di halaman utama kini memiliki penjelasan melayang dan garis bawah titik-titik bertanda yang seragam (`decoration-dotted`).
+
+Bukti:
+- Typecheck `npm run typecheck`: 0 error.
+- Vitest `npm run test`: 27 berkas, 225 tes lulus (termasuk kontrak DOM renderer pasif `tests/frontend/store-performance-dom.test.ts`).
+- Pemeriksaan ketiadaan tanda pisah panjang (em dash U+2014): lolos tanpa temuan.
+- Build Vite: sukses dalam 25.32 detik.
+- Uji browser langsung di `ra.333labs.tech/admin/analytics/store-performance`:
+  1. Drawer dibuka: bilah kepala dan pilihan kategori tampil bersih tanpa ada tooltip yang terbuka sendiri.
+  2. Kursor diarahkan ke ikon info di bilah kepala: tooltip muncul ke arah bawah (`top: 38.8px`, tidak terpotong, teks lengkap terlihat).
+  3. Kursor diarahkan ke baris metrik pertama di drawer ("Nilai Produk Terjual"): tooltip muncul ke bawah label (`top: 277.5px`), tidak bertabrakan dengan bilah lengket kategori (`sticky category bar`), teks penjelasan lengkap dan rapi.
