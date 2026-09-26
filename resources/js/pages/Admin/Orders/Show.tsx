@@ -1099,8 +1099,8 @@ export default function OrderShow({
   const [trackingOpen, setTrackingOpen] = React.useState(false)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
-  const [showAllEvents, setShowAllEvents] = React.useState(false)
-  const waLogRef = React.useRef<HTMLUListElement | null>(null)
+  const [detailDrawer, setDetailDrawer] = React.useState<null | "riwayat" | "status" | "wa">(null)
+  const waLogRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
     const el = waLogRef.current
@@ -1619,7 +1619,15 @@ export default function OrderShow({
 
       {/* Riwayat - 3 kolom */}
       <section className="mt-4 grid items-start gap-4 lg:grid-cols-3">
-        <SectionCard title="Riwayat pesanan">
+        <SectionCard
+          title="Riwayat pesanan"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("riwayat")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
           <ol className="space-y-2.5 text-[13px]">
             <li className="flex justify-between gap-3">
               <span className="text-muted-foreground">Waktu pemesanan</span>
@@ -1643,11 +1651,18 @@ export default function OrderShow({
             ) : null}
           </ol>
         </SectionCard>
-        <SectionCard title="Log perubahan status">
+        <SectionCard
+          title="Log perubahan status"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("status")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
           {events.length ? (
-            <>
             <ul className="space-y-2.5 text-[13px]">
-              {(showAllEvents ? events : events.slice(0, 4)).map((event, index) => (
+              {events.map((event, index) => (
                 <li
                   key={`${event.event_type}-${index}`}
                   className="border-b border-border pb-2.5 last:border-0 last:pb-0"
@@ -1665,25 +1680,24 @@ export default function OrderShow({
               ))}
             
             </ul>
-            {events.length > 4 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllEvents((v) => !v)}
-                className="mt-3 text-xs font-medium text-primary hover:underline"
-              >
-                {showAllEvents ? "Sembunyikan riwayat" : "Tampilkan riwayat lengkap"}
-              </button>
-            ) : null}
-            </>
           ) : (
             <p className="text-xs text-muted-foreground">Belum ada log status.</p>
           )}
         </SectionCard>
         <div id="percakapan-whatsapp" className="scroll-mt-20">
-        <SectionCard title="Log WhatsApp">
+        <SectionCard
+          title="Log WhatsApp"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("wa")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-hidden p-0"
+        >
           {order.whatsapp_messages.length ? (
             <>
-            <ul ref={waLogRef} className="max-h-[420px] space-y-2.5 overflow-y-auto pr-1">
+            <div ref={waLogRef} className="h-full overflow-y-auto p-5">
+            <ul className="space-y-2.5 pr-1">
               {order.whatsapp_messages.map((message) => {
                 const outbound = message.direction !== "inbound"
                 const isExpanded = expandedWaIds.has(message.id)
@@ -1774,6 +1788,7 @@ export default function OrderShow({
                 )
               })}
             </ul>
+            </div>
             </>
           ) : (
             <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
@@ -2214,6 +2229,194 @@ export default function OrderShow({
               onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
               onCopyWaybill={copyText}
             />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Drawer Detail kartu log: riwayat pesanan, log perubahan status, dan
+          log WhatsApp. Kartu di halaman ber-tinggi tetap dengan isi ringkas;
+          isi lengkapnya dibuka lewat tombol Detail di header kartu. */}
+      <Sheet
+        open={detailDrawer !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailDrawer(null)
+        }}
+      >
+        <SheetContent
+          side="right"
+          title={
+            detailDrawer === "riwayat"
+              ? "Riwayat Pesanan"
+              : detailDrawer === "status"
+                ? "Log Perubahan Status"
+                : "Log WhatsApp"
+          }
+          className="w-[min(90vw,28rem)] sm:max-w-md p-0"
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                {detailDrawer === "riwayat"
+                  ? "Riwayat Pesanan"
+                  : detailDrawer === "status"
+                    ? "Log Perubahan Status"
+                    : "Log WhatsApp"}
+              </h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Pesanan {order.order_number} · {order.customer_name}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {detailDrawer === "riwayat" ? (
+              <div className="space-y-5 text-[13px]">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Data Pesanan
+                  </p>
+                  <ol className="mt-2.5 space-y-2.5">
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Nomor pesanan</span>
+                      <span className="font-medium">{order.order_number}</span>
+                    </li>
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Waktu pemesanan</span>
+                      <span className="font-medium">{formatDateTime(order.created_at)}</span>
+                    </li>
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Update terakhir</span>
+                      <span className="font-medium">{formatDateTime(order.updated_at)}</span>
+                    </li>
+                    {lastEventAt ? (
+                      <li className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Event terakhir</span>
+                        <span className="font-medium">{formatDateTime(lastEventAt)}</span>
+                      </li>
+                    ) : null}
+                    {liveState !== "unavailable" && liveState !== "connected" ? (
+                      <li className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Pembaruan langsung</span>
+                        <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
+                      </li>
+                    ) : null}
+                  </ol>
+                </div>
+
+                {order.payments?.length ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Pembayaran
+                    </p>
+                    <ol className="mt-2.5 space-y-2.5">
+                      {order.payments.map((payment) => (
+                        <li key={payment.id} className="border-b border-border pb-2.5 last:border-0 last:pb-0">
+                          <p className="font-medium">
+                            {payment.payment_method} · {formatCurrency(payment.amount)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Status: {payment.status}
+                            {payment.paid_at ? ` · Dibayar ${formatDateTime(payment.paid_at)}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                {order.shipping_records.length ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Pengiriman
+                    </p>
+                    <ol className="mt-2.5 space-y-2.5">
+                      {order.shipping_records.map((record) => (
+                        <li key={record.id} className="border-b border-border pb-2.5 last:border-0 last:pb-0">
+                          <p className="font-medium">
+                            {record.carrier_name || "Kurir"}
+                            {record.waybill_number ? ` · ${record.waybill_number}` : ""}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Status: {record.status || "-"}
+                            {record.last_status_at ? ` · ${formatDateTime(record.last_status_at)}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+              </div>
+            ) : detailDrawer === "status" ? (
+              events.length ? (
+                <ol className="space-y-2.5 text-[13px]">
+                  {events.map((event, index) => (
+                    <li
+                      key={`${event.event_type}-${index}`}
+                      className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                    >
+                      <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                      {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">Alasan: {event.payload.reason}</p>
+                      ) : null}
+                      <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(event.created_at)}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-xs text-muted-foreground">Belum ada log status.</p>
+              )
+            ) : order.whatsapp_messages.length ? (
+              <ol className="space-y-2.5">
+                {order.whatsapp_messages.map((message) => {
+                  const outbound = message.direction !== "inbound"
+                  const waStatus = waMessageStatus(message.status)
+                  return (
+                    <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
+                      <div
+                        className={`w-full max-w-[95%] rounded-lg border px-3 py-2.5 ${
+                          outbound
+                            ? message.is_automated
+                              ? "border-border bg-card shadow-xs"
+                              : "border-border bg-muted/40"
+                            : "border-success/30 bg-success/5"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-xs font-semibold text-foreground">
+                              {message.label || (outbound ? "Toko (Pesan Manual)" : "Pelanggan")}
+                            </span>
+                            {message.is_automated ? (
+                              <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Otomatis
+                              </span>
+                            ) : null}
+                          </div>
+                          {waStatus ? (
+                            <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs", waStatus.className)}>
+                              <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                              <span>{waStatus.label}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                        {message.text ? (
+                          <p className="mt-1.5 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+                            {message.text}
+                          </p>
+                        ) : null}
+                        <div className="mt-1.5 text-[11px] text-muted-foreground">
+                          {message.date_label
+                            ? `${message.date_label}, ${message.time_label}`
+                            : formatDateTime(message.sent_at || message.received_at)}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : (
+              <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
+            )}
           </div>
         </SheetContent>
       </Sheet>

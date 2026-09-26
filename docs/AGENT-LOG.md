@@ -1301,3 +1301,36 @@ Bukti:
   1. Halaman /order/status: placeholder menampilkan 085725116817, hint contoh 085725116817.
   2. Lacak pesanan ORD26090011: detail penerima menampilkan masking 0857••••17 (bukan 628...).
   3. Footer toko di beranda publik: nomor telepon toko menampilkan 0881-0807-33754 (bukan +62...), tautan tel dialable tel:0881080733754.
+
+## 2026-09-26 23:37 UTC | zcode | Standard | - | selesai
+Lingkup: permintaan owner untuk baris tiga kartu log di detail pesanan
+(Riwayat pesanan, Log perubahan status, Log WhatsApp): tinggi tetap, isi
+meluber discroll di dalam kartu, tombol Detail di header kanan, dan drawer
+isi lengkap.
+Dampak spec: tidak berubah (tanpa route/schema/JSON baru; semua data drawer
+berasal dari payload halaman yang sudah ada)
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx):
+- Tiga kartu ber-tinggi tetap: area konten Riwayat dan Log Status memakai
+  contentClassName h-[420px] overflow-y-auto; kartu Log WhatsApp memakai
+  contentClassName h-[420px] overflow-hidden p-0 dengan pembungkus scroll di
+  dalamnya yang sekaligus memegang ref auto-scroll. Sebelumnya list WhatsApp
+  memakai max-h sehingga kartu lebih tinggi dari dua kartu lain saat pesan
+  banyak, dan pendek saat pesan sedikit.
+- Tombol Detail (Button secondary sm) rata kanan di header ketiga kartu lewat
+  prop action SectionCard yang sudah tersedia.
+- Satu Sheet drawer dengan tiga panel: Riwayat Pesanan (data pesanan + daftar
+  pembayaran + daftar pengiriman), Log Perubahan Status (semua event tanpa
+  potongan, lengkap dengan alasan), Log WhatsApp (semua pesan dengan isi
+  penuh tanpa perlu memperluas satu per satu).
+- Tombol "Tampilkan riwayat lengkap" di kartu Log Status dihapus dan
+  digantikan scroll dalam kartu; state showAllEvents ikut dibuang.
+
+Bukti:
+- Pengukuran DOM di 100035 dan 100040: ketiga kartu sama-sama 475px, tombol
+  Detail ada di ketiganya.
+- Di 100040 log WhatsApp meluber 151px dan terbukti ter-scroll di dalam kartu.
+- Ketiga drawer terbuka dan terisi: drawer WhatsApp menampilkan isi penuh
+  pesan pelanggan, drawer riwayat memuat Data Pesanan, Pembayaran, dan
+  nominal, drawer status memuat event retur beserta alasannya.
+- typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
