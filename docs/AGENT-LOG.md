@@ -1464,3 +1464,23 @@ Bukti:
 - Uji live: tombol di header detail 100039 dan di daftar pesanan (filter
   Sampai) sama-sama berlabel "Retur" dengan warna teks merah
   rgb(226, 60, 60). Tangkapan layar daftar tersimpan.
+
+## 2026-09-27 11:36 UTC | zcode | Trivial | - | selesai
+Lingkup: keluhan owner, banner pengingat COD di detail pesanan ada di ujung
+bawah halaman sehingga tidak terlihat; minta ditempatkan sesuai logikanya.
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx): banner "Paket diterima.
+Pastikan pembayaran COD sudah disetorkan oleh kurir" dipindah dari akhir
+konten menjadi elemen pertama sebelum kartu ringkasan. Logika pemicu tetap
+(isCod dan status delivered), tampilan tetap.
+
+Catatan proses: patch pertama sempat membuat dua banner karena jangkar
+penghapusan terlalu umum sehingga ter-skip; dibersihkan dengan jangkar
+spesifik dan jumlah banner diverifikasi satu.
+
+Bukti:
+- typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live di 100039: tepat satu banner, y 223 (di atas lipatan, tanpa
+  scroll), tepat di bawah header dan di atas kartu ringkasan. Tangkapan
+  layar tersimpan.

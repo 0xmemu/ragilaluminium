@@ -1393,6 +1393,16 @@ export default function OrderShow({
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
+      {/* Pengingat COD: uang ada di kurir sampai disetorkan ke toko, jadi
+          peringatan ini wajib paling atas supaya terlihat segera. */}
+      {isCod && order.order_status === "delivered" ? (
+        <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
+          <p className="text-xs leading-5 text-warning-foreground">
+            Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
+          </p>
+        </div>
+      ) : null}
+
       {/* Ringkasan order - 4 sel proporsional: Nomor order, Pembayaran, Detail penerima, Detail pengiriman */}
       <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-card p-5 flex flex-col justify-between">
@@ -2110,13 +2120,6 @@ export default function OrderShow({
             </dl>
           </SectionCard>
 
-        {isCod && order.order_status === "delivered" ? (
-          <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
-            <p className="text-xs leading-5 text-warning-foreground">
-              Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
-            </p>
-          </div>
-        ) : null}
       </div>
       {printing ? (
         <PrintOrderArea
