@@ -1349,3 +1349,21 @@ Bukti:
 - Dihapus 2 baris `whatsapp_messages` (id 815 dan 816), 1 baris `admin_notifications` (id 98), dan 2 baris `customers` (id 10 dan 11).
 - Pesanan 100039 dan 100040 berhasil dialihkan ke nomor 6285725116817.
 - PHPUnit: 208 pengujian pesanan lulus (1.671 assertions).
+
+## 2026-09-27 09:19 UTC | zcode | Trivial | - | selesai
+Lingkup: permintaan owner mengosongkan kasus retur #11 di pesanan 100040
+(RA-SIM-2609-02) supaya bisa mencatat retur manual dari awal lewat UI.
+Dampak spec: tidak berubah
+
+Langkah: hapus notifikasi admin return_created milik kasus, hapus 2 item
+kasus lalu kasus #11 (masih open), kembalikan status pesanan lewat mesin
+status jalur sah return_in_process -> issue -> delivered dengan alasan
+"Kasus retur dibatalkan untuk uji isi manual". Matriks tidak mengizinkan
+lompatan langsung ke delivered, jadi dua langkah.
+Skrip: /tmp/kosongkan-retur-100040.php (dijalankan sebagai www-data),
+salinan lokal docs/AUDIT-ADMIN/tools/.
+
+Bukti: output skrip "kasus #11 (2 item) dihapus, 1 notifikasi dihapus,
+status return_in_process -> issue -> delivered; Status akhir: delivered;
+sisa kasus retur: 0". Halaman live: badge Diterima, tombol Catat retur dan
+field Alasan retur plus Kronologi pelanggan muncul kembali, Kasus #11 hilang.
