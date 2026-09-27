@@ -27,6 +27,11 @@ Schedule::command('queue:prune-failed', [
     '--hours' => (int) config('operations.failed_job_retention_hours', 168),
 ])->dailyAt('02:15')->withoutOverlapping();
 
+// Item 1 antrean: pesanan Sampai yang lewat masa tenggang (72 jam, di atas
+// tenggat retur 48 jam) diselesaikan otomatis dengan sumber audit system.
+// Dapat dimatikan lewat operations.orders_auto_complete.enabled.
+Schedule::command('orders:auto-complete')->hourly()->withoutOverlapping();
+
 // Bersihkan upload presigned yang tidak pernah difinalisasi (pending/ > 24 jam)
 // lalu kirim notifikasi admin dengan rincian pembersihan.
 Schedule::command('media:prune-pending', [

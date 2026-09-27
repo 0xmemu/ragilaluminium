@@ -1866,3 +1866,29 @@ Bukti:
 - php -l tiga berkas bersih; typecheck 0 error; eslint bersih; build Vite
   sukses.
 - Uji live: GET /kebijakan-retur lewat tunnel = 200.
+
+## 2026-09-27 18:35 UTC | zcode | Standard | - | selesai
+Lingkup: item 1 antrean pekerjaan, pesanan Sampai otomatis menjadi Selesai
+setelah masa tenggang.
+Dampak spec: tidak berubah (command terjadwal baru; tanpa rute/schema/enum
+baru; sumber audit memakai "system" yang sudah ada)
+
+Keputusan yang dipakai (default saran antrean): masa tenggang 72 jam sejak
+paket tercatat sampai (di atas tenggat retur 48 jam agar hak retur menutup
+lebih dulu); berlaku untuk COD dan transfer; saklar on/off di
+operations.orders_auto_complete; tidak mengirim WhatsApp (paritas dengan
+penyelesaian manual).
+
+Perubahan:
+- Command orders:auto-complete + jadwal hourly tanpaOverlapping di
+  routes/console.php + konfigurasi operations.orders_auto_complete.
+- Syarat per pesanan: delivered, payment_status paid (sabuk pengaman),
+  tanpa kasus retur open, dan rekaman delivered terakhir lebih tua dari
+  masa tenggang.
+
+Bukti:
+- Test baru AutoCompleteDeliveredOrdersTest 5 passed (10 asersi): lewat
+  tenggang selesai otomatis dengan sumber system, belum lewat tak disentuh,
+  kasus retur open tak disentuh, belum lunas tak disentuh, fitur dimatikan
+  tak disentuh.
+- php -l tiga berkas bersih.

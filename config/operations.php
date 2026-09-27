@@ -26,4 +26,12 @@ return [
     // 0 = matikan batas idle.
     // Yang mencentang remember tidak terkena aturan ini.
     'admin_session_idle_minutes' => max(0, (int) env('ADMIN_SESSION_IDLE_MINUTES', 120)),
+
+    // Item 1 antrean: pesanan Sampai otomatis menjadi Selesai setelah masa
+    // tenggang. 72 jam sengaja di atas tenggat retur 48 jam agar hak retur
+    // selalu menutup lebih dulu. enabled=false mematikan sepenuhnya.
+    'orders_auto_complete' => [
+        'enabled' => (bool) env('ORDERS_AUTO_COMPLETE_ENABLED', true),
+        'grace_hours' => max(1, (int) env('ORDERS_AUTO_COMPLETE_GRACE_HOURS', 72)),
+    ],
 ];
