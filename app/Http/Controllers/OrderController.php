@@ -373,7 +373,7 @@ class OrderController extends Controller
 
         // Item 9 antrean: riwayat kasus retur milik pelanggan. Hanya status
         // dan waktu; alasan admin serta nominal tetap tidak dipublikasikan.
-        $kasusReturTerakhir = $order->returnCases->latest('id')->first();
+        $kasusReturTerakhir = $order->returnCases->sortByDesc('id')->first();
         $returnCase = $kasusReturTerakhir ? [
             'status' => $kasusReturTerakhir->status,
             'created_at' => optional($kasusReturTerakhir->created_at)?->toIso8601String(),

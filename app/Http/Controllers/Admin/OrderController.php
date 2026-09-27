@@ -1076,11 +1076,18 @@ class OrderController extends Controller
                 && $selesaiAt !== null
                 && $selesaiAt->gte(now()->subDays(7));
 
+            // Dua makna dipisah: 'reason' selalu terisi karena dipakai juga
+            // sebagai pesan penolakan saat admin mencoba mencatat retur,
+            // sedangkan 'note' adalah catatan layar yang hanya perlu untuk
+            // pesanan Selesai yang masih dekat masa returnya.
+            $pesanSelesai = 'Pesanan sudah Selesai. Retur hanya dapat dicatat untuk pesanan berstatus Sampai; bila tetap diperlukan, bicarakan dengan pelanggan melalui WhatsApp.';
+
             return [
                 'eligible' => false,
-                'reason' => $masihRelevan
-                    ? 'Pesanan sudah Selesai. Retur hanya dapat dicatat untuk pesanan berstatus Sampai; bila tetap diperlukan, bicarakan dengan pelanggan melalui WhatsApp.'
-                    : null,
+                'reason' => $order->order_status === 'completed'
+                    ? $pesanSelesai
+                    : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai.',
+                'note' => $order->order_status === 'completed' && $masihRelevan ? $pesanSelesai : null,
                 'deadline' => null,
                 'warnings' => [],
             ];

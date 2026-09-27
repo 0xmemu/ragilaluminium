@@ -563,6 +563,8 @@ interface ReturnCase {
 interface ReturnEligibility {
   eligible: boolean
   reason: string | null
+  /** Catatan layar untuk pesanan di luar Sampai; null bila tidak perlu tampil. */
+  note?: string | null
   deadline: string | null
   /**
    * Kebijakan resmi yang TIDAK lagi memblokir sejak skema retur full manual
@@ -2000,11 +2002,11 @@ export default function OrderShow({
           // menampilkan alasan returnya dalam bentuk ringkas agar admin
           // tidak mengira fiturnya rusak. Keputusan kapan catatan relevan
           // dihitung server lewat returnEligibility.
-          if (elig.reason) {
+          if (elig.note) {
             return (
               <div id="return-case" className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-xs font-semibold text-foreground">Retur</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{elig.reason}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{elig.note}</p>
               </div>
             );
           }

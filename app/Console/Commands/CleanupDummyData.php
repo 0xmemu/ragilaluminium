@@ -142,6 +142,13 @@ class CleanupDummyData extends Command
             if ($orderIds->isNotEmpty()) {
                 DB::table('order_items')->whereIn('order_id', $orderIds)->delete();
                 DB::table('payments')->whereIn('order_id', $orderIds)->delete();
+
+                // Item 6 audit semantik: payments dihapus tetapi pesanannya
+                // dipertahankan sebagai catatan uji. Reset payment_status agar
+                // tidak ada pesanan "paid tanpa payment completed".
+                DB::table('orders')->whereIn('id', $orderIds)
+                    ->where('payment_status', '!=', 'pending')
+                    ->update(['payment_status' => 'pending']);
                 DB::table('shipping_records')->whereIn('order_id', $orderIds)->delete();
                 DB::table('shipping_tracking_events')->whereIn('order_id', $orderIds)->delete();
                 DB::table('whatsapp_messages')->whereIn('order_id', $orderIds)->delete();

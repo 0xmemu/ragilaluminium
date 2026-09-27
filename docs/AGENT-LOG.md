@@ -1981,3 +1981,48 @@ Hasil utama:
 
 Tindak lanjut yang disarankan (menunggu owner): investigasi 6 alert, dan
 pertimbangkan mematikan PostgreSQL yang tidak terpakai.
+
+## 2026-09-27 21:48 UTC | zcode | Deep | - | selesai
+Lingkup: tindak lanjut enam alert infrastruktur (owner: "ALERT tindakannya
+gimana"). Semua alert kini BERSIH: agregator melaporkan "sehat — tidak ada
+alert", nol berkas ALERT-*.
+Dampak spec: tidak berubah
+
+Akar masalah dan perbaikan tiap alert:
+1. ALERT-r2-upload (sejak 3 Sep): satu upload binlog (binlog.000612) gagal
+   sekali; jalur kini sukses tapi penanda tidak pernah dihapus saat berhasil.
+   Perbaikan: scripts_backup_mysql_binlog.sh menghapus penanda saat sukses.
+2. ALERT-smoke-test (27 Sep): cek /checkout mengharapkan 200 padahal keranjang
+   kosong memang redirect (302). Perbaikan: harapan diubah ke 302 + penanda
+   dihapus saat sukses.
+3. ALERT-semantic-audit + ALERT-db-live-health (27 Sep): dua sebab.
+   a. Invarian "total_amount = subtotal + ongkir - voucher + biaya COD" lupa
+      suku asuransi; rumus otoritatif (OrderService baris 176 dan 705)
+      menyertakan shipping_insurance_amount. Dua pesanan sah (ORD26090006,
+      ORD26090011) dilaporkan anomali; dengan asuransi dihitung, selisihnya 0.
+   b. Dua pesanan simulasi COD (RA-SIM-2609-01/02) berstatus paid tanpa baris
+      pelunasan karena payments-nya dihapus pembersih data dummy. Diperbaiki
+      dengan mengembalikan baris pelunasan COD-nya (nominal = total tagihan,
+      status completed), sesuai aturan COD lunas saat paket sampai.
+   Perbaikan skrip: rumus audit menyertakan asuransi; CleanupDummyData
+   mereset payment_status pesanan dummy supaya tidak terulang.
+4. ALERT-drill-pitr dan ALERT-stale-or-restore (21 Sep): drill mingguan gagal
+   karena mewarisi anomali audit di atas. Setelah data dan rumus diperbaiki,
+   cadangan segar dibuat dan kedua drill dijalankan ulang: RESTORE TEST PASS
+   dan PITR DRILL PASS (rowcount uji = produksi untuk 5 tabel inti).
+
+Bug yang ditemukan suite penuh saat verifikasi (saya perkenalkan, langsung
+diperbaiki sebelum commit):
+- Pemilihan kasus retur terakhir pada payload publik memakai Collection::latest
+  yang tidak ada (500 di halaman cek pesanan) -> diganti sortByDesc.
+- Pengosongan alasan retur untuk pesanan non-Sampai ikut menghapus pesan
+  penolakan saat admin mencoba mencatat retur. Dipisah: 'reason' selalu terisi,
+  'note' khusus catatan layar (hanya untuk pesanan Selesai yang masih dekat
+  masa returnya).
+
+Bukti:
+- Seluruh suite: 1217 passed, 1 skipped, 0 failed (11895 assertions).
+- typecheck 0 error, eslint bersih, build Vite sukses.
+- Live: halaman cek pesanan 200, kebijakan retur 200, katalog 200.
+- Alert: nol berkas ALERT-*; log agregator "sehat — tidak ada alert";
+  PITR DRILL PASS dan RESTORE TEST PASS tercatat.
