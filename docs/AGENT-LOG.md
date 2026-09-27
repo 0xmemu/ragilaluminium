@@ -1905,3 +1905,25 @@ basi: panduan kini menjelaskan alur retur menyeluruh, yang hilang tinggal
 aturan jendelanya.
 
 Bukti: eslint bersih, build Vite sukses, test cepat 8 passed.
+
+## 2026-09-27 19:06 UTC | zcode | Standard | - | selesai
+Lingkup: item 8 dan item 11 antrean pekerjaan, dikerjakan bersama karena
+menyentuh form penyelesaian retur yang sama.
+Dampak spec: tidak berubah (memakai kolom yang sudah ada: refund_amount kasus
+dan orders.additional_shipping_amount)
+
+Perubahan:
+- Kompensasi kini boleh bernilai: kolom nominal tampil untuk refund dan
+  kompensasi (label menyesuaikan), penjaga lunas dan batas pembayaran riil
+  sama seperti refund, tersimpan di refund_amount kasus yang dibaca laporan.
+- Ongkir perjalanan balik: kolom opsional di form penyelesaian, tersimpan
+  orders.additional_shipping_amount yang dibaca export pesanan; validasi
+  nullable numeric; tidak mengubah KPI (perlakuan uangnya masih menunggu
+  keputusan owner, sesuai keputusan terbuka item 11).
+
+Bukti:
+- Test baru CompensationFlowTest 2 passed (7 asersi): kompensasi bernominal
+  tercatat dan tidak menggerakkan pembayaran, kompensasi pada pesanan belum
+  lunas ditolak dengan error di kolom refund_amount.
+- php -l bersih; typecheck 0 error; eslint bersih; build Vite sukses;
+  seluruh 10 suite terkait antrean 29 passed (91 assertions).

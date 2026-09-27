@@ -636,6 +636,7 @@ function ReturnCasePanel({
         admin_notes: string
         refund_amount: string
         return_shipping_cost: string
+        additional_shipping_amount: string
         replacement_items: Array<{ order_item_id: number; product_id: number; variant_id: string; quantity: string; name: string }>
       }
     >
@@ -686,6 +687,7 @@ function ReturnCasePanel({
         admin_notes: "",
         refund_amount: "0",
         return_shipping_cost: "",
+        additional_shipping_amount: "",
         replacement_items: autoReplace,
       },
     }))
@@ -698,13 +700,15 @@ function ReturnCasePanel({
           admin_notes: string
           refund_amount: number
           return_shipping_cost: number
+          additional_shipping_amount: number
           returned_items: Array<{ id: number; returned_quantity: number }>
           replacement_items?: Array<{ order_item_id: number; product_id: number; variant_id: number | null; quantity: number }>
         } = {
           resolution_type: data.resolution_type,
           admin_notes: data.admin_notes,
-          refund_amount: data.resolution_type === "refund" ? Number(data.refund_amount) || 0 : 0,
+          refund_amount: ["refund", "compensation"].includes(data.resolution_type) ? Number(data.refund_amount) || 0 : 0,
           return_shipping_cost: Number(data.return_shipping_cost) || 0,
+          additional_shipping_amount: Number(data.additional_shipping_amount) || 0,
           returned_items: caseItem.items.map((ci) => ({ id: ci.id, returned_quantity: ci.requested_quantity })),
         }
     if (data.resolution_type === "replacement" || data.resolution_type === "reship") {
@@ -846,8 +850,11 @@ function ReturnCasePanel({
                         </Field>
                       </div>
 
-                      {completion[item.id].resolution_type === "refund" ? (
-                        <Field id={`return-refund-${item.id}`} label="Refund Retur" required>
+                      {["refund", "compensation"].includes(completion[item.id].resolution_type) ? (
+                        <Field
+                          id={`return-refund-${item.id}`}
+                          label={completion[item.id].resolution_type === "refund" ? "Refund Retur" : "Nominal Kompensasi"}
+                          required>
                           <Input
                             type="number"
                             min="0"
@@ -943,6 +950,24 @@ function ReturnCasePanel({
                             ? "Biaya ongkir pengembalian yang ditanggung toko karena kesalahan toko. Wajib diisi. Mengurangi Penjualan Bersih."
                             : "Biaya ongkir pengembalian yang ditanggung toko (opsional, goodwill). Mengurangi Penjualan Bersih."}
                         </p>
+                      </Field>
+
+                      <Field
+                        id={`return-trip-cost-${item.id}`}
+                        label="Ongkir Perjalanan Balik (opsional)"
+                        hint="Tagihan perjalanan balik dari J&T bila ada; tercatat di export pesanan. Kosongkan bila tidak ada.">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={completion[item.id].additional_shipping_amount}
+                          onChange={(event) =>
+                            setCompletion((current) => ({
+                              ...current,
+                              [item.id]: { ...current[item.id], additional_shipping_amount: event.target.value },
+                            }))
+                          }
+                        />
                       </Field>
 
                       {completionError ? (

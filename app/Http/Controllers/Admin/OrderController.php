@@ -864,6 +864,7 @@ class OrderController extends Controller
             'refund_amount' => ['nullable', 'numeric', 'min:0'],
             'replacement_amount' => ['nullable', 'numeric', 'min:0'],
             'return_shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'additional_shipping_amount' => ['nullable', 'numeric', 'min:0'],
             'returned_items' => ['nullable', 'array'],
             'returned_items.*.id' => ['required', 'integer'],
             'returned_items.*.returned_quantity' => ['required', 'integer', 'min:0'],
@@ -884,10 +885,10 @@ class OrderController extends Controller
 
         $refundAmount = 0.0;
         $replacementAmount = 0.0;
-        if ($validated['resolution_type'] === 'refund') {
+        if (in_array($validated['resolution_type'], ['refund', 'compensation'], true)) {
             if ($order->payment_status !== 'paid') {
                 return redirect()->route('admin.orders.show', $order)
-                    ->withErrors(['refund_amount' => 'Refund hanya dapat diproses untuk pesanan yang sudah lunas.'])
+                    ->withErrors(['refund_amount' => 'Refund atau kompensasi hanya dapat diproses untuk pesanan yang sudah lunas.'])
                     ->withInput();
             }
             $refund = (float) ($validated['refund_amount'] ?? 0);
@@ -991,6 +992,14 @@ class OrderController extends Controller
                         'Penggantian barang retur',
                     );
                 }
+            }
+
+            // Item 11 antrean: ongkir perjalanan balik diisi manual admin
+            // (belum tersedia otomatis dari J&T) dan terbaca export pesanan.
+            if (array_key_exists('additional_shipping_amount', $validated)) {
+                $locked->update([
+                    'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
+                ]);
             }
 
             $returnCase->update([
