@@ -1367,3 +1367,23 @@ Bukti: output skrip "kasus #11 (2 item) dihapus, 1 notifikasi dihapus,
 status return_in_process -> issue -> delivered; Status akhir: delivered;
 sisa kasus retur: 0". Halaman live: badge Diterima, tombol Catat retur dan
 field Alasan retur plus Kronologi pelanggan muncul kembali, Kasus #11 hilang.
+
+## 2026-09-27 10:38 UTC | zcode | Trivial | - | selesai
+Lingkup: permintaan owner merapikan penempatan form "Catat retur" (dan form
+penyelesaian yang bermasalah serupa) di detail pesanan: kontrol select pendek
+dan textarea tinggi tidak lagi dicampur dalam satu baris grid.
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx, susunan saja):
+- Form Catat retur: baris 1 tiga kolom berisi Alasan retur, Pihak penyebab,
+  Ongkir retur ditanggung toko (semua select); baris 2 dua kolom berisi
+  Keterangan lainnya (muncul saat alasan Lainnya) dan Kronologi pelanggan
+  (keduanya textarea rows 2). Catatan admin tetap lebar penuh.
+- Form penyelesaian: Catatan penyelesaian diberi sm:col-span-2 sehingga
+  selebar dua kolom, tidak lagi sebaris dengan select Resolusi yang pendek.
+
+Bukti:
+- Pengukuran DOM live: pusat Y ketiga select sama persis (310, 310, 310,
+  selisih 0 px, memenuhi toleransi ADR-022 1 px); Kronologi pelanggan kini di
+  baris sendiri (y 403). Tangkapan layar panel Retur dan penyelesaian.
+- typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.

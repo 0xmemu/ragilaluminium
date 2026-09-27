@@ -812,7 +812,7 @@ function ReturnCasePanel({
                             <option value="no_compensation">Tanpa kompensasi</option>
                           </Select>
                         </Field>
-                        <Field id={`return-completion-note-${item.id}`} label="Catatan penyelesaian" required>
+                        <Field id={`return-completion-note-${item.id}`} label="Catatan penyelesaian" required className="sm:col-span-2">
                           <Textarea
                             rows={2}
                             value={completion[item.id].admin_notes}
@@ -965,7 +965,7 @@ function ReturnCasePanel({
           {showCreate ? (
             <form className="space-y-3 border-t border-border pt-4" onSubmit={submit}>
               <p className="text-xs text-muted-foreground">Isi admin. Customer mengirim kronologi/foto melalui WhatsApp; tidak ada form retur publik.</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Field id="return-reason" label="Alasan retur" required error={form.errors.reason}>
                   <Select value={form.data.reason} onChange={(event) => {
                     form.setData("reason", event.target.value)
@@ -977,16 +977,6 @@ function ReturnCasePanel({
                     ))}
                   </Select>
                 </Field>
-                {form.data.reason === "lainnya" ? (
-                  <Field id="return-reason-detail" label="Keterangan lainnya" required error={form.errors.reason_detail}>
-                    <Textarea rows={2} value={form.data.reason_detail} onChange={(event) => form.setData("reason_detail", event.target.value)} />
-                  </Field>
-                ) : null}
-                <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
-                  <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
-                </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="return-fault-party" label="Pihak penyebab">
                   <Select value={form.data.fault_party} onChange={(event) => {
                     form.setData("fault_party", event.target.value)
@@ -1005,6 +995,16 @@ function ReturnCasePanel({
                     <option value="true">Ya</option>
                     <option value="false">Tidak</option>
                   </Select>
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {form.data.reason === "lainnya" ? (
+                  <Field id="return-reason-detail" label="Keterangan lainnya" required error={form.errors.reason_detail}>
+                    <Textarea rows={2} value={form.data.reason_detail} onChange={(event) => form.setData("reason_detail", event.target.value)} />
+                  </Field>
+                ) : null}
+                <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
+                  <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
                 </Field>
               </div>
               <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
