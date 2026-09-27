@@ -1059,11 +1059,28 @@ class OrderController extends Controller
     protected function returnEligibility(Order $order): array
     {
         if ($order->order_status !== 'delivered') {
+            // Owner 2026-09-28: catatan alasan hanya tampil selagi pesanan
+            // masih dekat dengan masa returnya (7 hari sejak Selesai); pesanan
+            // lama tidak perlu diganggu. Jangkarnya EventLog perpindahan
+            // status (append-only), BUKAN last_status_at pengiriman yang ikut
+            // berubah setiap refresh J&T saat halaman dibuka.
+            $selesaiAt = \App\Models\EventLog::query()
+                ->where('entity_type', 'order')
+                ->where('entity_id', $order->id)
+                ->where('event_type', 'order_status_changed')
+                ->where('payload->order_status', 'completed')
+                ->latest('id')
+                ->value('created_at');
+
+            $masihRelevan = $order->order_status === 'completed'
+                && $selesaiAt !== null
+                && $selesaiAt->gte(now()->subDays(7));
+
             return [
                 'eligible' => false,
-                'reason' => $order->order_status === 'completed'
-                    ? 'Pesanan sudah selesai, jadi tidak lagi berstatus Sampai. Retur hanya bisa dicatat untuk pesanan berstatus Sampai; bila tetap harus diretur, bicarakan dulu dengan pelanggan melalui WhatsApp.'
-                    : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai.',
+                'reason' => $masihRelevan
+                    ? 'Pesanan sudah Selesai. Retur hanya dapat dicatat untuk pesanan berstatus Sampai; bila tetap diperlukan, bicarakan dengan pelanggan melalui WhatsApp.'
+                    : null,
                 'deadline' => null,
                 'warnings' => [],
             ];

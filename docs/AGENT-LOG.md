@@ -1927,3 +1927,28 @@ Bukti:
   lunas ditolak dengan error di kolom refund_amount.
 - php -l bersih; typecheck 0 error; eslint bersih; build Vite sukses;
   seluruh 10 suite terkait antrean 29 passed (91 assertions).
+
+## 2026-09-27 19:18 UTC | zcode | Trivial | - | selesai
+Lingkup: masukan owner, catatan alasan retur "aneh" di pesanan Selesai lama:
+muncul di semua pesanan non-Sampai tanpa memandang usia, dan teksnya
+mengulang makna dua kali.
+Dampak spec: tidak berubah
+
+Perubahan:
+- Teks alasan pesanan Selesai diringkas tanpa pengulangan.
+- Keputusan relevansi dipindah ke server: alasan hanya dikirim bila pesanan
+  Selesai masih dalam 7 hari (jangkar EventLog perpindahan status ke
+  completed yang append-only). Jangkar awal (last_status_at pengiriman)
+  ternyata tidak stabil: kolom itu ikut berubah setiap refresh J&T saat
+  halaman admin dibuka (terbukti di order 100000 berubah jadi hari ini).
+- Klien kembali murni (tanpa Date.now saat render, sesuai aturan purity
+  eslint).
+
+Bukti:
+- Debug langsung: sebelum perbaikan reason terisi meski delivered 34 hari
+  lalu (last_status_at terlanjur diperbarui hari ini); sesudah jangkar
+  EventLog, reason NULL.
+- Uji live order 100000: catatan hilang, nol teks pembatasan retur di
+  halaman. typecheck 0 error, eslint bersih, build sukses.
+- Test OrderEventLabelsEventTypeTest dan ReturnCourierVisibilityTest tetap
+  lulus.

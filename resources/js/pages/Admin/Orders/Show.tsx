@@ -1998,7 +1998,8 @@ export default function OrderShow({
         if (!showPanel) {
           // Item 4 antrean: pesanan di luar Sampai (mis. Selesai) tetap
           // menampilkan alasan returnya dalam bentuk ringkas agar admin
-          // tidak mengira fiturnya rusak.
+          // tidak mengira fiturnya rusak. Keputusan kapan catatan relevan
+          // dihitung server lewat returnEligibility.
           if (elig.reason) {
             return (
               <div id="return-case" className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
