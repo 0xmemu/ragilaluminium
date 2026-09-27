@@ -332,7 +332,7 @@ class WhatsAppService
      * false = tidak terdaftar, null = gateway belum menyediakan pemeriksaan
      * atau pemeriksaan gagal (kirim tetap berjalan, tidak menghambat).
      */
-    protected function numberRegistered(string $phone): ?bool
+    public function numberRegistered(string $phone): ?bool
     {
         try {
             $response = Http::withHeaders([

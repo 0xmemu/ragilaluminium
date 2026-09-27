@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Services\WhatsAppService;
 use App\Support\PostalCodeRepository;
+use App\Support\PhoneNumber;
 use Illuminate\Validation\Validator;
 
 /**
@@ -61,6 +63,21 @@ class StoreCheckoutDetailsRequest extends FormRequest
                     'postal_code',
                     'Kode pos tidak cocok dengan desa/kelurahan yang dipilih.',
                 );
+            }
+
+            // Penjaga pra-checkout (owner 2026-09-27): nomor yang tidak
+            // terdaftar WhatsApp tidak akan pernah menerima notifikasi
+            // pesanan (konfirmasi, resi, tindak lanjut). Pemeriksaan tidak
+            // tersedia atau gagal = diteruskan (fail-open); cek saat
+            // pengiriman tetap berjalan sebagai lapis kedua.
+            if (! $validator->errors()->has('phone')) {
+                $nomor = PhoneNumber::normalize((string) $this->input('phone'));
+                if ($nomor !== null && app(WhatsAppService::class)->numberRegistered($nomor) === false) {
+                    $validator->errors()->add(
+                        'phone',
+                        'Nomor WhatsApp tidak terdaftar. Periksa kembali nomor HP yang dimasukkan.',
+                    );
+                }
             }
         });
     }

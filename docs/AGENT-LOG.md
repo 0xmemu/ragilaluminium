@@ -1670,3 +1670,30 @@ Bukti:
   (total 6 test, 20 asersi): tidak terdaftar gagal tanpa menyentuh endpoint
   kirim; terdaftar terkirim normal; endpoint 404 fail-open.
 - Backup gateway tersedia di /opt/baileys-bot/index.js.bak-presend-20260927.
+
+## 2026-09-27 15:47 UTC | zcode | Standard | - | selesai
+Lingkup: permintaan owner, penjaga nomor WA di formulir detail pengiriman
+checkout yang selama ini tidak ada. Nomor tidak terdaftar kini ditolak di
+formulir dengan pesan jelas, bukan setelah pesanan dibuat.
+Dampak spec: tidak berubah (aturan validasi baru di endpoint checkout yang
+sudah ada; tanpa rute/schema/enum baru)
+
+Perubahan:
+- StoreCheckoutDetailsRequest: validator after menambahkan cek registrasi
+  (WhatsAppService::numberRegistered, kini public) pada kolom phone; nomor
+  dinormalisasi dulu lewat PhoneNumber::normalize. Fail-open: pemeriksaan
+  tidak tersedia/gagal = diteruskan, cek saat pengiriman tetap berjalan
+  sebagai lapis kedua.
+- numberRegistered WhatsAppService jadi public (dipakai penjaga checkout).
+
+Bukti:
+- Test baru CheckoutPhoneGuardTest 3 passed: ditolak (exists=false, pesan
+  "Nomor WhatsApp tidak terdaftar. Periksa kembali nomor HP yang dimasukkan.",
+  detail tidak tersimpan sesi), diterima (exists=true), fail-open (404).
+- Seluruh test WA 9 passed (30 assertions) termasuk pra-kirim dan kirim ulang.
+- php -l bersih; pre-push typecheck + build lulus saat push.
+
+Catatan proses: penerapan patch sempat tiga kali gagal senyap karena skrip
+helper tidak menulis berkas (fungsi once tanpa fs.writeFileSync plus salah
+jumlah argumen pemanggil), terdeteksi dari mtime berkas yang tidak berubah;
+setelah skrip ditulis ulang, penerapan terverifikasi lewat grep isi berkas.
