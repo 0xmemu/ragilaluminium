@@ -326,6 +326,35 @@ class WhatsAppService
         ]);
     }
 
+    /**
+     * Cek registrasi nomor lewat gateway Baileys (endpoint /api/on-whatsapp,
+     * jembatan ke sock.onWhatsApp bawaan Baileys). Hasil: true = terdaftar,
+     * false = tidak terdaftar, null = gateway belum menyediakan pemeriksaan
+     * atau pemeriksaan gagal (kirim tetap berjalan, tidak menghambat).
+     */
+    protected function numberRegistered(string $phone): ?bool
+    {
+        try {
+            $response = Http::withHeaders([
+                'X-Api-Key' => (string) config('services.whatsapp.baileys.api_key'),
+            ])
+                ->timeout(5)
+                ->post(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/api/on-whatsapp', [
+                    'numbers' => [$this->toBaileysChatId($phone)],
+                ]);
+
+            if ($response->status() === 404) {
+                return null;
+            }
+
+            $hasil = $response->json('results.0.exists');
+
+            return is_bool($hasil) ? $hasil : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     protected function sendViaBaileys(string $phone, string $text): array
     {
         $payload = [
@@ -333,6 +362,23 @@ class WhatsAppService
             'chatId' => $this->toBaileysChatId($phone),
             'text' => $text,
         ];
+
+        // Cek pra-kirim: nomor yang tidak terdaftar WhatsApp tidak akan pernah
+        // menerima pesan, tetapi server WhatsApp tetap menerima serahannya
+        // sehingga tercatat "Terkirim" tanpa pernah sampai (bukti ACK nomor
+        // dummy). Tandai gagal dengan alasan jelas sebelum menyerahkan ke
+        // gateway. Pemeriksaan tidak tersedia atau gagal = kirim seperti
+        // biasa (fail-open).
+        if ($this->numberRegistered($phone) === false) {
+            return [
+                'successful' => false,
+                'provider_message_id' => null,
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => 'failed',
+                'error_reason' => 'Nomor tidak terdaftar WhatsApp.',
+                'raw_payload' => ['pre_send_check' => 'not_registered'],
+            ];
+        }
 
         try {
             $response = Http::withHeaders([

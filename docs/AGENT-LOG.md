@@ -1617,3 +1617,28 @@ Bukti:
 - Uji live daftar pesanan: 0 tombol kirim ulang tersisa (12 gagal lama di
   luar jendela); kartu nomor uji kembali menampilkan Chat WA. Tangkapan
   layar tersimpan.
+
+## 2026-09-27 13:52 UTC | zcode | Standard | - | selesai
+Lingkup: temuan owner 2026-09-27, WA otomatis bisa tercatat Terkirim ke nomor
+yang tidak terdaftar WhatsApp. Terbukti dari data: 4 pesan ke nomor dummy
+628123456789 macet di status sent sejak 14 Sep tanpa pernah Diterima/Dibaca,
+sementara nomor terdaftar punya rantai ACK lengkap; gateway tidak punya cek
+registrasi. Owner menyetujui cek pra-kirim.
+Dampak spec: tidak berubah (tanpa rute/schema/enum baru)
+
+Perubahan:
+- WhatsAppService: metode numberRegistered() memanggil endpoint baru
+  /api/on-whatsapp di gateway (jembatan sock.onWhatsApp Baileys); sendViaBaileys
+  menolak kirim dengan status gagal dan alasan "Nomor tidak terdaftar
+  WhatsApp." bila registrasi false. Fail-open: endpoint tidak tersedia (404)
+  atau pemeriksaan gagal, kirim tetap jalan supaya aman dipasang bertahap.
+- Test baru WhatsAppPreSendCheckTest: 3 passed (7 assertions).
+- Endpoint gateway DISIAPKAN tapi BELUM DIPASANG: patch di /tmp/
+  apply-on-whatsapp-endpoint.mjs dan salinan lokal docs/AUDIT-ADMIN/tools/.
+  Penulisan /opt/baileys-bot/index.js di luar area kerja yang dijaga guard,
+  menunggu pernyataan tegas owner (backup + patch + node --check + restart
+  baileys-bot.service + verifikasi).
+
+Catatan: owner juga melaporkan fenomena pesan terkirim tapi tidak tampak di
+beranda WA penerima sampai dibalas; itu perilaku addressing WhatsApp (bot sudah
+punya peta LID), cek pra-kirim menutup kelas kegagalan nomor tidak terdaftar.
