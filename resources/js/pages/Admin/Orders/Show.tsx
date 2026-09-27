@@ -1006,10 +1006,10 @@ function ReturnCasePanel({
                 <Field id="return-customer-notes" label="Kronologi pelanggan" required error={form.errors.customer_notes}>
                   <Textarea rows={2} value={form.data.customer_notes} onChange={(event) => form.setData("customer_notes", event.target.value)} />
                 </Field>
+                <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
+                  <Textarea rows={2} value={form.data.admin_notes} onChange={(event) => form.setData("admin_notes", event.target.value)} placeholder="Bukti unboxing/foto dikirim via WhatsApp, hasil inspeksi, dll." />
+                </Field>
               </div>
-              <Field id="return-admin-notes" label="Catatan admin (opsional)" error={form.errors.admin_notes}>
-                <Textarea rows={2} value={form.data.admin_notes} onChange={(event) => form.setData("admin_notes", event.target.value)} placeholder="Bukti unboxing/foto dikirim via WhatsApp, hasil inspeksi, dll." />
-              </Field>
               <div className="space-y-2">
                 <p className="text-xs font-semibold">Item yang diretur</p>
                 {form.data.items.map((row, index) => (

@@ -1387,3 +1387,18 @@ Bukti:
   selisih 0 px, memenuhi toleransi ADR-022 1 px); Kronologi pelanggan kini di
   baris sendiri (y 403). Tangkapan layar panel Retur dan penyelesaian.
 - typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
+
+## 2026-09-27 10:42 UTC | zcode | Trivial | - | selesai
+Lingkup: lanjutan perapian form Catat retur; owner minta Kronologi pelanggan
+dan Catatan admin disatukan dalam satu baris.
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx): Field Catatan admin
+dipindah masuk grid dua kolom yang sama dengan Kronologi pelanggan (keduanya
+textarea rows 2, tinggi sama). Saat alasan Lainnya, ketiga textarea mengalir
+dua per baris dalam grid yang sama. Tanpa perubahan perilaku.
+
+Bukti:
+- Pengukuran DOM live: Kronologi x=256 lebar 479, Catatan admin x=746 lebar
+  479, pusat Y sama (403), selisih 0 px, memenuhi ADR-022.
+- typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
