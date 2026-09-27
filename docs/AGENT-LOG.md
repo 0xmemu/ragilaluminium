@@ -1499,3 +1499,20 @@ Bukti:
 - typecheck 0 error, eslint 0 warning, build Vite sukses.
 - Uji live di 100039: kartu Nomor order menampilkan "+ Tambah catatan",
   tidak ada lagi tombol "Tambah" telanjang. Tangkapan layar tersimpan.
+
+## 2026-09-27 11:51 UTC | zcode | Trivial | - | selesai
+Lingkup: keluhan owner, drawer Log WhatsApp terlalu penuh karena isi naskah
+templat otomatis ditampilkan utuh (satu templat WA Order COD setinggi 626px).
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx): di drawer Log WhatsApp,
+pesan otomatis kini hanya penanda: nama templat, badge Otomatis, status kirim,
+dan waktu. Isi naskah tetap tampil untuk pesan manual dan balasan pelanggan.
+Kartu Log WhatsApp di badan halaman tidak diubah (memang terlipat default
+dengan tombol Lihat isi pesan).
+
+Bukti:
+- typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live drawer 100039: 35 pesan, gelembung tertinggi 95px (sebelumnya
+  626px); pemeriksaan presisi di portal drawer: 0 baris berisi naskah panjang
+  templat, isi pesan manual pelanggan tetap ada. Tangkapan layar tersimpan.

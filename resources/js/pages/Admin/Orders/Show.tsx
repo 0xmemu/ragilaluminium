@@ -554,6 +554,7 @@ interface ReturnCase {
   admin_notes?: string | null
   refund_amount?: number
   replacement_amount?: number
+  return_shipping_cost?: number
   completed_at?: string | null
   items: ReturnCaseItem[]
 }
@@ -569,6 +570,14 @@ interface ReturnEligibility {
    * dilewati.
    */
   warnings?: string[]
+}
+
+const RESOLUTION_LABELS: Record<string, string> = {
+  refund: "Refund",
+  replacement: "Ganti barang",
+  reship: "Kirim ulang",
+  compensation: "Kompensasi",
+  no_compensation: "Tanpa kompensasi",
 }
 
 const RETURN_REASONS = [
@@ -968,7 +977,42 @@ function ReturnCasePanel({
                     </Button>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="mt-3 border-t border-border/60 pt-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="font-semibold text-foreground">
+                      Resolusi: {RESOLUTION_LABELS[item.resolution_type ?? ""] ?? humanize(item.resolution_type)}
+                      {item.resolution_type === "refund" && item.refund_amount
+                        ? ` (${formatCurrency(item.refund_amount)})`
+                        : null}
+                    </span>
+                    {(item.return_shipping_cost ?? 0) > 0 ? (
+                      <span className="text-muted-foreground">
+                        Ongkir retur toko: {formatCurrency(item.return_shipping_cost)}
+                      </span>
+                    ) : null}
+                    {item.completed_at ? (
+                      <span className="text-muted-foreground">
+                        Selesai: {formatDateTime(item.completed_at)}
+                      </span>
+                    ) : null}
+                  </div>
+                  {item.resolution_type === "replacement" && item.items?.some((i) => (i.replacement_quantity ?? 0) > 0) ? (
+                    <div className="mt-2 text-muted-foreground">
+                      <p className="font-medium text-foreground">Barang pengganti:</p>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {item.items
+                          .filter((i) => (i.replacement_quantity ?? 0) > 0)
+                          .map((i) => (
+                            <li key={i.id}>
+                              {i.name || `Item #${i.order_item_id}`} · {i.replacement_quantity} pcs
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
           ))}
 
@@ -2491,7 +2535,7 @@ export default function OrderShow({
                             </span>
                           ) : null}
                         </div>
-                        {message.text ? (
+                        {!message.is_automated && message.text ? (
                           <p className="mt-1.5 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
                             {message.text}
                           </p>
