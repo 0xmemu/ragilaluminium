@@ -1587,3 +1587,33 @@ Bukti:
   tombol merah "Kirim ulang WA (12)"; kartu ORD26090009/0008/0007/0005
   (nomor lain tanpa gagal) tetap menampilkan Chat WA hijau. Halaman daftar
   kembali 200. Tangkapan layar tersimpan.
+
+## 2026-09-27 13:19 UTC | zcode | Standard | - | selesai
+Lingkup: koreksi owner atas semantik tombol kirim ulang WA (dua putaran
+masukan): bukan mengirim backlog lama dan bukan blast beberapa pesan sekaligus.
+Tombol hanya untuk pesan PERUBAHAN STATUS pesanan yang gagal terkirim, satu
+notifikasi dikirim ulang satu kali.
+Dampak spec: tidak berubah (tanpa rute/schema/enum baru; penanda
+tergantikan memakai kolom raw_payload yang sudah ada)
+
+Semantik final:
+- Hanya kunci templat perubahan status (STATUS_TEMPLATE_KEYS:
+  order_created, payment_instructions, payment_confirmed, order_shipped,
+  order_delivered, order_issue_followup, order_returned) yang dihitung dan
+  dikirim ulang; templat non-status (mis. balasan ulasan) diabaikan.
+- Jendela 24 jam: gagal lama otomatis diabaikan (lupakan pesan gagal
+  terdahulu), jadi 12 gagal lama tidak memicu tombol dan tidak dikirim.
+- Satu notifikasi dengan beberapa percobaan gagal dikirim ulang SEKALI
+  (percobaan terbaru); percobaan lain ditandai raw_payload.superseded_by
+  supaya tidak dihitung dan tidak terkirim ganda.
+- Pengiriman ulang memperbarui status baris yang sama; sukses langsung
+  menurunkan hitungan dan menghilangkan tombol.
+
+Bukti:
+- Test AdminWhatsappResendTest 3 passed (13 assertions): notifikasi dengan
+  3 percobaan dikirim sekali (2 lainnya ditandai tergantikan), gagal lama
+  dan non-status diabaikan, tanpa gagal tidak ada perubahan data.
+- php -l x2 bersih, typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live daftar pesanan: 0 tombol kirim ulang tersisa (12 gagal lama di
+  luar jendela); kartu nomor uji kembali menampilkan Chat WA. Tangkapan
+  layar tersimpan.

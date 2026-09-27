@@ -10,13 +10,16 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Kirim ulang pesan WhatsApp yang gagal dari halaman detail pesanan
- * (permintaan owner 2026-09-27).
+ * Kirim ulang pesan perubahan status yang gagal (owner 2026-09-27).
  *
- * Kontrak: POST admin.orders.whatsapp.resend mengirim ulang isi persis dari
- * baris gagal lewat WhatsAppService; hasilnya dicatat sebagai baris pesan
- * BARU sehingga baris gagal tetap tersimpan sebagai riwayat. Tanpa pesan
- * gagal, tidak ada baris baru yang dibuat.
+ * Kontrak:
+ * - Tombol hanya menyasar pesan PERUBAHAN STATUS (kunci templat resmi) yang
+ *   gagal segar (dalam 24 jam). Gagal lama dan templat non-status diabaikan.
+ * - Satu notifikasi yang gagal berkali-kali tetap dikirim ulang SEKALI
+ *   (percobaan terbaru); percobaan lain ditandai digantikan lewat
+ *   raw_payload.superseded_by supaya tidak terkirim ganda dan tidak dihitung.
+ * - Pengiriman ulang memperbarui status baris yang sama, tidak membuat baris
+ *   baru.
  */
 class AdminWhatsappResendTest extends TestCase
 {
@@ -50,47 +53,76 @@ class AdminWhatsappResendTest extends TestCase
         ]);
     }
 
-    private function pesanGagal(Order $order, string $teks): WhatsAppMessage
+    private function pesanGagal(Order $order, string $teks, string $kunci = 'order_created'): WhatsAppMessage
     {
         return WhatsAppMessage::create([
             'direction' => 'outbound',
             'order_id' => $order->id,
             'phone_number' => '6285725116817',
             'provider' => 'baileys',
-            'internal_template_key' => 'order_created',
+            'internal_template_key' => $kunci,
             'status' => 'failed',
             'content_text' => $teks,
             'error_reason' => 'gateway down',
         ]);
     }
 
-    public function test_kirim_ulang_mencatat_baris_baru_dan_menyimpan_riwayat_gagal(): void
+    public function test_notifikasi_dengan_beberapa_percobaan_dikirim_ulang_sekali(): void
     {
         Http::fake(['*' => Http::response(['id' => 'WA-RESEND-1'], 200)]);
 
         $order = $this->order();
-        $this->pesanGagal($order, 'Pesan pertama gagal');
-        $this->pesanGagal($order, 'Pesan kedua gagal');
+        $a = $this->pesanGagal($order, 'Percobaan pertama gagal');
+        $b = $this->pesanGagal($order, 'Percobaan kedua gagal');
+        $c = $this->pesanGagal($order, 'Percobaan ketiga gagal');
         $jumlahAwal = WhatsAppMessage::count();
 
         $response = $this->actingAs($this->admin())
             ->post(route('admin.orders.whatsapp.resend', $order));
 
         $response->assertRedirect();
-        $this->assertSame($jumlahAwal + 2, WhatsAppMessage::count());
 
-        // Baris gagal tetap tersimpan sebagai riwayat percobaan.
-        $this->assertSame(2, WhatsAppMessage::where('status', 'failed')->count());
+        // Tidak ada baris baru yang dibuat.
+        $this->assertSame($jumlahAwal, WhatsAppMessage::count());
 
-        // Dua baris baru berisi naskah persis dari baris gagal, statusnya bukan gagal.
-        $baru = WhatsAppMessage::where('internal_template_key', 'free_form')->get();
-        $this->assertSame(2, $baru->count());
-        $this->assertTrue($baru->pluck('content_text')->contains('Pesan pertama gagal'));
-        $this->assertTrue($baru->pluck('content_text')->contains('Pesan kedua gagal'));
-        $this->assertSame(0, $baru->where('status', 'failed')->count());
+        // Percobaan terbaru terkirim; dua percobaan lain gagal tercatat
+        // digantikan sehingga tidak ikut dikirim dan tidak dihitung.
+        $terbaru = $c->fresh();
+        $this->assertSame('sent', $terbaru->status);
+        $this->assertSame($terbaru->id, $b->fresh()->raw_payload['superseded_by']);
+        $this->assertSame($terbaru->id, $a->fresh()->raw_payload['superseded_by']);
+
+        // Tidak ada lagi notifikasi status yang tersisa untuk dikirim ulang.
+        $sisa = WhatsAppMessage::query()
+            ->where('status', 'failed')
+            ->whereNull('raw_payload->superseded_by')
+            ->whereIn('internal_template_key', app(\App\Services\WhatsAppService::class)->statusTemplateKeys())
+            ->count();
+        $this->assertSame(0, $sisa);
     }
 
-    public function test_tanpa_pesan_gagal_tidak_membuat_baris_baru(): void
+    public function test_gagal_lama_dan_bukan_templat_status_diabaikan(): void
+    {
+        Http::fake(['*' => Http::response(['id' => 'WA-RESEND-2'], 200)]);
+
+        $order = $this->order();
+        $lama = $this->pesanGagal($order, 'Pesan lama gagal');
+        $lama->created_at = now()->subDays(3);
+        $lama->save();
+        $bukanStatus = $this->pesanGagal($order, 'Pesan non-status gagal', 'wa_balasan_ulasan');
+        $jumlahAwal = WhatsAppMessage::count();
+
+        $response = $this->actingAs($this->admin())
+            ->post(route('admin.orders.whatsapp.resend', $order));
+
+        $response->assertRedirect();
+        $this->assertSame($jumlahAwal, WhatsAppMessage::count());
+        $this->assertSame('failed', $lama->fresh()->status);
+        $this->assertSame('failed', $bukanStatus->fresh()->status);
+        $this->assertNull($bukanStatus->fresh()->raw_payload['superseded_by'] ?? null);
+    }
+
+    public function test_tanpa_pesan_gagal_tidak_mengubah_data(): void
     {
         $order = $this->order();
         $jumlahAwal = WhatsAppMessage::count();

@@ -333,7 +333,7 @@ function OrderCardRow({
                   { preserveScroll: true, onFinish: () => setResendBusy(false) },
                 )
               }}
-              title="Ada pesan WhatsApp yang gagal terkirim. Tekan untuk mengirim ulang lewat gateway."
+              title="Ada pemberitahuan status pesanan yang gagal terkirim. Tekan untuk kirim ulang lewat gateway."
             >
               Kirim ulang WA ({order.whatsapp_failed_count})
             </Button>

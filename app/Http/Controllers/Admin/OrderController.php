@@ -221,8 +221,11 @@ class OrderController extends Controller
         // bukan per baris.
         $gagalPerTelepon = \App\Models\WhatsAppMessage::query()
             ->whereIn('phone_number', $pageOrders->map(fn (Order $o) => PhoneNumber::normalize((string) $o->customer_phone) ?: (string) $o->customer_phone)->filter()->unique()->values())
+            ->whereIn('internal_template_key', $this->whatsapp->statusTemplateKeys())
+            ->whereNull('raw_payload->superseded_by')
             ->where('status', 'failed')
-            ->selectRaw('phone_number, count(*) as jumlah')
+            ->where('created_at', '>=', now()->subHours(self::RESEND_WINDOW_HOURS))
+            ->selectRaw('phone_number, count(distinct internal_template_key) as jumlah')
             ->groupBy('phone_number')
             ->pluck('jumlah', 'phone_number')->all();
 
@@ -376,8 +379,12 @@ class OrderController extends Controller
         $whatsappFailedCount = \App\Models\WhatsAppMessage::query()
             ->when($customerPhone !== '', fn ($q) => $q->where('phone_number', $customerPhone))
             ->when($customerPhone === '', fn ($q) => $q->where('order_id', $order->id))
+            ->whereIn('internal_template_key', $this->whatsapp->statusTemplateKeys())
+            ->whereNull('raw_payload->superseded_by')
             ->where('status', 'failed')
-            ->count();
+            ->where('created_at', '>=', now()->subHours(self::RESEND_WINDOW_HOURS))
+            ->distinct()
+            ->count('internal_template_key');
 
         $events = EventLog::query()
             ->where('entity_type', 'order')
@@ -1575,39 +1582,64 @@ class OrderController extends Controller
      * persis isi tersimpan pada baris gagal; hasilnya dicatat sebagai baris
      * pesan baru supaya riwayat percobaan tetap utuh.
      */
+    /**
+     * Jendela antrean ulang WA (jam). Hanya pesan gagal dalam jendela ini
+     * yang ditawarkan lewat tombol kirim ulang; gagal lebih tua dianggap
+     * selesai ditangani lewat chat manual supaya tidak menumpuk
+     * (keputusan owner 2026-09-27: lupakan pesan gagal terdahulu).
+     */
+    private const RESEND_WINDOW_HOURS = 24;
+
     public function resendWhatsapp(Order $order): RedirectResponse
     {
         $telepon = PhoneNumber::normalize((string) $order->customer_phone) ?: (string) $order->customer_phone;
 
         // Cakupan sama dengan utas log: per nomor pelanggan, karena obrolan
         // manual yang tidak tertaut pesanan tetap bagian dari percakapan.
+        // Hanya notifikasi PERUBAHAN STATUS yang gagal segar. Satu notifikasi
+        // bisa punya beberapa percobaan gagal: cukup percobaan terbaru yang
+        // dikirim ulang, sisanya ditandai digantikan supaya tidak terkirim
+        // ganda dan tidak menumpuk (owner 2026-09-27).
         $gagal = \App\Models\WhatsAppMessage::query()
             ->when($telepon !== '', fn ($q) => $q->where('phone_number', $telepon))
             ->when($telepon === '', fn ($q) => $q->where('order_id', $order->id))
+            ->whereIn('internal_template_key', $this->whatsapp->statusTemplateKeys())
+            ->whereNull('raw_payload->superseded_by')
             ->where('status', 'failed')
             ->whereNotNull('content_text')
+            ->where('created_at', '>=', now()->subHours(self::RESEND_WINDOW_HOURS))
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->groupBy('internal_template_key');
 
         if ($gagal->isEmpty()) {
             return redirect()->back()
-                ->with('status', 'Tidak ada pesan WhatsApp yang gagal untuk dikirim ulang.');
+                ->with('status', 'Tidak ada pemberitahuan status yang gagal untuk dikirim ulang.');
         }
 
         $sukses = 0;
-        foreach ($gagal as $pesan) {
-            $hasil = $this->whatsapp->sendTextMessage(
-                (string) $pesan->phone_number,
-                (string) $pesan->content_text,
-                $order->id,
-            );
-            if ($hasil && $hasil->status !== 'failed') {
+        foreach ($gagal as $percobaan) {
+            $terbaru = $percobaan->sortByDesc('id')->first();
+
+            $hasil = $this->whatsapp->resendMessage($terbaru);
+            if ($hasil->status !== 'failed') {
                 $sukses++;
             }
+
+            // Percobaan lain dari notifikasi yang sama ditandai digantikan.
+            $percobaan
+                ->reject(fn ($p) => $p->id === $terbaru->id)
+                ->each(function ($p) use ($terbaru): void {
+                    $p->update([
+                        'raw_payload' => array_merge((array) ($p->raw_payload ?? []), [
+                            'superseded_by' => $terbaru->id,
+                        ]),
+                    ]);
+                });
         }
 
         return redirect()->back()
-            ->with('success', "Kirim ulang WhatsApp: {$sukses} dari ".$gagal->count().' pesan berhasil dikirim.');
+            ->with('success', "Kirim ulang WhatsApp: {$sukses} dari ".$gagal->count().' pemberitahuan status berhasil dikirim.');
     }
 
     /**

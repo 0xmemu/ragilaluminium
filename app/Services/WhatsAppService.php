@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\OrderCreated;
 use App\Events\PaymentConfirmed;
 use App\Models\AdminNotification;
+use App\Models\CmsTestimonial;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
@@ -21,7 +22,24 @@ use Illuminate\Support\Str;
 
 class WhatsAppService
 {
-    public const REPLY_SIGNATURE = "\n\nBalas pesan ini dengan \"OKE\" atau jika ada pertanyaan mengenai pesanan kakak";
+    /** Footer otomatis: dikosongkan owner 2026-09-15 (hapus dari semua template). */
+    public const REPLY_SIGNATURE = '';
+
+    /**
+     * Footer otomatis yang ditambahkan ke SEMUA pesan template.
+     *
+     * Sebelumnya teks ini hanya hidup di kode sehingga halaman admin
+     * menampilkan naskah yang berbeda dari pesan yang benar-benar
+     * terkirim. Sekarang nilainya bisa dioverride lewat
+     * services.whatsapp.reply_signature (env WHATSAPP_REPLY_SIGNATURE)
+     * dan ditampilkan sebagai bacaan di /admin/whatsapp/templates.
+     */
+    public static function replySignature(): string
+    {
+        $configured = trim((string) config('services.whatsapp.reply_signature'));
+
+        return $configured !== '' ? $configured : self::REPLY_SIGNATURE;
+    }
 
     public function __construct(protected OrderService $orders) {}
 
@@ -99,6 +117,40 @@ class WhatsAppService
     }
 
     /**
+     * Kirim ulang satu baris pesan yang gagal: naskah persis dari baris itu,
+     * hasil percobaan terbaru menimpa status baris yang sama supaya jumlah
+     * gagal berkurang saat berhasil. Catatan kegagalan sebelumnya dipindah ke
+     * raw_payload agar jejaknya tidak hilang (owner 2026-09-27).
+     */
+    public function resendMessage(WhatsAppMessage $message): WhatsAppMessage
+    {
+        $sebelumnya = [
+            'status' => $message->status,
+            'error_reason' => $message->error_reason,
+            'attempted_at' => optional($message->updated_at)?->toIso8601String(),
+        ];
+
+        if (! $this->providerConfigured($this->defaultProvider())) {
+            $message->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+                'error_reason' => null,
+                'raw_payload' => array_merge((array) ($message->raw_payload ?? []), ['resend' => $sebelumnya]),
+            ]);
+
+            return $message;
+        }
+
+        $hasil = $this->sendViaBaileys((string) $message->phone_number, (string) $message->content_text);
+        $this->applyProviderResult($message, $hasil);
+        $message->update([
+            'raw_payload' => array_merge((array) ($message->raw_payload ?? []), ['resend' => $sebelumnya]),
+        ]);
+
+        return $message->fresh() ?? $message;
+    }
+
+    /**
      * @return array{
      *   configured: bool,
      *   default_provider: string,
@@ -116,6 +168,21 @@ class WhatsAppService
      *   }>
      * }
      */
+    /**
+     * Status sambungan LIVE ke gateway WhatsApp (bukan sekadar konfigurasi).
+     *
+     * Owner 2026-09-17: dipakai ringkasan halaman admin untuk menampilkan
+     * "Terhubung / Terputus" tanpa masing-masing controller menduplikasi
+     * pemanggilan HTTP ke gateway. Kegagalan menanyakan status tidak pernah
+     * melempar error, dianggap belum terhubung.
+     *
+     * @return array{configured: bool, connected: bool, phone: string|null, error: string|null}
+     */
+    public function liveConnectionStatus(): array
+    {
+        return \App\Support\WhatsAppSessionPhone::gatewayStatus();
+    }
+
     public function connectionStatus(): array
     {
         $defaultProvider = $this->defaultProvider();
@@ -191,6 +258,20 @@ class WhatsAppService
 
         if ($status === 'logged_out') {
             WhatsAppSessionNotifier::notifyLoggedOut();
+
+            // Nomor tersimpan sengaja TIDAK dihapus: website tetap menampilkan
+            // nomor terakhir sampai nomor baru benar-benar tersambung.
+            return;
+        }
+
+        // Perangkat tersambung (baru/ganti nomor): simpan nomor terkini supaya
+        // seluruh tampilan nomor WA di website ikut berganti otomatis.
+        if (in_array($status, ['open', 'connected'], true)) {
+            try {
+                \App\Support\WhatsAppSessionPhone::sync();
+            } catch (\Throwable $e) {
+                Log::warning('Gagal sinkron nomor WhatsApp dari webhook sesi', ['error' => $e->getMessage()]);
+            }
         }
     }
 
@@ -401,9 +482,13 @@ class WhatsAppService
 
         $rendered = trim($body) !== '' ? trim($body) : implode("\n", $variables);
 
-        // Kontrak owner 2026-09-03: footer balasan wajib di SEMUA pesan template
-        // agar sesi WhatsApp tidak ter-flag spam karena tanpa interaksi.
-        return $rendered.self::REPLY_SIGNATURE;
+        // Owner 2026-09-15: footer balasan dihapus dari semua template (mencabut
+        // kontrak anti-spam 2026-09-03). Aktifkan lagi via env WHATSAPP_REPLY_SIGNATURE.
+        $signature = self::replySignature();
+
+        return $signature !== '' ? $rendered."
+
+".$signature : $rendered;
     }
 
     protected function toBaileysChatId(string $phone): string
@@ -703,7 +788,28 @@ class WhatsAppService
     protected array $templateCache = [];
 
     /**
-     * Kunci template otomatis untuk STATUS pesanan saat ini.
+     * Kunci templat otomatis untuk perubahan status pesanan. Jaga sinkron
+     * dengan templateKeyForOrderStatus di bawah. Dipakai fitur kirim ulang WA
+     * supaya tombolnya hanya menyasar notifikasi perubahan status.
+     */
+    public const STATUS_TEMPLATE_KEYS = [
+        'order_created',
+        'payment_instructions',
+        'payment_confirmed',
+        'order_shipped',
+        'order_delivered',
+        'order_issue_followup',
+        'order_returned',
+    ];
+
+    /** Daftar kunci templat perubahan status pesanan (fitur kirim ulang). */
+    public function statusTemplateKeys(): array
+    {
+        return self::STATUS_TEMPLATE_KEYS;
+    }
+
+    /**
+     * Status tanpa template otomatis (completed, cancelled) mengembalikan null:
      *
      * Dipetakan dari perilaku pengiriman otomatis yang sudah ada supaya tombol
      * "Chat WA" di panel admin menghasilkan naskah yang SAMA dengan pesan yang
@@ -917,6 +1023,58 @@ class WhatsAppService
             $order->order_number,
             $waybill !== '' ? $waybill : '-',
         ];
+    }
+
+    /**
+     * Variabel naskah WA balasan ulasan (owner 2026-09-21).
+     *
+     * Naskah resmi memakai TEPAT tiga token berurutan: nama pelanggan, nomor
+     * order, lalu isi balasan admin. Nama produk dan label varian sudah dihapus
+     * dari naskah, jadi keduanya tidak lagi dihitung di sini.
+     *
+     * Ulasan yang tidak tertaut pesanan diisi tanda "-" pada nomor order supaya
+     * naskahnya tidak pernah bolong.
+     *
+     * @return list<string>
+     */
+    public function variablesForReviewReplied(CmsTestimonial $testimonial): array
+    {
+        $customerName = trim((string) $testimonial->customer_name);
+        $orderNumber = trim((string) ($testimonial->order?->order_number));
+        $reply = trim((string) $testimonial->admin_reply);
+
+        return [
+            $customerName !== '' ? $customerName : 'Kak',
+            $orderNumber !== '' ? $orderNumber : '-',
+            $reply,
+        ];
+    }
+
+    /**
+     * WA balasan ulasan saat admin PERTAMA KALI membalas ulasan pelanggan.
+     *
+     * Nomor tujuan hanya diketahui bila ulasan tertaut pesanan. Ulasan tanpa
+     * pesanan (mis. dibuat admin) tidak punya nomor, jadi tidak ada yang
+     * dikirim dan method mengembalikan null tanpa melempar exception.
+     *
+     * Perlakuan kegagalan sama seperti template otomatis lain: statusnya
+     * ditentukan sendTemplateMessage lewat baris whatsapp_messages, tanpa
+     * penanganan khusus yang menyembunyikan kegagalan.
+     */
+    public function notifyReviewReplied(CmsTestimonial $testimonial): ?WhatsAppMessage
+    {
+        $phone = trim((string) ($testimonial->order?->customer_phone));
+
+        if ($phone === '') {
+            return null;
+        }
+
+        return $this->sendTemplateMessage(
+            $phone,
+            'review_replied',
+            $this->variablesForReviewReplied($testimonial),
+            $testimonial->order_id,
+        );
     }
 
     protected function customerName(Order $order): string
