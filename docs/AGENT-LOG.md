@@ -1952,3 +1952,32 @@ Bukti:
   halaman. typecheck 0 error, eslint bersih, build sukses.
 - Test OrderEventLabelsEventTypeTest dan ReturnCourierVisibilityTest tetap
   lulus.
+
+## 2026-09-27 20:46 UTC | zcode | Standard | - | selesai
+Lingkup: audit kesehatan seluruh layanan dan API di server 209 atas permintaan
+owner ("cek semua api... semua di server").
+Dampak spec: tidak berubah (audit saja, tanpa perubahan kode)
+
+Cakupan yang diperiksa: 24 layanan systemd aktif, port, sumber daya, cron,
+jadwal Laravel, antrean, MySQL, Redis, Reverb, tunnel Cloudflare (Docker),
+gateway WhatsApp, integrasi J&T, cadangan, dan alert infrastruktur.
+
+Hasil utama:
+- Semua layanan inti hidup: nginx, php8.3-fpm, mysql, redis, ragil-queue,
+  baileys-bot, laravel-reverb, cron. Tunnel jalan lewat Docker (ragil-cloudflared).
+- Sumber daya sehat: disk 37%, RAM 2,8/7,9 GB, load 0,08, uptime 94 hari.
+- Laravel production, debug off, cache/queue/session redis-database, 0 error
+  hari ini, 0 failed job. Config NOT CACHED = kondisi dikenal.
+- Scheduler jalan tiap menit; infrastruktur cadangan lengkap (harian + R2,
+  binlog per jam, drill PITR, restore test mingguan, health check 5 menit).
+- Gateway WA: 10 endpoint diverifikasi; semuanya berfungsi; /disconnect
+  sengaja tidak dipanggil. /send-invoice-image ternyata tidak pernah dipanggil
+  aplikasi dan crash bila methods bukan string (terverifikasi 200 dengan
+  payload lengkap). 3 pesan uji dikirim ke nomor uji owner.
+- TEMUAN: 6 alert aktif di alert-latest.txt + Telegram: r2-upload (binlog,
+  sejak 3 Sep), smoke-test (27 Sep), db-live-health (27 Sep), semantic-audit
+  (27 Sep), drill-pitr (21 Sep), stale-or-restore (restore test telat 328 jam,
+  max 168 jam). PostgreSQL jalan namun tidak dipakai aplikasi.
+
+Tindak lanjut yang disarankan (menunggu owner): investigasi 6 alert, dan
+pertimbangkan mematikan PostgreSQL yang tidak terpakai.
