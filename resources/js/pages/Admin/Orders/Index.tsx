@@ -568,7 +568,12 @@ function OrderCardRow({
 
           {order.secondary_action ? (
             order.secondary_action.href ? (
-              <Button asChild variant="secondary" size="xs" className="w-full xl:w-auto">
+              <Button
+                asChild
+                variant={order.secondary_action.kind === "start_return" ? "destructive" : "secondary"}
+                size="xs"
+                className="w-full xl:w-auto"
+              >
                 <Link href={order.secondary_action.href}>{order.secondary_action.label}</Link>
               </Button>
             ) : order.secondary_action.next_status ? (

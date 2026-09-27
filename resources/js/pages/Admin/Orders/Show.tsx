@@ -1332,7 +1332,12 @@ export default function OrderShow({
         </Button>
       ) : null}
       {secondaryAction?.href ? (
-        <Button asChild variant="secondary" size="sm" className="shrink-0">
+        <Button
+          asChild
+          variant={secondaryAction.kind === "start_return" ? "destructive" : "secondary"}
+          size="sm"
+          className="shrink-0"
+        >
           <a href={secondaryAction.href}>{secondaryAction.label}</a>
         </Button>
       ) : null}

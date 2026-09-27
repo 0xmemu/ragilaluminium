@@ -1445,3 +1445,22 @@ Bukti:
 - Uji live di 100040: 0 tombol stepper tersisa untuk dua item 1 unit, dua
   kotak centang aktif, ringkasan "2 dari 2 unit dipilih retur" tetap jalan.
   Tangkapan layar tersimpan.
+
+## 2026-09-27 11:26 UTC | zcode | Trivial | - | selesai
+Lingkup: keputusan owner 2026-09-27 setelah penjelasan logika penamaan:
+aksi retur di daftar pesanan dan header detail pesanan jadi label "Retur"
+berwarna merah.
+Dampak spec: tidak berubah (label dan kelas tampilan saja; payload tetap)
+
+Perubahan:
+- app/Http/Controllers/Admin/OrderController.php: secondaryActionFor status
+  delivered, label "Catat Retur" jadi "Retur"; komentar kode ikut disesuaikan.
+- resources/js/pages/Admin/Orders/Index.tsx dan Show.tsx: kedua renderer
+  aksi sekunder memakai varian destructive (merah, konvensi button.tsx)
+  ketika kind === "start_return", secondary untuk kind lain.
+
+Bukti:
+- php -l bersih, typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live: tombol di header detail 100039 dan di daftar pesanan (filter
+  Sampai) sama-sama berlabel "Retur" dengan warna teks merah
+  rgb(226, 60, 60). Tangkapan layar daftar tersimpan.

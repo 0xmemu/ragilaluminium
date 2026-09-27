@@ -1534,9 +1534,9 @@ class OrderController extends Controller
             // Sampai. Tautan lama menunjuk #return-case yang tidak ada sehingga
             // tombolnya mati. Jalurnya: kembalikan pesanan ke Sampai lebih dulu
             // lewat aksi utama, baru catat retur.
-            // Sampai → Selesaikan Pesanan (primary) + Proses Retur (sekunder).
+            // Sampai → Selesaikan Pesanan (primary) + Retur (sekunder).
             'delivered' => [
-                'label' => 'Catat Retur',
+                'label' => 'Retur',
                 'next_status' => null,
                 'kind' => 'start_return',
                 'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
