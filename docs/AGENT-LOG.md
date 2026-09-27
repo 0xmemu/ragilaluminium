@@ -1764,3 +1764,15 @@ otomatis saat paket sampai"; test penjaga ikut diperbarui.
 
 Bukti: php -l bersih; test OrderEventLabelsEventTypeTest 1 passed (9
 assertions). reload halaman menampilkan label baru.
+
+## 2026-09-27 17:03 UTC | zcode | Trivial | - | selesai
+Lingkup: masukan owner, akhiran label kirim ulang memakai kurung:
+"WA Resi Dikirim (Ulang)", bukan "WA Resi Dikirim Ulang".
+Dampak spec: tidak berubah
+
+Perubahan: akhiran label utas pesan WA " Ulang" menjadi " (Ulang)"; test
+penjaga diperketat mencekik tanpa kurung.
+
+Bukti: php -l bersih; test WhatsAppFromMeLogTest 3 passed (14 asersi) dengan
+asersi (Ulang); uji live order 100000 menampilkan WA Pesanan Diproses (Ulang),
+WA Order COD (Ulang), WA Resi Dikirim (Ulang), WA Pesanan Sampai (Ulang).

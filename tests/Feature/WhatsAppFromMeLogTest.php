@@ -127,6 +127,6 @@ class WhatsAppFromMeLogTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('admin.orders.show', $order))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('order.whatsapp_messages.0.label', fn ($label) => str_contains((string) $label, 'Ulang')));
+                ->where('order.whatsapp_messages.0.label', fn ($label) => str_contains((string) $label, '(Ulang)')));
     }
 }
