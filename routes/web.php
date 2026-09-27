@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\BerandaController;
-use App\Http\Controllers\Admin\CtaSettingsController;
 use App\Http\Controllers\Admin\BerandaPopularController;
 use App\Http\Controllers\Admin\CaraPemesananController;
 use App\Http\Controllers\Admin\ApaKataController;
@@ -294,6 +293,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('orders/{order}/items', [AdminOrderController::class, 'updateItems'])->name('orders.items.update');
     Route::put('orders/{order}/admin-notes', [AdminOrderController::class, 'updateAdminNotes'])->name('orders.admin-notes.update');
     Route::post('orders/{order}/shipping', [AdminOrderController::class, 'storeShipping'])->name('orders.shipping.store');
+    Route::post('orders/{order}/whatsapp/resend', [AdminOrderController::class, 'resendWhatsapp'])->name('orders.whatsapp.resend');
     Route::post('orders/{order}/shipping/refresh', [AdminOrderController::class, 'refreshShipping'])->name('orders.shipping.refresh');
 
     // Payments
@@ -391,10 +391,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('cod-settings', [CodSettingsController::class, 'edit'])->name('cod-settings.edit');
     Route::put('cod-settings', [CodSettingsController::class, 'update'])->name('cod-settings.update');
-
-    // Teks CTA penutup storefront (banner merah di akhir halaman publik).
-    Route::get('cta-storefront', [CtaSettingsController::class, 'edit'])->name('cta-settings.edit');
-    Route::put('cta-storefront', [CtaSettingsController::class, 'update'])->name('cta-settings.update');
 
     Route::get('shipping-subsidy', [ShippingSubsidyController::class, 'edit'])->name('shipping-subsidy.edit');
     Route::put('shipping-subsidy', [ShippingSubsidyController::class, 'update'])->name('shipping-subsidy.update');

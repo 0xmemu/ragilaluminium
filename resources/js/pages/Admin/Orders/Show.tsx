@@ -133,6 +133,7 @@ interface OrderDetail {
       last_status_at?: string | null
     }>
     return_cases?: ReturnCase[]
+  whatsapp_failed_count?: number
     whatsapp_messages: Array<{
       text?: string
       is_automated?: boolean
@@ -1226,6 +1227,7 @@ export default function OrderShow({
   const [reviewReplyOpen, setReviewReplyOpen] = React.useState(false)
   const [trackingOpen, setTrackingOpen] = React.useState(false)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
+  const [resendWaBusy, setResendWaBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [detailDrawer, setDetailDrawer] = React.useState<null | "riwayat" | "status" | "wa">(null)
   const waLogRef = React.useRef<HTMLDivElement | null>(null)
@@ -1356,7 +1358,25 @@ export default function OrderShow({
 
   const pageActions = (
     <div className="flex flex-wrap items-center gap-2">
-      {order.whatsapp_status_url || order.whatsapp_url ? (
+      {(order.whatsapp_failed_count ?? 0) > 0 ? (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="shrink-0"
+          disabled={resendWaBusy}
+          onClick={() => {
+            setResendWaBusy(true)
+            router.post(
+              routeUrl("admin.orders.whatsapp.resend", { order: order.id }),
+              {},
+              { preserveScroll: true, onFinish: () => setResendWaBusy(false) },
+            )
+          }}
+          title="Ada pesan WhatsApp yang gagal terkirim. Tekan untuk mengirim ulang lewat gateway."
+        >
+          Kirim ulang WA ({order.whatsapp_failed_count})
+        </Button>
+      ) : order.whatsapp_status_url || order.whatsapp_url ? (
         <Button asChild variant="secondary" size="sm" className="shrink-0">
           <a
             href={order.whatsapp_status_url || order.whatsapp_url || "#"}

@@ -233,6 +233,7 @@ Kontrak payload Performa Toko: report.sections berisi lima grup KPI, dan jumlah 
 - `GET /admin/orders/{order}/payments` -> `Admin\PaymentController@byOrder`  (name: `admin.orders.payments`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/orders/{order}/payments` -> `Admin\PaymentController@store`  (name: `admin.payments.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/orders/{order}/shipping` -> `Admin\OrderController@storeShipping`  (name: `admin.orders.shipping.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `POST /admin/orders/{order}/whatsapp/resend` -> `Admin\OrderController@resendWhatsapp`  (name: `admin.orders.whatsapp.resend`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/orders/{order}/shipping/refresh` -> `Admin\OrderController@refreshShipping`  (name: `admin.orders.shipping.refresh`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/orders/{order}/status` -> `Admin\OrderController@updateStatus`  (name: `admin.orders.status`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders/{order}/status` -> `Admin\OrderController@statusEntry` (name: `admin.orders.status.view`): handoff ke detail order; perubahan status tetap memakai PUT.

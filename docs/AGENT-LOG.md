@@ -1532,3 +1532,30 @@ Bukti:
 - Vitest: 28 berkas, 230 tes lulus.
 - Typecheck 0 error, ESLint bersih, build Vite sukses.
 - Uji browser di pesanan 100039 (`ra.333labs.tech/admin/orders/100039`): form penyelesaian dan tampilan kartu kasus berjalan lancar.
+
+## 2026-09-27 12:16 UTC | zcode | Standard | - | selesai
+Lingkup: keputusan owner 2026-09-27, tombol Chat WA di header detail pesanan
+berubah kontekstual: ada pesan WA gagal, jadi tombol merah "Kirim ulang WA
+(N)" yang benar-benar mengirim ulang lewat gateway; tidak ada gagal, tetap
+Chat WA.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (rute baru POST
+admin/orders/{order}/whatsapp/resend, tercatat di
+docs/api-and-routes-ragil-aluminium.md)
+
+Perubahan:
+- routes/web.php + OrderController@resendWhatsapp: kirim ulang seluruh pesan
+  gagal dalam cakupan utas (per nomor pelanggan yang dinormalisasi, sama
+  dengan utas log, bukan kolom order_id), naskah persis dari baris gagal,
+  hasilnya baris pesan baru sehingga riwayat gagal tetap utuh.
+- Payload show() bertambah whatsapp_failed_count; header detail (Show.tsx)
+  menampilkan tombol merah dengan jumlah, beralih ke Chat WA saat nihil.
+
+Bukti:
+- Test penjaga baru AdminWhatsappResendTest: 2 passed (9 assertions),
+  mencakup kasus kirim ulang membuat baris baru tanpa menghapus riwayat
+  gagal, dan kasus tanpa gagal tidak membuat baris.
+- php -l bersih, typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live di 100039: tombol merah "Kirim ulang WA (12)" muncul di header
+  menggantikan Chat WA, sesuai 12 baris gagal per nomor di database.
+  Tekan tombolnya belum dilakukan (akan mengirim 12 pesan lama ke nomor uji;
+  tersedia untuk owner).

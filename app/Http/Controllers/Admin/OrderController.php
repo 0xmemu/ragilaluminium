@@ -361,6 +361,14 @@ class OrderController extends Controller
             ->values()
             ->all();
 
+        // Jumlah pesan WA gagal dalam cakupan utas yang sama (per nomor
+        // pelanggan) untuk tombol kirim ulang di header.
+        $whatsappFailedCount = \App\Models\WhatsAppMessage::query()
+            ->when($customerPhone !== '', fn ($q) => $q->where('phone_number', $customerPhone))
+            ->when($customerPhone === '', fn ($q) => $q->where('order_id', $order->id))
+            ->where('status', 'failed')
+            ->count();
+
         $events = EventLog::query()
             ->where('entity_type', 'order')
             ->where('entity_id', $order->id)
@@ -495,6 +503,8 @@ class OrderController extends Controller
                     'last_status_at' => optional($s->last_status_at)?->toIso8601String(),
                 ])->values()->all(),
                 'whatsapp_messages' => $whatsappThread,
+                // Jumlah pesan WA gagal untuk tombol kirim ulang di header.
+                'whatsapp_failed_count' => $whatsappFailedCount,
                 'return_cases' => $order->returnCases->map(fn ($case) => [
                     'id' => $case->id,
                     'status' => $case->status,
@@ -1544,6 +1554,47 @@ class OrderController extends Controller
             ],
             default => null,
         };
+    }
+
+    /**
+     * Kirim ulang seluruh pesan WhatsApp outbound yang gagal terkirim untuk
+     * pesanan ini (permintaan owner 2026-09-27). Naskah yang dikirim ulang
+     * persis isi tersimpan pada baris gagal; hasilnya dicatat sebagai baris
+     * pesan baru supaya riwayat percobaan tetap utuh.
+     */
+    public function resendWhatsapp(Order $order): RedirectResponse
+    {
+        $telepon = PhoneNumber::normalize((string) $order->customer_phone) ?: (string) $order->customer_phone;
+
+        // Cakupan sama dengan utas log: per nomor pelanggan, karena obrolan
+        // manual yang tidak tertaut pesanan tetap bagian dari percakapan.
+        $gagal = \App\Models\WhatsAppMessage::query()
+            ->when($telepon !== '', fn ($q) => $q->where('phone_number', $telepon))
+            ->when($telepon === '', fn ($q) => $q->where('order_id', $order->id))
+            ->where('status', 'failed')
+            ->whereNotNull('content_text')
+            ->orderBy('created_at')
+            ->get();
+
+        if ($gagal->isEmpty()) {
+            return redirect()->route('admin.orders.show', $order)
+                ->with('status', 'Tidak ada pesan WhatsApp yang gagal untuk dikirim ulang.');
+        }
+
+        $sukses = 0;
+        foreach ($gagal as $pesan) {
+            $hasil = $this->whatsapp->sendTextMessage(
+                (string) $pesan->phone_number,
+                (string) $pesan->content_text,
+                $order->id,
+            );
+            if ($hasil && $hasil->status !== 'failed') {
+                $sukses++;
+            }
+        }
+
+        return redirect()->route('admin.orders.show', $order)
+            ->with('success', "Kirim ulang WhatsApp: {$sukses} dari ".$gagal->count().' pesan berhasil dikirim.');
     }
 
     /**
