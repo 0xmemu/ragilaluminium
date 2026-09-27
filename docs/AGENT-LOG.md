@@ -1697,3 +1697,35 @@ Catatan proses: penerapan patch sempat tiga kali gagal senyap karena skrip
 helper tidak menulis berkas (fungsi once tanpa fs.writeFileSync plus salah
 jumlah argumen pemanggil), terdeteksi dari mtime berkas yang tidak berubah;
 setelah skrip ditulis ulang, penerapan terverifikasi lewat grep isi berkas.
+
+## 2026-09-27 16:06 UTC | zcode | Standard | - | selesai
+Lingkup: permintaan owner, log WhatsApp mencatat juga pesan yang diketik
+admin langsung dari perangkat toko, label nama templat hanya untuk pesan
+templat, dan hasil kirim ulang berlabel "NAMA TEMPLAT Ulang" (bukan free
+form).
+Dampak spec: tidak berubah
+
+Perubahan:
+- Gateway (/opt/baileys-bot/index.js, backup .bak-fromme tidak perlu karena
+  patch idempoten dan backup presend kemarin masih ada): pesan fromMe dari
+  perangkat lain diteruskan ke webhook dengan penanda fromMe; restart
+  baileys-bot.service, tersambung otomatis.
+- WhatsAppService::handleBaileysWebhook: cabang fromMe mencatat baris pesan
+  keluar manual (tanpa kunci templat, label netral "Pesan WhatsApp", tanpa
+  badge Otomatis) dengan dedupe provider_message_id sehingga kiriman gateway
+  tidak tercatat ganda.
+- OrderController: label utas pesan dengan raw_payload.resend diberi akhiran
+  " Ulang".
+- Pemulihan data sekali jalan: 12 baris free_form warisan dicocokkan naskah
+  persis dengan baris gagal pada nomor sama; 10 pulih ke kunci templat asal
+  (payment_confirmed, order_created, order_shipped, order_delivered) dan 2
+  tanpa pasangan memakai label netral. Sisa free_form: 0.
+
+Bukti:
+- Test baru WhatsAppFromMeLogTest 3 passed: pesan HP admin tercatat outbound
+  manual tanpa kunci templat, kiriman gateway tidak tercatat ganda, label
+  kirim ulang berakhiran Ulang di payload halaman detail.
+- Seluruh test WA 12 passed (44 assertions): pra-kirim, kirim ulang,
+  penjaga checkout, fromMe log.
+- node --check bot bersih, baileys-bot.service restart dan tersambung
+  otomatis (status open, nomor toko sama).

@@ -211,6 +211,40 @@ class WhatsAppService
         $body = $payload['payload'] ?? [];
         $session = $payload['session'] ?? config('services.whatsapp.baileys.session');
 
+        if ($event === 'message' && ($body['fromMe'] ?? false)) {
+            // Pesan yang diketik admin langsung dari perangkat toko (HP atau
+            // WhatsApp Web) ikut tercatat sebagai pesan keluar manual, tanpa
+            // penanda templat. Kiriman lewat gateway tidak diduplikasi:
+            // provider_message_id-nya sudah tersimpan saat pengiriman.
+            $chatId = $body['from'] ?? ($body['chatId'] ?? null);
+
+            if ($this->isNonPersonalChat($chatId)) {
+                return;
+            }
+
+            $providerId = $body['id'] ?? null;
+            if ($providerId && WhatsAppMessage::query()
+                ->where('provider', 'baileys')
+                ->where('provider_message_id', $providerId)
+                ->exists()) {
+                return;
+            }
+
+            WhatsAppMessage::create([
+                'direction' => 'outbound',
+                'phone_number' => $this->normalizeBaileysPhone($chatId),
+                'provider' => 'baileys',
+                'provider_session' => $session,
+                'provider_message_id' => $providerId,
+                'content_text' => $body['body'] ?? null,
+                'status' => 'sent',
+                'sent_at' => now(),
+                'raw_payload' => $payload,
+            ]);
+
+            return;
+        }
+
         if ($event === 'message' && ! ($body['fromMe'] ?? false)) {
             $chatId = $body['from'] ?? ($body['chatId'] ?? null);
 

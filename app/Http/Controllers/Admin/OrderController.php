@@ -363,7 +363,10 @@ class OrderController extends Controller
                 'status' => $m->status,
                 'text' => (string) $m->content_text,
                 'internal_template_key' => $m->internal_template_key,
-                'label' => OrderEventLabels::whatsappTemplate($m->internal_template_key ?: $m->direction),
+                // Pesan yang dikirim ulang diberi akhiran Ulang supaya admin
+                // tahu ini percobaan kedua, bukan pengiriman pertama.
+                'label' => OrderEventLabels::whatsappTemplate($m->internal_template_key ?: $m->direction)
+                    . (filled(($m->raw_payload ?? [])['resend'] ?? null) ? ' Ulang' : ''),
                 'is_automated' => (bool) $m->internal_template_key,
                 'phone_number' => $m->phone_number,
                 'time_label' => optional($m->created_at)?->format('H:i'),
