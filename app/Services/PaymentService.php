@@ -123,6 +123,11 @@ class PaymentService
      */
     public function reconcile(Order $order, int $userId): void
     {
+        // Item 6 antrean: pesanan batal tidak direkonsiliasi kembali ke
+        // "Menunggu pembayaran"; status pembatalannya final.
+        if ($order->order_status === 'cancelled') {
+            return;
+        }
         DB::transaction(function () use ($order, $userId) {
             $order = Order::query()->lockForUpdate()->findOrFail($order->id);
             $payments = $order->payments()->lockForUpdate()->get(['status', 'amount']);

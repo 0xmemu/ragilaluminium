@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -25,11 +26,30 @@ class CheckoutRepeatOrderTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
+
     private function makeProduct(string $sku, string $variantSku, float $price): void
     {
         $product = Product::create([
             'parent_sku' => $sku, 'name' => 'Produk '.$sku, 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS', 'status' => 'active',
         ]);
         ProductVariant::create([

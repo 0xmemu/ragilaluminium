@@ -7,17 +7,37 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Shipping\JntCargoClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CheckoutPrefillTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
+
     private function seedProduct(): void
     {
         $product = Product::create([
             'parent_sku' => 'PRE-1', 'name' => 'Window', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
         ]);
         ProductVariant::create([
             'product_id' => $product->id, 'variant_sku' => 'PRE-1-V1',

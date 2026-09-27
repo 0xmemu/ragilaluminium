@@ -70,7 +70,7 @@ class OrderController extends Controller
             $olderThan = '';
         }
 
-        if (! in_array($paymentStatus, ['pending', 'paid', 'refunded'], true)) {
+        if (! in_array($paymentStatus, ['pending', 'paid', 'refunded', 'cancelled'], true)) {
             $paymentStatus = '';
         }
         if (! in_array($shippingStatus, ['pending_pickup', 'in_process', 'in_transit', 'delivered', 'cancelled'], true)) {
@@ -903,7 +903,10 @@ class OrderController extends Controller
 
         $replacementAmount = (float) ($validated['replacement_amount'] ?? 0);
 
-        if ($validated['resolution_type'] !== 'replacement') {
+        // Item 6 antrean: reship juga mengeluarkan barang dari gudang, jadi
+        // daftar pengganti diproses sama seperti replacement (mutasi via
+        // StockLedger di bawah).
+        if (! in_array($validated['resolution_type'], ['replacement', 'reship'], true)) {
             $validated['replacement_items'] = null;
         }
 
@@ -1019,12 +1022,9 @@ class OrderController extends Controller
                 ],
             );
 
-            // Pesanan ditolak sebelum lunas: tutup payment pending supaya tidak
-            // menggantung sebagai "COD Belum Selesai". Barang kembali ke gudang
-            // dan tidak direstore ke stok (keputusan owner 2026-09-19).
-            if ($order->payment_status !== 'paid') {
-                $this->payments->cancelPendingForReturnCompleted($order, $request->user()->id);
-            }
+            // Pesanan ditolak sebelum lunas: penutupan payment pending untuk
+            // return_completed ditangani DI MESIN STATUS (satu tempat, item 6
+            // antrean) bersama audit transisinya.
         });
 
         $this->whatsapp->sendTemplateMessage(

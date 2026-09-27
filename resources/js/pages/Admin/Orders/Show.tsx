@@ -707,7 +707,7 @@ function ReturnCasePanel({
           return_shipping_cost: Number(data.return_shipping_cost) || 0,
           returned_items: caseItem.items.map((ci) => ({ id: ci.id, returned_quantity: ci.requested_quantity })),
         }
-    if (data.resolution_type === "replacement") {
+    if (data.resolution_type === "replacement" || data.resolution_type === "reship") {
       payload.replacement_items = data.replacement_items.map((r) => ({
         order_item_id: r.order_item_id,
         product_id: Number(r.product_id) || 0,
@@ -871,7 +871,7 @@ function ReturnCasePanel({
                         </Field>
                       ) : null}
 
-                      {completion[item.id].resolution_type === "replacement" ? (
+                      {["replacement", "reship"].includes(completion[item.id].resolution_type) ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold">Barang pengganti (terkunci default)</p>

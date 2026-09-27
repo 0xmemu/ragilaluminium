@@ -1809,3 +1809,36 @@ Bukti:
 - Uji live order Selesai (100000): catatan ringkas "Retur" tampil dengan
   alasan lengkap dari server.
 - typecheck 0 error, eslint bersih, build Vite sukses.
+
+## 2026-09-27 18:23 UTC | zcode | Deep | - | selesai
+Lingkup: item 6 antrean pekerjaan, integritas stok dan pembayaran pada retur.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (migrasi skema: kolom hasil-hitung
+open_guard pada order_return_cases, enum payment_status orders bertambah
+cancelled; dokumen domain retur dan berkas antrean diperbarui)
+
+Perubahan:
+- reship kini memproses barang pengganti seperti replacement (mutasi stok via
+  StockLedger); sebelumnya daftar pengganti dibuang sehingga stok bocor.
+  UI picker pengganti tampil untuk reship juga.
+- Pesanan batal tidak menggantung: payment_status menjadi cancelled (yang
+  belum dibayar) atau refunded (yang pernah dibayar, uangnya dikembalikan).
+  Enum payment_status diperlebar; filter daftar dan label ikut.
+- Reconcile pembayaran melompati pesanan batal (status pembatalan final).
+- Penutupan payment pending saat return_completed disatukan DI MESIN STATUS;
+  panggilan ganda di controller dihapus (temuan d: satu tempat, audit tetap
+  lewat log transisi ber-aktor).
+- Migrasi unique index open_guard menolak kasus retur open kedua untuk
+  pesanan yang sama di level database (kolom CASE hasil-hitung, sah di MySQL
+  dan SQLite).
+- Temuan f (48 jam diduplikasi) dan b (pengurangan stok tanpa ledger) sudah
+  teratasi sejak 21 Sep, diverifikasi ulang hari ini.
+
+Bukti:
+- Test baru Item6IntegrityTest 4 passed: reship memotong stok, batal tanpa
+  bayar = cancelled, batal setelah bayar = refunded, kasus open kedua ditolak
+  database.
+- SELURUH suite test: 1208 passed, 1 skipped, 0 gagal (termasuk regresi
+  checkout dan KPI retur yang sempat gagal saat perantaraan dan lulus setelah
+  dua perbaikan: fake on-whatsapp dinamis di 8 berkas test checkout, dan
+  pembalikan pemindahan penutupan payment ke controller).
+- Produksi: php artisan migrate --force, dua migrasi DONE.

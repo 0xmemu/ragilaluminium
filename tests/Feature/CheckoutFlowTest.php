@@ -6,17 +6,39 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FakesJntTariff;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CheckoutFlowTest extends TestCase
 {
+    use FakesJntTariff;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
 
     public function test_checkout_creates_order_items_and_payment(): void
     {
         $product = Product::create([
             'parent_sku' => 'WIN-ORD-1', 'name' => 'Window', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
         ]);
         $variant = ProductVariant::create([
             'product_id' => $product->id, 'variant_sku' => 'WIN-ORD-1-V1',
@@ -44,6 +66,10 @@ class CheckoutFlowTest extends TestCase
             'village_id' => '3174010001',
             'postal_code' => '12190',
         ])->assertRedirect();
+
+        // J&T palsu: test tidak menyentuh API live, jadi biaya asuransi tetap
+        // keluar dan assertion di bawah terpenuhi tanpa kredensial J&T.
+        $this->fakeJntTariff();
 
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
             ->assertRedirectContains('/order/ORD');
@@ -76,7 +102,7 @@ class CheckoutFlowTest extends TestCase
     {
         $product = Product::create([
             'parent_sku' => 'WIN-ORD-2', 'name' => 'Window', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
         ]);
         ProductVariant::create([
             'product_id' => $product->id, 'variant_sku' => 'WIN-ORD-2-V1',
@@ -172,7 +198,7 @@ class CheckoutFlowTest extends TestCase
             'parent_sku' => 'WIN-IDEMP-1',
             'name' => 'Window',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

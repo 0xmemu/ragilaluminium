@@ -131,6 +131,8 @@ class OrderStateMachine
             // Barang kembali ke gudang dan tidak direstore ke stok
             // (keputusan owner 2026-09-19). Efek samping ada di dalam transaksi
             // yang sama, mengikuti pola restore stok pada pembatalan (ADR-006).
+            // Item 6 antrean: INI satu-satunya tempat penutupan payment pending
+            // untuk return_completed; panggilan ganda di controller dihapus.
             if ($to === 'return_completed' && $lockedOrder->payment_status !== 'paid') {
                 Payment::query()
                     ->where('order_id', $lockedOrder->id)

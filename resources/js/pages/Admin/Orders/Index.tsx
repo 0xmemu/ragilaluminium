@@ -1098,6 +1098,7 @@ export default function OrdersIndex({
           <option value="pending">Belum lunas</option>
           <option value="paid">Lunas</option>
           <option value="refunded">Refund</option>
+          <option value="cancelled">Dibatalkan</option>
         </Select>
         <Select
           value={activeShippingStatus || "all"}

@@ -9,11 +9,33 @@ use App\Models\User;
 use App\Support\ShippingSubsidySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\FakesJntTariff;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ShippingSubsidyTest extends TestCase
 {
+    use FakesJntTariff;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
 
     public function test_admin_can_save_shipping_subsidy_settings(): void
     {
@@ -99,7 +121,7 @@ class ShippingSubsidyTest extends TestCase
             'name' => 'Jendela Subsidi',
             'short_name' => 'SUB',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -138,6 +160,10 @@ class ShippingSubsidyTest extends TestCase
             'address_line1' => 'Jl. Contoh 1',
             'postal_code' => '50254',
         ])->assertRedirect();
+
+        // J&T palsu: test tidak menyentuh API live, jadi tarif + asuransi tetap
+        // keluar dan subsidi 50 persen dari total ongkir teruji tanpa kredensial.
+        $this->fakeJntTariff();
 
         $this->post(route('checkout.place-order'), [
             'payment_method' => 'transfer',
@@ -307,7 +333,7 @@ class ShippingSubsidyTest extends TestCase
             'name' => 'Jendela Asuransi',
             'short_name' => 'INS',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -380,34 +406,7 @@ class ShippingSubsidyTest extends TestCase
         // J&T disimulasikan mengikuti perilaku nyata (terbukti 2026-09-12):
         // biaya asuransi hanya keluar bila offerFee dikirim, dan besarnya
         // sekitar 0,2% nilai barang dengan minimum Rp 5.000.
-        $fake = new class extends \App\Services\Shipping\JntCargoClient
-        {
-            public function isEnabled(): bool
-            {
-                return true;
-            }
-
-            public function tariff(array $bizContent): \App\Services\Shipping\JntResponse
-            {
-                $offer = (int) ($bizContent['offerFee'] ?? 0);
-                $insurance = $offer > 0 ? max(5000, (int) round($offer * 0.002)) : 0;
-
-                return new \App\Services\Shipping\JntResponse(
-                    ok: true,
-                    httpStatus: 200,
-                    data: ['data' => [
-                        'estimateTime' => '1-3',
-                        'estimateCustomerCost' => '120000',
-                        'estimateSumFreight' => (string) (120000 + $insurance),
-                        'estimateInsuranceCost' => (string) $insurance,
-                    ]],
-                    requestId: 'test',
-                    elapsedMs: 1,
-                );
-            }
-        };
-
-        $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
+        $this->fakeJntTariff();
         $svc = app(\App\Services\ShippingService::class);
 
         $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
@@ -447,36 +446,7 @@ class ShippingSubsidyTest extends TestCase
             'jnt_enabled' => true,
         ]);
 
-        $fake = new class extends \App\Services\Shipping\JntCargoClient
-        {
-            public function isEnabled(): bool
-            {
-                return true;
-            }
-
-            public function tariff(array $bizContent): \App\Services\Shipping\JntResponse
-            {
-                $offer = (int) ($bizContent['offerFee'] ?? 0);
-                $insurance = $offer > 0 ? max(5000, (int) round($offer * 0.002)) : 0;
-
-                // Bentuk balasan nyata J&T: customerCost = ongkos standar,
-                // sumFreight = customerCost + asuransi.
-                return new \App\Services\Shipping\JntResponse(
-                    ok: true,
-                    httpStatus: 200,
-                    data: ['data' => [
-                        'estimateTime' => '1-3',
-                        'estimateCustomerCost' => '120000',
-                        'estimateSumFreight' => (string) (120000 + $insurance),
-                        'estimateInsuranceCost' => (string) $insurance,
-                    ]],
-                    requestId: 'test',
-                    elapsedMs: 1,
-                );
-            }
-        };
-
-        $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
+        $this->fakeJntTariff();
         $svc = app(\App\Services\ShippingService::class);
 
         // Tanpa nilai barang: ongkir = 120.000 dan tidak ada asuransi.
@@ -512,31 +482,7 @@ class ShippingSubsidyTest extends TestCase
             'jnt_enabled' => true,
         ]);
 
-        $fake = new class extends \App\Services\Shipping\JntCargoClient
-        {
-            public function isEnabled(): bool
-            {
-                return true;
-            }
-
-            public function tariff(array $bizContent): \App\Services\Shipping\JntResponse
-            {
-                // Hanya sumFreight yang ada (sudah termasuk asuransi).
-                return new \App\Services\Shipping\JntResponse(
-                    ok: true,
-                    httpStatus: 200,
-                    data: ['data' => [
-                        'estimateTime' => '1-3',
-                        'estimateSumFreight' => '130000',
-                        'estimateInsuranceCost' => '10000',
-                    ]],
-                    requestId: 'test',
-                    elapsedMs: 1,
-                );
-            }
-        };
-
-        $this->app->instance(\App\Services\Shipping\JntCargoClient::class, $fake);
+        $this->fakeJntTariff(customerCost: null, sumFreight: 130000, insurance: 10000);
         $svc = app(\App\Services\ShippingService::class);
 
         $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);

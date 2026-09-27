@@ -380,6 +380,13 @@ class OrderService
                     ->where('status', 'completed')
                     ->update(['status' => 'refunded']);
 
+                // Item 6 antrean: pesanan batal tidak boleh menggantung
+                // dengan status pembayaran lama. Yang pernah dibayar berarti
+                // uangnya dikembalikan (refunded); yang belum dibayar,
+                // pembatalannya juga tercatat.
+                $lockedOrder->payment_status = $lockedOrder->payment_status === 'paid'
+                    ? 'refunded'
+                    : 'cancelled';
                 $lockedOrder->shipping_status = 'cancelled';
                 $lockedOrder->save();
             },
