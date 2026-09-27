@@ -135,6 +135,8 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Perubahan status mengikuti alur pesanan, tidak ada dropdown status manual.",
       "Website hanya mencatat keputusan admin; website tidak mengirim refund dan tidak memantau rekening bank.",
       "Refund hanya diizinkan untuk pesanan yang sudah lunas dan tidak melebihi pembayaran riil.",
+      "Retur hanya dapat dicatat untuk pesanan berstatus Sampai; pesanan Selesai tidak bisa diretur dan ditangani lewat WhatsApp.",
+      "Imbauan batas retur 48 jam sejak paket sampai bersifat peringatan, bukan penghalang: admin tetap menilai setiap kasus.",
     ],
   },
   "admin.products.index": {

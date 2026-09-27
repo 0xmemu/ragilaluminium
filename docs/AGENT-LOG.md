@@ -1892,3 +1892,16 @@ Bukti:
   kasus retur open tak disentuh, belum lunas tak disentuh, fitur dimatikan
   tak disentuh.
 - php -l tiga berkas bersih.
+
+## 2026-09-27 18:38 UTC | zcode | Trivial | - | selesai
+Lingkup: item 10b antrean, panduan admin menyebut aturan jendela retur.
+Dampak spec: tidak berubah
+
+Perubahan: panduan halaman Detail Pesanan (admin-page-guides.ts) ditambah dua
+catatan: retur hanya dari pesanan berstatus Sampai dan pesanan Selesai
+ditangani lewat WhatsApp; imbauan batas 48 jam bersifat peringatan bukan
+penghalang. Temuan asli (panduan tidak menyebut retur sama sekali) sudah
+basi: panduan kini menjelaskan alur retur menyeluruh, yang hilang tinggal
+aturan jendelanya.
+
+Bukti: eslint bersih, build Vite sukses, test cepat 8 passed.
