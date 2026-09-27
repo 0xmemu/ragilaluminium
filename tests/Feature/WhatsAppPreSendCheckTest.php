@@ -50,9 +50,8 @@ class WhatsAppPreSendCheckTest extends TestCase
     public function test_nomor_tidak_terdaftar_gagal_sebelum_menyentuh_gateway_kirim(): void
     {
         Http::fake([
-            '*/api/on-whatsapp' => Http::response([
-                'results' => [['jid' => '628123456789@s.whatsapp.net', 'exists' => false]],
-            ], 200),
+            // Baileys menyaring nomor mati: hasil kosong berarti tidak terdaftar.
+            '*/api/on-whatsapp' => Http::response(['results' => []], 200),
             '*' => Http::response(['id' => 'WA-1'], 200),
         ]);
 

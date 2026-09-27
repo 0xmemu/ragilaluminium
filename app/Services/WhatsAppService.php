@@ -347,9 +347,21 @@ class WhatsAppService
                 return null;
             }
 
-            $hasil = $response->json('results.0.exists');
+            // Baileys menyaring nomor mati: hanya nomor terdaftar yang muncul
+            // di hasil. Nomor yang tidak muncul berarti tidak terdaftar.
+            $hasil = $response->json('results');
+            if (! is_array($hasil)) {
+                return null;
+            }
 
-            return is_bool($hasil) ? $hasil : null;
+            foreach ($hasil as $baris) {
+                $jid = (string) ($baris['jid'] ?? '');
+                if (str_starts_with($jid, $phone.'@') && ($baris['exists'] ?? false)) {
+                    return true;
+                }
+            }
+
+            return false;
         } catch (\Throwable $e) {
             return null;
         }

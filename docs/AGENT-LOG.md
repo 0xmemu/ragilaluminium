@@ -1642,3 +1642,31 @@ Perubahan:
 Catatan: owner juga melaporkan fenomena pesan terkirim tapi tidak tampak di
 beranda WA penerima sampai dibalas; itu perilaku addressing WhatsApp (bot sudah
 punya peta LID), cek pra-kirim menutup kelas kegagalan nomor tidak terdaftar.
+
+## 2026-09-27 14:34 UTC | zcode | Standard | - | selesai
+Lingkup: peluncuran cek pra-kirim registrasi nomor WA (owner: "oke eksekusi
+pra-pesan"). Gateway bot /opt/baileys-bot/index.js diperbarui dengan izin
+eksplisit owner dan backup index.js.bak-presend-20260927.
+Dampak spec: tidak berubah
+
+Langkah:
+- Guard: /opt/baileys-bot ditambahkan ke AREA_TULIS bash-guard.js (pengecualian
+  sempit, disetujui owner; bukan seluruh /opt). Rangkaian uji guard lulus
+  semua: self-test, uji-batas-area 33 izin + 34 blokir, uji-lubang-pelonggaran
+  32 kasus tanpa lubang baru, uji-regresi 39+1, uji-friksi-kerja 22/22.
+- Gateway: endpoint /api/on-whatsapp terpasang (jembatan sock.onWhatsApp),
+  node --check bersih, baileys-bot.service restart dan tersambung otomatis
+  (status open, nomor toko 62881080733754).
+- Penafsiran hasil diperbaiki setelah uji live: Baileys menyaring nomor mati
+  sehingga nomor tidak terdaftar TIDAK muncul di hasil; nomor yang tidak
+  muncul berarti tidak terdaftar (false), bukan fail-open.
+- WhatsAppService: sendViaBaileys menolak kirim saat nomor tidak terdaftar,
+  pesan dicatat gagal dengan alasan "Nomor tidak terdaftar WhatsApp."
+
+Bukti:
+- Verifikasi live endpoint: 6285725116817 (terdaftar) exists=true; nomor
+  dummy 628123456789 tidak muncul di hasil (tersaring).
+- Test WhatsAppPreSendCheckTest 3 passed + AdminWhatsappResendTest 3 passed
+  (total 6 test, 20 asersi): tidak terdaftar gagal tanpa menyentuh endpoint
+  kirim; terdaftar terkirim normal; endpoint 404 fail-open.
+- Backup gateway tersedia di /opt/baileys-bot/index.js.bak-presend-20260927.
