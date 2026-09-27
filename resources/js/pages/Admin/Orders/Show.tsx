@@ -614,7 +614,7 @@ function ReturnCasePanel({
     admin_notes: "",
     fault_party: "store",
     shipping_cost_borne_by_store: true,
-    items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity })),
+    items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity, included: true })),
   })
   const capabilities = useAdminCapabilities()
 
@@ -642,9 +642,19 @@ function ReturnCasePanel({
   const formSelesaiRef = React.useRef<Record<number, HTMLFormElement | null>>({})
 
   const { deadline, expired } = returnDeadline(order, eligibility)
+  const totalUnitRetur = form.data.items.filter((row) => row.included).reduce((n, row) => n + row.requested_quantity, 0)
+  const totalUnitDipesan = order.items.reduce((n, item) => n + item.quantity, 0)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
+    // Item yang tidak dicentang tidak dikirim; validasi server memang
+    // menerima sebagian item (larik items min:1).
+    form.transform((data) => ({
+      ...data,
+      items: data.items
+        .filter((row) => row.included)
+        .map(({ order_item_id, requested_quantity }) => ({ order_item_id, requested_quantity })),
+    }))
     form.post(routeUrl("admin.orders.returns.store", { order: order.id }), { preserveScroll: true })
   }
 
@@ -1011,15 +1021,87 @@ function ReturnCasePanel({
                 </Field>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-semibold">Item yang diretur</p>
-                {form.data.items.map((row, index) => (
-                  <div key={row.order_item_id} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="min-w-0 flex-1 truncate">{order.items[index]?.name ?? `Item #${row.order_item_id}`}</span>
-                    <Input className="w-24" type="number" min="1" max={order.items[index]?.quantity ?? 1} value={String(row.requested_quantity)} onChange={(event) => form.setData("items", form.data.items.map((line, i) => i === index ? { ...line, requested_quantity: Number(event.target.value) || 1 } : line))} />
-                  </div>
-                ))}
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold">Item yang diretur</p>
+                  <p className="text-xs text-muted-foreground">
+                    {totalUnitRetur} dari {totalUnitDipesan} unit dipilih retur
+                  </p>
+                </div>
+                <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                  {form.data.items.map((row, index) => {
+                    const item = order.items.find((i) => i.id === row.order_item_id) ?? order.items[index]
+                    const maksUnit = item?.quantity ?? 1
+                    const ikut = row.included
+                    const ubahJumlah = (nilai: number) =>
+                      form.setData(
+                        "items",
+                        form.data.items.map((line, i) =>
+                          i === index ? { ...line, requested_quantity: Math.min(maksUnit, Math.max(1, nilai)) } : line,
+                        ),
+                      )
+                    return (
+                      <div key={row.order_item_id} className={cn("flex items-center gap-3 px-3 py-2.5", !ikut && "bg-muted/30 opacity-60")}>
+                        <Checkbox
+                          checked={ikut}
+                          onChange={(event) =>
+                            form.setData(
+                              "items",
+                              form.data.items.map((line, i) => (i === index ? { ...line, included: event.target.checked } : line)),
+                            )
+                          }
+                          aria-label={ikut ? "Keluarkan item ini dari retur" : "Ikutkan item ini ke retur"}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("truncate text-[13px] font-medium", !ikut && "line-through decoration-muted-foreground/50")}>
+                            {item?.name ?? `Item #${row.order_item_id}`}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {formatCurrency(item?.unit_price ?? 0)} · {maksUnit} unit dipesan
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            disabled={!ikut || row.requested_quantity <= 1}
+                            onClick={() => ubahJumlah(row.requested_quantity - 1)}
+                            aria-label="Kurangi jumlah unit retur"
+                          >
+                            <Icon name="minus" className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Input
+                            className="w-14 text-center"
+                            type="number"
+                            min={1}
+                            max={maksUnit}
+                            value={String(row.requested_quantity)}
+                            disabled={!ikut}
+                            aria-label={`Jumlah unit retur untuk ${item?.name ?? "item"}`}
+                            onChange={(event) => ubahJumlah(Number(event.target.value) || 1)}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            disabled={!ikut || row.requested_quantity >= maksUnit}
+                            onClick={() => ubahJumlah(row.requested_quantity + 1)}
+                            aria-label="Tambah jumlah unit retur"
+                          >
+                            <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {form.errors.items ? <p className="text-xs font-medium text-destructive">{form.errors.items}</p> : null}
               </div>
-              <Button type="submit" disabled={form.processing || !can("returns.create", capabilities)} title={can("returns.create", capabilities) ? undefined : "Kamu tidak punya akses mencatat retur"}>
+              <Button
+                type="submit"
+                disabled={form.processing || totalUnitRetur === 0 || !can("returns.create", capabilities)}
+                title={can("returns.create", capabilities) ? undefined : "Kamu tidak punya akses mencatat retur"}
+              >
                 {form.processing ? "Menyimpan..." : "Catat retur"}
               </Button>
             </form>

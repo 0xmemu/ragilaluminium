@@ -1402,3 +1402,29 @@ Bukti:
 - Pengukuran DOM live: Kronologi x=256 lebar 479, Catatan admin x=746 lebar
   479, pusat Y sama (403), selisih 0 px, memenuhi ADR-022.
 - typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
+
+## 2026-09-27 10:59 UTC | zcode | Standard | - | selesai
+Lingkup: permintaan owner merombak bagian "Item yang diretur" di form Catat
+retur yang kurang fungsional (angka telanjang tanpa keterangan, semua item
+dipaksa ikut retur tanpa bisa dikecualikan).
+Dampak spec: tidak berubah (server memang menerima sebagian item; payload
+tetap items[].order_item_id + requested_quantity)
+
+Logika dan desain baru (resources/js/pages/Admin/Orders/Show.tsx):
+- Kotak centang per item: ikut retur atau tidak. Item tak dicentang meredup
+  dengan coretan dan tidak dikirim ke server (form.transform membuangnya).
+- Stepper jumlah unit: tombol kurang, angka, tombol tambah; terkunci di batas
+  1 sampai jumlah dipesan, mati saat item tidak dicentang.
+- Tiap baris menampilkan harga satuan dan jumlah dipesan.
+- Ringkasan "X dari Y unit dipilih retur" di header daftar.
+- Tombol Catat retur terkunci saat tidak ada unit yang dipilih; galat
+  validasi server untuk items kini ditampilkan di bawah daftar.
+
+Bukti:
+- typecheck 0 error (satu perbaikan: transform() Inertia mengembalikan void,
+  jadi dipisah sebagai pernyataan sebelum form.post), eslint 0 warning,
+  build Vite sukses.
+- Uji fungsional live di 100040: ringkasan berubah "2 dari 2" menjadi
+  "1 dari 2 unit dipilih retur" saat item pertama dikeluarkan, baris meredup
+  bercoret, stepper terkunci di batas 1 dari 1 unit, dan terpulihkan saat
+  dicentang kembali. Tangkapan layar tersimpan.
