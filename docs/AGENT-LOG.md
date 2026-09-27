@@ -1428,3 +1428,20 @@ Bukti:
   "1 dari 2 unit dipilih retur" saat item pertama dikeluarkan, baris meredup
   bercoret, stepper terkunci di batas 1 dari 1 unit, dan terpulihkan saat
   dicentang kembali. Tangkapan layar tersimpan.
+
+## 2026-09-27 11:07 UTC | zcode | Trivial | - | selesai
+Lingkup: lanjutan rombakan daftar item retur; owner menandai stepper mati
+total untuk barang yang dipesan 1 unit (kasus paling umum) terlihat seperti
+form rusak.
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx): stepper jumlah unit
+hanya dirender untuk item multi-unit. Item 1 unit cukup kotak centang karena
+jumlahnya pasti 1; barisnya kini hanya centang, nama, harga satuan, dan
+jumlah dipesan.
+
+Bukti:
+- typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
+- Uji live di 100040: 0 tombol stepper tersisa untuk dua item 1 unit, dua
+  kotak centang aktif, ringkasan "2 dari 2 unit dipilih retur" tetap jalan.
+  Tangkapan layar tersimpan.

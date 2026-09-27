@@ -1059,38 +1059,40 @@ function ReturnCasePanel({
                             {formatCurrency(item?.unit_price ?? 0)} · {maksUnit} unit dipesan
                           </p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            disabled={!ikut || row.requested_quantity <= 1}
-                            onClick={() => ubahJumlah(row.requested_quantity - 1)}
-                            aria-label="Kurangi jumlah unit retur"
-                          >
-                            <Icon name="minus" className="size-3.5" aria-hidden="true" />
-                          </Button>
-                          <Input
-                            className="w-14 text-center"
-                            type="number"
-                            min={1}
-                            max={maksUnit}
-                            value={String(row.requested_quantity)}
-                            disabled={!ikut}
-                            aria-label={`Jumlah unit retur untuk ${item?.name ?? "item"}`}
-                            onChange={(event) => ubahJumlah(Number(event.target.value) || 1)}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            disabled={!ikut || row.requested_quantity >= maksUnit}
-                            onClick={() => ubahJumlah(row.requested_quantity + 1)}
-                            aria-label="Tambah jumlah unit retur"
-                          >
-                            <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                          </Button>
-                        </div>
+                        {maksUnit > 1 ? (
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              disabled={!ikut || row.requested_quantity <= 1}
+                              onClick={() => ubahJumlah(row.requested_quantity - 1)}
+                              aria-label="Kurangi jumlah unit retur"
+                            >
+                              <Icon name="minus" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                            <Input
+                              className="w-14 text-center"
+                              type="number"
+                              min={1}
+                              max={maksUnit}
+                              value={String(row.requested_quantity)}
+                              disabled={!ikut}
+                              aria-label={`Jumlah unit retur untuk ${item?.name ?? "item"}`}
+                              onChange={(event) => ubahJumlah(Number(event.target.value) || 1)}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              disabled={!ikut || row.requested_quantity >= maksUnit}
+                              onClick={() => ubahJumlah(row.requested_quantity + 1)}
+                              aria-label="Tambah jumlah unit retur"
+                            >
+                              <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        ) : null}
                       </div>
                     )
                   })}
