@@ -75,6 +75,12 @@ class OrderEventLabels
                 self::orderStatus(isset($payload['order_status']) ? (string) $payload['order_status'] : null),
             ),
             'order.cancelled' => 'Pesanan dibatalkan',
+            'order.edited' => 'Pesanan diedit admin',
+            'order_returned' => 'Pesanan dikembalikan',
+            'payment.confirmed' => 'Pembayaran dikonfirmasi',
+            'shipping.created' => 'Pengiriman dibuat',
+            'shipping.status_updated' => 'Status pengiriman diperbarui',
+            'system/cod_settlement' => 'Penyesuaian tagihan COD oleh sistem',
             default => str_replace(['_', '.'], ' ', $eventType),
         };
     }

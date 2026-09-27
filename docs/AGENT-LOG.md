@@ -1729,3 +1729,25 @@ Bukti:
   penjaga checkout, fromMe log.
 - node --check bot bersih, baileys-bot.service restart dan tersambung
   otomatis (status open, nomor toko sama).
+
+## 2026-09-27 16:27 UTC | zcode | Trivial | - | selesai
+Lingkup: keluhan owner, Log perubahan status masih menampilkan bahasa sistem
+("shipping created", "shipping status updated", "system/cod settlement")
+karena hanya tiga jenis event yang berlabel.
+Dampak spec: tidak berubah
+
+Perubahan:
+- OrderEventLabels::eventType dilengkapi label Indonesia untuk seluruh jenis
+  event yang tercatat di database dan yang ditulis kode: order.edited (Pesanan
+  diedit admin), order_returned (Pesanan dikembalikan), payment.confirmed
+  (Pembayaran dikonfirmasi), shipping.created (Pengiriman dibuat),
+  shipping.status_updated (Status pengiriman diperbarui),
+  system/cod_settlement (Penyesuaian tagihan COD oleh sistem).
+- Test baru OrderEventLabelsEventTypeTest: 9 jenis event dicek berlabel
+  Indonesia.
+
+Bukti:
+- Test 1 passed (9 assertions); php -l bersih.
+- Uji live di order 100000: sisa istilah sistem 0; label baru tampil di kartu
+  Log perubahan status (terlihat di tangkapan layar: Pengiriman dibuat,
+  Status pengiriman diperbarui, Penyesuaian tagihan COD oleh sistem).
