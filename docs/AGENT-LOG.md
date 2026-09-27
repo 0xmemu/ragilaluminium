@@ -1776,3 +1776,36 @@ penjaga diperketat mencekik tanpa kurung.
 Bukti: php -l bersih; test WhatsAppFromMeLogTest 3 passed (14 asersi) dengan
 asersi (Ulang); uji live order 100000 menampilkan WA Pesanan Diproses (Ulang),
 WA Order COD (Ulang), WA Resi Dikirim (Ulang), WA Pesanan Sampai (Ulang).
+
+## 2026-09-27 17:49 UTC | zcode | Standard | - | selesai
+Lingkup: item 4 dan item 5 antrean pekerjaan (dokumen
+docs/KONTRAK/ANTREAN-PEKERJAAN.md): retur dari kurir tidak terlihat admin,
+dan akurasi data kasus retur.
+Dampak spec: tidak berubah (dokumen domain retur diperbarui mengikuti
+perilaku baru)
+
+Perubahan:
+- ReturnService::openRefusedReturnCase mengirim OrderReturnCreated sehingga
+  kasus otomatis dari kurir memunculkan notifikasi return_created (idempoten
+  per kasus, tanpa efek samping WhatsApp).
+- reason_detail kasus otomatis bersyarat: "sebelum diterima pembeli" bila
+  paket belum pernah sampai, "setelah sempat diterima pembeli" bila pernah
+  sampai atau pesanan lunas (item 5b).
+- ShippingService: transisi kurir yang ditolak kini memunculkan notifikasi
+  carrier_return_rejected sekali per pesanan, lewat metode publik
+  notifyCarrierReturnRejected.
+- Show.tsx: pesanan di luar Sampai menampilkan alasan retur dalam catatan
+  ringkas, bukan panel kosong.
+- Dokumen domain retur (bagian 4, 4C, 8) diperbarui mengikuti perilaku baru.
+- Keputusan item 5 yang lain dicatat: retur kurir memang tercatat penuh
+  (kenyataan fisik, penyesuaian parsial di penyelesaian oleh admin) dan
+  pembedaan notifikasi cukup di keterangan, templat tetap milik owner
+  (ADR-025).
+
+Bukti:
+- Test baru ReturnCourierVisibilityTest 3 passed (6 asersi): kasus otomatis
+  memunculkan notifikasi return_created, keterangan pasca-diterima benar,
+  notifikasi transisi ditolak muncul sekali.
+- Uji live order Selesai (100000): catatan ringkas "Retur" tampil dengan
+  alasan lengkap dari server.
+- typecheck 0 error, eslint bersih, build Vite sukses.

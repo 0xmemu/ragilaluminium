@@ -659,7 +659,33 @@ class ShippingService
                 'to' => $target,
                 'shipping_status' => $shippingStatus,
             ]);
+
+            $this->notifyCarrierReturnRejected($order, $target);
         }
+    }
+
+    /**
+     * Item 4 antrean (owner 2026-09-27): transisi kurir yang ditolak tidak
+     * boleh hanya masuk log teknis. Admin diberi tahu sekali per pesanan
+     * supaya paket kembali ditangani manual lewat WhatsApp.
+     */
+    public function notifyCarrierReturnRejected(Order $order, string $target): void
+    {
+        $sudahAda = \App\Models\AdminNotification::query()
+            ->where('type', 'carrier_return_rejected')
+            ->where('order_id', $order->id)
+            ->exists();
+        if ($sudahAda) {
+            return;
+        }
+
+        \App\Models\AdminNotification::create([
+            'type' => 'carrier_return_rejected',
+            'title' => 'Paket Kembali Tak Tercatat '.$order->order_number,
+            'body' => 'Scan returned J&T diterima saat status pesanan '.$order->order_status.', sehingga kasus retur tidak bisa dibuat otomatis. Tangani manual lewat WhatsApp.',
+            'order_id' => $order->id,
+            'href' => route('admin.orders.show', $order),
+        ]);
     }
 
     protected function carrierEventTime(?string $occurredAt): Carbon

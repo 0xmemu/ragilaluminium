@@ -1970,7 +1970,20 @@ export default function OrderShow({
         // penolakannya tidak pernah terbaca admin.
         const showPanel =
           hasActiveCase || order.order_status === "delivered" || order.order_status === "return_in_process"
-        if (!showPanel) return null
+        if (!showPanel) {
+          // Item 4 antrean: pesanan di luar Sampai (mis. Selesai) tetap
+          // menampilkan alasan returnya dalam bentuk ringkas agar admin
+          // tidak mengira fiturnya rusak.
+          if (elig.reason) {
+            return (
+              <div id="return-case" className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold text-foreground">Retur</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{elig.reason}</p>
+              </div>
+            );
+          }
+          return null;
+        }
         return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
       })()}
 

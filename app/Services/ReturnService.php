@@ -59,8 +59,9 @@ class ReturnService
         }
 
         $created = false;
+        $kasus = null;
 
-        DB::transaction(function () use ($order, &$created): void {
+        DB::transaction(function () use ($order, &$created, &$kasus): void {
             $locked = Order::query()->lockForUpdate()->find($order->id);
             if (! $locked) {
                 return;
@@ -76,11 +77,20 @@ class ReturnService
 
             $locked->load('items');
 
+            // Item 5 antrean: retur kurir setelah paket sempat diterima punya
+            // makna uang berbeda (COD sudah lunas), jadi keterangannya wajib
+            // tidak menyebut "sebelum diterima".
+            $pernahDiterima = $locked->shippingRecords()
+                ->where('status', 'delivered')
+                ->exists() || $locked->payment_status === 'paid';
+
             $case = OrderReturnCase::create([
                 'order_id' => $locked->id,
                 'status' => 'open',
                 'reason' => 'ditolak',
-                'reason_detail' => 'Otomatis: paket dikembalikan kurir sebelum diterima pembeli (scan returned J&T).',
+                'reason_detail' => $pernahDiterima
+                    ? 'Otomatis: paket dikembalikan kurir setelah sempat diterima pembeli (scan returned J&T).'
+                    : 'Otomatis: paket dikembalikan kurir sebelum diterima pembeli (scan returned J&T).',
                 'fault_party' => 'other',
                 'shipping_cost_borne_by_store' => true,
                 'customer_notes' => 'Paket dikembalikan ke pengirim oleh kurir.',
@@ -98,7 +108,15 @@ class ReturnService
             }
 
             $created = true;
+            $kasus = $case;
         });
+
+        if ($created && $kasus) {
+            // Item 4 antrean: kasus retur otomatis tidak boleh senyap. Event
+            // yang sama dengan retur manual memicu notifikasi return_created
+            // (idempoten per kasus) tanpa efek samping WhatsApp.
+            \App\Events\OrderReturnCreated::dispatch($order->fresh(), $kasus->fresh() ?? $kasus);
+        }
 
         return $created;
     }
