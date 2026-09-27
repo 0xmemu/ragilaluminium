@@ -167,7 +167,13 @@ class OrderExport implements WithMultipleSheets
             if ($runningCase) {
                 $returnType = 'Retur diproses ('.($runningCase->reason ?? '-').')';
             } elseif ($completedCase) {
-                $rt = $completedCase->resolution_type === 'replacement' ? 'Ganti barang' : 'Refund';
+                $rt = match ($completedCase->resolution_type) {
+                    'replacement' => 'Ganti barang',
+                    'reship' => 'Kirim ulang',
+                    'compensation' => 'Kompensasi',
+                    'no_compensation' => 'Tanpa kompensasi',
+                    default => 'Refund',
+                };
                 $returnType = $rt.' ('.($completedCase->reason ?? '-').')';
             } elseif ($order->order_status === 'cancelled') {
                 $returnType = 'Pesanan dibatalkan';

@@ -1516,3 +1516,19 @@ Bukti:
 - Uji live drawer 100039: 35 pesan, gelembung tertinggi 95px (sebelumnya
   626px); pemeriksaan presisi di portal drawer: 0 baris berisi naskah panjang
   templat, isi pesan manual pelanggan tetap ada. Tangkapan layar tersimpan.
+
+## 2026-09-27 12:15 UTC | zcode | Standard | e7b50afb | selesai
+Lingkup: kelengkapan kelima resolusi retur pada tampilan kasus selesai di panel admin (Show.tsx) dan pelabelan ekspor pesanan (OrderExport.php).
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Kelima resolusi retur resmi (`refund`, `replacement`, `reship`, `compensation`, `no_compensation`) kini tercover menyeluruh di semua lapisan:
+  1. Panel Admin (`resources/js/pages/Admin/Orders/Show.tsx`): saat kasus retur selesai (`completed`), kartu kasus kini menampilkan rincian resolusi yang diambil (`RESOLUTION_LABELS`), nominal refund (bila refund), rincian barang pengganti (bila ganti barang), biaya ongkir retur toko, dan waktu selesai (`completed_at`).
+  2. Ekspor Pesanan (`app/Exports/OrderExport.php`): sebelumnya pelabelan resolusi memakai ternary biner (`replacement ? 'Ganti barang' : 'Refund'`), sehingga resolusi `reship`, `compensation`, dan `no_compensation` (seperti paket COD ditolak kurir) salah terlabel sebagai "Refund". Kini memakai pencocokan lengkap kelima resolusi.
+  3. Pembukuan & Keuangan (`StorePerformanceService`): `refund` mengurangi Penjualan Bersih lewat pos refund; `no_compensation` pada paket COD ditolak mengeluarkan nilai pesanan dari Penjualan Bersih lewat pos `refused_goods_value` dan membatalkan tagihan pembayaran pending; `replacement` memotong stok barang pengganti 1x via `StockLedger` tanpa refund uang; `reship` dan `compensation` mengunci refund uang di angka nol.
+
+Bukti:
+- PHPUnit: `OrderExportContractTest` (13 tes lulus), `AdminReturnWorkflowTest` (20 tes lulus).
+- Vitest: 28 berkas, 230 tes lulus.
+- Typecheck 0 error, ESLint bersih, build Vite sukses.
+- Uji browser di pesanan 100039 (`ra.333labs.tech/admin/orders/100039`): form penyelesaian dan tampilan kartu kasus berjalan lancar.
