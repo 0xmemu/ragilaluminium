@@ -1484,3 +1484,18 @@ Bukti:
 - Uji live di 100039: tepat satu banner, y 223 (di atas lipatan, tanpa
   scroll), tepat di bawah header dan di atas kartu ringkasan. Tangkapan
   layar tersimpan.
+
+## 2026-09-27 11:45 UTC | zcode | Trivial | - | selesai
+Lingkup: keluhan owner, tombol "+ Tambah" di kartu Nomor order (detail
+pesanan) tidak menjelaskan fungsinya; diminta jadi "+ Tambah catatan".
+Dampak spec: tidak berubah
+
+Perubahan (resources/js/pages/Admin/Orders/Show.tsx): label tombol pembuka
+form catatan admin di kartu ringkasan jadi "Tambah catatan". Satu tombol
+"Tambah" lain di berkas yang sama ada di dialog edit pesanan (menambah baris
+barang di dalam form, konteksnya jelas), tidak diubah.
+
+Bukti:
+- typecheck 0 error, eslint 0 warning, build Vite sukses.
+- Uji live di 100039: kartu Nomor order menampilkan "+ Tambah catatan",
+  tidak ada lagi tombol "Tambah" telanjang. Tangkapan layar tersimpan.
