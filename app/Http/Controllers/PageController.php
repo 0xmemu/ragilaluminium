@@ -113,6 +113,15 @@ class PageController extends Controller
         return $this->showPage('ketentuan-layanan');
     }
 
+    /**
+     * Kebijakan retur untuk pelanggan (item 9 antrean pekerjaan). Halaman
+     * statis: isinya turunan docs/kebijakan-retur-draf.md versi pelanggan.
+     */
+    public function returnPolicy()
+    {
+        return inertia('Public/ReturnPolicy');
+    }
+
     public function howToOrder(): Response
     {
         return Inertia::render('Public/HowToOrder', [

@@ -90,3 +90,10 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 ```
 
 Visual semua halaman mengikuti Brand Kit, Design System, dan page blueprints di `frontend/`.
+## Kebijakan Retur (2026-09-28, item 9 antrean pekerjaan)
+
+| Label | Route | Grup | Status |
+|-------|-------|------|--------|
+| Kebijakan Retur | `kebijakan-retur` `/kebijakan-retur` | info | implemented (halaman statis `Public/ReturnPolicy`; ditaut dari kartu retur halaman lacak pesanan; belum di navigasi) |
+
+Isi: syarat retur (status Sampai, imbauan 48 jam, pesanan Selesai tidak bisa), cara mengajukan via tombol Pengembalian Barang, daftar alasan, jenis penyelesaian, kelayakan refund. Sumber: docs/kebijakan-retur-draf.md versi pelanggan.

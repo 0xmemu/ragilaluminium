@@ -168,6 +168,14 @@ return [
             'group' => 'info',
             'status' => 'implemented',
         ],
+        'Kebijakan Retur' => [
+            'route' => 'kebijakan-retur',
+            'path' => '/kebijakan-retur',
+            'view' => 'Public/ReturnPolicy',
+            'controller' => 'PageController@returnPolicy',
+            'group' => 'info',
+            'status' => 'implemented',
+        ],
         /* Implemented information page */
         'Halaman Masalah & Solusi' => [
             'route' => 'masalah-dan-solusi',

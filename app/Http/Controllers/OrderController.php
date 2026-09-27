@@ -17,6 +17,7 @@ use App\Support\OrderEta;
 use App\Support\OrderTrackingPresenter;
 use App\Support\OrderTrackingViewModel;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppMessageDrafts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,11 +68,9 @@ class OrderController extends Controller
         $whatsappUrl = null;
         $phone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
         if ($phone) {
-            $message = sprintf(
-                'Halo Ragil Aluminium, saya sudah order %s. Mohon bantuannya.',
-                $order->order_number,
+            $whatsappUrl = 'https://wa.me/'.$phone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_confirmation', [':order' => (string) $order->order_number]),
             );
-            $whatsappUrl = 'https://wa.me/'.$phone.'?text='.rawurlencode($message);
         }
 
         $paymentMethod = (string) $order->payment_method;
@@ -372,18 +371,25 @@ class OrderController extends Controller
             'warnings' => $eligibility['warnings'] ?? [],
         ];
 
+        // Item 9 antrean: riwayat kasus retur milik pelanggan. Hanya status
+        // dan waktu; alasan admin serta nominal tetap tidak dipublikasikan.
+        $kasusReturTerakhir = $order->returnCases->latest('id')->first();
+        $returnCase = $kasusReturTerakhir ? [
+            'status' => $kasusReturTerakhir->status,
+            'created_at' => optional($kasusReturTerakhir->created_at)?->toIso8601String(),
+            'completed_at' => optional($kasusReturTerakhir->completed_at)?->toIso8601String(),
+        ] : null;
+
         $whatsappUrl = null;
         $returnWhatsappUrl = null;
         $businessPhone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
         if ($businessPhone) {
-            $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
-                'Halo Ragil Aluminium, saya mau bertanya soal order %s. Mohon bantuannya.',
-                $order->order_number,
-            ));
-            $returnWhatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(sprintf(
-                'Halo Ragil Aluminium, saya mau mengajukan retur untuk order %s. Mohon info prosedurnya.',
-                $order->order_number,
-            ));
+            $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_inquiry', [':order' => (string) $order->order_number]),
+            );
+            $returnWhatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_return', [':order' => (string) $order->order_number]),
+            );
         }
 
         return [
@@ -433,13 +439,14 @@ class OrderController extends Controller
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
             // Satu lapisan publik: 'tracking' kini = versi TERSANITASI (metadata
-            // internal dibuang). UI memakai tracking_public / vm.* — jangan pernah
+            // internal dibuang). UI memakai tracking_public / vm.*, jangan pernah
             // kirim raw $tracking (record_status/status_raw/source) ke pelanggan.
             'tracking' => self::publicTrackingSanitized($tracking, $shipping),
             'vm' => $viewModel->toArray(),
             'whatsapp_url' => $whatsappUrl,
             'delivered_at' => $deliveredAt?->toIso8601String(),
             'return_block' => $returnBlock,
+            'return_case' => $returnCase,
             'return_whatsapp_url' => $returnWhatsappUrl,
             // Lapisan publik: sanitasi metadata internal yang bukan informasi customer.
             'tracking_public' => self::publicTrackingSanitized($tracking, $shipping),

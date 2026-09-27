@@ -1842,3 +1842,27 @@ Bukti:
   dua perbaikan: fake on-whatsapp dinamis di 8 berkas test checkout, dan
   pembalikan pemindahan penutupan payment ke controller).
 - Produksi: php artisan migrate --force, dua migrasi DONE.
+
+## 2026-09-27 18:31 UTC | zcode | Standard | - | selesai
+Lingkup: item 9 antrean pekerjaan, sisi pelanggan pada alur retur: halaman
+kebijakan retur publik dan riwayat kasus retur milik pelanggan.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (URL publik baru /kebijakan-retur:
+config/sitemap.php, docs/sitemap/public-sitemap.md, dan
+docs/api-and-routes-ragil-aluminium.md diperbarui)
+
+Perubahan:
+- Rute GET /kebijakan-retur + PageController@returnPolicy + halaman statis
+  Public/ReturnPolicy.tsx (isi turunan docs/kebijakan-retur-draf.md versi
+  pelanggan: syarat, cara mengajukan, alasan, jenis penyelesaian, kelayakan
+  refund, catatan).
+- Halaman lacak: tautan "Baca kebijakan retur" di kartu tombol Pengembalian
+  Barang, dan payload return_case (status serta waktu kasus terakhir; alasan
+  admin dan nominal tetap tidak dipublikasikan).
+- Riwayat kasus dalam bentuk alur retur tiga langkah ber-tanggal sudah
+  tampil sejak pekerjaan bagian 4D dokumen domain (2026-09-21), jadi item 9
+  ini melengkapi kebijakan dan data kasusnya.
+
+Bukti:
+- php -l tiga berkas bersih; typecheck 0 error; eslint bersih; build Vite
+  sukses.
+- Uji live: GET /kebijakan-retur lewat tunnel = 200.

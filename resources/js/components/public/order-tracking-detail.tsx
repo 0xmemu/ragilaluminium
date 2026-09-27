@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link, usePage } from "@inertiajs/react"
+import { Link } from "@inertiajs/react"
 import {
   Check,
   CheckCircle,
@@ -16,9 +16,9 @@ import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { CustomerReviewForm } from "@/components/public/customer-review-form"
 import { Button } from "@/components/ui/button"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { formatCurrency, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import type { SharedPageProps } from "@/types"
 import { routeUrl } from "@/lib/routes"
 import type { PublicOrder } from "@/types"
 
@@ -647,12 +647,12 @@ function JnTCard({ order, className }: { order: PublicOrder; className?: string 
  * Card 4: Support Section
  */
 function SupportAction({ className }: { className?: string }) {
-  // Teks diatur admin lewat Pengaturan Website > CTA Storefront, blok
-  // "Bantuan di halaman Pesanan". Fallback = teks bawaan CtaSettings.
-  const { ctaSettings } = usePage<SharedPageProps>().props
-  const configured = ctaSettings?.pages?.["order-help"]
-  const title = configured?.eyebrow || "Butuh bantuan dengan pesanan ini?"
-  const body = configured?.heading || "Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti."
+  // Teks dibaca dari CTA_CONTENT, blok "order-help". Dipakai bersama oleh kartu
+  // bantuan dan kartu "Sampai", supaya tidak lahir salinan teks baru.
+  const content = CTA_CONTENT["order-help"]
+  const title = content?.eyebrow || "Butuh bantuan dengan pesanan ini?"
+  const body =
+    content?.heading || "Hubungi tim kami, sertakan nomor pesanan agar cepat ditindaklanjuti."
 
   return (
     <section
@@ -726,6 +726,12 @@ function ReturnRequestButton({ order }: { order: PublicOrder }) {
       <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
         Ajukan lewat WhatsApp dulu supaya bisa dibicarakan dengan admin sebelum diproses.
       </p>
+      <a
+        href={routeUrl("kebijakan-retur")}
+        className="mt-1 inline-flex text-[11px] font-medium text-primary hover:underline"
+      >
+        Baca kebijakan retur
+      </a>
     </div>
   )
 }
@@ -752,6 +758,7 @@ export function OrderTrackingDetail({ order }: { order: PublicOrder }) {
         <div className="order-1 lg:order-none">
           <DeliveredActions order={order} />
         </div>
+
 
         {/* 1. Ringkasan Pesanan (status pembatalan & Detail Pengiriman di dalam) */}
         <div className="order-3 lg:order-none">

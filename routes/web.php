@@ -75,6 +75,7 @@ Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/faq', [PageController::class, 'faq'])->name('faq');
+Route::get('/kebijakan-retur', [PageController::class, 'returnPolicy'])->name('kebijakan-retur');
 Route::get('/masalah-dan-solusi', [PageController::class, 'problemsSolutions'])->name('masalah-dan-solusi');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::get('/cara-pemesanan', [PageController::class, 'howToOrder'])->name('cara-pemesanan');
