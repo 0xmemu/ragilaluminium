@@ -1559,3 +1559,31 @@ Bukti:
   menggantikan Chat WA, sesuai 12 baris gagal per nomor di database.
   Tekan tombolnya belum dilakukan (akan mengirim 12 pesan lama ke nomor uji;
   tersedia untuk owner).
+
+## 2026-09-27 12:46 UTC | zcode | Standard | - | selesai
+Lingkup: lanjutan keputusan owner, tombol kontekstual kirim ulang WA juga di
+KARTU DAFTAR PESANAN (header tiap kartu, sebelah Cetak), menggantikan Chat WA
+saat ada pesan gagal.
+Dampak spec: tidak berubah (memakai rute admin.orders.whatsapp.resend yang
+sudah terdokumentasi; payload baris daftar bertambah whatsapp_failed_count)
+
+Perubahan:
+- OrderController: index menghitung pesan gagal per nomor pelanggan dengan
+  satu kueri berkelompok untuk seluruh halaman (pola yang sama dengan
+  refusedByPhone), diteruskan ke orderCard sebagai whatsapp_failed_count;
+  resendWhatsapp kembali ke halaman asal (back) supaya cocok dari daftar
+  maupun detail.
+- Index.tsx: header kartu beralih ke tombol merah Kirim ulang WA (N) dengan
+  busy per baris; Chat WA tetap tampil saat nihil.
+- Insiden terkendali: peluncuran pertama membuat halaman daftar 500 karena
+  pluck() mengembalikan Collection padahal orderCard meminta array; diperbaiki
+  dengan ->all() SEBELUM commit, jadi tidak pernah ter-commit rusak.
+
+Bukti:
+- Test penjaga AdminWhatsappResendTest 2 passed (9 assertions).
+- php -l bersih, typecheck 0 error, eslint 0 warning di Index.tsx, build
+  Vite sukses.
+- Uji live daftar pesanan: kartu-kartu nomor uji 6285725116817 menampilkan
+  tombol merah "Kirim ulang WA (12)"; kartu ORD26090009/0008/0007/0005
+  (nomor lain tanpa gagal) tetap menampilkan Chat WA hijau. Halaman daftar
+  kembali 200. Tangkapan layar tersimpan.

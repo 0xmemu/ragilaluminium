@@ -216,6 +216,16 @@ class OrderController extends Controller
         // belum pernah lunas. Satu query untuk seluruh halaman, bukan per baris.
         $refusedByPhone = $this->refusedPackagesByPhone($orders->getCollection());
 
+        // Jumlah pesan WA gagal per nomor pelanggan untuk tombol kirim ulang
+        // di kartu daftar. Satu kueri berkelompok untuk seluruh halaman,
+        // bukan per baris.
+        $gagalPerTelepon = \App\Models\WhatsAppMessage::query()
+            ->whereIn('phone_number', $pageOrders->map(fn (Order $o) => PhoneNumber::normalize((string) $o->customer_phone) ?: (string) $o->customer_phone)->filter()->unique()->values())
+            ->where('status', 'failed')
+            ->selectRaw('phone_number, count(*) as jumlah')
+            ->groupBy('phone_number')
+            ->pluck('jumlah', 'phone_number')->all();
+
         return Inertia::render('Admin/Orders/Index', [
             'title' => 'Daftar Pesanan',
             'description' => 'Kelola semua pesanan dari awal dibuat hingga selesai, dibatalkan, atau retur.',
@@ -231,7 +241,7 @@ class OrderController extends Controller
             'searchQuery' => trim((string) $request->input('q', '')),
             'summary' => $summary,
             'orders' => $pageOrders
-                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone, $reviewsByOrder->get($order->id)))
+                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone, $reviewsByOrder->get($order->id), $gagalPerTelepon))
                 ->values()
                 ->all(),
             'pagination' => InertiaAdmin::pagination($orders),
@@ -1350,8 +1360,9 @@ class OrderController extends Controller
     }
     /**
      * @param  array<string, int>  $refusedByPhone  nomor ternormalisasi => jumlah penolakan
+     * @param  array<string, int>  $gagalPerTelepon  nomor ternormalisasi => jumlah pesan WA gagal
      */
-    private function orderCard(Order $order, array $refusedByPhone = [], ?CmsTestimonial $testimonial = null): array
+    private function orderCard(Order $order, array $refusedByPhone = [], ?CmsTestimonial $testimonial = null, array $gagalPerTelepon = []): array
     {
         $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
         $items = $order->items ?? collect();
@@ -1408,6 +1419,8 @@ class OrderController extends Controller
             'href' => route('admin.orders.show', $order),
             'whatsapp_url' => $phone ? 'https://wa.me/'.$phone : null,
             'whatsapp_status_url' => $this->whatsapp->statusMessageUrl($order),
+            // Jumlah pesan WA gagal utas nomor ini untuk tombol kirim ulang.
+            'whatsapp_failed_count' => (int) ($gagalPerTelepon[$phone] ?? 0),
             'primary_action' => $this->primaryActionFor($order),
             'secondary_action' => $this->secondaryActionFor($order),
             'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
@@ -1577,7 +1590,7 @@ class OrderController extends Controller
             ->get();
 
         if ($gagal->isEmpty()) {
-            return redirect()->route('admin.orders.show', $order)
+            return redirect()->back()
                 ->with('status', 'Tidak ada pesan WhatsApp yang gagal untuk dikirim ulang.');
         }
 
@@ -1593,7 +1606,7 @@ class OrderController extends Controller
             }
         }
 
-        return redirect()->route('admin.orders.show', $order)
+        return redirect()->back()
             ->with('success', "Kirim ulang WhatsApp: {$sukses} dari ".$gagal->count().' pesan berhasil dikirim.');
     }
 

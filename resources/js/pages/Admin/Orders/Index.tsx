@@ -93,6 +93,7 @@ interface OrderCard {
   whatsapp_url?: string | null
     /** Tautan chat WA berisi naskah template sesuai status pesanan. */
     whatsapp_status_url?: string | null
+  whatsapp_failed_count?: number
   primary_action: PrimaryAction | null
   secondary_action?: PrimaryAction | null
   shipping_track?: {
@@ -246,6 +247,7 @@ function OrderCardRow({
   const [expanded, setExpanded] = React.useState(false)
 
   const [busy, setBusy] = React.useState(false)
+  const [resendBusy, setResendBusy] = React.useState(false)
   const { printing, handlePrint } = usePrintOrder()
 
   const visibleItems = expanded ? order.items : order.items.slice(0, 2)
@@ -318,7 +320,24 @@ function OrderCardRow({
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {order.whatsapp_status_url || order.whatsapp_url ? (
+          {(order.whatsapp_failed_count ?? 0) > 0 ? (
+            <Button
+              variant="destructive"
+              size="xs"
+              disabled={resendBusy}
+              onClick={() => {
+                setResendBusy(true)
+                router.post(
+                  routeUrl("admin.orders.whatsapp.resend", { order: order.id }),
+                  {},
+                  { preserveScroll: true, onFinish: () => setResendBusy(false) },
+                )
+              }}
+              title="Ada pesan WhatsApp yang gagal terkirim. Tekan untuk mengirim ulang lewat gateway."
+            >
+              Kirim ulang WA ({order.whatsapp_failed_count})
+            </Button>
+          ) : order.whatsapp_status_url || order.whatsapp_url ? (
             <a
               href={order.whatsapp_status_url || order.whatsapp_url || "#"}
               target="_blank"
