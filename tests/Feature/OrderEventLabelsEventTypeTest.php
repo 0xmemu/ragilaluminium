@@ -23,7 +23,7 @@ class OrderEventLabelsEventTypeTest extends TestCase
             'payment.confirmed' => 'Pembayaran dikonfirmasi',
             'shipping.created' => 'Pengiriman dibuat',
             'shipping.status_updated' => 'Status pengiriman diperbarui',
-            'system/cod_settlement' => 'Penyesuaian tagihan COD oleh sistem',
+            'system/cod_settlement' => 'Pelunasan COD otomatis saat paket sampai',
         ];
 
         foreach ($harapan as $jenis => $label) {

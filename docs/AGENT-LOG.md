@@ -1751,3 +1751,16 @@ Bukti:
 - Uji live di order 100000: sisa istilah sistem 0; label baru tampil di kartu
   Log perubahan status (terlihat di tangkapan layar: Pengiriman dibuat,
   Status pengiriman diperbarui, Penyesuaian tagihan COD oleh sistem).
+
+## 2026-09-27 17:01 UTC | zcode | Trivial | - | selesai
+Lingkup: label "Penyesuaian tagihan COD oleh sistem" buatan sendiri terbukti
+membingungkan owner (memicu tanya balik "maksudnya apa"). Dipertegas menjadi
+makna sebenarnya: catatan pelunasan COD otomatis saat pelacakan melaporkan
+paket sampai.
+Dampak spec: tidak berubah
+
+Perubahan: OrderEventLabels 'system/cod_settlement' menjadi "Pelunasan COD
+otomatis saat paket sampai"; test penjaga ikut diperbarui.
+
+Bukti: php -l bersih; test OrderEventLabelsEventTypeTest 1 passed (9
+assertions). reload halaman menampilkan label baru.
