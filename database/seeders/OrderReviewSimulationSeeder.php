@@ -19,8 +19,8 @@ use RuntimeException;
  *
  * | Order | Isi | Nomor HP untuk akses |
  * |---|---|---|
- * | RA-SIM-2609-01 | 1 produk: SP57802368148 (140x50) | 6285700000001 |
- * | RA-SIM-2609-02 | 2 produk: SP57802368148 + SP58155312043 | 6285700000002 |
+ * | RA-SIM-2609-01 | 1 produk: SP57802368148 (140x50) | 6285725116817 |
+ * | RA-SIM-2609-02 | 2 produk: SP57802368148 + SP58155312043 | 6285725116817 |
  *
  * Dua pesanan sengaja dibuat berbeda isinya:
  * - pesanan SATU produk: pilihan produk seharusnya sudah terpilih otomatis;
@@ -90,7 +90,7 @@ class OrderReviewSimulationSeeder extends Seeder
             [
                 'order_number' => self::PREFIX.'01',
                 'customer_name' => 'Sari Dewi',
-                'customer_phone' => '6285700000001',
+                'customer_phone' => '6285725116817', // Nomor uji coba resmi owner
                 'shipping_address_line1' => 'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin',
                 'shipping_city' => 'KABUPATEN BANJARNEGARA',
                 'shipping_province' => 'JAWA TENGAH',
@@ -103,7 +103,7 @@ class OrderReviewSimulationSeeder extends Seeder
             [
                 'order_number' => self::PREFIX.'02',
                 'customer_name' => 'Budi Santoso',
-                'customer_phone' => '6285700000002',
+                'customer_phone' => '6285725116817', // Nomor uji coba resmi owner
                 'shipping_address_line1' => 'Jln. Raya Darmo Nomor 1, Blok C',
                 'shipping_city' => 'KOTA SURABAYA',
                 'shipping_province' => 'JAWA TIMUR',

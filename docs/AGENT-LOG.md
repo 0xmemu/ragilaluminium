@@ -1334,3 +1334,18 @@ Bukti:
   pesan pelanggan, drawer riwayat memuat Data Pesanan, Pembayaran, dan
   nominal, drawer status memuat event retur beserta alasannya.
 - typecheck 0 error, eslint 0 warning di Show.tsx, build Vite sukses.
+
+## 2026-09-27 00:55 UTC | zcode | Trivial | 2e51bc33 | selesai
+Lingkup: pembersihan nomor telepon pihak ketiga (6285700000002) dari seluruh basis data dan berkas penyemai simulasi (database/seeders/OrderReviewSimulationSeeder.php).
+Dampak spec: tidak berubah
+
+Untuk agent berikutnya:
+- Nomor `6285700000002` (dan `6285700000001`) yang sebelumnya dipakai sebagai nomor contoh di penyemai data pesanan simulasi (`OrderReviewSimulationSeeder.php`) terbukti merupakan nomor aktif milik pihak luar (layanan konseling). Nomor tersebut telah dibersihkan total dari seluruh tabel basis data (tabel riwayat pesan WhatsApp `whatsapp_messages`, tabel notifikasi admin `admin_notifications`, tabel data pelanggan `customers`, dan tabel pesanan `orders`).
+- Pesanan simulasi `RA-SIM-2609-01` dan `RA-SIM-2609-02` di database kini dikaitkan ke nomor resmi pengujian owner: `6285725116817` (pelanggan `febrian afik`).
+- Berkas penyemai `database/seeders/OrderReviewSimulationSeeder.php` telah diperbarui agar menggunakan nomor pengujian resmi owner `6285725116817`, sehingga bila seeder dijalankan ulang tidak akan pernah mengirimkan pesan ke nomor pihak luar.
+
+Bukti:
+- Pemindaian menyeluruh ke seluruh tabel di database via tinker: 0 temuan untuk 85700000002 dan 85700000001.
+- Dihapus 2 baris `whatsapp_messages` (id 815 dan 816), 1 baris `admin_notifications` (id 98), dan 2 baris `customers` (id 10 dan 11).
+- Pesanan 100039 dan 100040 berhasil dialihkan ke nomor 6285725116817.
+- PHPUnit: 208 pengujian pesanan lulus (1.671 assertions).
