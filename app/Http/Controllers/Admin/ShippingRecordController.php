@@ -18,8 +18,15 @@ class ShippingRecordController extends Controller
     public function index(Request $request): Response
     {
         $status = trim((string) $request->input('status', 'all'));
-        $carrier = trim((string) $request->input('carrier_name', 'all'));
         $q = trim((string) $request->input('q', ''));
+
+        // Filter metode pembayaran pesanan (COD atau transfer bank). Ada di
+        // halaman ini karena cara bayar menentukan cara paket ditangani saat
+        // serah terima. Nilai di luar daftar dianggap tanpa filter.
+        $method = trim((string) $request->input('payment_method', 'all'));
+        if (! in_array($method, ['all', 'cod', 'transfer'], true)) {
+            $method = 'all';
+        }
 
         // Filter periode. Default '' (= Semua waktu) supaya perilaku halaman
         // tidak berubah sebelum admin memilih periode.
@@ -45,8 +52,10 @@ class ShippingRecordController extends Controller
 
         // Agregasi Ringkasan Eksekutif Pengiriman. Mengikuti periode terpilih
         // supaya angka KPI, hitungan tab, dan tabel berbicara tentang himpunan
-        // data yang sama.
-        $allRecords = $applyPeriod(ShippingRecord::query())->get(['status', 'carrier_name']);
+        // data yang sama. Filter metode pembayaran sengaja TIDAK ikut menyempitkan
+        // ringkasan, sama seperti halaman Pembayaran: metode adalah dimensi
+        // sejajar status, bukan pembatas periode.
+        $allRecords = $applyPeriod(ShippingRecord::query())->get(['status']);
 
         $totalDelivered = $allRecords->where('status', 'delivered')->count();
         $totalInTransit = $allRecords->whereIn('status', ['in_transit', 'out_for_delivery', 'picked_up'])->count();
@@ -87,7 +96,10 @@ class ShippingRecordController extends Controller
                     $sub->where('status', $status);
                 }
             })
-            ->when($carrier !== '' && $carrier !== 'all', fn ($sub) => $sub->where('carrier_name', $carrier))
+            ->when($method !== 'all', fn ($sub) => $sub->whereHas(
+                'order',
+                fn ($orderSub) => $orderSub->where('payment_method', $method)
+            ))
             ->when($q !== '', function ($sub) use ($q) {
                 $sub->where(function ($nested) use ($q) {
                     $nested->where('waybill_number', 'like', "%{$q}%")
@@ -138,7 +150,7 @@ class ShippingRecordController extends Controller
             'summary' => $summary,
             'tabs' => $tabs,
             'activeStatus' => $status,
-            'activeCarrier' => $carrier,
+            'activePaymentMethod' => $method,
             'activeDatePreset' => $datePreset,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,

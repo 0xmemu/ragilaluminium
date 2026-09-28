@@ -140,11 +140,16 @@ class AdminShippingIndexTest extends TestCase
     }
 
     /**
-     * Resi baru dengan tanggal pencatatan yang bisa ditentukan, supaya filter
-     * periode dapat diuji tanpa menunggu waktu berjalan.
+     * Resi baru dengan tanggal pencatatan dan metode bayar yang bisa
+     * ditentukan, supaya filter periode dan metode dapat diuji tanpa menunggu
+     * waktu berjalan.
      */
-    private function makeRecord(string $waybill, string $status, ?string $createdAt = null): ShippingRecord
-    {
+    private function makeRecord(
+        string $waybill,
+        string $status,
+        ?string $createdAt = null,
+        string $paymentMethod = 'transfer',
+    ): ShippingRecord {
         $order = Order::create([
             'order_number' => 'ORD-'.$waybill,
             'customer_name' => 'Pelanggan '.$waybill,
@@ -156,7 +161,7 @@ class AdminShippingIndexTest extends TestCase
             'shipping_country' => 'Indonesia',
             'subtotal_amount' => 100000,
             'total_amount' => 100000,
-            'payment_method' => 'transfer',
+            'payment_method' => $paymentMethod,
             'order_status' => 'shipped',
             'shipping_status' => $status,
         ]);
@@ -259,6 +264,65 @@ class AdminShippingIndexTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeDatePreset', '')
                 ->where('summary.total_records', 1)
+            );
+    }
+
+    public function test_payment_method_filter_scopes_the_table(): void
+    {
+        $this->makeRecord('JT-COD-1', 'in_transit', null, 'cod');
+        $this->makeRecord('JT-COD-2', 'delivered', null, 'cod');
+        $this->makeRecord('JT-TRF-1', 'in_transit', null, 'transfer');
+
+        // Ringkasan sengaja tetap menghitung seluruh metode, sama seperti
+        // halaman Pembayaran: metode sejajar status, bukan pembatas periode.
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['payment_method' => 'cod']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                ->where('activePaymentMethod', 'cod')
+                ->where('summary.total_records', 3)
+                ->has('records.data', 2)
+                ->where('records.data.0.waybill_number', 'JT-COD-2')
+                ->where('records.data.1.waybill_number', 'JT-COD-1')
+            );
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['payment_method' => 'transfer']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activePaymentMethod', 'transfer')
+                ->has('records.data', 1)
+                ->where('records.data.0.waybill_number', 'JT-TRF-1')
+            );
+
+        // Nilai di luar daftar yang sah dianggap tanpa filter.
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['payment_method' => 'qris']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activePaymentMethod', 'all')
+                ->has('records.data', 3)
+            );
+    }
+
+    public function test_payment_method_filter_composes_with_period(): void
+    {
+        $this->makeRecord('JT-COD-NEW', 'in_transit', null, 'cod');
+        $this->makeRecord('JT-COD-OLD', 'in_transit', now()->subDays(20)->toDateTimeString(), 'cod');
+        $this->makeRecord('JT-TRF-NEW', 'in_transit');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', [
+                'payment_method' => 'cod',
+                'date_preset' => '7d',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activePaymentMethod', 'cod')
+                ->where('activeDatePreset', '7d')
+                ->has('records.data', 1)
+                ->where('records.data.0.waybill_number', 'JT-COD-NEW')
             );
     }
 }

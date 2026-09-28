@@ -56,7 +56,7 @@ export interface ShippingIndexProps {
   summary: ShippingSummary
   tabs: StatusTab[]
   activeStatus: string
-  activeCarrier: string
+  activePaymentMethod: string
   activeDatePreset: string
   dateFrom: string
   dateTo: string
@@ -81,7 +81,7 @@ export default function ShippingIndex({
   summary,
   tabs,
   activeStatus,
-  activeCarrier,
+  activePaymentMethod,
   activeDatePreset,
   dateFrom: initialDateFrom,
   dateTo: initialDateTo,
@@ -100,7 +100,7 @@ export default function ShippingIndex({
       "admin.shipping.index",
       {
         status: activeStatus,
-        carrier_name: activeCarrier,
+        payment_method: activePaymentMethod,
         q: searchQuery,
         date_preset: activeDatePreset,
         date_from: activeDatePreset === "range" ? rangeFrom : undefined,
@@ -277,15 +277,18 @@ export default function ShippingIndex({
         className="mb-4 pb-[10px]"
       >
         <Select
-          value={activeCarrier || "all"}
+          value={activePaymentMethod || "all"}
           onChange={(event) =>
-            visit({ carrier_name: event.target.value === "all" ? undefined : event.target.value })
+            visit({
+              payment_method: event.target.value === "all" ? undefined : event.target.value,
+            })
           }
           className="w-auto"
-          aria-label="Filter kurir ekspedisi"
+          aria-label="Filter metode pembayaran"
         >
-          <option value="all">Semua kurir</option>
-          <option value="J&T Cargo">J&T Cargo</option>
+          <option value="all">Semua metode</option>
+          <option value="cod">COD (Bayar di Tempat)</option>
+          <option value="transfer">Transfer Bank</option>
         </Select>
         <Select
           value={activeDatePreset || "all"}
