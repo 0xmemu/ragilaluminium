@@ -1841,7 +1841,7 @@ export default function OrderShow({
       {/* Pengingat COD: uang ada di kurir sampai disetorkan ke toko, jadi
           peringatan ini wajib paling atas supaya terlihat segera. */}
       {isCod && order.order_status === "delivered" ? (
-        <div className="rounded-lg border border-warning/25 bg-warning/10 p-3">
+        <div className="mb-4 rounded-lg border border-warning/25 bg-warning/10 px-5 py-3">
           <p className="text-xs leading-5 text-warning-foreground">
             Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
           </p>

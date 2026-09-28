@@ -82,6 +82,50 @@ class AdminShippingWorkflowTest extends TestCase
                 ->where('sections.0.rows.0.value', 'pending_pickup -> in_transit - On the way'));
     }
 
+    public function test_simpan_resi_selalu_memindahkan_status_ke_dikirim(): void
+    {
+        // Kontrak owner 2026-09-28: checkbox "Tandai langsung dikirim" dihapus,
+        // jadi menyimpan resi pada pesanan Diproses selalu memindahkan status
+        // ke Dikirim tanpa opsi tambahan.
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-SELALU-KIRIM',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertSame('shipped', $order->fresh()->order_status);
+        $this->assertDatabaseHas('shipping_records', [
+            'order_id' => $order->id,
+            'waybill_number' => 'JT-SELALU-KIRIM',
+        ]);
+    }
+
+    public function test_simpan_resi_ulang_pada_pesanan_sudah_dikirim_tidak_gagal(): void
+    {
+        // Menyimpan resi lagi (mis. koreksi nomor) pada pesanan yang sudah
+        // Dikirim hanya memperbarui resi: tidak melempar galat transisi dan
+        // status tetap Dikirim.
+        $admin = $this->admin();
+        $order = $this->order();
+        $order->update(['order_status' => 'shipped']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-KOREKSI',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('shipped', $order->fresh()->order_status);
+        $this->assertDatabaseHas('shipping_records', [
+            'order_id' => $order->id,
+            'waybill_number' => 'JT-KOREKSI',
+        ]);
+    }
+
     public function test_order_shipping_accepts_manual_waybill_and_rejects_jnt_creation_mode(): void
     {
         config(['jnt.enabled' => false]);

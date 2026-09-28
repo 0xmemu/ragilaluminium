@@ -621,16 +621,7 @@ class OrderController extends Controller
             // nomor resi yang sudah diterbitkan kurir.
             'mode' => ['nullable', 'in:manual'],
             'waybill_number' => ['required', 'string', 'max:100'],
-            'mark_shipped' => ['nullable', 'boolean'],
         ]);
-
-        if ($request->boolean('mark_shipped')
-            && $order->order_status === 'processing'
-            && ! $this->orders->canTransition($order, 'shipped', 'shipping_store')) {
-            return back()->withErrors([
-                'mark_shipped' => 'Pesanan harus berstatus diproses sebelum ditandai dikirim.',
-            ])->withInput();
-        }
 
         try {
             $record = $this->shipping->attachManualWaybill($order, (string) $validated['waybill_number']);
@@ -638,7 +629,14 @@ class OrderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        if ($request->boolean('mark_shipped') && $order->order_status === 'processing') {
+        // Menyimpan resi pada pesanan Diproses selalu memindahkan status ke
+        // Dikirim (kontrak owner 2026-09-28, tanpa checkbox pilihan). Keputusan
+        // dihitung setelah resi tersimpan karena penarikan pelacakan J&T di
+        // dalam attachManualWaybill bisa ikut memindahkan status; pesanan yang
+        // sudah lewat Dikirim hanya diperbarui resinya.
+        $order->refresh();
+        if ($order->order_status === 'processing'
+            && $this->orders->canTransition($order, 'shipped', 'shipping_store')) {
             try {
                 $this->orders->transition(
                     $order,
@@ -648,7 +646,7 @@ class OrderController extends Controller
                     ['waybill' => $record->waybill_number],
                 );
             } catch (DomainException $exception) {
-                return back()->withErrors(['mark_shipped' => $exception->getMessage()]);
+                return back()->withErrors(['waybill_number' => $exception->getMessage()]);
             }
         }
 

@@ -916,7 +916,6 @@ export default function OrdersIndex({
       routeUrl("admin.orders.shipping.store", { order: resiOrder.id }),
       {
         waybill_number: resiForm.waybill_number,
-        mark_shipped: true,
       },
       {
         preserveScroll: true,
@@ -926,7 +925,7 @@ export default function OrdersIndex({
         },
         onError: (errors) => {
           const map = (errors ?? {}) as Record<string, string>
-          setResiError(map.waybill_number ?? map.mark_shipped ?? "Gagal menyimpan resi. Periksa kembali isian.")
+          setResiError(map.waybill_number ?? "Gagal menyimpan resi. Periksa kembali isian.")
         },
         onFinish: () => setResiBusy(false),
       },
