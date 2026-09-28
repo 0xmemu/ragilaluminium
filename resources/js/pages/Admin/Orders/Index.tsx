@@ -853,7 +853,7 @@ export default function OrdersIndex({
   // Popup input resi langsung dari daftar: form + verifikasi pelanggan & alamat.
   // Sistem tidak menilai benar/salah; admin yang memastikan sebelum menyimpan.
   const [resiOrder, setResiOrder] = React.useState<OrderCard | null>(null)
-  const [resiForm, setResiForm] = React.useState({ waybill_number: "", mark_shipped: true })
+  const [resiForm, setResiForm] = React.useState({ waybill_number: "" })
   const [resiBusy, setResiBusy] = React.useState(false)
   const [resiError, setResiError] = React.useState<string | null>(null)
 
@@ -916,13 +916,13 @@ export default function OrdersIndex({
       routeUrl("admin.orders.shipping.store", { order: resiOrder.id }),
       {
         waybill_number: resiForm.waybill_number,
-        mark_shipped: resiForm.mark_shipped,
+        mark_shipped: true,
       },
       {
         preserveScroll: true,
         onSuccess: () => {
           setResiOrder(null)
-          setResiForm({ waybill_number: "", mark_shipped: true })
+          setResiForm({ waybill_number: "" })
         },
         onError: (errors) => {
           const map = (errors ?? {}) as Record<string, string>
@@ -1407,16 +1407,6 @@ export default function OrdersIndex({
                       className="h-9 w-full rounded-md border border-border bg-surface px-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </div>
-
-                  <label className="flex items-center gap-2.5 text-xs text-foreground cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={resiForm.mark_shipped}
-                      onChange={(event) => setResiForm((prev) => ({ ...prev, mark_shipped: event.target.checked }))}
-                      className="size-4 rounded border-border text-primary focus:ring-primary"
-                    />
-                    <span>Tandai pesanan langsung sebagai dikirim (shipped)</span>
-                  </label>
 
                   <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
                     <Button

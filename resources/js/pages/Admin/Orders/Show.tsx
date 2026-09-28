@@ -2131,13 +2131,6 @@ export default function OrderShow({
                   muncul.
                 </p>
 
-                <Checkbox
-                  compact
-                  checked={Boolean(shippingForm.data.mark_shipped)}
-                  onChange={(event) => shippingForm.setData("mark_shipped", event.target.checked)}
-                  label="Tandai pesanan langsung sebagai dikirim (shipped)"
-                />
-
                 <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
                   <Button
                     type="button"

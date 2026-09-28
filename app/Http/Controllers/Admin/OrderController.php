@@ -625,6 +625,7 @@ class OrderController extends Controller
         ]);
 
         if ($request->boolean('mark_shipped')
+            && $order->order_status === 'processing'
             && ! $this->orders->canTransition($order, 'shipped', 'shipping_store')) {
             return back()->withErrors([
                 'mark_shipped' => 'Pesanan harus berstatus diproses sebelum ditandai dikirim.',
@@ -637,7 +638,7 @@ class OrderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        if ($request->boolean('mark_shipped')) {
+        if ($request->boolean('mark_shipped') && $order->order_status === 'processing') {
             try {
                 $this->orders->transition(
                     $order,
