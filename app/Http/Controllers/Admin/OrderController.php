@@ -110,22 +110,6 @@ class OrderController extends Controller
             ->groupBy('order_status')
             ->pluck('total', 'order_status');
 
-        // Tab "Retur Diproses": titik merah selama masih ada retur yang belum
-        // selesai. Kasus retur dicatat admin sendiri, sehingga penanda "belum
-        // dilihat" (scope unseenByAdmin) langsung hilang begitu halaman detail
-        // terbuka (markAdminSeen di show()); padahal retur yang belum ditutup
-        // tetap butuh tindak lanjut. Angkanya gabungan (belum dilihat ATAU
-        // kasusnya masih open), bukan penjumlahan, supaya tidak dobel.
-        $unfinishedReturnBadge = Order::query()
-            ->where('order_status', 'return_in_process')
-            ->where(function ($q) {
-                $q->whereIn('id', OrderReturnCase::query()->where('status', 'open')->whereNotNull('order_id')->select('order_id'))
-                    ->orWhere(function ($inner) {
-                        $inner->unseenByAdmin();
-                    });
-            })
-            ->count();
-
         $ordersQuery = Order::query()
             ->with([
                 'items.product.mainImage',
@@ -193,7 +177,7 @@ class OrderController extends Controller
             ? collect()
             : CmsTestimonial::query()->whereIn('order_id', $pageOrders->pluck('id')->all())->get()->keyBy('order_id');
 
-        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts, $unseenCounts, $unfinishedReturnBadge) {
+        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts, $unseenCounts) {
             $count = $tab['key'] === 'all'
                 ? (clone $base)->count()
                 : (int) ($tabCounts[$tab['key']] ?? 0);
@@ -204,12 +188,6 @@ class OrderController extends Controller
                 ? 0
                 : (int) ($unseenCounts[$tab['key']] ?? 0);
 
-            // Tab retur memakai penanda "retur belum selesai" (lihat catatan di
-            // atas): titik merah muncul begitu retur dicatat dari halaman mana
-            // pun, dan baru hilang setelah kasusnya ditutup.
-            if ($tab['key'] === 'return_in_process') {
-                $newCount = $unfinishedReturnBadge;
-            }
 
             return [
                 'key' => $tab['key'],
@@ -355,7 +333,13 @@ class OrderController extends Controller
 
     public function show(Request $request, Order $order): Response
     {
-        $order->markAdminSeen();
+        // Titik merah tab status berfungsi sebagai notifikasi "ada pesanan yang
+        // baru berganti status", jadi kunjungan yang merupakan pendaratan aksi
+        // admin sendiri tidak dihitung sebagai sudah dilihat: titik merah tetap
+        // menyala sampai admin membuka detailnya lewat navigasi biasa.
+        if (! $request->session()->pull(self::SKIP_SEEN_FLASH)) {
+            $order->markAdminSeen();
+        }
         AdminNotification::query()
             ->where('order_id', $order->id)
             ->whereNull('read_at')
@@ -673,7 +657,7 @@ class OrderController extends Controller
             }
         }
 
-        return redirect()->route('admin.orders.show', $order)
+        return $this->redirectToOrderDetail($order)
             ->with('success', 'Resi tersimpan: '.$record->waybill_number);
     }
 
@@ -690,7 +674,7 @@ class OrderController extends Controller
 
         [$flashKey, $message] = $this->refreshShippingRecord($record);
 
-        return redirect()->route('admin.orders.show', $order)->with($flashKey, $message);
+        return $this->redirectToOrderDetail($order)->with($flashKey, $message);
     }
 
     /**
@@ -740,7 +724,7 @@ class OrderController extends Controller
     {
         $policy = $this->orders->editPolicy($order);
         if (! $policy['allowed']) {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['edit' => $policy['reason']]);
         }
 
@@ -775,20 +759,20 @@ class OrderController extends Controller
 
         $note = trim((string) ($validated['edit_note'] ?? ''));
         if ($policy['require_note'] && $note === '') {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['edit_note' => 'Pesanan Diproses memerlukan catatan perubahan.']);
         }
 
         try {
             $this->orders->editOrder($order, $validated, $request->user()->id, $note);
         } catch (\DomainException $e) {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['edit' => $e->getMessage()]);
         }
 
         $this->whatsapp->notifyOrderEdited($order->fresh());
 
-        return redirect()->route('admin.orders.show', $order->fresh())
+        return $this->redirectToOrderDetail($order->fresh())
             ->with('success', 'Pesanan diperbarui. Harga dihitung ulang dan konfirmasi dikirim ulang ke pelanggan.');
     }
 
@@ -804,12 +788,12 @@ class OrderController extends Controller
 
         if ($isLateManual) {
             if (! $request->boolean('late_return')) {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectToOrderDetail($order)
                     ->withErrors(['return' => 'Retur manual pesanan Selesai wajib dicatat melalui tombol Catat Retur Manual.']);
             }
             $overrideCheck = $returns->validateLateReturnOverride($request->input('override_reason'));
             if (! $overrideCheck['valid']) {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectToOrderDetail($order)
                     ->withErrors(['override_reason' => $overrideCheck['error']])
                     ->withInput();
             }
@@ -945,15 +929,28 @@ class OrderController extends Controller
      * referer, mis. test PHPUnit, diarahkan ke detail agar perilaku lama tidak
      * berubah.
      */
+    /** Penanda sesi sekali pakai: kunjungan detail ini pendaratan aksi admin. */
+    private const SKIP_SEEN_FLASH = 'order_action_landing';
+
+    /**
+     * Alihkan ke detail pesanan sebagai pendaratan aksi admin. Berbeda dari
+     * kunjungan biasa, pendaratan ini tidak menandai pesanan sudah dilihat.
+     */
+    private function redirectToOrderDetail(Order $order): RedirectResponse
+    {
+        return redirect()->route('admin.orders.show', $order)
+            ->with(self::SKIP_SEEN_FLASH, true);
+    }
+
     private function redirectKembali(Order $order): \Illuminate\Http\RedirectResponse
     {
         $sebelumnya = (string) url()->previous();
 
         if ($sebelumnya === '' || ! preg_match('#/admin/orders/\d+#', $sebelumnya)) {
-            return redirect()->route('admin.orders.show', $order);
+            return $this->redirectToOrderDetail($order);
         }
 
-        return redirect()->back();
+        return redirect()->back()->with(self::SKIP_SEEN_FLASH, true);
     }
 
     /**
@@ -994,7 +991,7 @@ class OrderController extends Controller
 
         $returns->updateReturnCase($order, $returnCase, $validated, (int) $request->user()->id);
 
-        return redirect()->route('admin.orders.show', $order)
+        return $this->redirectToOrderDetail($order)
             ->with('success', 'Koreksi retur tersimpan dengan jejak audit. Transfer refund tetap dilakukan di luar website.');
     }
 
@@ -1011,7 +1008,7 @@ class OrderController extends Controller
 
         $mode = $returns->voidReturnCase($order, $returnCase, $validated['void_reason'], (int) $request->user()->id);
 
-        return redirect()->route('admin.orders.show', $order)
+        return $this->redirectToOrderDetail($order)
             ->with('success', $mode === 'cancelled'
                 ? 'Kasus retur dibatalkan secara administratif. Riwayat tetap tersimpan.'
                 : 'Kasus retur selesai di-void: tidak lagi dihitung laporan, riwayat tetap tersimpan.');
@@ -1020,12 +1017,12 @@ class OrderController extends Controller
     public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase, ReturnService $returns): RedirectResponse
     {
         if ((int) $returnCase->order_id !== (int) $order->id || $order->order_status !== 'return_in_process') {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['return' => 'Kasus retur tidak cocok dengan status pesanan.']);
         }
         // Idempotency: case yang sudah completed tidak boleh di-submit ulang.
         if ($returnCase->status !== 'open') {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['return' => 'Kasus retur sudah diselesaikan.']);
         }
 
@@ -1049,7 +1046,7 @@ class OrderController extends Controller
         $shippingCost = (float) ($validated['return_shipping_cost'] ?? 0);
         $costCheck = $returns->validateReturnShippingCost((string) $returnCase->fault_party, $shippingCost);
         if (! $costCheck['valid']) {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectToOrderDetail($order)
                 ->withErrors(['return_shipping_cost' => $costCheck['error']])
                 ->withInput();
         }
@@ -1058,7 +1055,7 @@ class OrderController extends Controller
         $replacementAmount = 0.0;
         if (in_array($validated['resolution_type'], ['refund', 'compensation'], true)) {
             if ($order->payment_status !== 'paid') {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectToOrderDetail($order)
                     ->withErrors(['refund_amount' => 'Refund atau kompensasi hanya dapat diproses untuk pesanan yang sudah lunas.'])
                     ->withInput();
             }
@@ -1066,7 +1063,7 @@ class OrderController extends Controller
             $paidSum = (float) $order->payments()->where('status', 'completed')->sum('amount');
             $maxRefund = $paidSum > 0 ? min((float) $order->total_amount, $paidSum) : (float) $order->total_amount;
             if ($refund < 0 || $refund > $maxRefund) {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectToOrderDetail($order)
                     ->withErrors(['refund_amount' => 'Refund tidak boleh melebihi total pembayaran pesanan.'])
                     ->withInput();
             }
@@ -1214,7 +1211,7 @@ class OrderController extends Controller
             $order->id,
         );
 
-        return redirect()->route('admin.orders.show', $order)
+        return $this->redirectToOrderDetail($order)
             ->with('success', 'Kasus retur selesai dan tercatat dalam riwayat order.');
     }
 
@@ -1444,7 +1441,7 @@ class OrderController extends Controller
             ], fn ($value) => filled($value) && $value !== 'all'));
         }
 
-        return redirect()->route('admin.orders.show', $order);
+        return $this->redirectToOrderDetail($order);
     }
 
     /** @return array<string, mixed> */

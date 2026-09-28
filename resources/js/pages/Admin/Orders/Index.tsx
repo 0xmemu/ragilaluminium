@@ -1044,16 +1044,11 @@ export default function OrdersIndex({
               // Kontrak owner 2026-09-26: letak di kanan atas tab (-right-1 -top-1),
               // bertambah saat pesanan masuk/berganti status, dan hanya berkurang bila
               // pesanan tersebut dilihat detailnya atau ditindaklanjuti.
-              // Tab "Semua" (all) tidak menampilkan badge merah; penanda merah hanya
-              // difokuskan pada tab status spesifik yang relevan.
-              // Pengecualian (kontrak owner 2026-09-28): tab "Retur Diproses"
-              // bermakna "retur belum selesai", karena kasus retur dicatat admin
-              // sendiri sehingga penanda "belum dilihat" langsung hilang.
+              // Tab "Semua" (all) satu-satunya yang tanpa badge merah. Tab lain
+              // memakai penanda "ada pesanan yang baru berganti status dan belum
+              // dibuka admin" (kontrak owner 2026-09-29).
               const badgeCount = tab.key === "all" ? 0 : (tab.new_count ?? 0)
-              const badgeTitle =
-                tab.key === "return_in_process"
-                  ? `${formatNumber(badgeCount)} retur belum selesai di tab ${tab.label}`
-                  : `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
+              const badgeTitle = `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
               return (
                 <button
                   key={tab.key}

@@ -108,18 +108,62 @@ class AdminOrderStatusNewBadgeTest extends TestCase
     }
 
     /**
-     * Kontrak owner 2026-09-28: tab "Retur Diproses" memakai makna "retur
-     * belum selesai". Kasus retur dicatat admin sendiri dan halaman detail
-     * langsung menandai pesanan sudah dilihat, sehingga penanda "belum
-     * dilihat" saja membuat titik merah tidak pernah muncul di tab retur.
+     * Kontrak owner 2026-09-29: titik merah adalah notifikasi "ada pesanan yang
+     * baru berganti status", dan SATU-SATUNYA tab tanpa titik merah adalah
+     * "Semua". Karena itu pendaratan aksi admin di halaman detail tidak boleh
+     * dihitung sebagai "sudah dilihat"; kalau dihitung, titik merah di tab
+     * tujuan (mis. Dikirim setelah simpan resi, atau Retur Diproses setelah
+     * retur dicatat) padam sebelum sempat terlihat.
      */
-    public function test_tab_retur_diproses_menampilkan_titik_merah_selama_kasus_belum_ditutup(): void
+    public function test_pendaratan_aksi_admin_tidak_menghilangkan_titik_merah_sampai_detail_dibuka_lagi(): void
     {
         $admin = $this->admin();
-        // Pesanan sudah pernah dilihat pada status retur, jadi penanda "belum
-        // dilihat" nol; titik merah harus tetap muncul karena retur belum selesai.
-        $order = $this->createOrder('return_in_process', 'return_in_process', 'RA-RET-BADGE-1');
-        $case = OrderReturnCase::create([
+        // Pesanan sudah pernah dilihat admin saat statusnya masih processing.
+        $order = $this->createOrder('processing', 'processing', 'RA-LANDING-1');
+
+        // Aksi dari halaman detail: ubah status ke shipped. Backend mengalihkan
+        // ke halaman detail sebagai pendaratan aksi.
+        $this->actingAs($admin)
+            ->put(route('admin.orders.status', $order), ['order_status' => 'shipped'])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        // Menjalani pengalihan itu (seperti browser): titik merah di tab tujuan
+        // harus tetap muncul, dan penanda "sudah dilihat" belum tersentuh.
+        $this->actingAs($admin)->get(route('admin.orders.show', $order))->assertOk();
+        $this->assertSame('processing', $order->fresh()->admin_seen_status, 'pendaratan aksi tidak boleh menandai pesanan sudah dilihat');
+
+        $this->actingAs($admin)->get(route('admin.orders.index'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
+                $this->assertSame(1, $tabs['shipped']['new_count'], 'titik merah tab Dikirim harus menyala setelah status berganti');
+            });
+
+        // Kunjungan berikutnya adalah navigasi biasa: penanda terisi dan titik
+        // merah padam.
+        $this->actingAs($admin)->get(route('admin.orders.show', $order))->assertOk();
+        $this->assertSame('shipped', $order->fresh()->admin_seen_status);
+
+        $this->actingAs($admin)->get(route('admin.orders.index'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
+                $this->assertSame(0, $tabs['shipped']['new_count']);
+            });
+    }
+
+    /**
+     * Tab "Retur Diproses" mengikuti aturan yang sama dengan tab lain: titik
+     * merah menyala saat retur baru dicatat dan belum dibuka admin (bukan
+     * selama kasusnya masih terbuka).
+     */
+    public function test_tab_retur_diproses_menyalakan_titik_merah_saat_retur_baru_belum_dibuka(): void
+    {
+        $admin = $this->admin();
+        // Pesanan sudah dilihat saat statusnya masih Sampai, lalu berpindah ke
+        // Retur Diproses dan belum dibuka lagi.
+        $order = $this->createOrder('return_in_process', 'delivered', 'RA-RET-BADGE-1');
+        OrderReturnCase::create([
             'order_id' => $order->id,
             'status' => 'open',
             'reason' => 'rusak',
@@ -132,17 +176,18 @@ class AdminOrderStatusNewBadgeTest extends TestCase
             ->assertOk()
             ->assertInertia(function (Assert $page) {
                 $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
-                $this->assertSame(1, $tabs['return_in_process']['new_count'], 'titik merah tab retur harus muncul saat retur belum selesai');
+                $this->assertSame(1, $tabs['return_in_process']['new_count'], 'titik merah tab retur harus menyala saat retur baru belum dibuka');
+                $this->assertSame(0, $tabs['all']['new_count'], 'tab Semua tetap tanpa titik merah');
             });
 
-        // Kasus ditutup: titik merah padam tanpa perlu perubahan lain.
-        $case->update(['status' => 'completed', 'completed_at' => now()]);
+        // Membuka detail pesanan: titik merah di tab retur padam.
+        $this->actingAs($admin)->get(route('admin.orders.show', $order))->assertOk();
 
         $this->actingAs($admin)->get(route('admin.orders.index'))
             ->assertOk()
             ->assertInertia(function (Assert $page) {
                 $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
-                $this->assertSame(0, $tabs['return_in_process']['new_count'], 'titik merah harus padam saat kasus retur sudah ditutup');
+                $this->assertSame(0, $tabs['return_in_process']['new_count']);
             });
     }
 
