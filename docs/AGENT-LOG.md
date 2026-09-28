@@ -2216,3 +2216,8 @@ Commit C: rekonsiliasi P2-01 (menyertakan filter periode yang belum ter-commit d
 Commit D: dokumen.
 Verifikasi: PHPUnit penuh 1253 passed / 1 skipped / 0 failed (12342 asersi); Vitest 230 passed; npm run typecheck bersih; build sukses; ESLint bersih pada Show.tsx + Payments/Index.tsx (lint global masih merah di berkas pekerjaan lain); migrasi 2026_09_28_100000 dijalankan forward-only sebagai www-data.
 IP patch: TIDAK dijalankan agent (guard /etc); skrip scripts/prod/nginx-real-ip.sh siap jalan dari commit 579b0b80, menunggu operator owner.
+
+## 2026-09-28 13:24 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
+
+- Label tombol catatan saat kosong di daftar pesanan jadi Catatan admin (sebelumnya Catatan), permintaan owner; tombol saat catatan terisi tidak berubah. Commit d2b8ef7a, hanya hunk label yang di-stage, WIP dialog konfirmasi transfer milik agent lain dibiarkan tak ter-commit.
+- Jawaban tanya owner: kolom Aksi daftar pesanan PUNYA tombol Retur (merah) untuk status Sampai, dari secondary_action kind start_return di OrderController yang mengarah ke detail pesanan bagian retur; status Selesai tidak dapat tombol itu di daftar, retur manualnya lewat tombol Catat Retur Manual di halaman detail.
