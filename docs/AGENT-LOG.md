@@ -2262,3 +2262,10 @@ Perubahan: dua paragraf dihapus dari resources/js/pages/Admin/Payments/Index.tsx
 Verifikasi: eslint+typecheck bersih, build sukses, halaman dimuat ulang di browser: paragraf hilang, hint tersedia, tombol Panduan tampil, angka dan badge tetap.
 Dampak spec: tidak berubah (payload disclaimer dipertahankan untuk test PaymentRekonsiliasiTest).
 Agent: zcode-retur
+
+## 2026-09-28 15:05 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner minta keterangan kartu Rekening Transfer Bank dijadikan hint, bukan teks tampil.
+Perubahan: paragraf dihapus, judul kartu dibungkus HintTip di resources/js/pages/Admin/Payments/Index.tsx.
+Verifikasi: eslint+typecheck bersih, build sukses; diukur di browser, paragraf tidak lagi terlihat (satu-satunya sisa teks adalah span sr-only milik hint), judul, data BCA, dan tombol Ubah tetap.
+Dampak spec: tidak berubah.
+Agent: zcode-retur
