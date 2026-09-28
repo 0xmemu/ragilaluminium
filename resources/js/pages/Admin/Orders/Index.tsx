@@ -1059,6 +1059,9 @@ export default function OrdersIndex({
           </div>
         </div>
 
+        <div className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
+          <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>
+        </div>
       </div>
 
       {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
