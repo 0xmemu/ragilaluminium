@@ -15,7 +15,10 @@ DB_NAME=$(awk -F= '/^DB_DATABASE=/{gsub(/\r/,"",$2); print $2}' "$ENV_FILE")
 DB_HOST=$(awk -F= '/^DB_HOST=/{gsub(/\r/,"",$2); print $2}' "$ENV_FILE")
 DB_HOST=${DB_HOST:-127.0.0.1}
 
-TABLES="products product_variants product_media orders order_items"
+# Termasuk identitas pelanggan (customers, users) dan pembayaran (payments):
+# sebelumnya hanya produk dan pesanan yang dibuktikan bisa dipulihkan, sehingga
+# data pelanggan belum pernah diuji walau selalu ikut tercadangkan.
+TABLES="products product_variants product_media orders order_items customers users payments"
 
 echo "=== $(date '+%F %T') ===" >> "$LOG"
 LATEST=$(readlink -f "$BACKUP_DIR/ragil_aluminium-latest.sql.gz")
@@ -55,7 +58,7 @@ for t in $TABLES; do
   [ "$C" = "$P" ] || OK=0
 done
 
-env MYSQL_PWD="$DB_PASS" mysql --user="$DB_USER" --host="$DB_HOST" -e "CHECK TABLE $TEST_DB.products, $TEST_DB.product_variants, $TEST_DB.product_media, $TEST_DB.orders, $TEST_DB.order_items;" >> "$LOG" 2>&1 || OK=0
+env MYSQL_PWD="$DB_PASS" mysql --user="$DB_USER" --host="$DB_HOST" -e "CHECK TABLE $TEST_DB.products, $TEST_DB.product_variants, $TEST_DB.product_media, $TEST_DB.orders, $TEST_DB.order_items, $TEST_DB.customers, $TEST_DB.users, $TEST_DB.payments;" >> "$LOG" 2>&1 || OK=0
 
 # Audit semantik bisnis (F10.R4, formula OrderService) terhadap DB test.
 # Gagal audit -> OK=0 -> marker PASS tidak ditulis -> arsip mingguan/bulanan berhenti.

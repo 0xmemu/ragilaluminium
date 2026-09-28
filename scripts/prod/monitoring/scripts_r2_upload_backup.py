@@ -99,17 +99,34 @@ def put_with_retry(key, body):
             time.sleep(wait)
     return res
 
+# Enkripsi salinan off-site (owner 2026-09-28). Modul ada di direktori yang
+# sama; berkas lokal tetap polos agar rantai pemulihan tidak berubah.
+try:
+    from scripts_backup_crypto import encrypt_bytes, key_available
+except Exception as _e:
+    print(f"WARN: modul enkripsi tidak terbaca ({_e})", file=sys.stderr)
+    encrypt_bytes = None
+    def key_available():
+        return False
+
 latest = os.path.join(BACKUP_DIR, LATEST_NAME)
 if not os.path.exists(latest):
     print("ERROR: dump latest tidak ditemukan", file=sys.stderr); sys.exit(1)
 
 remote_key = PREFIX + os.path.basename(os.path.realpath(latest))
+if key_available():
+    remote_key += ".enc"
 st = head_object(remote_key)
 if st == 200:
     print(f"skip: {remote_key} sudah di R2")
     sys.exit(0)
 with open(latest, "rb") as f:
     body = f.read()
+if key_available():
+    body = encrypt_bytes(body)
+else:
+    print("WARN: kunci enkripsi tidak ada; salinan off-site TIDAK terenkripsi", file=sys.stderr)
+    open("/root/backups/ALERT-backup-tanpa-enkripsi", "w").close()
 final = put_with_retry(remote_key, body)
 if isinstance(final, int) and 200 <= final < 300:
     print(f"upload {BUCKET}/{remote_key}: {final}")

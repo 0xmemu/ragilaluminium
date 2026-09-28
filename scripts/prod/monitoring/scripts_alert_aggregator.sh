@@ -145,6 +145,36 @@ if [ -n "$RUSAK" ]; then
     "Beritahu agent sekarang."
 fi
 
+# 2a2. Keterjangkauan dari LUAR. Ujian internal di atas lulus walau tunnel atau
+#      DNS rusak, jadi ini satu-satunya ujian yang benar-benar membuktikan
+#      pelanggan bisa membuka situs. Hanya dinilai bila internal sudah sehat.
+SITUS_PUBLIK=https://ra.333labs.tech/
+if [ -z "$RUSAK" ]; then
+  PUB=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$SITUS_PUBLIK" 2>/dev/null)
+  if [ "$PUB" != "200" ]; then
+    kritis "SITUS_TAK_TERJANGKAU" \
+      "Situs tidak bisa dibuka dari internet" \
+      "Server sendiri menjawab sehat, tetapi $SITUS_PUBLIK menjawab ${PUB:-timeout}." \
+      "Pelanggan tidak bisa membuka situs sama sekali (biasanya gangguan tunnel atau DNS)." \
+      "Beritahu agent sekarang."
+  fi
+fi
+
+# 2a3. Bandwidth harian: biaya dan batas kuota penyedia.
+if [ -f /var/log/nginx/access.log ]; then
+  BYTES_TODAY=$(awk '{s+=$10} END {printf "%d", s+0}' /var/log/nginx/access.log 2>/dev/null || echo 0)
+  GB_TODAY=$(( BYTES_TODAY / 1073741824 ))
+  if [ "$GB_TODAY" -ge 50 ]; then
+    kritis "BANDWIDTH_TINGGI" \
+      "Pemakaian bandwidth harian tinggi (${GB_TODAY} GB)" \
+      "Trafik hari ini menembus 50 GB." \
+      "Berisiko melewati batas kuota penyedia sehingga situs dibatasi atau ada biaya tambahan." \
+      "Beritahu agent untuk memeriksa sumbernya."
+  elif [ "$GB_TODAY" -ge 20 ]; then
+    catat "catatan teknis: bandwidth hari ini ${GB_TODAY} GB (log saja)"
+  fi
+fi
+
 # 2b. Antrean menumpuk ekstrem (pekerjaan pelanggan tidak terproses).
 if command -v redis-cli >/dev/null 2>&1; then
   QD=$(redis-cli -n 0 llen queues:default 2>/dev/null || echo 0)
@@ -207,6 +237,18 @@ for pair in "Restore test:$BACKUP_DIR/last-restore-test-pass:604800" "Semantic a
 done
 INODE_PCT=$(df -i / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
 [ "${INODE_PCT:-0}" -ge 80 ] && catat "catatan teknis: inode ${INODE_PCT}% (log saja)"
+
+# Kunjungan mendadak nol pada jam aktif: dicatat, belum dijadikan kritis karena
+# IP pengunjung belum terbaca di log (semua masuk sebagai satu IP tunnel), jadi
+# pemisahan pengunjung dan trafik internal masih perkiraan.
+if [ -f /var/log/nginx/access.log ]; then
+  HOUR_PREFIX=$(LC_ALL=C date -u '+%d/%b/%Y:%H')
+  JAM_ID=$(TZ=Asia/Jakarta date '+%H'); JAM_ID=${JAM_ID#0}
+  VISITOR_HOUR=$(LC_ALL=C grep -F "[${HOUR_PREFIX}" /var/log/nginx/access.log 2>/dev/null | grep -vcE 'curl/|python-urllib|axios|Hermes|Electron|HeadlessChrome|Playwright|"GET /admin')
+  if [ "${VISITOR_HOUR:-0}" -eq 0 ] && [ "${JAM_ID:-0}" -ge 6 ] && [ "${JAM_ID:-0}" -le 21 ]; then
+    catat "catatan teknis: tidak ada kunjungan pada jam ini (log saja)"
+  fi
+fi
 
 # Kirim ke Telegram hanya bila ada yang kritis. Dedupe berbasis KODE stabil,
 # jadi satu masalah = satu pesan, tidak berulang walau angkanya berubah.

@@ -48,6 +48,16 @@ def request(method, key, body=b""):
 
 def upload(src, key):
     body = open(src, "rb").read()
+    # Enkripsi salinan off-site (owner 2026-09-28).
+    try:
+        from scripts_backup_crypto import encrypt_bytes, key_available
+        if key_available():
+            body = encrypt_bytes(body)
+            key = key + ".enc"
+        else:
+            print("WARN: kunci enkripsi tidak ada; arsip TIDAK terenkripsi", file=sys.stderr)
+    except Exception as _e:
+        print(f"WARN: modul enkripsi tidak terbaca ({_e})", file=sys.stderr)
     if request("HEAD", key) == 200:
         print(f"skip: {BUCKET}/{key} already exists"); return 0
     for attempt in range(1, RETRIES + 1):

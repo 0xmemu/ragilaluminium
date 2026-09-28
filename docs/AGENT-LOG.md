@@ -2093,3 +2093,54 @@ Diblokir: kebijakan restart systemd untuk nginx dan php8.3-fpm butuh menulis
 diakali. Perintah lengkap ada di ALERT-TIERS.md bagian E untuk dijalankan
 owner. Lubang situs-mati sudah tertutup pengawas 5 menit (Fase 1a agregator),
 bedanya hanya kecepatan pemulihan.
+
+## 2026-09-28 10:16 UTC | zcode | Deep | - | selesai
+Lingkup: permintaan owner soal backup data pelanggan dan trafik ("proses").
+Lima item dikerjakan: verifikasi data pelanggan, arsip tidak terblokir,
+pemantauan bandwidth, deteksi anomali trafik, enkripsi salinan off-site.
+Dampak spec: tidak berubah
+
+1. VERIFIKASI DATA PELANGGAN. Uji restore sebelumnya hanya memverifikasi lima
+   tabel (produk, varian, media, pesanan, item). Kini customers, users, dan
+   payments ikut diverifikasi. Dibuktikan cocok: 8 pelanggan, 1 pengguna, 20
+   pembayaran. Sebelumnya data pelanggan selalu tercadangkan tetapi belum
+   pernah dibuktikan bisa dipulihkan.
+
+2. ARSIP TIDAK TERBLOKIR DIAM-DIAM. Aturan lama membatalkan arsip mingguan dan
+   bulanan bila belum ada bukti uji restore terbaru; akibatnya W35 dan W38
+   hilang. Kini arsip tetap dibuat dan ditandai ALERT-archive-unverified.
+   Alasan: kehilangan satu minggu arsip lebih berbahaya daripada menyimpan
+   dump yang belum diuji.
+
+3. PEMANTAUAN BANDWIDTH. Pemakaian bandwidth sebelumnya nol pemantauan. Skrip
+   baru scripts_traffic_check.sh (dijadwalkan tiap jam lewat scheduler Laravel)
+   mengisi /root/backups/traffic-daily.csv dan mencatat pemakaian harian.
+   Hari ini: 1719 permintaan, ~1100 di antaranya perkiraan pengunjung, 71 MB.
+
+4. DETEKSI ANOMALI TRAFIK. Agregator kini menguji KETERJANGKAUAN DARI LUAR
+   (SITUS_TAK_TERJANGKAU): ujian internal tetap lulus walau tunnel atau DNS
+   rusak, jadi ini satu-satunya ujian yang membuktikan pelanggan bisa membuka
+   situs. Ditambah ambang bandwidth (kritis 50 GB, catatan 20 GB) dan catatan
+   kunjungan nol pada jam aktif.
+
+5. ENKRIPSI SALINAN OFF-SITE. Identitas pelanggan tadinya tersimpan terbaca di
+   R2. Kini salinan R2 dienkripsi AES-256-CBC + PBKDF2 (kunci
+   /root/backups/.backup-key); berkas lokal tetap polos supaya rantai pemulihan
+   tidak berubah. Dibuktikan bolak-balik: unggah terenkripsi, unduh dari R2,
+   dekripsi, sidik jari IDENTIK dengan dump asli, dan isi di R2 tidak terbaca
+   polos. Tanpa kunci: unggahan tetap jalan tanpa enkripsi + penanda peringatan.
+
+TEMUAN PENTING YANG BELUM DITUTUP: nginx belum membaca IP asli pengunjung,
+sehingga seluruh trafik tercatat sebagai satu IP tunnel (209.23.10.62).
+Akibatnya pembatas 20 permintaan/detik per IP efektif menjadi batas BERSAMA
+untuk semua pengunjung, bukan per pengunjung. Perbaikannya menuntut
+set_real_ip_from + real_ip_header CF-Connecting-IP di /etc/nginx (di luar area
+tulis agent). Dicatat di docs/runbooks/ALERT-TIERS.md bagian G.
+
+CATATAN KEAMANAN UNTUK OWNER: kunci enkripsi dikirim ke Telegram pemilik dan
+WAJIB disimpan di pengelola kata sandi. Tanpa kunci itu, seluruh cadangan
+off-site tidak bisa dibuka.
+
+Pembuktian guard: penjaga MonitoringScriptsContractTest diperluas dari 5 ke 7
+test (84 asersi) mencakup enkripsi dan trafik; 30 skrip pemantauan kini
+ber-versi di repo. Seluruh suite 1224 passed, 1 skipped, 0 failed.

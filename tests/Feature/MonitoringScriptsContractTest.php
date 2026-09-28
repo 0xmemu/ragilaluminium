@@ -159,4 +159,47 @@ class MonitoringScriptsContractTest extends TestCase
         $this->assertStringContainsString("\$KODE", $isi,
             'Dedupe agregator tidak memakai kode jenis; alert akan terkirim berulang.');
     }
+
+    /**
+     * Salinan cadangan di R2 mengandung identitas pelanggan (nama, nomor HP,
+     * email, alamat), jadi wajib dienkripsi. Berkas lokal tetap polos supaya
+     * rantai pemulihan tidak berubah.
+     */
+    public function test_salinan_cadangan_di_r2_dienkripsi_dan_bisa_dibuka(): void
+    {
+        $kripto = file_get_contents(base_path(self::DIR).'/scripts_backup_crypto.py');
+        $this->assertStringContainsString('openssl', $kripto);
+        $this->assertStringContainsString('aes-256-cbc', $kripto);
+        $this->assertStringContainsString('/root/backups/.backup-key', $kripto,
+            'Modul enkripsi tidak menunjuk berkas kunci yang disepakati.');
+
+        // Alat dekripsi wajib ada; tanpa ini cadangan terenkripsi tidak bisa dibuka.
+        $this->assertFileExists(base_path(self::DIR).'/scripts_decrypt_backup.sh');
+        $dekripsi = file_get_contents(base_path(self::DIR).'/scripts_decrypt_backup.sh');
+        $this->assertStringContainsString('openssl enc -d', $dekripsi);
+
+        // Kedua pengunggah wajib memakai modul enkripsi.
+        foreach (['scripts_r2_upload_backup.py', 'scripts_archive_mysql.py'] as $nama) {
+            $isi = file_get_contents(base_path(self::DIR).'/'.$nama);
+            $this->assertStringContainsString('scripts_backup_crypto', $isi,
+                "{$nama} tidak memakai modul enkripsi.");
+        }
+    }
+
+    /** Trafik dan bandwidth wajib terukur dan terjaga. */
+    public function test_trafik_dan_bandwidth_dipantau(): void
+    {
+        $this->assertFileExists(base_path(self::DIR).'/scripts_traffic_check.sh');
+        $trafik = file_get_contents(base_path(self::DIR).'/scripts_traffic_check.sh');
+        $this->assertStringContainsString('access.log', $trafik);
+        $this->assertStringContainsString('curl', $trafik,
+            'Skrip trafik tidak menyaring permintaan internal, angka pengunjung akan menggelembung.');
+
+        $agregator = file_get_contents(base_path('scripts/prod/alert-aggregator.sh'));
+        // Ujian keterjangkauan dari luar: satu-satunya ujian yang membuktikan
+        // pelanggan bisa membuka situs (internal lulus walau tunnel/DNS rusak).
+        $this->assertStringContainsString('SITUS_TAK_TERJANGKAU', $agregator);
+        $this->assertStringContainsString('https://ra.333labs.tech', $agregator);
+        $this->assertStringContainsString('BANDWIDTH_TINGGI', $agregator);
+    }
 }

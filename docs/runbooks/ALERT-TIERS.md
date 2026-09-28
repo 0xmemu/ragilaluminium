@@ -94,6 +94,56 @@ memerlukan keputusan pemilik toko.
    5 menit (agregator Fase 1a menghidupkan ulang layanan yang mati). Bedanya
    hanya kecepatan pemulihan: detik versus maksimal lima menit.
 
+## G. Backup pelanggan dan trafik (2026-09-28)
+
+### Backup: kuat, dengan tiga celah yang ditutup
+
+Yang sudah kokoh: dump seluruh database dengan `--single-transaction`, gzip,
+diverifikasi `gzip -t` sebelum sah, backup lama tidak pernah ditimpa sebelum yang
+baru sukses, disimpan lokal 7 hari plus off-site R2 (retensi 30 hari), binlog tiap
+jam untuk pemulihan ke titik waktu, arsip mingguan dan bulanan, uji restore
+mingguan, dan drill PITR mingguan. Dibuktikan langsung: dump memuat baris
+`customers` lengkap dengan nama, nomor HP, email, dan alamat.
+
+Tiga celah yang diperbaiki hari ini:
+
+1. **Uji restore tidak memverifikasi data pelanggan.** Sebelumnya hanya lima tabel
+   (produk, varian, media produk, pesanan, item pesanan). Kini `customers`,
+   `users`, dan `payments` ikut diverifikasi dan dibuktikan cocok: 8 pelanggan,
+   1 pengguna, 20 pembayaran.
+2. **Arsip mingguan bisa terblokir diam-diam.** Aturan lama membatalkan arsip bila
+   belum ada bukti uji restore terbaru, sehingga W35 dan W38 hilang. Kini arsip
+   tetap dibuat dan ditandai BELUM TERVERIFIKASI (`ALERT-archive-unverified`).
+3. **Salinan R2 tidak terenkripsi.** Identitas pelanggan tadinya terbaca apa adanya.
+   Kini salinan off-site dienkripsi (AES-256-CBC + PBKDF2) memakai kunci di
+   `/root/backups/.backup-key`; berkas lokal tetap polos supaya rantai pemulihan
+   tidak berubah. Dibuktikan bolak-balik: unggah terenkripsi, unduh dari R2,
+   dekripsi, sidik jari identik dengan dump asli.
+
+**PENTING:** tanpa kunci itu, salinan di R2 TIDAK BISA dibuka. Kunci dibuat
+2026-09-28 dan disalin ke Telegram pemilik; simpan di pengelola kata sandi. Bila
+kunci hilang, seluruh cadangan off-site menjadi tidak berguna.
+
+### Trafik
+
+Yang ada: pembatas nginx `limit_req` 20 permintaan/detik dan `limit_conn`;
+pencatatan kunjungan produk di `performance_metrics`; snapshot kesehatan tiap 15
+menit; dan pencatat trafik baru (`scripts_traffic_check.sh`, tiap jam) yang mengisi
+`/root/backups/traffic-daily.csv` serta mencatat pemakaian bandwidth harian.
+
+Yang ditambahkan ke agregator: **uji keterjangkauan dari LUAR**
+(`SITUS_TAK_TERJANGKAU`) — satu-satunya ujian yang membuktikan pelanggan bisa
+membuka situs, karena ujian internal tetap lulus walau tunnel atau DNS rusak —
+plus ambang bandwidth (`BANDWIDTH_TINGGI`, kritis di 50 GB, catatan di 20 GB).
+
+**Temuan yang belum ditutup:** nginx belum membaca IP asli pengunjung. Seluruh
+trafik masuk lewat tunnel Cloudflare sehingga tercatat sebagai satu IP
+(209.23.10.62). Akibatnya (a) `limit_req` per IP efektif menjadi batas bersama
+untuk semua pengunjung, bukan per pengunjung, dan (b) pemisahan pengunjung dari
+trafik internal di log hanya perkiraan. Perbaikannya menuntut
+`set_real_ip_from` dan `real_ip_header CF-Connecting-IP` di konfigurasi nginx
+(`/etc/nginx`, di luar area tulis agent).
+
 ## F. Berkas terkait
 
 - Agregator: `/root/scripts_alert_aggregator.sh`, cermin `scripts/prod/alert-aggregator.sh`,
