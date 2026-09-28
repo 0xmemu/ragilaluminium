@@ -2306,3 +2306,12 @@ Verifikasi: test baru di AdminOrderStatusNewBadgeTest (titik merah muncul saat k
 
 - Menambahkan contoh pesanan uji berstatus Sampai atas permintaan owner: RA-SIM-2609-05 (id 100084, Budi Santoso, 2 produk, total Rp 12.840.000, COD paid, telepon 6285725116817). Pola sama dengan 03/04: query builder murni tanpa observer/event sehingga tidak ada WhatsApp terkirim; masuk pola pembersihan RA-SIM-2609-%.
 - Diverifikasi live di tab Sampai daftar pesanan: baris tampil dengan tombol Selesaikan Pesanan dan Retur (popup).
+
+## 2026-09-28 15:20 UTC | zcode-retur | Standard | - | selesai
+Lingkup: owner bertanya fungsi tombol Muat ulang katalog, lalu memutuskan "hilangkan saja. pastikan semuanya otomatis saja".
+Temuan recon: sinkronisasi wadah model punya dua pemanggil, tombol manual dan job import katalog (sudah otomatis). Data produksi nol selisih, jadi tombol memang berlebih untuk jalur normal. Satu wadah (JENDELA|JUNGKIT) ternyata sengaja dinonaktifkan admin walau produknya aktif, sehingga otomatis TIDAK boleh mengaktifkan ulang.
+Perubahan: ModelProductSync (baru) sebagai penyelaras + penahan; ProductObserver::created/updated/deleted memicunya; ProcessCatalogImport menahan per baris dan menyelaras sekali; tombol, method sync, route, dokumen route, dan ziggy dihapus; tombol Aktifkan dimatikan untuk wadah tanpa produk aktif (akan langsung padam lagi oleh penyelarasan otomatis).
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (route admin.model-products.sync dihapus dari docs/api-and-routes-ragil-aluminium.md; tanpa perubahan schema).
+Tes: PHPUnit 1266 passed / 1 skipped / 0 failed, Vitest 230 passed, typecheck + ESLint bersih, build sukses. Enam tes lama disesuaikan karena dulu membuat baris wadah kembar manual: HomepagePopularTest (meta kartu kini dari katalog), InstallationMediaImportTest (sampul memakai gambar kartu wadah), ModelProdukPageTest, dan tes tes lain yang memakai pasangan sama.
+Catatan: tests/Feature/ModelProductMediaTest.php TIDAK ikut di-commit karena belum pernah di-commit oleh agent lain; adaptasi saya ada di working tree.
+Agent: zcode-retur
