@@ -1956,7 +1956,7 @@ export default function OrderShow({
                   <Input
                     value={shippingForm.data.waybill_number}
                     onChange={(event) => shippingForm.setData("waybill_number", event.target.value)}
-                    placeholder="Masukkan nomor resi ekspedisi (mis. JT1234567890)"
+                    placeholder="Masukan Resi Pengiriman..."
                   />
                 </Field>
 

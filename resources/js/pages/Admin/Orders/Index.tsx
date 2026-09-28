@@ -1421,7 +1421,7 @@ export default function OrdersIndex({
                       required
                       value={resiForm.waybill_number}
                       onChange={(event) => setResiForm((prev) => ({ ...prev, waybill_number: event.target.value }))}
-                      placeholder="Masukkan nomor resi ekspedisi (mis. JT1234567890)"
+                      placeholder="Masukan Resi Pengiriman..."
                       className="h-9 w-full rounded-md border border-border bg-surface px-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </div>
