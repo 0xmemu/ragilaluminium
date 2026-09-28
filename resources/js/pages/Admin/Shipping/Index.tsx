@@ -30,7 +30,6 @@ export interface ShippingItem {
   customer_name: string
   customer_phone: string
   customer_city: string
-  whatsapp_url: string | null
   href: string
   order_href: string
   refresh_url: string
@@ -414,17 +413,6 @@ export default function ShippingIndex({
                           <span className="font-medium text-foreground">{item.customer_name}</span>
                           {item.customer_city ? (
                             <span>({item.customer_city})</span>
-                          ) : null}
-                          {item.whatsapp_url ? (
-                            <a
-                              href={item.whatsapp_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-success hover:opacity-80"
-                              title="Chat WhatsApp pembeli"
-                            >
-                              <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
-                            </a>
                           ) : null}
                         </div>
                       </div>

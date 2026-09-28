@@ -7,7 +7,6 @@ use App\Models\EventLog;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\JntReadiness;
-use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -116,12 +115,6 @@ class ShippingRecordController extends Controller
 
         $mappedData = $paginated->getCollection()->map(function (ShippingRecord $r): array {
             $order = $r->order;
-            $phone = $order?->customer_phone ?? '';
-            $waUrl = null;
-            if ($phone !== '') {
-                $cleanPhone = PhoneNumber::normalize($phone) ?? preg_replace('/\D/', '', $phone);
-                $waUrl = "https://wa.me/{$cleanPhone}";
-            }
 
             return [
                 'id' => $r->id,
@@ -135,9 +128,8 @@ class ShippingRecordController extends Controller
                 'order_number' => $order?->order_number ?? '-',
                 'order_status' => $order?->order_status ?? null,
                 'customer_name' => $order?->customer_name ?? '-',
-                'customer_phone' => $phone,
+                'customer_phone' => $order?->customer_phone ?? '',
                 'customer_city' => $order?->shipping_city ?? '',
-                'whatsapp_url' => $waUrl,
                 'href' => route('admin.shipping.show', $r),
                 'order_href' => $r->order_id ? route('admin.orders.show', $r->order_id) : '#',
                 'refresh_url' => route('admin.shipping.refresh', $r),
