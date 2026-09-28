@@ -796,7 +796,7 @@ class OrderController extends Controller
             // kasus retur aktif ganda tetap ditolak di bawah.
             $eligibility = $this->returnEligibility($order);
             if (! $eligibility['eligible']) {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectKembali($order)
                     ->withErrors(['return' => $eligibility['reason']]);
             }
         }
@@ -816,7 +816,7 @@ class OrderController extends Controller
         ]);
 
         if ($validated['reason'] === 'lainnya' && trim((string) ($validated['reason_detail'] ?? '')) === '') {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectKembali($order)
                 ->withErrors(['reason_detail' => 'Keterangan wajib diisi untuk alasan Lainnya.'])
                 ->withInput();
         }
@@ -829,7 +829,7 @@ class OrderController extends Controller
         foreach ($validated['items'] as $row) {
             $item = $itemsById->get((int) $row['order_item_id']);
             if (! $item || (int) $row['requested_quantity'] > (int) $item->quantity) {
-                return redirect()->route('admin.orders.show', $order)
+                return $this->redirectKembali($order)
                     ->withErrors(['items' => 'Jumlah retur tidak boleh melebihi jumlah pada pesanan.'])
                     ->withInput();
             }
@@ -841,7 +841,7 @@ class OrderController extends Controller
             ->where('status', 'open')
             ->exists();
         if ($hasActive) {
-            return redirect()->route('admin.orders.show', $order)
+            return $this->redirectKembali($order)
                 ->withErrors(['return' => 'Sudah ada kasus retur aktif untuk pesanan ini. Selesaikan atau tangani dulu.']);
         }
 
@@ -903,10 +903,34 @@ class OrderController extends Controller
             $order->id,
         );
 
-        return redirect()->route('admin.orders.show', $order)
+        // Sukses kembali ke halaman asal: dari popup daftar pesanan admin tetap
+        // di daftar (barisnya ikut berubah ke Retur Diproses), dari halaman
+        // detail tetap di halaman detail.
+        return $this->redirectKembali($order)
             ->with('success', $isLateManual
                 ? 'Retur manual dicatat: pesanan Selesai masuk Retur Diproses dengan alasan pengecualian.'
                 : 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
+    }
+
+    /**
+     * Tujuan kembali setelah aksi pencatatan retur (owner 2026-09-28: klik
+     * Retur di daftar membuka popup, jadi admin harus tetap di daftar).
+     *
+     * Aturannya: bila halaman sebelumnya adalah halaman detail pesanan ini,
+     * kembali ke detail seperti perilaku lama; selain itu kembali ke halaman
+     * asal (daftar pesanan, termasuk filter aktifnya). Pemanggil tanpa
+     * referer, mis. test PHPUnit, diarahkan ke detail agar perilaku lama tidak
+     * berubah.
+     */
+    private function redirectKembali(Order $order): \Illuminate\Http\RedirectResponse
+    {
+        $sebelumnya = (string) url()->previous();
+
+        if ($sebelumnya === '' || ! preg_match('#/admin/orders/\d+#', $sebelumnya)) {
+            return redirect()->route('admin.orders.show', $order);
+        }
+
+        return redirect()->back();
     }
 
     /**

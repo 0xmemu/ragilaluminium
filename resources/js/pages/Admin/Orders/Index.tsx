@@ -1,5 +1,6 @@
 import { Head, Link, router } from "@inertiajs/react"
 import { ReviewReplyDialog, type ReviewReplyTarget } from "@/components/admin/review-reply-dialog"
+import { ReturnCreateDialog } from "@/components/admin/order-return-create-dialog"
 import * as React from "react"
 
 import * as DialogPrimitive from "@radix-ui/react-dialog"
@@ -228,11 +229,14 @@ function OrderCardRow({
   onInputResi,
   onEditNotes,
   onReplyReview,
+  onRetur,
 }: {
   order: OrderCard
   onInputResi?: (order: OrderCard) => void
   onEditNotes?: (order: OrderCard) => void
   onReplyReview?: (order: OrderCard) => void
+  /** Buka popup pengisian detail retur untuk pesanan ini. */
+  onRetur?: (order: OrderCard) => void
   queryState: {
     order_status: string
     q: string
@@ -592,7 +596,18 @@ function OrderCardRow({
           ) : null}
 
           {order.secondary_action ? (
-            order.secondary_action.href ? (
+            order.secondary_action.kind === "start_return" ? (
+              // Retur dibuka sebagai popup pengisian di tempat (owner 2026-09-28),
+              // bukan tautan ke halaman detail.
+              <Button
+                variant="destructive"
+                size="xs"
+                className="w-full xl:w-auto"
+                onClick={() => onRetur?.(order)}
+              >
+                {order.secondary_action.label}
+              </Button>
+            ) : order.secondary_action.href ? (
               <Button
                 asChild
                 variant={order.secondary_action.kind === "start_return" ? "destructive" : "secondary"}
@@ -682,6 +697,9 @@ export default function OrdersIndex({
   // Pesanan yang ulasannya sedang dibalas. Satu dialog untuk seluruh daftar,
   // bukan satu per baris.
   const [replyTarget, setReplyTarget] = React.useState<ReviewReplyTarget | null>(null)
+  // Pesanan yang popup returnya sedang terbuka. Satu dialog untuk seluruh
+  // daftar; klik tombol Retur di kolom Aksi mengisinya.
+  const [returTarget, setReturTarget] = React.useState<OrderCard | null>(null)
   const [refreshing, setRefreshing] = React.useState(false)
   // Galat muat ulang daftar: muncul sebagai ErrorState di area daftar, bukan
   // sekadar teks, supaya admin punya tombol coba lagi di tempat yang sama.
@@ -1277,6 +1295,7 @@ export default function OrdersIndex({
                     onInputResi={setResiOrder}
                     onEditNotes={openNotesModal}
                     onReplyReview={(order) => setReplyTarget(order.review ?? null)}
+                    onRetur={setReturTarget}
                   />
                 ))}
               </div>
@@ -1568,6 +1587,10 @@ export default function OrdersIndex({
       {/* Popup balas ulasan. Komponennya sama dengan halaman detail pesanan
           dan daftar ulasan, jadi balasan bisa ditulis dari mana saja. */}
       <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
+
+      {/* Popup pengisian detail retur dari daftar (owner 2026-09-28). Formnya
+          sama dengan halaman detail, jadi kontrak kiriman tidak bisa beda. */}
+      <ReturnCreateDialog order={returTarget} onClose={() => setReturTarget(null)} />
     </AdminLayout>
   )
 }
