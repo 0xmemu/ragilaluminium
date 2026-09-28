@@ -557,6 +557,12 @@ interface ReturnCase {
   replacement_amount?: number
   return_shipping_cost?: number
   completed_at?: string | null
+  /** Retur manual pesanan Selesai (jalur admin khusus 2026-09-28). */
+  late_return?: boolean
+  override_reason?: string | null
+  /** Kasus ditutup administratif (void): tidak dihitung laporan lagi. */
+  voided_at?: string | null
+  void_reason?: string | null
   items: ReturnCaseItem[]
 }
 
@@ -573,6 +579,20 @@ interface ReturnEligibility {
    * dilewati.
    */
   warnings?: string[]
+  /** Pesanan Selesai: tombol Catat Retur Manual tersedia (jalur admin khusus). */
+  manual_available?: boolean
+}
+
+/** Satu baris jejak audit koreksi/void kasus retur (tabel return_case_adjustments). */
+interface ReturnAdjustment {
+  id: number
+  return_case_id: number
+  field: string
+  old_value?: string | null
+  new_value?: string | null
+  reason: string
+  actor?: string | null
+  created_at?: string | null
 }
 
 const RESOLUTION_LABELS: Record<string, string> = {
@@ -591,6 +611,32 @@ const RETURN_REASONS = [
   { value: "kurang", label: "Barang kurang" },
   { value: "lainnya", label: "Lainnya" },
 ]
+
+/** Label manusiawi field kasus retur untuk jejak audit koreksi. */
+const AUDIT_FIELD_LABELS: Record<string, string> = {
+  reason: "Alasan",
+  reason_detail: "Keterangan alasan",
+  customer_notes: "Kronologi pelanggan",
+  fault_party: "Pihak penyebab",
+  resolution_type: "Resolusi",
+  refund_amount: "Refund",
+  return_shipping_cost: "Ongkir retur toko",
+  replacement_amount: "Nilai penggantian",
+  void: "Penutupan kasus",
+}
+
+/** Isian awal form koreksi dari nilai kasus saat ini. */
+function editFormDari(caseItem: ReturnCase) {
+  return {
+    reason: caseItem.reason,
+    customer_notes: caseItem.customer_notes ?? "",
+    fault_party: caseItem.fault_party ?? "other",
+    resolution_type: caseItem.resolution_type ?? "refund",
+    refund_amount: String(caseItem.refund_amount ?? 0),
+    return_shipping_cost: String(caseItem.return_shipping_cost ?? 0),
+    replacement_amount: String(caseItem.replacement_amount ?? 0),
+  }
+}
 
 /**
  * Waktu paket sampai dan batas returnya. `deadline` dihitung backend memakai
@@ -614,10 +660,15 @@ function ReturnCasePanel({
   order,
   cases,
   eligibility,
+  editReturnCaseId,
+  returnAdjustments = [],
 }: {
   order: OrderDetail
   cases: ReturnCase[]
   eligibility: ReturnEligibility
+  /** Kasus yang dibuka lewat deep-link GET .../returns/{returnCase}/edit. */
+  editReturnCaseId?: number
+  returnAdjustments?: ReturnAdjustment[]
 }) {
   const form = useForm({
     reason: "rusak",
@@ -626,6 +677,7 @@ function ReturnCasePanel({
     admin_notes: "",
     fault_party: "store",
     shipping_cost_borne_by_store: true,
+    override_reason: "",
     items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity, included: true })),
   })
   const capabilities = useAdminCapabilities()
@@ -644,6 +696,37 @@ function ReturnCasePanel({
     >
   >({})
   const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
+  // Retur manual pesanan Selesai (instruksi owner 2026-09-28): tombol
+  // "Catat Retur Manual" membuka form retur yang sama dengan kewajiban
+  // tambahan alasan pengecualian.
+  const bisaReturManual = eligibility?.manual_available === true
+  const [manualTerbuka, setManualTerbuka] = React.useState(false)
+  const tampilkanForm = eligibility?.eligible === true || (bisaReturManual && manualTerbuka)
+  // Deep-link GET .../returns/{returnCase}/edit: kasus tujuan form koreksi,
+  // dihitung sebelum state supaya initializer bisa memakainya tanpa effect.
+  const idKasusDariUrl = editReturnCaseId ?? 0
+  const kasusDariUrl =
+    idKasusDariUrl > 0
+      ? cases.find((c) => c.id === idKasusDariUrl && c.status === "completed" && !c.voided_at)
+      : undefined
+  // Koreksi data kasus retur selesai. Form per kasus + galat server.
+  // Deep-link dari URL diisi di initializer, bukan di effect.
+  const [editData, setEditData] = React.useState<
+    Record<
+      number,
+      {
+        reason: string
+        customer_notes: string
+        fault_party: string
+        resolution_type: string
+        refund_amount: string
+        return_shipping_cost: string
+        replacement_amount: string
+      }
+    >
+  >(() => (kasusDariUrl ? { [kasusDariUrl.id]: editFormDari(kasusDariUrl) } : {}))
+  const [editError, setEditError] = React.useState<string | null>(null)
+  const editFormRef = React.useRef<Record<number, HTMLFormElement | null>>({})
   // Galat validasi dari server untuk form penyelesaian. Form ini dikirim
   // dengan router.post mentah (bukan useForm), jadi tanpa penampung ini
   // setiap penolakan server hanya memuat ulang halaman tanpa pesan apa pun
@@ -661,9 +744,12 @@ function ReturnCasePanel({
   function submit(event: React.FormEvent) {
     event.preventDefault()
     // Item yang tidak dicentang tidak dikirim; validasi server memang
-    // menerima sebagian item (larik items min:1).
+    // menerima sebagian item (larik items min:1). Jalur retur manual
+    // pesanan Selesai wajib membawa penanda late_return + alasannya.
+    const jalurManual = bisaReturManual && !eligibility?.eligible
     form.transform((data) => ({
       ...data,
+      ...(jalurManual ? { late_return: true, override_reason: data.override_reason } : {}),
       items: data.items
         .filter((row) => row.included)
         .map(({ order_item_id, requested_quantity }) => ({ order_item_id, requested_quantity })),
@@ -747,6 +833,57 @@ function ReturnCasePanel({
   const bolehRefund = order.payment_status === "paid"
   const showCreate = eligibility?.eligible === true
 
+  /** Buka form koreksi untuk kasus selesai, diisi nilai kasus saat ini. */
+  function openEdit(caseItem: ReturnCase) {
+    setEditError(null)
+    setEditData((current) => ({
+      ...current,
+      [caseItem.id]: current[caseItem.id] ?? editFormDari(caseItem),
+    }))
+  }
+
+  /** Simpan koreksi lewat PATCH; alasan koreksi datang dari dialog konfirmasi. */
+  function submitEdit(caseItem: ReturnCase, adjustmentReason: string) {
+    const data = editData[caseItem.id]
+    if (!data) return
+    setEditError(null)
+    router.patch(
+      routeUrl("admin.orders.returns.update", { order: order.id, returnCase: caseItem.id }),
+      {
+        reason: data.reason,
+        customer_notes: data.customer_notes,
+        fault_party: data.fault_party,
+        resolution_type: data.resolution_type,
+        refund_amount: Number(data.refund_amount) || 0,
+        return_shipping_cost: Number(data.return_shipping_cost) || 0,
+        replacement_amount: Number(data.replacement_amount) || 0,
+        adjustment_reason: adjustmentReason,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () =>
+          setEditData((current) => {
+            const next = { ...current }
+            delete next[caseItem.id]
+            return next
+          }),
+        onError: (errors) => {
+          const pesan = Object.values(errors).filter(Boolean)
+          setEditError(pesan.length > 0 ? pesan.join(" ") : "Koreksi retur belum berhasil disimpan.")
+        },
+      },
+    )
+  }
+
+  /** Tutup kasus secara administratif (void); alasan wajib dari dialog. */
+  function submitVoid(caseItem: ReturnCase, alasan: string) {
+    router.post(
+      routeUrl("admin.orders.returns.void", { order: order.id, returnCase: caseItem.id }),
+      { void_reason: alasan },
+      { preserveScroll: true },
+    )
+  }
+
   return (
     <div id="return-case" className="mt-4">
       <SectionCard title="Retur & penyelesaian">
@@ -767,10 +904,33 @@ function ReturnCasePanel({
             </p>
           ) : null}
 
+          {/* Retur manual pesanan Selesai (instruksi owner 2026-09-28):
+              kesepakatan sudah ditangani admin lewat WhatsApp; website hanya
+              mencatat keputusannya dengan alasan pengecualian. */}
+          {bisaReturManual && !showCreate && !manualTerbuka ? (
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                {eligibility?.reason || "Pesanan sudah Selesai."}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-2"
+                disabled={!can("returns.create", capabilities)}
+                title="Digunakan untuk mencatat kesepakatan retur yang sudah ditangani admin melalui WhatsApp."
+                onClick={() => setManualTerbuka(true)}
+              >
+                Catat Retur Manual
+              </Button>
+            </div>
+          ) : null}
+
           {/* Kebijakan resmi yang dilampaui. Keputusan tetap di tangan admin
               (skema full manual), jadi ditampilkan sebagai peringatan, bukan
-              sebagai penolakan. */}
-          {showCreate && (eligibility?.warnings?.length ?? 0) > 0 ? (
+              sebagai penolakan. Termasuk peringatan retur manual yang pasti
+              sudah lewat jendela 48 jam. */}
+          {tampilkanForm && (eligibility?.warnings?.length ?? 0) > 0 ? (
             <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
               <p className="text-xs font-semibold text-warning">
                 Perhatian sebelum mencatat retur
@@ -789,8 +949,18 @@ function ReturnCasePanel({
           {cases.map((item) => (
             <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">Kasus #{item.id} · {item.reason}{item.reason === "lainnya" && item.reason_detail ? ` - ${item.reason_detail}` : ""}</span>
-                <StatusBadge status={item.status} />
+                <span className="font-semibold">
+                  Kasus #{item.id} · {item.reason}{item.reason === "lainnya" && item.reason_detail ? ` - ${item.reason_detail}` : ""}
+                  {item.late_return ? (
+                    <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Retur manual</span>
+                  ) : null}
+                </span>
+                <span className="flex items-center gap-2">
+                  {item.voided_at ? (
+                    <span className="rounded-full border border-destructive/30 px-2 py-0.5 text-[11px] font-medium text-destructive">Di-void</span>
+                  ) : null}
+                  <StatusBadge status={item.status} />
+                </span>
               </div>
               {item.customer_notes ? <p className="mt-2 text-xs text-muted-foreground">{item.customer_notes}</p> : null}
               {item.admin_notes ? <p className="mt-1 text-xs text-muted-foreground">Catatan admin: {item.admin_notes}</p> : null}
@@ -1000,9 +1170,33 @@ function ReturnCasePanel({
                       />
                     </form>
                   ) : (
-                    <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>
-                      Selesaikan retur
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>
+                        Selesaikan retur
+                      </Button>
+                      {/* Penutupan administratif kasus terbuka: alasan wajib,
+                          pelaku tercatat, riwayat tetap ada (void, bukan hapus). */}
+                      <ConfirmAction
+                        trigger={
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={!can("returns.complete", capabilities)}
+                            title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses menutup kasus retur"}
+                          >
+                            Tutup kasus (void)
+                          </Button>
+                        }
+                        title="Tutup kasus retur terbuka ini?"
+                        description="Kasus dibatalkan secara administratif tanpa menghapus riwayat. Pesanan tetap berstatus Retur Diproses sampai ditangani."
+                        confirmLabel="Tutup kasus"
+                        reasonLabel="Alasan penutupan (wajib)"
+                        reasonPlaceholder="Contoh: salah catat, pelanggan membatalkan pengajuan"
+                        reasonRequired
+                        onConfirm={(alasan) => submitVoid(item, alasan ?? "")}
+                      />
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1039,12 +1233,203 @@ function ReturnCasePanel({
                       </ul>
                     </div>
                   ) : null}
+
+                  {item.voided_at ? (
+                    <p className="mt-2 text-xs text-destructive">
+                      Kasus di-void {item.voided_at ? formatDateTime(item.voided_at) : ""}: tidak lagi dihitung laporan. Riwayat nilai tetap tersimpan di kasus ini.
+                    </p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!can("returns.complete", capabilities)}
+                        title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses mengoreksi retur"}
+                        onClick={() =>
+                          editData[item.id]
+                            ? setEditData((current) => {
+                                const next = { ...current }
+                                delete next[item.id]
+                                return next
+                              })
+                            : openEdit(item)
+                        }
+                      >
+                        {editData[item.id] ? "Tutup form koreksi" : "Koreksi data"}
+                      </Button>
+                      {/* Penutupan administratif kasus selesai (void koreksi):
+                          riwayat tidak dihapus, hanya berhenti dihitung laporan. */}
+                      <ConfirmAction
+                        trigger={
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={!can("returns.complete", capabilities)}
+                            title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses menutup kasus retur"}
+                          >
+                            Tutup kasus (void)
+                          </Button>
+                        }
+                        title="Void kasus retur selesai ini?"
+                        description="Kasus tetap tercatat dan status pesanan tidak berubah, tetapi nilai refund dan ongkirnya berhenti dihitung di laporan. Tidak ada pembalikan stok atau refund otomatis."
+                        confirmLabel="Void kasus"
+                        reasonLabel="Alasan void (wajib)"
+                        reasonPlaceholder="Contoh: kasus ganda, salah catat pesanan"
+                        reasonRequired
+                        onConfirm={(alasan) => submitVoid(item, alasan ?? "")}
+                      />
+                    </div>
+                  )}
+
+                  {editData[item.id] ? (() => {
+                    const d = editData[item.id]
+                    const refundBaru = Number(d.refund_amount) || 0
+                    const ongkirBaru = Number(d.return_shipping_cost) || 0
+                    const dampakNet =
+                      -(refundBaru - (item.refund_amount ?? 0)) - (ongkirBaru - (item.return_shipping_cost ?? 0))
+                    const dampakTeks =
+                      dampakNet === 0
+                        ? "tidak berubah"
+                        : dampakNet < 0
+                          ? `berkurang ${formatCurrency(-dampakNet)}`
+                          : `bertambah ${formatCurrency(dampakNet)}`
+                    const ringkasan = `Refund ${formatCurrency(item.refund_amount ?? 0)} menjadi ${formatCurrency(refundBaru)}, ongkir retur ${formatCurrency(item.return_shipping_cost ?? 0)} menjadi ${formatCurrency(ongkirBaru)}, dampak Penjualan Bersih ${dampakTeks}.`
+                    return (
+                      <form
+                        ref={(node) => {
+                          editFormRef.current[item.id] = node
+                        }}
+                        className="mt-3 space-y-3 rounded-lg border border-border bg-background p-3"
+                        onSubmit={(event) => event.preventDefault()}
+                      >
+                        <p className="text-xs font-semibold">Koreksi data kasus #{item.id}</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Field id={`edit-reason-${item.id}`} label="Alasan retur" required>
+                            <Select
+                              value={d.reason}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, reason: event.target.value } }))}
+                            >
+                              {RETURN_REASONS.map((r) => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
+                              ))}
+                            </Select>
+                          </Field>
+                          <Field id={`edit-fault-${item.id}`} label="Pihak penyebab">
+                            <Select
+                              value={d.fault_party}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, fault_party: event.target.value } }))}
+                            >
+                              <option value="store">Toko</option>
+                              <option value="customer">Pelanggan</option>
+                              <option value="other">Lainnya</option>
+                            </Select>
+                          </Field>
+                          <Field id={`edit-resolution-${item.id}`} label="Resolusi" required>
+                            <Select
+                              value={d.resolution_type}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, resolution_type: event.target.value } }))}
+                            >
+                              {Object.entries(RESOLUTION_LABELS).map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                              ))}
+                            </Select>
+                          </Field>
+                          <Field
+                            id={`edit-refund-${item.id}`}
+                            label="Refund"
+                            error={bolehRefund ? undefined : "Pesanan belum lunas: refund akan ditolak server."}
+                          >
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={d.refund_amount}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, refund_amount: event.target.value } }))}
+                            />
+                          </Field>
+                          <Field id={`edit-ongkir-${item.id}`} label="Ongkir retur toko">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={d.return_shipping_cost}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, return_shipping_cost: event.target.value } }))}
+                            />
+                          </Field>
+                          <Field id={`edit-replacement-${item.id}`} label="Nilai penggantian">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={d.replacement_amount}
+                              onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, replacement_amount: event.target.value } }))}
+                            />
+                          </Field>
+                        </div>
+                        <Field id={`edit-notes-${item.id}`} label="Kronologi pelanggan">
+                          <Textarea
+                            rows={2}
+                            value={d.customer_notes}
+                            onChange={(event) => setEditData((c) => ({ ...c, [item.id]: { ...d, customer_notes: event.target.value } }))}
+                          />
+                        </Field>
+                        <p className="text-[11px] text-muted-foreground">
+                          Dampak Penjualan Bersih: {dampakTeks}. Perubahan ini hanya memperbarui pencatatan laporan. Transfer refund dilakukan di luar website.
+                        </p>
+                        {editError ? (
+                          <p role="alert" className="rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                            {editError}
+                          </p>
+                        ) : null}
+                        <ConfirmAction
+                          trigger={
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={!can("returns.complete", capabilities)}
+                              title={can("returns.complete", capabilities) ? undefined : "Kamu tidak punya akses mengoreksi retur"}
+                            >
+                              Simpan koreksi retur
+                            </Button>
+                          }
+                          title="Simpan koreksi retur"
+                          description={ringkasan}
+                          confirmLabel="Simpan koreksi retur"
+                          variant="primary"
+                          reasonLabel="Alasan koreksi (wajib)"
+                          reasonPlaceholder="Contoh: koreksi nominal sesuai bukti transfer"
+                          reasonRequired
+                          onConfirm={(alasan) => submitEdit(item, alasan ?? "")}
+                        />
+                      </form>
+                    )
+                  })() : null}
+
+                  {returnAdjustments.filter((a) => a.return_case_id === item.id).length > 0 ? (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs text-muted-foreground">
+                        Riwayat koreksi ({returnAdjustments.filter((a) => a.return_case_id === item.id).length})
+                      </summary>
+                      <ul className="mt-1 space-y-1 pl-4 text-xs text-muted-foreground">
+                        {returnAdjustments
+                          .filter((a) => a.return_case_id === item.id)
+                          .map((a) => (
+                            <li key={a.id}>
+                              {a.created_at ? formatDateTime(a.created_at) : "-"} · {AUDIT_FIELD_LABELS[a.field] ?? a.field}:{" "}
+                              {a.old_value ?? "-"} menjadi {a.new_value ?? "-"} oleh {a.actor ?? "sistem"} ({a.reason})
+                            </li>
+                          ))}
+                      </ul>
+                    </details>
+                  ) : null}
                 </div>
               )}
             </div>
           ))}
 
-          {showCreate ? (
+          {tampilkanForm ? (
             <form className="space-y-3 border-t border-border pt-4" onSubmit={submit}>
               <p className="text-xs text-muted-foreground">Isi admin. Customer mengirim kronologi/foto melalui WhatsApp; tidak ada form retur publik.</p>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -1080,6 +1465,16 @@ function ReturnCasePanel({
                 </Field>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
+                {bisaReturManual && !eligibility?.eligible ? (
+                  <Field id="return-override-reason" label="Alasan pengecualian retur manual" required error={form.errors.override_reason}>
+                    <Textarea
+                      rows={2}
+                      value={form.data.override_reason}
+                      onChange={(event) => form.setData("override_reason", event.target.value)}
+                      placeholder="Contoh: pelanggan baru melaporkan kerusakan setelah masa retur habis"
+                    />
+                  </Field>
+                ) : null}
                 {form.data.reason === "lainnya" ? (
                   <Field id="return-reason-detail" label="Keterangan lainnya" required error={form.errors.reason_detail}>
                     <Textarea rows={2} value={form.data.reason_detail} onChange={(event) => form.setData("reason_detail", event.target.value)} />
@@ -1223,6 +1618,8 @@ export default function OrderShow({
   editUrl,
   returnCases = [],
     returnEligibility,
+    editReturnCaseId = 0,
+    returnAdjustments = [],
   }: {
     order: OrderDetail
     events?: OrderEvent[]
@@ -1237,6 +1634,8 @@ export default function OrderShow({
     editUrl?: string
     returnCases?: ReturnCase[]
     returnEligibility?: ReturnEligibility | null
+    editReturnCaseId?: number
+    returnAdjustments?: ReturnAdjustment[]
   }) {
   const isCod = order.flow === "cod" || order.cod_flag
   const statusForm = useForm({ order_status: order.order_status })
@@ -1995,8 +2394,13 @@ export default function OrderShow({
         // punya kasus aktif. Dulu panel disembunyikan saat tidak memenuhi syarat,
         // sehingga tombol "Catat Retur" melompat ke bagian kosong dan alasan
         // penolakannya tidak pernah terbaca admin.
+        // Retur manual (instruksi owner 2026-09-28): pesanan Selesai juga
+        // menampilkan panel supaya tombol "Catat Retur Manual" bisa dipakai.
         const showPanel =
-          hasActiveCase || order.order_status === "delivered" || order.order_status === "return_in_process"
+          hasActiveCase ||
+          order.order_status === "delivered" ||
+          order.order_status === "return_in_process" ||
+          (order.order_status === "completed" && (returnEligibility?.manual_available ?? false))
         if (!showPanel) {
           // Item 4 antrean: pesanan di luar Sampai (mis. Selesai) tetap
           // menampilkan alasan returnya dalam bentuk ringkas agar admin
@@ -2012,7 +2416,15 @@ export default function OrderShow({
           }
           return null;
         }
-        return <ReturnCasePanel order={order} cases={cases} eligibility={elig} />
+        return (
+          <ReturnCasePanel
+            order={order}
+            cases={cases}
+            eligibility={elig}
+            editReturnCaseId={editReturnCaseId}
+            returnAdjustments={returnAdjustments}
+          />
+        )
       })()}
 
 

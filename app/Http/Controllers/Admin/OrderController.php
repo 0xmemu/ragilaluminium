@@ -330,7 +330,7 @@ class OrderController extends Controller
 
     }
 
-    public function show(Order $order): Response
+    public function show(Request $request, Order $order): Response
     {
         $order->markAdminSeen();
         AdminNotification::query()
@@ -376,6 +376,33 @@ class OrderController extends Controller
             ])
             ->values()
             ->all();
+
+        // Koreksi kasus retur (instruksi owner 2026-09-28): id kasus yang
+        // dibuka lewat deep-link GET .../returns/{returnCase}/edit, plus
+        // seluruh jejak audit koreksi/void untuk pesanan ini. Jejak dibaca
+        // dari tabel return_case_adjustments, bukan direkonstruksi.
+        $editReturnCaseId = (int) $request->input('edit_return_case', 0);
+        if ($editReturnCaseId > 0 && ! $order->returnCases->contains('id', $editReturnCaseId)) {
+            $editReturnCaseId = 0;
+        }
+        $returnAdjustments = $order->returnCases->isNotEmpty()
+            ? \App\Models\ReturnCaseAdjustment::query()
+                ->whereIn('return_case_id', $order->returnCases->pluck('id'))
+                ->with('actor:id,name')
+                ->latest('id')
+                ->limit(100)
+                ->get()
+                ->map(fn (\App\Models\ReturnCaseAdjustment $a): array => [
+                    'id' => $a->id,
+                    'return_case_id' => $a->return_case_id,
+                    'field' => $a->field,
+                    'old_value' => $a->old_value,
+                    'new_value' => $a->new_value,
+                    'reason' => $a->reason,
+                    'actor' => $a->actor?->name,
+                    'created_at' => optional($a->created_at)?->toIso8601String(),
+                ])->all()
+            : [];
 
         // Jumlah pesan WA gagal dalam cakupan utas yang sama (per nomor
         // pelanggan) untuk tombol kirim ulang di header.
@@ -539,6 +566,10 @@ class OrderController extends Controller
                     'replacement_amount' => (float) $case->replacement_amount,
                     'return_shipping_cost' => (float) $case->return_shipping_cost,
                     'completed_at' => optional($case->completed_at)?->toIso8601String(),
+                    'late_return' => (bool) $case->late_return,
+                    'override_reason' => $case->override_reason,
+                    'voided_at' => optional($case->voided_at)?->toIso8601String(),
+                    'void_reason' => $case->void_reason,
                     'items' => $case->items->map(fn ($item) => [
                         'id' => $item->id,
                         'order_item_id' => $item->order_item_id,
@@ -566,6 +597,8 @@ class OrderController extends Controller
             'editUrl' => route('admin.orders.items.update', $order),
             'returnUrl' => route('admin.orders.returns.store', $order),
             'returnEligibility' => $this->returnEligibility($order),
+            'editReturnCaseId' => $editReturnCaseId,
+            'returnAdjustments' => $returnAdjustments,
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
@@ -737,15 +770,36 @@ class OrderController extends Controller
             ->with('success', 'Pesanan diperbarui. Harga dihitung ulang dan konfirmasi dikirim ulang ke pelanggan.');
     }
 
-    public function createReturn(Request $request, Order $order): RedirectResponse
+    public function createReturn(Request $request, Order $order, ReturnService $returns): RedirectResponse
     {
-        // Retur hanya dari status Sampai (skema full manual 2026-09-21);
-        // batas 48 jam dan status lunas tampil sebagai peringatan, dan
-        // kasus retur aktif ganda tetap ditolak di bawah.
-        $eligibility = $this->returnEligibility($order);
-        if (! $eligibility['eligible']) {
-            return redirect()->route('admin.orders.show', $order)
-                ->withErrors(['return' => $eligibility['reason']]);
+        // Jalur khusus retur manual (instruksi owner 2026-09-28): pesanan
+        // yang sudah Selesai dapat dicatat returnya oleh admin karena
+        // kesepakatannya sudah ditangani melalui WhatsApp. Pesanan completed
+        // boleh berpindah ke return_in_process HANYA lewat jalur ini, wajib
+        // membawa alasan pengecualian, dan peringatan keterlambatan selalu
+        // tampil. Status completed tidak pernah dimundurkan ke delivered.
+        $isLateManual = $order->order_status === 'completed';
+
+        if ($isLateManual) {
+            if (! $request->boolean('late_return')) {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['return' => 'Retur manual pesanan Selesai wajib dicatat melalui tombol Catat Retur Manual.']);
+            }
+            $overrideCheck = $returns->validateLateReturnOverride($request->input('override_reason'));
+            if (! $overrideCheck['valid']) {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['override_reason' => $overrideCheck['error']])
+                    ->withInput();
+            }
+        } else {
+            // Retur hanya dari status Sampai (skema full manual 2026-09-21);
+            // batas 48 jam dan status lunas tampil sebagai peringatan, dan
+            // kasus retur aktif ganda tetap ditolak di bawah.
+            $eligibility = $this->returnEligibility($order);
+            if (! $eligibility['eligible']) {
+                return redirect()->route('admin.orders.show', $order)
+                    ->withErrors(['return' => $eligibility['reason']]);
+            }
         }
 
         $validated = $request->validate([
@@ -755,6 +809,8 @@ class OrderController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:5000'],
             'fault_party' => ['nullable', 'in:store,customer,other'],
             'shipping_cost_borne_by_store' => ['nullable', 'boolean'],
+            'late_return' => ['nullable', 'boolean'],
+            'override_reason' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.order_item_id' => ['required', 'integer'],
             'items.*.requested_quantity' => ['required', 'integer', 'min:1'],
@@ -794,7 +850,7 @@ class OrderController extends Controller
             ? $request->boolean('shipping_cost_borne_by_store')
             : ($faultParty === 'store');
 
-        $case = DB::transaction(function () use ($order, $validated, $request, $itemsById, $faultParty, $shippingCostBorne): OrderReturnCase {
+        $case = DB::transaction(function () use ($order, $validated, $request, $itemsById, $faultParty, $shippingCostBorne, $isLateManual): OrderReturnCase {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             if (OrderReturnCase::query()->where('order_id', $locked->id)->where('status', 'open')->exists()) {
                 throw new \DomainException('Sudah ada kasus retur aktif untuk pesanan ini.');
@@ -806,6 +862,8 @@ class OrderController extends Controller
                 'reason_detail' => filled($validated['reason_detail'] ?? null) ? trim($validated['reason_detail']) : null,
                 'fault_party' => $faultParty,
                 'shipping_cost_borne_by_store' => $shippingCostBorne,
+                'late_return' => $isLateManual,
+                'override_reason' => $isLateManual ? trim((string) $validated['override_reason']) : null,
                 'customer_notes' => trim($validated['customer_notes']),
                 'admin_notes' => filled($validated['admin_notes'] ?? null) ? trim($validated['admin_notes']) : null,
                 'created_by_user_id' => $request->user()->id,
@@ -825,8 +883,12 @@ class OrderController extends Controller
                 $order,
                 'return_in_process',
                 $request->user()->id,
-                'admin_return',
-                ['return_case_id' => $case->id, 'reason' => $case->reason],
+                $isLateManual ? 'admin_late_return' : 'admin_return',
+                [
+                    'return_case_id' => $case->id,
+                    'reason' => $case->reason,
+                    ...($isLateManual ? ['late_return' => true] : []),
+                ],
             );
 
             return $case;
@@ -843,7 +905,70 @@ class OrderController extends Controller
         );
 
         return redirect()->route('admin.orders.show', $order)
-            ->with('success', 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
+            ->with('success', $isLateManual
+                ? 'Retur manual dicatat: pesanan Selesai masuk Retur Diproses dengan alasan pengecualian.'
+                : 'Kasus retur dicatat dan status pesanan menjadi Retur Diproses.');
+    }
+
+    /**
+     * Deep-link form koreksi kasus retur selesai (instruksi owner 2026-09-28).
+     * Merender halaman detail pesanan yang sama dengan kasus terpilih sudah
+     * terbuka, supaya koreksi selalu punya URL yang bisa dikutip dan dibagikan.
+     */
+    public function editReturn(Request $request, Order $order, OrderReturnCase $returnCase): Response
+    {
+        if ((int) $returnCase->order_id !== (int) $order->id) {
+            abort(404);
+        }
+
+        $request->merge(['edit_return_case' => $returnCase->id]);
+
+        return $this->show($request, $order);
+    }
+
+    /**
+     * Simpan koreksi data administratif kasus retur selesai. Status workflow
+     * tidak berubah; setiap field yang berubah tercatat di tabel
+     * return_case_adjustments lewat ReturnService::updateReturnCase.
+     */
+    public function updateReturn(Request $request, Order $order, OrderReturnCase $returnCase, ReturnService $returns): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'in:rusak,pecah,salah_ukuran,salah_produk,kurang,lainnya'],
+            'reason_detail' => ['nullable', 'string', 'max:500'],
+            'customer_notes' => ['nullable', 'string', 'max:5000'],
+            'fault_party' => ['required', 'in:store,customer,other'],
+            'resolution_type' => ['required', 'in:refund,replacement,reship,compensation,no_compensation'],
+            'refund_amount' => ['nullable', 'numeric', 'min:0'],
+            'return_shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'replacement_amount' => ['nullable', 'numeric', 'min:0'],
+            // Alasan koreksi wajib: inilah narasi yang tampil di jejak audit.
+            'adjustment_reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $returns->updateReturnCase($order, $returnCase, $validated, (int) $request->user()->id);
+
+        return redirect()->route('admin.orders.show', $order)
+            ->with('success', 'Koreksi retur tersimpan dengan jejak audit. Transfer refund tetap dilakukan di luar website.');
+    }
+
+    /**
+     * Tutup kasus retur secara administratif (void), bukan hapus fisik.
+     * Kasus open menjadi cancelled; kasus selesai tetap completed tetapi
+     * tidak lagi dihitung laporan. Riwayat dan jejak finansial tetap utuh.
+     */
+    public function voidReturn(Request $request, Order $order, OrderReturnCase $returnCase, ReturnService $returns): RedirectResponse
+    {
+        $validated = $request->validate([
+            'void_reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $mode = $returns->voidReturnCase($order, $returnCase, $validated['void_reason'], (int) $request->user()->id);
+
+        return redirect()->route('admin.orders.show', $order)
+            ->with('success', $mode === 'cancelled'
+                ? 'Kasus retur dibatalkan secara administratif. Riwayat tetap tersimpan.'
+                : 'Kasus retur selesai di-void: tidak lagi dihitung laporan, riwayat tetap tersimpan.');
     }
 
     public function completeReturn(Request $request, Order $order, OrderReturnCase $returnCase, ReturnService $returns): RedirectResponse
@@ -1082,6 +1207,19 @@ class OrderController extends Controller
             // pesanan Selesai yang masih dekat masa returnya.
             $pesanSelesai = 'Pesanan sudah Selesai. Retur hanya dapat dicatat untuk pesanan berstatus Sampai; bila tetap diperlukan, bicarakan dengan pelanggan melalui WhatsApp.';
 
+            // Jalur manual (instruksi owner 2026-09-28): pesanan Selesai bisa
+            // dicatat returnya lewat tombol "Catat Retur Manual" karena
+            // kesepakatannya sudah ditangani admin lewat WhatsApp. Peringatan
+            // keterlambatan selalu tampil karena pesanan pasti sudah di luar
+            // jendela retur 48 jam.
+            $peringatanManual = [];
+            if ($order->order_status === 'completed') {
+                $peringatanManual[] = 'Pesanan sudah melewati jendela retur '.\App\Services\ReturnService::RETURN_WINDOW_HOURS.' jam sejak paket sampai (retur manual).';
+                if ($order->payment_status !== 'paid') {
+                    $peringatanManual[] = 'Pembayaran pesanan ini belum tercatat lunas.';
+                }
+            }
+
             return [
                 'eligible' => false,
                 'reason' => $order->order_status === 'completed'
@@ -1089,7 +1227,8 @@ class OrderController extends Controller
                     : 'Retur hanya dapat dicatat untuk pesanan yang sudah sampai.',
                 'note' => $order->order_status === 'completed' && $masihRelevan ? $pesanSelesai : null,
                 'deadline' => null,
-                'warnings' => [],
+                'warnings' => $peringatanManual,
+                'manual_available' => $order->order_status === 'completed',
             ];
         }
 

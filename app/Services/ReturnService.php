@@ -338,7 +338,8 @@ class ReturnService
      *
      * - fault_party store -> wajib > 0 (kesalahan toko).
      * - fault_party customer/other -> opsional (goodwill, boleh 0 atau > 0).
-     * Tanpa batas maksimal nominal. Tidak mengurangi omzet (biaya operasional).
+     * Tanpa batas maksimal nominal. Nilainya PENGURANG Penjualan Bersih
+     * (keputusan owner 2026-09-28) tanpa mengubah Penjualan Gross.
      *
      * @return array{valid: bool, error?: string}
      */
@@ -355,6 +356,272 @@ class ReturnService
         }
 
         // customer/other: opsional (goodwill). Null dianggap 0.
+        return ['valid' => true];
+    }
+
+    /**
+     * Total refund kasus retur lain yang MASIH dihitung laporan untuk pesanan
+     * ini: status completed, belum di-void, tidak termasuk kasus yang sedang
+     * diedit. Dipakai supaya refund kumulatif lintas kasus tidak pernah
+     * melebihi pembayaran yang tercatat lunas.
+     */
+    public function refundedExcludingCase(Order $order, ?int $excludeCaseId = null): float
+    {
+        return (float) OrderReturnCase::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'completed')
+            ->whereNull('voided_at')
+            ->when($excludeCaseId, fn ($query) => $query->where('id', '!=', $excludeCaseId))
+            ->sum('refund_amount');
+    }
+
+    /**
+     * Koreksi data administratif kasus retur SELESAI (instruksi owner
+     * 2026-09-28). Status workflow tidak disentuh: kasus tetap "completed",
+     * pesanan tetap "return_completed". Yang boleh berubah hanya data kasus,
+     * dan setiap perubahan field meninggalkan satu baris audit di tabel
+     * return_case_adjustments (nilai lama, nilai baru, alasan, pelaku).
+     *
+     * Stok pengganti TIDAK disentuh sama sekali: koreksi tidak memotong stok
+     * lagi dan tidak membalikkan pemotongan lama (pembalikan stok butuh
+     * keputusan eksplisit owner). Refund juga tidak membuat mutasi kas; yang
+     * diperbarui hanya pencatatan laporan.
+     *
+     * @param  array<string, mixed>  $data  field terpilih + adjustment_reason
+     * @return OrderReturnCase kasus yang sudah diperbarui
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function updateReturnCase(Order $order, OrderReturnCase $case, array $data, int $actorId): OrderReturnCase
+    {
+        if ((int) $case->order_id !== (int) $order->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['return' => 'Kasus retur tidak cocok dengan pesanan.']
+            );
+        }
+
+        if ($case->status !== 'completed' || $case->voided_at !== null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['return' => 'Hanya kasus retur selesai yang belum di-void yang dapat dikoreksi.']
+            );
+        }
+
+        $alasan = trim((string) ($data['adjustment_reason'] ?? ''));
+        if ($alasan === '') {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['adjustment_reason' => 'Alasan koreksi wajib diisi.']
+            );
+        }
+
+        $reason = trim((string) ($data['reason'] ?? $case->reason));
+        $reasonDetail = array_key_exists('reason_detail', $data)
+            ? (filled($data['reason_detail']) ? trim((string) $data['reason_detail']) : null)
+            : $case->reason_detail;
+        $reasonCheck = $this->validateReason($reason, $reasonDetail);
+        if (! $reasonCheck['valid']) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['reason' => $reasonCheck['error']]);
+        }
+
+        $faultParty = (string) ($data['fault_party'] ?? $case->fault_party);
+        if (! in_array($faultParty, ['store', 'customer', 'other'], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['fault_party' => 'Pihak penyebab tidak valid.']);
+        }
+
+        $resolution = (string) ($data['resolution_type'] ?? $case->resolution_type);
+        if (! in_array($resolution, ['refund', 'replacement', 'reship', 'compensation', 'no_compensation'], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['resolution_type' => 'Jenis resolusi tidak valid.']);
+        }
+
+        $refund = (float) ($data['refund_amount'] ?? $case->refund_amount);
+        $ongkir = (float) ($data['return_shipping_cost'] ?? $case->return_shipping_cost);
+        $replacement = (float) ($data['replacement_amount'] ?? $case->replacement_amount);
+
+        if (! is_numeric($refund) || $refund < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['refund_amount' => 'Nominal refund tidak boleh negatif.']);
+        }
+
+        // Non-refund (replacement, reship, tanpa kompensasi) wajib refund 0.
+        if (! in_array($resolution, ['refund', 'compensation'], true) && $refund > 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['refund_amount' => 'Resolusi tanpa pengembalian dana wajib bernilai refund 0.']
+            );
+        }
+
+        // Refund hanya untuk pesanan lunas, dan refund kumulatif seluruh kasus
+        // yang masih dihitung (kasus lain + nilai baru ini) tidak boleh
+        // melebihi pembayaran yang tercatat.
+        if ($refund > 0) {
+            if ($order->payment_status !== 'paid') {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['refund_amount' => 'Refund hanya dapat dicatat untuk pesanan yang sudah lunas.']
+                );
+            }
+            $paidSum = (float) $order->payments()->where('status', 'completed')->sum('amount');
+            $refundLain = $this->refundedExcludingCase($order, $case->id);
+            $maxRefund = max(0.0, min((float) $order->total_amount, $paidSum) - $refundLain);
+            if ($refund > $maxRefund + 0.0001) {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['refund_amount' => 'Refund kumulatif melebihi pembayaran tercatat. Sisa kuota refund kasus ini: Rp '.number_format($maxRefund, 0, ',', '.').'.']
+                );
+            }
+        }
+
+        $ongkirCheck = $this->validateReturnShippingCost($faultParty, $ongkir);
+        if (! $ongkirCheck['valid']) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['return_shipping_cost' => $ongkirCheck['error']]);
+        }
+        if ($ongkir < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['return_shipping_cost' => 'Ongkir retur tidak boleh negatif.']);
+        }
+
+        if ($replacement < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['replacement_amount' => 'Nilai penggantian tidak boleh negatif.']);
+        }
+        if ($replacement > 0 && ! in_array($resolution, ['replacement', 'reship'], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['replacement_amount' => 'Nilai penggantian hanya boleh diisi untuk resolusi ganti barang atau kirim ulang.']
+            );
+        }
+
+        $baru = [
+            'reason' => $reason,
+            'reason_detail' => $reasonDetail,
+            'customer_notes' => array_key_exists('customer_notes', $data)
+                ? (filled($data['customer_notes']) ? trim((string) $data['customer_notes']) : null)
+                : $case->customer_notes,
+            'fault_party' => $faultParty,
+            'resolution_type' => $resolution,
+            'refund_amount' => $refund,
+            'return_shipping_cost' => $ongkir,
+            'replacement_amount' => $replacement,
+        ];
+
+        return DB::transaction(function () use ($case, $baru, $alasan, $actorId): OrderReturnCase {
+            $terkunci = OrderReturnCase::query()->lockForUpdate()->findOrFail($case->id);
+            if ($terkunci->status !== 'completed' || $terkunci->voided_at !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['return' => 'Kasus retur sudah tidak dapat dikoreksi.']
+                );
+            }
+
+            foreach ($baru as $field => $nilai) {
+                $lama = $terkunci->{$field};
+                // Kolom uang ber-cast decimal:2 sehingga nilai lamanya string
+                // "50000.00"; bandingkan sebagai angka supaya nilai sama tidak
+                // menulis baris audit palsu.
+                $sama = is_numeric($lama) && is_numeric($nilai)
+                    ? abs((float) $lama - (float) $nilai) < 0.0001
+                    : ((string) $lama) === ((string) $nilai);
+
+                if ($sama) {
+                    continue;
+                }
+
+                \App\Models\ReturnCaseAdjustment::create([
+                    'return_case_id' => $terkunci->id,
+                    'field' => $field,
+                    'old_value' => $lama === null ? null : (string) $lama,
+                    // Angka diseragamkan dua desimal supaya nilainya sejajar
+                    // dengan representasi kolom uang di kasus (decimal:2).
+                    'new_value' => is_numeric($nilai) && ! is_string($nilai)
+                        ? number_format((float) $nilai, 2, '.', '')
+                        : ($nilai === null ? null : (string) $nilai),
+                    'reason' => $alasan,
+                    'changed_by_user_id' => $actorId,
+                ]);
+            }
+
+            $terkunci->fill($baru);
+            $terkunci->updated_by_user_id = $actorId;
+            $terkunci->save();
+
+            return $terkunci;
+        });
+    }
+
+    /**
+     * Tutup kasus retur secara administratif TANPA menghapus riwayat.
+     *
+     * - Kasus open menjadi "cancelled": aman karena refund dan pemotongan
+     *   stok pengganti hanya pernah terjadi pada penyelesaian (kasus completed),
+     *   jadi kasus open pasti belum menyentuh uang maupun stok.
+     * - Kasus completed di-void: status workflow TETAP "completed" (terminal),
+     *   tetapi voided_at diisi sehingga seluruh laporan berhenti menghitungnya.
+     *   Tidak ada pembalikan stok dan tidak ada refund otomatis.
+     *
+     * @return string "cancelled" untuk kasus open, "voided" untuk kasus selesai
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function voidReturnCase(Order $order, OrderReturnCase $case, string $reason, int $actorId): string
+    {
+        if ((int) $case->order_id !== (int) $order->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['return' => 'Kasus retur tidak cocok dengan pesanan.']
+            );
+        }
+
+        $alasan = trim($reason);
+        if ($alasan === '') {
+            throw \Illuminate\Validation\ValidationException::withMessages(
+                ['void_reason' => 'Alasan penutupan kasus wajib diisi.']
+            );
+        }
+
+        return DB::transaction(function () use ($alasan, $actorId, $case): string {
+            $terkunci = OrderReturnCase::query()->lockForUpdate()->findOrFail($case->id);
+
+            if ($terkunci->voided_at !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['return' => 'Kasus retur ini sudah ditutup sebelumnya.']
+                );
+            }
+
+            if ($terkunci->status === 'open') {
+                $terkunci->status = 'cancelled';
+                $mode = 'cancelled';
+            } elseif ($terkunci->status === 'completed') {
+                // Status workflow tidak diubah: return_completed tetap terminal.
+                // Void hanya menandai kasus agar tidak dihitung laporan lagi.
+                $mode = 'voided';
+            } else {
+                throw \Illuminate\Validation\ValidationException::withMessages(
+                    ['return' => 'Status kasus retur tidak dapat ditutup.']
+                );
+            }
+
+            $terkunci->voided_at = now();
+            $terkunci->voided_by_user_id = $actorId;
+            $terkunci->void_reason = $alasan;
+            $terkunci->updated_by_user_id = $actorId;
+            $terkunci->save();
+
+            \App\Models\ReturnCaseAdjustment::create([
+                'return_case_id' => $terkunci->id,
+                'field' => 'void',
+                'old_value' => $mode === 'cancelled' ? 'open' : 'completed',
+                'new_value' => $mode,
+                'reason' => $alasan,
+                'changed_by_user_id' => $actorId,
+            ]);
+
+            return $mode;
+        });
+    }
+
+    /**
+     * Validasi alasan pengecualian retur manual untuk pesanan yang sudah
+     * Selesai (jalur admin khusus). Alasan wajib supaya setiap keterlambatan
+     * punya kronologi yang bisa diaudit.
+     *
+     * @return array{valid: bool, error?: string}
+     */
+    public function validateLateReturnOverride(?string $overrideReason): array
+    {
+        if (trim((string) $overrideReason) === '') {
+            return ['valid' => false, 'error' => 'Alasan pengecualian wajib diisi untuk retur manual pesanan Selesai.'];
+        }
+
         return ['valid' => true];
     }
 }

@@ -291,6 +291,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
     Route::post('orders/{order}/returns', [AdminOrderController::class, 'createReturn'])->name('orders.returns.store');
     Route::post('orders/{order}/returns/{returnCase}/complete', [AdminOrderController::class, 'completeReturn'])->name('orders.returns.complete');
+    // Koreksi kasus retur selesai + penutupan administratif (void). Edit
+    // sengaja GET/PATCH terpisah dari completeReturn supaya status workflow
+    // dan data administratif tidak tertukar (instruksi owner 2026-09-28).
+    Route::get('orders/{order}/returns/{returnCase}/edit', [AdminOrderController::class, 'editReturn'])->name('orders.returns.edit');
+    Route::patch('orders/{order}/returns/{returnCase}', [AdminOrderController::class, 'updateReturn'])->name('orders.returns.update');
+    Route::post('orders/{order}/returns/{returnCase}/void', [AdminOrderController::class, 'voidReturn'])->name('orders.returns.void');
     Route::put('orders/{order}/items', [AdminOrderController::class, 'updateItems'])->name('orders.items.update');
     Route::put('orders/{order}/admin-notes', [AdminOrderController::class, 'updateAdminNotes'])->name('orders.admin-notes.update');
     Route::post('orders/{order}/shipping', [AdminOrderController::class, 'storeShipping'])->name('orders.shipping.store');

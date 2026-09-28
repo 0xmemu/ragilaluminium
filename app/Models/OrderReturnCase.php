@@ -16,12 +16,17 @@ class OrderReturnCase extends Model
         'fault_party',
         'shipping_cost_borne_by_store',
         'resolution_type',
+        'late_return',
+        'override_reason',
         'customer_notes',
         'admin_notes',
         'refund_amount',
         'replacement_amount',
         'return_shipping_cost',
         'completed_at',
+        'voided_at',
+        'voided_by_user_id',
+        'void_reason',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -31,7 +36,21 @@ class OrderReturnCase extends Model
         'replacement_amount' => 'decimal:2',
         'return_shipping_cost' => 'decimal:2',
         'completed_at' => 'datetime',
+        'voided_at' => 'datetime',
+        'late_return' => 'boolean',
     ];
+
+    /** Kasus masih aktif: terbuka dan belum ditutup administratif. */
+    public function isOpen(): bool
+    {
+        return $this->status === 'open' && $this->voided_at === null;
+    }
+
+    /** Kasus selesai yang MASIH dihitung laporan (belum di-void). */
+    public function isCounted(): bool
+    {
+        return $this->status === 'completed' && $this->voided_at === null;
+    }
 
     protected static function booted(): void
     {
