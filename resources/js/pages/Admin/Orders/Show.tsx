@@ -10,6 +10,7 @@ import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { Checkbox } from "@/components/admin/ui/checkbox"
+import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
@@ -1832,47 +1833,27 @@ export default function OrderShow({
         </Button>
       ) : null}
       {secondaryAction?.next_status ? (
-        <Button
-          variant="secondary"
+        <StatusConfirmButton
+          action={secondaryAction}
+          totalAmount={order.total_amount}
+          busy={statusBusy}
           size="sm"
-          disabled={statusBusy}
-          onClick={() => updateStatus(secondaryAction.next_status!)}
+          variant="secondary"
           className="shrink-0"
-        >
-          {statusBusy ? "Memproses..." : secondaryAction.label}
-        </Button>
+          onConfirm={() => updateStatus(secondaryAction.next_status!)}
+        />
       ) : null}
       {primaryAction?.next_status ? (
-        primaryAction.kind === "confirm_transfer" ? (
-          <ConfirmAction
-            trigger={
-              <Button
-                size="sm"
-                disabled={statusBusy || !can("orders.process", capabilities)}
-                className="shrink-0"
-                title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
-              >
-                {statusBusy ? "Memproses..." : primaryAction.label}
-              </Button>
-            }
-            title="Konfirmasi Pesanan Transfer"
-            description={`Pastikan pembayaran sudah dilakukan dengan nominal ${formatCurrency(order.total_amount)} sebelum mengkonfirmasi pesanan.`}
-            confirmLabel="Konfirmasi & Proses"
-            processing={statusBusy}
-            variant="primary"
-            onConfirm={runPrimary}
-          />
-        ) : (
-          <Button
-            size="sm"
-            disabled={statusBusy || !can("orders.process", capabilities)}
-            onClick={runPrimary}
-            className="shrink-0"
-            title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
-          >
-            {statusBusy ? "Memproses..." : primaryAction.label}
-          </Button>
-        )
+        <StatusConfirmButton
+          action={primaryAction}
+          totalAmount={order.total_amount}
+          busy={statusBusy}
+          size="sm"
+          disabled={!can("orders.process", capabilities)}
+          titleAttr={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+          className="shrink-0"
+          onConfirm={runPrimary}
+        />
       ) : null}
       {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
         can("orders.cancel", capabilities) ? (

@@ -7,6 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
@@ -580,25 +581,14 @@ function OrderCardRow({
           ) : null}
 
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
-            order.primary_action.kind === "confirm_transfer" ? (
-              <ConfirmAction
-                trigger={
-                  <Button size="xs" className="w-full xl:w-auto" disabled={busy}>
-                    {busy ? "Memproses..." : order.primary_action.label}
-                  </Button>
-                }
-                title="Konfirmasi Pesanan Transfer"
-                description={`Pastikan pembayaran sudah dilakukan dengan nominal ${formatCurrency(order.total_amount)} sebelum mengkonfirmasi pesanan.`}
-                confirmLabel="Konfirmasi & Proses"
-                processing={busy}
-                variant="primary"
-                onConfirm={applyPrimary}
-              />
-            ) : (
-              <Button size="xs" className="w-full xl:w-auto" disabled={busy} onClick={applyPrimary}>
-                {busy ? "Memproses..." : order.primary_action.label}
-              </Button>
-            )
+            <StatusConfirmButton
+              action={order.primary_action}
+              totalAmount={order.total_amount}
+              busy={busy}
+              size="xs"
+              className="w-full xl:w-auto"
+              onConfirm={applyPrimary}
+            />
           ) : null}
 
           {order.secondary_action ? (
@@ -612,15 +602,15 @@ function OrderCardRow({
                 <Link href={order.secondary_action.href}>{order.secondary_action.label}</Link>
               </Button>
             ) : order.secondary_action.next_status ? (
-              <Button
-                variant="secondary"
+              <StatusConfirmButton
+                action={order.secondary_action}
+                totalAmount={order.total_amount}
+                busy={busy}
                 size="xs"
+                variant="secondary"
                 className="w-full xl:w-auto"
-                disabled={busy}
-                onClick={() => applyStatus(order.secondary_action!.next_status!)}
-              >
-                {busy ? "Memproses..." : order.secondary_action.label}
-              </Button>
+                onConfirm={() => applyStatus(order.secondary_action!.next_status!)}
+              />
             ) : null
           ) : null}
 
