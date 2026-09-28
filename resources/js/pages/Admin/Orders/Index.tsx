@@ -593,6 +593,14 @@ function OrderCardRow({
               className="w-full xl:w-auto"
               onConfirm={applyPrimary}
             />
+          ) : order.primary_action?.href ? (
+            // Aksi yang hanya menautkan (mis. Selesaikan Retur pada status
+            // Retur diproses): server sudah mengirim label dan tautannya,
+            // tetapi pengisi daftar ini dulu hanya merender aksi ber-next_status
+            // sehingga kolom Aksi kosong untuk pesanan yang sedang diretur.
+            <Button asChild size="xs" className="w-full xl:w-auto">
+              <Link href={order.primary_action.href}>{order.primary_action.label}</Link>
+            </Button>
           ) : null}
 
           {order.secondary_action ? (
