@@ -416,16 +416,22 @@ Snapshot identity di atas adalah sumber historis analytics; jangan membaca katal
 Ledger internal retur yang diisi admin. issue pada orders.order_status bukan bukti retur.
 - id (INTEGER), PK
 - order_id (INTEGER), NN, FK -> orders.id
-- status (VARCHAR), NN, default open
+- status (VARCHAR), NN, default open (open / completed / cancelled)
 - reason (VARCHAR), NN
 - resolution_type (VARCHAR), nullable
+- late_return (BOOLEAN), NN, default false: kasus dibuat lewat jalur retur manual pesanan Selesai (migrasi 2026-09-28)
+- override_reason (TEXT), nullable: alasan pengecualian wajib untuk late_return
 - customer_notes, admin_notes (TEXT), nullable
 - refund_amount, replacement_amount, return_shipping_cost (NUMERIC), NN, default 0
 - completed_at (DATETIME), nullable, WAJIB terisi saat status completed; dijaga model (OrderReturnCase::booted()) dan data lama sudah diisi migrasi 2026-09-26
+- voided_at (DATETIME), nullable: penutupan administratif (void); kasus open beralih ke cancelled, kasus completed TETAP completed tetapi berhenti dihitung laporan (migrasi 2026-09-28)
+- voided_by_user_id (INTEGER), nullable, FK -> users.id
+- void_reason (TEXT), nullable
+- open_guard (INTEGER), nullable, generated stored column: order_id saat status open, NULL selain itu; dijaga unique index sehingga satu pesanan maksimal satu kasus open (migrasi 2026-09-28)
 - created_by_user_id, updated_by_user_id (INTEGER), nullable, FK -> users.id
 - created_at, updated_at (DATETIME), nullable
 
-Retur KPI hanya membaca case status=completed, completed_at pada periode, dan item dengan returned_quantity > 0.
+Retur KPI hanya membaca case status=completed, voided_at IS NULL, completed_at pada periode, dan item dengan returned_quantity > 0. Ongkir retur (return_shipping_cost) adalah PENGURANG Penjualan Bersih (keputusan owner 2026-09-28) tanpa mengubah Penjualan Gross.
 
 Indexes:
 - `idx_return_cases_order_status` (IDX on `order_id`, `status`)
@@ -443,6 +449,17 @@ Catatan 2026-09-26: kolom `additional_shipping_amount` DIBUANG karena formulir a
 - created_at, updated_at (DATETIME), nullable
 
 Nilai retur = snapshot order_items.unit_price * returned_quantity; refund/settlement disimpan terpisah pada case.
+
+### 3.2d return_case_adjustments
+
+Jejak audit koreksi data kasus retur dan penutupan administratif (void). Kasus retur tidak pernah dihapus fisik, jadi tabel inilah riwayat perubahan angka laporan (migrasi 2026-09-28).
+- id (INTEGER), PK
+- return_case_id (INTEGER), NN, FK -> order_return_cases.id
+- field (VARCHAR): nama field yang berubah, atau `void` untuk penutupan kasus
+- old_value, new_value (TEXT), nullable: angka uang diseragamkan dua desimal
+- reason (TEXT), NN: alasan koreksi/void, wajib dari admin
+- changed_by_user_id (INTEGER), nullable
+- created_at, updated_at (DATETIME), nullable
 
 ### 3.2c performance_visitor_events
 

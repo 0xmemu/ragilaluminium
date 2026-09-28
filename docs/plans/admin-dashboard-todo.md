@@ -122,12 +122,16 @@ criteria lulus, lanjut otomatis ke item berikutnya.
 
 ## P2 — Keuangan dan analitik lanjutan
 
-- [ ] P2-01. Payment settlement
+- [x] P2-01. Payment settlement - DONE (2026-09-28)
   - Acceptance:
     - Rekonsiliasi berdasarkan payments.status=completed.
     - Tampilkan refund dan outstanding settlement.
     - Tidak mengganti status order secara langsung dari React.
   - Kontrak: PaymentService dan Stage 4.
+  - Selesai: panel "Rekonsiliasi Pembayaran" pada halaman Pembayaran
+    (Total Tagihan, Pembayaran Tercatat, Refund Tercatat, Sisa Tercatat,
+    Status Rekonsiliasi, Catatan Verifikasi Admin) berbasis pencatatan
+    website, tanpa klaim data bank. Test: PaymentRekonsiliasiTest (8 kasus).
 
 - [ ] P2-02. Laporan laba
   - Acceptance:
@@ -136,17 +140,28 @@ criteria lulus, lanjut otomatis ke item berikutnya.
     - Tampilkan laba kotor, margin, dan potensi laba dengan definisi tertulis.
   - Status: blocked until business/accounting policy is approved.
 
-- [ ] P2-03. Export dan pembanding periode
+- [x] P2-03. Export dan pembanding periode - DONE (terverifikasi 2026-09-28)
   - Acceptance:
     - Export memakai query yang sama dengan dashboard.
     - Periode dan timezone tertulis di file.
     - Nilai export sama dengan halaman Performa Toko.
+  - Selesai: StorePerformanceExport menerima payload build() yang sama dengan
+    halaman (satu sumber query, recognizedOrderIds + METRIC_BASIS); sheet
+    Ringkasan Finansial memakai financial_previous; zona waktu ada pada
+    date_contract. Test: StorePerformanceExportTest (ringkasan pembanding,
+    multi bulan, rentang kosong tidak menghasilkan persen palsu).
 
-- [ ] P2-04. Customer insight
+- [x] P2-04. Customer insight - DONE (terverifikasi 2026-09-28)
   - Acceptance:
     - Customer baru, repeat, total order, dan total spent konsisten dengan
       CustomerService/StorePerformanceService.
     - Tidak menampilkan nomor WhatsApp yang tidak terotorisasi secara terbuka.
+  - Selesai: KPI Pelanggan Baru / Pelanggan Ulang / Total Pesanan / Penjualan
+    Gross ada di Performa Toko dengan definisi tertulis di metric_basis
+    (pengakuan yang sama dengan KPI penjualan); halaman Kelola Pelanggan
+    menampilkan order_count dan total_spent dari CustomerService. Definisi:
+    pelanggan baru = nomor yang pertama kali order valid pada periode;
+    berulang = punya pesanan valid sebelum periode.
 
 ## Quality gate setiap item
 
@@ -160,12 +175,29 @@ criteria lulus, lanjut otomatis ke item berikutnya.
 
 ## Known blockers
 
-- Global TypeScript check saat ini memiliki error lama di:
-  - resources/js/pages/Admin/Products/Media.tsx: assetFilters.
-  - resources/js/pages/Admin/ResourceIndex.tsx: Field.
-- Blocker ini harus diperbaiki sebelum quality gate global dinyatakan hijau,
-  tetapi tidak boleh diselesaikan dengan memindahkan business rule ke React.
+- [SUPERSEDED 2026-09-28] Error TypeScript lama di
+  resources/js/pages/Admin/Products/Media.tsx (assetFilters) dan
+  resources/js/pages/Admin/ResourceIndex.tsx (Field) sudah tidak ada:
+  npm run typecheck hijau penuh pada commit terbaru. Entri ini dipertahankan
+  agar riwayat status lama tidak salah dibaca.
 
 ## Next execution item
 
-P2-01. Payment settlement.
+Tidak ada item P1/P2 yang tersisa. P2-02 (laporan laba) tetap
+blocked sampai kebijakan harga modal disetujui owner.
+
+## Current implementation status
+
+- Status: retur (edit teraudit, void administratif, retur manual pesanan
+  Selesai), ongkir retur sebagai pengurang Penjualan Bersih, dan P2-01
+  selesai; P2-03 dan P2-04 terverifikasi DONE.
+- Last verified commit: lihat entri 2026-09-28 di docs/AGENT-LOG.md.
+- Last verification date: 2026-09-28 (PHPUnit 1253 passed / 1 skipped,
+  Vitest 230 passed, typecheck bersih, build sukses, ESLint bersih pada
+  berkas yang disunting).
+- Known limitations: filter periode halaman Pembayaran (basis created_at
+  payment) berbagi berkas dengan rekonsiliasi; laporan laba (P2-02) tetap
+  menunggu keputusan harga modal; ESLint global masih merah di berkas milik
+  pekerjaan lain di luar scope ini.
+- Open owner decisions: ongkir perjalanan balik J&T belum punya sumber angka
+  otomatis; validasi subscribe J&T; KPI ongkir balik.

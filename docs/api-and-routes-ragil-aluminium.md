@@ -377,8 +377,11 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 ## Admin order returns (2026-08-15)
 
-- POST /admin/orders/{order}/returns -> admin-only create return case. Requires order status delivered, reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions the order to return_in_process, and records audit plus WhatsApp follow-up.
+- POST /admin/orders/{order}/returns -> admin-only create return case. Requires order status delivered, reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions the order to return_in_process, and records audit plus WhatsApp follow-up. Exception (2026-09-28): order status completed is accepted as a manual late return and MUST carry late_return=1 plus override_reason; the transition source is admin_late_return.
 - POST /admin/orders/{order}/returns/{returnCase}/complete -> admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
+- GET /admin/orders/{order}/returns/{returnCase}/edit -> admin-only deep link to the order detail page with the correction form open for that completed case (name: admin.orders.returns.edit) (2026-09-28).
+- PATCH /admin/orders/{order}/returns/{returnCase} -> admin-only correction of an ADMINISTRATIVE completed case data (reason, notes, fault party, resolution, refund, return shipping, replacement). Workflow status never changes; every changed field is recorded in return_case_adjustments; refund stays capped by recorded payments (name: admin.orders.returns.update) (2026-09-28).
+- POST /admin/orders/{order}/returns/{returnCase}/void -> admin-only administrative closure with a mandatory reason. Open case becomes cancelled; completed case stays completed but is voided out of every report; history is never deleted (name: admin.orders.returns.void) (2026-09-28).
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
 - Skema retur full manual (2026-09-21): the 48 hour window and the paid requirement are no longer blockers. They are returned as `returnEligibility.warnings` for the admin and `return_block.warnings` for the customer page, so returns decided over WhatsApp can still be recorded after 48 hours or on an unpaid order. The only binding condition is order status `delivered`.
 

@@ -2204,3 +2204,15 @@ Permintaan owner di daftar pesanan: (1) badge "N pesanan · Total Nilai" di kana
 
 ## 2026-09-28 13:20 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
 Koreksi owner atas c78011c8: Total Nilai jangan dibuang, hanya jumlah "N pesanan". Badge kanan atas dikembalikan dengan isi "Total Nilai: Rp X" saja. Typecheck 0, build 0, verifikasi live di /admin/orders?order_status=completed.
+
+## 2026-09-28 13:20 UTC | zcode-retur | Deep | - | selesai
+Lingkup: instruksi eksekusi final owner 28 Sep - ongkir retur sebagai pengurang Penjualan Bersih, edit kasus retur teraudit, void administratif, retur manual pesanan Selesai, P2-01 rekonsiliasi pembayaran, verifikasi P2-03/P2-04, sinkronisasi dokumen.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED - 3 route admin baru (admin.orders.returns.edit/update/void), kolom baru order_return_cases (late_return, override_reason, voided_at, voided_by_user_id, void_reason), tabel baru return_case_adjustments. Schema doc 3.2a diperbarui + 3.2d ditambah; api doc routes ditambah; fiksasi DOMAIN diberi addendum 2026-09-28; todo P2-01/03/04 DONE + blocker TS SUPERSEDED.
+Keputusan owner yang dieksekusi: return_shipping_cost PENGURANG Penjualan Bersih (formula lama service sudah menghitungnya, test vakuo diganti 6 test nyata, kontrak beku naik v1.0.2: hint ongkir retur + definisi net_revenue, GOLDEN_UPDATE dijalankan).
+Keputusan teknis: kasus completed di-void TETAP status completed + voided_at (workflow terminal dijaga); open case void menjadi cancelled; stok tidak pernah dibalik otomatis; refund kumulatif lintas kasus dibatasi pembayaran tercatat; retur manual completed wajib override_reason + late_return, sumber event admin_late_return.
+Commit A: ongkir retur + kontrak v1.0.2 (menyertakan 2 baris sinkronisasi fixture JENDELA di StorePerformanceGoldenTest dan perataan komentar versi OrderExport yang sebelumnya belum ter-commit, milik pekerjaan lain).
+Commit B: edit/void/retur manual backend+UI+test.
+Commit C: rekonsiliasi P2-01 (menyertakan filter periode yang belum ter-commit di PaymentController dan Payments/Index.tsx karena rekonsiliasi memakai basis periodenya).
+Commit D: dokumen.
+Verifikasi: PHPUnit penuh 1253 passed / 1 skipped / 0 failed (12342 asersi); Vitest 230 passed; npm run typecheck bersih; build sukses; ESLint bersih pada Show.tsx + Payments/Index.tsx (lint global masih merah di berkas pekerjaan lain); migrasi 2026_09_28_100000 dijalankan forward-only sebagai www-data.
+IP patch: TIDAK dijalankan agent (guard /etc); skrip scripts/prod/nginx-real-ip.sh siap jalan dari commit 579b0b80, menunggu operator owner.

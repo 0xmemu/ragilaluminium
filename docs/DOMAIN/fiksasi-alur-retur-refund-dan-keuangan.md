@@ -13,14 +13,14 @@ Sebelum istilah teknis digunakan, berikut arti dan fungsinya dalam alur toko:
 
 - **Status Pesanan (`order_status`):** Tahapan perjalanan pesanan di database aplikasi (`orders`), meliputi Dibuat (`pending`), Dikonfirmasi / Menunggu Pembayaran (`awaiting_confirmation`), Diproses (`processing`), Dikirim (`shipped`), Sampai (`delivered`), Selesai (`completed`), Retur Diproses (`return_in_process`), Retur Selesai (`return_completed`), dan Dibatalkan (`cancelled`).
 - **Status Pembayaran (`payment_status`):** Status pelunasan dana belanja pelanggan pada pesanan, hanya bernilai Belum Bayar / Menunggu (`pending`) dan Lunas (`paid`).
-- **Kasus Retur (`order_return_cases`):** Tabel berkas laporan pengembalian barang yang mencatat alasan, pihak penyebab, status kasus, nilai pengembalian dana, dan biaya kirim pengembalian. Status kasus retur hanya bernilai Terbuka (`open`) dan Selesai (`completed`).
+- **Kasus Retur (`order_return_cases`):** Tabel berkas laporan pengembalian barang yang mencatat alasan, pihak penyebab, status kasus, nilai pengembalian dana, dan biaya kirim pengembalian. Status kasus retur bernilai Terbuka (`open`), Selesai (`completed`), dan Dibatalkan (`cancelled`, penutupan administratif kasus terbuka). Kasus Selesai tidak pernah dihapus fisik; koreksinya dicatat sebagai penutupan administratif (void, kolom `voided_at`) sehingga berhenti dihitung laporan tanpa menghapus riwayat, dan setiap koreksi data meninggalkan jejak audit di tabel `return_case_adjustments` (keputusan owner 2026-09-28).
 - **Item Retur (`order_return_items`):** Rincian produk dan jumlah unit dalam pesanan yang diajukan untuk dikembalikan (`requested_quantity`) serta jumlah fisik yang benar-benar diterima kembali (`returned_quantity`).
 - **Penjualan Gross (`gross_revenue`):** Total seluruh uang belanja yang ditagihkan kepada pembeli pada pesanan yang telah diproses, mencakup harga produk (setelah promo diskon), ongkos kirim pembeli, asuransi, dan biaya layanan Bayar di Tempat (COD), dikurangi nilai voucher toko.
 - **Penjualan Bersih (`net_revenue`):** Pendapatan riil hak milik toko setelah Penjualan Gross dikurangi seluruh beban pihak ketiga dan kerugian retur: tagihan aktual kurir J&T, biaya layanan COD kurir, pengembalian dana (*refund*), ongkir retur toko, dan nilai barang yang ditolak kurir.
 - **Pembayaran Diterima (`payments_received`):** Total dana kas riil yang telah benar-benar masuk ke toko (dari transfer bank yang terverifikasi dan pesanan COD yang sudah sampai di tangan pembeli).
 - **COD Belum Selesai (`cod_outstanding`):** Estimasi nilai tagihan COD dari pesanan yang saat ini masih dalam proses penyiapan atau perjalanan kurir (belum berstatus Sampai).
 - **Pengembalian Dana (*Refund*):** Nilai uang yang dikembalikan kepada pembeli atas pesanan lunas yang dibatalkan atau diretur. Di sistem Ragil Aluminium, refund adalah angka pencatatan pengurang laporan keuangan toko, bukan instruksi mutasi otomatis perbankan.
-- **Ongkir Retur Toko (`return_shipping_cost`):** Biaya perjalanan kurir untuk mengembalikan barang retur dari alamat pembeli ke workshop/toko yang ditanggung oleh toko sebagai beban operasional.
+- **Ongkir Retur Toko (`return_shipping_cost`):** Biaya perjalanan kurir untuk mengembalikan barang retur dari alamat pembeli ke workshop/toko yang ditanggung oleh toko. Sejak keputusan owner 2026-09-28, nilai ini adalah PENGURANG Penjualan Bersih dan tidak mengubah Penjualan Gross, tidak dihitung dua kali, tidak dianggap refund, dan tidak masuk biaya J&T pengiriman awal.
 - **Nilai Barang Retur Paket (`refused_goods_value`):** Total nilai transaksi pesanan COD yang ditolak oleh pembeli saat kurir mengantar, sehingga barang kembali ke gudang toko tanpa pernah ada pembayaran sepeser pun.
 
 ---
@@ -229,3 +229,31 @@ Dengan fiksasi ini, fitur-fitur berikut secara sadar **TIDAK PERLU DIBUAT** dan 
 8. **Workflow sengketa pelanggan:** Tidak ada modul tiket sengketa (*dispute*) di sistem; mediasi dilakukan langsung melalui WhatsApp.
 9. **Kalkulator kompensasi kompleks:** Tidak ada formula matematis otomatis untuk menghitung nilai kompensasi; nominal kompensasi ditetapkan berdasarkan kesepakatan langsung antara toko dan pelanggan.
 10. **Multi-step customer RMA portal:** Tidak ada portal RMA (*Return Merchandise Authorization*) mandiri bagi pelanggan.
+
+---
+
+## ADDENDUM 2026-09-28: Koreksi, Void, Retur Manual, dan Rekonsiliasi
+
+Status dokumen induk tetap berlaku. Bagian ini mencatat keputusan owner 2026-09-28 yang menambah mekanisme di atas.
+
+### Koreksi kasus retur selesai (edit)
+
+Status workflow TIDAK dibuka kembali: kasus tetap `completed`, pesanan tetap `return_completed`. Yang dikoreksi hanya data administratif: alasan, kronologi pelanggan, pihak penyebab, resolusi, nominal refund, ongkir retur, dan nilai penggantian. Setiap perubahan field wajib membawa alasan koreksi dan tercatat di `return_case_adjustments` (nilai lama, nilai baru, pelaku, waktu). Nilai refund efektif adalah nilai terakhir yang sah pada kasus. Refund kumulatif lintas kasus tidak boleh melebihi pembayaran tercatat, refund hanya untuk pesanan lunas, resolusi non-refund wajib refund 0, dan nilai penggantian hanya untuk resolusi ganti barang atau kirim ulang. Koreksi TIDAK menyentuh stok pengganti dan TIDAK membuat mutasi kas; peringatan UI menyatakan transfer refund dilakukan di luar website.
+
+Endpoint: `GET /admin/orders/{order}/returns/{returnCase}/edit` dan `PATCH /admin/orders/{order}/returns/{returnCase}` (nama route `admin.orders.returns.edit` / `admin.orders.returns.update`). Endpoint `completeReturn` tidak dipakai untuk edit.
+
+### Penutupan administratif (void), bukan hapus
+
+Kasus terbuka yang belum menyentuh uang dan stok boleh dibatalkan administratif menjadi `cancelled`. Kasus selesai tidak pernah dihapus fisik: void (`POST /admin/orders/{order}/returns/{returnCase}/void`, `admin.orders.returns.void`) mengisi `voided_at`, `voided_by_user_id`, dan `void_reason`; status workflow tetap `completed`, dan seluruh laporan (refund, ongkir retur, Penjualan Bersih) berhenti menghitungnya. Alasan void wajib, pelaku tercatat, riwayat finansial tetap utuh, tidak ada pembalikan stok dan tidak ada refund otomatis.
+
+### Retur manual pesanan Selesai (late return)
+
+Pesanan `completed` dapat dicatat returnya lewat tombol "Catat Retur Manual" di detail pesanan karena kesepakatannya sudah ditangani admin melalui WhatsApp. Website hanya mencatat keputusan admin: wajib menandai `late_return` dan mengisi alasan pengecualian (`override_reason`), peringatan keterlambatan 48 jam selalu tampil, kasus aktif ganda ditolak, dan status pesanan berpindah `completed` ke `return_in_process` HANYA lewat jalur ini (sumber event `admin_late_return`). Pesanan tidak pernah dimundurkan ke `delivered`, dan `return_completed` tidak dapat dibuka ulang.
+
+### Rekonsiliasi Pembayaran (P2-01)
+
+Panel "Rekonsiliasi Pembayaran" pada halaman Pembayaran menampilkan Total Tagihan, Pembayaran Tercatat, Refund Tercatat, Sisa Tercatat, Status Rekonsiliasi, dan Catatan Verifikasi Admin, semuanya dari pencatatan website (tabel `payments` dan tagihan pesanan terkait) pada periode terpilih. Status rekonsiliasi (unpaid, partially_paid, paid, refunded_partially, refunded_fully) adalah label internal hasil perhitungan catatan; website tidak membaca mutasi rekening secara otomatis dan tidak mengklaim data bank.
+
+### Ongkir retur masuk Penjualan Bersih
+
+Rumus Penjualan Bersih difiksikan: Penjualan Gross dikurangi Tagihan J&T, Biaya COD J&T, Refund, Ongkir Retur Toko, dan Nilai Barang Paket COD Ditolak. Kontrak Perhitungan Beku naik ke v1.0.2 (perubahan teks hint dan definisi pada berkas beku, ADR-026).
