@@ -138,4 +138,127 @@ class AdminShippingIndexTest extends TestCase
                 ->where('records.data.0.waybill_number', 'JT-TRANSIT-1')
             );
     }
+
+    /**
+     * Resi baru dengan tanggal pencatatan yang bisa ditentukan, supaya filter
+     * periode dapat diuji tanpa menunggu waktu berjalan.
+     */
+    private function makeRecord(string $waybill, string $status, ?string $createdAt = null): ShippingRecord
+    {
+        $order = Order::create([
+            'order_number' => 'ORD-'.$waybill,
+            'customer_name' => 'Pelanggan '.$waybill,
+            'customer_phone' => '081234567890',
+            'shipping_address_line1' => 'Jl. Uji 1',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'subtotal_amount' => 100000,
+            'total_amount' => 100000,
+            'payment_method' => 'transfer',
+            'order_status' => 'shipped',
+            'shipping_status' => $status,
+        ]);
+
+        $record = ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => $waybill,
+            'status' => $status,
+        ]);
+
+        if ($createdAt !== null) {
+            // created_at tidak masuk daftar fillable, jadi diset langsung.
+            $record->created_at = $createdAt;
+            $record->save();
+        }
+
+        return $record;
+    }
+
+    public function test_period_filter_scopes_table_summary_and_tabs(): void
+    {
+        $this->makeRecord('JT-TODAY', 'delivered');
+        $this->makeRecord('JT-TEN-DAYS', 'in_transit', now()->subDays(10)->toDateTimeString());
+        $this->makeRecord('JT-FORTY-DAYS', 'in_transit', now()->subDays(40)->toDateTimeString());
+
+        // Tanpa filter periode, seluruh resi ikut terhitung.
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                ->where('activeDatePreset', '')
+                ->where('periodLabel', 'Semua waktu')
+                ->where('summary.total_records', 3)
+                ->has('records.data', 3)
+            );
+
+        // 7 hari terakhir: hanya resi yang dicatat dalam rentang itu. Angka KPI
+        // dan hitungan tab wajib ikut menyempit agar sejalan dengan tabel.
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['date_preset' => '7d']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                ->where('activeDatePreset', '7d')
+                ->where('periodLabel', '7 hari terakhir')
+                ->where('summary.total_records', 1)
+                ->where('summary.total_delivered', 1)
+                ->where('summary.total_in_transit', 0)
+                ->has('records.data', 1)
+                ->where('records.data.0.waybill_number', 'JT-TODAY')
+                ->where('tabs.0.count', 1)
+            );
+
+        // 30 hari terakhir: dua resi termuda masuk, resi 40 hari tidak.
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['date_preset' => '30d']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.total_records', 2)
+                ->has('records.data', 2)
+            );
+    }
+
+    public function test_period_filter_accepts_explicit_range(): void
+    {
+        $this->makeRecord('JT-TODAY', 'delivered');
+        $this->makeRecord('JT-TEN-DAYS', 'in_transit', now()->subDays(10)->toDateTimeString());
+        $this->makeRecord('JT-FORTY-DAYS', 'in_transit', now()->subDays(40)->toDateTimeString());
+
+        $from = now()->subDays(20)->toDateString();
+        $to = now()->subDays(5)->toDateString();
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', [
+                'date_preset' => 'range',
+                'date_from' => $from,
+                'date_to' => $to,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                ->where('activeDatePreset', 'range')
+                ->where('dateFrom', $from)
+                ->where('dateTo', $to)
+                ->where('summary.total_records', 1)
+                ->has('records.data', 1)
+                ->where('records.data.0.waybill_number', 'JT-TEN-DAYS')
+            );
+    }
+
+    public function test_unknown_date_preset_falls_back_to_all_time(): void
+    {
+        $this->makeRecord('JT-TODAY', 'delivered');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['date_preset' => 'kemarin']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeDatePreset', '')
+                ->where('summary.total_records', 1)
+            );
+    }
 }

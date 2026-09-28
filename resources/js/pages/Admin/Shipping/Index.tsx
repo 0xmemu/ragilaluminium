@@ -5,6 +5,7 @@ import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
@@ -56,6 +57,10 @@ export interface ShippingIndexProps {
   tabs: StatusTab[]
   activeStatus: string
   activeCarrier: string
+  activeDatePreset: string
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
   searchQuery: string
   records: {
     data: ShippingItem[]
@@ -77,17 +82,30 @@ export default function ShippingIndex({
   tabs,
   activeStatus,
   activeCarrier,
+  activeDatePreset,
+  dateFrom: initialDateFrom,
+  dateTo: initialDateTo,
+  periodLabel,
   searchQuery,
   records,
 }: ShippingIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
   const [busyRowId, setBusyRowId] = React.useState<number | null>(null)
   const [q, setQ] = React.useState(searchQuery)
+  const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
+  const [rangeTo, setRangeTo] = React.useState(initialDateTo)
 
   function visit(params: Record<string, string | undefined>) {
     navigateFilter(
       "admin.shipping.index",
-      { status: activeStatus, carrier_name: activeCarrier, q: searchQuery },
+      {
+        status: activeStatus,
+        carrier_name: activeCarrier,
+        q: searchQuery,
+        date_preset: activeDatePreset,
+        date_from: activeDatePreset === "range" ? rangeFrom : undefined,
+        date_to: activeDatePreset === "range" ? rangeTo : undefined,
+      },
       params,
     )
   }
@@ -95,6 +113,15 @@ export default function ShippingIndex({
   function submitSearch(event: React.FormEvent) {
     event.preventDefault()
     visit({ q: q.trim() })
+  }
+
+  function applyDateRange(event: React.FormEvent) {
+    event.preventDefault()
+    visit({
+      date_preset: "range",
+      date_from: rangeFrom || undefined,
+      date_to: rangeTo || undefined,
+    })
   }
 
   function refreshSingle(item: ShippingItem) {
@@ -260,7 +287,76 @@ export default function ShippingIndex({
           <option value="all">Semua kurir</option>
           <option value="J&T Cargo">J&T Cargo</option>
         </Select>
+        <Select
+          value={activeDatePreset || "all"}
+          onChange={(event) => {
+            const value = event.target.value
+            if (value === "all") {
+              visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
+              return
+            }
+            if (value === "range") {
+              visit({
+                date_preset: "range",
+                date_from: rangeFrom || undefined,
+                date_to: rangeTo || undefined,
+              })
+              return
+            }
+            visit({ date_preset: value, date_from: undefined, date_to: undefined })
+          }}
+          className="w-auto"
+          aria-label="Filter periode pengiriman"
+        >
+          <option value="all">Semua waktu</option>
+          <option value="today">Hari ini</option>
+          <option value="3d">3 hari terakhir</option>
+          <option value="7d">7 hari terakhir</option>
+          <option value="30d">30 hari terakhir</option>
+          <option value="range">Rentang tanggal</option>
+        </Select>
+        {activeDatePreset === "range" ? (
+          <form onSubmit={applyDateRange} className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={rangeFrom}
+              onChange={(event) => setRangeFrom(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal mulai"
+            />
+            <span className="text-xs text-muted-foreground">sampai</span>
+            <Input
+              type="date"
+              value={rangeTo}
+              onChange={(event) => setRangeTo(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal akhir"
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Terapkan
+            </Button>
+          </form>
+        ) : null}
       </ListToolbar>
+
+      {activeDatePreset ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium text-muted-foreground">Periode</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {periodLabel}
+            <button
+              type="button"
+              onClick={() =>
+                visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
+              }
+              className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label="Hapus filter periode"
+            >
+              <Icon name="x" className="size-3" aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      ) : null}
 
       {/* Tabel Pengiriman Table-First Desktop */}
       <Card className="overflow-hidden border border-border bg-card">

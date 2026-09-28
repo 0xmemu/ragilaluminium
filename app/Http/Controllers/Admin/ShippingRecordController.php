@@ -21,8 +21,32 @@ class ShippingRecordController extends Controller
         $carrier = trim((string) $request->input('carrier_name', 'all'));
         $q = trim((string) $request->input('q', ''));
 
-        // Agregasi Ringkasan Eksekutif Pengiriman
-        $allRecords = ShippingRecord::query()->get(['status', 'carrier_name']);
+        // Filter periode. Default '' (= Semua waktu) supaya perilaku halaman
+        // tidak berubah sebelum admin memilih periode.
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+
+        // Rentang berbasis created_at (tanggal resi dicatat sistem). Kolom
+        // last_status_at (waktu update terakhir dari J&T) ikut berubah setiap
+        // refresh pelacakan, jadi tidak layak jadi dasar filter periode.
+        $applyPeriod = function ($query) use ($datePreset, $dateFrom, $dateTo) {
+            return $query
+                ->when($datePreset === 'today', fn ($sub) => $sub->whereDate('created_at', now()->toDateString()))
+                ->when($datePreset === '3d', fn ($sub) => $sub->where('created_at', '>=', now()->subDays(3)->startOfDay()))
+                ->when($datePreset === '7d', fn ($sub) => $sub->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+                ->when($datePreset === '30d', fn ($sub) => $sub->where('created_at', '>=', now()->subDays(30)->startOfDay()))
+                ->when($datePreset === 'range' && $dateFrom !== '', fn ($sub) => $sub->whereDate('created_at', '>=', $dateFrom))
+                ->when($datePreset === 'range' && $dateTo !== '', fn ($sub) => $sub->whereDate('created_at', '<=', $dateTo));
+        };
+
+        // Agregasi Ringkasan Eksekutif Pengiriman. Mengikuti periode terpilih
+        // supaya angka KPI, hitungan tab, dan tabel berbicara tentang himpunan
+        // data yang sama.
+        $allRecords = $applyPeriod(ShippingRecord::query())->get(['status', 'carrier_name']);
 
         $totalDelivered = $allRecords->where('status', 'delivered')->count();
         $totalInTransit = $allRecords->whereIn('status', ['in_transit', 'out_for_delivery', 'picked_up'])->count();
@@ -48,7 +72,7 @@ class ShippingRecordController extends Controller
         ];
 
         // Query tabel pengiriman
-        $query = ShippingRecord::query()
+        $query = $applyPeriod(ShippingRecord::query())
             ->with(['order' => fn ($subQuery) => $subQuery->select([
                 'id', 'order_number', 'order_status', 'customer_name', 'customer_phone', 'shipping_city',
             ])])
@@ -115,6 +139,10 @@ class ShippingRecordController extends Controller
             'tabs' => $tabs,
             'activeStatus' => $status,
             'activeCarrier' => $carrier,
+            'activeDatePreset' => $datePreset,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'periodLabel' => $this->periodLabel($datePreset, $dateFrom, $dateTo),
             'searchQuery' => $q,
             'records' => [
                 'data' => $mappedData->all(),
@@ -234,6 +262,23 @@ class ShippingRecordController extends Controller
         return $changed
             ? ['success', 'Status tracking berhasil diperbarui dari J&T.']
             : ['status', 'Status tracking belum berubah (data stale atau belum ada event baru dari J&T).'];
+    }
+
+    /** Label periode aktif untuk ditampilkan di baris filter aktif. */
+    private function periodLabel(string $preset, string $from, string $to): string
+    {
+        return match ($preset) {
+            'today' => 'Hari ini',
+            '3d' => '3 hari terakhir',
+            '7d' => '7 hari terakhir',
+            '30d' => '30 hari terakhir',
+            'range' => trim(
+                ($from !== '' ? \Carbon\Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                .' - '.
+                ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang')
+            ),
+            default => 'Semua waktu',
+        };
     }
 
     private function eventLabel(string $eventType): string
