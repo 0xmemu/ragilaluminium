@@ -33,7 +33,10 @@ export function ReturnCreateDialog({
 }) {
   return (
     <Dialog open={Boolean(order)} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="max-w-2xl bg-card text-card-foreground">
+      {/* Lebar khusus (owner 2026-09-29): DialogContent bawaan mematok lebar
+          34rem lewat kelas w, jadi lebar diganti, bukan max-w, supaya label
+          panjang tidak melipat dua dan baris isian tetap segaris. */}
+      <DialogContent className="w-[min(calc(100vw-2rem),56rem)] bg-card text-card-foreground">
         <DialogTitle>Catat retur pesanan {order?.order_number ?? ""}</DialogTitle>
         <DialogDescription>
           Pesanan berpindah ke status Retur Diproses setelah retur dicatat.
