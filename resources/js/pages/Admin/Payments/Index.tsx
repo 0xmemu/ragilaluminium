@@ -254,11 +254,11 @@ export default function PaymentsIndex({
       <Card className="mb-4 p-5 bg-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">Rekening Transfer Bank</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Dipakai pada pesan WhatsApp instruksi transfer dan halaman konfirmasi pesanan
-              pembeli dengan metode transfer.
-            </p>
+            <HintTip
+              label={<h2 className="text-sm font-semibold text-foreground">Rekening Transfer Bank</h2>}
+              hint="Dipakai pada pesan WhatsApp instruksi transfer dan halaman konfirmasi pesanan pembeli dengan metode transfer."
+              side="bottom"
+            />
           </div>
           {!bankEditing && hasBankDetails ? (
             <Button
