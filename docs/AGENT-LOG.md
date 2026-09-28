@@ -2192,3 +2192,6 @@ menghentikan situs: dampaknya pembatas terlalu ketat saat trafik tinggi.
 
 Bukti: seluruh suite 1225 passed, 1 skipped, 0 failed (12143 asersi);
 nginx -t lolos pada konfigurasi ber-tambalan; agregator produksi "sehat".
+
+## 2026-09-28 12:15 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
+Owner minta teks tombol "+ Tambah" di kolom Catatan admin (kartu daftar pesanan) jadi "+catatan". Ubah satu span, build, verifikasi live di halaman /admin/orders?order_status=completed: tombol kini berlabel "+catatan". Typecheck 0, build 0.
