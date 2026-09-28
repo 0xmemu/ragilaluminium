@@ -2228,3 +2228,9 @@ CATATAN INSIDEN: patch awal di Show.tsx hilang ditimpa revert agent lain di work
 
 ## 2026-09-28 14:10 UTC | zcode | - | - | addendum 8ccbabe6
 Verifikasi pasca-commit: detail pesanan ORD26090013 (uji transfer kedua, /admin/orders/100080) membuka dialog yang sama dengan nominal Rp 2.235.300; Batal menutup tanpa mengubah status (tetap Menunggu Konfirmasi). Kartu COD (ORD26090011) terverifikasi tanpa dialog via atribut aria-haspopup. Popup transfer terverifikasi penuh di kedua permukaan (daftar + detail).
+
+## 2026-09-28 13:41 UTC | zcode | Standard | database/seeders/OrderReviewSimulationSeeder.php (tidak diubah, hanya pola) | selesai
+
+- Membuat pesanan uji berstatus Sampai atas permintaan owner: RA-SIM-2609-03 (id 100081) lalu RA-SIM-2609-04 (id 100082) setelah 03 dimiliki owner tekan tombol Selesaikan Pesanan saat mencoba. Skrip sekali pakai meniru pola OrderReviewSimulationSeeder (query builder murni, tanpa observer/event) sehingga TIDAK ada pesan WhatsApp terkirim; hanya menyentuh nomor RA-SIM-2609-0x, telepon wajib 6285725116817, COD paid, total Rp 2.570.000.
+- Diverifikasi live di daftar pesanan lewat browser: baris RA-SIM-2609-04 berbadge Sampai dan kolom Aksi memuat Selesaikan Pesanan plus link Retur (jawaban pertanyaan owner soal tombol retur untuk status Sampai).
+- Catatan: orders:auto-complete per jam tidak bisa menyentuh pesanan ini karena tidak punya baris data pengiriman berstatus delivered (syarat whereHas shippingRecords); pesanan 04 akan tetap Sampai sampai admin menekan tombol. Keduanya masuk pola pembersihan pra-produksi RA-SIM-2609-%.
