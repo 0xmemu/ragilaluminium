@@ -2005,7 +2005,7 @@
         "cod_pending_count": 0,
         "cod_pending_in_period_amount": 0,
         "cod_pending_in_period_count": 0,
-        "definition": "Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, dan ongkir retur toko. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.",
+        "definition": "Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.",
         "gross_revenue": 4950000,
         "insurance": 10000,
         "items_before_discount": 4950000,
@@ -2613,7 +2613,7 @@
             "kpis": [
                 {
                     "change_percent": 1243.3,
-                    "detail": "Penjualan Gross dikurangi refund retur yang benar-benar selesai.",
+                    "detail": "Penjualan Gross dikurangi tagihan J&T, biaya COD, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak.",
                     "format": "currency",
                     "key": "net_revenue",
                     "label": "Penjualan Bersih",
@@ -2736,7 +2736,7 @@
                 },
                 {
                     "change_percent": 100,
-                    "detail": "Total ongkir retur yang DITANGGUNG TOKO dari kasus retur selesai periode ini (bukan dibayar pembeli).",
+                    "detail": "Ongkir pengembalian yang ditanggung toko. Nilai ini mengurangi Penjualan Bersih dan tidak mengubah Penjualan Gross.",
                     "format": "currency",
                     "key": "return_shipping_cost_total",
                     "label": "Ongkir Retur (Toko)",
@@ -2852,5 +2852,5 @@
             "units": 1
         }
     ],
-    "versi_kontrak": "1.0.1"
+    "versi_kontrak": "1.0.2"
 }

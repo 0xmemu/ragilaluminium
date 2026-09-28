@@ -41,7 +41,7 @@ class StorePerformanceGoldenTest extends TestCase
 {
     use RefreshDatabase;
 
-    public const CONTRAK_VERSI = '1.0.1';
+    public const CONTRAK_VERSI = '1.0.2';
 
     private const BERKAS = __DIR__.'/../Expectations/store-performance-golden-v1.json';
 
@@ -235,7 +235,7 @@ class StorePerformanceGoldenTest extends TestCase
             'parent_sku' => $sku,
             'name' => 'Produk '.$desain,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => $model,
             'design_variant' => $desain,
             'status' => 'active',
@@ -288,7 +288,7 @@ class StorePerformanceGoldenTest extends TestCase
             'parent_sku' => $produk->parent_sku,
             'variant_sku' => $skuVarian,
             'name' => $produk->name,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => $produk->product_model,
             'design_variant' => $produk->design_variant,
             'unit_price' => $harga,

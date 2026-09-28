@@ -25,7 +25,7 @@ class ReturnShippingCostTest extends TestCase
             'parent_sku' => 'ON-'.$sku,
             'name' => 'Produk '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -225,19 +225,145 @@ class ReturnShippingCostTest extends TestCase
 
     public function test_kpi_shipping_cost_does_not_change_net_revenue(): void
     {
+        // Keputusan owner 2026-09-28 MENGHANGUSKAN aturan lama "ongkir retur
+        // tidak mengubah net": ongkir retur sekarang PENGURANG Penjualan
+        // Bersih. Test lama hanya membandingkan angka dengan dirinya sendiri
+        // (vakuo), jadi diganti enam test nyata di bawah.
+        $this->assertTrue(method_exists(StorePerformanceService::class, 'build'));
+    }
+
+    /** Kasus selesai dengan nominal refund yang bisa diatur. */
+    private function makeCompletedCaseRefund(Order $order, OrderItem $item, string $faultParty, float $cost, float $refund): OrderReturnCase
+    {
+        $case = OrderReturnCase::create([
+            'order_id' => $order->id,
+            'status' => 'completed',
+            'reason' => 'rusak',
+            'fault_party' => $faultParty,
+            'shipping_cost_borne_by_store' => true,
+            'resolution_type' => $refund > 0 ? 'refund' : 'no_compensation',
+            'refund_amount' => $refund,
+            'return_shipping_cost' => $cost,
+            'completed_at' => now(),
+            'created_by_user_id' => null,
+            'updated_by_user_id' => null,
+        ]);
+        $case->items()->create([
+            'order_item_id' => $item->id,
+            'requested_quantity' => 1,
+            'returned_quantity' => 1,
+        ]);
+
+        return $case;
+    }
+
+    public function test_ongkir_retur_menurunkan_net_revenue(): void
+    {
         $p = $this->makeProduct(5);
         $o = $this->makeOrder('processing', 'paid', 100000);
         $item = $this->addItem($o, $p, 1, 100000);
-        $this->makeCompletedCase($o, $item, 'store', 15000);
+        $this->makeCompletedCaseRefund($o, $item, 'store', 15000, 0);
 
-        // tanpa case retur: gross = 100000 (processing), refund 0, net = 100000
-        $report1 = app(StorePerformanceService::class)->build('today');
-        $gross1 = (float) $report1['financial']['gross_revenue'];
-        $net1 = (float) $report1['financial']['net_revenue'];
+        $report = app(StorePerformanceService::class)->build('today');
+        // Net = Gross 100000 - ongkir retur 15000 (tanpa refund, tanpa ongkir J&T).
+        $this->assertSame(85000.0, (float) $report['financial']['net_revenue']);
+    }
 
-        // ongkir retur tidak boleh mengubah gross/net (biaya operasional terpisah)
-        $this->assertSame($gross1, (float) $report1['financial']['gross_revenue']);
-        $this->assertSame($net1, (float) $report1['financial']['net_revenue']);
-        $this->assertGreaterThan(0, (float) $report1['financial']['gross_revenue']);
+    public function test_gross_revenue_tidak_berubah_oleh_ongkir_retur(): void
+    {
+        $p = $this->makeProduct(6);
+        $o = $this->makeOrder('processing', 'paid', 100000);
+        $item = $this->addItem($o, $p, 1, 100000);
+
+        $reportSebelum = app(StorePerformanceService::class)->build('today');
+        $grossSebelum = (float) $reportSebelum['financial']['gross_revenue'];
+
+        $this->makeCompletedCaseRefund($o, $item, 'store', 15000, 0);
+
+        $report = app(StorePerformanceService::class)->build('today');
+        $this->assertSame($grossSebelum, (float) $report['financial']['gross_revenue']);
+        $this->assertSame(100000.0, (float) $report['financial']['gross_revenue']);
+    }
+
+    public function test_ongkir_retur_nol_tidak_mengubah_net(): void
+    {
+        $p = $this->makeProduct(7);
+        $o = $this->makeOrder('processing', 'paid', 100000);
+        $item = $this->addItem($o, $p, 1, 100000);
+        // goodwill pelanggan: ongkir 0
+        $this->makeCompletedCaseRefund($o, $item, 'customer', 0, 0);
+
+        $report = app(StorePerformanceService::class)->build('today');
+        $this->assertSame(100000.0, (float) $report['financial']['net_revenue']);
+        $section = collect($report['sections'])->firstWhere('key', 'returns_cancellations');
+        $kpis = collect($section['kpis'])->keyBy('key');
+        $this->assertSame(0.0, (float) $kpis['return_shipping_cost_total']['value']);
+    }
+
+    public function test_ongkir_retur_hanya_dihitung_sekali(): void
+    {
+        $p = $this->makeProduct(8);
+        $o = $this->makeOrder('processing', 'paid', 200000);
+        $item = $this->addItem($o, $p, 2, 100000);
+        $this->makeCompletedCaseRefund($o, $item, 'store', 15000, 0);
+        $this->makeCompletedCaseRefund($o, $item, 'customer', 25000, 0);
+
+        $report = app(StorePerformanceService::class)->build('today');
+        // Dua kasus: total ongkir 40000 TEPAT SEKALI sebagai pengurang net,
+        // bukan dua kali per daftar ataupun per KPI.
+        $this->assertSame(40000.0, (float) $report['financial']['return_shipping_store']);
+        $this->assertSame(160000.0, (float) $report['financial']['net_revenue']);
+        $this->assertCount(2, $report['return_shipping_costs']);
+    }
+
+    public function test_kasus_retur_tanpa_completed_at_tidak_masuk_periode(): void
+    {
+        $p = $this->makeProduct(9);
+        $o = $this->makeOrder('processing', 'paid', 100000);
+        $item = $this->addItem($o, $p, 1, 100000);
+        $case = $this->makeCompletedCaseRefund($o, $item, 'store', 15000, 0);
+
+        // Bypass event model: hook saving selalu mengisi completed_at saat
+        // status completed, jadi null hanya mungkin lewat query langsung.
+        DB::table('order_return_cases')->where('id', $case->id)->update(['completed_at' => null]);
+
+        $report = app(StorePerformanceService::class)->build('today');
+        $this->assertSame(0.0, (float) $report['financial']['return_shipping_store']);
+        $this->assertSame(100000.0, (float) $report['financial']['net_revenue']);
+        $this->assertCount(0, $report['return_shipping_costs']);
+    }
+
+    public function test_kasus_selesai_periode_berikutnya_masuk_periode_itu(): void
+    {
+        $p = $this->makeProduct(10);
+        $o = $this->makeOrder('processing', 'paid', 100000);
+        $item = $this->addItem($o, $p, 1, 100000);
+
+        $case = $this->makeCompletedCaseRefund($o, $item, 'store', 15000, 0);
+        // Kasus selesai LIMA HARI LALU: bukan periode hari ini, melainkan
+        // periode lain. Rentang masa depan dipotong pengaman rentang, jadi
+        // periode pembandingnya dipakai masa lalu; mekanisme anggotanya sama:
+        // kasus masuk di periode tanggal completed_at-nya, bukan periode
+        // tanggal pesanan dibuat.
+        $selesaiAt = now()->subDays(5);
+        DB::table('order_return_cases')->where('id', $case->id)->update([
+            'completed_at' => $selesaiAt->toDateTimeString(),
+        ]);
+
+        // Hari ini tidak masuk.
+        $reportHariIni = app(StorePerformanceService::class)->build('today');
+        $this->assertSame(0.0, (float) $reportHariIni['financial']['return_shipping_store']);
+
+        // Periode yang mencakup tanggal selesainya kasus: masuk di sana.
+        $reportLalu = app(StorePerformanceService::class)->build(
+            'custom',
+            $selesaiAt->copy()->subDay()->toDateString(),
+            $selesaiAt->copy()->addDay()->toDateString(),
+        );
+        $this->assertSame(15000.0, (float) $reportLalu['financial']['return_shipping_store']);
+        // Ongkir retur dihitung di periode kasusnya selesai; pesanan itu
+        // sendiri diakui di periode pembuatannya, jadi net periode lalu hanya
+        // memuat pengurang ongkir (0 - 15000).
+        $this->assertSame(-15000.0, (float) $reportLalu['financial']['net_revenue']);
     }
 }
