@@ -2269,3 +2269,11 @@ Perubahan: paragraf dihapus, judul kartu dibungkus HintTip di resources/js/pages
 Verifikasi: eslint+typecheck bersih, build sukses; diukur di browser, paragraf tidak lagi terlihat (satu-satunya sisa teks adalah span sr-only milik hint), judul, data BCA, dan tombol Ubah tetap.
 Dampak spec: tidak berubah.
 Agent: zcode-retur
+
+## 2026-09-28 14:27 UTC | zcode | Trivial | ee08c467 | selesai
+Lingkup: padding banner kuning pengingat setoran COD di detail pesanan (permintaan owner: benerin padding). Banner memakai p-3 lalu menempel 0px ke kartu ringkasan di bawahnya, dan tepi teksnya menjorok 7px lebih kiri dari isi kartu. Kini px-5 py-3 + mb-4: jarak ke kartu 14px, selisih tepi kiri 0px.
+Dampak spec: tidak berubah.
+Untuk agent berikutnya (PENTING, dua hal):
+1. REGRESI RETUR MANUAL. Blok retur manual pesanan Selesai yang dihapus di c42d699b HIDUP LAGI di working tree karena ada agent yang menulis resources/js/pages/Admin/Orders/Show.tsx dari basis lama (mtime 14:20), lalu build men-deploy-nya sehingga live sempat menampilkan tombol Catat Retur Manual lagi di /admin/orders/100081. Saya hapus ulang di working tree (Show.tsx, termasuk pemanggilan prop returManual) dan sudah build ulang. JANGAN commit Show.tsx dari basis lama. resources/js/components/admin/order-return-create-form.tsx MASIH memuat jalur returManual (prop opsional, kini tidak dipakai karena Show.tsx tidak lagi mengirimnya); bersihkan bila refactor itu dilanjutkan.
+2. Kesalahan saya: commit ee08c467 ikut membawa app/Http/Controllers/Admin/OrderController.php dan resources/js/pages/Admin/Orders/Index.tsx karena keduanya sudah ter-stage di indeks git oleh agent lain. Isinya utuh dan tidak ada yang hilang, tetapi atribusi commit jadi bercampur. Pelajaran: git update-index --cacheinfo hanya mengganti satu entri, tidak membersihkan entri staged lain, jadi git diff --cached harus diperiksa tepat sebelum commit.
+Bukti: npm run typecheck bersih; npm run build sukses (33,67 detik); grep bundle public/build/assets nol untuk teks Catat Retur Manual; browser halaman /admin/orders/100081 nol elemen retur, /admin/orders/100082 banner COD padding 10.5px 17.5px dengan jarak 14px dan selisih tepi kiri 0px, panel Retur dan penyelesaian tetap ada.
