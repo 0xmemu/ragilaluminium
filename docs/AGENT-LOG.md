@@ -2026,3 +2026,41 @@ Bukti:
 - Live: halaman cek pesanan 200, kebijakan retur 200, katalog 200.
 - Alert: nol berkas ALERT-*; log agregator "sehat — tidak ada alert";
   PITR DRILL PASS dan RESTORE TEST PASS tercatat.
+
+## 2026-09-28 09:18 UTC | zcode | Standard | - | selesai
+Lingkup: permintaan owner, eliminasi alert yang tidak perlu dikirim ke Telegram
+lalu bangun antisipasi dan penyembuhan mandiri untuk sisanya.
+Dampak spec: tidak berubah
+
+Perubahan:
+- Agregator v3 di server (/root/scripts_alert_aggregator.sh), dicerminkan ke repo
+  sebagai scripts/prod/alert-aggregator.sh. Tiga fase: (1) pemulihan mandiri
+  sebelum menilai, (2) penilaian hanya 7 kondisi berdampak pelanggan atau uang,
+  (3) laporan.
+- Pemulihan mandiri Fase 1: restart layanan inti yang mati, hidupkan kontainer
+  tunnel, sambung ulang sesi WhatsApp, pangkas cache perkakas bertingkat saat
+  disk tinggi, coba ulang unggah binlog yang gagal. Ditulis ke self-heal.log.
+- Pemeriksaan WhatsApp kini menguji SAMBUNGAN (status open), bukan sekadar proses
+  hidup; sebelumnya sesi ter-logout tidak terdeteksi.
+- Pesan Telegram memakai format Artinya/Dampak/Tindakan. Dedupe berbasis kode
+  jenis, bukan kalimat, sehingga satu insiden = satu pesan (sebelumnya 24 sampai
+  27 pesan per hari karena angka umur jam mengubah teks). Kabar "masalah selesai"
+  dikirim sekali saat pulih.
+- Alert teknis (penanda ALERT-*, umur marker, inode, tren disk, swap, OOM
+  historis) tidak lagi ke Telegram, cukup ke log untuk agent.
+- Rencana antisipasi dan klasifikasi didokumentasikan di
+  docs/runbooks/ALERT-TIERS.md, termasuk empat hal yang jujur tidak bisa mandiri
+  (sesi WhatsApp ter-logout butuh QR, kapasitas server, bug, keputusan bisnis).
+
+Verifikasi:
+- bash -n bersih; agregator berjalan di produksi dan melaporkan "sehat".
+- Uji sandbox (port situs dimatikan, Telegram dinonaktifkan): terdeteksi 3
+  halaman gagal, pesan tiga bagian tersusun, jalan kedua "dedupe kode, lewati"
+  membuktikan tidak ada pengiriman berulang.
+- Verifikasi pengosong penanda: 7 dari 7 skrip pemeliharaan mengosongkan
+  penandanya saat sukses.
+
+Menunggu keputusan owner: (1) pindahkan skrip pantau ke repo supaya ber-versi dan
+teruji, (2) izin memangkas cache perkakas otomatis (pagar: hanya cache, tidak
+pernah data/cadangan/kode), (3) izin kebijakan restart systemd untuk nginx,
+php8.3-fpm, dan laravel-reverb.
