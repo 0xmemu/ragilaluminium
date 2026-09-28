@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentService;
+use App\Support\BankTransferInstructions;
+use App\Support\BankTransferSettings;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,8 +26,30 @@ class PaymentController extends Controller
         $method = trim((string) $request->input('method', 'all'));
         $q = trim((string) $request->input('q', ''));
 
-        // Agregasi Ringkasan Finansial Arus Kas (Seluruh data di luar filter)
-        $allPayments = Payment::query()->get(['payment_method', 'status', 'amount']);
+        // Filter periode. Default '' (= Semua waktu) supaya perilaku halaman
+        // tidak berubah sebelum admin memilih periode.
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+
+        // Rentang berbasis created_at (tanggal transaksi dicatat). paid_at hanya
+        // terisi pada sebagian baris, jadi tidak layak jadi dasar filter.
+        $applyPeriod = function ($query) use ($datePreset, $dateFrom, $dateTo) {
+            return $query
+                ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+                ->when($datePreset === '3d', fn ($q) => $q->where('created_at', '>=', now()->subDays(3)->startOfDay()))
+                ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+                ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
+                ->when($datePreset === 'range' && $dateFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
+                ->when($datePreset === 'range' && $dateTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $dateTo));
+        };
+
+        // Agregasi Ringkasan Finansial Arus Kas. Mengikuti periode terpilih
+        // supaya angka KPI, tab, dan tabel berbicara tentang himpunan data yang sama.
+        $allPayments = $applyPeriod(Payment::query())->get(['payment_method', 'status', 'amount']);
 
         $totalReceived = (float) $allPayments->where('status', 'completed')->sum('amount');
         $completedCount = $allPayments->where('status', 'completed')->count();
@@ -58,23 +82,68 @@ class PaymentController extends Controller
             ['key' => 'refunded', 'label' => 'Refund', 'count' => $allPayments->where('status', 'refunded')->count()],
         ];
 
+        // Rekonsiliasi Pembayaran (P2-01, instruksi owner 2026-09-28). Semua
+        // angka dibaca dari PENCATATAN WEBSITE (tabel payments dan tagihan
+        // pesanan terkait), bukan mutasi rekening bank. Basis waktunya sama
+        // dengan filter halaman ini. Status rekonsiliasi adalah label internal
+        // yang dihitung dari catatan, bukan status dari API bank.
+        $rekonsiliasiPayments = $applyPeriod(Payment::query())->get(['order_id', 'status', 'amount']);
+        $tagihanOrder = (float) \App\Models\Order::query()
+            ->whereIn('id', $rekonsiliasiPayments->pluck('order_id')->filter()->unique())
+            ->sum('total_amount');
+        $pembayaranTercatat = (float) $rekonsiliasiPayments->where('status', 'completed')->sum('amount');
+        $refundTercatat = (float) $rekonsiliasiPayments->where('status', 'refunded')->sum('amount');
+        $dibatalkanTercatat = (int) $rekonsiliasiPayments->where('status', 'cancelled')->count();
+        $sisaTercatat = round($tagihanOrder - ($pembayaranTercatat - $refundTercatat), 2);
+
+        $statusRekonsiliasi = match (true) {
+            $refundTercatat > 0 && $pembayaranTercatat > 0 && $refundTercatat + 0.0001 >= $pembayaranTercatat => 'refunded_fully',
+            $refundTercatat > 0 => 'refunded_partially',
+            $tagihanOrder > 0 && $pembayaranTercatat + 0.0001 >= $tagihanOrder => 'paid',
+            $pembayaranTercatat > 0 => 'partially_paid',
+            default => 'unpaid',
+        };
+        $labelRekonsiliasi = [
+            'unpaid' => 'Belum dibayar',
+            'partially_paid' => 'Sebagian tercatat',
+            'paid' => 'Lunas sesuai catatan',
+            'refunded_partially' => 'Refund sebagian',
+            'refunded_fully' => 'Refund penuh',
+        ][$statusRekonsiliasi];
+
+        $rekonsiliasi = [
+            'total_tagihan' => round($tagihanOrder, 2),
+            'pembayaran_tercatat' => round($pembayaranTercatat, 2),
+            'refund_tercatat' => round($refundTercatat, 2),
+            'sisa_tercatat' => $sisaTercatat,
+            'status' => $statusRekonsiliasi,
+            'status_label' => $labelRekonsiliasi,
+            'payment_dibatalkan_count' => $dibatalkanTercatat,
+            'disclaimer' => 'Rekonsiliasi ini berdasarkan pencatatan website dan verifikasi manual admin. Website tidak membaca mutasi rekening secara otomatis.',
+            'catatan_verifikasi' => $dibatalkanTercatat > 0
+                ? 'Terdapat '.$dibatalkanTercatat.' catatan pembayaran berstatus Dibatalkan pada periode ini. Verifikasi manual admin tetap diperlukan terhadap bukti transfer dan mutasi rekening.'
+                : 'Verifikasi manual admin dilakukan terhadap bukti transfer dan mutasi rekening; catatan di sini hanya hasil pencatatan website.',
+        ];
+
         // Query tabel pembayaran
-        $paymentsQuery = Payment::query()
-            ->with(['order' => fn ($query) => $query->select([
-                'id', 'order_number', 'order_status', 'customer_name', 'customer_phone',
-            ])])
-            ->when($status !== '' && $status !== 'all', fn ($query) => $query->where('status', $status))
-            ->when($method !== '' && $method !== 'all', fn ($query) => $query->where('payment_method', $method))
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($sub) use ($q) {
-                    $sub->where('transaction_reference', 'like', "%{$q}%")
-                        ->orWhereHas('order', function ($orderSub) use ($q) {
-                            $orderSub->where('order_number', 'like', "%{$q}%")
-                                ->orWhere('customer_name', 'like', "%{$q}%")
-                                ->orWhere('customer_phone', 'like', "%{$q}%");
-                        });
-                });
-            })
+        $paymentsQuery = $applyPeriod(
+            Payment::query()
+                ->with(['order' => fn ($query) => $query->select([
+                    'id', 'order_number', 'order_status', 'customer_name', 'customer_phone',
+                ])])
+                ->when($status !== '' && $status !== 'all', fn ($query) => $query->where('status', $status))
+                ->when($method !== '' && $method !== 'all', fn ($query) => $query->where('payment_method', $method))
+                ->when($q !== '', function ($query) use ($q) {
+                    $query->where(function ($sub) use ($q) {
+                        $sub->where('transaction_reference', 'like', "%{$q}%")
+                            ->orWhereHas('order', function ($orderSub) use ($q) {
+                                $orderSub->where('order_number', 'like', "%{$q}%")
+                                    ->orWhere('customer_name', 'like', "%{$q}%")
+                                    ->orWhere('customer_phone', 'like', "%{$q}%");
+                            });
+                    });
+                })
+        )
             ->latest('id');
 
         $paginated = $paymentsQuery->paginate(15)->withQueryString();
@@ -126,11 +195,18 @@ class PaymentController extends Controller
         return Inertia::render('Admin/Payments/Index', [
             'title' => 'Pembayaran',
             'description' => 'Rekonsiliasi transaksi pembayaran toko, verifikasi transfer bank, dan penerimaan COD.',
+            'bankTransfer' => BankTransferSettings::get(),
+            'bankUpdateUrl' => route('admin.payments.bank-update'),
             'summary' => $summary,
+            'rekonsiliasi' => $rekonsiliasi,
             'tabs' => $tabs,
             'activeStatus' => $status,
             'activeMethod' => $method,
             'searchQuery' => $q,
+            'activeDatePreset' => $datePreset,
+            'dateFrom' => $datePreset === 'range' ? $dateFrom : '',
+            'dateTo' => $datePreset === 'range' ? $dateTo : '',
+            'periodLabel' => $this->periodLabel($datePreset, $dateFrom, $dateTo),
             'payments' => [
                 'data' => $mappedData->all(),
                 'links' => $paginated->linkCollection()->toArray(),
@@ -142,6 +218,26 @@ class PaymentController extends Controller
                 'last_page' => $paginated->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Simpan detail rekening bank transfer (owner 2026-09-16). Dipakai pesan
+     * WA payment_instructions & halaman konfirmasi order storefront.
+     */
+    public function updateBank(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'bank_name' => ['required', 'string', 'max:100'],
+            'account_number' => ['required', 'string', 'max:100'],
+            'account_name' => ['required', 'string', 'max:191'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        BankTransferSettings::update($validated, (int) $request->user()->id);
+
+        return redirect()
+            ->route('admin.payments.index')
+            ->with('success', 'Detail rekening bank transfer diperbarui.');
     }
 
     public function byOrder(Order $order): Response
@@ -167,6 +263,10 @@ class PaymentController extends Controller
             'activeStatus' => 'all',
             'activeMethod' => 'all',
             'searchQuery' => '',
+            'activeDatePreset' => '',
+            'dateFrom' => '',
+            'dateTo' => '',
+            'periodLabel' => $this->periodLabel('', '', ''),
             'payments' => [
                 'data' => $order->payments->map(fn (Payment $p) => [
                     'id' => $p->id,
@@ -276,6 +376,23 @@ class PaymentController extends Controller
 
         return redirect()->route('admin.orders.show', $payment->order_id)
             ->with('success', 'Pembayaran diperbarui.');
+    }
+
+    /** Label periode aktif untuk ditampilkan di ringkasan KPI. */
+    private function periodLabel(string $preset, string $from, string $to): string
+    {
+        return match ($preset) {
+            'today' => 'Hari ini',
+            '3d' => '3 hari terakhir',
+            '7d' => '7 hari terakhir',
+            '30d' => '30 hari terakhir',
+            'range' => trim(
+                ($from !== '' ? \Carbon\Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                .' - '.
+                ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang')
+            ),
+            default => 'Semua waktu',
+        };
     }
 
     private function normalizeTransactionReference(Request $request): void

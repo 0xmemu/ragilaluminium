@@ -62,12 +62,29 @@ export interface BankTransferDetails {
   notes: string
 }
 
+/**
+ * Rekonsiliasi Pembayaran (P2-01): angka hasil pencatatan website, bukan
+ * mutasi bank. Statusnya label internal yang dihitung dari catatan.
+ */
+export interface PaymentRekonsiliasi {
+  total_tagihan: number
+  pembayaran_tercatat: number
+  refund_tercatat: number
+  sisa_tercatat: number
+  status: string
+  status_label: string
+  payment_dibatalkan_count: number
+  disclaimer: string
+  catatan_verifikasi: string
+}
+
 export interface PaymentsIndexProps {
   title: string
   description?: string
   bankTransfer?: BankTransferDetails | null
   bankUpdateUrl?: string
   summary: PaymentSummary
+  rekonsiliasi?: PaymentRekonsiliasi | null
   tabs: StatusTab[]
   activeStatus: string
   activeMethod: string
@@ -95,6 +112,7 @@ export default function PaymentsIndex({
   bankTransfer,
   bankUpdateUrl,
   summary,
+  rekonsiliasi,
   tabs,
   activeStatus,
   activeMethod,
@@ -359,6 +377,53 @@ export default function PaymentsIndex({
           </div>
         )}
       </Card>
+
+      {/* Rekonsiliasi Pembayaran (P2-01): berdasarkan pencatatan website,
+          bukan mutasi bank. Status rekonsiliasi adalah label internal. */}
+      {rekonsiliasi ? (
+        <Card className="mb-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Rekonsiliasi Pembayaran</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Angka mengikuti periode terpilih ({periodLabel}). {rekonsiliasi.disclaimer}
+              </p>
+            </div>
+            <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground">
+              Status Rekonsiliasi: {rekonsiliasi.status_label}
+            </span>
+          </div>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <dt className="text-xs text-muted-foreground">Total Tagihan</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(rekonsiliasi.total_tagihan)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <dt className="text-xs text-muted-foreground">Pembayaran Tercatat</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(rekonsiliasi.pembayaran_tercatat)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <dt className="text-xs text-muted-foreground">Refund Tercatat</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(rekonsiliasi.refund_tercatat)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <dt className="text-xs text-muted-foreground">Sisa Tercatat</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(rekonsiliasi.sisa_tercatat)}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Catatan Verifikasi Admin:</span> {rekonsiliasi.catatan_verifikasi}
+          </p>
+        </Card>
+      ) : null}
 
       {/* Tabs status pembayaran */}
       <div className="mb-4 flex items-center justify-between gap-3">
