@@ -307,9 +307,9 @@ export default function ModelProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          // Aksi massal: selain menambah model baru, sinkronisasi juga menonaktifkan
-          // model yang tidak lagi punya produk aktif. Konfirmasi dulu agar tidak
-          // menghilangkan model dari katalog tanpa disadari.
+          {/* Aksi massal: selain menambah model baru, sinkronisasi juga menonaktifkan
+              model yang tidak lagi punya produk aktif. Konfirmasi dulu agar tidak
+              menghilangkan model dari katalog tanpa disadari. */}
           <ConfirmAction
             trigger={
               <Button type="button" variant="secondary">
