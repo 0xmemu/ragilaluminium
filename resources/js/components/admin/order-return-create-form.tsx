@@ -188,8 +188,10 @@ export function ReturnCreateForm({
                     {formatCurrency(item?.unit_price ?? 0)} · {maksUnit} unit dipesan
                   </p>
                 </div>
-                {maksUnit > 1 ? (
-                  <div className="flex shrink-0 items-center gap-1">
+                {/* Pemilih jumlah unit selalu tampil di setiap item (owner
+                    2026-09-29: semua kemungkinan masuk). Untuk 1 unit tombol
+                    plus/minus terkunci karena batas bawah dan atasnya sama. */}
+                <div className="flex shrink-0 items-center gap-1">
                     <Button
                       type="button"
                       variant="outline"
@@ -221,7 +223,6 @@ export function ReturnCreateForm({
                       <Icon name="plus" className="size-3.5" aria-hidden="true" />
                     </Button>
                   </div>
-                ) : null}
               </div>
             )
           })}
