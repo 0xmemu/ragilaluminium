@@ -2285,3 +2285,9 @@ CATATAN KOLABORASI PENTING: selama pengerjaan, working tree bersama beberapa kal
 
 ## 2026-09-28 15:10 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx, resources/js/pages/Admin/Orders/Show.tsx | selesai
 Permintaan owner: placeholder form input resi diganti jadi "Masukan Resi Pengiriman...". Diterapkan di DUA modal resi sekaligus (daftar pesanan #index-modal-waybill dan halaman detail) supaya keduanya tidak berbeda. Verifikasi: grep kode, typecheck 0, build 0, bundle memuat teks baru, live /admin/orders?order_status=processing placeholder terbaca "Masukan Resi Pengiriman...". Spec tidak berubah (teks UI saja).
+
+## 2026-09-28 14:39 UTC | zcode | Standard | resources/js/components/admin/order-return-create-form.tsx | selesai
+
+- Permintaan owner 2026-09-28: klik tombol Retur di daftar pesanan harus membuka popup pengisian detail retur, bukan pindah ke halaman detail. Commit 0e6196b8.
+- Form retur diekstrak dari Show.tsx jadi komponen bersama ReturnCreateForm (alasan, pihak penyebab, ongkir, kronologi, item + jumlah), dipakai halaman detail dan popup ReturnCreateDialog baru di Index.tsx; tombol Retur kini tombol klik, bukan tautan #return-case.
+- Backend createReturn memakai redirectKembali(): kembali ke halaman asal bila referer adalah halaman detail (perilaku lama, termasuk test tanpa referer tetap ke detail), selain itu back() ke daftar. Verifikasi: typecheck + build sukses, popup terbuka live di daftar pada RA-SIM-2609-04 tanpa pindah URL, kiriman kosong ditolak dengan pesan di dalam popup; test AdminReturnWorkflowTest 20/20 plus retur lain 38 lulus.
