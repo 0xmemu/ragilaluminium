@@ -570,8 +570,6 @@ interface ReturnCase {
 interface ReturnEligibility {
   eligible: boolean
   reason: string | null
-  /** Catatan layar untuk pesanan di luar Sampai; null bila tidak perlu tampil. */
-  note?: string | null
   deadline: string | null
   /**
    * Kebijakan resmi yang TIDAK lagi memblokir sejak skema retur full manual
@@ -580,8 +578,6 @@ interface ReturnEligibility {
    * dilewati.
    */
   warnings?: string[]
-  /** Pesanan Selesai: tombol Catat Retur Manual tersedia (jalur admin khusus). */
-  manual_available?: boolean
 }
 
 /** Satu baris jejak audit koreksi/void kasus retur (tabel return_case_adjustments). */
@@ -678,7 +674,6 @@ function ReturnCasePanel({
     admin_notes: "",
     fault_party: "store",
     shipping_cost_borne_by_store: true,
-    override_reason: "",
     items: order.items.map((item) => ({ order_item_id: item.id, requested_quantity: item.quantity, included: true })),
   })
   const capabilities = useAdminCapabilities()
@@ -697,12 +692,7 @@ function ReturnCasePanel({
     >
   >({})
   const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
-  // Retur manual pesanan Selesai (instruksi owner 2026-09-28): tombol
-  // "Catat Retur Manual" membuka form retur yang sama dengan kewajiban
-  // tambahan alasan pengecualian.
-  const bisaReturManual = eligibility?.manual_available === true
-  const [manualTerbuka, setManualTerbuka] = React.useState(false)
-  const tampilkanForm = eligibility?.eligible === true || (bisaReturManual && manualTerbuka)
+  const tampilkanForm = eligibility?.eligible === true
   // Deep-link GET .../returns/{returnCase}/edit: kasus tujuan form koreksi,
   // dihitung sebelum state supaya initializer bisa memakainya tanpa effect.
   const idKasusDariUrl = editReturnCaseId ?? 0
@@ -745,12 +735,9 @@ function ReturnCasePanel({
   function submit(event: React.FormEvent) {
     event.preventDefault()
     // Item yang tidak dicentang tidak dikirim; validasi server memang
-    // menerima sebagian item (larik items min:1). Jalur retur manual
-    // pesanan Selesai wajib membawa penanda late_return + alasannya.
-    const jalurManual = bisaReturManual && !eligibility?.eligible
+    // menerima sebagian item (larik items min:1).
     form.transform((data) => ({
       ...data,
-      ...(jalurManual ? { late_return: true, override_reason: data.override_reason } : {}),
       items: data.items
         .filter((row) => row.included)
         .map(({ order_item_id, requested_quantity }) => ({ order_item_id, requested_quantity })),
@@ -904,29 +891,6 @@ function ReturnCasePanel({
               {eligibility?.reason || "Retur tidak dapat dicatat sekarang."}
             </p>
           ) : null}
-
-          {/* Retur manual pesanan Selesai (instruksi owner 2026-09-28):
-              kesepakatan sudah ditangani admin lewat WhatsApp; website hanya
-              mencatat keputusannya dengan alasan pengecualian. */}
-          {bisaReturManual && !showCreate && !manualTerbuka ? (
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">
-                {eligibility?.reason || "Pesanan sudah Selesai."}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mt-2"
-                disabled={!can("returns.create", capabilities)}
-                title="Digunakan untuk mencatat kesepakatan retur yang sudah ditangani admin melalui WhatsApp."
-                onClick={() => setManualTerbuka(true)}
-              >
-                Catat Retur Manual
-              </Button>
-            </div>
-          ) : null}
-
           {/* Kebijakan resmi yang dilampaui. Keputusan tetap di tangan admin
               (skema full manual), jadi ditampilkan sebagai peringatan, bukan
               sebagai penolakan. Termasuk peringatan retur manual yang pasti
@@ -1465,18 +1429,7 @@ function ReturnCasePanel({
                   </Select>
                 </Field>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {bisaReturManual && !eligibility?.eligible ? (
-                  <Field id="return-override-reason" label="Alasan pengecualian retur manual" required error={form.errors.override_reason}>
-                    <Textarea
-                      rows={2}
-                      value={form.data.override_reason}
-                      onChange={(event) => form.setData("override_reason", event.target.value)}
-                      placeholder="Contoh: pelanggan baru melaporkan kerusakan setelah masa retur habis"
-                    />
-                  </Field>
-                ) : null}
-                {form.data.reason === "lainnya" ? (
+              <div className="grid gap-3 sm:grid-cols-2">                {form.data.reason === "lainnya" ? (
                   <Field id="return-reason-detail" label="Keterangan lainnya" required error={form.errors.reason_detail}>
                     <Textarea rows={2} value={form.data.reason_detail} onChange={(event) => form.setData("reason_detail", event.target.value)} />
                   </Field>
@@ -2390,39 +2343,23 @@ export default function OrderShow({
 
       {(() => {
         const cases = order.return_cases ?? returnCases
-        const elig = returnEligibility ?? { eligible: false, reason: null, deadline: null }
         const hasActiveCase = cases.some((c) => c.status !== "resolved" && c.status !== "rejected")
         // Panel wajib muncul untuk SETIAP pesanan Sampai dan setiap pesanan yang
         // punya kasus aktif. Dulu panel disembunyikan saat tidak memenuhi syarat,
         // sehingga tombol "Catat Retur" melompat ke bagian kosong dan alasan
         // penolakannya tidak pernah terbaca admin.
-        // Retur manual (instruksi owner 2026-09-28): pesanan Selesai juga
-        // menampilkan panel supaya tombol "Catat Retur Manual" bisa dipakai.
         const showPanel =
           hasActiveCase ||
           order.order_status === "delivered" ||
-          order.order_status === "return_in_process" ||
-          (order.order_status === "completed" && (returnEligibility?.manual_available ?? false))
-        if (!showPanel) {
-          // Item 4 antrean: pesanan di luar Sampai (mis. Selesai) tetap
-          // menampilkan alasan returnya dalam bentuk ringkas agar admin
-          // tidak mengira fiturnya rusak. Keputusan kapan catatan relevan
-          // dihitung server lewat returnEligibility.
-          if (elig.note) {
-            return (
-              <div id="return-case" className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
-                <p className="text-xs font-semibold text-foreground">Retur</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{elig.note}</p>
-              </div>
-            );
-          }
-          return null;
-        }
+          order.order_status === "return_in_process"
+        // Pesanan di luar Sampai tidak menampilkan blok retur sama sekali
+        // (instruksi owner 2026-09-28: pesanan Selesai tidak perlu info retur).
+        if (!showPanel) return null
         return (
           <ReturnCasePanel
             order={order}
             cases={cases}
-            eligibility={elig}
+            eligibility={returnEligibility ?? { eligible: false, reason: null, deadline: null }}
             editReturnCaseId={editReturnCaseId}
             returnAdjustments={returnAdjustments}
           />
