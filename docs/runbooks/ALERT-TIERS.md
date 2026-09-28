@@ -61,14 +61,38 @@ memerlukan keputusan pemilik toko.
 | Bug di dalam kode atau skrip | butuh tinjauan |
 | Keputusan bisnis (mis. nominal refund) | butuh pertimbangan manusia |
 
-## E. Keputusan yang menunggu owner
+## E. Status keputusan owner (dijawab "proses", 2026-09-28)
 
-1. Pindahkan skrip pemantauan `/root/scripts_*.sh` ke repo supaya ber-versi,
-   bisa ditinjau, dan punya test (sekarang hanya ada di server, tanpa versi).
-2. Boleh cache perkakas dipangkas otomatis? Pagarnya: hanya direktori cache,
-   ambang disk minimum, dan tidak pernah menyentuh data, cadangan, maupun kode.
-3. Aktifkan kebijakan restart systemd untuk nginx, php8.3-fpm, dan laravel-reverb
-   (butuh menulis ke `/etc/systemd/system`)?
+1. **SELESAI: skrip pantau kini di repo.** 26 skrip disalin ke
+   `scripts/prod/monitoring/` dan dijaga `tests/Feature/MonitoringScriptsContractTest.php`:
+   sintaks setiap skrip shell dan python diperiksa, skrip pembuat penanda wajib
+   mengosongkan penandanya saat sukses, dan agregator wajib memisahkan alert
+   kritis (Telegram) dari catatan teknis (log).
+   Penjaga terbukti menggigit: pengosong penanda sengaja dihapus, test langsung
+   gagal di asersi yang tepat, lalu dipulihkan dan hijau kembali.
+
+2. **SUDAH AKTIF: pemangkasan cache.** Berjalan di agregator Fase 1d — disk >=80%
+   memangkas cache ringan (npm, pnpm, pip, uv, playwright, copilot, bun), >=92%
+   memangkas cache besar (JetBrains, cargo, rustup). Pagar: hanya direktori cache
+   yang bisa dibuat ulang; data, cadangan, dan kode tidak pernah disentuh.
+
+3. **BELUM: kebijakan restart systemd untuk nginx dan php8.3-fpm.** Butuh menulis
+   ke `/etc/systemd/system`, dan guard keselamatan memblokir direktori sistem
+   (aturan keras yang tidak diakali). Perintah siap tempel di server:
+
+   ```bash
+   for d in nginx php8.3-fpm laravel-reverb; do
+     mkdir -p /etc/systemd/system/$d.service.d
+     printf '[Service]\nRestart=always\nRestartSec=5\n' \
+       > /etc/systemd/system/$d.service.d/restart.conf
+   done
+   systemctl daemon-reload
+   systemctl show nginx.service php8.3-fpm.service -p Restart -p RestartSec
+   ```
+
+   Selama belum dipasang, lubang "situs mati" **sudah tertutup** oleh pengawas
+   5 menit (agregator Fase 1a menghidupkan ulang layanan yang mati). Bedanya
+   hanya kecepatan pemulihan: detik versus maksimal lima menit.
 
 ## F. Berkas terkait
 

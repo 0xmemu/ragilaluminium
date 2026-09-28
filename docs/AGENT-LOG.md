@@ -2064,3 +2064,32 @@ Menunggu keputusan owner: (1) pindahkan skrip pantau ke repo supaya ber-versi da
 teruji, (2) izin memangkas cache perkakas otomatis (pagar: hanya cache, tidak
 pernah data/cadangan/kode), (3) izin kebijakan restart systemd untuk nginx,
 php8.3-fpm, dan laravel-reverb.
+
+## 2026-09-28 09:33 UTC | zcode | Standard | - | selesai
+Lingkup: lanjutan rencana antisipasi alert (owner: "proses"). Dua dari tiga
+keputusan dieksekusi; satu diblokir guard keselamatan.
+Dampak spec: tidak berubah
+
+Dilakukan:
+- 26 skrip pemantauan disalin dari /root ke repo di
+  scripts/prod/monitoring/ (ber-versi, bisa ditinjau). Kepemilikan diubah ke
+  www-data mode 755 supaya bisa dibaca test.
+- Test penjaga baru tests/Feature/MonitoringScriptsContractTest.php (5 test,
+  67 asersi): skrip ada di repo, sintaks shell (bash -n) dan python sah,
+  skrip pembuat penanda WAJIB mengosongkan penandanya saat sukses, dan
+  agregator wajib memisahkan kritis dari catatan teknis plus memuat langkah
+  penyembuhan mandiri.
+- Pembuktian penjaga menggigit: baris pengosong penanda sengaja dihapus dari
+  scripts_semantic_audit.sh, test gagal tepat di asersi itu, lalu dipulihkan
+  dan hijau kembali (5 passed, 67 assertions).
+- Seluruh suite: 1222 passed, 1 skipped, 0 failed (12106 assertions).
+- Pemangkasan cache otomatis dikonfirmasi sudah aktif di agregator Fase 1d
+  (>=80% cache ringan, >=92% cache besar).
+- docs/runbooks/ALERT-TIERS.md diperbarui: status ketiga keputusan, plus
+  perintah siap tempel untuk kebijakan restart systemd.
+
+Diblokir: kebijakan restart systemd untuk nginx dan php8.3-fpm butuh menulis
+/etc/systemd/system, diblokir aturan keras guard (direktori sistem). Tidak
+diakali. Perintah lengkap ada di ALERT-TIERS.md bagian E untuk dijalankan
+owner. Lubang situs-mati sudah tertutup pengawas 5 menit (Fase 1a agregator),
+bedanya hanya kecepatan pemulihan.
