@@ -110,6 +110,22 @@ class OrderController extends Controller
             ->groupBy('order_status')
             ->pluck('total', 'order_status');
 
+        // Tab "Retur Diproses": titik merah selama masih ada retur yang belum
+        // selesai. Kasus retur dicatat admin sendiri, sehingga penanda "belum
+        // dilihat" (scope unseenByAdmin) langsung hilang begitu halaman detail
+        // terbuka (markAdminSeen di show()); padahal retur yang belum ditutup
+        // tetap butuh tindak lanjut. Angkanya gabungan (belum dilihat ATAU
+        // kasusnya masih open), bukan penjumlahan, supaya tidak dobel.
+        $unfinishedReturnBadge = Order::query()
+            ->where('order_status', 'return_in_process')
+            ->where(function ($q) {
+                $q->whereIn('id', OrderReturnCase::query()->where('status', 'open')->whereNotNull('order_id')->select('order_id'))
+                    ->orWhere(function ($inner) {
+                        $inner->unseenByAdmin();
+                    });
+            })
+            ->count();
+
         $ordersQuery = Order::query()
             ->with([
                 'items.product.mainImage',
@@ -177,7 +193,7 @@ class OrderController extends Controller
             ? collect()
             : CmsTestimonial::query()->whereIn('order_id', $pageOrders->pluck('id')->all())->get()->keyBy('order_id');
 
-        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts, $unseenCounts) {
+        $tabs = collect(self::STATUS_TABS)->map(function (array $tab) use ($tabCounts, $base, $awaitingReviewCounts, $unseenCounts, $unfinishedReturnBadge) {
             $count = $tab['key'] === 'all'
                 ? (clone $base)->count()
                 : (int) ($tabCounts[$tab['key']] ?? 0);
@@ -187,6 +203,13 @@ class OrderController extends Controller
             $newCount = $tab['key'] === 'all'
                 ? 0
                 : (int) ($unseenCounts[$tab['key']] ?? 0);
+
+            // Tab retur memakai penanda "retur belum selesai" (lihat catatan di
+            // atas): titik merah muncul begitu retur dicatat dari halaman mana
+            // pun, dan baru hilang setelah kasusnya ditutup.
+            if ($tab['key'] === 'return_in_process') {
+                $newCount = $unfinishedReturnBadge;
+            }
 
             return [
                 'key' => $tab['key'],

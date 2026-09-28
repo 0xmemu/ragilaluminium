@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Domain\Orders\OrderStateMachine;
 use App\Models\Order;
+use App\Models\OrderReturnCase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -104,6 +105,45 @@ class AdminOrderStatusNewBadgeTest extends TestCase
             $this->assertSame(0, $tabs['awaiting_confirmation']['new_count']);
             $this->assertSame(0, $tabs['all']['new_count']);
         });
+    }
+
+    /**
+     * Kontrak owner 2026-09-28: tab "Retur Diproses" memakai makna "retur
+     * belum selesai". Kasus retur dicatat admin sendiri dan halaman detail
+     * langsung menandai pesanan sudah dilihat, sehingga penanda "belum
+     * dilihat" saja membuat titik merah tidak pernah muncul di tab retur.
+     */
+    public function test_tab_retur_diproses_menampilkan_titik_merah_selama_kasus_belum_ditutup(): void
+    {
+        $admin = $this->admin();
+        // Pesanan sudah pernah dilihat pada status retur, jadi penanda "belum
+        // dilihat" nol; titik merah harus tetap muncul karena retur belum selesai.
+        $order = $this->createOrder('return_in_process', 'return_in_process', 'RA-RET-BADGE-1');
+        $case = OrderReturnCase::create([
+            'order_id' => $order->id,
+            'status' => 'open',
+            'reason' => 'rusak',
+            'customer_notes' => 'Paket rusak saat diterima.',
+            'created_by_user_id' => $admin->id,
+            'updated_by_user_id' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.orders.index'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
+                $this->assertSame(1, $tabs['return_in_process']['new_count'], 'titik merah tab retur harus muncul saat retur belum selesai');
+            });
+
+        // Kasus ditutup: titik merah padam tanpa perlu perubahan lain.
+        $case->update(['status' => 'completed', 'completed_at' => now()]);
+
+        $this->actingAs($admin)->get(route('admin.orders.index'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $tabs = collect($page->toArray()['props']['tabs'])->keyBy('key');
+                $this->assertSame(0, $tabs['return_in_process']['new_count'], 'titik merah harus padam saat kasus retur sudah ditutup');
+            });
     }
 
     public function test_perubahan_status_pesanan_memunculkan_badge_merah_pada_tab_tujuan(): void

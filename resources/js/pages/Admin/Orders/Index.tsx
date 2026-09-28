@@ -1046,8 +1046,14 @@ export default function OrdersIndex({
               // pesanan tersebut dilihat detailnya atau ditindaklanjuti.
               // Tab "Semua" (all) tidak menampilkan badge merah; penanda merah hanya
               // difokuskan pada tab status spesifik yang relevan.
+              // Pengecualian (kontrak owner 2026-09-28): tab "Retur Diproses"
+              // bermakna "retur belum selesai", karena kasus retur dicatat admin
+              // sendiri sehingga penanda "belum dilihat" langsung hilang.
               const badgeCount = tab.key === "all" ? 0 : (tab.new_count ?? 0)
-              const badgeTitle = `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
+              const badgeTitle =
+                tab.key === "return_in_process"
+                  ? `${formatNumber(badgeCount)} retur belum selesai di tab ${tab.label}`
+                  : `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
               return (
                 <button
                   key={tab.key}
