@@ -2195,3 +2195,6 @@ nginx -t lolos pada konfigurasi ber-tambalan; agregator produksi "sehat".
 
 ## 2026-09-28 12:15 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
 Owner minta teks tombol "+ Tambah" di kolom Catatan admin (kartu daftar pesanan) jadi "+catatan". Ubah satu span, build, verifikasi live di halaman /admin/orders?order_status=completed: tombol kini berlabel "+catatan". Typecheck 0, build 0.
+
+## 2026-09-28 12:30 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
+Koreksi lanjutan 911c0ce0: ikon plus pada tombol membuat label "+catatan" tampil dobel (++catatan). Span dikembalikan murni teks "Catatan" sehingga tampilan jadi "+ Catatan", satu plus, huruf kapital sesuai permintaan owner. Build 0, verifikasi live + tangkapan layar di /admin/orders?order_status=completed.
