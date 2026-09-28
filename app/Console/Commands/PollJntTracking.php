@@ -17,7 +17,7 @@ class PollJntTracking extends Command
                             {--throttle=30 : Batas minimal menit interval polling normal}
                             {--dry-run : Tampilkan daftar resi tanpa memanggil API J&T}';
 
-    protected $description = 'Tarik status pelacakan J&T Cargo terjadwal untuk resi aktif sebagai fallback bila webhook kurir tidak masuk';
+    protected $description = 'Periksa resi aktif dan tarik status J&T secara manual (diagnostik, tidak terjadwal; penarik berkala ada di shipping:pull-jnt)';
 
     public function handle(ShippingService $shipping, JntCargoClient $client): int
     {

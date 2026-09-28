@@ -34,4 +34,22 @@ return [
         'enabled' => (bool) env('ORDERS_AUTO_COMPLETE_ENABLED', true),
         'grace_hours' => max(1, (int) env('ORDERS_AUTO_COMPLETE_GRACE_HOURS', 72)),
     ],
+
+    // Item 7 antrean: penarik status J&T terjadwal sebagai cadangan webhook.
+    // max_per_run menjaga kuota API; active_days membatasi resi yang sudah
+    // lama tidak bergerak; subscribe (push J&T) default mati sampai payload
+    //nya divalidasi live.
+    'shipping_pull' => [
+        'enabled' => (bool) env('JNT_PULL_ENABLED', true),
+        'max_per_run' => max(1, (int) env('JNT_PULL_MAX_PER_RUN', 50)),
+        'active_days' => max(1, (int) env('JNT_PULL_ACTIVE_DAYS', 30)),
+        // Jeda minimal per resi supaya resi yang baru diperiksa tidak
+        // ditembak lagi di jalanan berikutnya.
+        'throttle_minutes' => max(1, (int) env('JNT_PULL_THROTTLE_MINUTES', 30)),
+        // Batas percobaan per resi sebelum sistem berhenti mencoba.
+        'max_attempts' => max(1, (int) env('JNT_PULL_MAX_ATTEMPTS', 20)),
+        // Jumlah kegagalan berturut-turut sebelum admin diberi tahu.
+        'failure_alert_threshold' => max(1, (int) env('JNT_PULL_FAILURE_ALERT_THRESHOLD', 5)),
+        'subscribe' => (bool) env('JNT_PULL_SUBSCRIBE', false),
+    ],
 ];

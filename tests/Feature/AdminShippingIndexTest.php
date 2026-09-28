@@ -306,6 +306,29 @@ class AdminShippingIndexTest extends TestCase
             );
     }
 
+    public function test_issue_tab_groups_exception_and_returned(): void
+    {
+        // Tab Kendala = paket gagal antar (exception) atau sedang dikembalikan
+        // (returned). Penjaga ini ada karena bucket itu sebelumnya tidak punya
+        // test, padahal ia satu-satunya tab yang mengelompokkan dua status.
+        $this->makeRecord('JT-ISSUE-EXCEPTION', 'exception');
+        $this->makeRecord('JT-ISSUE-RETURNED', 'returned');
+        $this->makeRecord('JT-ISSUE-DELIVERED', 'delivered');
+        $this->makeRecord('JT-ISSUE-TRANSIT', 'in_transit');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index', ['status' => 'issue']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                ->where('activeStatus', 'issue')
+                ->where('summary.total_issue', 2)
+                ->has('records.data', 2)
+                ->where('records.data.0.waybill_number', 'JT-ISSUE-RETURNED')
+                ->where('records.data.1.waybill_number', 'JT-ISSUE-EXCEPTION')
+            );
+    }
+
     public function test_payment_method_filter_composes_with_period(): void
     {
         $this->makeRecord('JT-COD-NEW', 'in_transit', null, 'cod');

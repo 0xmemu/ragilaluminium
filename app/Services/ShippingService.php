@@ -342,7 +342,7 @@ class ShippingService
         return DB::transaction(function () use ($order, $resp, $weightKg) {
             $record = ShippingRecord::create([
                 'order_id' => $order->id,
-                'carrier_name' => 'J&T Cargo',
+                'carrier_name' => ShippingRecord::CARRIER_JNT,
                 'service_name' => config('jnt.defaults.express_type'),
                 'waybill_number' => $resp->billCode(),
                 // createOrder J&T tidak mengembalikan biaya ongkir aslinya,
@@ -374,7 +374,7 @@ class ShippingService
     public function attachManualWaybill(
         Order $order,
         string $waybillNumber,
-        string $carrierName = 'J&T Cargo',
+        string $carrierName = ShippingRecord::CARRIER_JNT,
     ): ShippingRecord {
         $waybillNumber = trim($waybillNumber);
         $existing = $order->shippingRecords()->whereNotIn('status', ['cancelled'])->first();
@@ -432,8 +432,11 @@ class ShippingService
     public function refreshStatus(ShippingRecord $record): void
     {
         if (! $this->jnt->isEnabled()) {
-            $record->update(['last_status_at' => now()]);
-
+            // Integrasi mati: tidak ada kabar kurir, jadi tidak ada yang
+            // dicatat. Dulu waktu status terakhir distempel dengan waktu
+            // sekarang, sehingga riwayat terlihat seperti baru diperbarui
+            // padahal tidak ada data yang diambil, dan pagar "baru saja
+            // disegarkan" di para pemanggil ikut menjadi buta.
             return;
         }
 

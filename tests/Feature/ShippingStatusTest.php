@@ -137,6 +137,31 @@ class ShippingStatusTest extends \Tests\TestCase
         $this->assertEquals('return_completed', $order->fresh()->order_status);
     }
 
+    public function test_refresh_status_tidak_menstempel_waktu_saat_integrasi_mati(): void
+    {
+        // Integrasi mati = tidak ada kabar kurir. Waktu status terakhir harus
+        // dibiarkan apa adanya; kalau digeser ke waktu sekarang, tampilan dan
+        // pagar "baru saja disegarkan" berbohong soal kesegaran data.
+        config(['jnt.enabled' => false]);
+
+        $order = $this->makeOrder();
+        $record = ShippingRecord::create([
+            'order_id' => $order->id, 'carrier_name' => ShippingRecord::CARRIER_JNT,
+            'waybill_number' => 'JT-MATI-1', 'shipping_cost' => 0, 'status' => 'in_transit',
+            'last_status_at' => now()->subHours(3),
+        ]);
+
+        $sebelum = $record->last_status_at->toDateTimeString();
+
+        app(ShippingService::class)->refreshStatus($record);
+
+        $this->assertSame(
+            $sebelum,
+            $record->fresh()->last_status_at->toDateTimeString(),
+            'tanpa data kurir, waktu status terakhir tidak boleh digeser'
+        );
+    }
+
     public function test_carrier_update_delivered_after_returned_is_ignored_as_regression(): void
     {
         $order = $this->makeOrder();

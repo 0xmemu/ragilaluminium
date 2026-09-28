@@ -8,6 +8,29 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShippingRecord extends Model
 {
+    /**
+     * Nama kurir J&T Cargo sebagaimana tertulis di kolom carrier_name.
+     *
+     * Satu-satunya sumber nilai ini. Sebelumnya penulis resi memakai 'J&T
+     * Cargo' sementara perintah penarik status menyaring 'JNT', sehingga
+     * penyaring itu tidak pernah menemukan resi apa pun dan jaring pengaman
+     * webhook tidak pernah bekerja.
+     */
+    public const CARRIER_JNT = 'J&T Cargo';
+
+    /** Ejaan lama yang masih mungkin ada di data lama. @var list<string> */
+    public const CARRIER_JNT_ALIASES = ['JNT'];
+
+    /**
+     * Ejaan nama kurir J&T yang sah untuk penyaringan.
+     *
+     * @return list<string>
+     */
+    public static function jntCarrierNames(): array
+    {
+        return array_merge([self::CARRIER_JNT], self::CARRIER_JNT_ALIASES);
+    }
+
     protected $fillable = [
         'order_id',
         'carrier_name',

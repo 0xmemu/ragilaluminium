@@ -32,6 +32,11 @@ Schedule::command('queue:prune-failed', [
 // Dapat dimatikan lewat operations.orders_auto_complete.enabled.
 Schedule::command('orders:auto-complete')->hourly()->withoutOverlapping();
 
+// Item 7 antrean: penarik status J&T sebagai cadangan webhook. Hanya resi
+// aktif dalam jendela waktu; dapat dimatikan lewat
+// operations.shipping_pull.enabled.
+Schedule::command('shipping:pull-jnt')->everyThirtyMinutes()->withoutOverlapping();
+
 // Bersihkan upload presigned yang tidak pernah difinalisasi (pending/ > 24 jam)
 // lalu kirim notifikasi admin dengan rincian pembersihan.
 Schedule::command('media:prune-pending', [
@@ -83,9 +88,16 @@ Schedule::call(function (): void {
     ->dailyAt('03:15')
     ->withoutOverlapping();
 
-// Fallback penarikan status pelacakan J&T Cargo terjadwal untuk resi aktif.
-// Mencegah paket menggantung bila webhook J&T sewaktu-waktu macet atau gagal kirim.
-Schedule::command('shipping:poll-jnt', [
-    '--limit' => 30,
-    '--throttle' => 30,
-])->everyThirtyMinutes()->withoutOverlapping();
+// Penarik status J&T terjadwal dijalankan SEKALI saja, lewat
+// shipping:pull-jnt di atas. shipping:poll-jnt tidak lagi dijadwalkan karena
+// maksudnya sama; saat keduanya terjadwal, setiap resi aktif diperiksa dua
+// kali per setengah jam dan kuota API J&T terpakai dua kali. Perintah itu
+// tetap ada sebagai alat diagnostik manual (punya mode --dry-run).
+
+// Pencatat trafik dan bandwidth (owner 2026-09-28). Mengisi
+// /root/backups/traffic-daily.csv untuk melihat tren, dan mencatat pemakaian
+// harian di log. Pemakaian bandwidth sebelumnya tidak dipantau sama sekali.
+Schedule::exec('/root/scripts_traffic_check.sh')
+    ->name('traffic-check')
+    ->hourly()
+    ->withoutOverlapping();

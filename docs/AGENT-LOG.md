@@ -2331,3 +2331,32 @@ Bukti: php artisan test --filter=AdminShippingIndexTest lulus 8 test (188 asersi
 ## 2026-09-28 23:37 UTC | zcode | Trivial | resources/js/components/admin/order-return-create-dialog.tsx | selesai
 
 - Owner: form retur di popup tidak lurus, minta kartu diperlebar. Akar masalahnya DialogContent bawaan mematok lebar 34rem lewat kelas w-[...] sehingga percobaan pertama max-w-4xl tidak berefek; diganti w-[min(calc(100vw-2rem),56rem)] (maks 896px). Label panjang tidak melipat dua lagi, terukur live: tiga dropdown satu Y, dua textarea satu Y.
+
+## 2026-09-28 23:40 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Pelacakan J&T Cargo. Berawal dari pertanyaan owner apakah sistem menembak API J&T terus-menerus, ditemukan jaring pengaman webhook tidak pernah bekerja, lalu diperbaiki bersama temuan lain.
+Berkas: app/Models/ShippingRecord.php, app/Services/ShippingService.php, app/Console/Commands/PullJntShippingStatus.php, app/Console/Commands/PollJntTracking.php, routes/console.php, config/operations.php, tests/Feature/PullJntStatusTest.php, tests/Feature/AdminShippingIndexTest.php, tests/Feature/ShippingStatusTest.php
+
+Akar masalah 1 (utama): Perintah penarik status terjadwal `shipping:pull-jnt` menyaring kolom nama kurir (`carrier_name`) dengan nilai `'JNT'`, sedangkan setiap penulis resi di aplikasi memakai `'J&T Cargo'`. Penyaring tidak pernah cocok, jadi perintah itu selalu berhenti di "Tidak ada resi aktif untuk ditarik" dan jaring pengaman webhook (item 7 antrean) bernilai nol. Test penjaganya lulus hanya karena fixture test menulis `'JNT'` sendiri, jadi test ikut menyetujui kesalahan yang sama.
+
+Akar masalah 2: Dua perintah dengan maksud sama dijadwalkan bersamaan setiap 30 menit (`shipping:pull-jnt` dan `shipping:poll-jnt`), sehingga setiap resi aktif diperiksa dua kali per setengah jam.
+
+Akar masalah 3: Saat integrasi J&T mati, `ShippingService::refreshStatus` menstempel `last_status_at` (kolom waktu status terakhir dari kurir) dengan waktu sekarang tanpa mengambil data apa pun. Riwayat jadi terlihat baru diperbarui padahal kosong, dan pagar "baru saja disegarkan" di para pemanggil (halaman status pelanggan, detail pesanan admin) ikut menjadi buta.
+
+Perubahan:
+1. `ShippingRecord::CARRIER_JNT` ('J&T Cargo'), `CARRIER_JNT_ALIASES` (ejaan lama 'JNT'), dan `jntCarrierNames()` sebagai satu sumber nilai nama kurir; penulis resi di `ShippingService` memakai konstanta itu, bukan teks bebas.
+2. `shipping:pull-jnt` menyaring lewat `ShippingRecord::jntCarrierNames()` (jadi ejaan lama tetap ikut), ikut menarik resi berstatus bermasalah (`exception`) yang dulu ditinggalkan, dan mewarisi tata kelola dari perintah lama: jatah waktu per resi (`next_poll_at`), mundur bertingkat saat gagal (30 menit sampai 6 jam), berhenti setelah 20 percobaan, serta pemberitahuan admin idempoten setelah 5 kegagalan berturut-turut.
+3. `shipping:poll-jnt` tidak lagi dijadwalkan (tetap ada sebagai alat diagnostik manual; punya mode `--dry-run`). Kini hanya satu penarik berkala: `shipping:pull-jnt` setiap 30 menit.
+4. `refreshStatus` tidak lagi menulis apa pun saat integrasi mati.
+5. Penjaga test baru: bucket tab Kendala halaman Pengiriman (`exception` + `returned`), ejaan lama kurir, jatah waktu, kegagalan mundur + pemberitahuan admin, dan larangan menstempel waktu saat integrasi mati.
+
+Dampak spec: Spec tidak berubah. Tidak ada route, parameter kueri, kolom, enum, status, atau bentuk JSON baru. Konfigurasi baru bersifat internal (env `JNT_PULL_THROTTLE_MINUTES`, `JNT_PULL_MAX_ATTEMPTS`, `JNT_PULL_FAILURE_ALERT_THRESHOLD`).
+
+Verifikasi: `php artisan test` penuh lulus 1275 test / 12421 asersi / 1 skipped / 0 gagal (148 detik, dijalankan sebagai www-data). `php artisan schedule:list` menunjukkan hanya `shipping:pull-jnt` yang terjadwal untuk J&T. `php -l` bersih untuk sembilan berkas yang disentuh. Data live 209: 4 baris pengiriman, semuanya `carrier_name` 'J&T Cargo', sehingga bug itu memang tidak pernah terlihat dari data.
+
+Catatan jujur: skrip tambalan pertama saya menulis salah (dua suntingan pada satu berkas saling menimpa karena berkas dibaca ulang per suntingan), sehingga suntingan `refreshStatus` tidak tersimpan dan test penjaga baru langsung menangkapnya. Tambalan ulang sudah memperbaiki keduanya; test gagal itu yang membuktikan penjaganya bekerja.
+
+Untuk agent berikutnya: efisiensi terbesar yang belum dikerjakan adalah penggabungan permintaan. Endpoint `logistics/trace` menerima `billCodes` dipisah koma sampai 30 resi per panggilan, sementara penarik kita selalu mengirim satu resi per panggilan. Penggabungan itu menurunkan jumlah panggilan sampai 30 kali untuk jumlah resi yang sama, tetapi bentuk respons untuk banyak resi belum pernah terlihat hidup karena kredensial J&T sudah dipindah dari 209 ke 202, jadi jangan dikerjakan tanpa validasi live dulu. Opsi lain yang belum diputuskan: `operations.shipping_pull.subscribe` (berlangganan push per resi) masih mati dan payload-nya belum divalidasi.
+
+Commit ini juga membawa dua blok 28 Sep yang belum di-commit di berkas yang sama: jadwal `shipping:pull-jnt` dan jadwal `traffic-check` di routes/console.php, serta blok `operations.shipping_pull` di config/operations.php.
+Agent: zcode
