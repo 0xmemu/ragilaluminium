@@ -374,4 +374,19 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Fitur email telah ditiadakan sesuai kontrak guest checkout berbasis nomor WhatsApp.",
     ],
   },
+  "admin.payments.index": {
+    title: "Pembayaran dan Rekonsiliasi",
+    summary: "Kelola catatan pembayaran pesanan dan baca panel Rekonsiliasi Pembayaran berdasarkan pencatatan website.",
+    steps: [
+      "Verifikasi transfer: buka baris berstatus Menunggu verifikasi, cek bukti bayar, lalu ubah statusnya menjadi Lunas.",
+      "Pahami panel Rekonsiliasi Pembayaran: Total Tagihan adalah nilai pesanan yang punya catatan pembayaran pada periode terpilih, Pembayaran Tercatat adalah dana berstatus Lunas, Refund Tercatat adalah dana yang tercatat kembali ke pembeli, dan Sisa Tercatat adalah selisihnya.",
+      "Baca Status Rekonsiliasi sebagai label internal: Belum dibayar, Sebagian tercatat, Lunas sesuai catatan, Refund sebagian, atau Refund penuh.",
+      "Gunakan filter periode (3 hari, 7 hari, 30 hari, atau rentang) supaya angka panel dan tabel membahas himpunan yang sama.",
+    ],
+    notes: [
+      "Pembayaran COD tercatat lunas otomatis saat paket tercatat Sampai di pembeli; transfer lunas setelah admin memverifikasi bukti.",
+      "Angka rekonsiliasi berasal dari pencatatan website, bukan mutasi rekening bank; website tidak membaca mutasi rekening secara otomatis, verifikasi manual admin tetap diperlukan.",
+      "Penjelasan ringkas panel juga tersedia sebagai hint saat arah kursor ke judul Rekonsiliasi Pembayaran.",
+    ],
+  },
 }

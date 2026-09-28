@@ -7,6 +7,7 @@ import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
@@ -379,16 +380,16 @@ export default function PaymentsIndex({
       </Card>
 
       {/* Rekonsiliasi Pembayaran (P2-01): berdasarkan pencatatan website,
-          bukan mutasi bank. Status rekonsiliasi adalah label internal. */}
+          bukan mutasi bank. Penjelasannya dipindah ke hint judul dan panduan
+          halaman (keputusan owner 2026-09-28: layar jangan penuh teks). */}
       {rekonsiliasi ? (
         <Card className="mb-4 p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Rekonsiliasi Pembayaran</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Angka mengikuti periode terpilih ({periodLabel}). {rekonsiliasi.disclaimer}
-              </p>
-            </div>
+            <HintTip
+              label={<h2 className="text-sm font-semibold text-foreground">Rekonsiliasi Pembayaran</h2>}
+              hint={`Angka mengikuti periode terpilih (${periodLabel}), dari pencatatan website: bukan mutasi rekening bank. Pembayaran COD tercatat lunas otomatis saat paket tercatat Sampai, transfer lunas setelah admin memverifikasi bukti. Sisa Tercatat adalah bagian tagihan yang belum punya catatan lunas. Verifikasi tetap dilakukan admin terhadap bukti transfer dan mutasi rekening.`}
+              side="bottom"
+            />
             <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground">
               Status Rekonsiliasi: {rekonsiliasi.status_label}
             </span>
@@ -419,9 +420,6 @@ export default function PaymentsIndex({
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Catatan Verifikasi Admin:</span> {rekonsiliasi.catatan_verifikasi}
-          </p>
         </Card>
       ) : null}
 
