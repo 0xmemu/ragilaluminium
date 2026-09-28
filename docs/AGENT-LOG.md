@@ -2237,3 +2237,11 @@ Verifikasi pasca-commit: detail pesanan ORD26090013 (uji transfer kedua, /admin/
 
 ## 2026-09-28 14:35 UTC | zcode | Standard | resources/js/components/admin/order-status-confirm.tsx, resources/js/pages/Admin/Orders/Index.tsx, resources/js/pages/Admin/Orders/Show.tsx | selesai
 Kontrak owner: SEMUA tombol aksi status pesanan wajib lewat popup konfirmasi. Komponen bersama StatusConfirmButton dipakai di tombol primer dan sekunder (daftar + detail): confirm_transfer menampilkan nominal tagihan, advance_cod menjelaskan proses + notifikasi WA, settle_cod menjelaskan pelunasan COD otomatis, kind lain memakai hint backend atau teks generik; kind input_resi dikecualikan karena membuka form (bukan eksekusi langsung), aksi batalkan tetap pakai dialog alasan yang sudah ada. Verifikasi live: popup COD "Proses Pesanan" (ORD26090008) dan popup transfer ber-nominal (ORD26090013) terbuka lalu ditutup dengan Batal tanpa mengubah status. Catatan: saat pengujian, tiga pesanan uji lain (ORD26090005/07/09/11 sebagian) berpindah status oleh sesi paralel di luar kendali saya; status ORD26090011 dicek tetap Menunggu Konfirmasi setelah klik uji saya.
+
+## 2026-09-28 14:15 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: lapor owner "rusak nih" di halaman kelola/model-produk: teks komentar "// Aksi massal: ..." bocor jadi teks halaman di header (komentar JS di dalam JSX).
+Akar: komentar ditulis bentuk // di dalam anak JSX oleh refactor header sebelumnya.
+Perubahan: comments diganti {/* */} di resources/js/pages/Admin/ModelProducts/Index.tsx; satu berkas, tanpa perubahan perilaku.
+Verifikasi: eslint+typecheck bersih, build sukses, halaman dimuat ulang di browser: teks bocor hilang, tombol Muat ulang katalog dan Tambah tetap ada, tanpa overflow.
+Dampak spec: tidak berubah.
+Agent: zcode-retur
