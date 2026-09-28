@@ -1843,15 +1843,36 @@ export default function OrderShow({
         </Button>
       ) : null}
       {primaryAction?.next_status ? (
-        <Button
-          size="sm"
-          disabled={statusBusy || !can("orders.process", capabilities)}
-          onClick={runPrimary}
-          className="shrink-0"
-          title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
-        >
-          {statusBusy ? "Memproses..." : primaryAction.label}
-        </Button>
+        primaryAction.kind === "confirm_transfer" ? (
+          <ConfirmAction
+            trigger={
+              <Button
+                size="sm"
+                disabled={statusBusy || !can("orders.process", capabilities)}
+                className="shrink-0"
+                title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+              >
+                {statusBusy ? "Memproses..." : primaryAction.label}
+              </Button>
+            }
+            title="Konfirmasi Pesanan Transfer"
+            description={`Pastikan pembayaran sudah dilakukan dengan nominal ${formatCurrency(order.total_amount)} sebelum mengkonfirmasi pesanan.`}
+            confirmLabel="Konfirmasi & Proses"
+            processing={statusBusy}
+            variant="primary"
+            onConfirm={runPrimary}
+          />
+        ) : (
+          <Button
+            size="sm"
+            disabled={statusBusy || !can("orders.process", capabilities)}
+            onClick={runPrimary}
+            className="shrink-0"
+            title={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+          >
+            {statusBusy ? "Memproses..." : primaryAction.label}
+          </Button>
+        )
       ) : null}
       {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
         can("orders.cancel", capabilities) ? (

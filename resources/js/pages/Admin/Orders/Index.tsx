@@ -580,9 +580,25 @@ function OrderCardRow({
           ) : null}
 
           {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
-            <Button size="xs" className="w-full xl:w-auto" disabled={busy} onClick={applyPrimary}>
-              {busy ? "Memproses..." : order.primary_action.label}
-            </Button>
+            order.primary_action.kind === "confirm_transfer" ? (
+              <ConfirmAction
+                trigger={
+                  <Button size="xs" className="w-full xl:w-auto" disabled={busy}>
+                    {busy ? "Memproses..." : order.primary_action.label}
+                  </Button>
+                }
+                title="Konfirmasi Pesanan Transfer"
+                description={`Pastikan pembayaran sudah dilakukan dengan nominal ${formatCurrency(order.total_amount)} sebelum mengkonfirmasi pesanan.`}
+                confirmLabel="Konfirmasi & Proses"
+                processing={busy}
+                variant="primary"
+                onConfirm={applyPrimary}
+              />
+            ) : (
+              <Button size="xs" className="w-full xl:w-auto" disabled={busy} onClick={applyPrimary}>
+                {busy ? "Memproses..." : order.primary_action.label}
+              </Button>
+            )
           ) : null}
 
           {order.secondary_action ? (
