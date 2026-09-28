@@ -1059,11 +1059,6 @@ export default function OrdersIndex({
           </div>
         </div>
 
-        <div className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
-          <span><strong className="tabular-nums font-semibold text-foreground">{formatNumber(summary.count)}</strong> pesanan</span>
-          <span className="text-muted-foreground/60">·</span>
-          <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>
-        </div>
       </div>
 
       {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
@@ -1076,12 +1071,76 @@ export default function OrdersIndex({
         }}
         sort={
           <Select
-            value={activeSort}
-            onChange={(event) => visit({ sort: event.target.value })}
-            aria-label="Urutan"
+            // Remount saat urutan, preset, atau rentang berganti supaya popover ikut tertutup.
+            key={`urutan-waktu-${activeSort}-${activeDatePreset}-${dateFrom}-${dateTo}`}
+            value={
+              dateDraft ??
+              (activeDatePreset && activeDatePreset !== "all"
+                ? activeDatePreset
+                : activeSort || "newest")
+            }
+            keepOpenOnSelect={(value) => value === "range"}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value === "range") {
+                // Buka panel tanggal di dalam dropdown, jangan pindah halaman
+                // sebelum admin menekan Terapkan.
+                setDateDraft("range")
+                return
+              }
+              setDateDraft(null)
+              if (value === "newest" || value === "oldest") {
+                visit({
+                  sort: value,
+                  date_preset: undefined,
+                  date_from: undefined,
+                  date_to: undefined,
+                })
+                return
+              }
+              visit({ date_preset: value === "all" ? undefined : value, date_from: undefined, date_to: undefined })
+            }}
+            className="w-auto"
+            aria-label="Urutan & waktu"
+            popoverFooter={
+              rangePanelOpen ? (
+                <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    Dari tanggal
+                    <Input
+                      type="date"
+                      value={rangeFrom}
+                      onChange={(event) => setRangeFrom(event.target.value)}
+                      className="h-8 w-36 min-h-8 text-xs"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    Sampai tanggal
+                    <Input
+                      type="date"
+                      value={rangeTo}
+                      onChange={(event) => setRangeTo(event.target.value)}
+                      className="h-8 w-36 min-h-8 text-xs"
+                    />
+                  </label>
+                  <Button type="submit" variant="secondary" size="sm" className="h-8 min-h-8">
+                    Terapkan
+                  </Button>
+                </form>
+              ) : null
+            }
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
+            <option value="today">Hari ini</option>
+            <option value="3d">3 hari terakhir</option>
+            <option value="7d">7 hari terakhir</option>
+            <option value="30d">30 hari terakhir</option>
+            <option value="range">
+              {activeDatePreset === "range" && dateFrom && dateTo
+                ? `${formatDate(dateFrom)} - ${formatDate(dateTo)}`
+                : "Rentang tanggal"}
+            </option>
           </Select>
         }
         className="mb-4 pb-[10px]"
@@ -1127,63 +1186,6 @@ export default function OrdersIndex({
           <option value="24h">Status &gt; 24 jam</option>
           <option value="2d">Status &gt; 2 hari</option>
           <option value="7d">Status &gt; 7 hari</option>
-        </Select>
-        <Select
-          // Remount saat rentang diterapkan supaya popover ikut tertutup.
-          key={`date-${activeDatePreset}-${dateFrom}-${dateTo}`}
-          value={pendingDatePreset}
-          keepOpenOnSelect={(value) => value === "range"}
-          onChange={(event) => {
-            const value = event.target.value
-            if (value === "range") {
-              // Buka panel tanggal di dalam dropdown, jangan pindah halaman
-              // sebelum admin menekan Terapkan.
-              setDateDraft("range")
-              return
-            }
-            setDateDraft(null)
-            visit({ date_preset: value === "all" ? undefined : value, date_from: undefined, date_to: undefined })
-          }}
-          className="w-auto"
-          aria-label="Filter waktu"
-          popoverFooter={
-            rangePanelOpen ? (
-              <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-                  Dari tanggal
-                  <Input
-                    type="date"
-                    value={rangeFrom}
-                    onChange={(event) => setRangeFrom(event.target.value)}
-                    className="h-8 w-36 min-h-8 text-xs"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-                  Sampai tanggal
-                  <Input
-                    type="date"
-                    value={rangeTo}
-                    onChange={(event) => setRangeTo(event.target.value)}
-                    className="h-8 w-36 min-h-8 text-xs"
-                  />
-                </label>
-                <Button type="submit" variant="secondary" size="sm" className="h-8 min-h-8">
-                  Terapkan
-                </Button>
-              </form>
-            ) : null
-          }
-        >
-          <option value="all">Semua waktu</option>
-          <option value="today">Hari ini</option>
-          <option value="3d">3 hari terakhir</option>
-          <option value="7d">7 hari terakhir</option>
-          <option value="30d">30 hari terakhir</option>
-          <option value="range">
-            {activeDatePreset === "range" && dateFrom && dateTo
-              ? `${formatDate(dateFrom)} - ${formatDate(dateTo)}`
-              : "Rentang tanggal"}
-          </option>
         </Select>
       </ListToolbar>
 

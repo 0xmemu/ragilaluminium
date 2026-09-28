@@ -2198,3 +2198,6 @@ Owner minta teks tombol "+ Tambah" di kolom Catatan admin (kartu daftar pesanan)
 
 ## 2026-09-28 12:30 UTC | zcode | Trivial | resources/js/pages/Admin/Orders/Index.tsx | selesai
 Koreksi lanjutan 911c0ce0: ikon plus pada tombol membuat label "+catatan" tampil dobel (++catatan). Span dikembalikan murni teks "Catatan" sehingga tampilan jadi "+ Catatan", satu plus, huruf kapital sesuai permintaan owner. Build 0, verifikasi live + tangkapan layar di /admin/orders?order_status=completed.
+
+## 2026-09-28 13:05 UTC | zcode | Standard | resources/js/pages/Admin/Orders/Index.tsx | selesai
+Permintaan owner di daftar pesanan: (1) badge "N pesanan · Total Nilai" di kanan atas dihapus seluruhnya, (2) dropdown Urutan (Terbaru/Terlama) dan Filter waktu (preset + rentang tanggal) digabung jadi satu dropdown "Urutan & waktu" dengan opsi Terbaru, Terlama, Hari ini, 3/7/30 hari terakhir, Rentang tanggal; opsi Semua waktu dibuang karena redundan (Terlama/Terbaru sekaligus membersihkan preset waktu). Pemilihan preset waktu mempertahankan sort aktif, pemilihan Terbaru/Terlama membersihkan preset. Panel rentang tanggal dan applyDateRange dipindah utuh ke dropdown gabungan. Verifikasi: typecheck 0, build 0, live test pilih Terlama (URL sort=oldest, urutan kartu terbalik), panel rentang terbuka, badge tidak ada, footer Menampilkan tetap.
