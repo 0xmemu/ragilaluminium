@@ -13,7 +13,7 @@ class ModelProductAdminTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_sync_list_and_reorder_model_products(): void
+    public function test_wadah_model_terselaras_otomatis_dan_urutan_tersimpan(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
@@ -37,9 +37,9 @@ class ModelProductAdminTest extends TestCase
             'status' => 'archived',
         ]);
 
-        $this->actingAs($admin)
-            ->post(route('admin.model-products.sync'))
-            ->assertRedirect(route('admin.model-products.index'));
+        // Wadah dibuat sendiri saat produk disimpan; tombol "Muat ulang katalog"
+        // beserta route-nya dihapus 2026-09-28 (keputusan owner: semuanya otomatis).
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('admin.model-products.sync'));
 
         $this->assertDatabaseHas('cms_model_products', [
             'product_category' => 'JENDELA',
@@ -93,9 +93,14 @@ class ModelProductAdminTest extends TestCase
             'sort_order' => 10,
         ]);
 
+        // Auto-arsip (kontrak owner: wadah = produk yang bisa dibeli) kini
+        // berjalan OTOMATIS di setiap perubahan produk, bukan lagi menunggu
+        // perintah admin. Wadah kosong buatan admin di atas sudah dimatikan
+        // saat produk SWING disimpan pada langkah sebelumnya.
         $result = app(\App\Services\ModelProductService::class)->syncFromCatalog($admin->id);
         $this->assertSame(0, $result['created']);
-        $this->assertSame(2, $result['archived']);
+        // Yang tersisa hanya wadah SWING buatan admin (aktif, tanpa produk aktif).
+        $this->assertSame(1, $result['archived']);
         $this->assertDatabaseHas('cms_model_products', [
             'product_category' => 'JENDELA',
             'product_model' => 'KACA_MATI',
@@ -158,13 +163,19 @@ class ModelProductAdminTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Wadah sudah terbuat otomatis dari produk di atas, jadi admin tidak
+        // menambah baris baru melainkan mengisi konten wadah yang sudah ada.
+        $wadah = CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'JENDELA_JUNGKIT_UNGGULAN')
+            ->firstOrFail();
+
         $this->actingAs($admin)
-            ->post(route('admin.model-products.store'), [
+            ->put(route('admin.model-products.update', $wadah), [
                 'name' => 'Jendela Jungkit Unggulan',
                 'product_category' => 'JENDELA',
                 'image_url' => 'https://cdn.example.com/jungkit.jpg',
                 'description' => 'Deskripsi jungkit dari admin untuk halaman detail model.',
-                'type' => 'polos',
                 'status' => 'active',
                 'sort_order' => 0,
             ])
@@ -190,5 +201,174 @@ class ModelProductAdminTest extends TestCase
                 ->component('Public/ModelDetail')
                 ->where('model.desc', 'Deskripsi jungkit dari admin untuk halaman detail model.')
                 ->where('model.subtitle', null));
+    }
+
+    /**
+     * Penyelarasan otomatis menambah wadah baru dan mematikan wadah kosong,
+     * TIDAK pernah mengaktifkan wadah nonaktif. Keputusan owner 2026-09-10
+     * dipertahankan: model yang disembunyikan admin (atau hasil auto-arsip)
+     * tidak bangkit sendiri walau produknya kembali aktif.
+     */
+    public function test_wadah_nonaktif_tidak_diaktifkan_otomatis(): void
+    {
+        Product::create([
+            'parent_sku' => 'WIN-JUNG-AKTIF',
+            'name' => 'Jungkit Aktif',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $wadah = CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'JUNGKIT')
+            ->firstOrFail();
+
+        // Admin menyembunyikan model walau produknya masih aktif.
+        $wadah->update(['status' => 'draft']);
+
+        // Perubahan produk berikutnya memicu penyelarasan otomatis. Karena
+        // wadah JUNGKIT masih punya produk aktif, ia tidak diarsipkan; karena
+        // statusnya draft, ia juga tidak diaktifkan kembali.
+        Product::create([
+            'parent_sku' => 'WIN-SWING-AKTIF',
+            'name' => 'Swing Aktif',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SWING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->assertSame('draft', $wadah->fresh()->status);
+
+        // Menambah produk baru pada model yang wadahnya draft pun tidak
+        // mengaktifkannya kembali, dan tidak menduplikasi wadah.
+        Product::create([
+            'parent_sku' => 'WIN-JUNG-AKTIF-2',
+            'name' => 'Jungkit Aktif 2',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'ORNAMEN',
+            'status' => 'active',
+        ]);
+
+        $this->assertSame('draft', $wadah->fresh()->status);
+        $this->assertSame(1, CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'JUNGKIT')
+            ->count());
+    }
+
+    /**
+     * Penyelarasan hanya dipicu perubahan yang menentukan wadah (kategori,
+     * kode model, status). Perubahan lain tidak perlu penyelarasan sama sekali.
+     */
+    public function test_perubahan_yang_tidak_menentukan_wadah_tidak_memicu_penyelarasan(): void
+    {
+        $produk = Product::create([
+            'parent_sku' => 'WIN-NAMA-1',
+            'name' => 'Jendela Sliding',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $spy = $this->spy(\App\Services\ModelProductService::class);
+
+        $produk->update(['name' => 'Jendela Sliding Revisi']);
+
+        $spy->shouldNotHaveReceived('syncFromCatalog');
+    }
+
+    /**
+     * Penyelarasan wadah adalah efek samping, bukan syarat simpan produk:
+     * kegagalannya dilaporkan tetapi tidak boleh menggagalkan pekerjaan admin.
+     */
+    public function test_kegagalan_penyelarasan_tidak_menggagalkan_simpan_produk(): void
+    {
+        $this->mock(\App\Services\ModelProductService::class, function ($mock): void {
+            $mock->shouldReceive('syncFromCatalog')->andThrow(new \RuntimeException('penyelarasan gagal'));
+        });
+
+        Product::create([
+            'parent_sku' => 'WIN-GAGAL-1',
+            'name' => 'Jendela Gagal Selaras',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('products', ['parent_sku' => 'WIN-GAGAL-1']);
+    }
+
+    /**
+     * Pasangan yang belum punya wadah (mis. model yang belum punya produk)
+     * tetap bisa ditambah manual lewat form.
+     */
+    public function test_tambah_model_untuk_pasangan_tanpa_produk_tetap_bisa(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.store'), [
+                'name' => 'Boven Jungkit Empat Daun',
+                'product_category' => 'BOVEN',
+                'status' => 'active',
+            ])
+            ->assertRedirect(route('admin.model-products.index'));
+
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'BOVEN',
+            'product_model' => 'BOVEN_JUNGKIT_EMPAT_DAUN',
+        ]);
+        $this->assertSame(1, CmsModelProduct::query()->count());
+    }
+
+    /**
+     * Pasangan yang sudah punya wadah (otomatis dari produk) tidak boleh
+     * ditambah lagi: baris kembar membuat kartu model tampil dua kali di toko.
+     * Admin diarahkan melengkapi baris yang sudah ada.
+     */
+    public function test_tambah_model_pasangan_sudah_punya_wadah_diarahkan_ke_edit(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        Product::create([
+            'parent_sku' => 'WIN-SWING-KEMBAR',
+            'name' => 'Jendela Swing',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SWING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $wadah = CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'SWING')
+            ->firstOrFail();
+
+        // Nama "Swing" menghasilkan kode model SWING, yaitu pasangan yang sama
+        // dengan wadah otomatis di atas.
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.store'), [
+                'name' => 'Swing',
+                'product_category' => 'JENDELA',
+                'status' => 'active',
+            ])
+            ->assertRedirect(route('admin.model-products.edit', $wadah));
+
+        $this->assertSame(1, CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'SWING')
+            ->count());
     }
 }

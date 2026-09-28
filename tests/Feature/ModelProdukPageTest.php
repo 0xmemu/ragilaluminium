@@ -246,22 +246,16 @@ class ModelProdukPageTest extends TestCase
         $this->addSales($sliding, 9);
         $this->addSales($jungkit, 2);
 
-        CmsModelProduct::create([
-            'name' => 'Jendela Sliding',
-            'product_category' => 'JENDELA',
-            'product_model' => 'SLIDING',
-            'type' => 'polos',
-            'status' => 'active',
-            'sort_order' => 1,
-        ]);
-        CmsModelProduct::create([
-            'name' => 'Jendela Jungkit',
-            'product_category' => 'JENDELA',
-            'product_model' => 'JUNGKIT',
-            'type' => 'polos',
-            'status' => 'active',
-            'sort_order' => 2,
-        ]);
+        // Wadah kedua pasangan ini sudah terbuat otomatis dari produk di atas,
+        // jadi test melengkapi baris yang ada alih-alih membuat baris kembar.
+        CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'SLIDING')
+            ->update(['name' => 'Jendela Sliding', 'sort_order' => 1]);
+        CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'JUNGKIT')
+            ->update(['name' => 'Jendela Jungkit', 'sort_order' => 2]);
 
         $this->get('/products')
             ->assertOk()

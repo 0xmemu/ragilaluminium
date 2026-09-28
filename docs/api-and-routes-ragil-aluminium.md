@@ -216,7 +216,6 @@ Kontrak payload Performa Toko: report.sections berisi lima grup KPI, dan jumlah 
 - `POST /admin/kelola/model-produk` -> `Admin\ModelProductController@store`  (name: `admin.model-products.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/kelola/model-produk/create` -> `Admin\ModelProductController@create`  (name: `admin.model-products.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/kelola/model-produk/reorder` -> `Admin\ModelProductController@reorder`  (name: `admin.model-products.reorder`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `POST /admin/kelola/model-produk/sync` -> `Admin\ModelProductController@sync`  (name: `admin.model-products.sync`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/kelola/model-produk/{modelProduct}` -> `Admin\ModelProductController@update`  (name: `admin.model-products.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/model-produk/{modelProduct}/activate` -> `Admin\ModelProductController@activate`  (name: `admin.model-products.activate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/kelola/model-produk/{modelProduct}/deactivate` -> `Admin\ModelProductController@deactivate`  (name: `admin.model-products.deactivate`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]

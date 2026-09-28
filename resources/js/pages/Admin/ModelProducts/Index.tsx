@@ -102,7 +102,6 @@ export default function ModelProductsIndex({
   pagination = null,
   createHref,
   reorderUrl,
-  syncUrl,
 }: {
   title: string
   description: string
@@ -115,7 +114,6 @@ export default function ModelProductsIndex({
   pagination?: PaginationData | null
   createHref: string
   reorderUrl: string
-  syncUrl: string
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [status, setStatus] = React.useState(filters.status)
@@ -283,7 +281,11 @@ export default function ModelProductsIndex({
               <button
                 type="button"
                 className="w-full text-left"
-                disabled={busyId === row.id}
+                // Wadah tanpa produk aktif akan dinonaktifkan lagi oleh
+                // penyelarasan otomatis, jadi tombolnya dimatikan supaya admin
+                // tidak menyalakan sesuatu yang langsung padam sendiri.
+                disabled={busyId === row.id || row.active_count === 0}
+                title={row.active_count === 0 ? "Model tanpa produk aktif dinonaktifkan otomatis. Tambahkan atau pulihkan produknya dulu." : undefined}
                 onClick={() => {
                   setBusyId(row.id)
                   router.post(row.activate_url, {}, {
@@ -307,21 +309,10 @@ export default function ModelProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {/* Aksi massal: selain menambah model baru, sinkronisasi juga menonaktifkan
-              model yang tidak lagi punya produk aktif. Konfirmasi dulu agar tidak
-              menghilangkan model dari katalog tanpa disadari. */}
-          <ConfirmAction
-            trigger={
-              <Button type="button" variant="secondary">
-                <Icon name="refresh" className="size-4" aria-hidden="true" />
-                Muat ulang katalog
-              </Button>
-            }
-            title="Muat ulang katalog dari produk?"
-            description="Model baru dari kombinasi kategori dan model produk akan ditambahkan, dan model yang sudah tidak punya produk aktif akan berstatus nonaktif sehingga hilang dari katalog serta beranda publik."
-            confirmLabel="Muat ulang katalog"
-            onConfirm={() => router.post(syncUrl)}
-          />
+          {/* Daftar wadah model terselaras otomatis dengan katalog: wadah baru
+              muncul sendiri saat produk baru disimpan, dan wadah tanpa produk
+              aktif dinonaktifkan otomatis. Tombol "Muat ulang katalog" dihapus
+              2026-09-28 atas keputusan owner. */}
           {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
               yang benar-benar digeser. */}

@@ -444,7 +444,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('kelola/model-produk', [ModelProductController::class, 'index'])->name('model-products.index');
     Route::get('kelola/model-produk/create', [ModelProductController::class, 'create'])->name('model-products.create');
     Route::post('kelola/model-produk', [ModelProductController::class, 'store'])->name('model-products.store');
-    Route::post('kelola/model-produk/sync', [ModelProductController::class, 'sync'])->name('model-products.sync');
     Route::put('kelola/model-produk/reorder', [ModelProductController::class, 'reorder'])->name('model-products.reorder');
     Route::get('kelola/model-produk/{modelProduct}/edit', [ModelProductController::class, 'edit'])->name('model-products.edit');
     Route::put('kelola/model-produk/{modelProduct}', [ModelProductController::class, 'update'])->name('model-products.update');

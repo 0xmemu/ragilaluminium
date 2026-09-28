@@ -157,7 +157,7 @@ class InstallationMediaImportTest extends TestCase
             ->has('installations', 1)
         );
 
-        $modelPage = $this->get(route('installation.model', ['category' => 'window', 'model' => 'sliding']));
+        $modelPage = $this->get(route('installation.model', ['category' => 'jendela', 'model' => 'sliding']));
         $modelPage->assertOk();
         $modelPage->assertInertia(fn (Assert $page) => $page
             ->component('Public/Installations')
@@ -171,7 +171,7 @@ class InstallationMediaImportTest extends TestCase
         );
 
         $sorted = $this->get(route('installation.model', [
-            'category' => 'window',
+            'category' => 'jendela',
             'model' => 'sliding',
             'sort' => 'photos',
         ]));
@@ -297,9 +297,12 @@ class InstallationMediaImportTest extends TestCase
         $this->assertSame(1, $cards[0]['product_count']);
         $this->assertSame(0, $cards[0]['photo_count']);
         $this->assertSame(0, $cards[0]['video_count']);
-        $this->assertNull($cards[0]['image_url']);
+        // Belum ada media pemasangan, jadi kolom sampul memakai gambar kartu
+        // wadah model. Wadah itu kini lahir otomatis dari produk dan memakai
+        // gambar utama produk; produk tanpa foto jatuh ke placeholder.
+        $this->assertSame('/images/home/product-flash.png', $cards[0]['image_url']);
 
-        $this->get(route('installation.model', ['category' => 'window', 'model' => 'jungkit']))
+        $this->get(route('installation.model', ['category' => 'jendela', 'model' => 'jungkit']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Installations')

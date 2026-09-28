@@ -70,7 +70,6 @@ class ModelProductController extends Controller
             'rows' => collect($rows->items())->all(),
             'createHref' => route('admin.model-products.create'),
             'reorderUrl' => route('admin.model-products.reorder'),
-            'syncUrl' => route('admin.model-products.sync'),
         ]);
     }
 
@@ -95,6 +94,22 @@ class ModelProductController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request);
+
+        // Sejak wadah dibuat otomatis dari produk (2026-09-28), pasangan
+        // kategori + kode yang sudah punya produk pasti sudah punya wadah.
+        // Menambah baris kedua untuk pasangan yang sama melahirkan kartu ganda
+        // di toko, jadi admin diarahkan melengkapi baris yang ada.
+        $sudahAda = CmsModelProduct::query()
+            ->where('product_category', $validated['product_category'])
+            ->where('product_model', $validated['product_model'])
+            ->first();
+
+        if ($sudahAda) {
+            return redirect()
+                ->route('admin.model-products.edit', $sudahAda)
+                ->with('success', 'Model untuk kategori dan kode ini sudah ada. Lengkapi kontennya di halaman ini.');
+        }
+
         $validated['sort_order'] = $validated['sort_order']
             ?? ((int) CmsModelProduct::query()->max('sort_order') + 1);
         $validated['image_url'] = $this->resolveImageUrl($validated['media_asset_id'] ?? null)
@@ -204,27 +219,6 @@ class ModelProductController extends Controller
         return redirect()
             ->route('admin.model-products.index')
             ->with('success', 'Urutan model produk disimpan.');
-    }
-
-    public function sync(Request $request): RedirectResponse
-    {
-        $result = $this->models->syncFromCatalog($request->user()?->id);
-        $created = (int) ($result['created'] ?? 0);
-        $archived = (int) ($result['archived'] ?? 0);
-
-        $parts = [];
-        if ($created > 0) {
-            $parts[] = "{$created} model ditambahkan";
-        }
-        if ($archived > 0) {
-            $parts[] = "{$archived} model kosong diarsipkan";
-        }
-
-        return redirect()
-            ->route('admin.model-products.index')
-            ->with('success', $parts !== []
-                ? 'Sinkronisasi selesai: '.implode(', ', $parts).'.'
-                : 'Semua model katalog sudah ada di daftar.');
     }
 
     public function activate(CmsModelProduct $modelProduct): RedirectResponse

@@ -202,8 +202,14 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
             // membatalkan SELURUH batch, bukan menyisakan data parsial.
             // Commit = sukses; throw = rollback struktural.
             \Illuminate\Support\Facades\Cache::put("import_progress_{$this->jobId}", 0, 600);
-            DB::transaction(function () use ($importer, $path): void {
-                Excel::import($importer, $path);
+
+            // Perubahan produk di dalam import tidak memicu penyelarasan wadah
+            // per baris (seribu baris berarti seribu penyelarasan). Pemicunya
+            // ditahan dulu, lalu diselaraskan sekali setelah transaksi commit.
+            \App\Support\ModelProductSync::suppress(function () use ($importer, $path): void {
+                DB::transaction(function () use ($importer, $path): void {
+                    Excel::import($importer, $path);
+                });
             });
 
             // Import katalog memperkenalkan pasangan kategori + model baru.
