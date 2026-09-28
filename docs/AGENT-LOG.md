@@ -2255,3 +2255,10 @@ Lingkup: blok retur di halaman detail pesanan tidak lagi tampil untuk pesanan be
 Dampak spec: tidak berubah. Payload returnEligibility masih mengirim note, warnings, dan manual_available untuk pesanan Selesai, kini tanpa pemakai di frontend.
 Untuk agent berikutnya: jalur retur manual pesanan Selesai dibatalkan owner 2026-09-28, hanya beberapa jam setelah fiturnya dibuat (commit 9a370a89). Backend (ReturnService, OrderController) dan test ReturnCaseEditVoidTest masih memuat kemampuan late_return dan override_reason; jangan dihapus tanpa membaca test itu lebih dulu.
 Bukti: npm run typecheck bersih; npm run build sukses (38,25 detik); grep bundle public/build/assets: teks Catat Retur Manual dan Pesanan sudah Selesai sudah tidak ada; browser in-app halaman /admin/orders/100081 (RA-SIM-2609-03, Selesai) nol elemen retur, halaman /admin/orders/100082 (RA-SIM-2609-04, Sampai) panel Retur dan penyelesaian serta wadah #return-case tetap ada.
+
+## 2026-09-28 14:50 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner minta teks penjelasan di kartu Rekonsiliasi Pembayaran dikeluarkan dari UI (terlalu penuh), masuk panduan atau hint.
+Perubahan: dua paragraf dihapus dari resources/js/pages/Admin/Payments/Index.tsx, judul panel dibungkus HintTip berisi ringkasan, entri panduan admin.payments.index ditambah di resources/js/config/admin-page-guides.ts.
+Verifikasi: eslint+typecheck bersih, build sukses, halaman dimuat ulang di browser: paragraf hilang, hint tersedia, tombol Panduan tampil, angka dan badge tetap.
+Dampak spec: tidak berubah (payload disclaimer dipertahankan untuk test PaymentRekonsiliasiTest).
+Agent: zcode-retur
