@@ -201,5 +201,35 @@ class MonitoringScriptsContractTest extends TestCase
         $this->assertStringContainsString('SITUS_TAK_TERJANGKAU', $agregator);
         $this->assertStringContainsString('https://ra.333labs.tech', $agregator);
         $this->assertStringContainsString('BANDWIDTH_TINGGI', $agregator);
+
+        // Penolakan ke pengunjung (503/429) wajib terpantau: pembatas nginx
+        // saat ini GLOBAL karena IP pengunjung belum terbaca, sehingga lonjakan
+        // trafik bisa menolak pelanggan tanpa ada yang tahu.
+        $this->assertStringContainsString('PELANGGAN_DITOLAK', $agregator);
+    }
+
+    /**
+     * Tambalan IP asli pengunjung wajib ada beserta alat ujinya, karena tanpa
+     * itu pembatas nginx dan Laravel berlaku global untuk seluruh situs.
+     */
+    public function test_tambalan_ip_asli_pengunjung_tersedia(): void
+    {
+        $tambalan = base_path('scripts/prod/nginx-real-ip.sh');
+        $this->assertFileExists($tambalan);
+        $isi = file_get_contents($tambalan);
+
+        // Hanya peer tunnel yang boleh dipercaya; mempercayai semua alamat akan
+        // membuat header IP bisa dipalsukan siapa pun.
+        $this->assertStringContainsString('set_real_ip_from', $isi);
+        $this->assertStringContainsString('CF-Connecting-IP', $isi);
+        $this->assertStringNotContainsString('set_real_ip_from 0.0.0.0/0', $isi,
+            'Tambalan mempercayai semua alamat; header IP bisa dipalsukan.');
+
+        // Wajib ada gerbang uji sebelum memuat ulang, dan pemulihan bila gagal.
+        $this->assertStringContainsString('nginx -t', $isi);
+        $this->assertStringContainsString('cp "$BAK" "$SITE"', $isi,
+            'Tambalan tidak punya pemulihan cadangan bila uji gagal.');
+
+        $this->assertFileExists(base_path('scripts/prod/uji-tambalan-nginx.sh'));
     }
 }

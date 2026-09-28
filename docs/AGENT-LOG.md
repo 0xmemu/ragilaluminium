@@ -2144,3 +2144,51 @@ off-site tidak bisa dibuka.
 Pembuktian guard: penjaga MonitoringScriptsContractTest diperluas dari 5 ke 7
 test (84 asersi) mencakup enkripsi dan trafik; 30 skrip pemantauan kini
 ber-versi di repo. Seluruh suite 1224 passed, 1 skipped, 0 failed.
+
+## 2026-09-28 11:01 UTC | zcode | Deep | - | selesai
+Lingkup: temuan IP asli pengunjung (lanjutan "proses juga"): pembatas nginx dan
+Laravel berlaku GLOBAL karena nginx belum membaca IP pengunjung.
+Dampak spec: tidak berubah
+
+TEMUAN (diagnosis lengkap):
+- Trafik masuk lewat tunnel cloudflared di host ini, nginx belum membaca
+  CF-Connecting-IP. Akibatnya limit_req 20r/s dan limit_conn 30 di situs
+  berlaku GLOBAL untuk seluruh pengunjung -> lonjakan trafik wajar bisa
+  membuat pelanggan menerima 503.
+- sites-enabled/ragil baris 86 memakukan fastcgi_param REMOTE_ADDR 127.0.0.1,
+  dan fastcgi_params tidak meneruskan satu pun header HTTP. Jadi aplikasi
+  melihat SEMUA permintaan sebagai 127.0.0.1: throttle Laravel juga global, dan
+  log aplikasi tidak menunjukkan IP asli. Analisa trafik jadi perkiraan.
+- Port 8200 tidak terbuka ke publik (firewall hanya 22 dan 443, INPUT DROP),
+  jadi mempercayai peer tunnel untuk real_ip aman dari pemalsuan header.
+- HTTPS tidak bermasalah: AppServiceProvider sudah forceScheme('https') dan
+  SESSION_SECURE_COOKIE=true, jadi tidak perlu menambah X-Forwarded-Proto.
+
+YANG DIKERJAKAN:
+- scripts/prod/nginx-real-ip.sh: percayai HANYA peer tunnel + loopback, baca
+  CF-Connecting-IP, teruskan IP asli ke aplikasi lewat X-Forwarded-For yang
+  diambil dari $remote_addr hasil real_ip (bukan header kiriman klien).
+  REMOTE_ADDR tetap 127.0.0.1 karena Laravel mempercayai alamat itu sebagai
+  proxy. Aman dan idempoten: cadangan + nginx -t + reload tanpa memutus
+  koneksi + pemulihan cadangan bila uji gagal; bila header tidak ada,
+  perilakunya sama dengan sekarang.
+- scripts/prod/uji-tambalan-nginx.sh: menguji tambalan TANPA menyentuh /etc
+  (salin konfigurasi ke temp, terapkan sisipan, jalankan nginx -t). Hasil:
+  "syntax is ok, test is successful".
+- Pemantau pendamping: agregator menghitung penolakan ke pengunjung (503/429)
+  pada jam berjalan, kode PELANGGAN_DITOLAK (kritis >=20, catatan >=5).
+  Diverifikasi dengan log buatan: 3 penolakan pengunjung terhitung, 1 curl
+  dikecualikan; log nyata hari ini 0.
+- Test penjaga diperluas jadi 8 test/92 asersi: tambalan wajib ada, TIDAK boleh
+  mempercayai 0.0.0.0/0, wajib punya nginx -t dan pemulihan cadangan, dan
+  penolakan pelanggan wajib terpantau.
+- docs/runbooks/ALERT-TIERS.md bagian G diperbarui: temuan, tambalan, cara
+  membuktikan, dan bukti uji.
+
+DIBLOKIR GUARD: penulisan /etc/nginx diblokir aturan keras (WRITE_BLOCK_PREFIX
+memuat /etc, tanpa mekanisme pengecualian). Karena itu tambalan disiapkan
+sebagai skrip siap jalan untuk owner, bukan dijalankan agent. Lubang ini TIDAK
+menghentikan situs: dampaknya pembatas terlalu ketat saat trafik tinggi.
+
+Bukti: seluruh suite 1225 passed, 1 skipped, 0 failed (12143 asersi);
+nginx -t lolos pada konfigurasi ber-tambalan; agregator produksi "sehat".

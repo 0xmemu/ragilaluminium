@@ -136,7 +136,55 @@ Yang ditambahkan ke agregator: **uji keterjangkauan dari LUAR**
 membuka situs, karena ujian internal tetap lulus walau tunnel atau DNS rusak —
 plus ambang bandwidth (`BANDWIDTH_TINGGI`, kritis di 50 GB, catatan di 20 GB).
 
-**Temuan yang belum ditutup:** nginx belum membaca IP asli pengunjung. Seluruh
+### IP asli pengunjung: temuan dan tambalannya (2026-09-28)
+
+Seluruh trafik masuk lewat tunnel `cloudflared` yang berjalan di host ini, dan
+nginx belum membaca header `CF-Connecting-IP`. Akibatnya, sebelum tambalan ini:
+
+1. **Semua pengunjung terlihat sebagai satu IP.** `limit_req` 20 permintaan/detik
+   dan `limit_conn` 30 di situs berlaku **GLOBAL untuk seluruh situs**, bukan per
+   pengunjung. Lonjakan trafik wajar bisa membuat pelanggan menerima 503.
+2. **Aplikasi menerima `REMOTE_ADDR 127.0.0.1` untuk setiap permintaan**, karena
+   `sites-enabled/ragil` baris 86 memakukannya, dan `fastcgi_params` tidak
+   meneruskan satu pun header HTTP. Jadi pembatas Laravel (throttle) juga global,
+   dan log aplikasi tidak menunjukkan IP asli.
+3. **Analisa trafik hanya perkiraan**, karena pemisahan pengunjung dari trafik
+   internal tidak bisa dilakukan dari kolom IP.
+
+**Tambalannya**: `scripts/prod/nginx-real-ip.sh`. Skrip itu (a) mempercayai HANYA
+peer tunnel plus loopback lalu membaca `CF-Connecting-IP`, dan (b) meneruskan IP
+asli ke aplikasi lewat `X-Forwarded-For` yang diambil dari `$remote_addr` hasil
+real_ip, bukan dari header kiriman klien. `REMOTE_ADDR` sengaja tetap 127.0.0.1
+karena Laravel mempercayai alamat itu sebagai proxy (`TRUSTED_PROXIES`).
+
+Port 8200 tidak terbuka ke publik (firewall hanya 22 dan 443), jadi header itu
+tidak bisa dipalsukan dari luar. Bila `CF-Connecting-IP` tidak ada, `$remote_addr`
+kembali ke IP peer atau perilaku sekarang, sehingga tambalan ini tidak bisa
+merusak. Skrip menyimpan cadangan, menguji dengan `nginx -t`, memuat ulang tanpa
+memutus koneksi, dan mengembalikan cadangan bila uji gagal.
+
+Jalankan sebagai root di server, satu kali:
+
+```bash
+bash /root/ragilaluminium/scripts/prod/nginx-real-ip.sh
+```
+
+Buktikan berhasil: buka situs dari perangkat lain, lalu
+`tail -5 /var/log/nginx/access.log`; kolom pertama harus IP publik perangkat itu,
+bukan IP server.
+
+Cara membuktikan tambalannya tidak rusak sebelum dipasang: `scripts/prod/uji-tambalan-nginx.sh`
+menyalin konfigurasi ke direktori sementara, menerapkan sisipan yang sama, dan
+menjalankan `nginx -t` terhadap salinan itu. Hasil 2026-09-28: **syntax is ok, test
+is successful**.
+
+**Pemantau pendamping:** agregator kini menghitung penolakan ke pengunjung
+(503/429) pada jam berjalan dengan kode `PELANGGAN_DITOLAK`. Sebelum tambalan
+dipasang, ini menangkap risiko pembatas global; sesudahnya, ini tetap berguna
+sebagai tanda nyata ada pelanggan yang ditolak. Diverifikasi dengan log buatan:
+tiga penolakan pengunjung terhitung, satu penolakan curl dikecualikan.
+
+**Catatan lama yang belum ditutup:** nginx belum membaca IP asli pengunjung. Seluruh
 trafik masuk lewat tunnel Cloudflare sehingga tercatat sebagai satu IP
 (209.23.10.62). Akibatnya (a) `limit_req` per IP efektif menjadi batas bersama
 untuk semua pengunjung, bukan per pengunjung, dan (b) pemisahan pengunjung dari

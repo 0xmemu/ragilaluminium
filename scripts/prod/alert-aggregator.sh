@@ -160,6 +160,31 @@ if [ -z "$RUSAK" ]; then
   fi
 fi
 
+# 2a4. Pelanggan ditolak (503/429). Saat ini pembatas nginx GLOBAL karena IP
+#      pengunjung belum terbaca, jadi lonjakan trafik bisa menolak pelanggan.
+#      Setelah tambalan IP asli dipasang, pemeriksaan ini tetap berguna.
+if [ -f /var/log/nginx/access.log ]; then
+  HOUR_PREFIX=$(LC_ALL=C date -u '+%d/%b/%Y:%H')
+  TOLAK=$(awk -v h="[${HOUR_PREFIX}" '
+    index($4, h) == 1 && ($9 == 503 || $9 == 429) {
+      ua = ""
+      for (i = 11; i <= NF; i++) ua = ua " " $i
+      if (ua ~ /curl|python-urllib|axios|Hermes|Electron|HeadlessChrome|Playwright/) next
+      n++
+    }
+    END { print n+0 }
+  ' /var/log/nginx/access.log 2>/dev/null || echo 0)
+  if [ "${TOLAK:-0}" -ge 20 ]; then
+    kritis "PELANGGAN_DITOLAK" \
+      "Sebagian permintaan pelanggan ditolak server (${TOLAK} pada jam ini)" \
+      "Server menjawab 503/429, biasanya karena pembatas trafik sedang tercapai." \
+      "Pelanggan yang sedang berbelanja bisa gagal membuka halaman atau memesan." \
+      "Beritahu agent; pemeriksaan tambalan IP asli ada di docs/runbooks/ALERT-TIERS.md bagian G."
+  elif [ "${TOLAK:-0}" -ge 5 ]; then
+    catat "catatan teknis: ${TOLAK} permintaan ditolak (503/429) pada jam ini (log saja)"
+  fi
+fi
+
 # 2a3. Bandwidth harian: biaya dan batas kuota penyedia.
 if [ -f /var/log/nginx/access.log ]; then
   BYTES_TODAY=$(awk '{s+=$10} END {printf "%d", s+0}' /var/log/nginx/access.log 2>/dev/null || echo 0)
