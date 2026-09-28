@@ -389,4 +389,19 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Penjelasan ringkas panel juga tersedia sebagai hint saat arah kursor ke judul Rekonsiliasi Pembayaran.",
     ],
   },
+  "admin.sub-models.index": {
+    title: "Sub Model",
+    summary: "Daftar sub model tiap model produk; urutan di sini menentukan urutan tampil di katalog toko.",
+    steps: [
+      "Pilih satu model lewat filter Model untuk melihat sub model milik model itu.",
+      "Tekan Edit pada baris untuk mengubah nama, deskripsi, atau status tampilnya.",
+      "Untuk mengubah urutan: pilih satu model, lalu pada filter Status pilih Aktif. Setelah itu tombol Urutkan menyala.",
+      "Saat mode Urutkan aktif, pakai ikon tarik di tepi kiri baris untuk memindahkan, lalu tekan Simpan urutan.",
+    ],
+    notes: [
+      "Tombol Urutkan hanya aktif saat filter Status bernilai Aktif dan satu model sudah dipilih, karena urutan berlaku per model dan hanya baris aktif yang tampil di katalog.",
+      "Daftar juga harus muat dalam satu halaman. Kalau tidak, naikkan ukuran halaman atau persempit filter dulu supaya urutan bisa disimpan sekaligus.",
+      "Tombol Urutkan yang sedang mati menampilkan alasannya saat kursor diarahkan ke tombol.",
+    ],
+  },
 }

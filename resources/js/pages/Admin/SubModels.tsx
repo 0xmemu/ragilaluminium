@@ -179,9 +179,18 @@ export default function SubModelsIndex({
   // dikelompokkan per model; nomor urut dihitung ulang dalam grupnya.
   const grouped = !currentModel
 
+  // Nomor baris melanjutkan lintas halaman supaya halaman kedua mulai dari 21,
+  // bukan mengulang dari 1. Cabang tanpa grup sebelumnya memberi nomor 0 ke
+  // semua baris, sehingga kolom No tampak rusak begitu satu model disaring
+  // (temuan owner 2026-09-28: "kok 0 semua").
+  const nomorAwal = ((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? perPage) + 1
+
   const displayRows = React.useMemo(
-    () => (grouped ? markGroupRows(rows) : rows.map((row) => ({ ...row, groupHeader: false, displayNumber: 0 }))),
-    [rows, grouped],
+    () =>
+      grouped
+        ? markGroupRows(rows)
+        : rows.map((row, index) => ({ ...row, groupHeader: false, displayNumber: nomorAwal + index })),
+    [rows, grouped, nomorAwal],
   )
 
   const activeFilters = React.useMemo(() => {

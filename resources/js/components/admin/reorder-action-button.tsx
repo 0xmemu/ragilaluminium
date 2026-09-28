@@ -1,5 +1,8 @@
+import * as React from "react"
+
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 
 /**
  * Tombol aksi mode urut untuk halaman daftar admin (kontrak owner 2026-09-20).
@@ -15,6 +18,10 @@ import { Button } from "@/components/admin/ui/button"
  *
  * Dipakai bersama oleh halaman daftar admin yang punya mode urut, supaya
  * perilakunya identik dan tidak ditulis ulang di tiap halaman.
+ *
+ * Tombol yang nonaktif dibungkus hint (permintaan owner 2026-09-28): tombol mati
+ * tanpa alasan membuat admin menebak, sedangkan `title` bawaan peramban baru
+ * muncul setelah jeda dan mudah terlewat.
  */
 export function ReorderActionButton({
   active,
@@ -35,7 +42,7 @@ export function ReorderActionButton({
   processing?: boolean
   /** Tidak ada yang bisa diurutkan (daftar kosong atau filter belum memenuhi syarat). */
   disabled?: boolean
-  /** Alasan tombol nonaktif, tampil sebagai tooltip. */
+  /** Alasan tombol nonaktif, tampil sebagai hint saat kursor atau fokus ke tombol. */
   disabledReason?: string
   /** Ukuran tombol, mengikuti ukuran tombol lain di header halaman. */
   size?: "sm" | "md"
@@ -43,19 +50,35 @@ export function ReorderActionButton({
   onCancel: () => void
   onSave: () => void
 }) {
+  // Tombol nonaktif memakai pointer-events-none, jadi pemicu hover harus span
+  // pembungkus dari hint. Garis putus dimatikan supaya tampilan tombol tidak
+  // berubah dari tombol lain di header.
+  function denganHint(tombol: React.ReactNode, nonaktif: boolean): React.ReactNode {
+    if (!nonaktif || !disabledReason) return tombol
+
+    return (
+      <HintTip label={tombol} hint={disabledReason} side="bottom" align="right" className="no-underline" />
+    )
+  }
+
   if (!active) {
     return (
-      <Button
-        type="button"
-        variant="secondary"
-        size={size}
-        disabled={disabled}
-        title={disabled ? disabledReason : undefined}
-        onClick={onToggle}
-      >
-        <Icon name="dots-six-vertical" className="size-4" aria-hidden="true" />
-        Urutkan
-      </Button>
+      <>
+        {denganHint(
+          <Button
+            type="button"
+            variant="secondary"
+            size={size}
+            disabled={disabled}
+            title={disabled ? disabledReason : undefined}
+            onClick={onToggle}
+          >
+            <Icon name="dots-six-vertical" className="size-4" aria-hidden="true" />
+            Urutkan
+          </Button>,
+          disabled,
+        )}
+      </>
     )
   }
 
@@ -64,15 +87,20 @@ export function ReorderActionButton({
     // berjalan, payload simpan hanya memuat baris yang tampil dan urutan baris di
     // luar filter ikut tertimpa. Mengurungkan tetap boleh, jadi hanya simpan yang dikunci.
     return (
-      <Button
-        type="button"
-        size={size}
-        disabled={processing || disabled}
-        title={disabled ? disabledReason : undefined}
-        onClick={onSave}
-      >
-        {processing ? "Menyimpan..." : "Simpan urutan"}
-      </Button>
+      <>
+        {denganHint(
+          <Button
+            type="button"
+            size={size}
+            disabled={processing || disabled}
+            title={disabled ? disabledReason : undefined}
+            onClick={onSave}
+          >
+            {processing ? "Menyimpan..." : "Simpan urutan"}
+          </Button>,
+          disabled && !processing,
+        )}
+      </>
     )
   }
 
