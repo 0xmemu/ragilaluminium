@@ -332,6 +332,7 @@ export default function InstallationGalleryIndex({
               <table className="w-full min-w-[860px] table-fixed text-left text-xs">
                 <colgroup>
                   {reorderMode ? <col className="w-8" /> : null}
+                  <col className="w-12" />
                   <col className="w-20" />
                   <col />
                   <col className="w-24" />
@@ -342,6 +343,7 @@ export default function InstallationGalleryIndex({
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
                     <th className="w-12 px-3 py-3" aria-label="Seret" />
+                    <th className="px-3 py-3 text-center">No</th>
                     <th className="px-3 py-3">Cover</th>
                     <th className="px-3 py-3">Grup</th>
                     <th className="px-3 py-3 text-center">Media</th>
@@ -384,7 +386,13 @@ export default function InstallationGalleryIndex({
                       )}
                     >
                       <td className="w-12 px-3 py-3">
-                        <ReorderDragHandle enabled={reorderMode && !listTersaring} />
+                        {/* Hanya grup yang masih tampil di toko yang bisa digeser:
+                            urutan tidak berarti untuk grup yang diarsipkan, dan
+                            grup arsip memang selalu ditampilkan di bawah. */}
+                        <ReorderDragHandle enabled={group.visibility === "visible"} />
+                      </td>
+                      <td className="px-3 py-3 text-center tabular-nums text-muted-foreground">
+                        {index + 1}
                       </td>
                       {/* Cover */}
                       <td className="px-3 py-3">
