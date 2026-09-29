@@ -84,10 +84,17 @@ class PullJntShippingStatus extends Command
 
         $berhasil = 0;
         $gagal = 0;
+        $ukuranPotongan = max(1, (int) config('operations.shipping_pull.batch_size', 30));
+
+        // Satu panggilan kurir untuk banyak resi sekaligus. Resi yang tidak
+        // disebut pada respons gabungan ditarik sendiri-sendiri oleh service,
+        // jadi hasilnya tidak pernah lebih buruk daripada satu per satu.
+        $hasilPerResi = $shipping->refreshMany($records, $ukuranPotongan);
 
         foreach ($records as $record) {
-            try {
-                $shipping->refreshStatus($record);
+            $exception = $hasilPerResi[$record->id] ?? null;
+
+            if ($exception === null) {
                 $record->refresh();
 
                 $terminal = in_array($record->status, ['delivered', 'returned', 'cancelled'], true);
@@ -100,7 +107,7 @@ class PullJntShippingStatus extends Command
                 ]);
 
                 $berhasil++;
-            } catch (Throwable $exception) {
+            } else {
                 $gagal++;
                 $percobaan = (int) $record->poll_attempts + 1;
                 // Mundur bertingkat: 30m, 45m, 68m, ... maksimal 360m (6 jam).
@@ -136,8 +143,6 @@ class PullJntShippingStatus extends Command
                 }
             }
 
-            // Jeda 150ms antar resi agar ramah terhadap batas laju kurir.
-            usleep(150000);
         }
 
         $this->info("Selesai. Resi ditarik: {$berhasil}, gagal: {$gagal}.");

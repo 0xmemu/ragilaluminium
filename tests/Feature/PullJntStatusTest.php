@@ -23,6 +23,11 @@ use Tests\TestCase;
  *   Penjaga ini ada karena versi pertama perintah menyaring 'JNT' saja
  *   sementara penulis resi memakai 'J&T Cargo', sehingga tidak pernah ada
  *   resi yang cocok dan jaring pengaman webhook tidak pernah bekerja.
+ * - Banyak resi ditarik dalam SATU panggilan kurir (endpoint pelacakan
+ *   menerima sampai 30 nomor resi), dan kabar tiap resi harus terpakai
+ *   semuanya, bukan hanya resi pertama.
+ * - Resi yang tidak disebut pada respons gabungan ditarik sendiri-sendiri,
+ *   jadi penggabungan tidak pernah menghilangkan kabar kurir.
  * - Tiap resi punya jatah waktu (kolom next_poll_at); resi yang baru diperiksa
  *   tidak diambil lagi sebelum jatahnya lewat.
  * - Gagal API menggeser jadwal mundur, mencatat kesalahan, dan memberi tahu
@@ -82,6 +87,15 @@ class PullJntStatusTest extends TestCase
         ]);
     }
 
+    /** Isi badan permintaan pelacakan: daftar nomor resi yang diminta. */
+    private function kodeYangDiminta(string $body): array
+    {
+        parse_str($body, $form);
+        $biz = json_decode((string) ($form['bizContent'] ?? '{}'), true);
+
+        return array_values(array_filter(explode(',', (string) ($biz['billCodes'] ?? ''))));
+    }
+
     /** Resi yang benar-benar dikirim ke J&T pada satu kali jalan. */
     private function resiYangDitempelKeApi(): array
     {
@@ -97,6 +111,12 @@ class PullJntStatusTest extends TestCase
         });
 
         return $ditempel;
+    }
+
+    /** Potongan respons trace J&T untuk satu nomor resi. */
+    private function potonganRespons(string $waybill, array $details): array
+    {
+        return ['billCode' => $waybill, 'details' => $details];
     }
 
     public function test_hanya_resi_aktif_yang_ditarik(): void
@@ -146,6 +166,136 @@ class PullJntStatusTest extends TestCase
         $this->assertStringContainsString('JT-LEGACY-1', $ditempel[0]);
     }
 
+    public function test_banyak_resi_ditarik_dalam_satu_panggilan(): void
+    {
+        $this->nyalakanJnt();
+        $this->resi('in_transit', '-1 day', 'JT-BATCH-1');
+        $this->resi('in_transit', '-1 day', 'JT-BATCH-2');
+        $this->resi('in_transit', '-1 day', 'JT-BATCH-3');
+
+        $panggilan = [];
+
+        Http::fake(function ($request) use (&$panggilan) {
+            $panggilan[] = $request->body();
+
+            return Http::response([
+                'code' => '1',
+                'msg' => 'success',
+                'data' => [
+                    $this->potonganRespons('JT-BATCH-1', [[
+                        'scanCode' => 3, 'scanType' => 'Scan Kirim',
+                        'desc' => 'kabar resi pertama', 'scanTime' => '2026-09-28 10:00:00',
+                    ]]),
+                    $this->potonganRespons('JT-BATCH-2', [[
+                        'scanCode' => 3, 'scanType' => 'Scan Kirim',
+                        'desc' => 'kabar resi kedua', 'scanTime' => '2026-09-28 11:00:00',
+                    ]]),
+                    // Nomor tak dikenal: J&T mengirim elemen dengan daftar scan
+                    // kosong, bukan galat (diverifikasi pada akun produksi).
+                    $this->potonganRespons('JT-BATCH-3', []),
+                ],
+            ], 200);
+        });
+
+        $this->artisan('shipping:pull-jnt')
+            ->expectsOutputToContain('Resi ditarik: 3, gagal: 0')
+            ->assertSuccessful();
+
+        $this->assertCount(1, $panggilan, 'tiga resi harus menjadi satu panggilan kurir saja');
+        $this->assertEqualsCanonicalizing(
+            ['JT-BATCH-1', 'JT-BATCH-2', 'JT-BATCH-3'],
+            $this->kodeYangDiminta($panggilan[0]),
+        );
+
+        // Inti penjaga: kabar resi KEDUA harus ikut terpakai. Pengurai lama
+        // hanya membaca elemen pertama sehingga kabar ini hilang tanpa suara.
+        $this->assertDatabaseHas('shipping_tracking_events', [
+            'waybill_number' => 'JT-BATCH-1',
+            'description' => 'kabar resi pertama',
+        ]);
+        $this->assertDatabaseHas('shipping_tracking_events', [
+            'waybill_number' => 'JT-BATCH-2',
+            'description' => 'kabar resi kedua',
+        ]);
+    }
+
+    public function test_resi_tanpa_entri_pada_respons_gabungan_ditarik_sendiri(): void
+    {
+        $this->nyalakanJnt();
+        $this->resi('in_transit', '-1 day', 'JT-LENGKAP-1');
+        $this->resi('in_transit', '-1 day', 'JT-HILANG-1');
+
+        $panggilan = [];
+
+        Http::fake(function ($request) use (&$panggilan) {
+            $kode = $this->kodeYangDiminta($request->body());
+            $panggilan[] = $kode;
+
+            // Respons gabungan hanya menyebut satu dari dua resi yang diminta.
+            if (count($kode) === 2) {
+                return Http::response([
+                    'code' => '1',
+                    'data' => [
+                        $this->potonganRespons('JT-LENGKAP-1', [[
+                            'scanCode' => 3, 'desc' => 'kabar dari respons gabungan',
+                            'scanTime' => '2026-09-28 10:00:00',
+                        ]]),
+                    ],
+                ], 200);
+            }
+
+            return Http::response([
+                'code' => '1',
+                'data' => [
+                    $this->potonganRespons('JT-HILANG-1', [[
+                        'scanCode' => 3, 'desc' => 'kabar dari panggilan sendiri',
+                        'scanTime' => '2026-09-28 12:00:00',
+                    ]]),
+                ],
+            ], 200);
+        });
+
+        $this->artisan('shipping:pull-jnt')
+            ->expectsOutputToContain('Resi ditarik: 2, gagal: 0')
+            ->assertSuccessful();
+
+        $this->assertCount(2, $panggilan, 'satu panggilan gabungan, lalu satu panggilan sendiri');
+        $this->assertCount(1, $panggilan[1], 'resi yang tidak disebut ditarik satu per satu');
+
+        $this->assertDatabaseHas('shipping_tracking_events', [
+            'waybill_number' => 'JT-LENGKAP-1',
+            'description' => 'kabar dari respons gabungan',
+        ]);
+        $this->assertDatabaseHas('shipping_tracking_events', [
+            'waybill_number' => 'JT-HILANG-1',
+            'description' => 'kabar dari panggilan sendiri',
+        ]);
+    }
+
+    public function test_panggilan_gabungan_gagal_tidak_menembak_ulang_per_resi(): void
+    {
+        $this->nyalakanJnt();
+        $this->resi('in_transit', '-1 day', 'JT-MATI-1');
+        $this->resi('in_transit', '-1 day', 'JT-MATI-2');
+
+        $panggilan = [];
+
+        Http::fake(function ($request) use (&$panggilan) {
+            $panggilan[] = $this->kodeYangDiminta($request->body());
+
+            return Http::response(['code' => '500', 'msg' => 'gateway down'], 500);
+        });
+
+        $this->artisan('shipping:pull-jnt')
+            ->expectsOutputToContain('Resi ditarik: 0, gagal: 2')
+            ->assertSuccessful();
+
+        $this->assertEmpty(
+            collect($panggilan)->filter(fn ($kode) => count($kode) === 1)->all(),
+            'kurir yang sedang bermasalah tidak boleh ditembak ulang per resi'
+        );
+    }
+
     public function test_resi_yang_jatahnya_belum_lewat_tidak_ditarik(): void
     {
         $this->nyalakanJnt();
@@ -168,7 +318,9 @@ class PullJntStatusTest extends TestCase
         $rekam->update(['poll_attempts' => 3, 'last_poll_error' => 'gagal sebelumnya']);
 
         $mock = Mockery::mock(ShippingService::class);
-        $mock->shouldReceive('refreshStatus')->once()->with(Mockery::on(fn ($r) => $r->id === $rekam->id));
+        $mock->shouldReceive('refreshMany')
+            ->once()
+            ->andReturn([$rekam->id => null]);
         $this->app->instance(ShippingService::class, $mock);
 
         $this->artisan('shipping:pull-jnt')
@@ -191,7 +343,9 @@ class PullJntStatusTest extends TestCase
         $rekam->update(['poll_attempts' => 4]);
 
         $mock = Mockery::mock(ShippingService::class);
-        $mock->shouldReceive('refreshStatus')->once()->andThrow(new \RuntimeException('J&T gateway timeout'));
+        $mock->shouldReceive('refreshMany')
+            ->once()
+            ->andReturn([$rekam->id => new \RuntimeException('J&T gateway timeout')]);
         $this->app->instance(ShippingService::class, $mock);
 
         $this->artisan('shipping:pull-jnt')

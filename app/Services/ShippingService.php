@@ -453,22 +453,144 @@ class ShippingService
             return;
         }
 
-        $details = $this->extractTraceDetails($resp);
+        $peta = $this->traceDetailsByBillCode($resp);
+        $kunci = (string) $record->waybill_number;
+        // Peta kosong = respons tidak membawa penanda resi (bentuk lama atau
+        // payload uji), jadi isinya dianggap milik resi yang diminta.
+        $details = $peta[$kunci] ?? ($peta === [] ? $this->traceDetailsTunggal($resp) : []);
 
-        // Simpan SELURUH riwayat scan (dedup idempoten per event_hash) agar
-        // timeline tracking langsung lengkap, bukan hanya scan terakhir.
-        if (! empty($details)) {
-            $this->persistTraceEvents($record, $details, 'poll');
-            // Respons yang sama juga membawa rincian tagihan J&T yang
-            // sebenarnya (totalFreight/freight/insuredFee/weight). Simpan
-            // supaya pembukuan tidak lagi memakai asumsi ongkir checkout.
-            $this->syncActualCost($record, $details);
+        $this->terapkanDetailResi($record, $details, 'poll', $resp);
+    }
+
+    /**
+     * Tarik status BANYAK resi sekaligus.
+     *
+     * Endpoint pelacakan J&T menerima sampai 30 nomor resi per panggilan dan
+     * mengembalikan satu elemen data per nomor resi. Terbukti pada akun
+     * produksi 29 Sep 2026: dua nomor resi menghasilkan dua elemen, nomor tak
+     * dikenal menghasilkan elemen dengan daftar scan kosong (bukan galat).
+     *
+     * Aman bila kelak perilaku J&T berubah: resi yang tidak punya elemen pada
+     * respons gabungan ditarik sendiri-sendiri seperti cara lama, jadi tidak
+     * ada kabar kurir yang hilang, paling banyak kehilangan penghematannya.
+     *
+     * @param  iterable<int, ShippingRecord>  $records
+     * @return array<int, Throwable|null>  kunci id resi, nilai null bila sukses
+     */
+    public function refreshMany(iterable $records, int $chunkSize = 30): array
+    {
+        $hasil = [];
+        $chunkSize = max(1, $chunkSize);
+
+        foreach (collect($records)->values()->chunk($chunkSize) as $potongan) {
+            $kode = $potongan
+                ->pluck('waybill_number')
+                ->filter(fn ($nomor) => filled($nomor))
+                ->unique()
+                ->values();
+
+            if ($kode->isEmpty()) {
+                foreach ($potongan as $record) {
+                    $hasil[$record->id] = null;
+                }
+
+                continue;
+            }
+
+            $gagalGabungan = null;
+            $resp = null;
+
+            try {
+                $resp = $this->jnt->track(['billCodes' => $kode->implode(',')]);
+
+                if ($resp->failed()) {
+                    $gagalGabungan = new \RuntimeException(
+                        'J&T menolak permintaan pelacakan: '.($resp->message() ?? 'tanpa pesan')
+                    );
+                }
+            } catch (Throwable $exception) {
+                $gagalGabungan = $exception;
+            }
+
+            // Panggilan gabungan gagal: tandai seluruh potongan gagal tanpa
+            // mencoba satu per satu. Menembak resi yang sama berulang ke kurir
+            // yang sedang bermasalah menambah beban tanpa menambah hasil.
+            if ($gagalGabungan !== null) {
+                foreach ($potongan as $record) {
+                    $hasil[$record->id] = $gagalGabungan;
+                }
+
+                continue;
+            }
+
+            $peta = $this->traceDetailsByBillCode($resp);
+
+            foreach ($potongan as $record) {
+                $kunci = (string) $record->waybill_number;
+
+                if (! isset($peta[$kunci])) {
+                    // Respons gabungan tidak menyebut resi ini. Jangan menebak
+                    // elemen mana miliknya, tarik sendiri supaya tidak
+                    // ketinggalan kabar kurir.
+                    try {
+                        $this->refreshStatus($record);
+                        $hasil[$record->id] = null;
+                    } catch (Throwable $exception) {
+                        $hasil[$record->id] = $exception;
+                    }
+
+                    continue;
+                }
+
+                try {
+                    $this->terapkanDetailResi($record, $peta[$kunci], 'poll');
+                    $hasil[$record->id] = null;
+                } catch (Throwable $exception) {
+                    $hasil[$record->id] = $exception;
+                }
+            }
+
+            // Jeda antar potongan agar ramah terhadap batas laju kurir.
+            usleep(150000);
         }
 
-        [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTrace($resp);
+        return $hasil;
+    }
+
+    /**
+     * Terapkan satu daftar scan milik SATU resi: simpan riwayat scan, simpan
+     * rincian tagihan, lalu majukan status pengiriman.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @param  JntResponse|null  $respUntukRoot  hanya diisi pada panggilan
+     *         satu resi, tempat isi root respons boleh dipakai sebagai
+     *         cadangan bila daftar scan kosong. Pada panggilan gabungan isi
+     *         root milik semua resi sekaligus, jadi tidak boleh dipakai.
+     */
+    protected function terapkanDetailResi(
+        ShippingRecord $record,
+        array $details,
+        string $source,
+        ?JntResponse $respUntukRoot = null,
+    ): void {
+        if (! empty($details)) {
+            // Simpan SELURUH riwayat scan (dedup idempoten per event_hash) agar
+            // timeline tracking langsung lengkap, bukan hanya scan terakhir.
+            $this->persistTraceEvents($record, $details, $source);
+            // Rincian tagihan J&T yang sebenarnya (totalFreight/freight/
+            // insuredFee/weight) datang pada respons yang sama, supaya
+            // pembukuan tidak lagi memakai asumsi ongkir checkout.
+            $this->syncActualCost($record, $details);
+
+            [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTraceFrom($details);
+        } elseif ($respUntukRoot !== null) {
+            [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractRootTrace($respUntukRoot);
+        } else {
+            return;
+        }
 
         if ($scanType !== null) {
-            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, 'poll');
+            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, $source);
         }
     }
 
@@ -731,35 +853,81 @@ class ShippingService
     }
 
     /**
-     * Ambil daftar scan dari respons trace J&T.
-     * data.details[] : { scanType, scanCode, scanTypeCode, desc, scanTime }.
+     * Peta nomor resi -> daftar scan dari satu respons pelacakan.
+     *
+     * Respons pelacakan menyimpan data sebagai DAFTAR elemen, satu elemen per
+     * nomor resi yang diminta, masing-masing membawa billCode sendiri. Kunci
+     * peta diambil dari situ supaya hasil banyak resi bisa dibagi per resi
+     * tanpa tertukar. Elemen tanpa billCode dilewati karena tidak bisa
+     * dipastikan milik resi mana.
+     *
+     * Catatan penting: membaca hanya elemen pertama (data.0.details) membuat
+     * panggilan gabungan membuang kabar resi kedua dan seterusnya tanpa suara.
+     *
+     * @return array<string, array<int|string, mixed>>
      */
-    protected function extractTraceDetails(JntResponse $resp): array
+    protected function traceDetailsByBillCode(JntResponse $resp): array
     {
-        $details = $resp->get('details')
-            ?? data_get($resp->data, 'data.0.details')
-            ?? data_get($resp->data, 'data.details')
-            ?? [];
+        $list = data_get($resp->data, 'data');
+
+        if (! is_array($list)) {
+            return [];
+        }
+
+        $peta = [];
+
+        foreach (array_is_list($list) ? $list : [$list] as $elemen) {
+            if (! is_array($elemen)) {
+                continue;
+            }
+
+            $kode = $elemen['billCode'] ?? $elemen['waybillNo'] ?? null;
+
+            if ($kode === null || $kode === '') {
+                continue;
+            }
+
+            $peta[(string) $kode] = is_array($elemen['details'] ?? null) ? $elemen['details'] : [];
+        }
+
+        return $peta;
+    }
+
+    /**
+     * Daftar scan untuk respons yang hanya punya satu kemungkinan pemilik:
+     * bentuk lama (data berupa objek berisi details) atau respons tanpa
+     * penanda resi sama sekali.
+     *
+     * @return array<int|string, mixed>
+     */
+    protected function traceDetailsTunggal(JntResponse $resp): array
+    {
+        $list = data_get($resp->data, 'data');
+
+        if (is_array($list)) {
+            $elemen = array_is_list($list) ? ($list[0] ?? null) : $list;
+
+            if (is_array($elemen) && is_array($elemen['details'] ?? null)) {
+                return $elemen['details'];
+            }
+        }
+
+        $details = $resp->get('details');
 
         return is_array($details) ? $details : [];
     }
 
     /**
-     * Ambil trace terbaru dari respons trace J&T (untuk memajukan status).
+     * Scan terbaru dari daftar scan (untuk memajukan status pengiriman).
+     *
+     * J&T mengembalikan details urut TERBARU dahulu; jangan andalkan urutan,
+     * pilih scan dengan scanTime paling akhir.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @return array{0: string|null, 1: mixed, 2: mixed, 3: mixed}
      */
-    protected function extractLatestTrace(JntResponse $resp): array
+    protected function extractLatestTraceFrom(array $details): array
     {
-        $details = $this->extractTraceDetails($resp);
-
-        if (empty($details)) {
-            // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
-            $status = $resp->get('scanCode') ?? $resp->get('scanType');
-
-            return [$status !== null ? (string) $status : null, $resp->get('scanTypeCode'), $resp->get('desc'), $resp->get('scanTime')];
-        }
-
-        // J&T mengembalikan details urut TERBARU dahulu; jangan andalkan
-        // urutan, pilih scan dengan scanTime paling akhir.
         usort($details, fn ($a, $b) => strcmp(
             (string) ($a['scanTime'] ?? $a['time'] ?? ''),
             (string) ($b['scanTime'] ?? $b['time'] ?? ''),
@@ -774,6 +942,19 @@ class ShippingService
             data_get($latest, 'desc'),
             data_get($latest, 'scanTime') ?? data_get($latest, 'time'),
         ];
+    }
+
+    /**
+     * Cadangan untuk respons tanpa daftar scan: kunci status ada di root.
+     *
+     * @return array{0: string|null, 1: mixed, 2: mixed, 3: mixed}
+     */
+    protected function extractRootTrace(JntResponse $resp): array
+    {
+        // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
+        $status = $resp->get('scanCode') ?? $resp->get('scanType');
+
+        return [$status !== null ? (string) $status : null, $resp->get('scanTypeCode'), $resp->get('desc'), $resp->get('scanTime')];
     }
 
     /**

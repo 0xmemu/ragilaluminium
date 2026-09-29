@@ -2390,3 +2390,31 @@ Agent: zcode-retur
 - Owner: form pencatatan retur di halaman detail masih ada padahal sudah ada popup, minta dibuang, dan langkah retur berikutnya juga diganti popup dengan model sama.
 - Form buat retur + blok peringatannya dibuang dari detail; form penyelesaian kasus (Selesaikan retur) kini Dialog w-[min(calc(100vw-2rem),56rem)] sama dengan popup buat, sukses menutup popup; panel Retur & penyelesaian hanya tampil saat pesanan punya kasus (dulu selalu tampil untuk pesanan Sampai sehingga jadi judul kosong).
 - Verifikasi: typecheck+build lulus; detail RA-SIM-2609-06 tanpa panel; detail 100082 (kasus open #13) tombol Selesaikan retur membuka popup 784px berisi semua field, ditutup tanpa menyimpan.
+
+## 2026-09-29 00:55 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Penggabungan permintaan pelacakan J&T, lanjutan dari pekerjaan pelacakan sebelumnya di hari yang sama. Owner bertanya "memang kita tidak bisa?" setelah sebelumnya saya menyatakan penggabungan menunggu validasi live.
+Berkas: app/Services/ShippingService.php, app/Console/Commands/PullJntShippingStatus.php, config/operations.php, tests/Feature/PullJntStatusTest.php
+
+Jawaban atas pertanyaan itu: BISA, dan sekarang terbukti hidup, bukan lagi dugaan. Saya menjalankan probe baca-saja ke endpoint pelacakan akun PRODUKSI J&T memakai kredensial yang distage di 202 (/var/www/ra-preview/.env, JNT_ENABLED=true, JNT_ENV=production). Hanya endpoint pelacakan yang dipanggil; tidak ada endpoint yang membuat, membatalkan, atau memesan resi. Tiga percobaan:
+1. `billCodes=201718781511` menghasilkan `data` berisi 1 elemen, `billCode` 201718781511, 13 scan.
+2. `billCodes=201718781511,201718781511` menghasilkan 1 elemen (nomor kembar digabung J&T).
+3. `billCodes=201718781511,999999999999` menghasilkan 2 ELEMEN: elemen pertama resi nyata dengan 13 scan, elemen kedua resi palsu dengan daftar scan KOSONG, dan bukan galat (code tetap "1", HTTP 200).
+
+Kesimpulan kontrak: satu panggilan melayani banyak resi, satu elemen data per nomor resi, dan nomor tak dikenal punya elemen sendiri berisi daftar scan kosong. Bentuk responsnya sudah lama benar, kita yang salah membacanya.
+
+Akar masalah yang ditemukan saat mengerjakan: pengurai lama hanya membaca elemen PERTAMA (`data.0.details`). Kalau penggabungan diterapkan tanpa memperbaiki pengurai, 29 dari 30 resi akan dibuang tanpa suara, termasuk status dan tagihan ongkirnya. Ini jenis kegagalan yang paling sulit ketahuan karena tidak ada error apa pun.
+
+Perubahan:
+1. `ShippingService::traceDetailsByBillCode` memetakan nomor resi ke daftar scan memakai billCode tiap elemen; elemen tanpa billCode dilewati karena tidak bisa dipastikan pemiliknya. `traceDetailsTunggal` tetap menerima bentuk lama (data berupa objek berisi details) dan respons tanpa penanda resi, jadi fixture test lama dan payload order-status push tetap jalan.
+2. `ShippingService::refreshMany(records, chunkSize)` menarik sampai 30 resi sekali panggil. Kalau sebuah resi tidak punya elemen pada respons gabungan, resi itu ditarik sendiri seperti cara lama; kalau panggilan gabungan gagal, seluruh potongan ditandai gagal TANPA mencoba per resi (kurir yang sedang bermasalah jangan ditembak berulang). Jadi hasil terburuknya sama dengan sebelum perubahan, terbaiknya 30 kali lebih hemat panggilan.
+3. `refreshStatus` (satu resi) dipecah: penguraian dipindah ke helper bersama `terapkanDetailResi`, sehingga webhook, tombol Refresh J&T, dan penarik berkala memakai jalur penerapan yang sama.
+4. `operations.shipping_pull.batch_size` (env `JNT_PULL_BATCH_SIZE`, default 30).
+5. Tiga penjaga test: banyak resi jadi satu panggilan DAN kabar resi kedua ikut terpakai, resi tanpa entri ditarik sendiri, panggilan gabungan gagal tidak menembak ulang per resi.
+
+Dampak spec: Spec tidak berubah. Tidak ada route, parameter kueri, kolom, enum, status, atau bentuk JSON baru. Konfigurasi baru bersifat internal.
+
+Verifikasi: `php artisan test` penuh lulus 1285 test / 12498 asersi / 1 skipped / 0 gagal (151 detik, sebagai www-data). `php -l` bersih untuk empat berkas. Bukti live dari probe akun produksi di atas (tiga panggilan, semuanya 200).
+
+Untuk agent berikutnya: yang belum dipakai dari peluang yang sama adalah `trace/subscribe` (berlangganan push per resi, saklar `operations.shipping_pull.subscribe` masih mati) dan push `other/settlementReturn` (J&T mengirim balik tagihan hasil audit: waybillNo, totalFreight, packageChargeWeight, insuredFee, freight). Ongkir yang tersimpan sekarang berasal dari pelacakan, bukan versi audit. Izin endpoint `trace/subscribe` belum masuk peta izin yang teruji. Karena kredensial produksi ada di 202, pengujian endpoint J&T sebaiknya dilakukan dari 202, bukan dari 209 (209 sudah tidak punya kredensial). Skrip probe yang saya pakai tidak disimpan di repo; bentuknya: tanda tangan `digest = base64(md5(bizContent + privateKey))`, form field `bizContent`, header `apiAccount`/`timestamp`/`digest`, tujuan `/webopenplatformapi/api/logistics/trace`.
+Agent: zcode

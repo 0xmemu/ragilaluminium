@@ -48,6 +48,10 @@ return [
         'throttle_minutes' => max(1, (int) env('JNT_PULL_THROTTLE_MINUTES', 30)),
         // Batas percobaan per resi sebelum sistem berhenti mencoba.
         'max_attempts' => max(1, (int) env('JNT_PULL_MAX_ATTEMPTS', 20)),
+        // Jumlah resi per panggilan pelacakan. Endpoint J&T menerima sampai 30
+        // nomor resi sekali panggil (diverifikasi pada akun produksi 29 Sep
+        // 2026: dua nomor menghasilkan dua elemen data).
+        'batch_size' => max(1, (int) env('JNT_PULL_BATCH_SIZE', 30)),
         // Jumlah kegagalan berturut-turut sebelum admin diberi tahu.
         'failure_alert_threshold' => max(1, (int) env('JNT_PULL_FAILURE_ALERT_THRESHOLD', 5)),
         'subscribe' => (bool) env('JNT_PULL_SUBSCRIBE', false),
