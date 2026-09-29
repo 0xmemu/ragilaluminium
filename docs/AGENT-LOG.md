@@ -2384,3 +2384,9 @@ Perubahan: nomor baris melanjutkan lintas halaman (current_page x per_page); kom
 Verifikasi: typecheck + ESLint bersih, build sukses, Vitest 230 passed; browser menunjukkan nomor 1 dan 2 pada URL laporan dan hint tampil saat tombol mati.
 Dampak spec: tidak berubah.
 Agent: zcode-retur
+
+## 2026-09-29 00:05 UTC | zcode | Standard | resources/js/pages/Admin/Orders/Show.tsx | selesai
+
+- Owner: form pencatatan retur di halaman detail masih ada padahal sudah ada popup, minta dibuang, dan langkah retur berikutnya juga diganti popup dengan model sama.
+- Form buat retur + blok peringatannya dibuang dari detail; form penyelesaian kasus (Selesaikan retur) kini Dialog w-[min(calc(100vw-2rem),56rem)] sama dengan popup buat, sukses menutup popup; panel Retur & penyelesaian hanya tampil saat pesanan punya kasus (dulu selalu tampil untuk pesanan Sampai sehingga jadi judul kosong).
+- Verifikasi: typecheck+build lulus; detail RA-SIM-2609-06 tanpa panel; detail 100082 (kasus open #13) tombol Selesaikan retur membuka popup 784px berisi semua field, ditutup tanpa menyimpan.
