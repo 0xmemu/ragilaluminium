@@ -119,11 +119,22 @@ class WhatsAppTemplateController extends Controller
             ->with('order:id,order_number')
             ->orderByDesc('id')
             ->limit(25)
-            ->get(['id', 'status', 'phone_number', 'order_id', 'content_text', 'error_reason', 'created_at'])
+            ->get(['id', 'status', 'phone_number', 'order_id', 'content_text', 'error_reason', 'created_at', 'internal_template_key', 'raw_payload'])
             ->map(function (WhatsAppMessage $message): array {
                 $order = $message->order;
                 $text = trim((string) $message->content_text);
                 $error = trim((string) $message->error_reason);
+
+                // Pesan otomatis (ber-templat) kini tampil sebagai NAMA TEMPLAT
+                // saja, bukan isi pesannya (owner 2026-09-29: "kalau template
+                // tidak usah di tulis pesannya, nama template pesan saja") agar
+                // daftar gagal kirim ringkas dan tidak mengulang naskah yang
+                // semuanya sama. Pesan manual/pelanggan tetap utuh. Sama dengan
+                // label di drawer detail pesanan.
+                $pesan = $message->internal_template_key
+                    ? \App\Support\OrderEventLabels::whatsappTemplate($message->internal_template_key)
+                        . (filled($message->raw_payload['resend'] ?? null) ? ' (Ulang)' : '')
+                    : ($text === '' ? null : \Illuminate\Support\Str::limit($text, 120));
 
                 return [
                     'id' => (int) $message->id,
@@ -135,7 +146,7 @@ class WhatsAppTemplateController extends Controller
                     'recipient' => (string) $message->phone_number,
                     'order_number' => $order?->order_number,
                     'order_url' => $order ? route('admin.orders.show', $order->id) : null,
-                    'message' => $text === '' ? null : \Illuminate\Support\Str::limit($text, 120),
+                    'message' => $pesan,
                     'error' => $error === '' ? null : \Illuminate\Support\Str::limit($error, 160),
                 ];
             })
