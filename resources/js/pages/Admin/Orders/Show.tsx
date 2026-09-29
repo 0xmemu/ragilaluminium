@@ -1777,9 +1777,10 @@ export default function OrderShow({
         </div>
       ) : null}
 
-      {/* Ringkasan order - 4 sel proporsional: Nomor order, Pembayaran, Detail penerima, Detail pengiriman */}
-      <Card className="grid gap-px overflow-hidden bg-border sm:grid-cols-2 xl:grid-cols-4">
-        <div className="bg-card p-5 flex flex-col justify-between">
+      {/* Ringkasan order: EMPAT kartu terpisah (permintaan owner 2026-09-29).
+          Sebelumnya satu kartu berisi empat sel yang dipisah garis rambut 1px. */}
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="flex flex-col justify-between p-5">
           <div>
             <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
             <div className="mt-1.5 flex items-center gap-1.5">
@@ -1845,9 +1846,9 @@ export default function OrderShow({
               </button>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card p-5">
+        <Card className="p-5">
           <p className="text-xs font-medium text-muted-foreground">Pembayaran</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-foreground">{order.payment_method_label}</span>
@@ -1875,9 +1876,9 @@ export default function OrderShow({
               ) : null}
             </div>
           ) : null}
-        </div>
+        </Card>
 
-        <div className="bg-card p-5">
+        <Card className="p-5">
           <p className="text-xs font-medium text-muted-foreground">Detail penerima</p>
           <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customer_name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
@@ -1902,9 +1903,9 @@ export default function OrderShow({
               Cetak
             </button>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card p-5">
+        <Card className="p-5">
           <p className="text-xs font-medium text-muted-foreground">Detail pengiriman</p>
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
             <span className="text-sm font-semibold text-foreground">
@@ -1944,8 +1945,8 @@ export default function OrderShow({
               <span>Lacak pesanan</span>
             </button>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Aksi utama */}
       {liveChangedNotice ? (
@@ -2085,209 +2086,7 @@ export default function OrderShow({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      {/* Riwayat - 3 kolom */}
-      <section className="mt-4 grid items-start gap-4 lg:grid-cols-3">
-        <SectionCard
-          title="Riwayat pesanan"
-          action={
-            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("riwayat")}>
-              Detail
-            </Button>
-          }
-          contentClassName="h-[420px] overflow-y-auto"
-        >
-          <ol className="space-y-2.5 text-[13px]">
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Waktu pemesanan</span>
-              <span className="font-medium">{formatDateTime(order.created_at)}</span>
-            </li>
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Update terakhir</span>
-              <span className="font-medium">{formatDateTime(order.updated_at)}</span>
-            </li>
-            {liveState !== "unavailable" && liveState !== "connected" ? (
-              <li className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Pembaruan langsung</span>
-                <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
-              </li>
-            ) : null}
-            {lastEventAt ? (
-              <li className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Event terakhir</span>
-                <span className="font-medium">{formatDateTime(lastEventAt)}</span>
-              </li>
-            ) : null}
-          </ol>
-        </SectionCard>
-        <SectionCard
-          title="Log perubahan status"
-          action={
-            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("status")}>
-              Detail
-            </Button>
-          }
-          contentClassName="h-[420px] overflow-y-auto"
-        >
-          {events.length ? (
-            <ul className="space-y-2.5 text-[13px]">
-              {events.map((event, index) => (
-                <li
-                  key={`${event.event_type}-${index}`}
-                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
-                >
-                  <p className="font-medium">{event.label || humanize(event.event_type)}</p>
-                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Alasan: {event.payload.reason}
-                    </p>
-                  ) : null}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatDateTime(event.created_at)}
-                  </p>
-                </li>
-              ))}
-            
-            </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground">Belum ada log status.</p>
-          )}
-        </SectionCard>
-        <div id="percakapan-whatsapp" className="scroll-mt-20">
-        <SectionCard
-          title="Log WhatsApp"
-          action={
-            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("wa")}>
-              Detail
-            </Button>
-          }
-          contentClassName="h-[420px] overflow-hidden p-0"
-        >
-          {order.whatsapp_messages.length ? (
-            <>
-            <div ref={waLogRef} className="h-full overflow-y-auto p-5">
-            <ul className="space-y-2.5 pr-1">
-              {order.whatsapp_messages.map((message) => {
-                const outbound = message.direction !== "inbound"
-                const isExpanded = expandedWaIds.has(message.id)
-                const waStatus = waMessageStatus(message.status)
-
-                // 1. Pesan Otomatis (Template): tampilkan ringkas sebagai list event + status checklist (owner 2026-09-16)
-                if (message.is_automated) {
-                  return (
-                    <li key={message.id} className="flex justify-end">
-                      <div className="w-full max-w-[92%] rounded-lg border border-border bg-card p-3 shadow-xs">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs font-semibold text-foreground truncate">
-                              {message.label || "WA Otomatis"}
-                            </span>
-                            <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">
-                              Otomatis
-                            </span>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1 text-xs">
-                            {waStatus ? (
-                              <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
-                                <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
-                                <span>{waStatus.label}</span>
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground capitalize">{message.status}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                          <span>
-                            {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
-                          </span>
-                          {message.text ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleWaExpand(message.id)}
-                              className="text-[11px] text-primary hover:underline font-medium"
-                            >
-                              {isExpanded ? "Sembunyikan isi" : "Lihat isi pesan"}
-                            </button>
-                          ) : null}
-                        </div>
-
-                        {isExpanded && message.text ? (
-                          <p className="mt-2 border-t border-border pt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
-                            {message.text}
-                          </p>
-                        ) : null}
-                      </div>
-                    </li>
-                  )
-                }
-
-                // 2. Pesan Manual / Non-Template / Balasan Pelanggan: tampilkan teks pesan lengkap
-                return (
-                  <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
-                    <div
-                      className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
-                        outbound
-                          ? "border-border bg-muted/40"
-                          : "border-success/30 bg-success/5"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
-                        <span>{outbound ? "Toko (Pesan Manual)" : "Pelanggan"}</span>
-                      </div>
-
-                      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
-                        {message.text || message.label || humanize(message.direction)}
-                      </p>
-
-                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                        <span>
-                          {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
-                        </span>
-                        {outbound && waStatus ? (
-                          <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
-                            <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
-                            <span>{waStatus.label}</span>
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-            </div>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
-          )}
-        </SectionCard>
-        </div>
-      </section>
-
-      {(() => {
-        const cases = order.return_cases ?? returnCases
-        // Pencatatan retur kini hanya lewat popup di daftar pesanan (owner
-        // 2026-09-29), jadi panel ini hanya tampil saat pesanan punya kasus
-        // retur; pesanan Sampai tanpa kasus tidak menampilkan judul kosong.
-        const showPanel = cases.length > 0
-        // Pesanan di luar Sampai tidak menampilkan blok retur sama sekali
-        // (instruksi owner 2026-09-28: pesanan Selesai tidak perlu info retur).
-        if (!showPanel) return null
-        return (
-          <ReturnCasePanel
-            order={order}
-            cases={cases}
-            eligibility={returnEligibility ?? { eligible: false, reason: null, deadline: null }}
-            editReturnCaseId={editReturnCaseId}
-            returnAdjustments={returnAdjustments}
-          />
-        )
-      })()}
-
-
-
-      {/* Konten utama membentang penuh tanpa aside sempit */}
+      {/* Isi pesanan: section kedua, di atas riwayat dan log (owner 2026-09-29). */}
       <div className="mt-4 space-y-4">
           <SectionCard
             title="Isi pesanan"
@@ -2532,6 +2331,209 @@ export default function OrderShow({
           </SectionCard>
 
       </div>
+
+      {/* Riwayat - 3 kolom */}
+      <section className="mt-4 grid items-start gap-4 lg:grid-cols-3">
+        <SectionCard
+          title="Riwayat pesanan"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("riwayat")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
+          <ol className="space-y-2.5 text-[13px]">
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Waktu pemesanan</span>
+              <span className="font-medium">{formatDateTime(order.created_at)}</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Update terakhir</span>
+              <span className="font-medium">{formatDateTime(order.updated_at)}</span>
+            </li>
+            {liveState !== "unavailable" && liveState !== "connected" ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Pembaruan langsung</span>
+                <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
+              </li>
+            ) : null}
+            {lastEventAt ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Event terakhir</span>
+                <span className="font-medium">{formatDateTime(lastEventAt)}</span>
+              </li>
+            ) : null}
+          </ol>
+        </SectionCard>
+        <SectionCard
+          title="Log perubahan status"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("status")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
+          {events.length ? (
+            <ul className="space-y-2.5 text-[13px]">
+              {events.map((event, index) => (
+                <li
+                  key={`${event.event_type}-${index}`}
+                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                >
+                  <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Alasan: {event.payload.reason}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatDateTime(event.created_at)}
+                  </p>
+                </li>
+              ))}
+            
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada log status.</p>
+          )}
+        </SectionCard>
+        <div id="percakapan-whatsapp" className="scroll-mt-20">
+        <SectionCard
+          title="Log WhatsApp"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("wa")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-hidden p-0"
+        >
+          {order.whatsapp_messages.length ? (
+            <>
+            <div ref={waLogRef} className="h-full overflow-y-auto p-5">
+            <ul className="space-y-2.5 pr-1">
+              {order.whatsapp_messages.map((message) => {
+                const outbound = message.direction !== "inbound"
+                const isExpanded = expandedWaIds.has(message.id)
+                const waStatus = waMessageStatus(message.status)
+
+                // 1. Pesan Otomatis (Template): tampilkan ringkas sebagai list event + status checklist (owner 2026-09-16)
+                if (message.is_automated) {
+                  return (
+                    <li key={message.id} className="flex justify-end">
+                      <div className="w-full max-w-[92%] rounded-lg border border-border bg-card p-3 shadow-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {message.label || "WA Otomatis"}
+                            </span>
+                            <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">
+                              Otomatis
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 text-xs">
+                            {waStatus ? (
+                              <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                                <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                                <span>{waStatus.label}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground capitalize">{message.status}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span>
+                            {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                          </span>
+                          {message.text ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleWaExpand(message.id)}
+                              className="text-[11px] text-primary hover:underline font-medium"
+                            >
+                              {isExpanded ? "Sembunyikan isi" : "Lihat isi pesan"}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {isExpanded && message.text ? (
+                          <p className="mt-2 border-t border-border pt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+                            {message.text}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  )
+                }
+
+                // 2. Pesan Manual / Non-Template / Balasan Pelanggan: tampilkan teks pesan lengkap
+                return (
+                  <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
+                    <div
+                      className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
+                        outbound
+                          ? "border-border bg-muted/40"
+                          : "border-success/30 bg-success/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
+                        <span>{outbound ? "Toko (Pesan Manual)" : "Pelanggan"}</span>
+                      </div>
+
+                      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
+                        {message.text || message.label || humanize(message.direction)}
+                      </p>
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                          {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                        </span>
+                        {outbound && waStatus ? (
+                          <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                            <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span>{waStatus.label}</span>
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
+          )}
+        </SectionCard>
+        </div>
+      </section>
+
+      {(() => {
+        const cases = order.return_cases ?? returnCases
+        // Pencatatan retur kini hanya lewat popup di daftar pesanan (owner
+        // 2026-09-29), jadi panel ini hanya tampil saat pesanan punya kasus
+        // retur; pesanan Sampai tanpa kasus tidak menampilkan judul kosong.
+        const showPanel = cases.length > 0
+        // Pesanan di luar Sampai tidak menampilkan blok retur sama sekali
+        // (instruksi owner 2026-09-28: pesanan Selesai tidak perlu info retur).
+        if (!showPanel) return null
+        return (
+          <ReturnCasePanel
+            order={order}
+            cases={cases}
+            eligibility={returnEligibility ?? { eligible: false, reason: null, deadline: null }}
+            editReturnCaseId={editReturnCaseId}
+            returnAdjustments={returnAdjustments}
+          />
+        )
+      })()}
+
+
+
       {printing ? (
         <PrintOrderArea
           data={{
