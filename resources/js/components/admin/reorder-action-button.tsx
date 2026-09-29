@@ -50,6 +50,14 @@ export function ReorderActionButton({
   onCancel: () => void
   onSave: () => void
 }) {
+  // Kontrak owner 2026-09-29: tombol Urutkan TIDAK DITAMPILKAN saat mode urut
+  // memang belum bisa dipakai (daftar kosong, atau filter/cakupan belum memenuhi
+  // syarat). Tombol mati plus keterangan masih menyisakan kontrol yang tidak bisa
+  // dipakai dan membuat admin menerka; menyembunyikannya membuat header bersih.
+  // Tombol muncul sendiri begitu syaratnya terpenuhi. Keadaan mode aktif tetap
+  // dirender supaya admin selalu punya jalan menyimpan atau mengurungkan.
+  if (!active && disabled) return null
+
   // Tombol nonaktif memakai pointer-events-none, jadi pemicu hover harus span
   // pembungkus dari hint. Garis putus dimatikan supaya tampilan tombol tidak
   // berubah dari tombol lain di header.
@@ -63,22 +71,10 @@ export function ReorderActionButton({
 
   if (!active) {
     return (
-      <>
-        {denganHint(
-          <Button
-            type="button"
-            variant="secondary"
-            size={size}
-            disabled={disabled}
-            title={disabled ? disabledReason : undefined}
-            onClick={onToggle}
-          >
-            <Icon name="dots-six-vertical" className="size-4" aria-hidden="true" />
-            Urutkan
-          </Button>,
-          disabled,
-        )}
-      </>
+      <Button type="button" variant="secondary" size={size} onClick={onToggle}>
+        <Icon name="dots-six-vertical" className="size-4" aria-hidden="true" />
+        Urutkan
+      </Button>
     )
   }
 
