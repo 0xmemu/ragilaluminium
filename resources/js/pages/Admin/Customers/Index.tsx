@@ -7,6 +7,7 @@ import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { HintTip } from "@/components/admin/ui/hint-tip"
+import { Input } from "@/components/admin/ui/input"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Pagination } from "@/components/admin/ui/pagination"
@@ -39,6 +40,8 @@ interface Summary {
   top_province: { name: string; share_percent: number }
   total_customers: number
   growth_percent: number
+  /** Angka kartu sedang dibatasi periode, jadi keterangan tumbuh tidak bermakna. */
+  period_scoped?: boolean
   multi_address_customers: number
   avg_fraud_score: number
   avg_fraud_label: string
@@ -49,6 +52,10 @@ export default function CustomersIndex({
   description,
   filters,
   sortOptions,
+  activeDatePreset = "",
+  dateFrom = "",
+  dateTo = "",
+  periodLabel = "Semua waktu",
   rows = [],
   pagination,
   summary,
@@ -58,6 +65,11 @@ export default function CustomersIndex({
   description: string
   filters: { q: string; sort: string }
   sortOptions: Array<{ value: string; label: string }>
+  /** Preset periode aktif ('' = Semua waktu). */
+  activeDatePreset?: string
+  dateFrom?: string
+  dateTo?: string
+  periodLabel?: string
   rows: CustomerRow[]
   pagination: PaginationData | null
   summary: Summary
@@ -65,6 +77,11 @@ export default function CustomersIndex({
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
+  // Filter periode (permintaan owner 2026-09-28). Daftar dibatasi ke pelanggan
+  // yang berbelanja pada periode itu, dan angka per baris mengikuti periode.
+  const [datePreset, setDatePreset] = React.useState(activeDatePreset)
+  const [rangeFrom, setRangeFrom] = React.useState(dateFrom)
+  const [rangeTo, setRangeTo] = React.useState(dateTo)
   // Galat muat ulang daftar: tampil sebagai ErrorState di area daftar, dengan
   // tombol "Coba lagi" yang mengulang muat ulang. Penanda muat ulang dipakai
   // agar kegagalan aksi lain tidak ikut memunculkan panel galat ini.
@@ -103,18 +120,33 @@ export default function CustomersIndex({
     }
   }, [])
 
-  function apply(next?: Partial<{ q: string; sort: string }>) {
+  function apply(next?: Partial<{ q: string; sort: string; date_preset: string }>) {
+    const preset = next?.date_preset ?? datePreset
     router.get(
       routeUrl("admin.customers.index"),
       {
         q: next?.q ?? q,
         sort: next?.sort ?? sort,
+        date_preset: preset || undefined,
+        date_from: preset === "range" ? rangeFrom || undefined : undefined,
+        date_to: preset === "range" ? rangeTo || undefined : undefined,
       },
       { preserveState: true, preserveScroll: true, replace: true },
     )
   }
 
-  const hasActiveFilters = Boolean(q?.trim())
+  /** Ganti preset periode. Rentang menunggu tanggal diisi lalu ditekan Terapkan. */
+  function pilihPeriode(value: string) {
+    setDatePreset(value)
+    apply({ date_preset: value })
+  }
+
+  function terapkanRentang(event: React.FormEvent) {
+    event.preventDefault()
+    apply({ date_preset: "range" })
+  }
+
+  const hasActiveFilters = Boolean(q?.trim() || datePreset)
 
   function resetAllFilters() {
     router.get(routeUrl("admin.customers.index"), {}, { preserveState: false, preserveScroll: true })
@@ -158,7 +190,13 @@ export default function CustomersIndex({
         <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold tracking-tight text-muted-foreground">Total pelanggan</p>
           <p className="mt-3 text-xl font-bold tabular-nums">{formatNumber(summary.total_customers)}</p>
-          <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
+          {summary.period_scoped ? (
+            // Angka kartu sudah dibatasi periode, jadi keterangan tumbuh bulan
+            // lalu tidak lagi bermakna dan diganti label periode aktif.
+            <p className="mt-1 text-sm text-muted-foreground">Periode: {periodLabel}</p>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">+{formatNumber(summary.growth_percent)}% dari bulan lalu</p>
+          )}
         </article>
         <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold tracking-tight text-muted-foreground">Peringatan alamat ganda</p>
@@ -197,7 +235,70 @@ export default function CustomersIndex({
           </Select>
         }
         className="mb-4"
-      />
+      >
+        {/* Filter periode pelanggan. Artinya "pelanggan yang berbelanja pada
+            periode itu", sejalan dengan halaman Pesanan dan Pembayaran; basis
+            tanggalnya created_at pesanan. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <HintTip
+            label={<span className="text-xs font-medium text-muted-foreground">Periode</span>}
+            hint="Menyaring daftar ke pelanggan yang berbelanja pada periode itu, dan angka Pesanan serta Total Belanja per pelanggan dihitung dalam periode yang sama. Status (Aktif/Baru/Tidak aktif) tetap dihitung dari seluruh riwayat, bukan dari periode ini."
+            side="bottom"
+          />
+          <Select
+            value={datePreset || "all"}
+            onChange={(event) => pilihPeriode(event.target.value === "all" ? "" : event.target.value)}
+            className="w-auto"
+            aria-label="Filter periode pelanggan"
+          >
+            <option value="all">Semua waktu</option>
+            <option value="today">Hari ini</option>
+            <option value="3d">3 hari terakhir</option>
+            <option value="7d">7 hari terakhir</option>
+            <option value="30d">30 hari terakhir</option>
+            <option value="range">Rentang tanggal</option>
+          </Select>
+          {datePreset === "range" ? (
+            <form onSubmit={terapkanRentang} className="flex flex-wrap items-center gap-2">
+              <Input
+                type="date"
+                value={rangeFrom}
+                onChange={(event) => setRangeFrom(event.target.value)}
+                className="w-36"
+                aria-label="Tanggal mulai"
+              />
+              <span className="text-xs text-muted-foreground">sampai</span>
+              <Input
+                type="date"
+                value={rangeTo}
+                onChange={(event) => setRangeTo(event.target.value)}
+                className="w-36"
+                aria-label="Tanggal akhir"
+              />
+              <Button type="submit" size="sm" variant="secondary">
+                Terapkan
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      </ListToolbar>
+
+      {datePreset ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium text-muted-foreground">Periode</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {periodLabel}
+            <button
+              type="button"
+              onClick={() => pilihPeriode("")}
+              className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label="Hapus filter periode"
+            >
+              <Icon name="x" className="size-3" aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      ) : null}
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {refreshError ? (

@@ -10,6 +10,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CustomerExport;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,6 +30,21 @@ class CustomerController extends Controller
         $search = trim((string) $request->input('q', ''));
         $sort = (string) $request->input('sort', 'newest');
 
+        // Filter periode (permintaan owner 2026-09-28). Default '' (= Semua
+        // waktu) supaya tampilan halaman tidak berubah sebelum admin memilih
+        // periode. Artinya: daftar dibatasi ke pelanggan yang BERBELANJA pada
+        // periode itu, dan angka Pesanan/Total Belanja per baris dihitung
+        // dalam periode yang sama. Basis tanggalnya created_at pesanan
+        // (tanggal pesanan dicatat), seragam dengan halaman Pesanan dan
+        // Pembayaran.
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+        [$periodFrom, $periodTo] = $this->periodRange($datePreset, $dateFrom, $dateTo);
+
         $query = Customer::query()
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
@@ -38,7 +54,13 @@ class CustomerController extends Controller
                     LikeSearch::orWhereLike($inner, 'default_city', $search);
                     LikeSearch::orWhereLike($inner, 'default_province', $search);
                 });
-            });
+            })
+            ->when(
+                $periodFrom !== null || $periodTo !== null,
+                // Pelanggan tanpa pesanan pada periode itu tidak tampil, jadi
+                // daftar menjawab "siapa yang berbelanja pada periode ini".
+                fn ($q) => $q->whereIn('phone', $this->customers->phonesWithOrdersIn($periodFrom, $periodTo))
+            );
 
         $query = match ($sort) {
             'name' => $query->orderBy('name'),
@@ -49,8 +71,8 @@ class CustomerController extends Controller
         // Paginasi 10 item per halaman (tampil saat pelanggan > 10)
         $paginator = $query->paginate(10)->withQueryString();
 
-        $rows = $paginator->getCollection()->values()->map(function (Customer $customer, int $index) use ($paginator) {
-            $metrics = $this->customers->metricsFor($customer);
+        $rows = $paginator->getCollection()->values()->map(function (Customer $customer, int $index) use ($paginator, $periodFrom, $periodTo) {
+            $metrics = $this->customers->metricsFor($customer, $periodFrom, $periodTo);
             $address = collect([
                 $customer->default_address_line1,
                 $customer->default_address_line2,
@@ -87,14 +109,66 @@ class CustomerController extends Controller
                 ['value' => 'oldest', 'label' => 'Terlama'],
                 ['value' => 'name', 'label' => 'Nama A-Z'],
             ],
+            'activeDatePreset' => $datePreset,
+            'dateFrom' => $datePreset === 'range' ? $dateFrom : '',
+            'dateTo' => $datePreset === 'range' ? $dateTo : '',
+            'periodLabel' => $this->periodLabel($datePreset, $dateFrom, $dateTo),
             'rows' => $rows,
             'pagination' => InertiaAdmin::pagination($paginator),
-            'summary' => $this->customers->summaryStats(),
+            // Kartu ringkasan ikut periode supaya angka kartu dan tabel di
+            // halaman yang sama tidak saling bertentangan.
+            'summary' => $this->customers->summaryStats($periodFrom, $periodTo),
             'exportUrl' => route('admin.customers.export', array_filter([
                 'q' => $search ?: null,
                 'sort' => $sort !== 'newest' ? $sort : null,
+                'date_preset' => $datePreset ?: null,
+                'date_from' => $datePreset === 'range' && $dateFrom !== '' ? $dateFrom : null,
+                'date_to' => $datePreset === 'range' && $dateTo !== '' ? $dateTo : null,
             ])),
         ]);
+    }
+
+    /**
+     * Rentang waktu filter periode, sepasang batas inklusif.
+     *
+     * Preset memakai jam laporan saat ini sebagai batas atas; preset 'range'
+     * boleh hanya berisi salah satu batas (hanya mulai atau hanya sampai),
+     * dan tanpa keduanya berarti tanpa pembatasan waktu.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon}
+     */
+    private function periodRange(string $preset, string $from, string $to): array
+    {
+        $awalHariIni = now()->startOfDay();
+
+        return match ($preset) {
+            'today' => [$awalHariIni, now()],
+            '3d' => [$awalHariIni->copy()->subDays(3), now()],
+            '7d' => [$awalHariIni->copy()->subDays(7), now()],
+            '30d' => [$awalHariIni->copy()->subDays(30), now()],
+            'range' => [
+                $from !== '' ? Carbon::parse($from)->startOfDay() : null,
+                $to !== '' ? Carbon::parse($to)->endOfDay() : null,
+            ],
+            default => [null, null],
+        };
+    }
+
+    /** Label periode untuk chip filter aktif dan judul berkas ekspor. */
+    private function periodLabel(string $preset, string $from, string $to): string
+    {
+        return match ($preset) {
+            'today' => 'Hari ini',
+            '3d' => '3 hari terakhir',
+            '7d' => '7 hari terakhir',
+            '30d' => '30 hari terakhir',
+            'range' => trim(
+                ($from !== '' ? Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                .' - '.
+                ($to !== '' ? Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang')
+            ),
+            default => 'Semua waktu',
+        };
     }
 
     public function show(Customer $customer): Response
@@ -143,9 +217,10 @@ class CustomerController extends Controller
 
         $customer->update($validated);
 
+        // Simpan sukses = keluar dari form ke daftar customer.
         return redirect()
-            ->route('admin.customers.edit', $customer)
-            ->with('success', 'Data pelanggan disimpan.');
+            ->route('admin.customers.index')
+            ->with('success', 'Data pelanggan '.$customer->name.' disimpan.');
     }
 
     public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
@@ -153,6 +228,17 @@ class CustomerController extends Controller
         $this->customers->syncMissingFromOrders();
 
         $search = trim((string) $request->input('q', ''));
+
+        // Ekspor mengikuti apa yang tampil di layar: pencarian dan periode yang
+        // sama, dengan angka per baris dihitung pada periode yang sama pula.
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+        [$periodFrom, $periodTo] = $this->periodRange($datePreset, $dateFrom, $dateTo);
+
         $query = Customer::query()
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
@@ -163,11 +249,28 @@ class CustomerController extends Controller
                     LikeSearch::orWhereLike($inner, 'default_province', $search);
                 });
             })
+            ->when(
+                $periodFrom !== null || $periodTo !== null,
+                fn ($q) => $q->whereIn('phone', $this->customers->phonesWithOrdersIn($periodFrom, $periodTo))
+            )
             ->latest('id');
 
         ExportSafety::assertQueryWithinLimit($query);
 
-        return Excel::download(new CustomerExport($query), 'pelanggan-'.now()->format('Ymd').'.xlsx');
+        // Periode ditulis di NAMA BERKAS supaya berkas yang tersimpan tidak
+        // dibaca sebagai laporan seumur hidup. Judul sheet tidak dipakai untuk
+        // ini karena Excel membatasi 31 karakter.
+        $ekspor = new CustomerExport($query, $periodFrom, $periodTo);
+        $namaPeriode = match (true) {
+            $datePreset !== '' && $datePreset !== 'range' => '-'.$datePreset,
+            $datePreset === 'range' => trim(
+                '-'.($dateFrom !== '' ? Carbon::parse($dateFrom)->format('Ymd') : 'awal')
+                .'-'.($dateTo !== '' ? Carbon::parse($dateTo)->format('Ymd') : 'kini')
+            ),
+            default => '',
+        };
+
+        return Excel::download($ekspor, 'pelanggan-'.now()->format('Ymd').$namaPeriode.'.xlsx');
 
     }
 }

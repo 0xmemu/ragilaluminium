@@ -354,12 +354,15 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Basis data pelanggan terpadu yang disinkronkan otomatis dari transaksi pesanan toko.",
     steps: [
       "Gunakan kotak pencarian untuk mencari pelanggan berdasarkan nama, nomor WhatsApp, atau alamat.",
+      "Pilih Periode (hari ini sampai 30 hari terakhir, atau rentang tanggal) untuk menyaring pelanggan yang berbelanja pada periode itu.",
       "Gunakan menu urutkan untuk menyortir pelanggan terbaru, terlama, atau nama A-Z.",
       "Klik nama pelanggan atau tombol Edit untuk mengelola detail profil dan alamat.",
       "Gunakan tombol Ekspor untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
     ],
     notes: [
       "Status keaktifan pelanggan: Aktif (memiliki transaksi pesanan dalam 90 hari terakhir), Baru (belum pernah memesan), atau Tidak aktif (tidak ada pesanan selama lebih dari 90 hari).",
+      "Filter Periode membatasi daftar ke pelanggan yang berbelanja pada periode itu, dan angka Pesanan serta Total Belanja per pelanggan ikut dihitung dalam periode tersebut. Empat kartu di atas tabel juga mengikuti periode. Status keaktifan tetap dihitung dari seluruh riwayat.",
+      "Ekspor mengikuti filter yang sedang tampil, termasuk periode, dan nama berkasnya memuat penanda periode.",
       "Nomor WhatsApp terhubung langsung dengan tombol aksi chat satu klik.",
     ],
   },

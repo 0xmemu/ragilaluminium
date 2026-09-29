@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Services\CustomerService;
 use App\Support\ExportSafety;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -14,8 +15,16 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 
 class CustomerExport extends RagilStyledExport implements FromQuery, WithHeadings, WithMapping
 {
-    public function __construct(protected Builder $query)
-    {
+    public function __construct(
+        protected Builder $query,
+        /** Batas awal periode filter (null = tanpa batas). */
+        protected ?Carbon $from = null,
+        /** Batas akhir periode filter (null = tanpa batas). */
+        protected ?Carbon $to = null,
+    ) {
+        // Judul sheet sengaja tetap pendek: Excel membatasi 31 karakter, dan
+        // label periode ("30 hari terakhir", rentang tanggal) bisa melewatinya.
+        // Keterangan periode ditulis di NAMA BERKAS oleh pemanggil.
         $this->sheetTitle = 'Laporan Pelanggan';
         $this->columnWidths = [
             'A' => 16, // ID Pelanggan
@@ -63,9 +72,13 @@ class CustomerExport extends RagilStyledExport implements FromQuery, WithHeading
 
     public function map($customer): array
     {
-        $metrics = app(CustomerService::class)->metricsFor($customer);
+        $metrics = app(CustomerService::class)->metricsFor($customer, $this->from, $this->to);
         $orderNumbers = Order::query()
             ->where('customer_phone', $customer->phone)
+            // Saat periode aktif, daftar nomor pesanan ikut periode itu supaya
+            // satu baris laporan berbicara tentang rentang yang sama.
+            ->when($this->from, fn ($q) => $q->where('created_at', '>=', $this->from))
+            ->when($this->to, fn ($q) => $q->where('created_at', '<=', $this->to))
             ->orderBy('id')
             ->pluck('order_number')
             ->filter()
