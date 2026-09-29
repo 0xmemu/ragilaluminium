@@ -108,6 +108,7 @@ interface Report {
     cod_fee?: number
     refund_adjustments: number
     return_shipping_store?: number
+    return_trip_shipping?: number
     net_revenue: number
     buyer_orders?: number
     /** Jumlah pembeli unik, dihitung server supaya tidak dibulatkan ulang. */
@@ -785,6 +786,13 @@ function bangunKategoriDetail(
               sign: "−",
               metricKey: "return_shipping_cost_total",
               sub: "Biaya pengiriman retur barang yang ditanggung oleh toko.",
+            },
+            {
+              label: "Ongkir perjalanan balik",
+              value: rp(fin.return_trip_shipping ?? 0),
+              sign: "−",
+              metricKey: "return_trip_shipping_total",
+              sub: "Tagihan pengembalian barang dari J&T yang ditanggung kas toko, diisi admin saat retur selesai.",
             },
             {
               label: "Nilai barang retur paket",

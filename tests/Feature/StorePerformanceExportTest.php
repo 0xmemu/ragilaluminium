@@ -40,6 +40,7 @@ class StorePerformanceExportTest extends TestCase
                 'cod_fee' => 1500000.0,
                 'refund_adjustments' => 2500000.0,
                 'return_shipping_store' => 75000.0,
+                'return_trip_shipping' => 45000.0,
                 'net_revenue' => 115925000.0,
                 'payments_received' => 60000000.0,
                 'cod_paid' => 40000000.0,
@@ -56,6 +57,7 @@ class StorePerformanceExportTest extends TestCase
                 'cod_fee' => 750000.0,
                 'refund_adjustments' => 1250000.0,
                 'return_shipping_store' => 37500.0,
+                'return_trip_shipping' => 0.0,
                 'refused_goods_value' => 0.0,
                 'refused_shipping_cost' => 0.0,
                 'refused_cod_fee' => 0.0,
@@ -154,6 +156,7 @@ class StorePerformanceExportTest extends TestCase
                     'cod_fee' => 1500000.0,
                     'refund_amount' => 2500000.0,
                     'return_shipping_store' => 75000.0,
+                    'return_trip_shipping' => 45000.0,
                     'net_revenue' => 115925000.0,
                     'insurance' => 500000.0,
                     'total_paid_by_customer' => 125000000.0,
@@ -187,6 +190,7 @@ class StorePerformanceExportTest extends TestCase
                     'fault_party' => 'store',
                     'reason' => 'barang pecah',
                     'return_shipping_cost' => 75000.0,
+                    'additional_shipping_amount' => 20000.0,
                 ],
             ],
         ];
@@ -246,6 +250,7 @@ class StorePerformanceExportTest extends TestCase
         $this->assertContains('Ongkir ke J&T', $kolomRumus, 'beban juga berumus');
         $this->assertContains('Refund Retur', $kolomRumus);
         $this->assertContains('Ongkir Retur (Toko)', $kolomRumus);
+        $this->assertContains('Ongkir Perjalanan Balik', $kolomRumus, 'ongkir balik ikut berumus ke Tabel Pesanan');
 
         // Penjualan Gross dan Penjualan Bersih wajib rumus yang menjumlah
         // baris komponennya, bukan angka mati.
@@ -280,13 +285,14 @@ class StorePerformanceExportTest extends TestCase
         // Biaya COD diteruskan ke J&T (baris 15): TIDAK boleh kena gaya judul seksi.
         $this->assertNotSame('FF1B365D', $lrSheet->getCell('A15')->getStyle()->getFont()->getColor()->getARGB());
 
-        // PENJUALAN BERSIH (baris 23): double underline akuntansi. Bergeser
-        // dari 21 sejak dua baris beban paket ditolak disisipkan di blok beban.
-        $this->assertSame('double', $lrSheet->getCell('A23')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        // PENJUALAN BERSIH (baris 24): double underline akuntansi. Bergeser
+        // dari 21 sejak dua baris beban paket ditolak disisipkan, lalu dari 23
+        // sejak baris Ongkir Perjalanan Balik disisipkan di blok beban.
+        $this->assertSame('double', $lrSheet->getCell('A24')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
-        // Pembayaran sudah diterima (baris 28): subtotal arus kas biasa, TANPA double
-        // underline (hanya PENJUALAN BERSIH yang double).
-        $this->assertNotSame('double', $lrSheet->getCell('A28')->getStyle()->getBorders()->getBottom()->getBorderStyle());
+        // Pembayaran sudah diterima (baris 29): subtotal arus kas biasa, TANPA
+        // double underline (hanya PENJUALAN BERSIH yang double).
+        $this->assertNotSame('double', $lrSheet->getCell('A29')->getStyle()->getBorders()->getBottom()->getBorderStyle());
 
         // ---- KPI OPERASIONAL TOKO: metrik pindah ke sheet sendiri ----
         // Regresi terjaga: KPI bernilai 0 tetap tertulis 0 numerik
@@ -611,7 +617,7 @@ class StorePerformanceExportTest extends TestCase
             'parent_sku' => 'WIN-BATAS-1',
             'name' => 'Jendela Batas',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -723,7 +729,7 @@ class StorePerformanceExportTest extends TestCase
             'parent_sku' => 'WIN-MM-1',
             'name' => 'Jendela Multi Bulan',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -853,7 +859,7 @@ class StorePerformanceExportTest extends TestCase
             'parent_sku' => 'RA-BATAL-SKU',
             'name' => 'Produk Batal',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'status' => 'archived',
         ]);

@@ -118,6 +118,32 @@ class ReturnTripShippingKpiTest extends TestCase
         $this->assertSame(45000.0, (float) $kpi['value']);
     }
 
+    public function test_income_detail_membawa_ongkir_balik_dan_net_konsisten(): void
+    {
+        // Gap audit 2026-09-29: Tabel Pesanan XLSX (income_detail) wajib
+        // membawa ongkir balik per pesanan supaya SUM kolomnya sama dengan
+        // KPI, dan baris koreksi periode ikut menghitungnya di Net-nya.
+        $order = $this->makeOrder();
+        $this->selesaikanKasus($order, 45000.0);
+
+        $rows = \App\Support\IncomeDetailQuery::orders(
+            now()->startOfMonth()->toDateString(),
+            now()->toDateString(),
+        );
+        $baris = collect($rows)->firstWhere('order_number', $order->order_number);
+        $this->assertNotNull($baris);
+        $this->assertSame(45000.0, (float) $baris['return_trip_shipping']);
+        // Pesanan uji masuk himpunan pengakuan periode ini (ada event
+        // pengakuan), jadi Net barisnya = penjualan - ongkir balik = 455000.
+        $this->assertSame(455000.0, (float) $baris['net_revenue']);
+
+        // Daftar referensi kasus retur menyertakan ongkir balik walau ongkir
+        // retur toko nol, dan sebaliknya.
+        $service = app(StorePerformanceService::class)->build(period: 'this_month');
+        $this->assertNotSame([], $service['return_shipping_costs'] ?? []);
+        $this->assertSame(45000.0, (float) ($service['return_shipping_costs'][0]['additional_shipping_amount'] ?? 0));
+    }
+
     public function test_dua_kasus_dengan_ongkir_balik_berjumlah_per_kasus(): void
     {
         $order = $this->makeOrder();

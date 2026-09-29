@@ -111,8 +111,20 @@ berubah karena nilainya memang nol sebelum kasus nyata ada.
 MINOR: metrik baru `return_trip_shipping_total` (Ongkir Perjalanan Balik).
 Keputusan owner 2026-09-29: tagihan pengembalian J&T yang diisi admin saat
 penyelesaian retur mostly ditanggung kas toko, jadi dihitung sebagai pengurang
-Penjualan Bersih, sekali per pesanan, mengikuti periode penyelesaian kasus.
-Angka lama golden tidak berubah (dataset belum menanam nilai ini); penjaga
-baru `ReturnTripShippingKpiTest` menutup kasus bernilai. Expectation
-diperbarui lewat GOLDEN_UPDATE; versi disamakan di ADR ini, komentar FROZEN,
-test golden, dan berkas expectation.
+Penjualan Bersih per kasus retur, mengikuti periode penyelesaian kasus.
+Rangkaian ini sekaligus memperbaiki cacat terpendam item 11: isian ongkir
+perjalanan balik di popup penyelesaian memanggil variabel yang tidak
+terdefinisi dan kolomnya tidak ada, sehingga PENYELESAIAN RETUR PASTI GAGAL
+500 bila isian itu terkirim; kolom dikembalikan ke order_return_cases dan
+kiriman ditulis lewat update kasus. Angka lama golden tidak berubah (dataset
+belum menanam nilai ini); penjaga baru `ReturnTripShippingKpiTest` menutup
+kasus bernilai. Perluasan pendukung dalam rangkaian yang sama (additive, tanpa
+mengubah angka lama): kueri Income Detail memuat `return_trip_shipping` per
+pesanan (termasuk baris koreksi periode), sheet Ringkasan Finansial XLSX
+menambah baris beban + JUMLAH BEBAN TOKO, sheet Tabel Pesanan menambah kolom
+di ekor dengan rumus Penjualan Bersih per baris ikut menjumlahkannya, sheet
+Referensi kasus retur menambah kolom, ekspor Tabel Pesanan (OrderExport)
+memperbaiki judul kolom yang salah label dan menambah kolom ongkir balik di
+ekor, drawer layar menambah baris pengurang, dokumen domain rumus diperbarui.
+Expectation diperbarui lewat GOLDEN_UPDATE; versi disamakan
+di ADR ini, komentar FROZEN, test golden, dan berkas expectation.

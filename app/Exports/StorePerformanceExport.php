@@ -516,6 +516,9 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
         $rowCodJnt = $moneyRow('Biaya COD Diteruskan ke J&T', '=-'.ltrim($sum('Biaya COD'), '='), -1 * $num($fin['cod_fee'] ?? 0), false, -1 * $num($fin['cod_fee'] ?? 0), -1 * $num($finPrev['cod_fee'] ?? 0));
         $rowRefund = $moneyRow('Refund Retur', $sum('Refund Retur'), -1 * $num($fin['refund_adjustments'] ?? 0), false, -1 * $num($fin['refund_adjustments'] ?? 0), -1 * $num($finPrev['refund_adjustments'] ?? 0));
         $rowRetShip = $moneyRow('Ongkir Retur (Toko)', $sum('Ongkir Retur (Toko)'), -1 * $num($fin['return_shipping_store'] ?? 0), false, -1 * $num($fin['return_shipping_store'] ?? 0), -1 * $num($finPrev['return_shipping_store'] ?? 0));
+        // Ongkir perjalanan balik (keputusan owner 2026-09-29): beban kas toko,
+        // pengurang Penjualan Bersih, kolomnya ada di Tabel Pesanan.
+        $rowTrip = $moneyRow('Ongkir Perjalanan Balik', $sum('Ongkir Perjalanan Balik'), -1 * $num($fin['return_trip_shipping'] ?? 0), false, -1 * $num($fin['return_trip_shipping'] ?? 0), -1 * $num($finPrev['return_trip_shipping'] ?? 0));
         // Nilai barang pesanan yang ditolak kurir sebelum lunas: pengurang
         // penjualan (barang kembali, transaksi batal). Dibaca dari kolom
         // Tabel Pesanan seperti baris beban lain, supaya SATU sumber angka
@@ -549,11 +552,12 @@ class StorePerformanceSummarySheet extends StorePerformanceTableSheet
                 + $num($f['cod_fee'] ?? 0)
                 + $num($f['refund_adjustments'] ?? 0)
                 + $num($f['return_shipping_store'] ?? 0)
+                + $num($f['return_trip_shipping'] ?? 0)
                 + $num($f['refused_goods_value'] ?? 0)
             );
         };
         [$bebanKolomC, $bebanKolomD] = $pasangan($bebanDari($fin), $bebanDari($finPrev));
-        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowRetShip.')+B'.$rowRetDitolak, $bebanKolomC, $bebanKolomD]);
+        $rowBeban = $push(['JUMLAH BEBAN TOKO', '=SUM(B'.$rowOngkirJnt.':B'.$rowTrip.')+B'.$rowRetDitolak, $bebanKolomC, $bebanKolomD]);
         $this->totalRows[] = $rowBeban;
         $this->registerNumber($rowBeban, 2, '#,##0');
 
@@ -681,7 +685,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'K' => 16, 'L' => 12, 'M' => 15, 'N' => 19, 'O' => 17,
             'P' => 15, 'Q' => 14, 'R' => 16, 'S' => 17, 'T' => 15,
             'U' => 30, 'V' => 24, 'W' => 22, 'X' => 18, 'Y' => 20,
-            'Z' => 18,
+            'Z' => 18, 'AA' => 22,
         ];
     }
 
@@ -700,7 +704,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
             'Uang Sudah Masuk', 'Belum Masuk',
             'Subsidi Ongkir Toko', 'Hemat Pembeli vs Harga Normal',
             'Nama Pelanggan', 'Nomor HP / WA', 'Kota Pengiriman',
-            'Nilai Barang Retur Paket',
+            'Nilai Barang Retur Paket', 'Ongkir Perjalanan Balik',
         ];
     }
 
@@ -735,9 +739,9 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 -1 * $num($row['refund_amount'] ?? 0),
                 -1 * $num($row['return_shipping_store'] ?? 0),
                 // Penjualan Bersih per baris = rumus alur uang. Kolom O, P, Q,
-                // dan Z (nilai barang retur paket) sudah negatif; kolom M
-                // (Biaya COD, positif) dikurangkan.
-                '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}',
+                // Z (nilai barang retur paket), dan AA (ongkir perjalanan balik)
+                // sudah negatif; kolom M (Biaya COD, positif) dikurangkan.
+                '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}+AA{r}',
                 $num($row['paid_amount'] ?? 0),
                 $num($row['outstanding'] ?? 0),
                 $num($row['shipping_subsidy'] ?? 0),
@@ -750,10 +754,11 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 // rumus Penjualan Bersih per baris menjumlahkan kolom beban
                 // tanpa membalik tandanya lagi.
                 -1 * $num($row['refused_goods_value'] ?? 0),
+                -1 * $num($row['return_trip_shipping'] ?? 0),
             ];
 
             $rows[] = $out;
-            for ($c = 7; $c <= 26; $c++) {
+            for ($c = 7; $c <= 27; $c++) {
                 $this->registerNumber($r, $c, '#,##0');
             }
             $this->trackZeroCells($out, $r);
@@ -1138,7 +1143,7 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
         $push(['']);
 
         // ---- V. BIAYA RETUR DITANGGUNG TOKO (payload: kasus retur) ----
-        $block('V. BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur'], 'E');
+        $block('V. BIAYA RETUR DITANGGUNG TOKO', ['Nomor Pesanan', 'Tanggal Selesai', 'Pihak Penyebab', 'Alasan', 'Ongkir Retur (Toko)', 'Ongkir Perjalanan Balik'], 'F');
         $returns = $this->payload['return_shipping_costs'] ?? [];
         $firstData = $r;
         if ($returns === []) {
@@ -1166,9 +1171,11 @@ class StorePerformanceAnalysisSheet extends StorePerformanceTableSheet
                 $guard($party),
                 $guard($rc['reason'] ?? '-'),
                 (float) ($rc['return_shipping_cost'] ?? 0),
+                (float) ($rc['additional_shipping_amount'] ?? 0),
             ];
             $line = $push($row);
             $this->registerNumber($line, 5, '#,##0');
+            $this->registerNumber($line, 6, '#,##0');
             $this->trackZeroCells($row, $line);
         }
         if ($r - 1 >= $firstData) {

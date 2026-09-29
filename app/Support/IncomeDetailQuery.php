@@ -41,7 +41,7 @@ class IncomeDetailQuery
         'gross_revenue', 'shipping_raw', 'jnt_ongkir_assumed',
         'jnt_ongkir_actual', 'jnt_ongkir_selisih', 'shipping_subsidy',
         'shipping_net_paid_by_customer', 'cod_fee', 'refund_amount',
-        'return_shipping_store', 'refused_goods_value', 'net_revenue',
+        'return_shipping_store', 'return_trip_shipping', 'refused_goods_value', 'net_revenue',
         'insurance', 'total_paid_by_customer', 'paid_amount', 'outstanding',
         'items_count', 'total_qty', 'sku_count',
     ];
@@ -124,9 +124,11 @@ class IncomeDetailQuery
                 $row = self::zeroed(self::snapshotRow($order, null));
                 $refund = (float) $order->returnCases->sum('refund_amount');
                 $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');
+                $returnTripShipping = (float) $order->returnCases->sum('additional_shipping_amount');
                 $row['refund_amount'] = $refund;
                 $row['return_shipping_store'] = $returnShippingStore;
-                $row['net_revenue'] = -1 * ($refund + $returnShippingStore);
+                $row['return_trip_shipping'] = $returnTripShipping;
+                $row['net_revenue'] = -1 * ($refund + $returnShippingStore + $returnTripShipping);
 
                 return $row;
             })
@@ -159,6 +161,7 @@ class IncomeDetailQuery
         $codFee = (float) $order->cod_fee_amount;
         $refund = (float) $order->returnCases->sum('refund_amount');
         $returnShippingStore = (float) $order->returnCases->sum('return_shipping_cost');
+        $returnTripShipping = (float) $order->returnCases->sum('additional_shipping_amount');
         $gross = $totalPaidByCustomer;
         // Paket yang ditolak kurir sebelum lunas: nilai pesanannya keluar dari
         // Penjualan Bersih karena tidak ada uang masuk sama sekali. Syaratnya
@@ -166,7 +169,7 @@ class IncomeDetailQuery
         $refused = $order->order_status === 'return_completed' && $order->payment_status !== 'paid'
             ? (float) $order->total_amount
             : 0.0;
-        $net = $gross - $shippingRaw - $codFee - $refund - $returnShippingStore - $refused;
+        $net = $gross - $shippingRaw - $codFee - $refund - $returnShippingStore - $returnTripShipping - $refused;
 
         return [
             'order_number' => $order->order_number,
@@ -193,6 +196,7 @@ class IncomeDetailQuery
             'cod_fee' => $codFee,
             'refund_amount' => $refund,
             'return_shipping_store' => $returnShippingStore,
+            'return_trip_shipping' => $returnTripShipping,
             'refused_goods_value' => $refused,
             'net_revenue' => $net,
             'insurance' => $insurance,

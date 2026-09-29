@@ -16,7 +16,7 @@ Sebelum istilah teknis digunakan, berikut arti dan fungsinya dalam alur toko:
 - **Kasus Retur (`order_return_cases`):** Tabel berkas laporan pengembalian barang yang mencatat alasan, pihak penyebab, status kasus, nilai pengembalian dana, dan biaya kirim pengembalian. Status kasus retur bernilai Terbuka (`open`), Selesai (`completed`), dan Dibatalkan (`cancelled`, penutupan administratif kasus terbuka). Kasus Selesai tidak pernah dihapus fisik; koreksinya dicatat sebagai penutupan administratif (void, kolom `voided_at`) sehingga berhenti dihitung laporan tanpa menghapus riwayat, dan setiap koreksi data meninggalkan jejak audit di tabel `return_case_adjustments` (keputusan owner 2026-09-28).
 - **Item Retur (`order_return_items`):** Rincian produk dan jumlah unit dalam pesanan yang diajukan untuk dikembalikan (`requested_quantity`) serta jumlah fisik yang benar-benar diterima kembali (`returned_quantity`).
 - **Penjualan Gross (`gross_revenue`):** Total seluruh uang belanja yang ditagihkan kepada pembeli pada pesanan yang telah diproses, mencakup harga produk (setelah promo diskon), ongkos kirim pembeli, asuransi, dan biaya layanan Bayar di Tempat (COD), dikurangi nilai voucher toko.
-- **Penjualan Bersih (`net_revenue`):** Pendapatan riil hak milik toko setelah Penjualan Gross dikurangi seluruh beban pihak ketiga dan kerugian retur: tagihan aktual kurir J&T, biaya layanan COD kurir, pengembalian dana (*refund*), ongkir retur toko, dan nilai barang yang ditolak kurir.
+- **Penjualan Bersih (`net_revenue`):** Pendapatan riil hak milik toko setelah Penjualan Gross dikurangi seluruh beban pihak ketiga dan kerugian retur: tagihan aktual kurir J&T, biaya layanan COD kurir, pengembalian dana (*refund*), ongkir retur toko, ongkir perjalanan balik, dan nilai barang yang ditolak kurir.
 - **Pembayaran Diterima (`payments_received`):** Total dana kas riil yang telah benar-benar masuk ke toko (dari transfer bank yang terverifikasi dan pesanan COD yang sudah sampai di tangan pembeli).
 - **COD Belum Selesai (`cod_outstanding`):** Estimasi nilai tagihan COD dari pesanan yang saat ini masih dalam proses penyiapan atau perjalanan kurir (belum berstatus Sampai).
 - **Pengembalian Dana (*Refund*):** Nilai uang yang dikembalikan kepada pembeli atas pesanan lunas yang dibatalkan atau diretur. Di sistem Ragil Aluminium, refund adalah angka pencatatan pengurang laporan keuangan toko, bukan instruksi mutasi otomatis perbankan.
@@ -106,14 +106,15 @@ $$\text{Penjualan Gross} = \text{Nilai Produk (Promo)} - \text{Voucher Toko} + \
 ### 3.3 Rumus Penjualan Bersih Toko (Gross ke Bersih)
 Penjualan Bersih dihitung dengan mengeluarkan dana pihak ketiga dan kerugian retur dari Penjualan Gross:
 
-$$\text{Penjualan Bersih} = \text{Penjualan Gross} - \text{Tagihan J&T} - \text{Biaya COD ke J&T} - \text{Refund Retur} - \text{Ongkir Retur Toko} - \text{Nilai Barang Retur Paket}$$
+$$\text{Penjualan Bersih} = \text{Penjualan Gross} - \text{Tagihan J&T} - \text{Biaya COD ke J&T} - \text{Refund Retur} - \text{Ongkir Retur Toko} - \text{Ongkir Perjalanan Balik} - \text{Nilai Barang Retur Paket}$$
 
 Keterangan pos pengurang toko:
 1. **Tagihan J&T:** Ongkos kirim riil yang ditagihkan oleh J&T Cargo (subsidi ongkir yang diberikan toko ke pembeli sudah otomatis tercermin di sini).
 2. **Biaya COD ke J&T:** Persentase biaya penanganan kurir yang disetor ke J&T Cargo.
 3. **Refund Retur (`refund_amount`):** Dana yang dikembalikan toko kepada pembeli atas pesanan retur.
 4. **Ongkir Retur Toko (`return_shipping_cost`):** Biaya pengiriman balik barang retur yang ditanggung toko akibat barang rusak, salah kirim, atau kebijakan toko. Pos ini **mengurangi Penjualan Bersih**.
-5. **Nilai Barang Retur Paket (`refused_goods_value`):** Khusus paket COD yang ditolak kurir sebelum sampai. Karena barang tidak pernah dibayar pembeli dan tidak ada uang masuk, nilai total pesanannya dikeluarkan dari Penjualan Bersih agar laporan laba tidak mencatat pendapatan fiktif.
+5. **Ongkir Perjalanan Balik (`additional_shipping_amount`, keputusan owner 2026-09-29):** Tagihan J&T untuk perjalanan pengembalian barang ke toko yang mostly ditanggung kas toko, diisi admin saat menyelesaikan kasus retur. Pos ini **mengurangi Penjualan Bersih**, tersimpan di kasus retur yang sama namun fakta yang berbeda dari Ongkir Retur Toko (perjalanan balik, bukan ongkir yang menempel pengiriman awal).
+6. **Nilai Barang Retur Paket (`refused_goods_value`):** Khusus paket COD yang ditolak kurir sebelum sampai. Karena barang tidak pernah dibayar pembeli dan tidak ada uang masuk, nilai total pesanannya dikeluarkan dari Penjualan Bersih agar laporan laba tidak mencatat pendapatan fiktif.
 
 ### 3.4 Garis Waktu Uang & Pelunasan Pesanan Bayar di Tempat (COD)
 Pergerakan status pembayaran pesanan COD:

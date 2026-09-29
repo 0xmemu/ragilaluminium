@@ -2409,6 +2409,7 @@
     },
     "return_shipping_costs": [
         {
+            "additional_shipping_amount": 0,
             "completed_at": "2026-08-18T09:00:00+07:00",
             "fault_party": "other",
             "order_id": 7,
@@ -2417,6 +2418,7 @@
             "return_shipping_cost": 15000
         },
         {
+            "additional_shipping_amount": 0,
             "completed_at": "2026-08-26T10:00:00+07:00",
             "fault_party": "other",
             "order_id": 8,

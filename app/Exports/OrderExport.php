@@ -97,6 +97,7 @@ class OrderExport implements WithMultipleSheets
             'AC' => 'Nilai Refund Pembeli: refund_amount kasus retur selesai',
             'AD' => 'Ongkir Retur Toko: return_shipping_cost kasus retur selesai',
             'AE' => 'Kas Bersih per Produk: kas bersih pesanan (Z - AA - AC - AD; bila dibatalkan 0 - AC - AD) dialokasikan proporsional per subtotal baris. KONSEP TERPISAH dari Penjualan Bersih pada Performa Toko',
+            'AF' => 'Ongkir Perjalanan Balik: additional_shipping_amount kasus retur selesai (keputusan owner 2026-09-29), pengurang Penjualan Bersih di Performa Toko',
         ],
         'rekap' => [
             'G' => 'Total Nilai Normal: H + I',
@@ -145,7 +146,7 @@ class OrderExport implements WithMultipleSheets
                 'items:id,order_id,parent_sku,variant_sku,name,variation_1_name,variation_1_option,variation_2_name,variation_2_option,unit_price,quantity,line_discount,discount_source',
                 'payments:id,order_id,status,paid_at',
                 'shippingRecords:id,order_id,waybill_number,shipping_cost,shipping_freight,shipping_insured_fee,shipping_chargeable_weight_kg,status',
-                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,return_shipping_cost',
+                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,return_shipping_cost,additional_shipping_amount',
             ])
             ->latest('created_at')
             ->latest('id')
@@ -162,6 +163,9 @@ class OrderExport implements WithMultipleSheets
             $runningCase = $order->returnCases->firstWhere('status', 'open');
             $refund = (float) ($completedCase->refund_amount ?? 0);
             $returOngkir = (float) ($completedCase->return_shipping_cost ?? 0);
+            // Ongkir perjalanan balik: tagihan pengembalian J&T yang diisi admin
+            // saat retur selesai (keputusan owner 2026-09-29).
+            $ongkirBalik = (float) ($completedCase->additional_shipping_amount ?? 0);
 
             $returnType = '-';
             if ($runningCase) {
@@ -254,6 +258,7 @@ class OrderExport implements WithMultipleSheets
                 'return_type' => $returnType,
                 'refund' => $refund,
                 'retur_ongkir' => $returOngkir,
+                'ongkir_balik' => $ongkirBalik,
                 'customer_name' => $order->customer_name,
                 'customer_phone' => (string) $order->customer_phone,
                 'address' => trim(($order->shipping_address_line1 ?? '').' '.($order->shipping_address_line2 ?? '')),
@@ -378,7 +383,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         'K' => 12, 'L' => 16, 'M' => 20, 'N' => 18, 'O' => 12,
         'P' => 18, 'Q' => 8, 'R' => 20, 'S' => 24, 'T' => 20,
         'U' => 22, 'V' => 20, 'W' => 20, 'X' => 20, 'Y' => 24,
-        'Z' => 24, 'AA' => 20, 'AB' => 18, 'AC' => 18, 'AD' => 24,
+        'Z' => 24, 'AA' => 20, 'AB' => 18, 'AC' => 18, 'AD' => 24, 'AF' => 24,
         'AE' => 22, 'AF' => 18, 'AG' => 40, 'AH' => 18, 'AI' => 18,
         'AJ' => 22, 'AK' => 18, 'AL' => 12, 'AM' => 16,
     ];
@@ -402,10 +407,11 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         'Voucher Pesanan (Beban Toko)', 'Subsidi Ongkir Toko (Beban Toko)', 'Ongkir Ditanggung Pembeli',
         'Biaya COD Ditanggung Pembeli', 'Asuransi Pengiriman Dibayar Pembeli',
         'Penjualan Gross', 'Pengurangan Nilai Pesanan ke J&T',
-        'Kasus Retur / Alasan', 'Nilai Refund Pembeli', 'Ongkir Retur Tambahan',
+        'Kasus Retur / Alasan', 'Nilai Refund Pembeli', 'Ongkir Retur Toko',
         'Kas Bersih per Produk',
         'Nama Pelanggan', 'No. Telepon / WA', 'Alamat Pengiriman', 'Kelurahan / Desa',
         'Kecamatan', 'Kabupaten / Kota', 'Provinsi', 'Kode Pos',
+        'Ongkir Perjalanan Balik',
     ];
 
     public function __construct(protected array $blocks)
@@ -417,7 +423,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
         $this->firstBodyRow = 3;
         // Kolom uang: angka polos #,##0 (pivot-friendly). Berat (I) terpisah
         // karena memakai desimal (2 angka) sesuai berat tagih pengiriman.
-        $this->currencyColumns = ['N', 'O', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AC', 'AD', 'AE'];
+        $this->currencyColumns = ['N', 'O', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AC', 'AD', 'AE', 'AF'];
         $this->currencyFormat = '#,##0';
         // Nomor pesanan, nomor resi J&T, SKU varian, telepon, dan kode pos
         // adalah identitas: harus teks, bukan angka.
@@ -476,6 +482,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
                 "={$netOrder}*{$share}",
                 $b['customer_name'], $b['customer_phone'], $b['address'], $b['village'],
                 $b['district'], $b['city'], $b['province'], $b['postal'],
+                $b['ongkir_balik'],
             ];
             $this->trackZeroCells($out[count($out) - 1], $r);
         }
@@ -836,7 +843,8 @@ class OrderGuideSheet implements FromArray, WithEvents, WithTitle
             ['25. Pengurangan Nilai Pesanan ke J&T', 'Total saldo yang dipotong oleh pihak J&T: [Ongkir Total ke J&T] + [Biaya COD] + [Asuransi Pengiriman].'],
             ['26. Kasus Retur / Alasan (return_case)', 'Keterangan alasan kendala pesanan (misal: Refund (rusak), Pesanan dibatalkan, atau -).'],
             ['27. Nilai Refund Pembeli (refund_amount)', 'Uang yang dikembalikan ke pembeli jika terjadi klaim barang rusak atau batal.'],
-            ['28. Ongkir Retur Tambahan (additional_shipping)', 'Biaya kirim balik dari pembeli ke toko yang dibebankan ke toko jika terjadi retur komplain.'],
+            ['28. Ongkir Retur Toko (return_shipping_cost)', 'Ongkir pengembalian barang yang ditanggung toko untuk kasus retur selesai. Mengurangi Penjualan Bersih di Performa Toko.'],
+            ['35. Ongkir Perjalanan Balik (additional_shipping_amount)', 'Tagihan pengembalian barang dari J&T yang ditanggung kas toko, diisi admin saat retur selesai. Mengurangi Penjualan Bersih di Performa Toko.'],
             ['29. Kas Bersih per Produk', 'Kontribusi kas bersih pada baris produk tersebut: [Kas Bersih Toko pesanan] dialokasikan proporsional terhadap porsi [Subtotal Penjualan Produk] baris itu dari total subtotal pesanan. Jumlahkan seluruh baris satu pesanan = KAS BERSIH TOKO pesanan di Sheet 2 (Rekap). Pesanan Dibatalkan: kerugian (-Refund -Ongkir Retur) dialokasikan dengan cara yang sama. Kolom ini aman di-SUM. Nama Kas Bersih sengaja dipisah dari Penjualan Bersih pada halaman Performa Toko karena rumus dan cakupannya memang berbeda.'],
             ['30. Nama Pelanggan (customer_name)', 'Nama pembeli / penerima paket yang tertera pada resi dan pesanan.'],
             ['31. No. Telepon / WA (customer_phone)', 'Nomor kontak pelanggan (disimpan dalam format Teks agar angka 0 dan digit panjang tidak terpotong atau berubah eksponensial).'],
