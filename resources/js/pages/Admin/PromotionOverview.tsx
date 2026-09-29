@@ -53,6 +53,29 @@ const STATUS_LABELS: Record<string, string> = {
   finished: "Selesai",
 }
 
+/**
+ * Bahasa visual per jenis kampanye, disamakan dengan kartu ringkasan di atas
+ * halaman ini: Flash Sale memakai aksen sale + ikon kilat, Diskon Reguler
+ * memakai aksen primary + ikon persen. Dipakai supaya kedua jenis tidak
+ * tertukar saat berdampingan dalam satu grid.
+ */
+const CAMPAIGN_ACCENTS: Record<string, { icon: string; chip: string; text: string; stripe: string; ring: string }> = {
+  flash_sale: {
+    icon: "zap",
+    chip: "bg-sale/10 text-sale",
+    text: "text-sale",
+    stripe: "bg-sale",
+    ring: "ring-sale/25",
+  },
+  store: {
+    icon: "ticket-percent",
+    chip: "bg-primary/10 text-primary",
+    text: "text-primary",
+    stripe: "bg-primary/70",
+    ring: "ring-primary/20",
+  },
+}
+
 function formatDateTime(iso: string | null): string {
   if (!iso) return "tanpa batas"
   const date = new Date(iso)
@@ -209,14 +232,28 @@ export default function PromotionOverview({
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {runningCampaigns.map((campaign) => (
-                <Card key={campaign.id} className={cn("border border-border bg-card p-4", (campaign.live || campaign.scheduled) ? "ring-1 ring-primary/20" : "")}>
+              {runningCampaigns.map((campaign) => {
+                const accent = CAMPAIGN_ACCENTS[campaign.type] ?? CAMPAIGN_ACCENTS.store
+                return (
+                <Card
+                  key={campaign.id}
+                  className={cn(
+                    "relative overflow-hidden border border-border bg-card p-4 pl-5",
+                    (campaign.live || campaign.scheduled) ? cn("ring-1", accent.ring) : "",
+                  )}
+                >
+                  <span className={cn("absolute inset-y-0 left-0 w-1", accent.stripe)} aria-hidden="true" />
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <Link href={campaign.detail_href} className="font-semibold text-foreground hover:text-primary hover:underline">
-                        {campaign.name}
-                      </Link>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{campaign.type_label}</p>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-md", accent.chip)}>
+                        <Icon name={accent.icon} className="size-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <Link href={campaign.detail_href} className="font-semibold text-foreground hover:text-primary hover:underline">
+                          {campaign.name}
+                        </Link>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{campaign.type_label}</p>
+                      </div>
                     </div>
                     <StatusBadge
                       status={campaign.live ? "active" : campaign.scheduled ? "scheduled" : campaign.status}
@@ -225,7 +262,7 @@ export default function PromotionOverview({
                     />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span className="font-semibold tabular-nums text-primary">{campaign.discount_percent}%</span>
+                    <span className={cn("font-semibold tabular-nums", accent.text)}>{campaign.discount_percent}%</span>
                     <span>{formatDateTime(campaign.starts_at)} → {formatDateTime(campaign.ends_at)}</span>
                     <span>{formatNumber(campaign.products_count)} produk</span>
                   </div>
@@ -234,7 +271,8 @@ export default function PromotionOverview({
                     <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
                   </Link>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           )}
           {runningCampaigns.length === 0 && campaigns.length > 0 ? (
