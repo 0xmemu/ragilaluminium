@@ -1,7 +1,6 @@
 import { Head, Link } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -141,8 +140,6 @@ export default function PromotionOverview({
   vouchersUrl,
   bannersUrl,
   announcementsUrl,
-  createStoreUrl,
-  createFlashSaleUrl,
 }: {
   title: string
   description: string
@@ -162,8 +159,6 @@ export default function PromotionOverview({
   vouchersUrl: string
   bannersUrl: string
   announcementsUrl: string
-  createStoreUrl: string
-  createFlashSaleUrl: string
 }) {
   // Ringkasan hanya menampilkan kampanye yang berjalan atau terjadwal.
   // Draft/diakhiri/selesai dikelola di tab Diskon Reguler dan Flash Sale.
@@ -173,22 +168,6 @@ export default function PromotionOverview({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="secondary">
-            <Link href={createFlashSaleUrl}>
-              <Icon name="zap" className="size-4" aria-hidden="true" />
-              Buat Flash Sale
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href={createStoreUrl}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Buat Diskon Reguler
-            </Link>
-          </Button>
-        </div>
-      }
     >
       <Head title={`${title} | Admin`} />
 
