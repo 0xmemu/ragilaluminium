@@ -387,6 +387,12 @@ class OrderController extends Controller
             ->values()
             ->all();
 
+        // Bukaan drawer Lacak Pesanan lewat deep-link (owner 2026-09-28):
+        // daftar Pengiriman dan URL resi lama mengarah ke sini dengan penanda
+        // `lacak` supaya drawer lacaknya langsung terbuka, menggantikan halaman
+        // detail resi yang sudah dihapus.
+        $openTracking = $request->boolean('lacak');
+
         // Koreksi kasus retur (instruksi owner 2026-09-28): id kasus yang
         // dibuka lewat deep-link GET .../returns/{returnCase}/edit, plus
         // seluruh jejak audit koreksi/void untuk pesanan ini. Jejak dibaca
@@ -609,6 +615,7 @@ class OrderController extends Controller
             'returnEligibility' => $this->returnEligibility($order),
             'editReturnCaseId' => $editReturnCaseId,
             'returnAdjustments' => $returnAdjustments,
+            'openTracking' => $openTracking,
             'shippingActions' => [
                 'createUrl' => route('admin.orders.shipping.store', $order),
                 'refreshUrl' => route('admin.orders.shipping.refresh', $order),
@@ -1830,7 +1837,7 @@ class OrderController extends Controller
             $variant->variation_2_option
                 ? trim(($variant->variation_2_name ? $variant->variation_2_name.': ' : '').$variant->variation_2_option)
                 : null,
-        ])->filter()->implode(' \u00b7 ');
+        ])->filter()->implode(' · ');
     }
 
     /**

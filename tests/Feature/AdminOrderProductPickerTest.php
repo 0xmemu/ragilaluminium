@@ -106,6 +106,30 @@ class AdminOrderProductPickerTest extends TestCase
         $this->assertSame([$aktif->variant_sku], array_column($hasil[0]['variants'], 'variant_sku'));
     }
 
+    public function test_label_varian_memakai_titik_tengah_bukan_escape_mentah(): void
+    {
+        $admin = $this->admin();
+        $product = $this->createVisibleProduct(['name' => 'Produk Label Varian']);
+        $product->variants()->delete();
+
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => $product->parent_sku.'-WARNA',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Hitam',
+            'variation_2_name' => 'Kaca',
+            'variation_2_option' => 'Kaca Es',
+            'price' => 1200000,
+            'stock' => 4,
+            'status' => 'active',
+        ]);
+
+        $label = $this->produkDari($admin, 'Produk Label Varian')[0]['variants'][0]['label'];
+
+        $this->assertSame('Warna: Hitam · Kaca: Kaca Es', $label);
+        $this->assertStringNotContainsString('\\u', $label, 'label tidak boleh memuat escape mentah');
+    }
+
     public function test_tamu_tidak_bisa_membuka_pemilih_produk(): void
     {
         $this->get(route('admin.orders.product-picker'))->assertRedirect();
