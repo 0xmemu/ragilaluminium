@@ -47,6 +47,9 @@ interface SalesRow {
   product_status: string | null
   qty: number
   orders: number
+  // Keterlibatan storefront pada periode kampanye.
+  views: number
+  clicks: number
   revenue: number
   discount: number
   last_sold_at: string | null
@@ -232,11 +235,12 @@ export default function PromotionDetail({
               <CardTitle>Produk dalam kampanye</CardTitle>
               <p className="text-xs text-muted-foreground">
                 Diurutkan dari yang paling banyak terjual. Produk tanpa penjualan tetap tampil di bawah dengan angka nol.
+                Angka dilihat dan diklik mengikuti periode kampanye yang sama dengan penjualan.
               </p>
             </CardHeader>
             <CardContent className="px-0 pb-0">
               <div className="overflow-x-auto">
-                <Table className="min-w-[56rem]">
+                <Table className="min-w-[62rem]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12 text-right">#</TableHead>
@@ -244,7 +248,8 @@ export default function PromotionDetail({
                       <TableHead>Model</TableHead>
                       <TableHead className="text-right">Terjual</TableHead>
                       <TableHead className="text-right">Pesanan</TableHead>
-                      <TableHead className="text-right">Nilai</TableHead>
+                      <TableHead className="text-right">Dilihat</TableHead>
+                      <TableHead className="text-right">Diklik</TableHead>
                       <TableHead>Terakhir terjual</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -277,10 +282,11 @@ export default function PromotionDetail({
                         <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
                           {formatNumber(row.orders)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          <span className={row.revenue > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>
-                            {formatCurrency(row.revenue)}
-                          </span>
+                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
+                          {formatNumber(row.views)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
+                          {formatNumber(row.clicks)}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {formatDateOnly(row.last_sold_at)}
