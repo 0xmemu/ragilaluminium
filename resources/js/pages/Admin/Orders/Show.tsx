@@ -13,7 +13,13 @@ import { Checkbox } from "@/components/admin/ui/checkbox"
 import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
-import { ReturnCreateForm, RETURN_REASONS } from "@/components/admin/order-return-create-form"
+import { RETURN_REASONS } from "@/components/admin/order-return-create-form"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/admin/ui/dialog"
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
@@ -675,7 +681,9 @@ function ReturnCasePanel({
     >
   >({})
   const [editReplacement, setEditReplacement] = React.useState<Record<number, boolean>>({})
-  const tampilkanForm = eligibility?.eligible === true
+  // Kasus retur yang popup penyelesaiannya sedang terbuka (owner 2026-09-29:
+  // langkah penyelesaian retur juga lewat popup, bukan form inline).
+  const [kasusSelesaiTerbuka, setKasusSelesaiTerbuka] = React.useState<number | null>(null)
   // Deep-link GET .../returns/{returnCase}/edit: kasus tujuan form koreksi,
   // dihitung sebelum state supaya initializer bisa memakainya tanpa effect.
   const idKasusDariUrl = editReturnCaseId ?? 0
@@ -766,6 +774,14 @@ function ReturnCasePanel({
     setCompletionError(null)
     router.post(routeUrl("admin.orders.returns.complete", { order: order.id, returnCase: caseItem.id }), payload, {
       preserveScroll: true,
+      onSuccess: () => {
+        setKasusSelesaiTerbuka(null)
+        setCompletion((current) => {
+          const next = { ...current }
+          delete next[caseItem.id]
+          return next
+        })
+      },
       onError: (errors) => {
         const pesan = Object.values(errors).filter(Boolean)
         setCompletionError(
@@ -857,26 +873,6 @@ function ReturnCasePanel({
             </p>
           ) : null}
 
-          {/* Kebijakan resmi yang dilampaui. Keputusan tetap di tangan admin
-              (skema full manual), jadi ditampilkan sebagai peringatan, bukan
-              sebagai penolakan. Termasuk peringatan retur manual yang pasti
-              sudah lewat jendela 48 jam. */}
-          {tampilkanForm && (eligibility?.warnings?.length ?? 0) > 0 ? (
-            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
-              <p className="text-xs font-semibold text-warning">
-                Perhatian sebelum mencatat retur
-              </p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                {(eligibility?.warnings ?? []).map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Pastikan sudah disepakati dengan pelanggan lewat WhatsApp sebelum dicatat.
-              </p>
-            </div>
-          ) : null}
-
           {cases.map((item) => (
             <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -904,6 +900,13 @@ function ReturnCasePanel({
               {item.status === "open" ? (
                 <div className="mt-3 border-t border-border pt-3">
                   {completion[item.id] ? (
+                    <Dialog open={kasusSelesaiTerbuka === item.id} onOpenChange={(next) => (next ? undefined : setKasusSelesaiTerbuka(null))}>
+                      <DialogContent className="w-[min(calc(100vw-2rem),56rem)] bg-card text-card-foreground">
+                        <DialogTitle>Selesaikan retur kasus #{item.id}</DialogTitle>
+                        <DialogDescription>
+                          Resolusi dan nilai penyelesaian dikunci setelah disimpan, pesanan berpindah ke Retur Selesai.
+                        </DialogDescription>
+                        <div className="max-h-[70vh] overflow-y-auto pr-1">
                     <form
                       ref={(node) => {
                         formSelesaiRef.current[item.id] = node
@@ -1100,9 +1103,20 @@ function ReturnCasePanel({
                         onConfirm={() => formSelesaiRef.current[item.id]?.requestSubmit()}
                       />
                     </form>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => openCompletion(item)}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          openCompletion(item)
+                          setKasusSelesaiTerbuka(item.id)
+                        }}
+                      >
                         Selesaikan retur
                       </Button>
                       {/* Penutupan administratif kasus terbuka: alasan wajib,
@@ -1360,12 +1374,6 @@ function ReturnCasePanel({
             </div>
           ))}
 
-          {tampilkanForm ? (
-            <ReturnCreateForm
-              orderId={order.id}
-              items={order.items}
-            />
-          ) : null}
         </div>
       </SectionCard>
     </div>
@@ -2173,15 +2181,10 @@ export default function OrderShow({
 
       {(() => {
         const cases = order.return_cases ?? returnCases
-        const hasActiveCase = cases.some((c) => c.status !== "resolved" && c.status !== "rejected")
-        // Panel wajib muncul untuk SETIAP pesanan Sampai dan setiap pesanan yang
-        // punya kasus aktif. Dulu panel disembunyikan saat tidak memenuhi syarat,
-        // sehingga tombol "Catat Retur" melompat ke bagian kosong dan alasan
-        // penolakannya tidak pernah terbaca admin.
-        const showPanel =
-          hasActiveCase ||
-          order.order_status === "delivered" ||
-          order.order_status === "return_in_process"
+        // Pencatatan retur kini hanya lewat popup di daftar pesanan (owner
+        // 2026-09-29), jadi panel ini hanya tampil saat pesanan punya kasus
+        // retur; pesanan Sampai tanpa kasus tidak menampilkan judul kosong.
+        const showPanel = cases.length > 0
         // Pesanan di luar Sampai tidak menampilkan blok retur sama sekali
         // (instruksi owner 2026-09-28: pesanan Selesai tidak perlu info retur).
         if (!showPanel) return null
