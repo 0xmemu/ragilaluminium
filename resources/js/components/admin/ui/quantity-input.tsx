@@ -15,12 +15,15 @@ import { cn } from "@/lib/utils"
  * ada yang bertombol dan ada yang hanya isian angka tanpa tombol).
  *
  * Aturan yang dipegang:
- * - Tombol memakai `variant="outline"` dan `size="icon-sm"` dari kit admin, jadi
- *   satu baris form tetap sejajar dengan kontrol lain (ADR-022).
- * - Batas `min` dan `max` ditegakkan komponen ini, bukan pemanggil, supaya
+ * - Tombol memakai variant outline dan ukuran icon dari kit admin. Ukuran icon
+ *   (h-9) sengaja dipilih supaya tingginya PERSIS sama dengan isian angka di
+ *   sebelahnya; ukuran icon-sm lebih pendek 3,5px sehingga barisnya terlihat
+ *   bergerigi. Tinggi h-9 juga sama dengan kontrol field lain, jadi satu baris
+ *   form tetap sejajar (ADR-022).
+ * - Batas min dan max ditegakkan komponen ini, bukan pemanggil, supaya
  *   perilakunya sama di semua tempat, termasuk saat angka diketik langsung.
- * - `label` dipakai tombol untuk menyebut apa yang ditambah atau dikurangi
- *   (mis. "jumlah unit retur"), dan `ariaLabel` menyebut barisnya karena satu
+ * - label dipakai tombol untuk menyebut apa yang ditambah atau dikurangi
+ *   (mis. "jumlah unit retur"), dan ariaLabel menyebut barisnya karena satu
  *   halaman bisa memuat beberapa kontrol jumlah sekaligus.
  */
 export function QuantityInput({
@@ -63,7 +66,7 @@ export function QuantityInput({
       <Button
         type="button"
         variant="outline"
-        size="icon-sm"
+        size="icon"
         disabled={kurangNonaktif}
         onClick={() => terapkan(value - 1)}
         aria-label={`Kurangi ${label}`}
@@ -84,7 +87,7 @@ export function QuantityInput({
       <Button
         type="button"
         variant="outline"
-        size="icon-sm"
+        size="icon"
         disabled={tambahNonaktif}
         onClick={() => terapkan(value + 1)}
         aria-label={`Tambah ${label}`}
