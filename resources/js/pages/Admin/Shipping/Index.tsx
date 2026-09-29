@@ -33,7 +33,6 @@ export interface ShippingItem {
   /** Tautan ke drawer Lacak Pesanan di detail pesanan terkait (`?lacak=1`). */
   track_href: string
   order_href: string
-  refresh_url: string
 }
 
 export interface ShippingSummary {
@@ -90,7 +89,6 @@ export default function ShippingIndex({
   records,
 }: ShippingIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
-  const [busyRowId, setBusyRowId] = React.useState<number | null>(null)
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
   const [rangeTo, setRangeTo] = React.useState(initialDateTo)
@@ -122,18 +120,6 @@ export default function ShippingIndex({
       date_from: rangeFrom || undefined,
       date_to: rangeTo || undefined,
     })
-  }
-
-  function refreshSingle(item: ShippingItem) {
-    setBusyRowId(item.id)
-    router.post(
-      item.refresh_url,
-      {},
-      {
-        preserveScroll: true,
-        onFinish: () => setBusyRowId(null),
-      },
-    )
   }
 
   const actions = (
@@ -462,22 +448,6 @@ export default function ShippingIndex({
                     {/* Kolom 7: Aksi (Rata Kanan) */}
                     <td className="px-4 py-3 text-right align-middle">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          disabled={busyRowId === item.id}
-                          onClick={() => refreshSingle(item)}
-                          className="inline-flex items-center gap-1 text-xs"
-                          title="Perbarui status dari J&T Cargo"
-                        >
-                          <Icon
-                            name="refresh"
-                            className={cn("size-3", busyRowId === item.id ? "animate-spin" : "")}
-                            aria-hidden="true"
-                          />
-                          <span>{busyRowId === item.id ? "Memuat..." : "Refresh"}</span>
-                        </Button>
                         <Button asChild variant="secondary" size="xs">
                           <Link href={item.track_href}>Lacak</Link>
                         </Button>

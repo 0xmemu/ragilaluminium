@@ -133,7 +133,6 @@ class ShippingRecordController extends Controller
                     ? route('admin.orders.show', ['order' => $r->order_id, 'lacak' => 1])
                     : route('admin.shipping.index'),
                 'order_href' => $r->order_id ? route('admin.orders.show', $r->order_id) : '#',
-                'refresh_url' => route('admin.shipping.refresh', $r),
             ];
         });
 
