@@ -129,8 +129,25 @@ class InstallationGalleryController extends Controller
                 return str_contains(mb_strtolower((string) $item['label']), $needle)
                     || str_contains(mb_strtolower((string) $item['category']), $needle);
             }))
-            ->when($sort === 'latest', fn ($collection) => $collection->sortByDesc('label')->values())
-            ->when($sort !== 'latest', fn ($collection) => $collection->sortBy([['sort_order'], ['label']])->values())
+            // Grup yang masih punya media tampil (Aktif) selalu di atas grup
+            // Diarsipkan, menirukan logika urutan Model Produk dan Sub Model
+            // (keputusan owner 2026-09-29). Konsekuensinya: karena payload simpan
+            // urutan menomori baris menurut posisinya pada daftar yang tampil,
+            // grup yang diarsipkan otomatis menerima nomor paling besar.
+            ->sort(function (array $a, array $b) use ($sort): int {
+                $bucket = ($a['visibility'] === 'visible' ? 0 : 1) <=> ($b['visibility'] === 'visible' ? 0 : 1);
+
+                if ($bucket !== 0) {
+                    return $bucket;
+                }
+
+                if ($sort === 'latest') {
+                    return strcmp((string) $b['label'], (string) $a['label']);
+                }
+
+                return ((int) $a['sort_order'] <=> (int) $b['sort_order'])
+                    ?: strcmp((string) $a['label'], (string) $b['label']);
+            })
             ->values();
 
         return Inertia::render('Admin/InstallationGallery/Index', [
@@ -436,7 +453,18 @@ class InstallationGalleryController extends Controller
             }
         });
 
-        ActivityLogService::record('installation_group.reordered', 'product_media', null, ['count' => count($validated['rows'])], $request->user()?->id);
+        // Log aksi massal memakai entitas HALAMAN (cms_page + id halaman hasil
+        // pemasangan), menirukan pola reorder massal Apa Kata / FAQ. Sebelumnya
+        // entitasnya product_media dengan id kosong, dan kolom entity_id NOT NULL
+        // sehingga penyimpanan urutan gagal 500 setelah transaksinya ter-commit
+        // (urutan sebenarnya tersimpan, tapi admin melihat halaman galat).
+        ActivityLogService::record(
+            'installation_group.reordered',
+            'cms_page',
+            InstallationPageSettings::pageId(),
+            ['count' => count($validated['rows'])],
+            $request->user()?->id,
+        );
 
         return back()->with('success', 'Urutan grup hasil pemasangan berhasil disimpan.');
     }

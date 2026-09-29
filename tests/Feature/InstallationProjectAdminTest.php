@@ -137,6 +137,143 @@ class InstallationProjectAdminTest extends TestCase
             );
     }
 
+    /**
+     * Kontrak owner 2026-09-29: urutan daftar grup Hasil Pemasangan menirukan
+     * logika Model Produk dan Sub Model, yaitu grup yang masih tampil di toko
+     * selalu di atas grup yang diarsipkan. Nomor urut tersimpan tidak diubah.
+     */
+    public function test_grup_diarsipkan_jatuh_ke_bawah_walau_nomor_urutnya_lebih_kecil(): void
+    {
+        $admin = $this->admin();
+
+        // Grup AKTIF sengaja diberi nomor urut besar, grup ARSIP nomor kecil:
+        // kalau urutan masih murni sort_order, grup arsip akan muncul lebih dulu.
+        $modelAktif = $this->modelDenganUrutan('JENDELA', 'KACA_MATI', 'Jendela Aluminium Kaca Mati', 50);
+        $modelArsip = $this->modelDenganUrutan('BOVEN', 'JUNGKIT', 'Boven Aluminium Jungkit', 1);
+
+        $this->grupDenganMedia($modelAktif, 'AKTIF', 'visible');
+        $this->grupDenganMedia($modelArsip, 'ARSIP', 'archived');
+
+        $this->actingAs($admin)
+            ->get(route('admin.hasil-pemasangan.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('projects.data', 2)
+                ->where('projects.data.0.visibility', 'visible')
+                ->where('projects.data.0.model', 'KACA_MATI')
+                ->where('projects.data.1.visibility', 'archived')
+                ->where('projects.data.1.model', 'JUNGKIT'));
+
+        // Tab status menyaring, tapi urutan kelompok tetap sama.
+        $this->actingAs($admin)
+            ->get(route('admin.hasil-pemasangan.index', ['status' => 'all']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('projects.data.0.visibility', 'visible'));
+
+        $this->assertSame(50, $modelAktif->fresh()->installation_sort_order);
+        $this->assertSame(1, $modelArsip->fresh()->installation_sort_order);
+    }
+
+    /**
+     * Simpan urutan menulis nomor untuk semua grup yang dikirim (tab Semua),
+     * termasuk grup arsip, tetapi penampilan tetap menaruh grup arsip di bawah
+     * sehingga arsip otomatis memegang nomor paling besar.
+     */
+    public function test_simpan_urutan_menulis_nomor_semua_grup_dan_arsip_tetap_di_bawah(): void
+    {
+        $admin = $this->admin();
+
+        $modelAktif = $this->modelDenganUrutan('JENDELA', 'KACA_MATI', 'Jendela Aluminium Kaca Mati', 50);
+        $modelArsip = $this->modelDenganUrutan('BOVEN', 'JUNGKIT', 'Boven Aluminium Jungkit', 1);
+
+        $this->grupDenganMedia($modelAktif, 'AKTIF', 'visible');
+        $this->grupDenganMedia($modelArsip, 'ARSIP', 'archived');
+
+        // Admin sengaja menaruh grup ARSIP di posisi pertama.
+        $this->actingAs($admin)
+            ->put(route('admin.hasil-pemasangan.reorder'), [
+                'rows' => [
+                    ['key' => 'model|BOVEN|JUNGKIT'],
+                    ['key' => 'model|JENDELA|KACA_MATI'],
+                ],
+            ])
+            ->assertRedirect();
+
+        // Nomor urut tersimpan menuruti payload (arsip dapat nomor terkecil).
+        $this->assertSame(1, $modelArsip->fresh()->installation_sort_order);
+        $this->assertSame(2, $modelAktif->fresh()->installation_sort_order);
+
+        // Penampilan tetap menaruh grup aktif di atas grup arsip.
+        $this->actingAs($admin)
+            ->get(route('admin.hasil-pemasangan.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('projects.data.0.visibility', 'visible')
+                ->where('projects.data.1.visibility', 'archived'));
+
+        // Log aksi massal wajib tersimpan dengan entitas ber-id (dulu id kosong
+        // dan kolom entity_id NOT NULL, sehingga simpan urutan gagal 500).
+        $log = \App\Models\EventLog::query()->where('event_type', 'installation_group.reordered')->latest('id')->first();
+        $this->assertNotNull($log, 'log reorder harus tersimpan');
+        $this->assertSame('cms_page', $log->entity_type);
+        $this->assertGreaterThan(0, (int) $log->entity_id);
+    }
+
+    /**
+     * Satu grup (model produk) lengkap dengan produk, varian aktif, dan satu
+     * media hasil pemasangan. SKU dibuat unik per grup karena kolom parent_sku
+     * dan variant_sku unik, sementara helper product() bawaan memakai SKU tetap.
+     */
+    /**
+     * Model CMS dengan nomor urut hasil pemasangan. Kolom
+     * installation_sort_order tidak ada di $fillable CmsModelProduct, jadi
+     * diisi lewat query builder, sama seperti jalur reorder di controller.
+     */
+    protected function modelDenganUrutan(string $kategori, string $model, string $nama, int $urutan): CmsModelProduct
+    {
+        $row = CmsModelProduct::create([
+            'name' => $nama,
+            'product_category' => $kategori,
+            'product_model' => $model,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        CmsModelProduct::query()->whereKey($row->id)->update(['installation_sort_order' => $urutan]);
+
+        return $row->fresh();
+    }
+
+    protected function grupDenganMedia(CmsModelProduct $model, string $suffix, string $visibility): Product
+    {
+        $product = Product::create([
+            'name' => 'Produk '.$model->product_model.' '.$suffix,
+            'parent_sku' => 'RA-GRUP-'.$suffix,
+            'product_category' => $model->product_category,
+            'product_model' => $model->product_model,
+            'status' => 'active',
+        ]);
+
+        \App\Models\ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'RA-GRUP-'.$suffix.'-V1',
+            'price' => 500000,
+            'stock' => 10,
+            'status' => 'active',
+        ]);
+
+        ProductMedia::create([
+            'product_id' => $product->id,
+            'is_installation' => true,
+            'stored_url' => 'https://example.com/'.$suffix.'.jpg',
+            'position' => 100,
+            'visibility' => $visibility,
+            'status' => 'downloaded',
+        ]);
+
+        return $product;
+    }
+
     public function test_admin_can_view_create_form(): void
     {
         $admin = $this->admin();
