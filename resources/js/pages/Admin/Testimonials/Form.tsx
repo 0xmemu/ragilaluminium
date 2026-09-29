@@ -1,7 +1,9 @@
+import * as React from "react"
 import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
+import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -17,10 +19,28 @@ interface TestimonialRecord {
   product_id?: number | null
   image_url?: string | null
   image_urls?: string[] | null
+  /** Semua foto ulasan berurutan, foto pertama = gambar utama (dari imagesPayload()). */
+  photos?: string[] | null
   sort_order: number
   published: boolean
   author_type?: string
   moderation_status?: string
+}
+
+/**
+ * Satu foto pada daftar foto ulasan.
+ *
+ * `kind: "library"` berarti foto dipilih dari Media Library dan dikirim sebagai
+ * id aset (server yang menyelesaikan URL-nya, jadi URL basi tidak tersimpan).
+ * `kind: "url"` berarti URL tempelan admin atau foto lama yang belum punya
+ * aset, dikirim apa adanya.
+ */
+type PhotoRow = {
+  key: string
+  kind: "library" | "url"
+  url: string
+  assetId?: string
+  label?: string
 }
 
 const DEFAULT_SOURCE_LABELS: Record<string, string> = {
@@ -36,6 +56,7 @@ export default function TestimonialForm({
   sources,
   sourceLabels,
   intent = "website",
+  maxPhotos = 10,
   submitUrl,
   indexUrl,
   backUrl,
@@ -46,6 +67,8 @@ export default function TestimonialForm({
   sources: string[]
   sourceLabels?: Record<string, string>
   intent?: "marketplace" | "website"
+  /** Batas jumlah foto ulasan; server memakai batas yang sama. */
+  maxPhotos?: number
   submitUrl: string
   indexUrl: string
   backUrl?: string | null
@@ -61,9 +84,6 @@ export default function TestimonialForm({
     source: string
     location: string
     product_id: string
-    image_url: string
-    image_urls: string
-    image: File | null
     sort_order: number
     published: boolean
     moderation_status: string
@@ -73,20 +93,76 @@ export default function TestimonialForm({
     rating: testimonial?.rating?.toString() ?? "",
     // Mode ulasan website WAJIB mulai dari "website". Sebelumnya nilai awal
     // diambil dari pilihan pertama daftar sumber (urutan model: Shopee lebih
-    // dulu), sehingga tombol Tambah membuka form dalam wujud screenshot
+    // dulu), sehingga form "Tambah ulasan" terbuka dalam wujud screenshot
     // marketplace: gambar jadi wajib dan hasilnya masuk tab Apa Kata Pelanggan.
     source: testimonial?.source ?? (isMarketplaceIntent ? sources[0] ?? "shopee" : "website"),
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
-    image_url: testimonial?.image_url ?? "",
-    image_urls: testimonial?.image_urls?.join("\n") ?? "",
-    image: null,
     sort_order: testimonial?.sort_order ?? 0,
-    published: testimonial?.published ?? false,
+    published: testimonial?.published ?? isMarketplaceIntent,
     moderation_status: testimonial?.moderation_status ?? "approved",
   })
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
+
+  // Daftar foto ulasan (permintaan owner 2026-09-29: satu ulasan boleh punya
+  // banyak foto dari Media Library, bukan hanya satu). Urutan daftar = urutan
+  // tampil; foto pertama adalah gambar utama yang dipakai kartu ringkas.
+  const nomorFoto = React.useRef(0)
+  const [photos, setPhotos] = React.useState<PhotoRow[]>(() =>
+    (testimonial?.photos ?? [])
+      .filter((url): url is string => Boolean(url))
+      .map((url) => ({ key: `awal-${url}`, kind: "url" as const, url })),
+  )
+  const [urlBaru, setUrlBaru] = React.useState("")
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+
+  const photosPenuh = photos.length >= maxPhotos
+  // Galat foto datang dengan kunci yang dikirim server (photos/image_url/image),
+  // sedangkan `photos` dirakit saat submit sehingga bukan kunci data form.
+  const galatForm = form.errors as Record<string, string | undefined>
+  const galatFoto = galatForm.photos ?? galatForm.image_url ?? galatForm.image
+
+  function tambahDariLibrary(media: PickedMedia[]) {
+    if (media.length === 0) return
+    setPhotos((current) => {
+      const adaId = new Set(current.map((row) => row.assetId).filter(Boolean))
+      const baru = media
+        .filter((asset) => !adaId.has(String(asset.assetId)))
+        .map((asset) => {
+          nomorFoto.current += 1
+          return {
+            key: `lib-${asset.assetId}-${nomorFoto.current}`,
+            kind: "library" as const,
+            url: asset.thumbUrl,
+            assetId: String(asset.assetId),
+            label: asset.label,
+          }
+        })
+      return [...current, ...baru].slice(0, maxPhotos)
+    })
+  }
+
+  function tambahUrl() {
+    const url = urlBaru.trim()
+    if (url === "" || photosPenuh) return
+    nomorFoto.current += 1
+    setPhotos((current) => [...current, { key: `url-${nomorFoto.current}`, kind: "url", url }])
+    setUrlBaru("")
+  }
+
+  function hapusFoto(key: string) {
+    setPhotos((current) => current.filter((row) => row.key !== key))
+  }
+
+  /** Jadikan foto ini gambar utama (dipindah ke urutan pertama). */
+  function jadikanUtama(key: string) {
+    setPhotos((current) => {
+      const dipilih = current.find((row) => row.key === key)
+      if (!dipilih) return current
+      return [dipilih, ...current.filter((row) => row.key !== key)]
+    })
+  }
 
   return (
     <AdminLayout
@@ -123,10 +199,13 @@ export default function TestimonialForm({
           event.preventDefault()
           form.transform((data) => ({
             ...data,
-            image_urls: data.image_urls
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean),
+            // Foto dikirim berurutan; server menyelesaikan URL aset library
+            // sendiri lalu menetapkan foto pertama sebagai gambar utama.
+            photos: photos.map((row) =>
+              row.kind === "library" && row.assetId
+                ? { kind: "library", asset_id: Number(row.assetId) }
+                : { kind: "url", url: row.url },
+            ),
             ...(editing ? { _method: "put" } : {}),
           }))
           form.post(submitUrl, { forceFormData: true })
@@ -136,44 +215,116 @@ export default function TestimonialForm({
       >
         <FormErrorSummary errors={form.errors} />
         <section className="overflow-hidden rounded-lg border border-border bg-card">
-          {/* Stripe media: thumbnail kiri, upload + URL inline kanan */}
-          <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start">
-            <div className="size-24 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-              {form.data.image_url || form.data.image ? (
-                <img
-                  src={form.data.image ? URL.createObjectURL(form.data.image) : form.data.image_url}
-                  alt="Pratinjau"
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground/60">
-                  <span className="text-[10px]">Tanpa gambar</span>
-                </div>
-              )}
-            </div>
-            <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
-              <Field
-                id="testimonial-image-file"
-                label="Unggah screenshot"
-                error={form.errors.image}
-                hint={
-                  isMarketplace
-                    ? "Wajib. Screenshot Shopee/WhatsApp (max 5MB)."
-                    : "Opsional. Max 5MB. Mengunggah mengganti URL di samping."
-                }
-                required={isMarketplace}
-              >
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
-                />
-              </Field>
-            </div>
-          </div>
-
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-            <Field id="testimonial-customer" label="Nama pelanggan" required error={form.errors.customer_name}>
+            <Field
+              id="testimonial-image-library"
+              label="Foto ulasan"
+              error={galatFoto}
+              hint={
+                (isMarketplace
+                  ? "Wajib. Screenshot Shopee/WhatsApp dari Media Library."
+                  : "Opsional. Pilih dari Media Library atau tempel URL.")
+                + ` Boleh lebih dari satu foto (maksimal ${maxPhotos}); foto pertama jadi gambar utama, dan di storefront semua foto bisa digeser saat diperbesar.`
+              }
+              required={isMarketplace}
+              className="sm:col-span-2"
+            >
+              <div className="space-y-3">
+                {photos.length ? (
+                  <ul className="flex flex-wrap gap-3" aria-label="Daftar foto ulasan">
+                    {photos.map((row, index) => (
+                      <li
+                        key={row.key}
+                        className="w-28 space-y-1.5 rounded-md border border-border bg-card p-1.5"
+                      >
+                        <div className="relative size-24 overflow-hidden rounded-md border border-border bg-muted">
+                          <img src={row.url} alt={row.label ?? "Pratinjau foto ulasan"} className="size-full object-cover" />
+                          {index === 0 ? (
+                            <span className="absolute left-1 top-1 rounded bg-foreground/85 px-1.5 py-0.5 text-[10px] font-semibold text-background">
+                              Utama
+                            </span>
+                          ) : null}
+                        </div>
+                        {row.label ? (
+                          <p className="truncate text-[10px] text-muted-foreground" title={row.label}>
+                            {row.label}
+                          </p>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-1">
+                          {index > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => jadikanUtama(row.key)}
+                              className="text-[11px] text-muted-foreground transition hover:text-foreground"
+                            >
+                              Jadikan utama
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">Gambar utama</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => hapusFoto(row.key)}
+                            className="text-[11px] text-destructive transition hover:underline"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Belum ada foto.</p>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setPickerOpen(true)}
+                    disabled={photosPenuh}
+                    title={photosPenuh ? `Maksimal ${maxPhotos} foto. Hapus satu foto dulu untuk menambah.` : undefined}
+                  >
+                    Tambah dari Media Library
+                  </Button>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <Input
+                      value={urlBaru}
+                      onChange={(event) => setUrlBaru(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault()
+                          tambahUrl()
+                        }
+                      }}
+                      placeholder="Tempel URL gambar lalu tekan Tambah"
+                      disabled={photosPenuh}
+                      aria-label="URL gambar ulasan"
+                      className="min-w-[16rem] flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={tambahUrl}
+                      disabled={photosPenuh || urlBaru.trim() === ""}
+                    >
+                      Tambah URL
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {photos.length} dari {maxPhotos} foto dipakai.
+                  {photos.length > 1 ? " Urutan tampil mengikuti urutan daftar ini." : ""}
+                </p>
+              </div>
+            </Field>
+            <Field
+              id="testimonial-customer"
+              label="Nama pelanggan"
+              required={!isMarketplaceIntent}
+              error={form.errors.customer_name}
+              hint={isMarketplaceIntent ? "Opsional. Kosongkan untuk tampil sebagai “Pelanggan”." : undefined}
+            >
               <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
             </Field>
             <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
@@ -181,13 +332,15 @@ export default function TestimonialForm({
             </Field>
             {editing && moderateUrl ? (
               <div className="sm:col-span-2 rounded-lg border border-border bg-muted/20 p-3">
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <Field id="testimonial-moderation" label="Status moderasi" error={form.errors.moderation_status} hint="Teks pelanggan tetap immutable; rejected otomatis disembunyikan.">
                     <Select value={form.data.moderation_status} onChange={(event) => form.setData("moderation_status", event.target.value)}>
                       <option value="pending">Menunggu moderasi</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option>
                     </Select>
                   </Field>
-                  <Button type="button" variant="secondary" disabled={form.processing} onClick={() => router.post(moderateUrl, { moderation_status: form.data.moderation_status }, { preserveScroll: true })}>Simpan moderasi</Button>
+                  <FieldAction>
+                    <Button type="button" variant="secondary" disabled={form.processing} onClick={() => router.post(moderateUrl, { moderation_status: form.data.moderation_status }, { preserveScroll: true })}>Simpan moderasi</Button>
+                  </FieldAction>
                 </div>
               </div>
             ) : null}
@@ -214,18 +367,6 @@ export default function TestimonialForm({
             )}
 
             {!isMarketplaceIntent ? (
-              <Field
-                id="testimonial-image-urls"
-                label="URL gambar tambahan"
-                error={form.errors.image_urls}
-                className="sm:col-span-2"
-                hint="Opsional. Satu URL per baris. Ulasan bisa punya lebih dari satu foto (di storefront bisa digeser saat diperbesar)."
-              >
-                <Textarea rows={3} value={form.data.image_urls} onChange={(event) => form.setData("image_urls", event.target.value)} placeholder="https://contoh.com/foto-2.jpg" />
-              </Field>
-            ) : null}
-
-            {!isMarketplaceIntent ? (
               <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
                 <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
                   <option value="">Tanpa rating</option>
@@ -237,7 +378,7 @@ export default function TestimonialForm({
             ) : null}
             <Field
               id="testimonial-source"
-              label="Sumber / kanal"
+              label="Sumber"
               required
               error={form.errors.source}
               hint={
@@ -275,21 +416,27 @@ export default function TestimonialForm({
               </Field>
             ) : (
               <p className="sm:col-span-2 text-sm text-muted-foreground">
-                Urutan tampilan diatur di daftar Apa Kata Pelanggan lewat tombol <strong>Atur urutan</strong>.
+                Urutan tampilan diubah di daftar Apa Kata Pelanggan lewat tombol <strong>Urutkan</strong>.
               </p>
             )}
-            <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm font-medium sm:self-end">
-              <input
-                type="checkbox"
+            {!isMarketplaceIntent ? (
+              <CheckboxField
+                id="testimonial-published"
                 checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
+                onChange={(checked) => form.setData("published", checked)}
+                label="Tampilkan di storefront"
               />
-              Tampilkan di storefront
-            </label>
+            ) : null}
           </div>
         </section>
       </form>
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={tambahDariLibrary}
+        multiple
+        title="Pilih foto ulasan dari Media Library"
+      />
     </AdminLayout>
   )
 }

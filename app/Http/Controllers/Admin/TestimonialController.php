@@ -13,6 +13,7 @@ use App\Support\InstallationPageSettings;
 use App\Support\TestimonialPageSettings;
 use App\Support\MediaNamer;
 use App\Services\ActivityLogService;
+use App\Services\WhatsAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -168,6 +169,7 @@ class TestimonialController extends Controller
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
+            'maxPhotos' => CmsTestimonial::MAX_PHOTOS,
             'submitUrl' => route('admin.testimonials.store'),
             'indexUrl' => $indexUrl,
         ]);
@@ -226,6 +228,10 @@ class TestimonialController extends Controller
                 'product_id' => $testimonial->product_id,
                 'image_url' => $testimonial->image_url,
                 'image_urls' => $testimonial->image_urls ?? [],
+                // Seluruh foto berurutan (gambar utama dulu) supaya form bisa
+                // menampilkan semua foto yang tersimpan, termasuk foto
+                // kiriman pelanggan yang dulu tidak terlihat admin.
+                'photos' => $testimonial->imagesPayload(),
                 'sort_order' => $testimonial->sort_order,
                 'published' => $testimonial->published,
                 'moderation_status' => $testimonial->moderation_status ?: 'approved',
@@ -234,6 +240,7 @@ class TestimonialController extends Controller
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
+            'maxPhotos' => CmsTestimonial::MAX_PHOTOS,
             'submitUrl' => route('admin.testimonials.update', $testimonial),
             'indexUrl' => $indexUrl,
             'moderateUrl' => route('admin.testimonials.moderate', $testimonial),
@@ -669,6 +676,14 @@ class TestimonialController extends Controller
             'image_url' => ['nullable', 'string', 'max:2048'],
             'image_urls' => ['nullable', 'array', 'max:20'],
             'image_urls.*' => ['nullable', 'string', 'max:2048'],
+            // Daftar foto berurutan dari form (permintaan owner 2026-09-29:
+            // satu ulasan boleh punya banyak foto dari Media Library, bukan
+            // hanya satu). Foto pertama menjadi gambar utama.
+            'photos' => ['nullable', 'array', 'max:'.CmsTestimonial::MAX_PHOTOS],
+            'photos.*' => ['array'],
+            'photos.*.kind' => ['required_with:photos.*', Rule::in(['library', 'url'])],
+            'photos.*.asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'photos.*.url' => ['nullable', 'string', 'max:2048'],
             'image' => ['nullable', 'image', 'max:5120'],
             'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -682,13 +697,19 @@ class TestimonialController extends Controller
         $validated['rating'] = $validated['rating'] ?? null;
         $validated['message'] = filled($validated['message'] ?? null) ? trim((string) $validated['message']) : null;
 
+        // Form baru selalu mengirim kunci `photos` (walau kosong). Kehadirannya
+        // berarti daftar foto di form adalah sumber kebenaran, sehingga jalur
+        // warisan "pertahankan gambar lama" di bawah tidak boleh dipakai: kalau
+        // tidak, foto yang dihapus admin akan muncul kembali.
+        $kirimDaftarFoto = $request->exists('photos');
+
         $imageUrl = filled($validated['image_url'] ?? null) ? trim((string) $validated['image_url']) : null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $name = MediaNamer::onDisk('testimonial', $file->getClientOriginalExtension() ?: 'jpg', 'media', 'testimonials');
             $path = $file->storeAs('testimonials', $name, 'media');
             $imageUrl = Storage::disk('media')->url($path);
-        } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url')) {
+        } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url') && ! $kirimDaftarFoto) {
             $imageUrl = $existing->image_url;
         }
 
@@ -711,8 +732,29 @@ class TestimonialController extends Controller
             static fn ($url) => is_string($url) ? trim($url) : '',
             $validated['image_urls'] ?? [],
         )));
+
+        // Daftar foto berurutan (form baru, 2026-09-29). Aset Media Library
+        // diselesaikan server (URL publiknya yang dipakai, bukan URL pratinjau
+        // dari klien), lalu seluruh foto dirapikan: unik, berurutan, dan foto
+        // pertama ditetapkan sebagai gambar utama. Kolom image_url/image_urls
+        // tetap dipakai supaya seluruh konsumen lama (kartu, scope, ekspor)
+        // tidak perlu berubah.
+        $photos = $this->resolvePhotos($validated['photos'] ?? []);
+        if ($photos !== []) {
+            $imageUrl = $photos[0];
+            $imageUrls = array_slice($photos, 1);
+            $validated['image_url'] = $imageUrl;
+        } elseif ($kirimDaftarFoto) {
+            // Daftar foto kosong = admin menghapus semua foto.
+            $imageUrl = null;
+            $imageUrls = [];
+            $validated['image_url'] = null;
+        }
+        unset($validated['photos']);
+
         if ($imageUrls !== [] && $imageUrl === null) {
-            $validated['image_url'] = $imageUrls[0];
+            $imageUrl = $imageUrls[0];
+            $validated['image_url'] = $imageUrl;
         }
         $validated['image_urls'] = $imageUrls !== [] ? $imageUrls : null;
 
@@ -733,6 +775,48 @@ class TestimonialController extends Controller
         }
 
         return $validated;
+    }
+
+    /**
+     * Ubah daftar foto dari form menjadi daftar URL berurutan.
+     *
+     * Baris `library` dikirim sebagai id aset Media Library, jadi URL publik
+     * aset ditanyakan ke server (klien hanya mengirim URL pratinjau untuk
+     * dilihat admin). Baris `url` dipakai apa adanya untuk tautan luar atau
+     * foto lama. Hasilnya unik dan tetap berurutan supaya foto pertama bisa
+     * ditetapkan sebagai gambar utama.
+     *
+     * @param  list<array{kind?: string, asset_id?: int|string|null, url?: string|null}>  $rows
+     * @return list<string>
+     */
+    protected function resolvePhotos(array $rows): array
+    {
+        $urls = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            if (($row['kind'] ?? null) === 'library') {
+                $asset = MediaAsset::query()->find((int) ($row['asset_id'] ?? 0));
+                $url = $asset
+                    ? ($asset->urlFor('pdp') ?? $asset->urlFor('card') ?? $asset->urlFor('thumb'))
+                    : null;
+                if (filled($url)) {
+                    $urls[] = (string) $url;
+                }
+
+                continue;
+            }
+
+            $url = trim((string) ($row['url'] ?? ''));
+            if ($url !== '') {
+                $urls[] = $url;
+            }
+        }
+
+        return array_values(array_unique($urls));
     }
 
     protected function testimonialsPageId(): int
@@ -823,6 +907,14 @@ class TestimonialController extends Controller
             $before,
             ['admin_reply' => $testimonial->admin_reply],
         );
+
+        // WA balasan ulasan (owner 2026-09-21). Kirim HANYA pada balasan
+        // PERTAMA: mengedit balasan yang sudah ada tidak boleh mengirim pesan
+        // kedua ke pelanggan. Kegagalan pengiriman tidak menggagalkan permintaan
+        // admin, statusnya tetap tercatat di baris whatsapp_messages.
+        if (trim((string) ($before['admin_reply'] ?? '')) === '') {
+            app(WhatsAppService::class)->notifyReviewReplied($testimonial);
+        }
 
         return back()->with('success', 'Balasan ulasan disimpan.');
     }

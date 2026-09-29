@@ -13,6 +13,15 @@ class CmsTestimonial extends Model
     public const MARKETPLACE_SOURCES = ['shopee', 'whatsapp'];
     public const AUTHOR_TYPES = ['customer', 'admin'];
     public const MODERATION_STATUSES = ['pending', 'approved', 'rejected'];
+
+    /**
+     * Batas jumlah foto per ulasan. Dipakai form admin, validasi server, dan
+     * uji. Angka 10 menyamakan batas unggahan ulasan pelanggan
+     * (CustomerReviewController: media_items max:10) supaya satu ulasan tidak
+     * bisa melewatinya hanya karena diisi admin.
+     */
+    public const MAX_PHOTOS = 10;
+
     public const SOURCE_LABELS = [
         'shopee' => 'Shopee', 'whatsapp' => 'WhatsApp', 'website' => 'Website', 'other' => 'Lainnya',
     ];
