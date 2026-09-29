@@ -56,7 +56,12 @@ class SubModelController extends Controller
             ->when($status === 'active', fn ($query) => $query->where('is_active', true))
             ->when($status === 'inactive', fn ($query) => $query->where('is_active', false))
             ->withCount(['products as products_count' => fn ($q) => $q->where('status', 'active')])
+            // Sub model nonaktif "jatuh" ke bawah dalam modelnya (menirukan
+            // logika Model Produk, keputusan owner 2026-09-29). product_model
+            // tetap kunci pertama supaya grup pada mode semua model tidak
+            // terpecah; sort_order tersimpan tidak diubah.
             ->orderBy('product_model')
+            ->orderByRaw('CASE WHEN is_active = ? THEN 0 ELSE 1 END', [true])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->paginate($perPage)

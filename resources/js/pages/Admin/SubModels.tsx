@@ -132,32 +132,36 @@ export default function SubModelsIndex({
     )
   }
 
-  // Owner 2026-09-16: tombol Urutkan hanya aktif pada filter sub model yang aktif.
-  // Daftar juga harus memuat seluruh baris dalam satu halaman: payload simpan hanya
-  // berisi baris yang tampil, jadi paginasi ganda akan menulis sort_order parsial.
+  // Kontrak owner 2026-09-29: gerbang Urutkan menirukan logika Model Produk.
+  // Payload simpan hanya berisi baris yang tampil dan menomori dari nol, jadi
+  // daftar harus memuat SELURUH baris pada cakupannya: tab status wajib "Semua
+  // status" (supaya sub model nonaktif ikut dinomori, dan karena urutan server
+  // menaruh yang nonaktif di bawah, arsip otomatis jatuh ke bawah) dan daftar
+  // harus satu halaman. Khusus halaman ini: satu model wajib dipilih karena
+  // ruang nomor urut terpisah per model, jadi mode semua model tanpa Urutkan.
   const halamanTunggal = (pagination?.last_page ?? 1) <= 1
   const canReorder =
-    currentStatus === "active" && Boolean(currentModel) && rows.length > 1 && halamanTunggal
+    Boolean(currentModel) && currentStatus === "all" && rows.length > 1 && halamanTunggal
   const reorderDisabledReason =
-    currentStatus !== "active"
-      ? "Mode Urutkan hanya aktif pada filter sub model yang aktif."
-      : !currentModel
+    !currentModel
       ? "Pilih satu model dulu; urutan berlaku per model."
+      : currentStatus !== "all"
+      ? "Pilih tab Semua status dulu supaya semua baris ikut dinomori."
       : !halamanTunggal
-      ? "Perkecil daftar (naikkan ukuran halaman atau persempit filter) supaya urutan bisa disimpan sekaligus."
+      ? "Naikkan ukuran halaman sampai semua sub model pada model ini tampil dalam satu halaman supaya urutan bisa disimpan sekaligus."
       : rows.length <= 1
-      ? "Minimal 2 sub model aktif supaya urutannya bisa diubah."
+      ? "Minimal 2 sub model supaya urutannya bisa diubah."
       : undefined
 
   React.useEffect(() => {
-    if (currentStatus !== "active" || !currentModel) {
+    if (!canReorder) {
       // Filter berubah membuat urutan tidak lagi bisa diubah, jadi mode Urutkan
       // ikut dimatikan supaya tombol header tidak menampilkan keadaan palsu.
       // `setReorderMode` adalah setter state React, jadi identitasnya stabil dan
       // aman masuk daftar dependensi.
       setReorderMode(false)
     }
-  }, [currentStatus, currentModel, setReorderMode])
+  }, [canReorder, setReorderMode])
 
 
   // Geser-urut hanya sahih saat daftar memuat seluruh sub model pada model yang
@@ -167,7 +171,7 @@ export default function SubModelsIndex({
 
   // Ikon tarik hanya ada saat mode Urutkan aktif dan daftar tidak tersaring
   // (kontrak owner 2026-09-20, direvisi).
-  const dragAktif = reorderMode && currentStatus === "active" && !listTersaring
+  const dragAktif = reorderMode && canReorder && !listTersaring
 
   const dnd = useRowDragSort({
     enabled: dragAktif,
