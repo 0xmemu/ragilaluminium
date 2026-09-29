@@ -45,6 +45,9 @@ export interface PickedOrderProduct {
   variant_label: string
   /** Gambar kartu produk dari hasil pencarian; null bila produk belum punya. */
   image: string | null
+  /** Harga varian saat dipilih. Dipakai untuk menampilkan hitungan di baris
+      pesanan sebelum disimpan; server tetap menghitung ulang harga resminya. */
+  unit_price: number
 }
 
 /**
@@ -132,6 +135,7 @@ export function OrderProductPicker({
       name: produkTerbuka.name,
       variant_label: varianTerpilih?.label ?? "tanpa varian",
       image: produkTerbuka.image,
+      unit_price: varianTerpilih?.price ?? 0,
     })
     tutup()
   }

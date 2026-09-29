@@ -255,6 +255,8 @@ interface EditLine {
   name?: string
   variant_label?: string
   image?: string | null
+  /** Harga satuan baris baru dari pemilih produk, hanya untuk hitungan sementara. */
+  unit_price?: number
 }
 
 interface EditFormData {
@@ -281,6 +283,7 @@ function OrderEditPanel({
   requireNote,
   onCancel,
   onCopy,
+  onTotals,
 }: {
   order: OrderDetail
   editUrl: string
@@ -288,6 +291,8 @@ function OrderEditPanel({
   onCancel: () => void
   /** Penyalin teks dari halaman induk; dipakai tombol salin di baris produk. */
   onCopy: (value: string) => void
+  /** Lapor angka ringkasan isian ke halaman induk supaya barisnya ikut bergerak. */
+  onTotals: (totals: { produk: number; unit: number; hargaProduk: number } | null) => void
 }) {
   const [pemilihProdukTerbuka, setPemilihProdukTerbuka] = React.useState(false)
   const [adminNotes, setAdminNotes] = React.useState<string>(order.admin_notes ?? "")
@@ -328,6 +333,30 @@ function OrderEditPanel({
     [order.items],
   )
 
+  /**
+   * Angka ringkasan mengikuti isian, supaya admin melihat akibat perubahannya
+   * sebelum menyimpan (laporan owner 2026-09-29: harga dan subtotal belum
+   * tersinkron saat jumlah diubah). Harga satuan baris baru memakai harga dari
+   * pemilih produk, jadi yang dilaporkan ini PERKIRAAN; server tetap menghitung
+   * ulang harga, ongkir, dan total tagihan saat disimpan.
+   */
+  React.useEffect(() => {
+    const hargaSatuan = (line: EditLine): number | undefined =>
+      line.item_id != null ? itemById.get(line.item_id)?.unit_price : line.unit_price
+
+    let hargaProduk = 0
+    let unit = 0
+    for (const line of form.data.items) {
+      unit += Math.max(1, line.qty)
+      hargaProduk += Math.max(1, line.qty) * (hargaSatuan(line) ?? 0)
+    }
+
+    onTotals({ produk: form.data.items.length, unit, hargaProduk })
+
+    // Saat panel ditutup, halaman induk kembali memakai angka pesanan tersimpan.
+    return () => onTotals(null)
+  }, [form.data.items, itemById, onTotals])
+
   function setQty(index: number, qty: number) {
     form.setData(
       "items",
@@ -355,6 +384,7 @@ function OrderEditPanel({
         name: item.name,
         variant_label: item.variant_label,
         image: item.image,
+        unit_price: item.unit_price,
       },
     ])
   }
@@ -378,6 +408,9 @@ function OrderEditPanel({
           const original = line.item_id != null ? itemById.get(line.item_id) : undefined
           const nama = original?.name ?? line.name ?? line.parent_sku
           const gambar = original?.image ?? line.image
+          // Baris baru sudah membawa harga dari pemilih produk, jadi angkanya bisa
+          // ditampilkan. Baris yang belum punya harga sama sekali tidak dihitung.
+          const hargaSatuan = original?.unit_price ?? line.unit_price
           return (
             <li key={line.item_id ?? `new-${index}`} className="flex items-start gap-3.5 px-5 py-4">
               <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
@@ -408,15 +441,15 @@ function OrderEditPanel({
                     : line.variant_label ?? (line.variant_sku || "tanpa varian")}
                 </p>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  {original
-                    ? `${formatNumber(line.qty)} × ${formatCurrency(original.unit_price)}`
+                  {hargaSatuan != null
+                    ? `${formatNumber(line.qty)} × ${formatCurrency(hargaSatuan)}${original ? "" : " (perkiraan)"}`
                     : "Harga dihitung ulang saat disimpan"}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {original ? (
+                {hargaSatuan != null ? (
                   <p className="tabular-nums text-sm font-semibold">
-                    {formatCurrency(line.qty * original.unit_price)}
+                    {formatCurrency(line.qty * hargaSatuan)}
                   </p>
                 ) : null}
                 <QuantityInput
@@ -1495,6 +1528,16 @@ export default function OrderShow({
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [resendWaBusy, setResendWaBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
+  /**
+   * Angka isi pesanan yang sedang diedit, dilaporkan panel edit. Dipakai
+   * supaya baris Total produk, Total unit, dan Total harga produk ikut
+   * bergerak saat jumlah atau produk diubah (owner 2026-09-29).
+   */
+  const [ringkasanEdit, setRingkasanEdit] = React.useState<{
+    produk: number
+    unit: number
+    hargaProduk: number
+  } | null>(null)
   const [detailDrawer, setDetailDrawer] = React.useState<null | "riwayat" | "status" | "wa">(null)
   const waLogRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -2320,6 +2363,7 @@ export default function OrderShow({
                 requireNote={Boolean(editPolicy?.require_note)}
                 onCancel={() => setEditing(false)}
                 onCopy={copyText}
+                onTotals={setRingkasanEdit}
               />
             ) : null}
 
@@ -2332,16 +2376,32 @@ export default function OrderShow({
             <dl id="biaya-ongkir" className="scroll-mt-20 space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>
-                <dd className="font-medium">{formatNumber(order.product_count)} produk</dd>
+                <dd className="font-medium">
+                  {formatNumber(ringkasanEdit?.produk ?? order.product_count)} produk
+                </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total unit</dt>
-                <dd className="font-medium">{formatNumber(order.unit_count)} unit</dd>
+                <dd className="font-medium">
+                  {formatNumber(ringkasanEdit?.unit ?? order.unit_count)} unit
+                </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total harga produk</dt>
-                <dd className="tabular-nums font-medium">{formatCurrency(order.subtotal_amount)}</dd>
+                <dd className="tabular-nums font-medium">
+                  {formatCurrency(ringkasanEdit?.hargaProduk ?? order.subtotal_amount)}
+                </dd>
               </div>
+              {/* Ongkir, asuransi, dan biaya COD datang dari hitungan server yang
+                  ikut berubah bila isi pesanan berubah (berat, nilai). Angkanya
+                  tidak bisa dihitung di layar, jadi diberi tahu apa adanya
+                  supaya tidak dibaca sebagai total akhir. */}
+              {ringkasanEdit ? (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Angka produk di atas mengikuti isian. Ongkir, asuransi, dan total tagihan
+                  dihitung ulang server saat disimpan.
+                </p>
+              ) : null}
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Ongkir dibayar</dt>
                 <dd className="tabular-nums font-medium">{formatCurrency(order.shipping_amount)}</dd>
@@ -2452,8 +2512,21 @@ export default function OrderShow({
                 </div>
               ) : null}
               <div className="flex justify-between gap-3 border-t border-border pt-2.5 text-sm">
-                <dt className="font-semibold">{isCod ? "Total tagihan (COD)" : "Total tagihan"}</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(order.total_amount)}</dd>
+                <dt className="font-semibold">
+                  {isCod ? "Total tagihan (COD)" : "Total tagihan"}
+                  {ringkasanEdit ? (
+                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                      (sebelum perubahan disimpan)
+                    </span>
+                  ) : null}
+                </dt>
+                <dd
+                  className={`tabular-nums font-semibold ${
+                    ringkasanEdit ? "text-muted-foreground" : ""
+                  }`}
+                >
+                  {formatCurrency(order.total_amount)}
+                </dd>
               </div>
             </dl>
           </SectionCard>
