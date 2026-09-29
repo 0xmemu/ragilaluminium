@@ -1,6 +1,11 @@
 import { Head, Link, router } from "@inertiajs/react"
 import { ReviewReplyDialog, type ReviewReplyTarget } from "@/components/admin/review-reply-dialog"
 import { ReturnCreateDialog } from "@/components/admin/order-return-create-dialog"
+import {
+  OrderReturnCaseDialog,
+  type ReturnAdjustment,
+  type ReturnCaseRow,
+} from "@/components/admin/order-return-case-dialog"
 import * as React from "react"
 
 import * as DialogPrimitive from "@radix-ui/react-dialog"
@@ -44,6 +49,9 @@ interface OrderItemPreview {
   line_total: number
   image?: string | null
   note?: string | null
+  /** Dipakai popup retur untuk memetakan barang pengganti. */
+  product_id?: number
+  variant_id?: number | null
 }
 
 interface PrimaryAction {
@@ -121,6 +129,11 @@ interface OrderCard {
    * Dipakai tombol Balas ulasan di kolom Aksi.
    */
   review?: ReviewReplyTarget | null
+  /** Data kasus retur, dipakai popup penyelesaian yang dibuka dari daftar. */
+  return_cases?: ReturnCaseRow[]
+  return_adjustments?: ReturnAdjustment[]
+  /** Jumlah pembayaran yang sudah lunas, untuk batas refund di popup. */
+  paid_amount?: number
 }
 
 interface StatusTab {
@@ -230,6 +243,7 @@ function OrderCardRow({
   onEditNotes,
   onReplyReview,
   onRetur,
+  onSelesaikanRetur,
 }: {
   order: OrderCard
   onInputResi?: (order: OrderCard) => void
@@ -237,6 +251,8 @@ function OrderCardRow({
   onReplyReview?: (order: OrderCard) => void
   /** Buka popup pengisian detail retur untuk pesanan ini. */
   onRetur?: (order: OrderCard) => void
+  /** Buka popup penyelesaian kasus retur (selesaikan, void, koreksi). */
+  onSelesaikanRetur?: (order: OrderCard) => void
   queryState: {
     order_status: string
     q: string
@@ -593,11 +609,20 @@ function OrderCardRow({
               className="w-full xl:w-auto"
               onConfirm={applyPrimary}
             />
+          ) : order.primary_action?.kind === "complete_return" ? (
+            // Penyelesaian retur dibuka sebagai popup DI TEMPAT, bukan tautan ke
+            // halaman detail (owner 2026-09-29: "langsung muncul popup, tanpa
+            // direct ke halaman detail pesanan").
+            <Button
+              size="xs"
+              className="w-full xl:w-auto"
+              onClick={() => onSelesaikanRetur?.(order)}
+            >
+              {order.primary_action.label}
+            </Button>
           ) : order.primary_action?.href ? (
-            // Aksi yang hanya menautkan (mis. Selesaikan Retur pada status
-            // Retur diproses): server sudah mengirim label dan tautannya,
-            // tetapi pengisi daftar ini dulu hanya merender aksi ber-next_status
-            // sehingga kolom Aksi kosong untuk pesanan yang sedang diretur.
+            // Aksi utama lain yang hanya menautkan tetap dirender sebagai
+            // tautan; tanpa cabang ini kolom Aksi kosong untuknya.
             <Button asChild size="xs" className="w-full xl:w-auto">
               <Link href={order.primary_action.href}>{order.primary_action.label}</Link>
             </Button>
@@ -638,6 +663,21 @@ function OrderCardRow({
           ) : null}
 
 
+
+          {(order.return_cases?.length ?? 0) > 0 &&
+          order.primary_action?.kind !== "complete_return" ? (
+            // Jalan masuk kasus retur yang sudah selesai (koreksi data dan void).
+            // Panel di halaman detail sudah dihapus, jadi popup ini satu-satunya
+            // tempat kasus retur bisa dilihat dan ditindaklanjuti.
+            <Button
+              variant="secondary"
+              size="xs"
+              className="w-full xl:w-auto"
+              onClick={() => onSelesaikanRetur?.(order)}
+            >
+              Lihat retur
+            </Button>
+          ) : null}
 
           {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
             <ConfirmAction
@@ -708,6 +748,14 @@ export default function OrdersIndex({
   // Pesanan yang popup returnya sedang terbuka. Satu dialog untuk seluruh
   // daftar; klik tombol Retur di kolom Aksi mengisinya.
   const [returTarget, setReturTarget] = React.useState<OrderCard | null>(null)
+  // Pesanan yang popup penyelesaian returnya sedang terbuka. Disimpan sebagai
+  // ID, bukan salinan kartu, supaya setelah aksi tersimpan popupnya menampilkan
+  // data terbaru dari server tanpa perlu ditutup dan dibuka lagi.
+  const [caseDialogOrderId, setCaseDialogOrderId] = React.useState<number | null>(null)
+  const caseDialogOrder = React.useMemo(
+    () => orders.find((order) => order.id === caseDialogOrderId) ?? null,
+    [orders, caseDialogOrderId],
+  )
   const [refreshing, setRefreshing] = React.useState(false)
   // Galat muat ulang daftar: muncul sebagai ErrorState di area daftar, bukan
   // sekadar teks, supaya admin punya tombol coba lagi di tempat yang sama.
@@ -1305,6 +1353,7 @@ export default function OrdersIndex({
                     onEditNotes={openNotesModal}
                     onReplyReview={(order) => setReplyTarget(order.review ?? null)}
                     onRetur={setReturTarget}
+                    onSelesaikanRetur={(order) => setCaseDialogOrderId(order.id)}
                   />
                 ))}
               </div>
@@ -1600,6 +1649,14 @@ export default function OrdersIndex({
       {/* Popup pengisian detail retur dari daftar (owner 2026-09-28). Formnya
           sama dengan halaman detail, jadi kontrak kiriman tidak bisa beda. */}
       <ReturnCreateDialog order={returTarget} onClose={() => setReturTarget(null)} />
+
+      {/* Popup penanganan kasus retur: menyelesaikan, menutup kasus (void),
+          dan mengoreksi kasus selesai. Panel "Retur & penyelesaian" di halaman
+          detail sudah dihapus, jadi seluruh aksi retur ada di sini. */}
+      <OrderReturnCaseDialog
+        order={caseDialogOrder}
+        onClose={() => setCaseDialogOrderId(null)}
+      />
     </AdminLayout>
   )
 }

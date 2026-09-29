@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderReturnCase;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ReturnCaseAdjustment;
 use App\Models\AdminNotification;
 use App\Services\OrderService;
 use App\Services\PaymentService;
@@ -118,6 +119,11 @@ class OrderController extends Controller
                 'items.product.mainImage',
                 'items.productVariant',
                 'shippingRecords' => fn ($q) => $q->latest('id'),
+                // Data kasus retur ikut di kartu daftar karena aksi "Selesaikan
+                // Retur" membuka popup langsung dari daftar (owner 2026-09-29),
+                // jadi popupnya tidak boleh bergantung pada halaman detail.
+                'returnCases.items.orderItem',
+                'payments',
             ])
             ->withCount('items')
             ->withSum('items as units_count', 'quantity')
@@ -233,6 +239,20 @@ class OrderController extends Controller
             ->groupBy('phone_number')
             ->pluck('jumlah', 'phone_number')->all();
 
+        // Jejak audit koreksi/void untuk seluruh kasus retur di halaman ini,
+        // dibaca satu kali lalu dibagi per pesanan.
+        $adjustmentsByOrder = [];
+        $caseIds = $pageOrders->flatMap(fn (Order $order) => $order->returnCases->pluck('id'))->unique()->values();
+        if ($caseIds->isNotEmpty()) {
+            foreach ($this->returnAdjustmentsFor($caseIds) as $baris) {
+                foreach ($pageOrders as $order) {
+                    if ($order->returnCases->contains('id', $baris['return_case_id'])) {
+                        $adjustmentsByOrder[$order->id][] = $baris;
+                    }
+                }
+            }
+        }
+
         return Inertia::render('Admin/Orders/Index', [
             'title' => 'Daftar Pesanan',
             'description' => 'Kelola semua pesanan dari awal dibuat hingga selesai, dibatalkan, atau retur.',
@@ -248,7 +268,13 @@ class OrderController extends Controller
             'searchQuery' => trim((string) $request->input('q', '')),
             'summary' => $summary,
             'orders' => $pageOrders
-                ->map(fn (Order $order) => $this->orderCard($order, $refusedByPhone, $reviewsByOrder->get($order->id), $gagalPerTelepon))
+                ->map(fn (Order $order) => $this->orderCard(
+                    $order,
+                    $refusedByPhone,
+                    $reviewsByOrder->get($order->id),
+                    $gagalPerTelepon,
+                    $adjustmentsByOrder[$order->id] ?? [],
+                ))
                 ->values()
                 ->all(),
             'pagination' => InertiaAdmin::pagination($orders),
@@ -401,24 +427,7 @@ class OrderController extends Controller
         if ($editReturnCaseId > 0 && ! $order->returnCases->contains('id', $editReturnCaseId)) {
             $editReturnCaseId = 0;
         }
-        $returnAdjustments = $order->returnCases->isNotEmpty()
-            ? \App\Models\ReturnCaseAdjustment::query()
-                ->whereIn('return_case_id', $order->returnCases->pluck('id'))
-                ->with('actor:id,name')
-                ->latest('id')
-                ->limit(100)
-                ->get()
-                ->map(fn (\App\Models\ReturnCaseAdjustment $a): array => [
-                    'id' => $a->id,
-                    'return_case_id' => $a->return_case_id,
-                    'field' => $a->field,
-                    'old_value' => $a->old_value,
-                    'new_value' => $a->new_value,
-                    'reason' => $a->reason,
-                    'actor' => $a->actor?->name,
-                    'created_at' => optional($a->created_at)?->toIso8601String(),
-                ])->all()
-            : [];
+        $returnAdjustments = $this->returnAdjustmentsFor($order->returnCases->pluck('id'));
 
         // Jumlah pesan WA gagal dalam cakupan utas yang sama (per nomor
         // pelanggan) untuk tombol kirim ulang di header.
@@ -568,36 +577,7 @@ class OrderController extends Controller
                 'whatsapp_messages' => $whatsappThread,
                 // Jumlah pesan WA gagal untuk tombol kirim ulang di header.
                 'whatsapp_failed_count' => $whatsappFailedCount,
-                'return_cases' => $order->returnCases->map(fn ($case) => [
-                    'id' => $case->id,
-                    'status' => $case->status,
-                    'reason' => $case->reason,
-                    'reason_detail' => $case->reason_detail,
-                    'fault_party' => $case->fault_party,
-                    'shipping_cost_borne_by_store' => (bool) $case->shipping_cost_borne_by_store,
-                    'resolution_type' => $case->resolution_type,
-                    'customer_notes' => $case->customer_notes,
-                    'admin_notes' => $case->admin_notes,
-                    'refund_amount' => (float) $case->refund_amount,
-                    'replacement_amount' => (float) $case->replacement_amount,
-                    'return_shipping_cost' => (float) $case->return_shipping_cost,
-                    'completed_at' => optional($case->completed_at)?->toIso8601String(),
-                    'late_return' => (bool) $case->late_return,
-                    'override_reason' => $case->override_reason,
-                    'voided_at' => optional($case->voided_at)?->toIso8601String(),
-                    'void_reason' => $case->void_reason,
-                    'items' => $case->items->map(fn ($item) => [
-                        'id' => $item->id,
-                        'order_item_id' => $item->order_item_id,
-                        'name' => $item->orderItem?->name,
-                        'unit_price' => (float) optional($item->orderItem)->unit_price,
-                        'requested_quantity' => (int) $item->requested_quantity,
-                        'returned_quantity' => (int) $item->returned_quantity,
-                        'replacement_product_id' => $item->replacement_product_id,
-                        'replacement_variant_id' => $item->replacement_variant_id,
-                        'replacement_quantity' => $item->replacement_quantity,
-                    ])->values()->all(),
-                ])->values()->all(),
+                'return_cases' => $this->returnCaseRows($order),
                 // Ulasan pelanggan untuk pesanan ini, dipakai tombol Balas di
                 // halaman pesanan. Tidak ada relasi Order ke ulasan, jadi
                 // dibaca langsung; satu pesanan hanya boleh punya satu ulasan.
@@ -1595,7 +1575,7 @@ class OrderController extends Controller
      * @param  array<string, int>  $refusedByPhone  nomor ternormalisasi => jumlah penolakan
      * @param  array<string, int>  $gagalPerTelepon  nomor ternormalisasi => jumlah pesan WA gagal
      */
-    private function orderCard(Order $order, array $refusedByPhone = [], ?CmsTestimonial $testimonial = null, array $gagalPerTelepon = []): array
+    private function orderCard(Order $order, array $refusedByPhone = [], ?CmsTestimonial $testimonial = null, array $gagalPerTelepon = [], array $returnAdjustments = []): array
     {
         $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
         $items = $order->items ?? collect();
@@ -1654,12 +1634,93 @@ class OrderController extends Controller
             'whatsapp_status_url' => $this->whatsapp->statusMessageUrl($order),
             // Jumlah pesan WA gagal utas nomor ini untuk tombol kirim ulang.
             'whatsapp_failed_count' => (int) ($gagalPerTelepon[$phone] ?? 0),
+            // Data kasus retur dipakai popup "Selesaikan Retur" yang dibuka
+            // langsung dari daftar: aksi lengkap retur (selesaikan, void,
+            // koreksi) tinggal di situ karena panel di halaman detail dihapus
+            // (owner 2026-09-29).
+            'return_cases' => $this->returnCaseRows($order),
+            'return_adjustments' => $returnAdjustments,
+            'paid_amount' => (float) ($order->relationLoaded('payments')
+                ? $order->payments->where('status', 'completed')->sum('amount')
+                : 0),
             'primary_action' => $this->primaryActionFor($order),
             'secondary_action' => $this->secondaryActionFor($order),
             'shipping_track' => OrderTrackingPresenter::forOrder($order, $shipping, withTimeline: false),
             'items' => $items->map(fn ($item) => $this->orderItemRow($item))->values()->all(),
             'items_total' => (int) $order->items_count,
         ];
+    }
+
+    /**
+     * Baris kasus retur satu pesanan. Dipakai halaman detail dan kartu daftar
+     * supaya bentuk datanya tidak bisa berbeda antar dua tempat.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function returnCaseRows(Order $order): array
+    {
+        return $order->returnCases->map(fn ($case) => [
+            'id' => $case->id,
+            'status' => $case->status,
+            'reason' => $case->reason,
+            'reason_detail' => $case->reason_detail,
+            'fault_party' => $case->fault_party,
+            'shipping_cost_borne_by_store' => (bool) $case->shipping_cost_borne_by_store,
+            'resolution_type' => $case->resolution_type,
+            'customer_notes' => $case->customer_notes,
+            'admin_notes' => $case->admin_notes,
+            'refund_amount' => (float) $case->refund_amount,
+            'replacement_amount' => (float) $case->replacement_amount,
+            'return_shipping_cost' => (float) $case->return_shipping_cost,
+            'completed_at' => optional($case->completed_at)?->toIso8601String(),
+            'late_return' => (bool) $case->late_return,
+            'override_reason' => $case->override_reason,
+            'voided_at' => optional($case->voided_at)?->toIso8601String(),
+            'void_reason' => $case->void_reason,
+            'items' => $case->items->map(fn ($item) => [
+                'id' => $item->id,
+                'order_item_id' => $item->order_item_id,
+                'name' => $item->orderItem?->name,
+                'unit_price' => (float) optional($item->orderItem)->unit_price,
+                'requested_quantity' => (int) $item->requested_quantity,
+                'returned_quantity' => (int) $item->returned_quantity,
+                'replacement_product_id' => $item->replacement_product_id,
+                'replacement_variant_id' => $item->replacement_variant_id,
+                'replacement_quantity' => $item->replacement_quantity,
+            ])->values()->all(),
+        ])->values()->all();
+    }
+
+    /**
+     * Jejak audit koreksi/void untuk sekumpulan kasus retur. Dibaca dari tabel
+     * return_case_adjustments, bukan direkonstruksi dari nilai kasus.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>|array<int, int>  $caseIds
+     * @return list<array<string, mixed>>
+     */
+    private function returnAdjustmentsFor($caseIds): array
+    {
+        $ids = collect($caseIds)->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return ReturnCaseAdjustment::query()
+            ->whereIn('return_case_id', $ids)
+            ->with('actor:id,name')
+            ->latest('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (ReturnCaseAdjustment $a): array => [
+                'id' => $a->id,
+                'return_case_id' => $a->return_case_id,
+                'field' => $a->field,
+                'old_value' => $a->old_value,
+                'new_value' => $a->new_value,
+                'reason' => $a->reason,
+                'actor' => $a->actor?->name,
+                'created_at' => optional($a->created_at)?->toIso8601String(),
+            ])->all();
     }
 
     /** @return array<string, mixed> */
@@ -1771,7 +1832,8 @@ class OrderController extends Controller
                 'next_status' => null,
                 'kind' => 'complete_return',
                 'hint' => 'Lengkapi form retur (jumlah item dikembalikan & nilai refund) untuk menutup retur dan mengirim notifikasi WhatsApp.',
-                'href' => route('admin.orders.show', $order).'#return-case',
+                // Tanpa href: aksi ini membuka popup penyelesaian di tempat
+                // (owner 2026-09-29), jadi tidak ada lagi anchor #return-case.
             ],
             default => null,
         };
@@ -1857,7 +1919,7 @@ class OrderController extends Controller
                 'next_status' => null,
                 'kind' => 'start_return',
                 'hint' => 'Buka form retur admin dan lengkapi alasan serta item yang dikembalikan.',
-                'href' => route('admin.orders.show', $order).'#return-case',
+                // Tanpa href: aksi ini membuka popup pengisian retur di tempat.
             ],
             default => null,
         };

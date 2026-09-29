@@ -308,7 +308,6 @@ Admin shipping contract: nomor resi dibuat di J&T di luar website; endpoint orde
 - `GET /admin/testimonials/{testimonial}/edit` -> `Admin\TestimonialController@edit`  (name: `admin.testimonials.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/testimonials/{testimonial}/publish` -> `Admin\TestimonialController@publish`  (name: `admin.testimonials.publish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/testimonials/{testimonial}/unpublish` -> `Admin\TestimonialController@unpublish`  (name: `admin.testimonials.unpublish`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `POST /admin/testimonials/admin-review` -> `Admin\TestimonialController@storeAdminReview` (name: `admin.testimonials.admin-review.store`); verified delivered/completed order tanpa duplikasi
 - `POST /admin/testimonials/{testimonial}/moderate` -> `Admin\TestimonialController@moderate` (name: `admin.testimonials.moderate`); status moderasi dan audit
 - `POST /admin/testimonials/{testimonial}/media` -> `Admin\TestimonialController@addMedia` (name: `admin.testimonials.media`); tambah foto/video tanpa mengubah teks pelanggan
 - `POST /admin/testimonials/{testimonial}/reply` -> `Admin\TestimonialController@reply` (name: `admin.testimonials.reply`); simpan balasan admin atas ulasan pelanggan, tidak mengubah published/moderasi
@@ -379,10 +378,45 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 
 - POST /admin/orders/{order}/returns -> admin-only create return case. Requires order status delivered, reason, customer chronology, and returned item quantities. Creates order_return_cases/order_return_items, transitions the order to return_in_process, and records audit plus WhatsApp follow-up. Exception (2026-09-28): order status completed is accepted as a manual late return and MUST carry late_return=1 plus override_reason; the transition source is admin_late_return.
 - POST /admin/orders/{order}/returns/{returnCase}/complete -> admin-only completion. Requires resolution and completion notes, records refund/replacement/additional shipping amounts, then transitions to return_completed.
-- GET /admin/orders/{order}/returns/{returnCase}/edit -> admin-only deep link to the order detail page with the correction form open for that completed case (name: admin.orders.returns.edit) (2026-09-28).
+- GET /admin/orders/{order}/returns/{returnCase}/edit -> admin-only redirect to that order detail page with the target case preselected (name: admin.orders.returns.edit) (2026-09-28). Since 2026-09-29 the correction form is no longer rendered on the detail page (the "Retur & penyelesaian" panel was removed), so this deep link currently only lands on the detail page; corrections are done in the dialog opened from the orders list. Whether to remove or re-wire this route is an open decision.
 - PATCH /admin/orders/{order}/returns/{returnCase} -> admin-only correction of an ADMINISTRATIVE completed case data (reason, notes, fault party, resolution, refund, return shipping, replacement). Workflow status never changes; every changed field is recorded in return_case_adjustments; refund stays capped by recorded payments (name: admin.orders.returns.update) (2026-09-28).
 - POST /admin/orders/{order}/returns/{returnCase}/void -> admin-only administrative closure with a mandatory reason. Open case becomes cancelled; completed case stays completed but is voided out of every report; history is never deleted (name: admin.orders.returns.void) (2026-09-28).
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
+
+### Kasus retur di kartu daftar pesanan (2026-09-29)
+
+Kartu pada `GET /admin/orders` kini membawa data kasus retur, karena aksi
+"Selesaikan Retur" membuka POPUP penanganan di daftar, bukan menautkan ke halaman
+detail: panel "Retur & penyelesaian" di halaman detail sudah dihapus, sehingga
+seluruh aksi retur (menyelesaikan, menutup kasus/void, dan mengoreksi kasus
+selesai) hidup di popup itu. Tiga medan baru pada tiap kartu:
+
+- `return_cases`: daftar kasus retur pesanan itu, bentuknya SAMA dengan
+  `return_cases` pada payload halaman detail (id, status, reason, reason_detail,
+  fault_party, shipping_cost_borne_by_store, resolution_type, customer_notes,
+  admin_notes, refund_amount, replacement_amount, return_shipping_cost,
+  completed_at, late_return, override_reason, voided_at, void_reason, dan
+  `items[]` berisi id, order_item_id, name, unit_price, requested_quantity,
+  returned_quantity, serta medan `replacement_*`). Daftar kosong bila pesanan
+  tidak punya kasus retur.
+- `return_adjustments`: jejak audit koreksi/void untuk kasus pesanan itu, dibaca
+  dari tabel return_case_adjustments (id, return_case_id, field, old_value,
+  new_value, reason, actor, created_at).
+- `paid_amount`: jumlah pembayaran yang sudah tercatat lunas, dipakai sebagai
+  batas refund di popup supaya admin tidak mengisi angka yang akan ditolak server.
+
+Aksi `primary_action` dengan `kind: "complete_return"` (status pesanan Retur
+Diproses) TIDAK lagi membawa `href`, karena penyelesaiannya dibuka sebagai popup
+di tempat. Aksi `secondary_action` `start_return` juga tidak lagi membawa `href`
+(anchor `#return-case` sudah tidak ada). Kiriman penyelesaiannya tetap memakai
+kontrak lama: `POST /admin/orders/{order}/returns/{returnCase}/complete`, dan
+setiap nilai tetap dihitung ulang server.
+
+Di daftar, popup ini dibuka dari dua tempat: tombol "Selesaikan Retur" pada status
+Retur Diproses, dan tombol "Lihat retur" untuk pesanan yang punya kasus retur di
+luar status itu (mis. kasus yang sudah selesai). Tombol kedua wajib ada supaya
+koreksi data dan void kasus selesai tetap bisa dipakai setelah panel halaman detail
+dihapus.
 
 ### Pemilih produk isi pesanan (2026-09-29)
 

@@ -42,7 +42,9 @@ KEPUTUSAN PEMILIK (2026-08-23): `rusak` dan `pecah` dipisah menjadi dua opsi (se
 1. Pelanggan menekan tombol "Pengembalian Barang" di kartu status Sampai, yang membuka chat
    WhatsApp berisi nomor pesanan, atau menghubungi toko langsung. Admin berdiskusi dulu di
    WhatsApp; belum ada apa pun yang tercatat di sistem pada tahap ini.
-2. Buka Detail Pesanan -> section "Retur & penyelesaian".
+2. Buka Daftar Pesanan -> tab "Retur Diproses" -> tombol "Selesaikan Retur"
+   (membuka popup penanganan kasus di tempat; panel "Retur & penyelesaian" di
+   halaman detail sudah dihapus 2026-09-29).
 3. Isi alasan (wajib) + kronologi pelanggan (wajib) + catatan admin (opsional).
 4. Tandai item & jumlah yang ingin diretur.
 5. Klik "Catat retur":
