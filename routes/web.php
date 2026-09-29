@@ -524,7 +524,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Balasan admin atas ulasan pelanggan (owner 2026-09-18).
     Route::post('testimonials/{testimonial}/reply', [TestimonialController::class, 'reply'])->name('testimonials.reply');
     Route::delete('testimonials/{testimonial}/reply', [TestimonialController::class, 'destroyReply'])->name('testimonials.reply.destroy');
-    Route::post('testimonials/admin-review', [TestimonialController::class, 'storeAdminReview'])->name('testimonials.admin-review.store');
 
     Route::get('gallery-items/create', [GalleryItemController::class, 'create'])->name('gallery-items.create');
     Route::post('gallery-items', [GalleryItemController::class, 'store'])->name('gallery-items.store');

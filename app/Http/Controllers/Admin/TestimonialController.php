@@ -8,7 +8,6 @@ use App\Models\MediaAsset;
 use App\Models\CmsTestimonial;
 use App\Models\Product;
 use App\Models\ProductMedia;
-use App\Models\Order;
 use App\Support\InertiaAdmin;
 use App\Support\InstallationPageSettings;
 use App\Support\TestimonialPageSettings;
@@ -151,7 +150,10 @@ class TestimonialController extends Controller
 
     public function create(Request $request): Response
     {
-        $intent = in_array((string) $request->query('intent'), ['marketplace', 'admin-order'], true) ? (string) $request->query('intent') : 'website';
+        // Hanya dua bentuk form (kontrak owner 2026-09-29): ulasan biasa dan
+        // screenshot marketplace. Alur "ulasan dari order" dihapus supaya tidak
+        // ada dua tombol tambah yang membingungkan di tab Ulasan Website.
+        $intent = (string) $request->query('intent') === 'marketplace' ? 'marketplace' : 'website';
         $sources = $intent === 'marketplace'
             ? CmsTestimonial::MARKETPLACE_SOURCES
             : CmsTestimonial::SOURCES;
@@ -166,10 +168,8 @@ class TestimonialController extends Controller
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
-            'submitUrl' => $intent === 'admin-order' ? route('admin.testimonials.admin-review.store') : route('admin.testimonials.store'),
+            'submitUrl' => route('admin.testimonials.store'),
             'indexUrl' => $indexUrl,
-            'reviewMode' => $intent === 'admin-order',
-            'verifiedOrders' => $intent === 'admin-order' ? $this->verifiedOrderOptions() : [],
         ]);
     }
 
@@ -459,7 +459,6 @@ class TestimonialController extends Controller
                 ['value' => 'replied', 'label' => 'Sudah dibalas'],
             ],
             'createHref' => route('admin.testimonials.create'),
-            'adminReviewHref' => route('admin.testimonials.create', ['intent' => 'admin-order']),
             'createLabel' => 'Tambah',
             'indexRoute' => $indexRoute,
             'pageMeta' => null,
@@ -865,40 +864,4 @@ class TestimonialController extends Controller
         ActivityLogService::record('cms.testimonial_media_added', 'cms_testimonial', $testimonial->id, ['type' => $validated['media_type'], 'source' => $validated['media_source'] ?? 'admin'], $request->user()?->id);
         return back()->with('success', 'Media ulasan ditambahkan.');
     }
-
-    public function storeAdminReview(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'order_id' => ['required', 'integer', 'exists:orders,id'], 'message' => ['required', 'string'],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:5'], 'source_reference' => ['nullable', 'string', 'max:2048'],
-            'published' => ['boolean'], 'media_items' => ['nullable', 'array', 'max:30'],
-            'media_items.*.type' => ['required_with:media_items', Rule::in(['image', 'video'])],
-            'media_items.*.url' => ['required_with:media_items', 'url', 'max:2048'],
-        ]);
-        $order = Order::query()->with('items')->whereIn('order_status', ['delivered', 'completed'])->findOrFail($validated['order_id']);
-        if (CmsTestimonial::query()->where('order_id', $order->id)->exists()) {
-            throw ValidationException::withMessages(['order_id' => 'Pesanan ini sudah memiliki ulasan. Hindari duplikasi.']);
-        }
-        $item = $order->items->first();
-        $testimonial = CmsTestimonial::create([
-            'cms_page_id' => $this->testimonialsPageId(), 'order_id' => $order->id, 'product_id' => $item?->product_id,
-            'customer_name' => $order->customer_name ?: 'Pelanggan', 'message' => trim($validated['message']), 'rating' => $validated['rating'] ?? null,
-            'source' => 'website', 'source_reference' => $validated['source_reference'] ?? null, 'author_type' => 'admin',
-            'author_admin_id' => $request->user()?->id, 'verified_at' => now(), 'moderation_status' => 'approved',
-            'media_items' => $validated['media_items'] ?? null, 'published' => $request->boolean('published'), 'sort_order' => 0,
-        ]);
-        ActivityLogService::record('cms.testimonial_admin_created', 'cms_testimonial', $testimonial->id, ['order_id' => $order->id, 'verified_purchase' => true], $request->user()?->id);
-        return redirect()->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])->with('success', 'Ulasan admin untuk pembelian terverifikasi ditambahkan.');
-    }
-
-    /** @return list<array{id:int,label:string,status:string}> */
-    protected function verifiedOrderOptions(): array
-    {
-        return Order::query()->whereIn('order_status', ['delivered', 'completed'])
-            ->whereNotIn('id', CmsTestimonial::query()->whereNotNull('order_id')->pluck('order_id'))
-            ->withCount('items')->orderByDesc('id')->limit(200)->get(['id', 'order_number', 'customer_name', 'order_status'])
-            ->map(fn (Order $order) => ['id' => $order->id, 'label' => $order->order_number.' · '.($order->customer_name ?: 'Pelanggan'), 'status' => $order->order_status])
-            ->values()->all();
-    }
-
 }

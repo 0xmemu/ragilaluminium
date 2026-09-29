@@ -49,37 +49,6 @@ class Phase11AdminMediaReviewGuardTest extends TestCase
         $this->assertDatabaseHas('event_logs', ['event_type' => 'cms.testimonial_updated']);
     }
 
-    public function test_admin_can_create_admin_review_for_verified_order_when_no_customer_review(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        CmsPage::firstOrCreate(['slug' => 'testimoni'], ['title' => 'Testimoni', 'content' => [], 'published' => true]);
-        [$order, $product] = $this->orderWithProduct('completed', 'RA-ADMIN-REV-001');
-
-        $this->actingAs($admin)->post(route('admin.testimonials.admin-review.store'), [
-            'order_id' => $order->id,
-            'message' => 'Ulasan dicatat oleh admin.',
-            'rating' => 5,
-            'source_reference' => 'chat WA',
-            'published' => true,
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('cms_testimonials', [
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'author_type' => 'admin',
-            'moderation_status' => 'approved',
-            'message' => 'Ulasan dicatat oleh admin.',
-            'published' => 1,
-        ]);
-
-        // Duplicate admin review for the same order is rejected.
-        $this->actingAs($admin)->post(route('admin.testimonials.admin-review.store'), [
-            'order_id' => $order->id,
-            'message' => 'Duplikat.',
-        ])->assertSessionHasErrors('order_id');
-        $this->assertSame(1, CmsTestimonial::where('order_id', $order->id)->count());
-    }
-
     public function test_admin_can_add_media_to_an_existing_review(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
@@ -164,49 +133,5 @@ class Phase11AdminMediaReviewGuardTest extends TestCase
     /**
      * @return array{0:Order,1:Product}
      */
-    private function orderWithProduct(string $status, string $number): array
-    {
-        $product = Product::create([
-            'parent_sku' => 'WIN-'.str_replace('-', '', $number),
-            'name' => 'Produk Ulasan',
-            'category_id' => 1,
-            'product_category' => 'WINDOW',
-            'product_model' => 'JUNGKIT',
-            'design_variant' => 'POLOS',
-            'status' => 'active',
-        ]);
 
-        $order = Order::create([
-            'order_number' => $number,
-            'customer_name' => 'Pembeli Ulasan',
-            'customer_phone' => '081234567890',
-            'shipping_address_line1' => 'Jl. Uji 1',
-            'shipping_city' => 'Kudus',
-            'shipping_province' => 'Jawa Tengah',
-            'shipping_postal_code' => '59311',
-            'order_status' => $status,
-            'payment_status' => 'paid',
-            'shipping_status' => $status === 'completed' ? 'delivered' : $status,
-            'subtotal_amount' => 1000000,
-            'shipping_amount' => 0,
-            'discount_amount' => 0,
-            'total_amount' => 1000000,
-            'payment_method' => 'transfer',
-            'cod_flag' => false,
-        ]);
-
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'parent_sku' => $product->parent_sku,
-            'name' => $product->name,
-            'unit_price' => 1000000,
-            'quantity' => 1,
-            'line_subtotal' => 1000000,
-            'line_discount' => 0,
-            'line_total' => 1000000,
-        ]);
-
-        return [$order, $product];
-    }
 }

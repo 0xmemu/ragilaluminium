@@ -20,7 +20,6 @@ interface TestimonialRecord {
   sort_order: number
   published: boolean
   author_type?: string
-  order_id?: number | null
   moderation_status?: string
 }
 
@@ -41,20 +40,16 @@ export default function TestimonialForm({
   indexUrl,
   backUrl,
   moderateUrl = null,
-  reviewMode = false,
-  verifiedOrders = [],
 }: {
   testimonial: TestimonialRecord | null
   products: Array<{ id: number; label: string }>
   sources: string[]
   sourceLabels?: Record<string, string>
-  intent?: "marketplace" | "website" | "admin-order"
+  intent?: "marketplace" | "website"
   submitUrl: string
   indexUrl: string
   backUrl?: string | null
   moderateUrl?: string | null
-  reviewMode?: boolean
-  verifiedOrders?: Array<{ id: number; label: string; status: string }>
 }) {
   const editing = Boolean(testimonial)
   const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
@@ -71,14 +66,16 @@ export default function TestimonialForm({
     image: File | null
     sort_order: number
     published: boolean
-    author_type: string
-    order_id: number | null
     moderation_status: string
   }>({
     customer_name: testimonial?.customer_name ?? "",
     message: testimonial?.message ?? "",
     rating: testimonial?.rating?.toString() ?? "",
-    source: testimonial?.source ?? sources[0] ?? (isMarketplaceIntent ? "shopee" : "website"),
+    // Mode ulasan website WAJIB mulai dari "website". Sebelumnya nilai awal
+    // diambil dari pilihan pertama daftar sumber (urutan model: Shopee lebih
+    // dulu), sehingga tombol Tambah membuka form dalam wujud screenshot
+    // marketplace: gambar jadi wajib dan hasilnya masuk tab Apa Kata Pelanggan.
+    source: testimonial?.source ?? (isMarketplaceIntent ? sources[0] ?? "shopee" : "website"),
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     image_url: testimonial?.image_url ?? "",
@@ -86,8 +83,6 @@ export default function TestimonialForm({
     image: null,
     sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? false,
-    author_type: reviewMode ? "admin" : "customer",
-    order_id: testimonial?.order_id ?? null,
     moderation_status: testimonial?.moderation_status ?? "approved",
   })
 
@@ -106,16 +101,14 @@ export default function TestimonialForm({
             : "Tambah ulasan"
       }
       description={
-        reviewMode
-          ? "Pilih pesanan delivered/completed yang belum memiliki ulasan. Teks ditulis admin dan sumber/author dicatat."
-          : isMarketplaceIntent
+        isMarketplaceIntent
           ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
           : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       }
       actions={
         <div className="flex flex-wrap gap-2">
           <Button type="submit" form="testimonial-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : reviewMode ? "Simpan ulasan terverifikasi" : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
           </Button>
           <Button asChild variant="secondary">
             <Link href={indexUrl}>Batal</Link>
@@ -181,20 +174,11 @@ export default function TestimonialForm({
 
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field id="testimonial-customer" label="Nama pelanggan" required error={form.errors.customer_name}>
-              <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} readOnly={reviewMode} />
+              <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
             </Field>
             <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
               <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
             </Field>
-            {reviewMode ? (
-              <Field id="testimonial-order" label="Pesanan terverifikasi" required error={form.errors.order_id} className="sm:col-span-2" hint="Hanya pesanan delivered/completed tanpa ulasan yang dapat dipilih.">
-                <Select value={form.data.order_id?.toString() ?? ""} onChange={(event) => form.setData("order_id", event.target.value ? Number(event.target.value) : null)}>
-                  <option value="">Pilih pesanan</option>
-                  {verifiedOrders.map((order) => <option key={order.id} value={order.id}>{order.label} · {order.status}</option>)}
-                </Select>
-              </Field>
-            ) : null}
-
             {editing && moderateUrl ? (
               <div className="sm:col-span-2 rounded-lg border border-border bg-muted/20 p-3">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -210,7 +194,7 @@ export default function TestimonialForm({
             {!isMarketplaceIntent ? (
               <Field
                 id="testimonial-message"
-                label={reviewMode ? "Isi ulasan admin" : "Isi ulasan"}
+                label="Isi ulasan"
                 error={form.errors.message}
                 className="sm:col-span-2"
                 hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."

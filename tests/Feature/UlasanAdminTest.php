@@ -340,44 +340,6 @@ class UlasanAdminTest extends TestCase
         $this->assertSame('Dokumentasi pemasangan kami.', $fresh->content['heading'] ?? null);
         $this->assertSame('Foto dari pelanggan Kudus dan Semarang.', $fresh->content['subtitle'] ?? null);
     }
-    public function test_admin_can_create_verified_review_once_per_completed_order(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $page = CmsPage::create(['slug' => 'testimoni', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
-        $product = Product::create([
-            'parent_sku' => 'WIN-REVIEW-ORDER', 'name' => 'Produk Review Order', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
-        ]);
-        $order = \App\Models\Order::create([
-            'order_number' => 'RA-20260815-9901', 'customer_name' => 'Pembeli Terverifikasi', 'customer_phone' => '081234567890',
-            'shipping_address_line1' => 'Jl. Uji 1', 'shipping_city' => 'Kudus', 'shipping_province' => 'Jawa Tengah',
-            'shipping_postal_code' => '59311', 'order_status' => 'completed', 'payment_status' => 'paid',
-            'shipping_status' => 'delivered', 'subtotal_amount' => 1000000, 'shipping_amount' => 0, 'discount_amount' => 0,
-            'total_amount' => 1000000, 'payment_method' => 'transfer', 'cod_flag' => false,
-        ]);
-        \App\Models\OrderItem::create([
-            'order_id' => $order->id, 'product_id' => $product->id, 'parent_sku' => $product->parent_sku,
-            'name' => $product->name, 'unit_price' => 1000000, 'quantity' => 1, 'line_subtotal' => 1000000, 'line_discount' => 0, 'line_total' => 1000000,
-        ]);
-
-        $this->actingAs($admin)->post(route('admin.testimonials.admin-review.store'), [
-            'order_id' => $order->id, 'message' => 'Admin mencatat kepuasan pelanggan.', 'rating' => 5,
-            'published' => true, 'source_reference' => 'WA-2026-001',
-            'media_items' => [['type' => 'video', 'url' => 'https://cdn.example.com/unboxing.mp4', 'source' => 'whatsapp']],
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('cms_testimonials', [
-            'order_id' => $order->id, 'author_type' => 'admin', 'author_admin_id' => $admin->id,
-            'moderation_status' => 'approved', 'published' => 1,
-        ]);
-        $review = CmsTestimonial::query()->where('order_id', $order->id)->firstOrFail();
-        $this->assertSame('video', $review->mediaPayload()[0]['type']);
-
-        $this->actingAs($admin)->post(route('admin.testimonials.admin-review.store'), [
-            'order_id' => $order->id, 'message' => 'Duplikat',
-        ])->assertSessionHasErrors('order_id');
-    }
-
     public function test_customer_review_text_is_immutable_but_admin_can_moderate_and_add_media(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);

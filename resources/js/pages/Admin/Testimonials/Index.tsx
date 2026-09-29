@@ -327,7 +327,6 @@ export default function TestimonialsIndex({
   publishedOptions,
   createHref,
   createLabel,
-  adminReviewHref = null,
   rows = [],
   importedRows = [],
   pagination,
@@ -351,7 +350,6 @@ export default function TestimonialsIndex({
   publishedOptions: Array<{ value: string; label: string }>
   createHref: string
   createLabel: string
-  adminReviewHref?: string | null
   rows: Array<WebsiteRow | FotoRow>
   importedRows?: FotoRow[]
   pagination: PaginationData | null
@@ -519,11 +517,6 @@ export default function TestimonialsIndex({
             />
           ) : null}
 
-          {tab === "website" && adminReviewHref ? (
-            <Button asChild variant="secondary" size="sm">
-              <Link href={adminReviewHref}>Ulasan dari order</Link>
-            </Button>
-          ) : null}
           {!reorderMode ? (
             <Button asChild size="sm">
               <Link href={createHref} className="inline-flex items-center gap-1.5">
