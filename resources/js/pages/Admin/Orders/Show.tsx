@@ -1410,10 +1410,11 @@ export default function OrderShow({
   workflowLinks: _workflowLinks,
   editPolicy,
   editUrl,
-  returnCases = [],
+    returnCases = [],
     returnEligibility,
     editReturnCaseId = 0,
     returnAdjustments = [],
+    openTracking = false,
   }: {
     order: OrderDetail
     events?: OrderEvent[]
@@ -1430,6 +1431,8 @@ export default function OrderShow({
     returnEligibility?: ReturnEligibility | null
     editReturnCaseId?: number
     returnAdjustments?: ReturnAdjustment[]
+    /** Buka drawer Lacak Pesanan sejak render (deep-link `?lacak=1`). */
+    openTracking?: boolean
   }) {
   const isCod = order.flow === "cod" || order.cod_flag
   const statusForm = useForm({ order_status: order.order_status })
@@ -1443,7 +1446,10 @@ export default function OrderShow({
   const [resiOpen, setResiOpen] = React.useState(false)
   // Popup balas ulasan pelanggan, dipakai tombol Balas di baris aksi.
   const [reviewReplyOpen, setReviewReplyOpen] = React.useState(false)
-  const [trackingOpen, setTrackingOpen] = React.useState(false)
+  // Drawer Lacak Pesanan: dibuka tombol di kartu Detail pengiriman, atau
+  // langsung sejak render bila datang dari deep-link `?lacak=1` (daftar
+  // Pengiriman dan URL resi lama yang halamannya sudah dihapus).
+  const [trackingOpen, setTrackingOpen] = React.useState(openTracking)
   const [refreshBusy, setRefreshBusy] = React.useState(false)
   const [resendWaBusy, setResendWaBusy] = React.useState(false)
   const [editing, setEditing] = React.useState(false)

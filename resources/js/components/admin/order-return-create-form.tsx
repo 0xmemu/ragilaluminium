@@ -29,6 +29,20 @@ export interface ReturnCreateFormItem {
   name: string
   unit_price: number
   quantity: number
+  /** Opsi varian item; wajib tampil supaya dua varian satu produk tidak tampak kembar. */
+  variation_1_name?: string | null
+  variation_1_option?: string | null
+  variation_2_name?: string | null
+  variation_2_option?: string | null
+}
+
+/** Susun label varian item, mis. "Warna: Hitam, Kaca: Kaca Es"; null bila polos. */
+function labelVarian(item: ReturnCreateFormItem | undefined): string | null {
+  if (!item) return null
+  const bagian: string[] = []
+  if (item.variation_1_name && item.variation_1_option) bagian.push(`${item.variation_1_name}: ${item.variation_1_option}`)
+  if (item.variation_2_name && item.variation_2_option) bagian.push(`${item.variation_2_name}: ${item.variation_2_option}`)
+  return bagian.length > 0 ? bagian.join(", ") : null
 }
 
 /**
@@ -184,6 +198,12 @@ export function ReturnCreateForm({
                   <p className={cn("truncate text-[13px] font-medium", !ikut && "line-through decoration-muted-foreground/50")}>
                     {item?.name ?? `Item #${row.order_item_id}`}
                   </p>
+                  {/* Varian selalu ditampilkan saat ada (owner 2026-09-29): dua
+                      varian satu produk di satu pesanan tidak boleh tampak
+                      kembar di form retur. */}
+                  {labelVarian(item) ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{labelVarian(item)}</p>
+                  ) : null}
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatCurrency(item?.unit_price ?? 0)} · {maksUnit} unit dipesan
                   </p>
