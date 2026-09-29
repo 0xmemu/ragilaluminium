@@ -2418,3 +2418,10 @@ Verifikasi: `php artisan test` penuh lulus 1285 test / 12498 asersi / 1 skipped 
 
 Untuk agent berikutnya: yang belum dipakai dari peluang yang sama adalah `trace/subscribe` (berlangganan push per resi, saklar `operations.shipping_pull.subscribe` masih mati) dan push `other/settlementReturn` (J&T mengirim balik tagihan hasil audit: waybillNo, totalFreight, packageChargeWeight, insuredFee, freight). Ongkir yang tersimpan sekarang berasal dari pelacakan, bukan versi audit. Izin endpoint `trace/subscribe` belum masuk peta izin yang teruji. Karena kredensial produksi ada di 202, pengujian endpoint J&T sebaiknya dilakukan dari 202, bukan dari 209 (209 sudah tidak punya kredensial). Skrip probe yang saya pakai tidak disimpan di repo; bentuknya: tanda tangan `digest = base64(md5(bizContent + privateKey))`, form field `bizContent`, header `apiAccount`/`timestamp`/`digest`, tujuan `/webopenplatformapi/api/logistics/trace`.
 Agent: zcode
+
+## 2026-09-29 00:16 UTC | zcode | Standard | resources/js/components/admin/order-return-create-form.tsx | selesai
+
+- Owner 29 Sep: kalau varian yang dipilih berbeda gimana, dan minta semua kemungkinan difasilitasi dalam SATU pesanan uji yang sama, bukan dikoreksi satu-satu.
+- Form retur kini menampilkan label varian (Warna: X, Kaca: Y) di setiap baris item; data variation_1/2 sudah ada di payload daftar maupun detail, jadi murni penampilan.
+- Dibuat pesanan uji RA-SIM-2609-07 (id 100086, COD Rp 17.250.000, Sampai, tanpa WA terkirim) yang menghimpun semua kasus: produk sama x2 unit (98/677 Hitam Kaca Es), produk sama varian berbeda x1 (98/681 Serat Kayu Kaca Bening), produk lain x1 (51/104 Putih Kaca Es).
+- Verifikasi live: popup 07 menampilkan ketiga label varian berbeda, ringkasan 4 dari 4 unit, stepper baris pertama max=2 (turun ke 1 lalu naik lagi, ringkasan mengikuti); ditutup tanpa menyimpan. Typecheck+build lulus.
