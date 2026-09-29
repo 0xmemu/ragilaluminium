@@ -7,7 +7,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog"
+import { Field, FieldAction } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { QuantityInput } from "@/components/admin/ui/quantity-input"
 import { Icon } from "@/components/shared/icon"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -265,27 +267,28 @@ export function OrderProductPicker({
                         </p>
                       )}
 
-                      <div className="flex flex-wrap items-end gap-2">
-                        <label className="text-xs text-muted-foreground">
-                          <span className="mb-1 block">Jumlah</span>
-                          <Input
-                            type="number"
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <Field id={`picker-jumlah-${produk.id}`} label="Jumlah">
+                          <QuantityInput
+                            id={`picker-jumlah-${produk.id}`}
+                            value={qty}
+                            onChange={setQty}
                             min={1}
                             max={999}
-                            className="w-24"
-                            value={String(qty)}
-                            onChange={(event) => setQty(Math.max(1, Number(event.target.value) || 1))}
+                            ariaLabel={`Jumlah yang ditambahkan untuk ${produk.name}`}
                           />
-                        </label>
-                        <Button type="button" size="sm" onClick={tambah} disabled={!bisaTambah}>
-                          Tambah ke pesanan
-                        </Button>
-                        {!stokCukup && varianTerpilih ? (
-                          <p className="text-xs text-destructive">
-                            Stok varian ini hanya {formatNumber(varianTerpilih.stock)}.
-                          </p>
-                        ) : null}
+                        </Field>
+                        <FieldAction>
+                          <Button type="button" size="sm" onClick={tambah} disabled={!bisaTambah}>
+                            Tambah ke pesanan
+                          </Button>
+                        </FieldAction>
                       </div>
+                      {!stokCukup && varianTerpilih ? (
+                        <p role="alert" className="text-xs text-destructive">
+                          Stok varian ini hanya {formatNumber(varianTerpilih.stock)}.
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                 </li>

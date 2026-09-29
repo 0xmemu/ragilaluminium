@@ -23,6 +23,7 @@ import {
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { QuantityInput } from "@/components/admin/ui/quantity-input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -382,12 +383,10 @@ function OrderEditPanel({
                       : line.variant_label ?? (line.variant_sku || "tanpa varian")}
                   </p>
                 </div>
-                <Input
-                  type="number"
-                  min={1}
-                  className="w-20"
-                  value={String(line.qty)}
-                  onChange={(event) => setQty(index, Number(event.target.value) || 1)}
+                <QuantityInput
+                  value={line.qty}
+                  onChange={(qty) => setQty(index, qty)}
+                  ariaLabel={`Jumlah ${original?.name ?? line.name ?? line.parent_sku}`}
                 />
                 <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(index)}>
                   Hapus
@@ -999,19 +998,16 @@ function ReturnCasePanel({
                               <span className="min-w-0 flex-1 truncate">{r.name}</span>
                               {editReplacement[item.id] ? (
                                 <>
-                                  <Input
-                                    className="w-28"
-                                    type="number"
-                                    min="1"
-                                    value={r.quantity}
-                                    placeholder="Produk id"
-                                    onChange={(event) =>
+                                  <QuantityInput
+                                    value={Number(r.quantity) || 1}
+                                    ariaLabel={`Jumlah barang pengganti ${r.name}`}
+                                    onChange={(qty) =>
                                       setCompletion((current) => ({
                                         ...current,
                                         [item.id]: {
                                           ...current[item.id],
                                           replacement_items: current[item.id].replacement_items.map((rr, i) =>
-                                            i === idx ? { ...rr, quantity: event.target.value } : rr
+                                            i === idx ? { ...rr, quantity: String(qty) } : rr
                                           ),
                                         },
                                       }))

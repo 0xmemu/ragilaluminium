@@ -4,10 +4,9 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { Checkbox } from "@/components/admin/ui/checkbox"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
-import { Input } from "@/components/admin/ui/input"
+import { QuantityInput } from "@/components/admin/ui/quantity-input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
-import { Icon } from "@/components/shared/icon"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
@@ -211,38 +210,15 @@ export function ReturnCreateForm({
                 {/* Pemilih jumlah unit selalu tampil di setiap item (owner
                     2026-09-29: semua kemungkinan masuk). Untuk 1 unit tombol
                     plus/minus terkunci karena batas bawah dan atasnya sama. */}
-                <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      disabled={!ikut || row.requested_quantity <= 1}
-                      onClick={() => ubahJumlah(row.requested_quantity - 1)}
-                      aria-label="Kurangi jumlah unit retur"
-                    >
-                      <Icon name="minus" className="size-3.5" aria-hidden="true" />
-                    </Button>
-                    <Input
-                      className="w-14 text-center"
-                      type="number"
-                      min={1}
-                      max={maksUnit}
-                      value={String(row.requested_quantity)}
-                      disabled={!ikut}
-                      aria-label={`Jumlah unit retur untuk ${item?.name ?? "item"}`}
-                      onChange={(event) => ubahJumlah(Number(event.target.value) || 1)}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      disabled={!ikut || row.requested_quantity >= maksUnit}
-                      onClick={() => ubahJumlah(row.requested_quantity + 1)}
-                      aria-label="Tambah jumlah unit retur"
-                    >
-                      <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                    </Button>
-                  </div>
+                <QuantityInput
+                  value={row.requested_quantity}
+                  onChange={ubahJumlah}
+                  min={1}
+                  max={maksUnit}
+                  disabled={!ikut}
+                  label="jumlah unit retur"
+                  ariaLabel={`Jumlah unit retur untuk ${item?.name ?? "item"}`}
+                />
               </div>
             )
           })}
