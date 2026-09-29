@@ -4,6 +4,7 @@ import * as React from "react"
 import { OptionMenu } from "@/components/admin/option-menu"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { DeltaBadge } from "@/components/admin/ui/delta-badge"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -662,20 +663,26 @@ export default function Dashboard({
                     {recentOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-muted/50">
                         <TableCell>
-                          <Link
-                            href={order.href}
-                            className="font-mono text-xs font-semibold text-foreground hover:text-primary"
-                          >
-                            {order.order_number}
-                          </Link>
-                          {order.waybill_number ? (
-                            <a
-                              href={order.shipping_href}
-                              className="mt-0.5 block font-mono text-[11px] text-primary hover:underline"
-                              title="Lacak resi pengiriman"
+                          <span className="flex items-center gap-1">
+                            <Link
+                              href={order.href}
+                              className="font-mono text-xs font-semibold text-foreground hover:text-primary"
                             >
-                              Resi: {order.waybill_number}
-                            </a>
+                              {order.order_number}
+                            </Link>
+                            <CopyButton text={order.order_number} label="Salin nomor order" compact showTextInTitle />
+                          </span>
+                          {order.waybill_number ? (
+                            <span className="mt-0.5 flex items-center gap-1">
+                              <a
+                                href={order.shipping_href}
+                                className="font-mono text-[11px] text-primary hover:underline"
+                                title="Lacak resi pengiriman"
+                              >
+                                Resi: {order.waybill_number}
+                              </a>
+                              <CopyButton text={order.waybill_number} label="Salin nomor resi" compact showTextInTitle />
+                            </span>
                           ) : null}
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {formatDateTime(order.created_at)}
@@ -732,23 +739,34 @@ export default function Dashboard({
                   <article key={order.id} className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link
-                          href={order.href}
-                          className="font-mono text-xs font-semibold hover:text-primary"
-                        >
-                          {order.order_number}
-                        </Link>
-                        {order.waybill_number ? (
-                          <a
-                            href={order.shipping_href}
-                            className="mt-0.5 block font-mono text-[11px] text-primary hover:underline"
-                            title="Lacak resi pengiriman"
+                        <span className="flex items-center gap-1">
+                          <Link
+                            href={order.href}
+                            className="font-mono text-xs font-semibold hover:text-primary"
                           >
-                            Resi: {order.waybill_number}
-                          </a>
+                            {order.order_number}
+                          </Link>
+                          <CopyButton text={order.order_number} label="Salin nomor order" compact showTextInTitle />
+                        </span>
+                        {order.waybill_number ? (
+                          <span className="mt-0.5 flex items-center gap-1">
+                            <a
+                              href={order.shipping_href}
+                              className="font-mono text-[11px] text-primary hover:underline"
+                              title="Lacak resi pengiriman"
+                            >
+                              Resi: {order.waybill_number}
+                            </a>
+                            <CopyButton text={order.waybill_number} label="Salin nomor resi" compact showTextInTitle />
+                          </span>
                         ) : null}
                         <p className="mt-1 text-sm font-medium">{order.customer_name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
+                        <span className="mt-0.5 flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">{order.customer_phone || "-"}</span>
+                          {order.customer_phone ? (
+                            <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+                          ) : null}
+                        </span>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {formatDateTime(order.created_at)}
                         </p>

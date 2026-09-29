@@ -1,6 +1,7 @@
 import { Head, Link } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -279,9 +280,10 @@ export default function PromotionOverview({
                       <p className="truncate text-sm font-medium text-foreground">{voucher.name}</p>
                       <span className="shrink-0 font-semibold tabular-nums text-primary">{voucher.discount_label}</span>
                     </div>
-                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                    <span className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
                       {voucher.code} · s.d. {formatDay(voucher.ends_at)}
-                    </p>
+                      <CopyButton text={voucher.code} label="Salin kode voucher" compact showTextInTitle />
+                    </span>
                   </li>
                 ))}
               </ul>

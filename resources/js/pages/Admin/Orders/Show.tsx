@@ -1026,7 +1026,12 @@ export default function OrderShow({
         <Card className="p-5">
           <p className="text-xs font-medium text-muted-foreground">Detail penerima</p>
           <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customer_name}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
+          <span className="mt-0.5 flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">{order.customer_phone || "-"}</span>
+            {order.customer_phone ? (
+              <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+            ) : null}
+          </span>
           <p className="mt-1.5 text-[13px] leading-5 text-foreground">
             {fullAddress(order) || "-"}
           </p>
@@ -1168,20 +1173,23 @@ export default function OrderShow({
                   <span className="font-medium text-foreground">
                     {order.customer_name}
                     {order.customer_phone ? (
-                      order.whatsapp_url ? (
-                        <a
-                          href={order.whatsapp_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
-                          title="Buka WhatsApp penerima"
-                        >
-                          <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
-                          <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{order.customer_phone}</span>
-                        </a>
-                      ) : (
-                        <span className="ml-1 font-mono">({order.customer_phone})</span>
-                      )
+                      <span className="inline-flex items-center gap-1">
+                        {order.whatsapp_url ? (
+                          <a
+                            href={order.whatsapp_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
+                            title="Buka WhatsApp penerima"
+                          >
+                            <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                            <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{order.customer_phone}</span>
+                          </a>
+                        ) : (
+                          <span className="ml-1 font-mono">({order.customer_phone})</span>
+                        )}
+                        <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+                      </span>
                     ) : " (-)"}
                   </span>
                   <span className="text-muted-foreground align-top">Alamat:</span>

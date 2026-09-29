@@ -335,8 +335,9 @@ function OrderCardRow({
             · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
           </span>
           {order.customer_phone ? (
-            <span className="hidden md:inline font-mono text-xs tabular-nums text-muted-foreground">
+            <span className="hidden md:inline-flex items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground">
               · {order.customer_phone}
+              <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
             </span>
           ) : null}
         </div>

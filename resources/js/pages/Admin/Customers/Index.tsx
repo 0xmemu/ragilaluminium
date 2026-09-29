@@ -5,6 +5,7 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { HintTip } from "@/components/admin/ui/hint-tip"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
@@ -238,13 +239,17 @@ export default function CustomersIndex({
                         <Link href={row.href} className="font-semibold hover:text-primary hover:underline">
                           {row.name}
                         </Link>
-                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
+                        <div className="mt-0.5 flex items-center gap-1">
+                          <p className="font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
+                          <CopyButton text={row.code} label="Salin ID customer" compact showTextInTitle />
+                        </div>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
                           {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
                         </p>
                       </td>
                       <td className="px-3 py-3">
-                        <a
+                        <div className="flex items-center gap-1">
+                          <a
                           href={row.whatsapp_url}
                           target="_blank"
                           rel="noreferrer"
@@ -253,6 +258,8 @@ export default function CustomersIndex({
                           <Icon name="whatsapp" className="size-4" aria-hidden="true" />
                           {row.phone}
                         </a>
+                          <CopyButton text={row.phone} label="Salin nomor HP" compact showTextInTitle />
+                        </div>
                       </td>
                       <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.address}</td>
                       <td className="px-3 py-3">
@@ -298,7 +305,10 @@ export default function CustomersIndex({
                       <Link href={row.href} className="mt-1 block font-semibold text-primary">
                         {row.name}
                       </Link>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <p className="font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
+                        <CopyButton text={row.code} label="Salin ID customer" compact showTextInTitle />
+                      </div>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
                       </p>
@@ -319,7 +329,8 @@ export default function CustomersIndex({
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Kontak WhatsApp</dt>
                       <dd className="mt-1 text-sm">
-                        <a
+                        <div className="flex items-center gap-1">
+                          <a
                           href={row.whatsapp_url}
                           target="_blank"
                           rel="noreferrer"
@@ -328,6 +339,8 @@ export default function CustomersIndex({
                           <Icon name="whatsapp" className="size-4" aria-hidden="true" />
                           {row.phone}
                         </a>
+                          <CopyButton text={row.phone} label="Salin nomor HP" compact showTextInTitle />
+                        </div>
                       </dd>
                     </div>
                     <div className="col-span-2">

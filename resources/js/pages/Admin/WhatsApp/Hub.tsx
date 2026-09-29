@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Icon } from "@/components/shared/icon"
 import {
   WhatsAppConnectionCard,
@@ -189,7 +190,10 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                                 <Icon name="arrow-right" className="size-3.5" aria-hidden="true" />
                               </Link>
                             ) : (
-                              <span className="text-xs font-medium text-foreground">{row.order_number}</span>
+                              <span className="flex items-center gap-1 text-xs font-medium text-foreground">
+                                {row.order_number}
+                                <CopyButton text={row.order_number} label="Salin nomor order" compact showTextInTitle />
+                              </span>
                             )
                           ) : (
                             <span className="text-[11px] text-muted-foreground">Tanpa pesanan</span>
@@ -247,7 +251,10 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                   <tr key={row.phone} className="border-b border-border/60 last:border-0 align-top">
                     <td className="px-5 py-3">
                       <p className="text-xs font-medium text-foreground">{row.name ?? "Nomor belum terdaftar"}</p>
-                      <p className="font-mono text-[11px] text-muted-foreground">{row.phone}</p>
+                      <span className="flex items-center gap-1">
+                        <span className="font-mono text-[11px] text-muted-foreground">{row.phone}</span>
+                        <CopyButton text={row.phone} label="Salin nomor HP" compact showTextInTitle />
+                      </span>
                       {row.order_count > 1 ? (
                         <p className="mt-0.5 text-[11px] text-muted-foreground">{row.order_count} pesanan</p>
                       ) : null}
@@ -278,7 +285,10 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                     <td className="px-3 py-3 text-center">
                       {row.order_number ? (
                         <>
-                          <p className="text-xs font-medium text-foreground">{row.order_number}</p>
+                          <span className="flex items-center justify-center gap-1 text-xs font-medium text-foreground">
+                            {row.order_number}
+                            <CopyButton text={row.order_number} label="Salin nomor order" compact showTextInTitle />
+                          </span>
                           {row.order_total ? (
                             <p className="text-[11px] tabular-nums text-muted-foreground">
                               {formatCurrency(Number(row.order_total))}

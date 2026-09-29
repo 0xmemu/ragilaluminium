@@ -2,6 +2,7 @@ import { Head, Link } from "@inertiajs/react"
 import { useEffect, useRef, useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -236,7 +237,12 @@ export default function ImportShow({
                       {job.incomplete_products.map((item) => (
                         <tr key={item.product_id}>
                           <td className="max-w-56 px-3 py-2 font-medium text-foreground">{item.name}</td>
-                          <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">{item.sku}</td>
+                          <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              {item.sku}
+                              <CopyButton text={item.sku} label="Salin SKU" compact showTextInTitle />
+                            </span>
+                          </td>
                           <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.rows.join(", ")}</td>
                           <td className="px-3 py-2 text-foreground">{item.reasons.join(", ")}</td>
                           <td className="px-3 py-2 text-right">
@@ -286,7 +292,12 @@ export default function ImportShow({
                             {item.name}
                           </a>
                         </td>
-                        <td className="px-4 py-2 font-mono tabular-nums text-muted-foreground">{item.sku}</td>
+                        <td className="px-4 py-2 font-mono tabular-nums text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            {item.sku}
+                            <CopyButton text={item.sku} label="Salin SKU" compact showTextInTitle />
+                          </span>
+                        </td>
                         <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{item.variants}</td>
                         <td className="px-4 py-2">
                           <span

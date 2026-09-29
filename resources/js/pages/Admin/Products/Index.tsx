@@ -3,6 +3,7 @@ import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -227,7 +228,10 @@ function ProductListRow({
             >
               {product.name}
             </Link>
-            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{product.parent_sku}</p>
+            <span className="mt-0.5 flex items-center gap-1">
+              <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
+              <CopyButton text={product.parent_sku} label="Salin SKU" compact showTextInTitle />
+            </span>
           </div>
         </div>
       </TableCell>

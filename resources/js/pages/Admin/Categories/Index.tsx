@@ -2,6 +2,7 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
@@ -222,7 +223,10 @@ export default function CategoriesIndex({
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className="font-mono text-xs font-semibold text-foreground">{c.code}</span>
+                      <span className="flex items-center justify-center gap-1">
+                        <span className="font-mono text-xs font-semibold text-foreground">{c.code}</span>
+                        <CopyButton text={c.code} label="Salin kode kategori" compact showTextInTitle />
+                      </span>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="inline-flex items-center justify-center">

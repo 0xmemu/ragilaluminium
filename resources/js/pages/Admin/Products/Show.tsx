@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import {
@@ -204,7 +205,10 @@ function VariantTable({ rows }: { rows: VariantRowData[] }) {
                     {formatNumber(row.stock)}
                   </TableCell>
                   <TableCell className="whitespace-nowrap px-4 font-mono text-[11px] text-muted-foreground sm:px-5">
-                    {row.sku}
+                    <span className="flex items-center gap-1">
+                      {row.sku}
+                      <CopyButton text={row.sku} label="Salin SKU" compact showTextInTitle />
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}

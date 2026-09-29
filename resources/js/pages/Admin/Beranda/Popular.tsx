@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
@@ -89,7 +90,10 @@ function ProductCell({ row }: { row: PopularRow }) {
           {row.name}
         </Link>
         <span className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-[11px] text-muted-foreground">{row.parent_sku}</span>
+          <span className="flex items-center gap-1">
+            <span className="font-mono text-[11px] text-muted-foreground">{row.parent_sku}</span>
+            <CopyButton text={row.parent_sku} label="Salin SKU" compact showTextInTitle />
+          </span>
           {row.in_window ? (
             <span
               className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"

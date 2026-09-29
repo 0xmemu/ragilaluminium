@@ -609,6 +609,7 @@ export default function PaymentsIndex({
                             <span className="inline-flex items-center gap-1">
                               <span>·</span>
                               <span className="font-mono text-[11px]">{item.customer_phone}</span>
+                              <CopyButton text={item.customer_phone} label="Salin nomor HP" compact showTextInTitle />
                               {item.whatsapp_url ? (
                                 <a
                                   href={item.whatsapp_url}
@@ -633,9 +634,10 @@ export default function PaymentsIndex({
                           {item.payment_method_label}
                         </span>
                         {item.transaction_reference ? (
-                          <p className="font-mono text-[11px] text-muted-foreground">
+                          <span className="flex items-center justify-center gap-1 font-mono text-[11px] text-muted-foreground">
                             Ref: {item.transaction_reference}
-                          </p>
+                            <CopyButton text={item.transaction_reference} label="Salin referensi transaksi" compact showTextInTitle />
+                          </span>
                         ) : null}
                       </div>
                     </td>

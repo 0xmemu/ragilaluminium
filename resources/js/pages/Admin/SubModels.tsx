@@ -3,6 +3,7 @@ import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
@@ -420,7 +421,12 @@ export default function SubModelsIndex({
                     <TableCell className="w-12 text-center tabular-nums text-muted-foreground">
                       {row.displayNumber}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      <span className="flex items-center gap-1">
+                        {row.code}
+                        <CopyButton text={row.code} label="Salin kode sub model" compact showTextInTitle />
+                      </span>
+                    </TableCell>
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell className="max-w-64 truncate text-sm text-muted-foreground">
                       {row.description ?? "-"}

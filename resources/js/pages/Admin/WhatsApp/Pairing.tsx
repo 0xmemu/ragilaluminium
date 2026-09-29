@@ -7,6 +7,7 @@ import { Alert } from "@/components/admin/ui/alert"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import AdminLayout from "@/layouts/admin-layout"
@@ -449,7 +450,10 @@ export default function Pairing({
             {flash.code && (
               <Alert tone="success">
                 <p className="text-sm font-bold">Pairing Code:</p>
-                <p className="text-2xl font-bold tracking-[0.3em]">{flash.code}</p>
+                <span className="flex items-center gap-2">
+                  <span className="text-2xl font-bold tracking-[0.3em]">{flash.code}</span>
+                  <CopyButton text={flash.code} label="Salin pairing code" compact showTextInTitle />
+                </span>
                 <p className="text-xs text-muted-foreground">Segera masukkan di HP sebelum kedaluwarsa.</p>
               </Alert>
             )}

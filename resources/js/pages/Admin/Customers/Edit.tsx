@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -118,7 +119,16 @@ export default function CustomerEdit({
             </span>
             <div>
               <h2 className="text-xl font-bold">{customer.name}</h2>
-              <p className="mt-1 font-mono text-sm text-muted-foreground">{customer.code} · {customer.phone}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="flex items-center gap-1">
+                  <span className="font-mono text-sm text-muted-foreground">{customer.code}</span>
+                  <CopyButton text={customer.code} label="Salin ID customer" compact showTextInTitle />
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-mono text-sm text-muted-foreground">{customer.phone}</span>
+                  <CopyButton text={customer.phone} label="Salin nomor HP" compact showTextInTitle />
+                </span>
+              </div>
               {metrics.fraud.score >= 30 ? (
                 <p className="mt-2 text-sm font-semibold text-warning-foreground">Nomor WhatsApp sedang diselidiki</p>
               ) : null}
@@ -218,9 +228,12 @@ export default function CustomerEdit({
             <ul className="mt-4 space-y-3">
               {orders.map((order) => (
                 <li key={order.id} className="rounded-md border border-border p-3 text-sm">
-                  <Link href={order.href} className="font-semibold text-primary hover:underline">
-                    {order.order_number}
-                  </Link>
+                  <div className="flex items-center gap-1">
+                    <Link href={order.href} className="font-semibold text-primary hover:underline">
+                      {order.order_number}
+                    </Link>
+                    <CopyButton text={order.order_number} label="Salin nomor order" compact showTextInTitle />
+                  </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {statusMeta(order.order_status).label} · {statusMeta(order.payment_status).label}
                   </p>
