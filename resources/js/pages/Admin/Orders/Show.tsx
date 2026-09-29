@@ -1759,7 +1759,7 @@ export default function OrderShow({
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <Icon name="plus" className="size-3" aria-hidden="true" />
-                <span>Tambah catatan</span>
+                <span>Catatan Admin</span>
               </button>
             )}
           </div>

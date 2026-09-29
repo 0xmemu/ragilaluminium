@@ -544,7 +544,7 @@ function OrderCardRow({
               title="Klik untuk melihat catatan lengkap dan edit catatan"
             >
               <Icon name="clipboard-text" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <span>Catatan admin</span>
+              <span>Catatan Admin</span>
             </button>
           ) : (
             <button
@@ -554,7 +554,7 @@ function OrderCardRow({
               title="Tambah catatan internal admin"
             >
               <Icon name="plus" className="size-3 text-muted-foreground" aria-hidden="true" />
-              <span>Catatan admin</span>
+              <span>Catatan Admin</span>
             </button>
           )}
         </div>
