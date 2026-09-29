@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Models\User;
@@ -74,6 +75,58 @@ class AdminShippingIndexTest extends TestCase
                 ->where('records.data.0.order_number', 'ORD26080001')
                 ->where('records.data.0.customer_phone', '081234567890')
                 ->where('records.data.0.customer_address', 'Jl. Merdeka 10, Semarang, Jawa Tengah, 50254')
+            );
+    }
+
+    public function test_kolom_umur_menggantikan_keterangan_kurir(): void
+    {
+        // Resi mandek 10 hari dibuat lebih dulu, lalu resi baru, supaya urutan
+        // terbaru di atas menempatkan resi baru pada baris pertama.
+        $this->makeRecord('JT-MANDEK', 'in_transit', now()->subDays(10)->toDateTimeString());
+        $this->makeRecord('JT-BARU', 'in_transit');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Shipping/Index')
+                // Nilai keterangan kurir mentah dilarang ikut ke halaman ini;
+                // kolomnya sudah diganti kolom umur.
+                ->missing('records.data.0.status_raw')
+                ->where('records.data.0.age_label', 'Baru saja')
+                ->where('records.data.0.age_tone', 'muted')
+                // Lewat 7 hari wajib diberi nada peringatan tertinggi.
+                ->where('records.data.1.age_label', '10 hari')
+                ->where('records.data.1.age_tone', 'danger')
+            );
+    }
+
+    public function test_umur_resi_selesai_berhenti_di_waktu_selesai_dari_log_kejadian(): void
+    {
+        // Resi dicatat 6 hari lalu, paket sampai 2 hari setelah itu. Umur harus
+        // 2 hari (dicatat sampai selesai), bukan 6 hari, dan tanpa nada
+        // peringatan karena pengirimannya sudah selesai.
+        $awal = now()->subDays(6);
+        $record = $this->makeRecord('JT-SELESAI', 'delivered', $awal->toDateTimeString());
+
+        EventLog::create([
+            'event_type' => 'shipping.status_updated',
+            'entity_type' => 'order',
+            'entity_id' => $record->order_id,
+            'payload' => [
+                'waybill' => 'JT-SELESAI',
+                'from' => 'in_transit',
+                'to' => 'delivered',
+            ],
+            'created_at' => $awal->copy()->addDays(2),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('records.data.0.age_label', '2 hari')
+                ->where('records.data.0.age_tone', 'muted')
             );
     }
 

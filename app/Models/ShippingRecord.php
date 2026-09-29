@@ -31,6 +31,33 @@ class ShippingRecord extends Model
         return array_merge([self::CARRIER_JNT], self::CARRIER_JNT_ALIASES);
     }
 
+    /**
+     * Penanda internal yang ditulis sistem ke kolom keterangan kurir
+     * (status_raw) saat resi dibatalkan, dibuat, atau ditempel manual.
+     *
+     * Nilai ini bukan keterangan dari kurir, jadi dilarang ditampilkan di
+     * bawah label apa pun yang berbunyi keterangan kurir. Informasi asal-usul
+     * resi sudah tercatat di log kejadian pesanan.
+     *
+     * @var list<string>
+     */
+    public const INTERNAL_RAW_MARKERS = ['manual', 'created', 'cancelled'];
+
+    /**
+     * Keterangan kurir yang layak ditampilkan, atau null bila kolomnya berisi
+     * penanda internal sistem. Nilai mentahnya tetap utuh di basis data.
+     */
+    public function courierNote(): ?string
+    {
+        $value = trim((string) $this->status_raw);
+
+        if ($value === '' || in_array(mb_strtolower($value), self::INTERNAL_RAW_MARKERS, true)) {
+            return null;
+        }
+
+        return $value;
+    }
+
     protected $fillable = [
         'order_id',
         'carrier_name',

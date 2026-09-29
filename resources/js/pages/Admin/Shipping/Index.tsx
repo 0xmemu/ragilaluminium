@@ -22,7 +22,6 @@ export interface ShippingItem {
   carrier_name: string
   service_name: string | null
   status: string
-  status_raw: string | null
   last_status_at: string | null
   order_id: number | null
   order_number: string
@@ -31,6 +30,11 @@ export interface ShippingItem {
   customer_phone: string
   /** Alamat penerima utuh: jalan, kelurahan, kecamatan, kota, provinsi, kode pos. */
   customer_address: string
+  /** Umur pengiriman sejak resi dicatat, sudah diformat dan diberi nada warna server. */
+  age_label: string
+  age_tone: "muted" | "warning" | "danger"
+  age_hours: number | null
+  age_title: string
   /** Tautan ke drawer Lacak Pesanan di detail pesanan terkait (`?lacak=1`). */
   track_href: string
   order_href: string
@@ -362,7 +366,7 @@ export default function ShippingIndex({
                   <th className="w-[8.5rem] px-3 py-3 text-center">Status Pengiriman</th>
                   <th className="w-[7rem] px-3 py-3 text-center">Status Pesanan</th>
                   <th className="w-[8.5rem] px-3 py-3 text-center">Update Terakhir</th>
-                  <th className="w-[9rem] px-4 py-3 text-left">Keterangan Kurir</th>
+                  <th className="w-[7rem] px-3 py-3 text-center">Umur</th>
                   <th className="w-[5rem] px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -457,14 +461,26 @@ export default function ShippingIndex({
                       )}
                     </td>
 
-                    {/* Kolom 8: Keterangan Kurir (Rata Kiri) */}
-                    <td className="max-w-xs px-4 py-3 align-middle">
-                      {item.status_raw ? (
-                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground" title={item.status_raw}>
-                          {item.status_raw}
-                        </p>
+                    {/* Kolom 8: Umur pengiriman (Rata Tengah) */}
+                    <td className="px-3 py-3 text-center align-middle">
+                      {item.age_hours === null ? (
+                        <span className="text-xs text-muted-foreground" title={item.age_title}>
+                          -
+                        </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Belum ada keterangan</span>
+                        <span
+                          className={cn(
+                            "text-xs font-medium tabular-nums",
+                            item.age_tone === "danger"
+                              ? "text-destructive"
+                              : item.age_tone === "warning"
+                                ? "text-warning-foreground"
+                                : "text-foreground",
+                          )}
+                          title={item.age_title}
+                        >
+                          {item.age_label}
+                        </span>
                       )}
                     </td>
 

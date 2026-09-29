@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
@@ -117,8 +118,26 @@ class ShippingRecordController extends Controller
 
         $paginated = $query->paginate(15)->withQueryString();
 
-        $mappedData = $paginated->getCollection()->map(function (ShippingRecord $r): array {
+        // Waktu pengiriman selesai untuk baris di halaman ini, dibaca dari log
+        // kejadian pesanan. Kejadian terminal paling awal dipakai supaya durasi
+        // berhenti tepat saat paket sampai, bukan saat terakhir disegarkan.
+        $terminalShipping = ['delivered', 'returned', 'cancelled'];
+        $pageOrderIds = $paginated->getCollection()->pluck('order_id')->filter()->unique();
+        $completedAt = $pageOrderIds->isEmpty()
+            ? collect()
+            : EventLog::query()
+                ->where('entity_type', 'order')
+                ->whereIn('entity_id', $pageOrderIds->all())
+                ->where('event_type', 'shipping.status_updated')
+                ->orderBy('created_at')
+                ->get(['entity_id', 'payload', 'created_at'])
+                ->filter(fn (EventLog $log): bool => in_array(data_get($log->payload, 'to'), $terminalShipping, true))
+                ->groupBy('entity_id')
+                ->map(fn ($logs) => $logs->first()->created_at);
+
+        $mappedData = $paginated->getCollection()->map(function (ShippingRecord $r) use ($completedAt): array {
             $order = $r->order;
+            $age = $this->shipAge($r, $completedAt->get($r->order_id));
 
             return [
                 'id' => $r->id,
@@ -126,7 +145,6 @@ class ShippingRecordController extends Controller
                 'carrier_name' => $r->carrier_name ?: 'J&T Cargo',
                 'service_name' => $r->service_name,
                 'status' => $r->status,
-                'status_raw' => $r->status_raw,
                 'last_status_at' => optional($r->last_status_at)?->toIso8601String(),
                 'order_id' => $r->order_id,
                 'order_number' => $order?->order_number ?? '-',
@@ -137,6 +155,10 @@ class ShippingRecordController extends Controller
                 // yang sama seperti orderShippingAddress pada area cetak supaya
                 // satu pesanan tampil konsisten di semua permukaan.
                 'customer_address' => $this->recipientAddress($order),
+                'age_label' => $age['label'],
+                'age_tone' => $age['tone'],
+                'age_hours' => $age['hours'],
+                'age_title' => $age['title'],
                 'track_href' => $r->order_id
                     ? route('admin.orders.show', ['order' => $r->order_id, 'lacak' => 1])
                     : route('admin.shipping.index'),
@@ -227,6 +249,57 @@ class ShippingRecordController extends Controller
         return $changed
             ? ['success', 'Status tracking berhasil diperbarui dari J&T.']
             : ['status', 'Status tracking belum berubah (data stale atau belum ada event baru dari J&T).'];
+    }
+
+    /**
+     * Umur pengiriman: berapa lama resi sudah berjalan sejak dicatat.
+     *
+     * Resi aktif dihitung sampai saat ini sehingga angkanya bertambah dan paket
+     * yang macet langsung terbaca. Resi yang sudah selesai dihitung sampai waktu
+     * status akhirnya tercatat, karena kolom last_status_at ikut berubah setiap
+     * pelacakan J&T disegarkan sehingga tidak layak jadi jangkar waktu.
+     *
+     * Ambang peringatan mengikuti filter umur di daftar pesanan (24 jam, 7 hari).
+     *
+     * @return array{label: string, tone: string, hours: int|null, title: string}
+     */
+    private function shipAge(ShippingRecord $record, ?\Carbon\CarbonInterface $completedAt): array
+    {
+        $start = $record->created_at;
+
+        if (! $start) {
+            return [
+                'label' => '-',
+                'tone' => 'muted',
+                'hours' => null,
+                'title' => 'Waktu resi dicatat belum tersedia.',
+            ];
+        }
+
+        $hours = (int) floor($start->diffInHours($completedAt ?? now()));
+        $label = match (true) {
+            $hours < 1 => 'Baru saja',
+            $hours < 24 => $hours.' jam',
+            default => intdiv($hours, 24).' hari',
+        };
+
+        $tone = 'muted';
+        if (! $completedAt) {
+            $tone = match (true) {
+                $hours >= 24 * 7 => 'danger',
+                $hours >= 24 => 'warning',
+                default => 'muted',
+            };
+        }
+
+        return [
+            'label' => $label,
+            'tone' => $tone,
+            'hours' => $hours,
+            'title' => $completedAt
+                ? 'Total '.$label.' sejak resi dicatat sampai pengiriman selesai.'
+                : 'Resi dicatat '.$start->translatedFormat('j M Y, H.i').', sudah berjalan '.$label.'.',
+        ];
     }
 
     /**

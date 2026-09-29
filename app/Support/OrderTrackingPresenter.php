@@ -104,7 +104,9 @@ class OrderTrackingPresenter
             'carrier_name' => $shipping?->carrier_name,
             'waybill_number' => $shipping?->waybill_number,
             'record_status' => $shipping?->status,
-            'status_raw' => $shipping?->status_raw,
+            // Nilai penanda internal sistem disembunyikan; kolom ini hanya
+            // boleh berisi keterangan asli dari kurir.
+            'status_raw' => $shipping?->courierNote(),
             'last_status_at' => optional($shipping?->last_status_at)?->toIso8601String(),
             'tracking_url' => $shipping?->tracking_url,
             'order_status' => (string) $order->order_status,
@@ -225,10 +227,12 @@ class OrderTrackingPresenter
 
         $entries = [];
 
-        if ($shipping?->status_raw || $shipping?->last_status_at) {
+        $note = $shipping?->courierNote();
+
+        if ($note || $shipping?->last_status_at) {
             $entries[] = [
-                'message' => filled($shipping->status_raw) && ! is_numeric((string) $shipping->status_raw)
-                    ? (string) $shipping->status_raw
+                'message' => filled($note) && ! is_numeric((string) $note)
+                    ? (string) $note
                     : self::shippingUpdateMessage(['to' => $shipping->status]),
                 'at' => optional($shipping->last_status_at ?? $shipping->updated_at)?->toIso8601String(),
                 'source' => 'shipping_record',
@@ -255,8 +259,10 @@ class OrderTrackingPresenter
 
     private static function defaultLatestMessage(Order $order, ?ShippingRecord $shipping): string
     {
-        if (filled($shipping?->status_raw) && ! is_numeric((string) $shipping->status_raw)) {
-            return (string) $shipping->status_raw;
+        $note = $shipping?->courierNote();
+
+        if (filled($note) && ! is_numeric((string) $note)) {
+            return (string) $note;
         }
 
         return self::orderStatusChangeMessage(['order_status' => $order->order_status]);
