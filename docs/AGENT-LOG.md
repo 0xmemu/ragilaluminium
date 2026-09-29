@@ -2664,3 +2664,12 @@ Dampak spec: tidak berubah (tanpa route, kolom, enum, atau status baru).
 Verifikasi: CustomerAdminTest 12 passed; suite penuh 1306 passed, 1 skipped, 1 FAILED yang BUKAN dari perubahan ini (lihat catatan benturan di bawah); ESLint + typecheck bersih, build sukses, Vitest 238 passed; browser: perilaku filter terbukti pada data produksi, tanpa overflow 390/1280/1440.
 BENTURAN ANTAR-AGENT (dilaporkan, tidak saya perbaiki): tests/Feature/ReturnRefundIntegrityTest::test_tidak_ada_kolom_ongkir_retur_kedua_di_skema gagal karena migrasi baru 2026_09_29_000001_add_additional_shipping_to_order_return_cases (agent lain, 2026-09-29 11:23) menambahkan kembali kolom additional_shipping_amount ke order_return_cases. Tes penjaga itu masih memegang keputusan 2026-09-26 (kolom duplikat dibuang) dan belum diperbarui. Perlu keputusan pemilik tes/migrasi itu. Tidak ada kaitan dengan perubahan pelanggan.
 Agent: zcode-retur
+
+## 2026-09-29 19:40 UTC | zcode-retur | Standard | - | selesai
+Lingkup: owner menemukan pemilih Media Library di Tambah Ulasan hanya bisa satu gambar, padahal desain menyebut ulasan bisa punya banyak foto; minta UI memfasilitasi spek secara utuh tanpa gap.
+Akar masalah: form admin mengirim satu media_asset_id saja (handlePickMedia mengambil media[0]); foto tambahan hanya bisa lewat tempel URL manual, dan media_items (foto kiriman pelanggan) tidak pernah dikirim ke form sehingga tak bisa dikelola.
+Perubahan: Testimonials/Form.tsx (pengelola foto: multi-pilih library, Tambah URL, hapus, Jadikan utama, cap maksimal), TestimonialController (terima photos[] kind library/url, resolve URL aset di server, foto pertama jadi image_url, sisanya image_urls, daftar kosong mengosongkan; props photos + maxPhotos), CmsTestimonial::MAX_PHOTOS=10, 5 test baru.
+Dampak spec: tidak berubah (tanpa route/kolom/enum baru; kunci payload photos adalah bentuk form, kolom DB tetap image_url/image_urls/media_items).
+Verifikasi: UlasanAdminTest 13 passed; suite penuh 1311 passed, 1 skipped, 1 failed (ReturnRefundIntegrityTest, benturan migrasi agent lain yang sudah dilaporkan); ESLint + typecheck bersih; build sukses; Vitest 238 passed; browser: dua aset terpilih sekaligus, badge Utama/Hapus/Jadikan utama bekerja, tanpa overflow 390/1280.
+Catatan gap lain yang sengaja TIDAK diubah: GalleryForm (Hasil Pemasangan) tetap satu gambar karena entitasnya memang satu foto + keterangan.
+Agent: zcode-retur
