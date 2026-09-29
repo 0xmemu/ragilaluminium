@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Models\ShippingTrackingEvent;
@@ -44,8 +43,12 @@ class AdminShippingWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_admin_shipping_detail_contains_tracking_link_and_event_timeline(): void
+    public function test_old_shipping_detail_url_redirects_to_order_tracking_drawer(): void
     {
+        // Halaman detail resi DIHAPUS (owner 2026-09-28) karena isinya duplikat
+        // drawer Lacak Pesanan. URL lama wajib tetap hidup sebagai pengalih ke
+        // detail pesanan dengan penanda `lacak`, supaya tautan dan bookmark
+        // lama tidak mati dan drawer-nya langsung terbuka.
         $admin = $this->admin();
         $order = $this->order();
         $record = ShippingRecord::create([
@@ -59,27 +62,32 @@ class AdminShippingWorkflowTest extends TestCase
             'last_status_at' => now(),
             'tracking_url' => 'https://tracking.example.test/JT-SHIP-1',
         ]);
-        EventLog::create([
-            'event_type' => 'shipping.status_updated',
-            'entity_type' => 'order',
-            'entity_id' => $order->id,
-            'payload' => [
-                'waybill' => $record->waybill_number,
-                'from' => 'pending_pickup',
-                'to' => 'in_transit',
-                'raw' => 'On the way',
-            ],
-            'created_at' => now(),
-        ]);
 
         $this->actingAs($admin)
             ->get(route('admin.shipping.show', $record))
+            ->assertRedirect(route('admin.orders.show', ['order' => $order->id, 'lacak' => 1]));
+
+        // Penanda itu memang membuka drawer di halaman tujuan.
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', ['order' => $order->id, 'lacak' => 1]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/ResourceShow')
-                ->where('fields.6.value', $record->tracking_url)
-                ->where('sections.0.title', 'Timeline pengiriman')
-                ->where('sections.0.rows.0.value', 'pending_pickup -> in_transit - On the way'));
+                ->component('Admin/Orders/Show')
+                ->where('openTracking', true));
+    }
+
+    public function test_order_detail_does_not_open_tracking_drawer_without_flag(): void
+    {
+        // Tanpa penanda, drawer tetap tertutup seperti sebelumnya.
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Orders/Show')
+                ->where('openTracking', false));
     }
 
     public function test_simpan_resi_selalu_memindahkan_status_ke_dikirim(): void

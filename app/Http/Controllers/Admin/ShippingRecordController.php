@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\EventLog;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\JntReadiness;
@@ -130,7 +129,9 @@ class ShippingRecordController extends Controller
                 'customer_name' => $order?->customer_name ?? '-',
                 'customer_phone' => $order?->customer_phone ?? '',
                 'customer_city' => $order?->shipping_city ?? '',
-                'href' => route('admin.shipping.show', $r),
+                'track_href' => $r->order_id
+                    ? route('admin.orders.show', ['order' => $r->order_id, 'lacak' => 1])
+                    : route('admin.shipping.index'),
                 'order_href' => $r->order_id ? route('admin.orders.show', $r->order_id) : '#',
                 'refresh_url' => route('admin.shipping.refresh', $r),
             ];
@@ -161,71 +162,24 @@ class ShippingRecordController extends Controller
         ]);
     }
 
-    public function show(ShippingRecord $shipping): Response
+    /**
+     * Halaman detail resi DIHAPUS (owner 2026-09-28). Isinya hanya duplikat
+     * drawer "Lacak pesanan" di detail pesanan terkait, jadi URL lama tetap
+     * hidup sebagai pengalih ke sana dengan penanda `lacak` supaya drawer-nya
+     * langsung terbuka. Cara ini dipakai agar tautan dan bookmark lama tidak
+     * mati setelah halamannya dibuang.
+     */
+    public function redirectToOrder(ShippingRecord $shipping): RedirectResponse
     {
-        $shipping->load('order');
-
-        // ShippingService menulis event pada entity order (agar timeline order
-        // tetap utuh). Ambil event shipping yang relevan dengan resi ini.
-        $logs = EventLog::query()
-            ->where('entity_type', 'order')
-            ->where('entity_id', $shipping->order_id)
-            ->where('event_type', 'like', 'shipping.%')
-            ->latest('created_at')
-            ->limit(50)
-            ->get();
-
-        $matchingLogs = $logs->filter(
-            fn (EventLog $log): bool => data_get($log->payload, 'waybill') === $shipping->waybill_number
-        );
-        if ($matchingLogs->isNotEmpty()) {
-            $logs = $matchingLogs;
+        if (! $shipping->order_id) {
+            return redirect()
+                ->route('admin.shipping.index')
+                ->with('status', 'Resi ini belum tertaut pesanan, jadi tidak ada detail pesanan yang bisa dibuka.');
         }
 
-        $timeline = $logs->map(function (EventLog $log): array {
-            $payload = is_array($log->payload) ? $log->payload : [];
-            $details = match ($log->event_type) {
-                'shipping.status_updated' => trim(implode(' - ', array_filter([
-                    isset($payload['from'], $payload['to'])
-                        ? ($payload['from'].' -> '.$payload['to'])
-                        : null,
-                    $payload['raw'] ?? null,
-                ]))),
-                'shipping.created' => filled($payload['source'] ?? null)
-                    ? 'Sumber: '.$payload['source']
-                    : 'Resi dicatat di sistem',
-                'shipping.create_failed' => $payload['message'] ?? 'Pembuatan resi gagal',
-                default => trim(implode(' - ', array_filter([
-                    $payload['raw'] ?? null,
-                    $payload['message'] ?? null,
-                ]))),
-            };
-
-            return [
-                'label' => optional($log->created_at)?->format('d/m/Y H:i').' - '.$this->eventLabel($log->event_type),
-                'value' => $details !== '' ? $details : 'Event pengiriman tercatat.',
-            ];
-        })->values()->all();
-
-        return Inertia::render('Admin/ResourceShow', [
-            'title' => 'Pengiriman '.($shipping->waybill_number ?? '#'.$shipping->id),
-            'subtitle' => $shipping->carrier_name,
-            'fields' => [
-                ['label' => 'Resi', 'value' => $shipping->waybill_number],
-                ['label' => 'Kurir', 'value' => $shipping->carrier_name],
-                ['label' => 'Layanan', 'value' => $shipping->service_name],
-                ['label' => 'Status', 'value' => $shipping->status],
-                ['label' => 'Keterangan kurir', 'value' => $shipping->status_raw],
-                ['label' => 'Pesanan', 'value' => $shipping->order?->order_number],
-                ['label' => 'Tracking kurir', 'value' => $shipping->tracking_url],
-                ['label' => 'Update Terakhir', 'value' => optional($shipping->last_status_at)?->toDateTimeString()],
-            ],
-            'sections' => [
-                [
-                    'title' => 'Timeline pengiriman',
-                    'rows' => $timeline,
-                ],
-            ],
+        return redirect()->route('admin.orders.show', [
+            'order' => $shipping->order_id,
+            'lacak' => 1,
         ]);
     }
 
@@ -282,16 +236,6 @@ class ShippingRecordController extends Controller
                 ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang')
             ),
             default => 'Semua waktu',
-        };
-    }
-
-    private function eventLabel(string $eventType): string
-    {
-        return match ($eventType) {
-            'shipping.created' => 'Resi dicatat',
-            'shipping.status_updated' => 'Status diperbarui',
-            'shipping.create_failed' => 'Pembuatan resi gagal',
-            default => str_replace(['shipping.', '_'], ['', ' '], $eventType),
         };
     }
 }

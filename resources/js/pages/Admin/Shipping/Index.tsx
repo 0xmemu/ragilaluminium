@@ -30,7 +30,8 @@ export interface ShippingItem {
   customer_name: string
   customer_phone: string
   customer_city: string
-  href: string
+  /** Tautan ke drawer Lacak Pesanan di detail pesanan terkait (`?lacak=1`). */
+  track_href: string
   order_href: string
   refresh_url: string
 }
@@ -384,7 +385,7 @@ export default function ShippingIndex({
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5">
                           <Link
-                            href={item.href}
+                            href={item.track_href}
                             className="font-mono text-sm font-bold tracking-tight text-foreground hover:text-primary hover:underline"
                           >
                             {item.waybill_number}
@@ -478,7 +479,7 @@ export default function ShippingIndex({
                           <span>{busyRowId === item.id ? "Memuat..." : "Refresh"}</span>
                         </Button>
                         <Button asChild variant="secondary" size="xs">
-                          <Link href={item.href}>Lacak</Link>
+                          <Link href={item.track_href}>Lacak</Link>
                         </Button>
                       </div>
                     </td>

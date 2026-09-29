@@ -28,7 +28,6 @@ export default function ResourceShow({
   const currentRoute = route().current()
   const routeParams = route().params as Record<string, string>
   const isImport = currentRoute === "admin.imports.show"
-  const isShipping = currentRoute === "admin.shipping.show"
   const isStoreAnalytics = currentRoute === "admin.analytics.store-performance"
 
   const actions = (
@@ -70,20 +69,6 @@ export default function ResourceShow({
             Jalankan ulang
           </Button>
         </>
-      ) : null}
-      {isShipping && routeParams.shipping ? (
-        <Button
-          onClick={() =>
-            actionForm.post(
-              routeUrl("admin.shipping.refresh", { shipping_record: routeParams.shipping }),
-              { preserveScroll: true },
-            )
-          }
-          disabled={actionForm.processing}
-        >
-          <Icon name="refresh" className="h-4 w-4" aria-hidden="true" />
-          Muat ulang status
-        </Button>
       ) : null}
     </>
   )

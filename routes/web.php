@@ -318,7 +318,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Shipping
     Route::get('shipping', [ShippingRecordController::class, 'index'])->name('shipping.index');
-    Route::get('shipping/{shipping}', [ShippingRecordController::class, 'show'])->name('shipping.show');
+    // Halaman detail resi DIHAPUS (owner 2026-09-28): isinya duplikat drawer
+    // Lacak Pesanan di detail pesanan. URL lama tetap hidup sebagai pengalih
+    // supaya tautan dan bookmark lama tidak mati.
+    Route::get('shipping/{shipping}', [ShippingRecordController::class, 'redirectToOrder'])->name('shipping.show');
     Route::post('shipping/{shipping_record}/refresh', [ShippingRecordController::class, 'refreshStatus'])->name('shipping.refresh');
 
     // WhatsApp
