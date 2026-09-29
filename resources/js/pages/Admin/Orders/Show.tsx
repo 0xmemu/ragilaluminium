@@ -388,8 +388,15 @@ function OrderEditPanel({
                   onChange={(qty) => setQty(index, qty)}
                   ariaLabel={`Jumlah ${original?.name ?? line.name ?? line.parent_sku}`}
                 />
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(index)}>
-                  Hapus
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeLine(index)}
+                  aria-label={`Hapus ${original?.name ?? line.name ?? line.parent_sku} dari pesanan`}
+                  title="Hapus produk dari pesanan"
+                >
+                  <Icon name="x" className="size-4" aria-hidden="true" />
                 </Button>
               </li>
             )
