@@ -12,7 +12,7 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatDateTime, formatNumber, formatPhoneLocal } from "@/lib/format"
+import { formatDateTime, formatNumber } from "@/lib/format"
 import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 
@@ -384,7 +384,7 @@ export default function ShippingIndex({
                             {item.waybill_number}
                           </Link>
                           {item.waybill_number !== "-" ? (
-                            <CopyButton text={item.waybill_number} label="Salin nomor resi" />
+                            <CopyButton text={item.waybill_number} label="Salin nomor resi" compact showTextInTitle />
                           ) : null}
                         </div>
                         <p className="text-[11px] font-medium text-muted-foreground">
@@ -396,20 +396,26 @@ export default function ShippingIndex({
 
                     {/* Kolom 2: No. Order (Rata Kiri) */}
                     <td className="px-3 py-3 align-middle">
-                      <Link
-                        href={item.order_href}
-                        className="font-mono text-xs font-bold whitespace-nowrap text-foreground hover:text-primary hover:underline"
-                      >
-                        {item.order_number}
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          href={item.order_href}
+                          className="font-mono text-xs font-bold whitespace-nowrap text-foreground hover:text-primary hover:underline"
+                        >
+                          {item.order_number}
+                        </Link>
+                        <CopyButton text={item.order_number} label="Salin nomor order" compact showTextInTitle />
+                      </div>
                     </td>
 
                     {/* Kolom 3: No. HP (Rata Kiri) */}
                     <td className="px-3 py-3 align-middle">
                       {item.customer_phone ? (
-                        <span className="font-mono text-xs whitespace-nowrap text-foreground">
-                          {formatPhoneLocal(item.customer_phone, true)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs whitespace-nowrap text-foreground">
+                            {item.customer_phone}
+                          </span>
+                          <CopyButton text={item.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}

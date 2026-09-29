@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\JntReadiness;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -150,7 +151,11 @@ class ShippingRecordController extends Controller
                 'order_number' => $order?->order_number ?? '-',
                 'order_status' => $order?->order_status ?? null,
                 'customer_name' => $order?->customer_name ?? '-',
-                'customer_phone' => $order?->customer_phone ?? '',
+                // Nomor HP dikirim dalam bentuk normal 62 tanpa pemisah (mis.
+                // 6285725116817), bukan format tampilan 08xx-xxxx-xxxx: angka
+                // ini dipakai admin untuk menyalin dan menghubungi pembeli.
+                'customer_phone' => PhoneNumber::normalize($order?->customer_phone)
+                    ?? preg_replace('/\D/', '', (string) $order?->customer_phone),
                 // Alamat penerima utuh (bukan hanya kota), disusun dengan urutan
                 // yang sama seperti orderShippingAddress pada area cetak supaya
                 // satu pesanan tampil konsisten di semua permukaan.

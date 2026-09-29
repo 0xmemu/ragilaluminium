@@ -73,7 +73,9 @@ class AdminShippingIndexTest extends TestCase
                 // Kolom daftar terpisah: No. Order, No. HP, dan Penerima
                 // (nama plus alamat utuh), jadi tiga field ini wajib ada.
                 ->where('records.data.0.order_number', 'ORD26080001')
-                ->where('records.data.0.customer_phone', '081234567890')
+                // Nomor HP dikirim dalam bentuk normal 62 tanpa pemisah supaya
+                // admin bisa menyalinnya langsung untuk menghubungi pembeli.
+                ->where('records.data.0.customer_phone', '6281234567890')
                 ->where('records.data.0.customer_address', 'Jl. Merdeka 10, Semarang, Jawa Tengah, 50254')
             );
     }
@@ -127,6 +129,42 @@ class AdminShippingIndexTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('records.data.0.age_label', '2 hari')
                 ->where('records.data.0.age_tone', 'muted')
+            );
+    }
+
+    public function test_nomor_hp_dinormalkan_ke_62_tanpa_pemisah(): void
+    {
+        // Nomor tersimpan dalam berbagai tulisan, termasuk yang bertanda hubung
+        // dan berspasi seperti hasil tempel dari WhatsApp. Semuanya wajib keluar
+        // sebagai 62 tanpa pemisah, bukan format tampilan 08xx-xxxx-xxxx.
+        $order = Order::create([
+            'order_number' => 'ORD26080099',
+            'customer_name' => 'Uji Nomor',
+            'customer_phone' => '+62 857-2511-6817',
+            'shipping_address_line1' => 'Jl. Uji Nomor 1',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'subtotal_amount' => 100000,
+            'total_amount' => 100000,
+            'payment_method' => 'cod',
+            'order_status' => 'shipped',
+            'shipping_status' => 'in_transit',
+        ]);
+
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JT-NOMOR-1',
+            'status' => 'in_transit',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.shipping.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('records.data.0.customer_phone', '6285725116817')
             );
     }
 
