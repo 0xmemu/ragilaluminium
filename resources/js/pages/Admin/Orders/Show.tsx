@@ -279,11 +279,14 @@ function OrderEditPanel({
   editUrl,
   requireNote,
   onCancel,
+  onCopy,
 }: {
   order: OrderDetail
   editUrl: string
   requireNote: boolean
   onCancel: () => void
+  /** Penyalin teks dari halaman induk; dipakai tombol salin di baris produk. */
+  onCopy: (value: string) => void
 }) {
   const [pemilihProdukTerbuka, setPemilihProdukTerbuka] = React.useState(false)
   const [adminNotes, setAdminNotes] = React.useState<string>(order.admin_notes ?? "")
@@ -362,57 +365,88 @@ function OrderEditPanel({
   }
 
   return (
-    <div className="space-y-4 border-t border-border bg-muted/30 px-5 py-4">
-      <FormErrorSummary errors={form.errors} />
-      <div>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground">
-          Produk
-        </p>
-        <ul className="mt-2 space-y-2">
-          {form.data.items.map((line, index) => {
-            const original = line.item_id != null ? itemById.get(line.item_id) : undefined
-            return (
-              <li key={line.item_id ?? `new-${index}`} className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium">
-                    {original?.name ?? line.name ?? line.parent_sku}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {original
-                      ? variationLabel(original) || original.variant_sku || "-"
-                      : line.variant_label ?? (line.variant_sku || "tanpa varian")}
-                  </p>
+    <div>
+      <FormErrorSummary errors={form.errors} className="mx-5 mt-4" />
+
+      {/* Daftar produk mode edit memakai layout baris yang sama dengan daftar isi
+          pesanan: gambar, nama, dan varian. Kontrol jumlah serta tombol hapus
+          menyatu di baris yang sama, jadi produknya hanya tampil SEKALI. */}
+      <ul className="divide-y divide-border">
+        {form.data.items.map((line, index) => {
+          const original = line.item_id != null ? itemById.get(line.item_id) : undefined
+          const nama = original?.name ?? line.name ?? line.parent_sku
+          return (
+            <li key={line.item_id ?? `new-${index}`} className="flex items-start gap-3.5 px-5 py-4">
+              <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                {original?.image ? (
+                  <img src={original.image} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <Icon name="image" className="size-4" aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-1.5">
+                  <p className="text-sm font-normal leading-5 text-foreground">{nama}</p>
+                  <button
+                    type="button"
+                    onClick={() => onCopy(nama)}
+                    className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label={`Salin ukuran & nama: ${nama}`}
+                    title="Salin ukuran & nama produk"
+                  >
+                    <Icon name="copy" className="size-3" aria-hidden="true" />
+                  </button>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {original
+                    ? variationLabel(original) || original.variant_sku || "-"
+                    : line.variant_label ?? (line.variant_sku || "tanpa varian")}
+                </p>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {original
+                    ? `${formatNumber(line.qty)} × ${formatCurrency(original.unit_price)}`
+                    : "Harga dihitung ulang saat disimpan"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {original ? (
+                  <p className="tabular-nums text-sm font-semibold">
+                    {formatCurrency(line.qty * original.unit_price)}
+                  </p>
+                ) : null}
                 <QuantityInput
                   value={line.qty}
                   onChange={(qty) => setQty(index, qty)}
-                  ariaLabel={`Jumlah ${original?.name ?? line.name ?? line.parent_sku}`}
+                  ariaLabel={`Jumlah ${nama}`}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   onClick={() => removeLine(index)}
-                  aria-label={`Hapus ${original?.name ?? line.name ?? line.parent_sku} dari pesanan`}
+                  aria-label={`Hapus ${nama} dari pesanan`}
                   title="Hapus produk dari pesanan"
                 >
                   <Icon name="x" className="size-4" aria-hidden="true" />
                 </Button>
-              </li>
-            )
-          })}
-        </ul>
-        <div className="mt-3">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setPemilihProdukTerbuka(true)}
-          >
-            <Icon name="plus" className="size-3" aria-hidden="true" />
-            Pilih produk
-          </Button>
-        </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="px-5 py-3">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setPemilihProdukTerbuka(true)}
+        >
+          <Icon name="plus" className="size-3" aria-hidden="true" />
+          Pilih produk
+        </Button>
         <OrderProductPicker
           open={pemilihProdukTerbuka}
           onClose={() => setPemilihProdukTerbuka(false)}
@@ -420,6 +454,7 @@ function OrderEditPanel({
         />
       </div>
 
+      <div className="space-y-4 border-t border-border bg-muted/30 px-5 py-4">
       <div className="grid gap-3.5 sm:grid-cols-2">
         <Field id="edit-customer-name" label="Nama penerima" required error={form.errors.customer_name}>
           <Input
@@ -535,6 +570,7 @@ function OrderEditPanel({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Batal
         </Button>
+      </div>
       </div>
     </div>
   )
@@ -2226,55 +2262,61 @@ export default function OrderShow({
               ) : null
             }
           >
-            <ul className="divide-y divide-border">
-              {order.items.map((item) => (
-                <li key={item.id} className="flex gap-3.5 px-5 py-4">
-                  <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                    {item.image ? (
-                      <img src={item.image} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
-                        <Icon name="image" className="size-4" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-1.5">
-                      <p className="text-sm font-normal leading-5 text-foreground">{item.name}</p>
-                      <button
-                        type="button"
-                        onClick={() => copyText(item.name)}
-                        className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label={`Salin ukuran & nama: ${item.name}`}
-                        title="Salin ukuran & nama produk"
-                      >
-                        <Icon name="copy" className="size-3" aria-hidden="true" />
-                      </button>
+            {/* Mode edit merender daftar produknya sendiri dengan layout baris yang
+                sama, jadi daftar read-only ini disembunyikan supaya produk tidak
+                tampil dua kali di kartu yang sama. */}
+            {editing ? null : (
+              <ul className="divide-y divide-border">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex gap-3.5 px-5 py-4">
+                    <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-muted-foreground">
+                          <Icon name="image" className="size-4" aria-hidden="true" />
+                        </div>
+                      )}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {variationLabel(item) || item.variant_sku || "-"}
-                    </p>
-                    {item.note ? (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-1.5">
+                        <p className="text-sm font-normal leading-5 text-foreground">{item.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => copyText(item.name)}
+                          className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          aria-label={`Salin ukuran & nama: ${item.name}`}
+                          title="Salin ukuran & nama produk"
+                        >
+                          <Icon name="copy" className="size-3" aria-hidden="true" />
+                        </button>
+                      </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Catatan: <span className="font-medium text-foreground">{item.note}</span>
+                        {variationLabel(item) || item.variant_sku || "-"}
                       </p>
-                    ) : null}
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
+                      {item.note ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Catatan: <span className="font-medium text-foreground">{item.note}</span>
+                        </p>
+                      ) : null}
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
+                      </p>
+                    </div>
+                    <p className="tabular-nums shrink-0 text-sm font-semibold">
+                      {formatCurrency(item.line_total)}
                     </p>
-                  </div>
-                  <p className="tabular-nums shrink-0 text-sm font-semibold">
-                    {formatCurrency(item.line_total)}
-                  </p>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
             {editing && editUrl ? (
               <OrderEditPanel
                 order={order}
                 editUrl={editUrl}
                 requireNote={Boolean(editPolicy?.require_note)}
                 onCancel={() => setEditing(false)}
+                onCopy={copyText}
               />
             ) : null}
 
