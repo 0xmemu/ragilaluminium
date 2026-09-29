@@ -104,6 +104,10 @@ export default function InstallationGalleryIndex({
   // status yang mengunci tombolnya.
   const listTersaring = activeStatus !== "all" || search.trim() !== "" || sort !== "order"
   const filterKunci = activeStatus !== "all"
+  // Tab arsip punya kalimat sendiri: di tab ini tidak ada yang bisa ditambah,
+  // jadi kotak kosong tidak boleh menyuruh menambah grup baru (meniru pola
+  // halaman FAQ yang juga bertab Aktif dan Diarsipkan).
+  const isArchivedTab = activeStatus === "archived"
 
   function handleReorderSubmit() {
     reorderForm.put(reorderUrl, {
@@ -155,7 +159,11 @@ export default function InstallationGalleryIndex({
             dirty={reorderForm.isDirty}
             processing={reorderForm.processing}
             disabled={!rows.length || filterKunci}
-            disabledReason="Pilih tab Semua Hasil Pemasangan dulu supaya urutan bisa digeser."
+            disabledReason={
+              !rows.length
+                ? "Belum ada grup di tab ini yang bisa diurutkan."
+                : "Pilih tab Semua Hasil Pemasangan dulu supaya tombol Urutkan bisa dipakai."
+            }
             onToggle={() => {
               setReorderMode(true)
               // Urutan hanya bisa digeser saat daftar lengkap, jadi pencarian
@@ -309,21 +317,33 @@ export default function InstallationGalleryIndex({
               <Icon name="image" className="size-6 text-muted-foreground" />
             </div>
             <h3 className="mt-4 text-sm font-semibold text-foreground">
-              Belum ada grup hasil pemasangan
+              {q
+                ? "Tidak ada grup yang cocok"
+                : isArchivedTab
+                  ? "Tidak ada hasil pemasangan diarsipkan"
+                  : activeStatus === "active"
+                    ? "Belum ada hasil pemasangan aktif"
+                    : "Belum ada grup hasil pemasangan"}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {q
                 ? `Tidak ditemukan grup yang cocok dengan "${q}".`
-                : "Tambahkan media hasil pemasangan untuk membuat grup baru."}
+                : isArchivedTab
+                  ? "Grup yang diarsipkan akan muncul di sini."
+                  : "Tambahkan media hasil pemasangan untuk membuat grup baru."}
             </p>
-            <div className="mt-5">
-              <Button asChild size="sm">
-                <Link href={createUrl}>
-                  <Icon name="plus" className="size-3.5" />
-                  Tambah
-                </Link>
-              </Button>
-            </div>
+            {/* Tombol Tambah tidak ditampilkan di tab arsip: menambah media
+                selalu membuat grup yang tampil di toko, bukan mengisi arsip. */}
+            {!isArchivedTab ? (
+              <div className="mt-5">
+                <Button asChild size="sm">
+                  <Link href={createUrl}>
+                    <Icon name="plus" className="size-3.5" />
+                    Tambah
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : currentView === "list" ? (
           /* Mode Tampilan Tabel */
