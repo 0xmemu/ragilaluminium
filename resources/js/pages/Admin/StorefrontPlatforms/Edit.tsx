@@ -117,6 +117,12 @@ export default function StorefrontPlatformsEdit({
     setSaving(true)
 
     const selesai = () => {
+      // Isian yang baru tersimpan dijadikan titik kembali, supaya tombol Batal
+      // pada sesi edit berikutnya mengembalikan ke kondisi tersimpan, bukan ke
+      // kondisi saat halaman pertama dimuat.
+      platformForm.setDefaults()
+      kontakForm.setDefaults()
+      brandForm.setDefaults()
       setSaving(false)
       setMode("view")
     }
@@ -156,9 +162,13 @@ export default function StorefrontPlatformsEdit({
   }
 
   function batal() {
-    // Kembalikan ke kondisi tersimpan di server sekaligus tutup mode edit.
-    // router.reload tidak menerima preserveScroll pada Inertia versi ini.
-    router.reload()
+    // Buang isian yang belum disimpan lalu tutup mode edit. router.reload()
+    // sengaja TIDAK dipakai: reload mempertahankan state komponen, sehingga
+    // mode edit ikut bertahan dan isian yang dibatalkan tetap tampil.
+    platformForm.resetAndClearErrors()
+    kontakForm.resetAndClearErrors()
+    brandForm.resetAndClearErrors()
+    setMode("view")
   }
 
   function setLink(key: string, value: string) {
