@@ -9,11 +9,11 @@ import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
-import { Checkbox } from "@/components/admin/ui/checkbox"
 import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
 import { RETURN_REASONS } from "@/components/admin/order-return-create-form"
+import { OrderProductPicker, type PickedOrderProduct } from "@/components/admin/order-product-picker"
 import {
   Dialog,
   DialogContent,
@@ -249,6 +249,10 @@ interface EditLine {
   parent_sku: string
   variant_sku: string
   qty: number
+  /** Terisi hanya untuk baris baru dari pemilih produk, supaya nama produk dan
+      label variannya bisa tampil sebelum pesanan disimpan. */
+  name?: string
+  variant_label?: string
 }
 
 interface EditFormData {
@@ -280,7 +284,7 @@ function OrderEditPanel({
   requireNote: boolean
   onCancel: () => void
 }) {
-  const [newLine, setNewLine] = React.useState({ parent_sku: "", variant_sku: "", qty: 1 })
+  const [pemilihProdukTerbuka, setPemilihProdukTerbuka] = React.useState(false)
   const [adminNotes, setAdminNotes] = React.useState<string>(order.admin_notes ?? "")
   const [savingAdminNotes, setSavingAdminNotes] = React.useState(false)
 
@@ -335,19 +339,18 @@ function OrderEditPanel({
     )
   }
 
-  function addLine() {
-    const sku = newLine.parent_sku.trim()
-    if (!sku) return
+  function addLine(item: PickedOrderProduct) {
     form.setData("items", [
       ...form.data.items,
       {
         item_id: null,
-        parent_sku: sku,
-        variant_sku: newLine.variant_sku.trim(),
-        qty: Math.max(1, newLine.qty),
+        parent_sku: item.parent_sku,
+        variant_sku: item.variant_sku,
+        qty: Math.max(1, item.qty),
+        name: item.name,
+        variant_label: item.variant_label,
       },
     ])
-    setNewLine({ parent_sku: "", variant_sku: "", qty: 1 })
   }
 
   function submit() {
@@ -371,12 +374,12 @@ function OrderEditPanel({
               <li key={line.item_id ?? `new-${index}`} className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium">
-                    {original?.name ?? (line.parent_sku || "(produk baru)")}
+                    {original?.name ?? line.name ?? line.parent_sku}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {original
                       ? variationLabel(original) || original.variant_sku || "-"
-                      : line.variant_sku || "tanpa varian"}
+                      : line.variant_label ?? (line.variant_sku || "tanpa varian")}
                   </p>
                 </div>
                 <Input
@@ -393,30 +396,22 @@ function OrderEditPanel({
             )
           })}
         </ul>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Input
-            className="w-36"
-            placeholder="parent_sku"
-            value={newLine.parent_sku}
-            onChange={(event) => setNewLine({ ...newLine, parent_sku: event.target.value })}
-          />
-          <Input
-            className="w-40"
-            placeholder="variant_sku (opsional)"
-            value={newLine.variant_sku}
-            onChange={(event) => setNewLine({ ...newLine, variant_sku: event.target.value })}
-          />
-          <Input
-            type="number"
-            min={1}
-            className="w-20"
-            value={String(newLine.qty)}
-            onChange={(event) => setNewLine({ ...newLine, qty: Number(event.target.value) || 1 })}
-          />
-          <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-            Tambah
+        <div className="mt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setPemilihProdukTerbuka(true)}
+          >
+            <Icon name="plus" className="size-3" aria-hidden="true" />
+            Pilih produk
           </Button>
         </div>
+        <OrderProductPicker
+          open={pemilihProdukTerbuka}
+          onClose={() => setPemilihProdukTerbuka(false)}
+          onPick={addLine}
+        />
       </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2">

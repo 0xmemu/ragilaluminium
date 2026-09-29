@@ -227,6 +227,7 @@ Kontrak payload Performa Toko: report.sections berisi lima grup KPI, dan jumlah 
 - `DELETE /admin/notifications/{notification}` -> `Admin\NotificationController@destroy`  (name: `admin.notifications.destroy`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders` -> `Admin\OrderController@index`  (name: `admin.orders.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders/export` -> `Admin\OrderController@export`  (name: `admin.orders.export`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
+- `GET /admin/orders/product-picker` -> `Admin\OrderController@productPicker`  (name: `admin.orders.product-picker`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]: pencarian produk + varian aktif untuk pemilih isi pesanan; didaftarkan sebelum `/admin/orders/{order}` supaya tidak tertangkap sebagai id pesanan.
 - `GET /admin/orders/{order}` -> `Admin\OrderController@show`  (name: `admin.orders.show`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/orders/{order}/items` -> `Admin\OrderController@updateItems`  (name: `admin.orders.items.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/orders/{order}/payments` -> `Admin\PaymentController@byOrder`  (name: `admin.orders.payments`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
@@ -382,6 +383,19 @@ Envelope webhook Baileys (`POST /webhook/whatsapp/baileys`):
 - PATCH /admin/orders/{order}/returns/{returnCase} -> admin-only correction of an ADMINISTRATIVE completed case data (reason, notes, fault party, resolution, refund, return shipping, replacement). Workflow status never changes; every changed field is recorded in return_case_adjustments; refund stays capped by recorded payments (name: admin.orders.returns.update) (2026-09-28).
 - POST /admin/orders/{order}/returns/{returnCase}/void -> admin-only administrative closure with a mandatory reason. Open case becomes cancelled; completed case stays completed but is voided out of every report; history is never deleted (name: admin.orders.returns.void) (2026-09-28).
 - Direct PUT /admin/orders/{order}/status to return_in_process is rejected so undocumented returns cannot bypass the case form.
+
+### Pemilih produk isi pesanan (2026-09-29)
+
+`GET /admin/orders/product-picker?q=<kata kunci>` mengembalikan `{"products": [...]}` untuk
+pemilih produk di panel Isi pesanan halaman detail. Satu entri produk berisi `id`, `name`,
+`parent_sku`, `image`, dan `variants` (daftar varian AKTIF: `variant_sku`, `label`, `price`,
+`stock`). Pencarian mencocokkan nama produk, induk SKU, atau SKU varian; produk nonaktif dan
+varian nonaktif tidak pernah disertakan; hasil dibatasi 20 produk dan diurutkan menurut nama.
+
+Endpoint ini hanya untuk menampilkan pilihan. Penyimpanan tetap memakai `PUT
+/admin/orders/{order}/items` dengan bentuk lama (induk SKU, SKU varian, jumlah), dan harga
+akhir tetap dihitung ulang server lewat `CartService::priceFor`, jadi angka yang tampil di
+pemilih tidak pernah menjadi dasar tagihan.
 - Skema retur full manual (2026-09-21): the 48 hour window and the paid requirement are no longer blockers. They are returned as `returnEligibility.warnings` for the admin and `return_block.warnings` for the customer page, so returns decided over WhatsApp can still be recorded after 48 hours or on an unpaid order. The only binding condition is order status `delivered`.
 
 - GET /admin/imports/internal-template -> Admin\\ImportJobController@downloadInternalTemplate (name: admin.imports.internal-template) [Authenticate|EnsureUserIsAdmin]

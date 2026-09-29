@@ -285,6 +285,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Orders
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/export', [AdminOrderController::class, 'export'])->name('orders.export');
+    // Pemilih produk untuk mengubah isi pesanan (permintaan owner 2026-09-29).
+    // Didaftarkan SEBELUM orders/{order} supaya tidak tertangkap sebagai id pesanan.
+    Route::get('orders/product-picker', [AdminOrderController::class, 'productPicker'])->name('orders.product-picker');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     // Handoff GET untuk tautan/status yang dibuka langsung; perubahan status tetap PUT.
     Route::get('orders/{order}/status', [AdminOrderController::class, 'statusEntry'])->name('orders.status.view');

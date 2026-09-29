@@ -7,6 +7,8 @@ use App\Models\CmsTestimonial;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderReturnCase;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\AdminNotification;
 use App\Services\OrderService;
 use App\Services\PaymentService;
@@ -24,6 +26,7 @@ use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -1767,6 +1770,67 @@ class OrderController extends Controller
             ],
             default => null,
         };
+    }
+
+    /**
+     * Pencarian produk beserta variannya untuk pemilih isi pesanan (permintaan
+     * owner 2026-09-29: pemilihan produk dibuat sesederhana pemilih media dan
+     * bisa dicari). Hasilnya memuat nama, SKU, dan varian aktif supaya admin
+     * tidak perlu menghafal kode SKU maupun menebak nama varian.
+     *
+     * Kiriman tetap memakai kontrak lama: induk SKU + SKU varian + jumlah.
+     */
+    public function productPicker(Request $request): JsonResponse
+    {
+        $term = trim((string) $request->query('q', ''));
+
+        $products = Product::query()
+            ->where('status', 'active')
+            ->when($term !== '', function ($query) use ($term): void {
+                $pattern = LikeSearch::pattern($term);
+                $query->where(function ($inner) use ($term, $pattern): void {
+                    LikeSearch::whereLike($inner, 'name', $term)
+                        ->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [$pattern, '\\'])
+                        ->orWhereHas('activeVariants', function ($variant) use ($pattern): void {
+                            $variant->where('variant_sku', 'LIKE', $pattern);
+                        });
+                });
+            })
+            ->with(['mainImage', 'activeVariants'])
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'products' => $products->map(fn (Product $product): array => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'parent_sku' => $product->parent_sku,
+                'image' => $product->mainImage?->urlFor('thumb'),
+                'variants' => $product->activeVariants
+                    ->map(fn (ProductVariant $variant): array => [
+                        'variant_sku' => $variant->variant_sku,
+                        'label' => $this->variantPickerLabel($variant),
+                        'price' => (float) $variant->price,
+                        'stock' => (int) $variant->stock,
+                    ])
+                    ->values()
+                    ->all(),
+            ])->values()->all(),
+        ]);
+    }
+
+    /** Label varian untuk pemilih produk, contoh "Warna: Hitam . Kaca: Kaca Es". */
+    private function variantPickerLabel(ProductVariant $variant): string
+    {
+        return collect([
+            $variant->variation_1_option
+                ? trim(($variant->variation_1_name ? $variant->variation_1_name.': ' : '').$variant->variation_1_option)
+                : null,
+            $variant->variation_2_option
+                ? trim(($variant->variation_2_name ? $variant->variation_2_name.': ' : '').$variant->variation_2_option)
+                : null,
+        ])->filter()->implode(' \u00b7 ');
     }
 
     /**
