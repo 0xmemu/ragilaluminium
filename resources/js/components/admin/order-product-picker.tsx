@@ -43,6 +43,8 @@ export interface PickedOrderProduct {
   qty: number
   name: string
   variant_label: string
+  /** Gambar kartu produk dari hasil pencarian; null bila produk belum punya. */
+  image: string | null
 }
 
 /**
@@ -129,6 +131,7 @@ export function OrderProductPicker({
       qty,
       name: produkTerbuka.name,
       variant_label: varianTerpilih?.label ?? "tanpa varian",
+      image: produkTerbuka.image,
     })
     tutup()
   }
