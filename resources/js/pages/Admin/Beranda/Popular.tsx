@@ -310,7 +310,8 @@ export default function BerandaPopular({
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs font-medium text-muted-foreground">
-                <th className="w-12 px-3 py-2" />
+                {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
+                <th className="w-10 px-3 py-2 text-center">No</th>
                 <th className="px-3 py-2">Nama produk</th>
                 <th className="px-3 py-2 whitespace-nowrap">Taksonomi</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">Views sebelum → sesudah</th>
@@ -329,8 +330,13 @@ export default function BerandaPopular({
                     )}
                     {...(canReorder ? dnd.rowProps(index) : {})}
                   >
-                    <td className="px-3 py-2.5 align-middle">
-                      <ReorderDragHandle enabled={canReorder} />
+                    {canReorder ? (
+                      <td className="px-3 py-2.5 align-middle">
+                        <ReorderDragHandle enabled />
+                      </td>
+                    ) : null}
+                    <td className="px-3 py-2.5 text-center align-middle text-xs text-muted-foreground tabular-nums">
+                      {index + 1}
                     </td>
                     <td className="px-3 py-2.5 align-middle">
                       <ProductCell row={row} />
@@ -348,7 +354,7 @@ export default function BerandaPopular({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={canReorder ? 6 : 5} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Tidak ada produk carousel yang cocok dengan pencarian.
                   </td>
                 </tr>
