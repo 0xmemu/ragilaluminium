@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Pembukuan toko & penjualan - sumber kebenaran: orders + order_items (+ page views).
  *
- * FROZEN v1.0.2 (ADR-026): berkas ini memegang Kontrak Perhitungan Beku lapis 1 sampai 7.
+ * FROZEN v1.0.3 (ADR-026): berkas ini memegang Kontrak Perhitungan Beku lapis 1 sampai 7.
  * Perubahan formula, METRIC_BASIS, atau date_contract wajib memperbarui
  * tests/Expectations/store-performance-golden-v1.json di PR yang sama
  * (GOLDEN_UPDATE=1 php artisan test --filter=StorePerformanceGoldenTest)
@@ -113,6 +113,7 @@ class StorePerformanceService
         'return_rate_completed' => ['unit' => 'persen', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'return_shipping_cost_total' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'return_shipping_cost_cases' => ['unit' => 'kasus', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
+        'return_trip_shipping_total' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal retur selesai'],
         'refused_borne_cost' => ['unit' => 'rupiah', 'scope' => 'period', 'anchor' => 'Tanggal pesanan dibuat; diakui bila mencapai Diproses paling lambat akhir periode'],
         'cancelled_orders' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
         'cancelled_by_customer' => ['unit' => 'pesanan', 'scope' => 'period', 'anchor' => 'Tanggal pembatalan dicatat'],
@@ -480,7 +481,7 @@ class StorePerformanceService
         ];
 
         $paymentsKpis = [
-            $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi tagihan J&T, biaya COD, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak.'),
+            $this->kpi('net_revenue', 'Penjualan Bersih', $current['net_revenue'], $previous['net_revenue'] ?? 0, 'currency', 'Penjualan Gross dikurangi tagihan J&T, biaya COD, refund retur, ongkir retur toko, ongkir perjalanan balik, dan nilai barang paket COD ditolak.'),
             $this->kpi('payments_received', 'Pembayaran Diterima', $current['payments_received'], $previous['payments_received'], 'currency', 'Pembayaran yang dana-nya benar-benar lunas pada periode. Transfer dianggap lunas setelah konfirmasi admin; COD dianggap lunas saat barangnya sampai ke pembeli, bukan saat uang kurir disetor ke toko, jadi angka ini belum tentu sama dengan saldo kas bank.'),
             $this->kpi('cod_paid', 'COD Selesai', $current['cod_paid'], $previous['cod_paid'], 'currency', 'Pesanan COD yang barangnya sudah sampai ke pembeli pada periode. Sistem tidak melacak setoran uang dari kurir, jadi status mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
             $this->kpi('payment_pending_count', 'Pembayaran Transfer Pending', $current['payment_pending_count'], null, 'number', 'Pembayaran non-COD yang belum lunas pada pesanan aktif saat laporan dibangun. Tidak dibatasi periode. COD tidak dihitung di sini karena statusnya mengikuti kejadian barang sampai, bukan konfirmasi pembayaran.'),
@@ -512,6 +513,7 @@ class StorePerformanceService
         $returnCostKpis = [
             $this->kpi('return_shipping_cost_total', 'Ongkir Retur (Toko)', $current['return_shipping_cost_total'], $previous['return_shipping_cost_total'] ?? 0, 'currency', 'Ongkir pengembalian yang ditanggung toko. Nilai ini mengurangi Penjualan Bersih dan tidak mengubah Penjualan Gross.'),
             $this->kpi('return_shipping_cost_cases', 'Kasus Retur (Ongkir Toko)', $current['return_shipping_cost_cases'], $previous['return_shipping_cost_cases'] ?? 0, 'number', 'Jumlah kasus retur selesai yang ongkirnya ditanggung toko.'),
+            $this->kpi('return_trip_shipping_total', 'Ongkir Perjalanan Balik', $current['return_trip_shipping_total'], $previous['return_trip_shipping_total'] ?? 0, 'currency', 'Tagihan pengembalian barang dari J&T yang ditanggung kas toko, diisi admin saat retur selesai. Nilai ini mengurangi Penjualan Bersih dan tidak mengubah Penjualan Gross.'),
             $this->kpi('refused_borne_cost', 'Ongkir & COD Ditanggung Toko', $current['refused_borne_cost'], $previous['refused_borne_cost'] ?? 0, 'currency', 'Ongkir kirim dan biaya layanan COD yang tetap ditagih J&T untuk paket yang kembali sebelum diterima pembeli. Pembeli tidak membayar, jadi toko yang menanggung. Ongkir perjalanan balik belum termasuk karena tagihannya belum tercatat otomatis.'),
         ];
 
@@ -557,6 +559,7 @@ class StorePerformanceService
                 'cod_fee' => $current['cod_fee'],
                 'refund_adjustments' => $current['refund_adjustments'],
                 'return_shipping_store' => $current['return_shipping_store'],
+                'return_trip_shipping' => round($current['return_trip_shipping_total'], 2),
                 'net_revenue' => $current['net_revenue'],
                 'buyer_orders' => $current['orders'],
                 // Jumlah pembeli unik apa adanya. Sebelumnya dibuang dari
@@ -578,7 +581,7 @@ class StorePerformanceService
                 'refused_shipping_cost' => $current['refused_shipping_cost'],
                 'refused_cod_fee' => $current['refused_cod_fee'],
                 'refused_borne_cost' => $current['refused_borne_cost'],
-                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
+                'definition' => 'Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, ongkir retur toko, ongkir perjalanan balik, dan nilai barang paket COD ditolak. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.',
             ],
             // Nilai periode pembanding untuk sheet Ringkasan Finansial di
             // ekspor. Layar dan sheet KPI sudah memakai pembanding, sedangkan
@@ -831,6 +834,17 @@ class StorePerformanceService
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [$from, $to])
             ->sum('return_shipping_cost');
+        // Ongkir perjalanan balik (keputusan owner 2026-09-29): tagihan
+        // pengembalian dari J&T yang diisi admin saat penyelesaian retur dan
+        // mostly ditanggung kas toko, jadi mengurangi Penjualan Bersih sama
+        // seperti ongkir retur toko. Nilainya per kasus retur dan dihitung
+        // pada periode penyelesaian kasusnya.
+        $returnTripShipping = (float) OrderReturnCase::query()
+            ->where('status', 'completed')
+            ->whereNull('voided_at')
+            ->whereNotNull('completed_at')
+            ->whereBetween('completed_at', [$from, $to])
+            ->sum('additional_shipping_amount');
         // Pesanan ditolak pelanggan sebelum lunas (keputusan owner 2026-09-19):
         // barang kembali ke gudang tanpa restore stok, transaksi dianggap batal.
         // Selama kasus retur berjalan masih dihitung penjualan; setelah retur
@@ -847,7 +861,7 @@ class StorePerformanceService
         // Penjualan Gross adalah seluruh total yang dibayar pelanggan. Ongkir raw dan
         // COD adalah dana titipan untuk J&T; subsidi, refund, ongkir retur toko,
         // dan nilai barang retur ditolak adalah pengurang hasil toko.
-        $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore - $refusedGoodsValue;
+        $netRevenue = $revenue - $shippingRaw - $codFees - $refundAdjustments - $returnShippingStore - $returnTripShipping - $refusedGoodsValue;
 
         // Paket yang tidak diterima pembeli juga meninggalkan BEBAN NYATA di
         // kas: pembeli tidak membayar sepeser pun, tetapi J&T sudah mengantar
@@ -968,6 +982,7 @@ class StorePerformanceService
             'return_shipping_cost_total' => round($shippingCost['total'], 2),
             'return_shipping_cost_cases' => $shippingCost['cases'],
             'return_shipping_cost_list' => $shippingCost['list'],
+            'return_trip_shipping_total' => round($returnTripShipping, 2),
 
             // Task 2 KPI baru (additive)
             'payments_received' => round($paymentCounts['received'], 2),

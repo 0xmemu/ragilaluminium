@@ -2005,7 +2005,7 @@
         "cod_pending_count": 0,
         "cod_pending_in_period_amount": 0,
         "cod_pending_in_period_count": 0,
-        "definition": "Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.",
+        "definition": "Penjualan Gross = total yang dibayar pelanggan, termasuk nilai produk, ongkir, dan biaya COD. Penjualan Bersih = Penjualan Gross dikurangi tagihan J&T yang sebenarnya, biaya COD yang diteruskan ke J&T, refund retur, ongkir retur toko, ongkir perjalanan balik, dan nilai barang paket COD ditolak. Subsidi ongkir sudah termasuk di tagihan J&T sehingga tidak dikurangkan lagi. Uang yang benar-benar masuk lihat Pembayaran Diterima.",
         "gross_revenue": 4950000,
         "insurance": 10000,
         "items_before_discount": 4950000,
@@ -2020,6 +2020,7 @@
         "refused_goods_value": 650000,
         "refused_shipping_cost": 25000,
         "return_shipping_store": 45000,
+        "return_trip_shipping": 0,
         "shipping_paid_by_customer": 45000,
         "shipping_raw": 60000,
         "shipping_subsidy": 5000,
@@ -2262,6 +2263,12 @@
             "unit": "kasus"
         },
         "return_shipping_cost_total": {
+            "anchor": "Tanggal retur selesai",
+            "marker": null,
+            "scope": "period",
+            "unit": "rupiah"
+        },
+        "return_trip_shipping_total": {
             "anchor": "Tanggal retur selesai",
             "marker": null,
             "scope": "period",
@@ -2613,7 +2620,7 @@
             "kpis": [
                 {
                     "change_percent": 1243.3,
-                    "detail": "Penjualan Gross dikurangi tagihan J&T, biaya COD, refund retur, ongkir retur toko, dan nilai barang paket COD ditolak.",
+                    "detail": "Penjualan Gross dikurangi tagihan J&T, biaya COD, refund retur, ongkir retur toko, ongkir perjalanan balik, dan nilai barang paket COD ditolak.",
                     "format": "currency",
                     "key": "net_revenue",
                     "label": "Penjualan Bersih",
@@ -2753,6 +2760,15 @@
                     "value": 2
                 },
                 {
+                    "change_percent": 0,
+                    "detail": "Tagihan pengembalian barang dari J&T yang ditanggung kas toko, diisi admin saat retur selesai. Nilai ini mengurangi Penjualan Bersih dan tidak mengubah Penjualan Gross.",
+                    "format": "currency",
+                    "key": "return_trip_shipping_total",
+                    "label": "Ongkir Perjalanan Balik",
+                    "previous": 0,
+                    "value": 0
+                },
+                {
                     "change_percent": 100,
                     "detail": "Ongkir kirim dan biaya layanan COD yang tetap ditagih J&T untuk paket yang kembali sebelum diterima pembeli. Pembeli tidak membayar, jadi toko yang menanggung. Ongkir perjalanan balik belum termasuk karena tagihannya belum tercatat otomatis.",
                     "format": "currency",
@@ -2852,5 +2868,5 @@
             "units": 1
         }
     ],
-    "versi_kontrak": "1.0.2"
+    "versi_kontrak": "1.0.3"
 }

@@ -1,7 +1,7 @@
 # ADR-026: Frozen Contract Perhitungan v1
 
 > **STATUS: Accepted (2026-09-23).** Kontrak perhitungan uang dan Performa Toko dibekukan
-> pada versi 1.0.0 dan kini berada pada versi 1.0.1. Perubahan atas lapis manapun di bawah wajib melewati gerbang yang
+> pada versi 1.0.0 dan kini berada pada versi 1.0.3. Perubahan atas lapis manapun di bawah wajib melewati gerbang yang
 > dijelaskan di bagian "Cara mengubah kontrak".
 
 ## Konteks
@@ -99,3 +99,20 @@ saat barang sampai ke pembeli bukan saat setoran kurir. Tidak ada angka, formula
 cakupan, acuan, satuan, atau urutan yang berubah; expectation diperbarui lewat
 GOLDEN_UPDATE dan versi kontrak disamakan di ADR ini, berkas expectation, dan
 komentar FROZEN.
+
+## v1.0.2 (2026-09-28)
+
+MINOR: `return_shipping_cost` (ongkir retur ditanggung toko) resmi menjadi
+pengurang Penjualan Bersih setelah keputusan owner; angka laporan lain tidak
+berubah karena nilainya memang nol sebelum kasus nyata ada.
+
+## v1.0.3 (2026-09-29)
+
+MINOR: metrik baru `return_trip_shipping_total` (Ongkir Perjalanan Balik).
+Keputusan owner 2026-09-29: tagihan pengembalian J&T yang diisi admin saat
+penyelesaian retur mostly ditanggung kas toko, jadi dihitung sebagai pengurang
+Penjualan Bersih, sekali per pesanan, mengikuti periode penyelesaian kasus.
+Angka lama golden tidak berubah (dataset belum menanam nilai ini); penjaga
+baru `ReturnTripShippingKpiTest` menutup kasus bernilai. Expectation
+diperbarui lewat GOLDEN_UPDATE; versi disamakan di ADR ini, komentar FROZEN,
+test golden, dan berkas expectation.

@@ -23,6 +23,7 @@ class OrderReturnCase extends Model
         'refund_amount',
         'replacement_amount',
         'return_shipping_cost',
+        'additional_shipping_amount',
         'completed_at',
         'voided_at',
         'voided_by_user_id',

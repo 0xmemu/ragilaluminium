@@ -41,7 +41,7 @@ class StorePerformanceGoldenTest extends TestCase
 {
     use RefreshDatabase;
 
-    public const CONTRAK_VERSI = '1.0.2';
+    public const CONTRAK_VERSI = '1.0.3';
 
     private const BERKAS = __DIR__.'/../Expectations/store-performance-golden-v1.json';
 

@@ -1172,14 +1172,6 @@ class OrderController extends Controller
                 }
             }
 
-            // Item 11 antrean: ongkir perjalanan balik diisi manual admin
-            // (belum tersedia otomatis dari J&T) dan terbaca export pesanan.
-            if (array_key_exists('additional_shipping_amount', $validated)) {
-                $locked->update([
-                    'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
-                ]);
-            }
-
             $returnCase->update([
                 'status' => 'completed',
                 'resolution_type' => $validated['resolution_type'],
@@ -1187,6 +1179,12 @@ class OrderController extends Controller
                 'refund_amount' => $refundAmount,
                 'replacement_amount' => $replacementAmount,
                 'return_shipping_cost' => $shippingCost,
+                // Item 11 antrean: ongkir perjalanan balik diisi manual admin
+                // (belum tersedia otomatis dari J&T), dibaca Performa Toko
+                // sebagai pengurang Penjualan Bersih. Dulu blok ini memanggil
+                // variabel $locked yang tidak terdefinisi sehingga setiap
+                // penyelesaian yang mengirim isian ini pasti 500.
+                'additional_shipping_amount' => (float) ($validated['additional_shipping_amount'] ?? 0),
                 'completed_at' => now(),
                 'updated_by_user_id' => $request->user()->id,
             ]);

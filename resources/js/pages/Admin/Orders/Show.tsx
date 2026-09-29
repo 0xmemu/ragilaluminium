@@ -250,10 +250,11 @@ interface EditLine {
   parent_sku: string
   variant_sku: string
   qty: number
-  /** Terisi hanya untuk baris baru dari pemilih produk, supaya nama produk dan
-      label variannya bisa tampil sebelum pesanan disimpan. */
+  /** Terisi hanya untuk baris baru dari pemilih produk, supaya nama produk,
+      label varian, dan gambarnya bisa tampil sebelum pesanan disimpan. */
   name?: string
   variant_label?: string
+  image?: string | null
 }
 
 interface EditFormData {
@@ -353,6 +354,7 @@ function OrderEditPanel({
         qty: Math.max(1, item.qty),
         name: item.name,
         variant_label: item.variant_label,
+        image: item.image,
       },
     ])
   }
@@ -375,11 +377,12 @@ function OrderEditPanel({
         {form.data.items.map((line, index) => {
           const original = line.item_id != null ? itemById.get(line.item_id) : undefined
           const nama = original?.name ?? line.name ?? line.parent_sku
+          const gambar = original?.image ?? line.image
           return (
             <li key={line.item_id ?? `new-${index}`} className="flex items-start gap-3.5 px-5 py-4">
               <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                {original?.image ? (
-                  <img src={original.image} alt="" className="size-full object-cover" />
+                {gambar ? (
+                  <img src={gambar} alt="" className="size-full object-cover" />
                 ) : (
                   <div className="flex size-full items-center justify-center text-muted-foreground">
                     <Icon name="image" className="size-4" aria-hidden="true" />
@@ -1095,7 +1098,7 @@ function ReturnCasePanel({
                       <Field
                         id={`return-trip-cost-${item.id}`}
                         label="Ongkir Perjalanan Balik (opsional)"
-                        hint="Tagihan perjalanan balik dari J&T bila ada; tercatat di export pesanan. Kosongkan bila tidak ada.">
+                        hint="Tagihan pengembalian barang dari J&T yang ditanggung kas toko. Mengurangi Penjualan Bersih. Kosongkan bila tidak ada.">
                         <Input
                           type="number"
                           min="0"
