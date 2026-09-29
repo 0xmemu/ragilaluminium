@@ -344,7 +344,7 @@ export default function VouchersIndex({
         <Card className="overflow-hidden border border-border bg-card shadow-xs">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
+              <thead className="border-b border-border bg-muted/40 text-xs tracking-tight text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Nama & Kode Voucher</th>
                   <th className="px-4 py-3 text-center font-semibold">Waktu Berlaku</th>

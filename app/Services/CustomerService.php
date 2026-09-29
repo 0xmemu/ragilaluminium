@@ -125,7 +125,7 @@ class CustomerService
         ]);
 
         if ($orders->isEmpty()) {
-            return ['score' => 0, 'label' => 'RISIKO RENDAH', 'tone' => 'success'];
+            return ['score' => 0, 'label' => 'Risiko Rendah', 'tone' => 'success'];
         }
 
         $score = 5;
@@ -144,9 +144,9 @@ class CustomerService
         $score = min(100, $score);
 
         return match (true) {
-            $score >= 60 => ['score' => $score, 'label' => 'RISIKO TINGGI', 'tone' => 'danger'],
-            $score >= 30 => ['score' => $score, 'label' => 'RISIKO SEDANG', 'tone' => 'warning'],
-            default => ['score' => $score, 'label' => 'RISIKO RENDAH', 'tone' => 'success'],
+            $score >= 60 => ['score' => $score, 'label' => 'Risiko Tinggi', 'tone' => 'danger'],
+            $score >= 30 => ['score' => $score, 'label' => 'Risiko Sedang', 'tone' => 'warning'],
+            default => ['score' => $score, 'label' => 'Risiko Rendah', 'tone' => 'success'],
         };
     }
 

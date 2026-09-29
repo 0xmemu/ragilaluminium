@@ -279,7 +279,7 @@ export default function MediaHistory({
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">Waktu</th>
                     <th className="px-3 py-3 font-semibold">Media</th>

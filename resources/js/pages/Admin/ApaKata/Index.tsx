@@ -354,7 +354,7 @@ export default function ApaKataIndex({
         {displayRows.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+              <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                 <tr>
                   {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                   <th className="px-3 py-3 font-semibold">No</th>

@@ -279,7 +279,7 @@ export default function AnnouncementsIndex({
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left">
-            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
               <tr>
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Periode</th>

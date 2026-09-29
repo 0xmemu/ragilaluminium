@@ -647,7 +647,7 @@ export default function TestimonialsIndex({
           <div className="overflow-x-auto">
             {isTestimonialTable ? (
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                     <th className="px-3 py-3 font-semibold">No</th>
@@ -815,7 +815,7 @@ export default function TestimonialsIndex({
               </table>
             ) : (
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Foto</th>
