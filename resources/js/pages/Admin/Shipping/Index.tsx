@@ -12,7 +12,7 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatDateTime, formatNumber } from "@/lib/format"
+import { formatDateTime, formatNumber, formatPhoneLocal } from "@/lib/format"
 import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 
@@ -29,7 +29,8 @@ export interface ShippingItem {
   order_status: string | null
   customer_name: string
   customer_phone: string
-  customer_city: string
+  /** Alamat penerima utuh: jalan, kelurahan, kecamatan, kota, provinsi, kode pos. */
+  customer_address: string
   /** Tautan ke drawer Lacak Pesanan di detail pesanan terkait (`?lacak=1`). */
   track_href: string
   order_href: string
@@ -354,13 +355,15 @@ export default function ShippingIndex({
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground">
-                  <th className="px-4 py-3 text-left">Resi & Kurir</th>
-                  <th className="px-4 py-3 text-left">Pesanan & Tujuan</th>
-                  <th className="px-3 py-3 text-center">Status Pengiriman</th>
-                  <th className="px-3 py-3 text-center">Status Pesanan</th>
-                  <th className="px-3 py-3 text-center">Update Terakhir</th>
-                  <th className="px-4 py-3 text-left">Keterangan Kurir</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
+                  <th className="w-[9rem] px-4 py-3 text-left">Resi & Kurir</th>
+                  <th className="w-[7rem] px-3 py-3 text-left">No. Order</th>
+                  <th className="w-[8.5rem] px-3 py-3 text-left">No. HP</th>
+                  <th className="w-[17rem] px-4 py-3 text-left">Penerima</th>
+                  <th className="w-[8.5rem] px-3 py-3 text-center">Status Pengiriman</th>
+                  <th className="w-[7rem] px-3 py-3 text-center">Status Pesanan</th>
+                  <th className="w-[8.5rem] px-3 py-3 text-center">Update Terakhir</th>
+                  <th className="w-[9rem] px-4 py-3 text-left">Keterangan Kurir</th>
+                  <th className="w-[5rem] px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -387,32 +390,52 @@ export default function ShippingIndex({
                       </div>
                     </td>
 
-                    {/* Kolom 2: Pesanan & Tujuan (Rata Kiri) */}
-                    <td className="px-4 py-3 align-middle">
-                      <div className="space-y-1">
-                        <Link
-                          href={item.order_href}
-                          className="font-mono text-xs font-bold text-foreground hover:text-primary hover:underline"
-                        >
-                          {item.order_number}
-                        </Link>
-                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">{item.customer_name}</span>
-                          {item.customer_city ? (
-                            <span>({item.customer_city})</span>
-                          ) : null}
-                        </div>
+                    {/* Kolom 2: No. Order (Rata Kiri) */}
+                    <td className="px-3 py-3 align-middle">
+                      <Link
+                        href={item.order_href}
+                        className="font-mono text-xs font-bold whitespace-nowrap text-foreground hover:text-primary hover:underline"
+                      >
+                        {item.order_number}
+                      </Link>
+                    </td>
+
+                    {/* Kolom 3: No. HP (Rata Kiri) */}
+                    <td className="px-3 py-3 align-middle">
+                      {item.customer_phone ? (
+                        <span className="font-mono text-xs whitespace-nowrap text-foreground">
+                          {formatPhoneLocal(item.customer_phone, true)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </td>
+
+                    {/* Kolom 4: Penerima (nama dan alamat, Rata Kiri) */}
+                    <td className="max-w-xs px-4 py-3 align-middle">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-medium text-foreground">{item.customer_name}</p>
+                        {item.customer_address ? (
+                          <p
+                            className="line-clamp-3 text-xs leading-relaxed text-muted-foreground"
+                            title={item.customer_address}
+                          >
+                            {item.customer_address}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Alamat belum terisi</p>
+                        )}
                       </div>
                     </td>
 
-                    {/* Kolom 3: Status Pengiriman (Rata Tengah) */}
+                    {/* Kolom 5: Status Pengiriman (Rata Tengah) */}
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="inline-flex items-center justify-center">
                         <StatusBadge status={item.status} />
                       </div>
                     </td>
 
-                    {/* Kolom 4: Status Pesanan (Rata Tengah) */}
+                    {/* Kolom 6: Status Pesanan (Rata Tengah) */}
                     <td className="px-3 py-3 text-center align-middle">
                       {item.order_status ? (
                         <div className="inline-flex items-center justify-center">
@@ -423,7 +446,7 @@ export default function ShippingIndex({
                       )}
                     </td>
 
-                    {/* Kolom 5: Update Terakhir (Rata Tengah) */}
+                    {/* Kolom 7: Update Terakhir (Rata Tengah) */}
                     <td className="px-3 py-3 text-center align-middle">
                       {item.last_status_at ? (
                         <span className="text-xs font-medium text-foreground">
@@ -434,7 +457,7 @@ export default function ShippingIndex({
                       )}
                     </td>
 
-                    {/* Kolom 6: Keterangan Kurir (Rata Kiri) */}
+                    {/* Kolom 8: Keterangan Kurir (Rata Kiri) */}
                     <td className="max-w-xs px-4 py-3 align-middle">
                       {item.status_raw ? (
                         <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground" title={item.status_raw}>
@@ -445,7 +468,7 @@ export default function ShippingIndex({
                       )}
                     </td>
 
-                    {/* Kolom 7: Aksi (Rata Kanan) */}
+                    {/* Kolom 9: Aksi (Rata Kanan) */}
                     <td className="px-4 py-3 text-right align-middle">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button asChild variant="secondary" size="xs">

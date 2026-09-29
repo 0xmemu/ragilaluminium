@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\ShippingRecord;
 use App\Services\ShippingService;
 use App\Support\JntReadiness;
@@ -81,7 +82,11 @@ class ShippingRecordController extends Controller
         // Query tabel pengiriman
         $query = $applyPeriod(ShippingRecord::query())
             ->with(['order' => fn ($subQuery) => $subQuery->select([
-                'id', 'order_number', 'order_status', 'customer_name', 'customer_phone', 'shipping_city',
+                'id', 'order_number', 'order_status',
+                'customer_name', 'customer_phone',
+                'shipping_address_line1', 'shipping_address_line2',
+                'shipping_village', 'shipping_district', 'shipping_city',
+                'shipping_province', 'shipping_postal_code',
             ])])
             ->when($status !== '' && $status !== 'all', function ($sub) use ($status) {
                 if ($status === 'in_transit') {
@@ -128,7 +133,10 @@ class ShippingRecordController extends Controller
                 'order_status' => $order?->order_status ?? null,
                 'customer_name' => $order?->customer_name ?? '-',
                 'customer_phone' => $order?->customer_phone ?? '',
-                'customer_city' => $order?->shipping_city ?? '',
+                // Alamat penerima utuh (bukan hanya kota), disusun dengan urutan
+                // yang sama seperti orderShippingAddress pada area cetak supaya
+                // satu pesanan tampil konsisten di semua permukaan.
+                'customer_address' => $this->recipientAddress($order),
                 'track_href' => $r->order_id
                     ? route('admin.orders.show', ['order' => $r->order_id, 'lacak' => 1])
                     : route('admin.shipping.index'),
@@ -219,6 +227,28 @@ class ShippingRecordController extends Controller
         return $changed
             ? ['success', 'Status tracking berhasil diperbarui dari J&T.']
             : ['status', 'Status tracking belum berubah (data stale atau belum ada event baru dari J&T).'];
+    }
+
+    /**
+     * Alamat penerima satu baris untuk kolom Penerima di daftar pengiriman.
+     * Urutan bagiannya sama dengan orderShippingAddress di area cetak supaya
+     * satu pesanan tampil konsisten di semua permukaan.
+     */
+    private function recipientAddress(?Order $order): string
+    {
+        if (! $order) {
+            return '';
+        }
+
+        return trim(implode(', ', array_filter([
+            $order->shipping_address_line1,
+            $order->shipping_address_line2,
+            $order->shipping_village,
+            $order->shipping_district,
+            $order->shipping_city,
+            $order->shipping_province,
+            $order->shipping_postal_code,
+        ], fn ($part) => filled($part))));
     }
 
     /** Label periode aktif untuk ditampilkan di baris filter aktif. */

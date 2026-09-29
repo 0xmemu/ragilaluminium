@@ -69,6 +69,11 @@ class AdminShippingIndexTest extends TestCase
                 ->where('records.data.0.waybill_number', '201718781511')
                 ->where('records.data.0.customer_name', 'Budi Santoso')
                 ->where('records.data.0.status', 'delivered')
+                // Kolom daftar terpisah: No. Order, No. HP, dan Penerima
+                // (nama plus alamat utuh), jadi tiga field ini wajib ada.
+                ->where('records.data.0.order_number', 'ORD26080001')
+                ->where('records.data.0.customer_phone', '081234567890')
+                ->where('records.data.0.customer_address', 'Jl. Merdeka 10, Semarang, Jawa Tengah, 50254')
             );
     }
 
