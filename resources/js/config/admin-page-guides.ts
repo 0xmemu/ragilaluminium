@@ -58,26 +58,28 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     title: "Profil & Kontak Toko",
     summary: "Pengaturan akun resmi marketplace, media sosial, nomor WhatsApp konsultasi, dan alamat workshop.",
     steps: [
-      "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
-      "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
-      "Gunakan tombol Simpan di kanan atas untuk menyimpan data.",
+      "Semua pengaturan ada dalam satu halaman: tautan marketplace & media sosial, kontak & jam kerja, dan aset brand.",
+      "Tekan tombol Edit di kanan atas untuk membuka isian, lalu ubah data yang perlu diperbarui.",
+      "Tekan Simpan untuk menyimpan seluruh isian; halaman kembali ke mode ringkasan.",
     ],
     notes: [
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
       "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
+      "Logo dan favicon diganti dari Media Library pada seksi Aset Brand, dan ikut tersimpan saat menekan Simpan.",
     ],
   },
   "admin.storefront-platforms.edit": {
     title: "Profil & Kontak Toko",
     summary: "Pengaturan akun resmi marketplace, media sosial, nomor WhatsApp konsultasi, dan alamat workshop.",
     steps: [
-      "Pilih tab Marketplace & Media Sosial untuk memperbarui tautan Shopee, Tokopedia, Lazada, atau Instagram.",
-      "Pilih tab Kontak & Jam Kerja untuk memperbarui nomor telepon, WhatsApp, dan alamat fisik workshop.",
-      "Gunakan tombol Simpan di kanan atas untuk menyimpan data.",
+      "Semua pengaturan ada dalam satu halaman: tautan marketplace & media sosial, kontak & jam kerja, dan aset brand.",
+      "Tekan tombol Edit di kanan atas untuk membuka isian, lalu ubah data yang perlu diperbarui.",
+      "Tekan Simpan untuk menyimpan seluruh isian; halaman kembali ke mode ringkasan.",
     ],
     notes: [
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
       "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
+      "Logo dan favicon diganti dari Media Library pada seksi Aset Brand, dan ikut tersimpan saat menekan Simpan.",
     ],
   },
   "admin.testimonials.index": {

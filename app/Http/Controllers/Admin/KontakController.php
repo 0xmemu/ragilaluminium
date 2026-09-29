@@ -63,7 +63,7 @@ class KontakController extends Controller
             'slug' => 'kontak',
         ], (int) $request->user()->id);
 
-        return redirect()->route('admin.storefront-platforms.edit', ['tab' => 'kontak'])
+        return redirect()->route('admin.storefront-platforms.edit')
             ->with('success', 'Halaman kontak disimpan.');
     }
 

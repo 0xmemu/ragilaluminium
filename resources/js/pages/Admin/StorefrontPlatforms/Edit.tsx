@@ -1,28 +1,21 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { MediaLibrarySelect } from "@/components/admin/media-library-select"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
-import { MediaLibrarySelect } from "@/components/admin/media-library-select"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
 
 type PlatformRow = {
   key: string
   label: string
   channel: "marketplace" | "social"
   icon: string | null
-  href: string
-}
-
-type TabItem = {
-  key: string
-  label: string
   href: string
 }
 
@@ -46,17 +39,26 @@ type BrandAssets = {
   faviconIco: BrandAsset | null
 }
 
+type Mode = "view" | "edit"
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
   return `${bytes} B`
 }
 
+/** Nilai kosong tetap ditampilkan sebagai keterangan, bukan kolom kosong. */
+function NilaiKosong() {
+  return <span className="text-xs text-muted-foreground">Belum diisi</span>
+}
+
+function tautanSah(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim())
+}
+
 export default function StorefrontPlatformsEdit({
   title = "Profil & Kontak Toko",
   description = "Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.",
-  tab = "marketplace",
-  tabs = [],
   platforms = [],
   submitUrl,
   kontakFields = { address: "", phone: "", email: "", hours: "" },
@@ -67,8 +69,6 @@ export default function StorefrontPlatformsEdit({
 }: {
   title?: string
   description?: string
-  tab?: "marketplace" | "kontak" | "brand"
-  tabs?: TabItem[]
   platforms?: PlatformRow[]
   submitUrl: string
   kontakFields?: KontakFields
@@ -77,14 +77,17 @@ export default function StorefrontPlatformsEdit({
   brandAssets?: BrandAssets
   brandSubmitUrl: string
 }) {
+  // Kontrak UX: halaman dibuka dalam mode RINGKASAN (read-only). Isian baru
+  // aktif setelah admin menekan tombol Edit, dan disimpan lewat tombol Simpan.
+  const [mode, setMode] = React.useState<Mode>("view")
+  const [saving, setSaving] = React.useState(false)
+
   const initialLinks = Object.fromEntries(platforms.map((p) => [p.key, p.href]))
 
-  // Form tab marketplace
   const platformForm = useForm<{ links: Record<string, string> }>({
     links: initialLinks,
   })
 
-  // Form tab kontak
   const kontakForm = useForm<KontakFields>({
     address: kontakFields.address ?? "",
     phone: kontakFields.phone ?? "",
@@ -92,49 +95,77 @@ export default function StorefrontPlatformsEdit({
     hours: kontakFields.hours ?? "",
   })
 
+  // Logo dan favicon hanya dikirim bila admin memilih berkas baru, supaya
+  // menyimpan isian lain tidak menimpa aset yang sudah pas.
+  const brandForm = useForm<{ logo_asset_id: string; favicon_asset_id: string }>({
+    logo_asset_id: "",
+    favicon_asset_id: "",
+  })
+
   const marketplace = platforms.filter((p) => p.channel === "marketplace")
   const social = platforms.filter((p) => p.channel === "social")
-  const isKontakTab = tab === "kontak"
-  const isBrandTab = tab === "brand"
 
-  // Logo dan favicon dikelola terpisah supaya admin bisa mengganti salah satu
-  // saja tanpa mengunggah ulang berkas yang tidak berubah.
-  const logoForm = useForm<{ logo_asset_id: string }>({ logo_asset_id: "" })
-  const faviconForm = useForm<{ favicon_asset_id: string }>({ favicon_asset_id: "" })
+  /**
+   * Simpan seluruh isian halaman. Tautan, kontak, dan aset brand punya
+   * endpoint sendiri-sendiri; permintaan dikirim berurutan dan berhenti pada
+   * kegagalan pertama supaya tidak ada bagian yang tersimpan diam-diam saat
+   * bagian lain gagal.
+   */
+  function submitAll(event?: React.FormEvent) {
+    event?.preventDefault()
+    if (saving) return
+    setSaving(true)
 
-  const isProcessing = isKontakTab
-    ? kontakForm.processing
-    : isBrandTab
-      ? logoForm.processing || faviconForm.processing
-      : platformForm.processing
-
-  function submitPlatforms(event: React.FormEvent) {
-    event.preventDefault()
-    platformForm.put(submitUrl)
-  }
-
-  function submitKontak(event: React.FormEvent) {
-    event.preventDefault()
-    if (kontakSubmitUrl) {
-      kontakForm.put(kontakSubmitUrl)
+    const selesai = () => {
+      setSaving(false)
+      setMode("view")
     }
-  }
 
-  function handleSave() {
-    if (isKontakTab) {
-      if (kontakSubmitUrl) {
-        kontakForm.put(kontakSubmitUrl)
+    const simpanAsetBrand = () => {
+      if (!brandForm.data.logo_asset_id && !brandForm.data.favicon_asset_id) {
+        selesai()
+        return
       }
-    } else {
-      platformForm.put(submitUrl)
+
+      brandForm.post(brandSubmitUrl, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: selesai,
+        onError: () => setSaving(false),
+      })
     }
+
+    platformForm.put(submitUrl, {
+      preserveScroll: true,
+      preserveState: true,
+      onSuccess: () => {
+        if (!kontakSubmitUrl) {
+          simpanAsetBrand()
+          return
+        }
+
+        kontakForm.put(kontakSubmitUrl, {
+          preserveScroll: true,
+          preserveState: true,
+          onSuccess: simpanAsetBrand,
+          onError: () => setSaving(false),
+        })
+      },
+      onError: () => setSaving(false),
+    })
+  }
+
+  function batal() {
+    // Kembalikan ke kondisi tersimpan di server sekaligus tutup mode edit.
+    // router.reload tidak menerima preserveScroll pada Inertia versi ini.
+    router.reload()
   }
 
   function setLink(key: string, value: string) {
     platformForm.setData("links", { ...platformForm.data.links, [key]: value })
   }
 
-  function renderPlatformTable(heading: string, hint: string, rows: PlatformRow[]) {
+  function barisPlatform(heading: string, hint: string, rows: PlatformRow[]) {
     if (rows.length === 0) return null
 
     return (
@@ -166,14 +197,31 @@ export default function StorefrontPlatformsEdit({
                   </div>
                 </td>
                 <td className="px-4 py-2.5">
-                  <Input
-                    type="url"
-                    inputMode="url"
-                    placeholder={`https://... (${row.label})`}
-                    value={platformForm.data.links[row.key] ?? ""}
-                    onChange={(event) => setLink(row.key, event.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
+                  {mode === "edit" ? (
+                    <Input
+                      type="url"
+                      inputMode="url"
+                      placeholder={`https://... (${row.label})`}
+                      value={platformForm.data.links[row.key] ?? ""}
+                      onChange={(event) => setLink(row.key, event.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                  ) : (platformForm.data.links[row.key] ?? "").trim() === "" ? (
+                    <NilaiKosong />
+                  ) : tautanSah(platformForm.data.links[row.key] ?? "") ? (
+                    <a
+                      href={platformForm.data.links[row.key]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all font-mono text-xs text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
+                    >
+                      {platformForm.data.links[row.key]}
+                    </a>
+                  ) : (
+                    <span className="break-all font-mono text-xs text-foreground">
+                      {platformForm.data.links[row.key]}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -209,211 +257,71 @@ export default function StorefrontPlatformsEdit({
             </Button>
           ) : null}
 
-          {!isBrandTab ? (
+          {mode === "view" ? (
             <Button
               type="button"
               size="sm"
-              disabled={isProcessing}
-              onClick={handleSave}
+              onClick={() => setMode("edit")}
               className="inline-flex items-center gap-1.5"
             >
-              <Icon name="check" className="size-3.5" aria-hidden="true" />
-              <span>{isProcessing ? "Menyimpan..." : "Simpan"}</span>
+              <Icon name="pencil-simple" className="size-3.5" aria-hidden="true" />
+              <span>Edit</span>
             </Button>
-          ) : null}
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                form="storefront-profile-form"
+                size="sm"
+                disabled={saving}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Icon name="check" className="size-3.5" aria-hidden="true" />
+                <span>{saving ? "Menyimpan..." : "Simpan"}</span>
+              </Button>
+            </>
+          )}
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Segmented Tabs DS v2 */}
-      {tabs.length > 0 ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg border border-border bg-muted/60 p-1">
-            {tabs.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn(
-                  "rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all",
-                  tab === item.key
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Tab 3: Aset Brand */}
-      {isBrandTab ? (
-        <div className="w-full max-w-5xl space-y-6">
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-            Logo dan favicon adalah identitas toko yang tampil di header situs,
-            tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
-            terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
-            berganti karena browser menyimpannya cukup agresif.
-          </div>
-
-          <div className="grid items-start gap-6 lg:grid-cols-2">
-            {/* Logo */}
-            <SectionCard
-              title="Logo Toko"
-              description="Tampil di header situs (tema terang dan gelap) dan footer. PNG transparan lebar minimal 300px disarankan."
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                  {brandAssets.logo ? (
-                    <img
-                      src={brandAssets.logo.url}
-                      alt="Logo toko saat ini"
-                      className="max-h-20 w-auto max-w-[180px] object-contain"
-                      width={180}
-                      height={80}
-                    />
-                  ) : (
-                    <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                      Belum ada logo
-                    </span>
-                  )}
-                  <div className="min-w-0 text-xs text-muted-foreground">
-                    {brandAssets.logo ? (
-                      <>
-                        <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
-                        <p className="mt-0.5">
-                          {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
-                        </p>
-                      </>
-                    ) : (
-                      <p>Belum ada berkas logo terunggah.</p>
-                    )}
-                  </div>
-                </div>
-
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    logoForm.post(brandSubmitUrl, { preserveScroll: true })
-                  }}
-                  className="space-y-3"
-                >
-                  <FormErrorSummary errors={logoForm.errors} />
-                  <Field
-                    id="brand-logo"
-                    label="Logo dari Media Library"
-                    error={logoForm.errors.logo_asset_id}
-                    hint="Pilih aset logo (PNG transparan disarankan) dari Media Library."
-                  >
-                    <MediaLibrarySelect
-                      value={logoForm.data.logo_asset_id ?? ""}
-                      onChange={(value) => logoForm.setData("logo_asset_id", value)}
-                      kind="image"
-                    />
-                  </Field>
-                  <Button type="submit" disabled={logoForm.processing || !logoForm.data.logo_asset_id}>
-                    {logoForm.processing ? "Menyimpan..." : "Simpan Logo"}
-                  </Button>
-                </form>
-              </div>
-            </SectionCard>
-
-            {/* Favicon */}
-            <SectionCard
-              title="Favicon"
-              description="Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px."
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                  {brandAssets.favicon ? (
-                    <img
-                      src={brandAssets.favicon.url}
-                      alt="Favicon saat ini"
-                      className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
-                      width={64}
-                      height={64}
-                    />
-                  ) : (
-                    <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                      Kosong
-                    </span>
-                  )}
-                  <div className="min-w-0 text-xs text-muted-foreground">
-                    {brandAssets.faviconIco ? (
-                      <>
-                        <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
-                        <p className="mt-0.5">
-                          {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
-                        </p>
-                        {brandAssets.favicon ? <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p> : null}
-                      </>
-                    ) : (
-                      <p>Belum ada favicon terunggah.</p>
-                    )}
-                  </div>
-                </div>
-
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    faviconForm.post(brandSubmitUrl, { preserveScroll: true })
-                  }}
-                  className="space-y-3"
-                >
-                  <FormErrorSummary errors={faviconForm.errors} />
-                  <Field
-                    id="brand-favicon"
-                    label="Favicon dari Media Library"
-                    error={faviconForm.errors.favicon_asset_id}
-                    hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library."
-                  >
-                    <MediaLibrarySelect
-                      value={faviconForm.data.favicon_asset_id ?? ""}
-                      onChange={(value) => faviconForm.setData("favicon_asset_id", value)}
-                      kind="image"
-                    />
-                  </Field>
-                  <Button type="submit" disabled={faviconForm.processing || !faviconForm.data.favicon_asset_id}>
-                    {faviconForm.processing ? "Menyimpan..." : "Simpan Favicon"}
-                  </Button>
-                </form>
-              </div>
-            </SectionCard>
-          </div>
-        </div>
-      ) : !isKontakTab ? (
-        <form id="platforms-form" onSubmit={submitPlatforms} className="w-full max-w-5xl space-y-6">
+      <form id="storefront-profile-form" onSubmit={submitAll} className="w-full max-w-5xl space-y-6">
+        {/* 1. Marketplace & Media Sosial */}
+        <div className="space-y-6">
           <FormErrorSummary errors={platformForm.errors} />
           <div className="grid items-start gap-6 lg:grid-cols-2">
-            {renderPlatformTable(
+            {barisPlatform(
               "Marketplace Resmi",
               "Tautan toko resmi di platform belanja online. Tampil di kartu informasi toko dan footer.",
               marketplace,
             )}
-            {renderPlatformTable(
+            {barisPlatform(
               "Media Sosial Resmi",
               "Akun konten dan publikasi resmi toko (Instagram, TikTok, YouTube, Facebook).",
               social,
             )}
           </div>
-        </form>
-      ) : (
-        /* Tab 2: Kontak & Jam Operasional */
-        <form id="kontak-form" onSubmit={submitKontak} className="w-full max-w-4xl space-y-6">
-          <FormErrorSummary errors={kontakForm.errors} />
-          <SectionCard
-            title="Informasi Kontak & Komunikasi"
-            description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
-          >
-            <FieldGrid>
-              <Field
-                id="phone"
-                label="Nomor Telepon / WhatsApp Konsultasi"
-                error={kontakForm.errors.phone}
-                hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp."
-              >
+        </div>
+
+        {/* 2. Kontak & Jam Kerja */}
+        <FormErrorSummary errors={kontakForm.errors} />
+
+        <SectionCard
+          title="Informasi Kontak & Komunikasi"
+          description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
+        >
+          <FieldGrid>
+            <Field
+              id="phone"
+              label="Nomor Telepon / WhatsApp Konsultasi"
+              error={kontakForm.errors.phone}
+              hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp."
+            >
+              {mode === "edit" ? (
                 <Input
                   id="phone"
                   value={kontakForm.data.phone}
@@ -422,8 +330,16 @@ export default function StorefrontPlatformsEdit({
                   className="font-mono text-xs bg-muted text-muted-foreground"
                   readOnly
                 />
-              </Field>
-              <Field id="email" label="Email Layanan Informasi (Opsional)" error={kontakForm.errors.email}>
+              ) : kontakForm.data.phone.trim() === "" ? (
+                <div className="flex min-h-9 items-center">
+                  <NilaiKosong />
+                </div>
+              ) : (
+                <p className="flex min-h-9 items-center font-mono text-xs text-foreground">{kontakForm.data.phone}</p>
+              )}
+            </Field>
+            <Field id="email" label="Email Layanan Informasi (Opsional)" error={kontakForm.errors.email}>
+              {mode === "edit" ? (
                 <Input
                   id="email"
                   type="email"
@@ -432,16 +348,24 @@ export default function StorefrontPlatformsEdit({
                   placeholder="Contoh: info@ragilaluminium.com"
                   className="font-mono text-xs"
                 />
-              </Field>
-            </FieldGrid>
-          </SectionCard>
+              ) : kontakForm.data.email.trim() === "" ? (
+                <div className="flex min-h-9 items-center">
+                  <NilaiKosong />
+                </div>
+              ) : (
+                <p className="flex min-h-9 items-center font-mono text-xs text-foreground">{kontakForm.data.email}</p>
+              )}
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
-          <SectionCard
-            title="Lokasi Workshop & Jam Operasional"
-            description="Alamat fisik workshop dan jadwal buka layanan pelanggan."
-          >
-            <div className="space-y-4">
-              <Field id="address" label="Alamat Fisik Workshop / Toko" error={kontakForm.errors.address}>
+        <SectionCard
+          title="Lokasi Workshop & Jam Operasional"
+          description="Alamat fisik workshop dan jadwal buka layanan pelanggan."
+        >
+          <div className="space-y-4">
+            <Field id="address" label="Alamat Fisik Workshop / Toko" error={kontakForm.errors.address}>
+              {mode === "edit" ? (
                 <Textarea
                   id="address"
                   rows={3}
@@ -450,8 +374,14 @@ export default function StorefrontPlatformsEdit({
                   placeholder="Alamat lengkap workshop produksi dan kantor operasional"
                   className="text-xs leading-relaxed"
                 />
-              </Field>
-              <Field id="hours" label="Jam Operasional" error={kontakForm.errors.hours}>
+              ) : kontakForm.data.address.trim() === "" ? (
+                <NilaiKosong />
+              ) : (
+                <p className="whitespace-pre-line text-xs leading-relaxed text-foreground">{kontakForm.data.address}</p>
+              )}
+            </Field>
+            <Field id="hours" label="Jam Operasional" error={kontakForm.errors.hours}>
+              {mode === "edit" ? (
                 <Input
                   id="hours"
                   value={kontakForm.data.hours}
@@ -459,11 +389,139 @@ export default function StorefrontPlatformsEdit({
                   placeholder="Contoh: Senin - Sabtu: 08.00 - 17.00 WIB (Minggu Libur)"
                   className="text-xs"
                 />
-              </Field>
+              ) : kontakForm.data.hours.trim() === "" ? (
+                <div className="flex min-h-9 items-center">
+                  <NilaiKosong />
+                </div>
+              ) : (
+                <p className="flex min-h-9 items-center text-xs text-foreground">{kontakForm.data.hours}</p>
+              )}
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* 3. Aset Brand */}
+        <FormErrorSummary errors={brandForm.errors} />
+
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+          Logo dan favicon adalah identitas toko yang tampil di header situs,
+          tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
+          terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
+          berganti karena browser menyimpannya cukup agresif.
+        </div>
+
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          {/* Logo */}
+          <SectionCard
+            title="Logo Toko"
+            description="Tampil di header situs (tema terang dan gelap) dan footer. PNG transparan lebar minimal 300px disarankan."
+          >
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                {brandAssets.logo ? (
+                  <img
+                    src={brandAssets.logo.url}
+                    alt="Logo toko saat ini"
+                    className="max-h-20 w-auto max-w-[180px] object-contain"
+                    width={180}
+                    height={80}
+                  />
+                ) : (
+                  <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                    Belum ada logo
+                  </span>
+                )}
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  {brandAssets.logo ? (
+                    <>
+                      <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
+                      <p className="mt-0.5">
+                        {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
+                      </p>
+                    </>
+                  ) : (
+                    <p>Belum ada berkas logo terunggah.</p>
+                  )}
+                </div>
+              </div>
+
+              {mode === "edit" ? (
+                <Field
+                  id="brand-logo"
+                  label="Ganti Logo dari Media Library"
+                  error={brandForm.errors.logo_asset_id}
+                  hint="Pilih aset logo (PNG transparan disarankan) dari Media Library, lalu tekan Simpan."
+                >
+                  <MediaLibrarySelect
+                    value={brandForm.data.logo_asset_id ?? ""}
+                    onChange={(value) => brandForm.setData("logo_asset_id", value)}
+                    kind="image"
+                  />
+                </Field>
+              ) : null}
             </div>
           </SectionCard>
-        </form>
-      )}
+
+          {/* Favicon */}
+          <SectionCard
+            title="Favicon"
+            description="Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px."
+          >
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                {brandAssets.favicon ? (
+                  <img
+                    src={brandAssets.favicon.url}
+                    alt="Favicon saat ini"
+                    className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
+                    width={64}
+                    height={64}
+                  />
+                ) : (
+                  <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                    Kosong
+                  </span>
+                )}
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  {brandAssets.faviconIco ? (
+                    <>
+                      <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
+                      <p className="mt-0.5">
+                        {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
+                      </p>
+                      {brandAssets.favicon ? <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p> : null}
+                    </>
+                  ) : (
+                    <p>Belum ada favicon terunggah.</p>
+                  )}
+                </div>
+              </div>
+
+              {mode === "edit" ? (
+                <Field
+                  id="brand-favicon"
+                  label="Ganti Favicon dari Media Library"
+                  error={brandForm.errors.favicon_asset_id}
+                  hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library, lalu tekan Simpan."
+                >
+                  <MediaLibrarySelect
+                    value={brandForm.data.favicon_asset_id ?? ""}
+                    onChange={(value) => brandForm.setData("favicon_asset_id", value)}
+                    kind="image"
+                  />
+                </Field>
+              ) : null}
+            </div>
+          </SectionCard>
+        </div>
+
+        {mode === "view" ? (
+          <p className="text-xs text-muted-foreground">
+            Isi di atas adalah kondisi yang sedang aktif di toko. Tekan{" "}
+            <strong className="font-semibold text-foreground">Edit</strong> untuk mengubah.
+          </p>
+        ) : null}
+      </form>
     </AdminLayout>
   )
 }

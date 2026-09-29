@@ -470,7 +470,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('faq/{faq}/unarchive', [FaqController::class, 'unarchive'])->name('faq.unarchive');
     Route::delete('faq/{faq}', [FaqController::class, 'destroy'])->name('faq.destroy');
 
-    Route::get('beranda/kontak', fn () => redirect()->route('admin.storefront-platforms.edit', ['tab' => 'kontak']))->name('beranda.kontak.edit');
+    Route::get('beranda/kontak', fn () => redirect()->route('admin.storefront-platforms.edit'))->name('beranda.kontak.edit');
     Route::put('beranda/kontak', [\App\Http\Controllers\Admin\KontakController::class, 'update'])->name('beranda.kontak.update');
     Route::get('masalah-solusi', [MasalahSolusiController::class, 'index'])->name('masalah-solusi.index');
     Route::put('masalah-solusi/meta', [MasalahSolusiController::class, 'updateMeta'])->name('masalah-solusi.meta.update');

@@ -13,11 +13,11 @@ use Inertia\Response;
 
 class StorefrontPlatformController extends Controller
 {
-    public function edit(Request $request): Response
+    public function edit(): Response
     {
-        $requested = (string) $request->query('tab', 'marketplace');
-        $tab = in_array($requested, ['marketplace', 'kontak', 'brand'], true) ? $requested : 'marketplace';
-
+        // Satu view tanpa tab (owner 2026-09-29: "gausah pakai tab, campurkan
+        // jadi satu view halaman saja semuanya"). Parameter `tab` tidak lagi
+        // dibaca; tautan, kontak, dan aset brand selalu tampil bersama.
         $kontakPage = CmsPage::where('slug', 'kontak')->first();
         $kontakFields = $kontakPage && is_array($kontakPage->content)
             ? $this->extractKontakFields($kontakPage->content)
@@ -26,24 +26,6 @@ class StorefrontPlatformController extends Controller
         return Inertia::render('Admin/StorefrontPlatforms/Edit', [
             'title' => 'Profil & Kontak Toko',
             'description' => 'Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.',
-            'tab' => $tab,
-            'tabs' => [
-                [
-                    'key' => 'marketplace',
-                    'label' => 'Marketplace & Media Sosial',
-                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'marketplace']),
-                ],
-                [
-                    'key' => 'kontak',
-                    'label' => 'Kontak & Jam Kerja',
-                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'kontak']),
-                ],
-                [
-                    'key' => 'brand',
-                    'label' => 'Aset Brand',
-                    'href' => route('admin.storefront-platforms.edit', ['tab' => 'brand']),
-                ],
-            ],
             'brandAssets' => $this->brandAssetsState(),
             'brandSubmitUrl' => route('admin.pages.branding'),
             'platforms' => StorefrontPlatformSettings::forAdmin(),

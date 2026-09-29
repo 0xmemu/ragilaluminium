@@ -172,9 +172,10 @@ Biaya COD tetap item flat di grup yang sama.
   - Pusat pengelolaan profil perusahaan terpadu: informasi utama (hero/headline/deskripsi), foto utama & galeri workshop (1-4 foto), statistik keunggulan, proses produksi, cara kerja pemesanan, dan jaminan pelanggan (`cms_pages.tentang-kami` via `AboutPageSettings`).
   - Otomatis menyinkronkan kontak (alamat, WA, email, jam kerja) ke `cms_pages.kontak` (`StoreContactSettings`) dan tautan marketplace/sosmed ke `cms_pages.storefront-platforms` (`StorefrontPlatformSettings`).
   - Route: `admin.tentang-kami.*` → `Admin/TentangKami/Edit`. Publik: `/about` → `Public/About`.
-- **Marketplace & Media Sosial** (Tipe: `Settings`)
-  - Editor tautan eksternal toko/akun (`cms_pages.storefront-platforms` → `content.links`). Katalog key/label/icon di `config/sitemap.php` → `platforms`.
-  - Route: `admin.storefront-platforms.*` → `Admin/StorefrontPlatforms/Edit`. Tampil di Informasi Toko + footer via Inertia share `platforms`.
+- **Profil & Kontak Toko** (Tipe: `Settings`)
+  - Satu view tanpa tab (owner 2026-09-29): tautan marketplace & media sosial (`cms_pages.storefront-platforms` → `content.links`, katalog key/label/icon di `config/sitemap.php` → `platforms`), kontak & jam kerja (`cms_pages.kontak`), dan aset brand (logo + favicon).
+  - Halaman dibuka read-only; isian aktif setelah tombol Edit ditekan, disimpan lewat tombol Simpan di header. Simpan mengirim tiga endpoint berurutan (tautan, kontak, aset brand hanya bila ada berkas baru dipilih) dan berhenti pada kegagalan pertama.
+  - Route: `admin.storefront-platforms.*` → `Admin/StorefrontPlatforms/Edit`; alias lama `admin.store-settings.index` menampilkan view yang sama. Tampil di Informasi Toko + footer via Inertia share `platforms`.
 - **Ketentuan Layanan** (Tipe: `Content/CMS`)
   - Editor dokumen (`cms_pages.ketentuan-layanan`). Route: `admin.ketentuan-layanan.*` → `Admin/CmsDocument/Edit`. Publik: `/policy/terms`.
 - **Kebijakan Privasi** (Tipe: `Content/CMS`)

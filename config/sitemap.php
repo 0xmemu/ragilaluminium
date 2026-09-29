@@ -529,7 +529,7 @@ return [
     | Marketplace: Shopee / Tokopedia / Lazada / TikTok Shop.
     | Facebook / YouTube / Instagram / TikTok = social, bukan marketplace.
     | Tampil di: Informasi Toko (/about) + Footer.
-    | Edit URL: Admin → Pengaturan Website → Marketplace & Media Sosial
+    | Edit URL: Admin → Pengaturan Website → Profil & Kontak Toko
     |   (`admin.storefront-platforms.*` → cms_pages.storefront-platforms.content.links).
     | Catalog key/label/channel/icon tetap di sini; env SOCIAL_* = fallback awal saja.
     |--------------------------------------------------------------------------
