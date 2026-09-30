@@ -4,6 +4,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
@@ -64,7 +65,7 @@ export default function TestimonialForm({
   moderateUrl = null,
 }: {
   testimonial: TestimonialRecord | null
-  products: Array<{ id: number; label: string }>
+  products: Array<{ value: string; label: string }>
   sources: string[]
   sourceLabels?: Record<string, string>
   intent?: "marketplace" | "website"
@@ -404,12 +405,15 @@ export default function TestimonialForm({
               ) : null}
               {!isMarketplaceIntent ? (
                 <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id}>
-                  <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
-                    <option value="">Ulasan umum (/reviews saja)</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>{product.label}</option>
-                    ))}
-                  </Select>
+                  <SearchSelect
+                    id="testimonial-product"
+                    options={products}
+                    value={form.data.product_id}
+                    onValueChange={(value) => form.setData("product_id", value)}
+                    placeholder="Ulasan umum (/reviews saja)"
+                    searchPlaceholder="Cari nama atau SKU produk"
+                    emptyMessage="Produk tidak ditemukan."
+                  />
                 </Field>
               ) : null}
             </div>
@@ -448,21 +452,6 @@ export default function TestimonialForm({
                 <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
               </Field>
             )}
-
-            {!isMarketplaceIntent ? (
-              <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
-                <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
-                  <option value="">Tanpa rating</option>
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    // Bintang supaya pilihan terlihat seperti rating sungguhan,
-                    // bukan angka polos (catatan owner 2026-09-29). Label wajib
-                    // SATU string: komponen Select memakai children apa adanya,
-                    // children berupa array jatuh ke nilai angka.
-                    <option key={rating} value={rating}>{'★'.repeat(rating) + ' ' + rating + ' bintang'}</option>
-                  ))}
-                </Select>
-              </Field>
-            ) : null}
             {isMarketplace ? (
               // Pilihan sumber hanya untuk screenshot marketplace (Shopee atau
               // WhatsApp). Ulasan yang dibuat dari form website definisinya

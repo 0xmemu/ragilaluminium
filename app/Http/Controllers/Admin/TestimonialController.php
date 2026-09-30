@@ -16,6 +16,7 @@ use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -831,18 +832,34 @@ class TestimonialController extends Controller
     }
 
     /** @return list<array{id:int,label:string}> */
+    /**
+     * Opsi produk untuk pemilih bercari (SearchSelect) di form ulasan.
+     *
+     * Tanpa batas 500: pemilih bercari mencari di sisi klien, dan daftar
+     * dipendekkan hanya ke produk aktif. Hasilnya di-cache 5 menit mengikuti
+     * pola pemilih produk di Teruskan Popularitas.
+     *
+     * @return list<array{value: string, label: string}>
+     */
     protected function productOptions(): array
     {
-        return Product::query()
-            ->orderBy('name')
-            ->limit(500)
-            ->get(['id', 'parent_sku', 'name', 'short_name'])
-            ->map(fn (Product $p) => [
-                'id' => $p->id,
-                'label' => ($p->short_name ?: $p->name).' · '.$p->parent_sku,
-            ])
-            ->values()
-            ->all();
+        return Cache::remember('admin:testimonial:product-options', now()->addMinutes(5), function (): array {
+            $opsi = Product::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'parent_sku', 'name', 'short_name'])
+                ->map(fn (Product $p) => [
+                    'value' => (string) $p->id,
+                    'label' => ($p->short_name ?: $p->name).' · '.$p->parent_sku,
+                ])
+                ->values()
+                ->all();
+
+            return [
+                ['value' => '', 'label' => 'Ulasan umum (/reviews saja)'],
+                ...$opsi,
+            ];
+        });
     }
     /** Ubah sumber testimoni secara cepat dari tabel (kolom Sumber). */
     public function updateSource(Request $request, CmsTestimonial $testimonial): RedirectResponse
