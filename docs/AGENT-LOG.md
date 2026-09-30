@@ -2725,3 +2725,36 @@ Verifikasi: pengukuran live di browser (layar 2236px). Sebelum: form 896px, kart
 
 Pelajaran untuk halaman berikutnya: mengubah form bertab menjadi satu view berarti membuang juga batas lebar sempit yang dulu dipilih untuk bentuk bertab. Batas lebar seperti `max-w-5xl` pada halaman admin hanya pantas untuk form isian tunggal yang memang sempit secara alami, bukan untuk halaman yang menampilkan banyak kartu.
 Agent: zcode
+
+## 2026-09-29 17:20 UTC | zcode | Deep | (commit ini) | selesai
+
+Lingkup: Penyeragaman pemilih media di panel admin. Owner 2026-09-29: "semua fitur/menu dengan konteks pilih gambar harus pakai media picker. untuk pilih produk harus pakai product picker. saya ga mau 1 fitur sama tapi model menu beda-beda. cek secara menyeluruh mana saja yg menggunakan, lalu rubah". Tahap ini menuntaskan sisi MEDIA; sisi produk menyusul.
+Berkas: resources/js/components/admin/media-picker.tsx, resources/js/pages/Admin/Banners/Form.tsx, resources/js/pages/Admin/Testimonials/GalleryForm.tsx, resources/js/pages/Admin/MasalahSolusi/Form.tsx, resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx, tests/Feature/FrontendPageContractTest.php
+
+Hasil inventaris menyeluruh. Ada TIGA pemilih media ke endpoint yang sama (`admin.media.picker`):
+1. `MediaPicker` (modal) dipakai 7 halaman: InstallationGallery/Form, InstallationGallery/Model, Media/Library, ModelProducts/Form, ProductForm, TentangKami/Edit, Testimonials/Form.
+2. `MediaLibrarySelect` (dropdown ringan) dipakai 7 TITIK di 4 halaman: Banners/Form 1, Testimonials/GalleryForm 1, MasalahSolusi/Form 3 (foto contoh, video, poster video), StorefrontPlatforms/Edit 2 (logo, favicon). Titik ketiga di MasalahSolusi (poster) tidak terlihat pada pembacaan pertama dan baru ketahuan dari error typecheck; grep awal menghitung berkas, bukan jumlah pemakaian.
+3. `product-edit/media-panel.tsx` merakit pemilih sendiri di dalam form produk (cakupan folder saran, jumlah pemakaian, filter status, opsi pasang ke varian/katalog/instalasi). Ini BELUM diseragamkan, lihat catatan keputusan di bawah.
+
+Perubahan: MediaPicker diberi prop `kind` (image|video) yang diteruskan ke server. Penyaringan sengaja di server, bukan di sisi klien, karena daftar dibatasi 48 aset terbaru sehingga aset jenis lain akan memakan jatah sebelum disaring. Tujuh titik MediaLibrarySelect diganti tombol pemicu + modal MediaPicker, mengikuti pola yang sudah dipakai halaman Tentang Kami dan form produk. Pemilih poster video di MasalahSolusi juga ikut (kind image). Kalimat basi di modal MediaPicker ("atau unggah foto/video baru") diperbaiki: pemilih ini tidak punya tab unggah sejak Media Library menjadi satu-satunya sumber media.
+
+TEMUAN PENTING (di luar lingkup permintaan, tapi harus diketahui): `resources/js/components/admin/media-library-select.tsx` TIDAK ADA di git (untracked, tanggal 18 sampai 20 Sep, tanpa riwayat). Padahal versi di HEAD beberapa halaman masih mengimpornya, jadi HEAD sebenarnya rusak untuk clone baru: build akan gagal karena modul tidak ditemukan. Perubahan ini menghapus SELURUH impor ke berkas itu, sekaligus memperbaiki kerusakan tersebut. Berkasnya tetap ada di disk sebagai arsip (guard bash-guard.js memblokir penghapusan isi `resources`, dan kontrak repo memang "arsipkan, jangan hapus"). Penjaga baru memastikan tidak ada impor baru ke sana.
+
+Ikut dibersihkan: GalleryForm menyimpan sisa jalur unggah berkas yang sudah dimatikan (impor `usePage`, tipe `SharedPageProps`, prop `presignUrl` tanpa pemakai) yang memunculkan tiga error lint; ketiganya dibuang karena berkasnya sedang disentuh.
+
+Dampak spec: Spec tidak berubah. Tidak ada route, kolom, enum, atau bentuk JSON baru. Endpoint `admin.media.picker` sudah mendukung `kind` sebelumnya.
+
+Verifikasi: guard baru `test_pemilih_media_hanya_satu_komponen` lulus (memastikan tidak ada impor ke pemilih kedua). FrontendPageContractTest 11 lulus / 503 asersi. `npx tsc --noEmit` bersih, `npx eslint` bersih untuk kelima berkas, build aset sukses. Uji live di browser: Profil & Kontak Toko (tombol Pilih logo membuka modal "Pilih Logo Toko" dengan filter folder dan pencarian), Banners/create ("Pilih gambar" membuka "Pilih Gambar Banner Promo"), Masalah & Solusi item 4 (tombol Tambah foto dan Tambah video ada, dropdown lama hilang, dan pemilihan TIGA foto berurutan tercentang 1 lalu 2 lalu 3 sebelum modal ditutup lewat "Gunakan media").
+Suite penuh: 1311 lulus, 1 skipped, 1 GAGAL. Kegagalan itu bukan dari perubahan ini, melainkan bentrok antar agent di working tree bersama: migrasi `2026_09_29_000001_add_additional_shipping_to_order_return_cases.php` (dibuat 11:23 hari ini) menambahkan kembali kolom yang justru diwajibkan TIDAK ada oleh `ReturnRefundIntegrityTest`. Pemilik migrasi itu perlu memutuskan arahnya.
+
+KEPUTUSAN YANG MENUNGGU OWNER: `product-edit/media-panel.tsx` (panel "Tambah media" di form produk) sengaja TIDAK diseragamkan dulu. Ia memang memilih media, tetapi fungsi aslinya berbeda: mengelola media milik satu produk, dengan cakupan folder saran produk itu, jumlah pemakaian tiap aset, filter status, dan opsi pasang ke varian/katalog/instalasi. Menukarnya dengan modal MediaPicker akan menghilangkan cakupan dan opsi pasang itu. Pilihan yang tersedia: (a) biarkan sebagai pemilih khusus produk, (b) arahkan tombol "pilih dari library" di dalamnya ke MediaPicker lalu sisakan hanya opsi pasang, atau (c) jadikan MediaPicker punya mode "pasang ke produk". Mana pun yang dipilih, saya perlu keputusan karena mengubahnya menyentuh alur pasang media ke produk.
+
+Untuk agent berikutnya: sisi PRODUK belum dikerjakan, dan di sana ada EMPAT model berbeda: (1) `ui/ProductPicker` (panel dengan cari, filter kategori/model, centang massal, paginasi) dipakai PromotionForm; (2) `order-product-picker` (dialog cari produk lalu pilih varian dan jumlah) dipakai Orders/Show; (3) dropdown `<Select>` daftar produk di Vouchers/Form (target produk), Testimonials/Form (produk terkait), InstallationGallery/Form (produk per model); (4) dropdown pencarian buatan sendiri lewat `admin.media.products.search` di Testimonials/Index dan Media/Library. Perlu diputuskan lebih dulu mana yang jadi acuan, karena kebutuhan varian+jumlah di pemilih pesanan berbeda sifat dari kebutuhan "pilih produk sebagai target".
+Agent: zcode
+
+## 2026-09-29 22:00 UTC | zcode-retur | Standard | - | selesai
+Lingkup: owner menanyakan keberadaan produk picker reusable; komponen ProductPicker ternyata sudah ada (dipakai form promo) dan belum dipakai di form ulasan.
+Perubahan: SearchSelect diganti ProductPicker dalam Sheet (maxSelection=1) di Testimonials/Form.tsx; trigger menampilkan nama+SKU dengan tombol Kosongkan; TestimonialController: productOptions/Cache dibuang, initialProductFor() mengirim pratinjau produk tersimpan.
+Dampak spec: tidak berubah.
+Verifikasi: UlasanAdminTest + ProductReviewsTest 23 passed; ESLint + typecheck + build bersih; browser: sheet terbuka 135 produk, pilih satu berhasil, trigger menampilkan produk terpilih. Form tidak disimpan.
+Agent: zcode-retur
