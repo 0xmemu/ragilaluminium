@@ -119,7 +119,6 @@ export default function TestimonialForm({
       // Penghitung lokal, bukan ref: mengubah ref saat render dilarang React.
       .map((url, index) => ({ key: `awal-${index + 1}`, url })),
   )
-  const [urlBaru, setUrlBaru] = React.useState("")
   const [pickerOpen, setPickerOpen] = React.useState(false)
 
   // Produk terkait (permintaan owner 2026-09-29: pakai produk picker reusable).
@@ -150,14 +149,6 @@ export default function TestimonialForm({
         })
       return [...current, ...baru].slice(0, maxPhotos)
     })
-  }
-
-  function tambahUrl() {
-    const url = urlBaru.trim()
-    if (url === "" || photosPenuh) return
-    nomorFoto.current += 1
-    setPhotos((current) => [...current, { key: `url-${nomorFoto.current}`, url }])
-    setUrlBaru("")
   }
 
   function hapusFoto(key: string) {
@@ -243,9 +234,13 @@ export default function TestimonialForm({
               label="Foto ulasan"
               error={galatFoto}
               hint={
+                // Foto hanya dari Media Library (koreksi owner 2026-09-29:
+                // "buang ini, media picker sudah cukup"). Isian URL tempelan
+                // dihapus; foto lama yang tersimpan sebagai tautan tetap
+                // tampil di grid ini dan bisa dihapus.
                 (isMarketplace
                   ? "Wajib. Screenshot Shopee/WhatsApp dari Media Library."
-                  : "Opsional. Pilih dari Media Library atau tempel URL.")
+                  : "Opsional. Pilih dari Media Library.")
                 + ` Boleh lebih dari satu foto (maksimal ${maxPhotos}); foto pertama jadi gambar utama, dan di storefront semua foto bisa digeser saat diperbesar.`
               }
               required={isMarketplace}
@@ -272,7 +267,7 @@ export default function TestimonialForm({
                           {!row.assetId ? (
                             <span
                               className="absolute right-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-semibold text-background"
-                              title="Foto dari URL tempelan atau foto lama"
+                              title="Foto lama dari tautan luar. Masih tampil di storefront; hapus lalu pilih ulang dari Media Library bila ingin menggantinya."
                             >
                               URL
                             </span>
@@ -346,30 +341,6 @@ export default function TestimonialForm({
                     <Icon name="images" className="size-4" aria-hidden="true" />
                     Tambah dari Media Library
                   </Button>
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                    <Input
-                      value={urlBaru}
-                      onChange={(event) => setUrlBaru(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault()
-                          tambahUrl()
-                        }
-                      }}
-                      placeholder="Tempel URL gambar untuk foto dari luar"
-                      disabled={photosPenuh}
-                      aria-label="URL gambar ulasan"
-                      className="min-w-[16rem] flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={tambahUrl}
-                      disabled={photosPenuh || urlBaru.trim() === ""}
-                    >
-                      Tambah URL
-                    </Button>
-                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {photos.length} dari {maxPhotos} foto dipakai.
