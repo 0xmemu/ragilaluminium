@@ -2673,3 +2673,10 @@ Dampak spec: tidak berubah (tanpa route/kolom/enum baru; kunci payload photos ad
 Verifikasi: UlasanAdminTest 13 passed; suite penuh 1311 passed, 1 skipped, 1 failed (ReturnRefundIntegrityTest, benturan migrasi agent lain yang sudah dilaporkan); ESLint + typecheck bersih; build sukses; Vitest 238 passed; browser: dua aset terpilih sekaligus, badge Utama/Hapus/Jadikan utama bekerja, tanpa overflow 390/1280.
 Catatan gap lain yang sengaja TIDAK diubah: GalleryForm (Hasil Pemasangan) tetap satu gambar karena entitasnya memang satu foto + keterangan.
 Agent: zcode-retur
+
+## 2026-09-29 20:15 UTC | zcode-retur | Standard | - | selesai
+Lingkup: owner mengoreksi implementasi sebelumnya - MediaPicker reusable, jadi skema payload harus sama dengan form admin lain.
+Perubahan: Testimonials/Form.tsx (payload media_asset_ids + image_urls, grid gaya galeri Model Produk, geser dibatasi per kelompok), TestimonialController (resolveMediaAssetIds, batas gabungan MAX_PHOTOS), tes disesuaikan.
+Dampak spec: tidak berubah (tanpa route/kolom/enum baru).
+Verifikasi: UlasanAdminTest 13 passed; suite terkait 47 passed; suite penuh 1311 passed, 1 failed (benturan migrasi agent lain, sudah dilaporkan); ESLint + typecheck + build + Vitest bersih; browser: multi-pilih 3 aset, badge Utama/URL, geser, tanpa overflow 390/1280.
+Agent: zcode-retur
