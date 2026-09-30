@@ -25,6 +25,8 @@ interface RecordItem {
   id?: number
   problem: string
   sort_order: number
+  /** Nama berkas aset video terpasang, untuk pratinjau di form. */
+  video_label?: string | null
   solution_body: string
   examples_label: string
   examples_hint: string
@@ -32,8 +34,7 @@ interface RecordItem {
   video: {
     src: string | null
     poster: string | null
-    duration: string | null
-    /** "library" berarti berkas dari Media Library, "url" berarti tautan luar. */
+    /** "library" berarti berkas dari Media Library, "url" berarti tautan lama. */
     source?: "library" | "url"
     asset_id?: number | null
   } | null
@@ -49,6 +50,8 @@ interface PendingPhoto {
   alt: string
   /** Thumbnail aset dari Media Library, dipakai sebagai pratinjau sebelum disimpan. */
   preview: string
+  /** Nama berkas aset, dipakai sebagai keterangan bila thumbnail tidak ada. */
+  label?: string
 }
 
 const OPTION_ICONS = ["package", "wrench", "check-circle", "shield-check", "truck"] as const
@@ -75,8 +78,6 @@ export default function MasalahSolusiForm({
   const [options, setOptions] = React.useState<SolutionOption[]>(
     item?.solution_options?.length ? item.solution_options : [{ title: "", description: "", icon: "check-circle" }],
   )
-  /** Tautan video luar dan poster hanya dibuka bila diperlukan. */
-  const [showVideoSource, setShowVideoSource] = React.useState(false)
   /** Judul bagian sudah punya nilai bawaan, jadi cukup dibuka bila mau diubah. */
   const [showLabels, setShowLabels] = React.useState(false)
   const [showAdvanced, setShowAdvanced] = React.useState(
@@ -89,19 +90,14 @@ export default function MasalahSolusiForm({
     examples_label: item?.examples_label ?? "Contoh kondisi kerusakan",
     examples_hint: item?.examples_hint ?? "",
     existing_photos: JSON.stringify(item?.photos ?? []),
-    // Owner 2026-09-16: foto contoh & poster video hanya dari Media Library.
+    // Foto contoh dan video sama-sama hanya dari Media Library (koreksi owner
+    // 2026-09-29: tautan video luar, durasi, dan poster manual dihapus).
     media_asset_ids: [] as string[],
     photo_alts: [] as string[],
-    // Video dari Media Library (berkas) atau tautan luar. Bila item tersimpan
-    // berasal dari Library, pemilihnya sudah terisi supaya tidak perlu memilih ulang.
     media_video_asset_id:
       item?.video?.source === "library" && item?.video?.asset_id
         ? String(item.video.asset_id)
         : "",
-    video_url: item?.video?.source === "url" ? (item?.video?.src ?? "") : "",
-    video_duration: item?.video?.duration ?? "",
-    video_poster_asset_id: "",
-    remove_video_poster: false,
     solutions_label: item?.solutions_label ?? "Solusi yang kami tawarkan",
     solution_lead: item?.solution_lead ?? "",
     use_options: item?.use_options ?? false,
@@ -112,11 +108,16 @@ export default function MasalahSolusiForm({
 
   const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false)
   const [videoPickerOpen, setVideoPickerOpen] = React.useState(false)
-  const [posterPickerOpen, setPosterPickerOpen] = React.useState(false)
 
-  const videoPosterPreview = item?.video?.poster ?? null
+  // Label video yang sedang terpasang: dari aset yang baru dipilih, atau dari
+  // payload server saat menyunting. Dipakai agar admin melihat nama berkasnya,
+  // bukan nomor id aset.
+  const [videoLabel, setVideoLabel] = React.useState(item?.video_label ?? null)
+  // Poster video: dari berkas tersimpan saat menyunting, atau thumbnail aset
+  // yang baru dipilih (aset video Media Library punya poster sendiri).
+  const [videoPreview, setVideoPreview] = React.useState<string | null>(item?.video?.poster ?? null)
   // Batas media dihitung dari slot: foto dan video sama-sama satu slot.
-  const videoSlotFilled = Boolean(form.data.media_video_asset_id || form.data.video_url.trim())
+  const videoSlotFilled = Boolean(form.data.media_video_asset_id)
   const usedSlots = countUsedSlots([
     keptPhotos.length + pendingPhotos.length,
     videoSlotFilled ? 1 : 0,
@@ -137,7 +138,7 @@ export default function MasalahSolusiForm({
       for (const asset of assets) {
         if (next.length >= MASALAH_SOLUSI_MAX_MEDIA) break
         if (!asset.assetId || next.some((p) => p.assetId === asset.assetId)) continue
-        next.push({ assetId: asset.assetId, alt: asset.label, preview: asset.preview })
+        next.push({ assetId: asset.assetId, alt: asset.label, preview: asset.preview, label: asset.label })
       }
       form.setData("media_asset_ids", next.map((p) => p.assetId))
       form.setData("photo_alts", next.map((p) => p.alt))
@@ -284,6 +285,11 @@ export default function MasalahSolusiForm({
 
           <div className="mt-4 space-y-4">
             {keptPhotos.length || pendingPhotos.length || videoSlotFilled ? (
+              // Satu grid seragam: kartu foto terpasang, foto yang baru dipilih,
+              // dan video tampil dengan bentuk yang sama (gambar pratinjau,
+              // keterangan, satu tombol hapus). Kartu bergaris putus-putus dan
+              // label "Media #id" dibuang karena membingungkan (audit owner
+              // 2026-09-29).
               <div className="grid gap-3 sm:grid-cols-2">
                 {keptPhotos.map((photo, index) => (
                   <div key={photo.src} className="min-w-0 rounded-lg border border-border p-3">
@@ -315,7 +321,7 @@ export default function MasalahSolusiForm({
                 ))}
 
                 {pendingPhotos.map((photo, index) => (
-                  <div key={photo.assetId} className="min-w-0 rounded-lg border border-dashed border-border p-3">
+                  <div key={photo.assetId} className="min-w-0 rounded-lg border border-border p-3">
                     <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
                       {photo.preview ? (
                         <img
@@ -325,7 +331,7 @@ export default function MasalahSolusiForm({
                         />
                       ) : (
                         <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
-                          Media #{photo.assetId}
+                          {photo.label || "Media baru"}
                         </div>
                       )}
                     </div>
@@ -348,30 +354,29 @@ export default function MasalahSolusiForm({
                 ))}
 
                 {videoSlotFilled ? (
+                  // Kartu video mengikuti bentuk yang sama dengan kartu foto:
+                  // pratinjau poster (atau penanda kalau posternya belum ada),
+                  // nama berkas aslinya, dan satu tombol hapus.
                   <div className="min-w-0 rounded-lg border border-border p-3">
-                    {videoPosterPreview ? (
-                      <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
+                    <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
+                      {videoPreview ? (
                         <img
-                          src={videoPosterPreview}
-                          alt="Poster video"
+                          src={videoPreview}
+                          alt="Pratinjau video"
                           className="max-h-52 w-auto max-w-full rounded object-contain"
                         />
-                      </div>
-                    ) : (
-                      <div className="flex h-32 items-center justify-center gap-2 rounded-md bg-muted/40 text-xs text-muted-foreground">
-                        <Icon name="video" className="size-4" aria-hidden="true" />
-                        Video terpasang
-                      </div>
-                    )}
-                    <p className="mt-2 text-xs font-semibold text-foreground">
-                      {form.data.media_video_asset_id
-                        ? "Berkas video dari Media Library"
-                        : "Tautan video luar"}
+                      ) : (
+                        <div className="flex h-32 items-center justify-center gap-2 text-xs text-muted-foreground">
+                          <Icon name="video" className="size-4" aria-hidden="true" />
+                          Video terpasang
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-2 truncate text-xs font-semibold text-foreground" title={videoLabel ?? undefined}>
+                      {videoLabel || "Video dari Media Library"}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {form.data.media_video_asset_id
-                        ? "Media #" + form.data.media_video_asset_id
-                        : form.data.video_url || "Belum ada tautan"}
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Diputar langsung di halaman publik.
                     </p>
                     <Button
                       type="button"
@@ -380,10 +385,8 @@ export default function MasalahSolusiForm({
                       className="mt-2 text-destructive"
                       onClick={() => {
                         form.setData("media_video_asset_id", "")
-                        form.setData("video_url", "")
-                        form.setData("video_duration", "")
-                        form.setData("video_poster_asset_id", "")
-                        form.setData("remove_video_poster", true)
+                        setVideoLabel(null)
+                        setVideoPreview(null)
                       }}
                     >
                       Hapus video
@@ -425,84 +428,6 @@ export default function MasalahSolusiForm({
                 Slot media sudah penuh. Hapus salah satu media dulu untuk menambah lagi.
               </p>
             )}
-
-            {/* Tautan video luar hanya perlu sesekali, jadi disembunyikan di balik tautan kecil. */}
-            {!videoSlotFilled ? (
-              <button
-                type="button"
-                onClick={() => setShowVideoSource((current) => !current)}
-                className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
-              >
-                {showVideoSource ? "Tutup tautan video luar" : "Atau tempel tautan video luar (YouTube)"}
-              </button>
-            ) : null}
-
-            {videoSlotFilled || showVideoSource ? (
-              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field id="ms-video-url" label="Tautan video luar" error={form.errors.video_url}>
-                    <Input
-                      value={form.data.video_url}
-                      onChange={(event) => {
-                        form.setData("video_url", event.target.value)
-                        if (event.target.value.trim() !== "") {
-                          form.setData("media_video_asset_id", "")
-                        }
-                      }}
-                      placeholder="https://youtube.com/..."
-                    />
-                  </Field>
-                  <Field id="ms-video-duration" label="Durasi video" error={form.errors.video_duration}>
-                    <Input
-                      value={form.data.video_duration}
-                      onChange={(event) => form.setData("video_duration", event.target.value)}
-                      placeholder="02:37"
-                    />
-                  </Field>
-                </div>
-
-                {videoSlotFilled ? (
-                  <Field
-                    id="ms-video-poster"
-                    label="Poster video (opsional)"
-                    error={form.errors.video_poster_asset_id}
-                    hint="Bila kosong, poster diambil dari berkas video itu sendiri."
-                  >
-                    {videoPosterPreview ? (
-                      <div className="space-y-2">
-                        <img
-                          src={videoPosterPreview}
-                          alt="Poster video"
-                          className="max-h-40 w-auto max-w-full rounded border border-border object-contain"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => {
-                            form.setData("video_poster_asset_id", "")
-                            form.setData("remove_video_poster", true)
-                          }}
-                        >
-                          Hapus poster
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setPosterPickerOpen(true)}
-                        className="inline-flex w-fit items-center gap-1.5"
-                      >
-                        <Icon name="image" className="size-3.5" aria-hidden="true" />
-                        <span>{form.data.video_poster_asset_id ? "Ganti poster" : "Pilih poster"}</span>
-                      </Button>
-                    )}
-                  </Field>
-                ) : null}
-              </div>
-            ) : null}
 
             {/* Judul bagian sudah punya nilai bawaan, jadi cukup dibuka bila mau diubah. */}
             <div className="border-t border-border pt-3">
@@ -678,21 +603,6 @@ export default function MasalahSolusiForm({
       />
 
       <MediaPicker
-        open={posterPickerOpen}
-        onClose={() => setPosterPickerOpen(false)}
-        multiple={false}
-        kind="image"
-        title="Pilih Poster Video"
-        onPick={(picked) => {
-          const asset = picked[0]
-          if (!asset) return
-          form.setData("video_poster_asset_id", String(asset.assetId))
-          form.setData("remove_video_poster", false)
-          setPosterPickerOpen(false)
-        }}
-      />
-
-      <MediaPicker
         open={videoPickerOpen}
         onClose={() => setVideoPickerOpen(false)}
         multiple={false}
@@ -702,8 +612,8 @@ export default function MasalahSolusiForm({
           const asset = picked[0]
           if (!asset) return
           form.setData("media_video_asset_id", String(asset.assetId))
-          form.setData("video_url", "")
-          form.setData("remove_video_poster", false)
+          setVideoLabel(asset.label || "Video dari Media Library")
+          setVideoPreview(asset.thumbUrl ?? null)
           setVideoPickerOpen(false)
         }}
       />

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsProblemSolution;
+use App\Models\MediaAsset;
 use App\Services\ActivityLogService;
 use App\Support\ProblemsSolutionsSettings;
 use Illuminate\Http\RedirectResponse;
@@ -99,6 +100,16 @@ class MasalahSolusiController extends Controller
 
     public function edit(CmsProblemSolution $masalahSolusi): Response
     {
+        $parsed = ProblemsSolutionsSettings::parseForAdmin($masalahSolusi->solution);
+
+        // Label aset video untuk pratinjau di form: admin melihat nama berkas
+        // yang dipilih, bukan nomor id aset (koreksi owner 2026-09-29).
+        $videoLabel = null;
+        $videoAssetId = $parsed['video']['asset_id'] ?? null;
+        if ($videoAssetId) {
+            $videoLabel = MediaAsset::query()->whereKey((int) $videoAssetId)->value('label');
+        }
+
         return Inertia::render('Admin/MasalahSolusi/Form', [
             'backUrl' => route('admin.masalah-solusi.index'),
             'item' => array_merge(
@@ -106,8 +117,9 @@ class MasalahSolusiController extends Controller
                     'id' => $masalahSolusi->id,
                     'problem' => $masalahSolusi->problem,
                     'sort_order' => $masalahSolusi->sort_order,
+                    'video_label' => $videoLabel,
                 ],
-                ProblemsSolutionsSettings::parseForAdmin($masalahSolusi->solution),
+                $parsed,
             ),
             'submitUrl' => route('admin.masalah-solusi.update', $masalahSolusi),
             'indexUrl' => route('admin.masalah-solusi.index'),
@@ -187,14 +199,17 @@ class MasalahSolusiController extends Controller
             'examples_label' => ['nullable', 'string', 'max:120'],
             'examples_hint' => ['nullable', 'string', 'max:500'],
             'existing_photos' => ['nullable', 'string'],
-            'photo_files' => ['nullable', 'array'],
-            'photo_files.*' => ['image', 'max:5120'],
+            // Owner 2026-09-16: Media Library satu-satunya sumber foto dan video.
+            // Kontrak owner 2026-09-20: maksimal 2 media per item, foto dan video
+            // dihitung sebagai slot yang sama (lihat MAX_MEDIA_PER_ITEM di
+            // ProblemsSolutionsSettings).
+            // Tidak ada batas ukuran atau rasio foto: admin memakai banner memanjang
+            // maupun pasangan media 1:1, jadi rasionya dibiarkan bebas.
+            'media_asset_ids' => ['nullable', 'array', 'max:'.ProblemsSolutionsSettings::MAX_MEDIA_PER_ITEM],
+            'media_asset_ids.*' => ['integer', 'exists:media_assets,id'],
+            'media_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'photo_alts' => ['nullable', 'array'],
             'photo_alts.*' => ['nullable', 'string', 'max:200'],
-            'video_url' => ['nullable', 'string', 'max:2048'],
-            'video_duration' => ['nullable', 'string', 'max:20'],
-            'video_poster' => ['nullable', 'image', 'max:5120'],
-            'remove_video_poster' => ['boolean'],
             'solutions_label' => ['nullable', 'string', 'max:120'],
             'solution_lead' => ['nullable', 'string', 'max:500'],
             'use_options' => ['boolean'],

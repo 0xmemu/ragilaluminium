@@ -16,6 +16,13 @@ use Illuminate\Validation\ValidationException;
  */
 class ProblemsSolutionsSettings
 {
+    /**
+     * Maksimal media per item Masalah & Solusi (kontrak owner 2026-09-20).
+     * Foto dan video dihitung sebagai slot yang sama, jadi yang sah adalah
+     * dua foto, dua video, atau satu foto dan satu video.
+     */
+    public const MAX_MEDIA_PER_ITEM = 2;
+
     public const PAGE_SLUG = 'masalah-solusi';
 
     public const MEDIA_DIRECTORY = 'masalah-solusi';
@@ -178,7 +185,7 @@ class ProblemsSolutionsSettings
      *   examples_label: string,
      *   examples_hint: string,
      *   photos: list<array{src:string,alt:string}>,
-     *   video: array{src:?string,poster:?string,duration:?string}|null,
+     *   video: array{src:?string,poster:?string,source:string,asset_id:?int}|null,
      *   solutions_label: string,
      *   solution_lead: string,
      *   solution_options: list<array{title:string,description:string,icon:string}>,
@@ -216,6 +223,8 @@ class ProblemsSolutionsSettings
             ->map(fn (array $photo) => [
                 'src' => (string) $photo['src'],
                 'alt' => trim((string) ($photo['alt'] ?? '')),
+                'width' => filled($photo['width'] ?? null) ? (int) $photo['width'] : null,
+                'height' => filled($photo['height'] ?? null) ? (int) $photo['height'] : null,
             ])
             ->values()
             ->all();
@@ -225,7 +234,12 @@ class ProblemsSolutionsSettings
             $video = [
                 'src' => (string) $content['video']['src'],
                 'poster' => filled($content['video']['poster'] ?? null) ? (string) $content['video']['poster'] : null,
-                'duration' => filled($content['video']['duration'] ?? null) ? (string) $content['video']['duration'] : null,
+                // Durasi dihapus dari kontrak (koreksi owner 2026-09-29):
+                // isiannya jarang dipakai dan hanya menambah kolom yang harus
+                // diisi admin. Baris lama yang masih menyimpannya tidak lagi
+                // ditampilkan.
+                'source' => ($content['video']['source'] ?? null) === 'library' ? 'library' : 'url',
+                'asset_id' => filled($content['video']['asset_id'] ?? null) ? (int) $content['video']['asset_id'] : null,
             ];
         }
 
@@ -296,6 +310,8 @@ class ProblemsSolutionsSettings
             ->map(fn (array $photo) => [
                 'src' => (string) $photo['src'],
                 'alt' => trim((string) ($photo['alt'] ?? '')),
+                'width' => filled($photo['width'] ?? null) ? (int) $photo['width'] : null,
+                'height' => filled($photo['height'] ?? null) ? (int) $photo['height'] : null,
             ])
             ->values()
             ->all();
@@ -306,34 +322,78 @@ class ProblemsSolutionsSettings
         }
 
         $photos = $keptPhotos;
-        foreach ($request->file('photo_files', []) ?? [] as $index => $file) {
-            if (! $file instanceof UploadedFile) {
-                continue;
+        // Owner 2026-09-16: media baru hanya dari Media Library (media_asset_ids).
+        $mediaAssetIds = array_values(array_filter(array_map(
+            'intval',
+            (array) $request->input('media_asset_ids', []),
+        )));
+        if ($mediaAssetIds !== []) {
+            $assets = \App\Models\MediaAsset::query()
+                ->whereIn('id', $mediaAssetIds)
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->get()
+                ->keyBy('id');
+            foreach ($mediaAssetIds as $index => $assetId) {
+                $asset = $assets->get($assetId);
+                if (! $asset) {
+                    continue;
+                }
+                $photos[] = [
+                    'src' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+                    'alt' => trim((string) ($newPhotoAlts[$index] ?? $asset->label ?? '')),
+                    // Ukuran asli dipakai halaman publik untuk menentukan tata letak:
+                    // media lebar berdiri sendiri, media persegi dipasangkan berjejer.
+                    'width' => $asset->width_px ? (int) $asset->width_px : null,
+                    'height' => $asset->height_px ? (int) $asset->height_px : null,
+                ];
             }
-            $photos[] = [
-                'src' => self::storeMedia($file),
-                'alt' => trim((string) ($newPhotoAlts[$index] ?? '')),
-            ];
         }
 
-        $videoUrl = trim((string) $request->input('video_url', ''));
-        $videoDuration = trim((string) $request->input('video_duration', ''));
-        $videoPoster = $existing['video']['poster'] ?? null;
-        if ($request->hasFile('video_poster')) {
-            $videoPoster = self::storeMedia($request->file('video_poster'));
-        } elseif ($request->boolean('remove_video_poster')) {
-            $videoPoster = null;
+        // Kontrak owner 2026-09-20: maksimal 2 media per item, dan foto serta video
+        // dihitung sebagai slot yang sama. Dihitung setelah foto dari Media Library
+        // masuk, sebelum video diproses, supaya totalnya tidak bisa lewat batas.
+        $videoSlotRequested = filled($request->input('media_video_asset_id'));
+        $usedSlots = count($photos) + ($videoSlotRequested ? 1 : 0);
+        if ($usedSlots > self::MAX_MEDIA_PER_ITEM) {
+            throw ValidationException::withMessages([
+                'media_asset_ids' => 'Maksimal '.self::MAX_MEDIA_PER_ITEM
+                    .' media per item, dihitung dari foto dan video.',
+            ]);
+        }
+
+        // Video HANYA dari Media Library (koreksi owner 2026-09-29): tautan video
+        // luar, isian durasi, dan poster manual dihapus dari form karena
+        // menambah isian yang jarang dipakai dan mudah salah. Poster tetap ada
+        // di payload, tetapi selalu diambil dari berkas videonya sendiri.
+        $videoFromLibrary = null;
+        $videoPoster = null;
+        if (filled($request->input('media_video_asset_id'))) {
+            $videoAsset = \App\Models\MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->find((int) $request->input('media_video_asset_id'));
+            if ($videoAsset && $videoAsset->kind === 'video') {
+                $videoFromLibrary = $videoAsset->urlFor('video');
+                $videoPoster = $videoAsset->urlFor('poster') ?? $videoAsset->urlFor('card');
+            }
         }
 
         $video = null;
-        if ($videoUrl !== '') {
+        if ($videoFromLibrary !== null) {
             $video = [
-                'src' => $videoUrl,
+                'src' => $videoFromLibrary,
                 'poster' => $videoPoster,
-                'duration' => $videoDuration !== '' ? $videoDuration : null,
+                // Video kini selalu berkas Media Library; penanda sumber
+                // dipertahankan supaya halaman publik dan data lama tetap
+                // terbaca (baris lama bertaut luar tetap dirender sebagai tautan).
+                'source' => 'library',
+                'asset_id' => (int) $request->input('media_video_asset_id'),
             ];
         }
 
+        // Video bisa dipilih dari Media Library (berkas video) atau berupa tautan
+        // luar seperti YouTube. Bila keduanya terisi, berkas dari Library yang dipakai.
         $options = [];
         if ($useOptions) {
             $rawOptions = json_decode((string) $request->input('solution_options', '[]'), true);

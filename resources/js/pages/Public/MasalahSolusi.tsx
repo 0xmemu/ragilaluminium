@@ -7,7 +7,7 @@ import { ClosingCTASection } from "@/components/public/closing-cta"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import PublicLayout from "@/layouts/public-layout"
-import { cn } from "@/lib/utils"
+import { mediaLayout, mediaLayoutClass, type MasalahSolusiMediaLayout } from "@/lib/masalah-solusi-media"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -20,6 +20,9 @@ interface RichSolutionOption {
 interface RichSolutionPhoto {
   src: string
   alt: string
+  /** Ukuran asli aset, dipakai menentukan tata letak (lebar atau dipasangkan). */
+  width?: number | null
+  height?: number | null
 }
 
 interface RichSolutionVideo {
@@ -33,7 +36,7 @@ interface RichSolutionContent {
   examples_label?: string
   examples_hint?: string
   photos?: RichSolutionPhoto[]
-  video?: RichSolutionVideo | null
+  video?: (RichSolutionVideo & { source?: "library" | "url" }) | null
   solutions_label?: string
   lead?: string
   body?: string
@@ -89,6 +92,38 @@ function resolveSolution(raw: ProblemSolutionItem["solution"] | string | null | 
   return { type: "text", content: "" }
 }
 
+/**
+ * Satu media contoh pada halaman publik.
+ *
+ * Tata letaknya ditentukan dari ukuran asli aset yang dikirim server. Bila ukuran
+ * itu belum ada, gambar diukur sendiri begitu selesai dimuat supaya tata letaknya
+ * tetap benar tanpa perlu menunggu muat ulang halaman.
+ */
+function MediaFigure({ photo }: { photo: RichSolutionPhoto }) {
+  const [terukur, setTerukur] = React.useState<MasalahSolusiMediaLayout | null>(null)
+  const layout = mediaLayout(photo.width, photo.height) ?? terukur
+
+  return (
+    <figure className={"min-w-0 " + mediaLayoutClass(layout)}>
+      <img
+        src={photo.src}
+        alt={photo.alt}
+        loading="lazy"
+        onLoad={(event) => {
+          const img = event.currentTarget
+          setTerukur(mediaLayout(img.naturalWidth, img.naturalHeight))
+        }}
+        className="w-full rounded-lg border border-border bg-muted object-contain"
+      />
+      {photo.alt ? (
+        <figcaption className="mt-1.5 text-xs leading-5 text-muted-foreground">
+          {photo.alt}
+        </figcaption>
+      ) : null}
+    </figure>
+  )
+}
+
 function RichSolutionPanel({
   content,
   whatsappUrl,
@@ -107,15 +142,13 @@ function RichSolutionPanel({
         </p>
 
         {photos.length ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          /* Tata letak mengikuti bentuk media (kontrak owner 2026-09-20): foto lebar
+             seperti banner dipakai sebagai gambar pembuka dan berdiri sendiri selebar
+             penuh, sedangkan foto persegi atau tegak dipasangkan berjejer dua kolom
+             seperti pasangan foto before dan after. Rasio asli tidak pernah dipotong. */
+          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
             {photos.map((photo) => (
-              <ResponsiveImage
-                key={photo.src}
-                src={photo.src}
-                alt={photo.alt}
-                wrapperClassName="aspect-[4/3] overflow-hidden rounded-lg border border-border bg-muted"
-                className="object-cover"
-              />
+              <MediaFigure key={photo.src} photo={photo} />
             ))}
           </div>
         ) : content.examples_hint ? (
@@ -128,35 +161,45 @@ function RichSolutionPanel({
               <Icon name="video" className="size-4" aria-hidden="true" />
               Video
             </p>
-            <a
-              href={content.video.src}
-              target="_blank"
-              rel="noreferrer"
-              className="group relative block overflow-hidden rounded-lg border border-border bg-muted"
-            >
-              {content.video.poster ? (
-                <ResponsiveImage
-                  src={content.video.poster}
-                  alt="Video contoh kondisi kerusakan"
-                  wrapperClassName="aspect-video"
-                  className="object-cover transition group-hover:scale-[1.02]"
+            {content.video.source === "library" ? (
+              /* Berkas video dari Media Library: diputar langsung di halaman. */
+              <div className="overflow-hidden rounded-lg border border-border bg-black">
+                <video
+                  src={content.video.src}
+                  poster={content.video.poster ?? undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="max-h-[min(70dvh,32rem)] w-full bg-black object-contain"
                 />
-              ) : (
-                <div className="flex aspect-video items-center justify-center bg-muted">
-                  <Icon name="video" className="size-10 text-muted-foreground" aria-hidden="true" />
-                </div>
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
-                <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface/95 text-primary shadow-sm">
-                  <Icon name="caret-right" className="size-5" weight="fill" aria-hidden="true" />
+              </div>
+            ) : (
+              /* Tautan luar (mis. YouTube): dibuka di tab baru dengan pratinjau poster. */
+              <a
+                href={content.video.src}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block overflow-hidden rounded-lg border border-border bg-muted"
+              >
+                {content.video.poster ? (
+                  <ResponsiveImage
+                    src={content.video.poster}
+                    alt="Video contoh kondisi kerusakan"
+                    wrapperClassName="aspect-video"
+                    className="object-cover transition group-hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-muted">
+                    <Icon name="video" className="size-10 text-muted-foreground" aria-hidden="true" />
+                  </div>
+                )}
+                <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
+                  <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface/95 text-primary shadow-sm">
+                    <Icon name="caret-right" className="size-5" weight="fill" aria-hidden="true" />
+                  </span>
                 </span>
-              </span>
-              {content.video.duration ? (
-                <span className="tabular-nums absolute bottom-2 right-2 rounded bg-foreground/75 px-2 py-0.5 text-xs font-semibold text-background">
-                  {content.video.duration}
-                </span>
-              ) : null}
-            </a>
+              </a>
+            )}
           </div>
         ) : null}
       </div>
@@ -320,6 +363,7 @@ export default function MasalahSolusi({ guide }: { guide?: Guide }) {
       </HelpPageFrame>
 
       <ClosingCTASection
+        pageKey="masalah-solusi"
         compact={false}
         eyebrow="Masih ragu spesifikasi yang tepat?"
         heading="Tim kami siap bantu memilih model & ukuran yang sesuai kebutuhan Anda, gratis tanpa komitmen"
