@@ -36,6 +36,7 @@ class AnnouncementController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Announcements/Index', [
+            'backUrl' => route('admin.promotions.index'),
             'title' => 'Bar Promo',
             'description' => 'Kelola teks promo pada bar merah di atas header. Item teratas yang aktif dan masih dalam periode akan tampil.',
             'searchQuery' => $q,

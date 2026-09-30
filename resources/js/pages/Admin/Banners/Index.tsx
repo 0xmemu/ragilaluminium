@@ -136,6 +136,7 @@ function BannerActions({
 
 export default function BannersIndex({
   title,
+  backUrl,
   description,
   viewMode,
   searchQuery,
@@ -146,6 +147,8 @@ export default function BannersIndex({
   autoPromotions,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   viewMode: "list" | "grid"
   searchQuery: string
@@ -176,6 +179,7 @@ export default function BannersIndex({
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button

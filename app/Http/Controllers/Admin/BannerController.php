@@ -45,6 +45,7 @@ class BannerController extends Controller
         $settings = HomepagePromotionSettings::get();
 
         return Inertia::render('Admin/Banners/Index', [
+            'backUrl' => route('admin.promotions.index'),
             'title' => 'Banner Promo',
             'description' => 'Kelola slide promo beranda (cms_banners) dan banner otomatis dari produk diskon / Flash Sale.',
             'viewMode' => $view,

@@ -132,6 +132,7 @@ function AnnouncementActions({
 
 export default function AnnouncementsIndex({
   title,
+  backUrl,
   description,
   searchQuery,
   activeStatus,
@@ -142,6 +143,8 @@ export default function AnnouncementsIndex({
   slideHref,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   searchQuery: string
   activeStatus: string
@@ -179,6 +182,7 @@ export default function AnnouncementsIndex({
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button

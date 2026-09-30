@@ -149,6 +149,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
 
 export default function PromotionsIndex({
   title,
+  backUrl,
   description,
   activeType,
   typeOptions,
@@ -157,6 +158,8 @@ export default function PromotionsIndex({
   createHref,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   activeType: string
   typeOptions: Array<{ value: string; label: string }>
@@ -185,6 +188,7 @@ export default function PromotionsIndex({
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button

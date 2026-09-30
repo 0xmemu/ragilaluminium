@@ -38,6 +38,8 @@ class PromotionController extends Controller
             ->get();
 
         return Inertia::render('Admin/Promotions', [
+            // Promo Toko adalah halaman induk daftar ini, jadi tombol Kembali mengarah ke sana.
+            'backUrl' => route('admin.promotions.index'),
             'title' => $type === Promotion::TYPE_STORE ? 'Promo Toko' : 'Flash Sale',
             'description' => $type === Promotion::TYPE_STORE
                 ? 'Promo diskon menyeluruh untuk produk terpilih. Satu produk hanya boleh di satu promo aktif; Flash Sale menggantikan promo.'

@@ -187,6 +187,7 @@ function VoucherActions({
 
 export default function VouchersIndex({
   title,
+  backUrl,
   description,
   viewMode,
   searchQuery,
@@ -197,6 +198,8 @@ export default function VouchersIndex({
   summary,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   viewMode: "list" | "grid"
   searchQuery: string
@@ -222,6 +225,7 @@ export default function VouchersIndex({
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button

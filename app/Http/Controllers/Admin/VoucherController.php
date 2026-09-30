@@ -45,6 +45,7 @@ class VoucherController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Vouchers/Index', [
+            'backUrl' => route('admin.promotions.index'),
             'title' => 'Voucher Toko',
             'description' => 'Kelola kode voucher checkout. Voucher aktif dapat dipakai bersama sesuai pengaturan stacking.',
             'viewMode' => $view,
