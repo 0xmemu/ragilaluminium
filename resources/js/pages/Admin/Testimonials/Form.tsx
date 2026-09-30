@@ -422,23 +422,25 @@ export default function TestimonialForm({
                 </Select>
               </Field>
             ) : null}
-            <Field
-              id="testimonial-source"
-              label="Sumber"
-              required
-              error={form.errors.source}
-              hint={
-                isMarketplace
-                  ? "Tampil di section Apa kata pelanggan kami (screenshot)."
-                  : "Tampil di section Ulasan pelanggan di website."
-              }
-            >
-              <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
-                {sources.map((source) => (
-                  <option key={source} value={source}>{labels[source] ?? source}</option>
-                ))}
-              </Select>
-            </Field>
+            {isMarketplace ? (
+              // Pilihan sumber hanya untuk screenshot marketplace (Shopee atau
+              // WhatsApp). Ulasan yang dibuat dari form website definisinya
+              // sumber "website", jadi dropdownnya tidak ditampilkan
+              // (catatan owner 2026-09-29: "kenapa ada sumber juga di ulasan/web").
+              <Field
+                id="testimonial-source"
+                label="Sumber"
+                required
+                error={form.errors.source}
+                hint="Tampil di section Apa kata pelanggan kami (screenshot)."
+              >
+                <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
+                  {sources.map((source) => (
+                    <option key={source} value={source}>{labels[source] ?? source}</option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
 
             {!isMarketplaceIntent ? (
               <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id} className="sm:col-span-2">
