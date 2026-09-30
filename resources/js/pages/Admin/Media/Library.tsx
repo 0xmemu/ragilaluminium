@@ -1072,6 +1072,17 @@ export default function MediaLibrary({
     return () => window.removeEventListener("keydown", onKey)
   }, [previewAsset])
 
+  // Popup "Pasang ke produk" mengikuti konvensi modal halaman ini: Escape
+  // menutup. Sebelumnya hanya klik latar atau tombol Batal yang bisa menutup.
+  React.useEffect(() => {
+    if (attachingId === null) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setAttachingId(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [attachingId])
+
   function toggleSelected(id: number) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
@@ -1440,10 +1451,19 @@ export default function MediaLibrary({
         </div>
       </div>
 
-      {/* Attach modal */}
+      {/* Attach modal. Panel dibatasi tinggi viewport dengan gulir sendiri:
+          tanpa itu daftar produk yang panjang membuat panel lebih tinggi dari
+          layar, bagian atasnya (judul dan kolom cari) keluar layar dan tidak
+          bisa dicapai karena overlay-nya tidak menggulir. */}
       {attachingId !== null ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={() => setAttachingId(null)}>
-          <div className="w-full max-w-3xl rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setAttachingId(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pasang ke produk"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg bg-surface p-5 shadow-float"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-3 text-sm font-semibold">Pasang ke produk</h3>
             <div className="space-y-3">
               <div>
