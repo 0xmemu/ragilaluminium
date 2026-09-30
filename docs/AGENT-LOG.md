@@ -2702,3 +2702,10 @@ Perubahan: kotak kosong jadi tombol klik pembuka Media Library; Nama/Lokasi/Rati
 Dampak spec: tidak berubah.
 Verifikasi: ESLint + typecheck + build bersih; browser: 4 kontrol segaris (Y identik), kotak klik membuka picker 48 aset, tanpa overflow.
 Agent: zcode-retur
+
+## 2026-09-29 21:35 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner minta Produk terkait memakai produk picker.
+Perubahan: dropdown Select diganti SearchSelect (pemilih bercari) di Testimonials/Form.tsx; productOptions() kini memuat semua produk aktif tanpa limit 500 (cache 5 menit) dan mengembalikan {value,label} termasuk opsi kosong Ulasan umum.
+Dampak spec: tidak berubah.
+Verifikasi: UlasanAdminTest + ProductReviewsTest 23 passed; ESLint + typecheck + build bersih; browser: picker terbuka, pencarian dan pemilihan bekerja, form tidak disimpan.
+Agent: zcode-retur
