@@ -69,6 +69,12 @@ class CategoryController extends Controller
         ]);
     }
 
+    /** Nomor urut baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) Category::query()->max('sort_order') + 1;
+    }
+
     public function create(): Response
     {
         // Kontrak 2026-09-23: tambah dan edit kategori memakai pola yang sama,
@@ -80,6 +86,7 @@ class CategoryController extends Controller
             'description' => 'Buat kategori produk baru untuk katalog dan form produk.',
             'backUrl' => route('admin.categories.index'),
             'category' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.categories.store'),
         ]);
     }
@@ -87,6 +94,8 @@ class CategoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateCategory($request);
+        // Nomor urut 1-based; baris baru tanpa isian ditaruh paling bawah.
+        $data['sort_order'] = $data['sort_order'] ?? $this->nextSortOrder();
         $category = Category::create($data);
         $this->logs->record('product.category_created', 'category', $category->id, [
             'code' => $category->code,
@@ -126,6 +135,8 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category): RedirectResponse
     {
         $data = $this->validateCategory($request, $category);
+        // Nomor lama dipertahankan bila kolomnya dikosongkan.
+        $data['sort_order'] = $data['sort_order'] ?? (int) $category->sort_order;
         $category->update($data);
         $this->logs->record('product.category_updated', 'category', $category->id, [
             'code' => $category->code,
@@ -187,7 +198,7 @@ protected function validateCategory(Request $request, ?Category $category = null
             'slug' => $slugRule,
             'seo_title' => ['nullable', 'string', 'max:191'],
             'seo_description' => ['nullable', 'string', 'max:500'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
         ], [], ['name' => 'Nama Kategori', 'code' => 'Kode Kategori']);
 

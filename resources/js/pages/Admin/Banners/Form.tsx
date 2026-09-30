@@ -20,6 +20,7 @@ interface BannerFormData {
 
 export default function BannerForm({
   banner,
+  nextSortOrder = 1,
   submitUrl,
   method,
   indexHref,
@@ -28,6 +29,8 @@ export default function BannerForm({
 }: {
   backUrl?: string | null
   banner: BannerFormData | null
+  /** Nomor urut usulan untuk slide baru (selalu di bawah slide yang ada). */
+  nextSortOrder?: number
   submitUrl: string
   method: "post" | "put"
   indexHref: string
@@ -43,7 +46,7 @@ export default function BannerForm({
   }>({
     title: banner?.title ?? "",
     link_url: banner?.link_url ?? "",
-    sort_order: banner?.sort_order ?? 0,
+    sort_order: banner?.sort_order ?? nextSortOrder,
     published: banner?.published ?? false,
     media_asset_id: banner?.media_asset_id ? String(banner.media_asset_id) : "",
   })
@@ -149,9 +152,16 @@ export default function BannerForm({
                 placeholder="/product/WIN-JUNG-001"
               />
             </Field>
-            <Field id="sort" label="Urutan slide" error={form.errors.sort_order} className="sm:max-w-40">
+            <Field
+              id="sort"
+              label="Urutan slide"
+              error={form.errors.sort_order}
+              className="sm:max-w-40"
+              hint="Angka 1 tampil paling awal. Slide baru otomatis ditaruh paling belakang."
+            >
               <Input
                 type="number"
+                min={1}
                 value={form.data.sort_order}
                 onChange={(event) => form.setData("sort_order", Number(event.target.value))}
               />

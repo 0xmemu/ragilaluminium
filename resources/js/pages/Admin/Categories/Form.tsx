@@ -29,17 +29,26 @@ interface Props {
   description: string
   backUrl: string
   category: CategoryData | null
+  /** Nomor urut usulan untuk kategori baru (selalu di bawah yang sudah ada). */
+  nextSortOrder?: number
   submitUrl: string
 }
 
-export default function CategoryForm({ title, description, category, submitUrl, backUrl }: Props) {
+export default function CategoryForm({
+  title,
+  description,
+  category,
+  nextSortOrder = 1,
+  submitUrl,
+  backUrl,
+}: Props) {
   const form = useForm({
     code: category?.code ?? "",
     name: category?.name ?? "",
     slug: category?.slug ?? "",
     seo_title: category?.seo_title ?? "",
     seo_description: category?.seo_description ?? "",
-    sort_order: category?.sort_order ?? 0,
+    sort_order: category?.sort_order ?? nextSortOrder,
     is_active: category?.is_active ?? true,
   })
 
@@ -163,15 +172,15 @@ export default function CategoryForm({ title, description, category, submitUrl, 
                   id="cat-order"
                   label="Urutan Tampil"
                   error={form.errors.sort_order}
-                  hint="Angka urutan prioritas di menu katalog (makin kecil makin depan)."
+                  hint="Angka 1 tampil paling depan di menu katalog. Baris baru otomatis ditaruh paling belakang."
                 >
                   <Input
                     id="cat-order"
                     type="number"
-                    min={0}
+                    min={1}
                     value={form.data.sort_order}
                     onChange={(e) => form.setData("sort_order", Number(e.target.value))}
-                    placeholder="0"
+                    placeholder="1"
                   />
                 </Field>
               </FieldGrid>

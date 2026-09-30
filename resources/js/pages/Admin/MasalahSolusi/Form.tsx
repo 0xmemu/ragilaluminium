@@ -55,6 +55,7 @@ const OPTION_ICONS = ["package", "wrench", "check-circle", "shield-check", "truc
 
 export default function MasalahSolusiForm({
   item,
+  nextSortOrder = 1,
   submitUrl,
   indexUrl,
   method = "post",
@@ -62,6 +63,8 @@ export default function MasalahSolusiForm({
 }: {
   backUrl?: string | null
   item: RecordItem | null
+  /** Nomor urut usulan untuk item baru (selalu di bawah item yang ada). */
+  nextSortOrder?: number
   submitUrl: string
   indexUrl: string
   method?: "post" | "put"
@@ -104,7 +107,7 @@ export default function MasalahSolusiForm({
     use_options: item?.use_options ?? false,
     solution_options: JSON.stringify(item?.solution_options ?? []),
     whatsapp_note: item?.whatsapp_note ?? "",
-    sort_order: item?.sort_order ?? 0,
+    sort_order: item?.sort_order ?? nextSortOrder,
   })
 
   const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false)
@@ -251,11 +254,11 @@ export default function MasalahSolusiForm({
                 id="ms-sort"
                 label="Urutan tampil"
                 error={form.errors.sort_order}
-                hint="Angka kecil tampil lebih dulu. Urutan juga bisa diubah lewat tombol Urutkan di halaman daftar."
+                hint="Angka 1 tampil paling awal. Item baru otomatis ditaruh paling belakang. Urutan juga bisa diubah lewat tombol Urutkan di halaman daftar."
               >
                 <Input
                   type="number"
-                  min={0}
+                  min={1}
                   value={form.data.sort_order}
                   onChange={(event) => form.setData("sort_order", Number(event.target.value))}
                   className="max-w-xs"

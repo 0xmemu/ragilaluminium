@@ -55,11 +55,20 @@ class MasalahSolusiController extends Controller
             ->with('success', 'Meta halaman Masalah & Solusi disimpan.');
     }
 
+    /** Nomor urut baris baru: selalu di bawah baris lain di halaman yang sama. */
+    private function nextSortOrder(): int
+    {
+        return (int) CmsProblemSolution::query()
+            ->where('cms_page_id', ProblemsSolutionsSettings::pageId())
+            ->max('sort_order') + 1;
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
             'backUrl' => route('admin.masalah-solusi.index'),
             'item' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.masalah-solusi.store'),
             'indexUrl' => route('admin.masalah-solusi.index'),
             'method' => 'post',
@@ -108,7 +117,11 @@ class MasalahSolusiController extends Controller
 
     public function update(Request $request, CmsProblemSolution $masalahSolusi): RedirectResponse
     {
-        $masalahSolusi->update($this->validated($request, $masalahSolusi->solution));
+        $validated = $this->validated($request, $masalahSolusi->solution);
+        // Nomor lama dipertahankan bila kolomnya dikosongkan, supaya baris tidak
+        // kehilangan posisinya hanya karena form tidak mengirim angka.
+        $validated['sort_order'] ??= (int) $masalahSolusi->sort_order;
+        $masalahSolusi->update($validated);
 
         ActivityLogService::record(
             'cms.masalah_solusi_updated',
@@ -187,7 +200,7 @@ class MasalahSolusiController extends Controller
             'use_options' => ['boolean'],
             'solution_options' => ['nullable', 'string'],
             'whatsapp_note' => ['nullable', 'string', 'max:500'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         return [

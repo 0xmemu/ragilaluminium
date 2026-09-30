@@ -63,11 +63,18 @@ class BannerController extends Controller
         ]);
     }
 
+    /** Nomor urut baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) CmsBanner::query()->max('sort_order') + 1;
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/Banners/Form', [
             'backUrl' => route('admin.banners.index'),
             'banner' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.banners.store'),
             'method' => 'post',
             'indexHref' => route('admin.banners.index'),
@@ -85,7 +92,7 @@ class BannerController extends Controller
             'image_url' => $image['image_url'],
             'media_asset_id' => $image['media_asset_id'],
             'link_url' => $validated['link_url'] ?? null,
-            'sort_order' => $validated['sort_order'] ?? 0,
+            'sort_order' => $validated['sort_order'] ?? $this->nextSortOrder(),
             'published' => $validated['published'],
         ]);
 
@@ -114,7 +121,7 @@ class BannerController extends Controller
             'image_url' => $image['image_url'],
             'media_asset_id' => $image['media_asset_id'],
             'link_url' => $validated['link_url'] ?? null,
-            'sort_order' => $validated['sort_order'] ?? 0,
+            'sort_order' => $validated['sort_order'] ?? (int) $banner->sort_order,
             'published' => $validated['published'],
         ]);
 
@@ -224,7 +231,7 @@ class BannerController extends Controller
                     }
                 },
             ],
-            'sort_order' => ['nullable', 'integer'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'published' => ['boolean'],
             'image' => ['nullable', 'file', 'image', 'max:10240'],
             'object_key' => ['nullable', 'string', 'max:255'],
@@ -233,7 +240,9 @@ class BannerController extends Controller
         return [
             'title' => $validated['title'] ?? null,
             'link_url' => $validated['link_url'] ?? null,
-            'sort_order' => (int) ($validated['sort_order'] ?? 0),
+            // Kosong berarti "belum ditentukan": pemanggil yang memutuskan
+            // (baris baru = paling bawah, baris lama = nomor lamanya).
+            'sort_order' => isset($validated['sort_order']) ? (int) $validated['sort_order'] : null,
             'published' => $request->boolean('published'),
         ];
     }
