@@ -310,12 +310,22 @@ export default function TestimonialForm({
                     ))}
                   </ul>
                 ) : (
-                  <div className="rounded-md border border-dashed border-border py-8 text-center">
+                  // Kotak kosong BISA DIKLIK untuk membuka Media Library. Bukan
+                  // zona drag&drop (catatan owner 2026-09-29: drag&drop harusnya
+                  // bisa di klik).
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="w-full rounded-md border border-dashed border-border py-8 text-center transition hover:border-foreground/40 hover:bg-muted/30"
+                  >
                     <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Belum ada foto. Tambah dari Media Library atau tempel URL.
+                    <p className="mt-1.5 text-xs font-medium text-foreground">
+                      Klik untuk pilih foto dari Media Library
                     </p>
-                  </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Boleh pilih lebih dari satu foto.
+                    </p>
+                  </button>
                 )}
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -360,18 +370,49 @@ export default function TestimonialForm({
                 </p>
               </div>
             </Field>
-            <Field
-              id="testimonial-customer"
-              label="Nama pelanggan"
-              required={!isMarketplaceIntent}
-              error={form.errors.customer_name}
-              hint={isMarketplaceIntent ? "Opsional. Kosongkan untuk tampil sebagai “Pelanggan”." : undefined}
-            >
-              <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
-            </Field>
-            <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
-              <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
-            </Field>
+            {/* Form isian setelah foto: SATU baris horizontal (catatan owner
+                2026-09-29). Untuk intent website empat kolom sejajar; intent
+                marketplace hanya dua isian sehingga cukup dua kolom. */}
+            <div className={
+              "grid gap-4 sm:col-span-2 " + (isMarketplaceIntent ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")
+            }>
+              <Field
+                id="testimonial-customer"
+                label="Nama pelanggan"
+                required={!isMarketplaceIntent}
+                error={form.errors.customer_name}
+                hint={isMarketplaceIntent ? "Opsional. Kosongkan untuk tampil sebagai “Pelanggan”." : undefined}
+              >
+                <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
+              </Field>
+              <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
+                <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
+              </Field>
+              {!isMarketplaceIntent ? (
+                <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
+                  <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
+                    <option value="">Tanpa rating</option>
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      // Bintang supaya pilihan terlihat seperti rating sungguhan,
+                      // bukan angka polos (catatan owner 2026-09-29). Label wajib
+                      // SATU string: komponen Select memakai children apa adanya,
+                      // children berupa array jatuh ke nilai angka.
+                      <option key={rating} value={rating}>{'★'.repeat(rating) + ' ' + rating + ' bintang'}</option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+              {!isMarketplaceIntent ? (
+                <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id}>
+                  <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
+                    <option value="">Ulasan umum (/reviews saja)</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>{product.label}</option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+            </div>
             {editing && moderateUrl ? (
               <div className="sm:col-span-2 rounded-lg border border-border bg-muted/20 p-3">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -437,17 +478,6 @@ export default function TestimonialForm({
                 <Select value={form.data.source} onChange={(event) => form.setData("source", event.target.value)}>
                   {sources.map((source) => (
                     <option key={source} value={source}>{labels[source] ?? source}</option>
-                  ))}
-                </Select>
-              </Field>
-            ) : null}
-
-            {!isMarketplaceIntent ? (
-              <Field id="testimonial-product" label="Produk terkait" error={form.errors.product_id} className="sm:col-span-2">
-                <Select value={form.data.product_id} onChange={(event) => form.setData("product_id", event.target.value)}>
-                  <option value="">Ulasan umum (/reviews saja)</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>{product.label}</option>
                   ))}
                 </Select>
               </Field>
