@@ -348,12 +348,10 @@ export default function TestimonialForm({
                 </p>
               </div>
             </Field>
-            {/* Form isian setelah foto: SATU baris horizontal (catatan owner
-                2026-09-29). Untuk intent website empat kolom sejajar; intent
-                marketplace hanya dua isian sehingga cukup dua kolom. */}
-            <div className={
-              "grid gap-4 sm:col-span-2 " + (isMarketplaceIntent ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")
-            }>
+            {/* Form isian setelah foto: DUA baris, dua kolom (revisi owner
+                2026-09-29 dari satu baris empat kolom). Intent marketplace
+                hanya punya dua isian, jadi cukup satu baris. */}
+            <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
               <Field
                 id="testimonial-customer"
                 label="Nama pelanggan"
