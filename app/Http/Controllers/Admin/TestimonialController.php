@@ -691,7 +691,10 @@ class TestimonialController extends Controller
 
         $validated['customer_name'] = filled($validated['customer_name'] ?? null) ? trim((string) $validated['customer_name']) : 'Pelanggan';
         $validated['published'] = $request->boolean('published');
-        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        // Form tidak lagi mengirim urutan (fitur dihapus owner 2026-09-29), jadi
+        // saat menyunting urutan lama dipertahankan; hanya ulasan baru yang
+        // mulai dari 0 dan bisa diatur lewat Urutkan di daftar.
+        $validated['sort_order'] = $validated['sort_order'] ?? ($existing?->sort_order ?? 0);
         $validated['product_id'] = ! empty($validated['product_id'] ?? null) ? (int) $validated['product_id'] : null;
         $validated['rating'] = $validated['rating'] ?? null;
         $validated['message'] = filled($validated['message'] ?? null) ? trim((string) $validated['message']) : null;

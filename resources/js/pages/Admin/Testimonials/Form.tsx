@@ -87,7 +87,6 @@ export default function TestimonialForm({
     product_id: string
     /** Foto dari Media Library, berurutan seperti skema form admin lain. */
     media_asset_ids: number[]
-    sort_order: number
     published: boolean
     moderation_status: string
   }>({
@@ -102,7 +101,6 @@ export default function TestimonialForm({
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     media_asset_ids: [],
-    sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? isMarketplaceIntent,
     moderation_status: testimonial?.moderation_status ?? "approved",
   })
@@ -415,7 +413,11 @@ export default function TestimonialForm({
                 <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
                   <option value="">Tanpa rating</option>
                   {[1, 2, 3, 4, 5].map((rating) => (
-                    <option key={rating} value={rating}>{rating} bintang</option>
+                    // Bintang supaya pilihan terlihat seperti rating sungguhan,
+                    // bukan angka polos (catatan owner 2026-09-29). Label wajib
+                    // SATU string: komponen Select memakai children apa adanya,
+                    // children berupa array jatuh ke nilai angka.
+                    <option key={rating} value={rating}>{'★'.repeat(rating) + ' ' + rating + ' bintang'}</option>
                   ))}
                 </Select>
               </Field>
@@ -449,20 +451,6 @@ export default function TestimonialForm({
               </Field>
             ) : null}
 
-            {!isMarketplaceIntent ? (
-              <Field id="testimonial-sort" label="Urutan" error={form.errors.sort_order}>
-                <Input
-                  type="number"
-                  min="0"
-                  value={form.data.sort_order}
-                  onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-                />
-              </Field>
-            ) : (
-              <p className="sm:col-span-2 text-sm text-muted-foreground">
-                Urutan tampilan diubah di daftar Apa Kata Pelanggan lewat tombol <strong>Urutkan</strong>.
-              </p>
-            )}
             {!isMarketplaceIntent ? (
               <CheckboxField
                 id="testimonial-published"
