@@ -55,6 +55,7 @@ class AnnouncementController extends Controller
     {
         return Inertia::render('Admin/Announcements/Form', [
             'announcement' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.announcements.store'),
             'method' => 'post',
             'indexHref' => route('admin.announcements.index'),
@@ -64,6 +65,7 @@ class AnnouncementController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateItem($request);
+        $validated['sort_order'] ??= $this->nextSortOrder();
 
         Announcement::create($validated);
 
@@ -83,6 +85,7 @@ class AnnouncementController extends Controller
     public function update(Request $request, Announcement $announcement): RedirectResponse
     {
         $validated = $this->validateItem($request);
+        $validated['sort_order'] ??= (int) $announcement->sort_order;
 
         $announcement->update($validated);
 
@@ -113,6 +116,12 @@ class AnnouncementController extends Controller
      *     published: bool,
      * }
      */
+    /** Nomor urut untuk baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) Announcement::query()->max('sort_order') + 1;
+    }
+
     private function validateItem(Request $request): array
     {
         $data = $request->validate([
@@ -120,7 +129,7 @@ class AnnouncementController extends Controller
             'href' => ['nullable', 'string', 'max:255', 'starts_with:/,http://,https://'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date'],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'published' => ['boolean'],
         ]);
 
@@ -146,7 +155,10 @@ class AnnouncementController extends Controller
         $data['href'] = $href === '' ? null : $href;
         $data['starts_at'] = filled($data['starts_at'] ?? null) ? $data['starts_at'] : null;
         $data['ends_at'] = filled($data['ends_at'] ?? null) ? $data['ends_at'] : null;
-        $data['sort_order'] = (int) ($data['sort_order'] ?? 0);
+        // Nomor urut 1-based dan hanya bermakna saat dibandingkan, jadi baris baru
+        // tanpa isian ditaruh paling bawah: max + 1, bukan 0 (angka 0 membuat baris
+        // itu melompat ke paling atas tanpa disengaja).
+        $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : null;
         $data['published'] = (bool) ($data['published'] ?? false);
 
         return $data;

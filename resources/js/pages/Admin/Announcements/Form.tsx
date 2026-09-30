@@ -32,11 +32,14 @@ interface AnnouncementFormData {
 
 export default function AnnouncementForm({
   announcement,
+  nextSortOrder = 1,
   submitUrl,
   method,
   indexHref,
 }: {
   announcement: AnnouncementFormData | null
+  /** Nomor urut usulan untuk baris baru (selalu di bawah baris yang sudah ada). */
+  nextSortOrder?: number
   submitUrl: string
   method: "post" | "put"
   indexHref: string
@@ -54,7 +57,7 @@ export default function AnnouncementForm({
     href: announcement?.href ?? "",
     starts_at: announcement?.starts_at ?? "",
     ends_at: announcement?.ends_at ?? "",
-    sort_order: announcement?.sort_order ?? 0,
+    sort_order: announcement?.sort_order ?? nextSortOrder,
     published: announcement?.published ?? true,
   })
 
@@ -192,10 +195,16 @@ export default function AnnouncementForm({
               </div>
               {form.errors.ends_at && <p className="text-xs text-destructive">{form.errors.ends_at}</p>}
             </div>
-            <Field id="sort" label="Urutan tampil" error={form.errors.sort_order} className="sm:max-w-40">
+            <Field
+              id="sort"
+              label="Urutan tampil"
+              error={form.errors.sort_order}
+              className="sm:max-w-40"
+              hint="Angka 1 tampil paling atas. Baris baru otomatis ditaruh paling bawah."
+            >
               <Input
                 type="number"
-                min={0}
+                min={1}
                 max={9999}
                 value={form.data.sort_order}
                 onChange={(event) => form.setData("sort_order", Number(event.target.value))}

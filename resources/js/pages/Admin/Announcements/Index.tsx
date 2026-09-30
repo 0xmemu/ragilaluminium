@@ -207,7 +207,7 @@ export default function AnnouncementsIndex({
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
           Bar merah di atas header menampilkan{" "}
           <span className="font-semibold text-foreground">satu promo teratas</span> yang berstatus aktif
-          dan masih dalam periode. Urutkan lewat kolom "Urutan" (angka terkecil tampil lebih dulu).
+          dan masih dalam periode. Urutkan lewat kolom "Urutan": angka 1 tampil paling atas.
           Saat Anda mengganti teks/link, bar muncul kembali untuk pengunjung yang sebelumnya menutupnya.
           Jika daftar ini kosong, bar otomatis menampilkan promo dari sumber lain
           (config/CMS) agar tidak pernah kosong.
