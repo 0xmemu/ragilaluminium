@@ -2848,3 +2848,10 @@ Dampak spec: kontrak payload video berubah (duration hilang) dan isian form berk
 Verifikasi: MasalahSolusiAdminTest 9 passed; suite penuh 1330 passed, 1 skipped, 1 failed (benturan migrasi agent lain); ESLint dan typecheck bersih, build sukses; browser memastikan tiga field hilang, kartu seragam, nama berkas video tampil; halaman publik dan health 200.
 Catatan data: item 1 produksi ternyata berisi teks biasa tanpa media tersimpan, jadi angka 0 dari 2 media pada audit ulang adalah benar; media yang owner lihat saat audit belum tersimpan.
 Agent: zcode-retur
+
+## 2026-09-29 23:05 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner meminta toggle "Tampilkan di storefront" di form ulasan dihapus sebagai fitur, ulasan baru default langsung aktif.
+Perubahan: CheckboxField dan kunci published dibuang dari form; validasi server hanya memakai published bila dikirim, ulasan baru default aktif, dan saat menyunting status lama dipertahankan. Endpoint publish/unpublish di daftar tidak berubah.
+Dampak spec: tidak berubah.
+Verifikasi: UlasanAdminTest 15 passed (dua tes penjaga baru); suite penuh 1332 passed, 1 skipped, 1 failed (benturan migrasi agent lain); ESLint dan typecheck bersih, build sukses; browser memastikan toggle hilang di form website dan marketplace, tanpa overflow.
+Agent: zcode-retur
