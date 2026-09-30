@@ -1976,15 +1976,9 @@ class OrderController extends Controller
             }
 
             // Percobaan lain dari notifikasi yang sama ditandai digantikan.
-            $percobaan
-                ->reject(fn ($p) => $p->id === $terbaru->id)
-                ->each(function ($p) use ($terbaru): void {
-                    $p->update([
-                        'raw_payload' => array_merge((array) ($p->raw_payload ?? []), [
-                            'superseded_by' => $terbaru->id,
-                        ]),
-                    ]);
-                });
+            // Mekanismenya dipakai bersama tombol kirim ulang per baris di hub
+            // WhatsApp supaya aturannya tidak berbeda antar dua jalur.
+            $this->whatsapp->supersedeAttempts($percobaan, $terbaru);
         }
 
         return redirect()->back()

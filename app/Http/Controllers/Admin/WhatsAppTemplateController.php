@@ -112,14 +112,26 @@ class WhatsAppTemplateController extends Controller
         // dashboard, sehingga parameter rentang tidak mengubahnya (kontrak
         // audit admin 2026-09-23, B5). Daftar di bawah hanya untuk ditampilkan,
         // dibatasi 25 baris terbaru.
-        $failedCount = WhatsAppMessage::where('status', 'failed')->count();
+        //
+        // Yang TIDAK ikut dihitung: percobaan kembar yang sudah ditandai
+        // digantikan lewat raw_payload.superseded_by. Penandaan itu terjadi saat
+        // kirim ulang, artinya percobaan tersebut sudah diwakili baris lain yang
+        // dikirim. Kalau tetap dihitung, angkanya tidak pernah turun walau admin
+        // sudah mengirim ulang, dan barisnya kalau diklik akan mengirim
+        // notifikasi yang sama untuk kedua kalinya. Aturan ini sama dengan
+        // whatsapp_failed_count di header detail pesanan.
+        $failedCount = WhatsAppMessage::query()
+            ->where('status', 'failed')
+            ->whereNull('raw_payload->superseded_by')
+            ->count();
 
         $failedMessages = WhatsAppMessage::query()
             ->where('status', 'failed')
+            ->whereNull('raw_payload->superseded_by')
             ->with('order:id,order_number')
             ->orderByDesc('id')
             ->limit(25)
-            ->get(['id', 'status', 'phone_number', 'order_id', 'content_text', 'error_reason', 'created_at', 'internal_template_key', 'raw_payload'])
+            ->get(['id', 'status', 'direction', 'phone_number', 'order_id', 'content_text', 'error_reason', 'created_at', 'internal_template_key', 'raw_payload'])
             ->map(function (WhatsAppMessage $message): array {
                 $order = $message->order;
                 $text = trim((string) $message->content_text);
@@ -148,6 +160,10 @@ class WhatsAppTemplateController extends Controller
                     'order_url' => $order ? route('admin.orders.show', $order->id) : null,
                     'message' => $pesan,
                     'error' => $error === '' ? null : \Illuminate\Support\Str::limit($error, 160),
+                    // Baris yang naskahnya kosong atau bukan pesan keluar tidak
+                    // bisa dikirim ulang; tombolnya dimatikan di tampilan.
+                    'can_resend' => $message->direction === 'outbound'
+                        && $text !== '',
                 ];
             })
             ->values()

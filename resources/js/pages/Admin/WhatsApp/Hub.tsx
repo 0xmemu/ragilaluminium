@@ -1,5 +1,7 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
+import * as React from "react"
 
+import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Icon } from "@/components/shared/icon"
 import {
@@ -39,6 +41,8 @@ interface FailedMessage {
   order_url: string | null
   message: string | null
   error: string | null
+  /** Baris ini bisa dikirim ulang; ditentukan server, bukan ditaksir tampilan. */
+  can_resend: boolean
 }
 
 interface Props {
@@ -75,6 +79,19 @@ export default function WhatsAppHub({ title, description, stats, connection, con
   // (`status=failed`) atau memang ada pesan gagal sepanjang waktu.
   const failedFilterActive =
     new URLSearchParams(page.url.split("?")[1] ?? "").get("status") === "failed"
+  // Baris yang sedang dikirim ulang, supaya tombolnya menampilkan proses dan
+  // tidak bisa ditekan dua kali.
+  const [busyId, setBusyId] = React.useState<number | null>(null)
+
+  function kirimUlang(row: FailedMessage) {
+    setBusyId(row.id)
+    router.post(
+      routeUrl("admin.whatsapp.messages.resend", { message: row.id }),
+      {},
+      { preserveScroll: true, onFinish: () => setBusyId(null) },
+    )
+  }
+
   const showFailedMessages = failedFilterActive || failed_count > 0
 
   return (
@@ -168,6 +185,7 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                       <th className="px-3 py-2.5 text-center">Pesanan</th>
                       <th className="px-3 py-2.5">Pesan</th>
                       <th className="px-5 py-2.5">Alasan Gagal</th>
+                      <th className="px-5 py-2.5 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -209,6 +227,28 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                             <p className="line-clamp-2 text-[11px] text-destructive">{row.error}</p>
                           ) : (
                             <span className="text-[11px] text-muted-foreground">Alasan tidak tercatat</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          {row.can_resend ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              disabled={busyId === row.id}
+                              onClick={() => kirimUlang(row)}
+                              title="Kirim ulang pesan ini lewat gateway WhatsApp"
+                              className="inline-flex items-center gap-1"
+                            >
+                              <Icon
+                                name="refresh"
+                                className={busyId === row.id ? "size-3 animate-spin" : "size-3"}
+                                aria-hidden="true"
+                              />
+                              <span>{busyId === row.id ? "Mengirim..." : "Kirim ulang"}</span>
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">-</span>
                           )}
                         </td>
                       </tr>

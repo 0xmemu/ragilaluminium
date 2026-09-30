@@ -151,6 +151,65 @@ class WhatsAppService
     }
 
     /**
+     * Tandai percobaan lain dari SATU notifikasi yang sama sebagai digantikan.
+     *
+     * Satu notifikasi bisa punya beberapa baris percobaan gagal. Yang dikirim
+     * hanya satu baris, jadi sisanya wajib ditandai supaya (a) tidak ikut
+     * terkirim sehingga pelanggan tidak menerima pesan ganda, dan (b) tidak
+     * lagi terhitung sebagai kegagalan yang menunggu tindakan admin.
+     *
+     * Dipakai dua jalur: tombol kirim ulang borongan di detail pesanan dan
+     * tombol kirim ulang per baris di daftar Pesan Gagal. Keduanya wajib lewat
+     * sini supaya aturannya tidak berbeda.
+     *
+     * @param  iterable<int, WhatsAppMessage>  $attempts
+     */
+    public function supersedeAttempts(iterable $attempts, WhatsAppMessage $winner): void
+    {
+        foreach ($attempts as $attempt) {
+            if ($attempt->id === $winner->id) {
+                continue;
+            }
+
+            $attempt->update([
+                'raw_payload' => array_merge((array) ($attempt->raw_payload ?? []), [
+                    'superseded_by' => $winner->id,
+                ]),
+            ]);
+        }
+    }
+
+    /**
+     * Percobaan gagal KEMBAR dari notifikasi yang sama: baris lain dengan kunci
+     * templat dan pesanan yang sama (atau nomor yang sama bila pesannya tidak
+     * tertaut pesanan) yang masih gagal dan belum ditandai digantikan.
+     *
+     * Pesan manual tanpa kunci templat tidak punya kelompok, jadi hasilnya
+     * kosong: kirim ulang pesan manual tidak boleh menyentuh baris lain.
+     *
+     * @return \Illuminate\Support\Collection<int, WhatsAppMessage>
+     */
+    public function siblingAttempts(WhatsAppMessage $message): \Illuminate\Support\Collection
+    {
+        $key = (string) ($message->internal_template_key ?? '');
+        if ($key === '') {
+            return collect();
+        }
+
+        return WhatsAppMessage::query()
+            ->where('id', '!=', $message->id)
+            ->where('status', 'failed')
+            ->where('internal_template_key', $key)
+            ->whereNull('raw_payload->superseded_by')
+            ->when(
+                $message->order_id,
+                fn ($q) => $q->where('order_id', $message->order_id),
+                fn ($q) => $q->where('phone_number', $message->phone_number),
+            )
+            ->get();
+    }
+
+    /**
      * @return array{
      *   configured: bool,
      *   default_provider: string,

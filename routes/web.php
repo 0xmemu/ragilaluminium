@@ -338,6 +338,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // WhatsApp Desktop, sedangkan riwayat percakapan tetap tersimpan dan tampil
     // di detail pesanan. Tautan lama diarahkan ke tempat yang masih hidup.
     Route::get('whatsapp/messages', [WhatsAppMessageController::class, 'redirectToOrders'])->name('whatsapp.messages.index');
+    // Kirim ulang satu pesan gagal dari daftar Pesan Gagal di hub (owner 2026-09-29).
+    Route::post('whatsapp/messages/{message}/resend', [WhatsAppMessageController::class, 'resend'])->name('whatsapp.messages.resend');
     Route::get('orders/{order}/whatsapp', [WhatsAppMessageController::class, 'byOrder'])->name('orders.whatsapp');
     Route::get('whatsapp/pairing', [WhatsAppPairingController::class, 'show'])->name('whatsapp.pairing');
     Route::get('whatsapp/pairing/status', [WhatsAppPairingController::class, 'status'])->name('whatsapp.pairing.status');
