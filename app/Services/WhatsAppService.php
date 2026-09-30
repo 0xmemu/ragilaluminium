@@ -15,6 +15,7 @@ use App\Support\AdminLiveEvents;
 use App\Support\BankTransferInstructions;
 use App\Support\OrderEta;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppSendFailureNotifier;
 use App\Support\WhatsAppSessionNotifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -395,7 +396,9 @@ class WhatsAppService
                 return $message;
             }
 
-            $message->update(['status' => 'failed', 'error_reason' => "Provider {$provider} belum dikonfigurasi."]);
+            $alasan = "Provider {$provider} belum dikonfigurasi.";
+            $message->update(['status' => 'failed', 'error_reason' => $alasan]);
+            WhatsAppSendFailureNotifier::notify($alasan);
 
             return $message;
         }
@@ -409,14 +412,24 @@ class WhatsAppService
 
     protected function applyProviderResult(WhatsAppMessage $message, array $result): void
     {
+        $status = $result['status'] ?? ($result['successful'] ? 'sent' : 'failed');
+
         $message->update([
             'provider_message_id' => $result['provider_message_id'] ?? null,
             'provider_session' => $result['provider_session'] ?? null,
-            'status' => $result['status'] ?? ($result['successful'] ? 'sent' : 'failed'),
+            'status' => $status,
             'sent_at' => ($result['successful'] ?? false) ? now() : null,
             'error_reason' => $result['error_reason'] ?? null,
             'raw_payload' => $result['raw_payload'] ?? null,
         ]);
+
+        // Kegagalan kirim WAJIB memberi tahu admin. Tanpa ini kegagalan hanya
+        // menumpuk diam-diam sampai ada yang kebetulan membuka halaman
+        // WhatsApp. Dedupe di notifier menjaga satu sebab massal tetap satu
+        // notifikasi, bukan puluhan.
+        if ($status === 'failed') {
+            WhatsAppSendFailureNotifier::notify($result['error_reason'] ?? null);
+        }
     }
 
     /**
