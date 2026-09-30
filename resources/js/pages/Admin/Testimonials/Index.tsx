@@ -19,8 +19,8 @@ import {
 } from "@/components/admin/ui/dialog"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
-import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
+import { ProductPicker } from "@/components/admin/ui/ProductPicker"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -201,11 +201,8 @@ function PublishActions({
 
 function AttachProductsDialog({ row }: { row: FotoRow }) {
   const [open, setOpen] = React.useState(false)
-  const [query, setQuery] = React.useState("")
-  const [results, setResults] = React.useState<Array<{ id: number; label: string }>>([])
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
   const [verified, setVerified] = React.useState(false)
-  const [searching, setSearching] = React.useState(false)
   const attachForm = useForm({
     product_ids: [] as number[],
     position: Math.max(1, row.sort_order || 1),
@@ -215,32 +212,8 @@ function AttachProductsDialog({ row }: { row: FotoRow }) {
     visibility: "visible",
   })
 
-  React.useEffect(() => {
-    if (!open) return
-    const term = query.trim()
-    if (!term) {
-      // Clear stale search results when the dialog query is emptied.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setResults([])
-      return
-    }
-    const timer = window.setTimeout(() => {
-      setSearching(true)
-      void fetch(`${routeUrl("admin.media.products.search")}?q=${encodeURIComponent(term)}`, {
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-      })
-        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-        .then((body: { products?: Array<{ id: number; label: string }> }) => setResults(body.products ?? []))
-        .catch(() => setResults([]))
-        .finally(() => setSearching(false))
-    }, 300)
-    return () => window.clearTimeout(timer)
-  }, [open, query])
-
   function close() {
     setOpen(false)
-    setQuery("")
-    setResults([])
     setSelectedIds([])
     setVerified(false)
     attachForm.clearErrors()
@@ -253,40 +226,20 @@ function AttachProductsDialog({ row }: { row: FotoRow }) {
           Pasang ke produk lain
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-3xl">
         <DialogTitle>Verifikasi dan pasang ke produk lain</DialogTitle>
         <DialogDescription>
           Media ini tetap satu asset, tetapi dapat dipakai sebagai hasil pemasangan di beberapa produk.
           Pastikan kecocokan foto sebelum mengonfirmasi.
         </DialogDescription>
         <div className="space-y-4">
-          <Field id={`installation-product-search-${row.id}`} label="Cari produk tujuan">
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Nama produk atau SKU"
-              autoComplete="off"
-            />
+          <Field
+            id={`installation-product-search-${row.id}`}
+            label="Produk tujuan"
+            hint="Cari lewat nama atau SKU. Pemilih ini sama dengan yang dipakai halaman admin lain."
+          >
+            <ProductPicker onSelect={(products) => setSelectedIds(products.map((product) => product.id))} />
           </Field>
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-            {searching ? (
-              <p className="p-3 text-sm text-muted-foreground">Mencari produk...</p>
-            ) : results.length ? (
-              results.map((product) => (
-                <label key={product.id} className="flex cursor-pointer items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0 hover:bg-muted/40">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(product.id)}
-                    onChange={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])}
-                    className="size-4 accent-primary"
-                  />
-                  <span className="text-sm">{product.label}</span>
-                </label>
-              ))
-            ) : (
-              <p className="p-3 text-sm text-muted-foreground">Ketik minimal sebagian nama atau SKU produk.</p>
-            )}
-          </div>
           <label className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
             <input
               type="checkbox"

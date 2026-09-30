@@ -4,6 +4,8 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
+import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 
@@ -31,7 +33,6 @@ interface TargetOption {
 
 interface TargetOptions {
   modelOptions: TargetOption[]
-  productOptions: TargetOption[]
 }
 
 function toLocalInput(iso: string | null | undefined): string {
@@ -62,6 +63,7 @@ export default function VoucherForm({
   method,
   indexHref,
   targetOptions,
+  initialProduct,
   backUrl
 }: {
   backUrl?: string | null
@@ -70,6 +72,7 @@ export default function VoucherForm({
   method: "post" | "put"
   indexHref: string
   targetOptions: TargetOptions
+  initialProduct: PickerProduct | null
 }) {
   const isEdit = Boolean(voucher?.id)
   const form = useForm({
@@ -88,7 +91,10 @@ export default function VoucherForm({
   })
 
   const targetModelOptions = targetOptions?.modelOptions ?? []
-  const targetProductOptions = targetOptions?.productOptions ?? []
+  // Satu voucher menyasar satu produk, dan pemilihannya memakai ProductPicker
+  // yang sama dengan halaman admin lain, bukan dropdown bawaan halaman.
+  const [produkPicked, setProdukPicked] = React.useState<PickerProduct | null>(initialProduct)
+  const [pickerTerbuka, setPickerTerbuka] = React.useState(false)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -274,21 +280,39 @@ export default function VoucherForm({
                     </div>
                   ) : null}
                   {form.data.target_type === "product" ? (
-                    <div className="mt-3">
-                      <Select
-                        value={form.data.target_product_id}
-                        onChange={(event) => form.setData("target_product_id", event.target.value)}
-                        className="h-8 w-full text-xs"
+                    <div className="mt-3 grid gap-2">
+                      <Button
+                        type="button"
+                        variant={produkPicked ? "outline" : "secondary"}
+                        size="sm"
+                        onClick={() => setPickerTerbuka(true)}
+                        className="w-fit max-w-full"
                       >
-                        <option value="">Pilih produk…</option>
-                        {targetProductOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </Select>
+                        {produkPicked ? (
+                          <>
+                            <span className="min-w-0 truncate">{produkPicked.name}</span>
+                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                              {produkPicked.parent_sku}
+                            </span>
+                          </>
+                        ) : (
+                          "Pilih produk"
+                        )}
+                      </Button>
+                      {produkPicked ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProdukPicked(null)
+                            form.setData("target_product_id", "")
+                          }}
+                          className="w-fit text-xs text-muted-foreground transition hover:text-foreground"
+                        >
+                          Kosongkan pilihan produk
+                        </button>
+                      ) : null}
                       {form.errors.target_product_id ? (
-                        <p className="mt-1 text-xs text-destructive">{form.errors.target_product_id}</p>
+                        <p className="text-xs text-destructive">{form.errors.target_product_id}</p>
                       ) : null}
                     </div>
                   ) : null}
@@ -400,6 +424,37 @@ export default function VoucherForm({
 
 
       </form>
+
+      <Sheet open={pickerTerbuka} onOpenChange={setPickerTerbuka}>
+        <SheetContent
+          side="right"
+          title="Pilih produk voucher"
+          className="w-full overflow-y-auto sm:max-w-3xl"
+        >
+          <div className="flex flex-col gap-1">
+            <h2 className="text-base font-semibold">Pilih produk voucher</h2>
+            <p className="text-sm text-muted-foreground">
+              Voucher hanya berlaku untuk produk yang dipilih di sini; satu voucher menyasar satu produk.
+            </p>
+          </div>
+          <div className="mt-4 space-y-4">
+            <ProductPicker
+              maxSelection={1}
+              initialSelection={produkPicked ? [produkPicked] : []}
+              onSelect={(products) => {
+                const produk = products[0] ?? null
+                setProdukPicked(produk)
+                form.setData("target_product_id", produk ? String(produk.id) : "")
+              }}
+            />
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="ghost" onClick={() => setPickerTerbuka(false)}>
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
   )
 }

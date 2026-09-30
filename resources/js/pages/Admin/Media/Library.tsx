@@ -9,10 +9,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog"
-import { ErrorState } from "@/components/admin/ui/empty-state"
 import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
+import { ProductPicker } from "@/components/admin/ui/ProductPicker"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
@@ -65,11 +65,6 @@ interface LibraryFilters {
   status: string
   visibility: string
   folder_id: string
-}
-
-interface ProductOption {
-  id: number
-  label: string
 }
 
 function flattenFolders(nodes: FolderNode[], depth = 0, out: Array<{ id: number; name: string; indent: string; assets_count: number }> = []) {
@@ -1038,13 +1033,8 @@ export default function MediaLibrary({
   // Attach
   const [attachingId, setAttachingId] = React.useState<number | null>(null)
   const [attachProduct, setAttachProduct] = React.useState("")
-  const [attachQuery, setAttachQuery] = React.useState("")
-  const [attachResults, setAttachResults] = React.useState<ProductOption[]>([])
-  const [attachSearching, setAttachSearching] = React.useState(false)
-  // Galat pencarian produk dibedakan dari "tidak ditemukan": keduanya dulu
-  // berakhir sebagai daftar kosong, jadi admin tidak tahu bedanya.
-  const [attachSearchError, setAttachSearchError] = React.useState(false)
-  const [attachSearchNonce, setAttachSearchNonce] = React.useState(0)
+  // Nama produk terpilih, ditampilkan sebagai penanda di modal.
+  const [attachLabel, setAttachLabel] = React.useState("")
   const [attachPosition, setAttachPosition] = React.useState("1")
   const [attachCatalog, setAttachCatalog] = React.useState(true)
   const [attachInstallation, setAttachInstallation] = React.useState(false)
@@ -1072,28 +1062,6 @@ export default function MediaLibrary({
     const timer = window.setTimeout(() => runSearch(), 350)
     return () => window.clearTimeout(timer)
   }, [q, runSearch])
-
-  // Attach search
-  React.useEffect(() => {
-    if (attachingId === null) return
-    const query = attachQuery.trim()
-    if (!query) return
-    const timer = window.setTimeout(() => {
-      setAttachSearching(true)
-      setAttachSearchError(false)
-      fetch(`${routeUrl("admin.media.products.search")}?q=${encodeURIComponent(query)}`, {
-        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-      })
-        .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-        .then((b) => setAttachResults(b.products ?? []))
-        .catch(() => {
-          setAttachResults([])
-          setAttachSearchError(true)
-        })
-        .finally(() => setAttachSearching(false))
-    }, 300)
-    return () => window.clearTimeout(timer)
-  }, [attachQuery, attachingId, attachSearchNonce])
 
   React.useEffect(() => {
     if (!previewAsset) return
@@ -1475,39 +1443,39 @@ export default function MediaLibrary({
       {/* Attach modal */}
       {attachingId !== null ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={() => setAttachingId(null)}>
-          <div className="w-full max-w-md rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-3xl rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-3 text-sm font-semibold">Pasang ke produk</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Cari produk</label>
-                <Input value={attachQuery} onChange={(e) => setAttachQuery(e.target.value)} placeholder="Nama atau SKU produk…" />
-              </div>
-              {attachSearching ? <p className="text-xs text-muted-foreground">Mencari…</p> : null}
-              {attachResults.length > 0 ? (
-                <div className="max-h-40 overflow-y-auto space-y-1">
-                  {attachResults.map((p) => (
-                    <button key={p.id} type="button" onClick={() => setAttachProduct(String(p.id))} className={cn("block w-full rounded px-2 py-1 text-left text-xs hover:bg-card-hover", attachProduct === String(p.id) ? "bg-primary/10 text-primary" : "text-foreground")}>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              ) : attachSearchError ? (
-                <ErrorState
-                  title="Pencarian produk gagal"
-                  description="Daftar produk belum dapat dimuat. Periksa koneksi lalu coba lagi."
-                  className="min-h-0 p-4"
-                  action={
-                    <Button
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">Produk tujuan</span>
+                  <span className={cn("min-w-0 truncate text-xs", attachLabel ? "font-medium text-foreground" : "text-muted-foreground")}>
+                    {attachLabel || "Belum ada produk dipilih"}
+                  </span>
+                  {attachProduct ? (
+                    <button
                       type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setAttachSearchNonce((n) => n + 1)}
+                      onClick={() => {
+                        setAttachProduct("")
+                        setAttachLabel("")
+                      }}
+                      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     >
-                      Coba lagi
-                    </Button>
-                  }
-                />
-              ) : attachQuery.trim() && !attachSearching ? <p className="text-xs text-muted-foreground">Tidak ditemukan</p> : null}
+                      Kosongkan
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-2">
+                  <ProductPicker
+                    maxSelection={1}
+                    onSelect={(products) => {
+                      const produk = products[0] ?? null
+                      setAttachProduct(produk ? String(produk.id) : "")
+                      setAttachLabel(produk ? `${produk.name} (${produk.parent_sku})` : "")
+                    }}
+                  />
+                </div>
+              </div>
               {attachProduct ? (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1526,7 +1494,7 @@ export default function MediaLibrary({
               ) : null}
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setAttachingId(null); setAttachProduct("") }}>Batal</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setAttachingId(null); setAttachProduct(""); setAttachLabel("") }}>Batal</Button>
               <Button type="button" size="sm" disabled={!attachProduct || attachBusy} onClick={async () => {
                 setAttachBusy(true); setAttachError(null)
                 try {
@@ -1535,7 +1503,7 @@ export default function MediaLibrary({
                     body: JSON.stringify({ product_id: Number(attachProduct), position: Number(attachPosition), show_in_catalog: attachCatalog, is_installation: attachInstallation, visibility: attachVisibility }),
                   })
                   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Gagal")
-                  setAttachingId(null); setAttachProduct("")
+                  setAttachingId(null); setAttachProduct(""); setAttachLabel("")
                 } catch (e) { setAttachError(String(e)) }
                 setAttachBusy(false)
               }}>

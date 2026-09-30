@@ -69,6 +69,7 @@ class VoucherController extends Controller
             'method' => 'post',
             'indexHref' => route('admin.vouchers.index'),
             'targetOptions' => $this->targetOptions(),
+            'initialProduct' => null,
         ]);
     }
 
@@ -117,6 +118,7 @@ class VoucherController extends Controller
             'method' => 'put',
             'indexHref' => route('admin.vouchers.index'),
             'targetOptions' => $this->targetOptions(),
+            'initialProduct' => $this->initialProductFor($voucher),
         ]);
     }
 
@@ -320,16 +322,36 @@ class VoucherController extends Controller
             'modelOptions' => collect(SubModel::MODELS)
                 ->map(fn (string $m): array => ['value' => $m, 'label' => CatalogLabels::model($m)])
                 ->all(),
-            'productOptions' => Product::query()
-                ->where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'parent_sku', 'name', 'product_model'])
-                ->map(fn (Product $p): array => [
-                    'value' => (string) $p->id,
-                    'label' => $p->name.' ('.$p->parent_sku.')',
-                    'model' => $p->product_model,
-                ])
-                ->all(),
+        ];
+    }
+
+    /**
+     * Pratinjau produk yang sudah tertaut, untuk pemilih produk reusable
+     * (ProductPicker). Bentuknya sama dengan yang dipakai pemilih itu, supaya
+     * pilihan tersimpan langsung tampil tanpa mengirim seluruh katalog ke
+     * halaman.
+     */
+    private function initialProductFor(?StoreVoucher $voucher): ?array
+    {
+        $productId = $voucher?->target_product_id;
+        if (! $productId) {
+            return null;
+        }
+
+        $product = Product::query()->find($productId);
+        if (! $product) {
+            return null;
+        }
+
+        return [
+            'id' => $product->id,
+            'parent_sku' => $product->parent_sku,
+            'name' => $product->short_name ?: $product->name,
+            'category' => (string) $product->product_category,
+            'model' => (string) $product->product_model,
+            'sub_model' => (string) $product->design_variant,
+            'price' => 0.0,
+            'dimensions' => '',
         ];
     }
 }
