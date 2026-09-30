@@ -16,7 +16,6 @@ use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -166,11 +165,11 @@ class TestimonialController extends Controller
         return Inertia::render('Admin/Testimonials/Form', [
             'backUrl' => $indexUrl,
             'testimonial' => null,
-            'products' => $this->productOptions(),
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
             'maxPhotos' => CmsTestimonial::MAX_PHOTOS,
+            'initialProduct' => null,
             'submitUrl' => route('admin.testimonials.store'),
             'indexUrl' => $indexUrl,
         ]);
@@ -237,11 +236,11 @@ class TestimonialController extends Controller
                 'published' => $testimonial->published,
                 'moderation_status' => $testimonial->moderation_status ?: 'approved',
             ],
-            'products' => $this->productOptions(),
             'sources' => array_values($sources),
             'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'intent' => $intent,
             'maxPhotos' => CmsTestimonial::MAX_PHOTOS,
+            'initialProduct' => $this->initialProductFor($testimonial),
             'submitUrl' => route('admin.testimonials.update', $testimonial),
             'indexUrl' => $indexUrl,
             'moderateUrl' => route('admin.testimonials.moderate', $testimonial),
@@ -831,36 +830,36 @@ class TestimonialController extends Controller
         return TestimonialPageSettings::pageId();
     }
 
-    /** @return list<array{id:int,label:string}> */
     /**
-     * Opsi produk untuk pemilih bercari (SearchSelect) di form ulasan.
+     * Produk terkait yang tersimpan, dalam bentuk yang sama dengan
+     * ProductPicker (skema reusable yang dipakai form promo). Taxa pratinjau
+     * di form saat menyunting tanpa memuat ulang daftar produk.
      *
-     * Tanpa batas 500: pemilih bercari mencari di sisi klien, dan daftar
-     * dipendekkan hanya ke produk aktif. Hasilnya di-cache 5 menit mengikuti
-     * pola pemilih produk di Teruskan Popularitas.
-     *
-     * @return list<array{value: string, label: string}>
+     * @return array{id:int,parent_sku:string,name:string,category:string,model:string,sub_model:string,price:float,dimensions:string}|null
      */
-    protected function productOptions(): array
+    protected function initialProductFor(?CmsTestimonial $testimonial): ?array
     {
-        return Cache::remember('admin:testimonial:product-options', now()->addMinutes(5), function (): array {
-            $opsi = Product::query()
-                ->where('status', 'active')
-                ->orderBy('name')
-                ->get(['id', 'parent_sku', 'name', 'short_name'])
-                ->map(fn (Product $p) => [
-                    'value' => (string) $p->id,
-                    'label' => ($p->short_name ?: $p->name).' · '.$p->parent_sku,
-                ])
-                ->values()
-                ->all();
+        if (! $testimonial || ! $testimonial->product_id) {
+            return null;
+        }
 
-            return [
-                ['value' => '', 'label' => 'Ulasan umum (/reviews saja)'],
-                ...$opsi,
-            ];
-        });
+        $product = Product::query()->find($testimonial->product_id);
+        if (! $product) {
+            return null;
+        }
+
+        return [
+            'id' => $product->id,
+            'parent_sku' => $product->parent_sku,
+            'name' => $product->short_name ?: $product->name,
+            'category' => (string) $product->product_category,
+            'model' => (string) $product->product_model,
+            'sub_model' => (string) $product->design_variant,
+            'price' => 0.0,
+            'dimensions' => '',
+        ];
     }
+
     /** Ubah sumber testimoni secara cepat dari tabel (kolom Sumber). */
     public function updateSource(Request $request, CmsTestimonial $testimonial): RedirectResponse
     {
