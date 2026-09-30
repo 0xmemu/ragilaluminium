@@ -198,14 +198,15 @@ class SubModelAdminTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.sub-models.reorder'), [
                 'rows' => [
-                    ['id' => $nonaktif->id, 'sort_order' => 0],
-                    ['id' => $aktif->id, 'sort_order' => 1],
+                    ['id' => $nonaktif->id, 'sort_order' => 1],
+                    ['id' => $aktif->id, 'sort_order' => 2],
                 ],
             ])
             ->assertRedirect();
 
-        $this->assertSame(0, $nonaktif->fresh()->sort_order);
-        $this->assertSame(1, $aktif->fresh()->sort_order);
+        // Nomor urut 1-based (kontrak nomor urut admin).
+        $this->assertSame(1, $nonaktif->fresh()->sort_order);
+        $this->assertSame(2, $aktif->fresh()->sort_order);
 
         // Penampilan tetap menaruh yang aktif lebih dulu.
         $this->actingAs($admin)

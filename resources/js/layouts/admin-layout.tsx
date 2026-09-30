@@ -267,6 +267,7 @@ function AdminPageFrame({
   actions,
   backUrl,
   fullWidth = false,
+  lockInteraction = false,
 }: {
   children: React.ReactNode
   title?: string
@@ -274,6 +275,8 @@ function AdminPageFrame({
   actions?: React.ReactNode
   backUrl?: string | null
   fullWidth?: boolean
+  /** Mode Urutkan aktif: kunci seluruh kontrol di area halaman. */
+  lockInteraction?: boolean
 }) {
   const { nav } = usePage<SharedPageProps>().props
   const routeName = useCurrentRouteName()
@@ -287,7 +290,7 @@ function AdminPageFrame({
     <main
       id="admin-content"
       tabIndex={-1}
-      className={`admin-main outline-none ${fullWidth ? "h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col" : ""}`}
+      className={`admin-main outline-none ${lockInteraction ? "admin-reorder-lock" : ""} ${fullWidth ? "h-[calc(100vh-3.5rem)] overflow-hidden flex flex-col" : ""}`}
     >
       {!fullWidth && (title || actions) && (
         <div className="px-4 pb-5 pt-6 md:px-6 lg:px-8">
@@ -337,6 +340,7 @@ export function AdminLayout({
   actions,
   backUrl,
   fullWidth = false,
+  lockInteraction = false,
 }: {
   children: React.ReactNode
   title?: string
@@ -344,6 +348,7 @@ export function AdminLayout({
   actions?: React.ReactNode
   backUrl?: string | null
   fullWidth?: boolean
+  lockInteraction?: boolean
 }) {
   const insideShell = React.useContext(AdminShellContext)
 
@@ -354,6 +359,7 @@ export function AdminLayout({
       actions={actions}
       backUrl={backUrl}
       fullWidth={fullWidth}
+      lockInteraction={lockInteraction}
     >
       {children}
     </AdminPageFrame>

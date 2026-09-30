@@ -42,28 +42,40 @@ describe("numberRows", () => {
   it("menulis ulang nomor tampil dan nomor urut sesuai posisi", () => {
     const hasil = numberRows([{ id: 9, no: 7, sort_order: 7 }, { id: 3, no: 2, sort_order: 2 }])
     expect(hasil).toEqual([
-      { id: 9, no: 1, sort_order: 0 },
-      { id: 3, no: 2, sort_order: 1 },
+      { id: 9, no: 1, sort_order: 1 },
+      { id: 3, no: 2, sort_order: 2 },
     ])
   })
 
   it("mempertahankan kolom lain pada baris", () => {
     const hasil = numberRows([{ id: 1, nama: "bracket" }])
-    expect(hasil[0]).toMatchObject({ id: 1, nama: "bracket", no: 1, sort_order: 0 })
+    expect(hasil[0]).toMatchObject({ id: 1, nama: "bracket", no: 1, sort_order: 1 })
+  })
+
+  it("menomori mulai dari 1, bukan 0 (kontrak nomor urut admin)", () => {
+    // Nilai 0 pernah ditulis jalur ini, dan karena penyaring tayang memilih nomor
+    // terkecil, baris pertama jadi melompat ke paling atas tanpa disengaja.
+    const hasil = numberRows([
+      { id: 1, no: 0, sort_order: 0 },
+      { id: 2, no: 0, sort_order: 0 },
+      { id: 3, no: 0, sort_order: 0 },
+    ])
+    expect(hasil.map((row) => row.sort_order)).toEqual([1, 2, 3])
+    expect(hasil.map((row) => row.no)).toEqual([1, 2, 3])
   })
 })
 
 describe("buildReorderItems", () => {
-  it("menyusun payload id dan sort_order berurutan", () => {
+  it("menyusun payload id dan sort_order berurutan mulai dari 1", () => {
     expect(buildReorderItems([{ id: 5 }, { id: 2 }, { id: 8 }])).toEqual([
-      { id: 5, sort_order: 0 },
-      { id: 2, sort_order: 1 },
-      { id: 8, sort_order: 2 },
+      { id: 5, sort_order: 1 },
+      { id: 2, sort_order: 2 },
+      { id: 8, sort_order: 3 },
     ])
   })
 
   it("menerima kunci bertipe teks", () => {
-    expect(buildReorderItems([{ id: "sub-1" }])).toEqual([{ id: "sub-1", sort_order: 0 }])
+    expect(buildReorderItems([{ id: "sub-1" }])).toEqual([{ id: "sub-1", sort_order: 1 }])
   })
 
   it("mengembalikan daftar kosong untuk daftar kosong", () => {

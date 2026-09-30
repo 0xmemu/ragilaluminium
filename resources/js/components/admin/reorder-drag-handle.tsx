@@ -30,6 +30,7 @@ export function ReorderDragHandle({
           : "opacity-30",
         className,
       )}
+      data-reorder-handle
       aria-hidden="true"
       title={
         enabled

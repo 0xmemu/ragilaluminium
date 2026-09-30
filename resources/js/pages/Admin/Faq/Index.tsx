@@ -260,6 +260,7 @@ export default function FaqIndex({
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary">

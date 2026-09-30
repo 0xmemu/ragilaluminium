@@ -307,6 +307,7 @@ export default function ModelProductsIndex({
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {/* Daftar wadah model terselaras otomatis dengan katalog: wadah baru

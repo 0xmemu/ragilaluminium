@@ -345,14 +345,15 @@ class UlasanAdminTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.apa-kata-pelanggan.reorder'), [
                 'rows' => [
-                    ['id' => $second->id, 'sort_order' => 0],
-                    ['id' => $first->id, 'sort_order' => 1],
+                    ['id' => $second->id, 'sort_order' => 1],
+                    ['id' => $first->id, 'sort_order' => 2],
                 ],
             ])
             ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
-        $this->assertSame(0, $second->fresh()->sort_order);
-        $this->assertSame(1, $first->fresh()->sort_order);
+        // Nomor urut 1-based (kontrak nomor urut admin).
+        $this->assertSame(1, $second->fresh()->sort_order);
+        $this->assertSame(2, $first->fresh()->sort_order);
 
         $this->assertDatabaseHas('cms_pages', [
             'slug' => 'testimoni',

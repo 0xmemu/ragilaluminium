@@ -132,6 +132,7 @@ export default function MasalahSolusiIndex({
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary">

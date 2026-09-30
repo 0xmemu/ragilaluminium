@@ -281,7 +281,7 @@ class SubModelController extends Controller
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['required', 'integer', 'exists:sub_models,id'],
-            'rows.*.sort_order' => ['required', 'integer', 'min:0'],
+            'rows.*.sort_order' => ['required', 'integer', 'min:1', 'max:9999'],
         ]);
 
         DB::transaction(function () use ($validated): void {

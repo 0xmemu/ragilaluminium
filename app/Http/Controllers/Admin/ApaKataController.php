@@ -119,7 +119,7 @@ class ApaKataController extends Controller
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['required', 'integer', 'exists:cms_testimonials,id'],
-            'rows.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'rows.*.sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         foreach ($validated['rows'] as $index => $row) {
@@ -129,7 +129,7 @@ class ApaKataController extends Controller
                 ->update([
                     'sort_order' => array_key_exists('sort_order', $row) && $row['sort_order'] !== null
                         ? (int) $row['sort_order']
-                        : $index,
+                        : $index + 1,
                 ]);
         }
 

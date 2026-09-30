@@ -56,14 +56,20 @@ export function moveRow<Row>(rows: Row[], from: number, to: number): Row[] {
   return next
 }
 
-/** Tulis ulang kolom nomor tampil (`no`) dan nomor urut sesuai posisi sekarang. */
+/**
+ * Tulis ulang kolom nomor tampil (`no`) dan nomor urut sesuai posisi sekarang.
+ *
+ * Nomor urut 1-based (kontrak nomor urut admin): baris pertama bernilai 1, bukan
+ * 0. Sebelumnya fungsi ini menulis 0, sehingga memakai tombol Urutkan membatalkan
+ * normalisasi 1-based yang sudah tersimpan.
+ */
 export function numberRows<Row>(rows: Row[]): Row[] {
-  return rows.map((row, index) => ({ ...row, no: index + 1, sort_order: index }))
+  return rows.map((row, index) => ({ ...row, no: index + 1, sort_order: index + 1 }))
 }
 
-/** Susun payload urutan dari daftar baris saat ini. */
+/** Susun payload urutan dari daftar baris saat ini (1-based). */
 export function buildReorderItems(rows: Array<{ id: number | string }>): ReorderItem[] {
-  return rows.map((row, index) => ({ id: row.id, sort_order: index }))
+  return rows.map((row, index) => ({ id: row.id, sort_order: index + 1 }))
 }
 
 export interface UseReorderModeOptions<Row extends ReorderRow, Item> {

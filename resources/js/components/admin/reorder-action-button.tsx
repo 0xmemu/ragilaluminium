@@ -22,6 +22,11 @@ import { HintTip } from "@/components/admin/ui/hint-tip"
  * Tombol yang nonaktif dibungkus hint (permintaan owner 2026-09-28): tombol mati
  * tanpa alasan membuat admin menebak, sedangkan `title` bawaan peramban baru
  * muncul setelah jeda dan mudah terlewat.
+ *
+ * Ketiga tombol di sini ditandai `data-reorder-allow` (kontrak owner 2026-09-30):
+ * saat mode urut aktif, halaman mengunci seluruh kontrol lewat kelas
+ * `admin-reorder-lock`, dan hanya kontrol bertanda ini (plus pegangan geser)
+ * yang tetap bisa diklik.
  */
 export function ReorderActionButton({
   active,
@@ -71,7 +76,7 @@ export function ReorderActionButton({
 
   if (!active) {
     return (
-      <Button type="button" variant="secondary" size={size} onClick={onToggle}>
+      <Button type="button" data-reorder-allow variant="secondary" size={size} onClick={onToggle}>
         <Icon name="dots-six-vertical" className="size-4" aria-hidden="true" />
         Urutkan
       </Button>
@@ -87,6 +92,7 @@ export function ReorderActionButton({
         {denganHint(
           <Button
             type="button"
+            data-reorder-allow
             size={size}
             disabled={processing || disabled}
             title={disabled ? disabledReason : undefined}
@@ -101,7 +107,7 @@ export function ReorderActionButton({
   }
 
   return (
-    <Button type="button" variant="secondary" size={size} onClick={onCancel}>
+    <Button type="button" data-reorder-allow variant="secondary" size={size} onClick={onCancel}>
       <Icon name="arrow-counter-clockwise" className="size-4" aria-hidden="true" />
       Urungkan
     </Button>

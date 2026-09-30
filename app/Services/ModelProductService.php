@@ -219,7 +219,7 @@ class ModelProductService
                     continue;
                 }
                 CmsModelProduct::query()->whereKey($id)->update([
-                    'sort_order' => (int) ($row['sort_order'] ?? $index),
+                    'sort_order' => (int) ($row['sort_order'] ?? $index + 1),
                 ]);
             }
         });

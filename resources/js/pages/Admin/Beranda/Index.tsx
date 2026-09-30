@@ -128,6 +128,7 @@ export default function BerandaIndex({
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" asChild>

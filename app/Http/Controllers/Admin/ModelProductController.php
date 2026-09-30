@@ -211,7 +211,7 @@ class ModelProductController extends Controller
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['required', 'integer', 'exists:cms_model_products,id'],
-            'rows.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'rows.*.sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         $this->models->reorder($validated['rows'], $request->user()?->id);

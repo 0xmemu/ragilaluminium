@@ -1236,3 +1236,26 @@ input[type="search"]::-ms-clear {
   width: 0;
   height: 0;
 }
+
+@layer components {
+  /* Mode Urutkan aktif (kontrak owner 2026-09-30): seluruh kontrol di area
+     halaman dikunci, kecuali pegangan geser dan tombol Urungkan/Simpan urutan.
+     Tombol mati saja tidak cukup karena tombol yang tampak aktif tapi tidak
+     bisa diklik membingungkan, jadi kuncinya di sini plus peredupan sebagai
+     penanda visual. Baris tabel sengaja TIDAK ikut dikunci: penangan
+     dragover/drop menempel di <tr>, dan <tr>/<td> bukan kontrol, sehingga
+     geser-urut tetap bekerja. */
+  .admin-reorder-lock :is(a, button, input, select, textarea, label, [role="button"], [role="combobox"], [role="tab"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"]) {
+    pointer-events: none !important;
+  }
+
+  .admin-reorder-lock :is(a, button, input, select, textarea, [role="button"], [role="combobox"], [role="tab"], [role="option"]) {
+    opacity: 0.45;
+  }
+
+  .admin-reorder-lock :is(a, button, [role="button"])[data-reorder-allow],
+  .admin-reorder-lock [data-reorder-handle] {
+    pointer-events: auto !important;
+    opacity: 1;
+  }
+}

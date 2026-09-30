@@ -149,6 +149,7 @@ export default function InstallationGalleryIndex({
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):

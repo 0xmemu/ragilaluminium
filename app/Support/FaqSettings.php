@@ -249,7 +249,7 @@ class FaqSettings
             CmsFaqItem::query()
                 ->where('cms_page_id', $pageId)
                 ->whereKey($id)
-                ->update(['sort_order' => (int) ($row['sort_order'] ?? $index)]);
+                ->update(['sort_order' => (int) ($row['sort_order'] ?? $index + 1)]);
         }
     }
 }
