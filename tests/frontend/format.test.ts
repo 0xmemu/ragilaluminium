@@ -4,6 +4,7 @@ import {
   formatCurrency,
   formatDate,
   formatNumber,
+  formatRentangTanggal,
   humanize,
   productName,
   stripHtml,
@@ -66,5 +67,31 @@ describe("format helpers", () => {
     expect(formatPhoneLocal("085725116817", true)).toBe("0857-2511-6817")
     expect(formatPhoneLocal(null)).toBe("")
     expect(formatPhoneLocal("")).toBe("")
+  })
+})
+
+describe("rentang berlaku entitas berjadwal", () => {
+  it("menulis kedua tanggal dengan tanda panah saat keduanya terisi", () => {
+    const teks = formatRentangTanggal("2026-07-01", "2026-09-30")
+
+    expect(teks).toMatch(/^1\s?(Jul|Juli)\s?2026\s→\s30\s?(Sep|September)\s?2026$/)
+  })
+
+  it("menulis Tanpa batas sekali saja saat kedua sisi kosong, bukan tanda hubung", () => {
+    // Bar promo tanpa tanggal berlaku terus: penyaring tayang memperlakukan
+    // tanggal mulai kosong sebagai "sudah boleh tampil" dan tanggal akhir
+    // kosong sebagai "tanpa batas akhir".
+    expect(formatRentangTanggal(null, null)).toBe("Tanpa batas")
+    expect(formatRentangTanggal("", undefined)).toBe("Tanpa batas")
+    expect(formatRentangTanggal(null, null)).not.toContain("-")
+  })
+
+  it("menyebut sisi yang kosong dengan kata, bukan tanda hubung", () => {
+    expect(formatRentangTanggal("2026-07-01", null)).toMatch(/^Mulai 1\s?(Jul|Juli)\s?2026$/)
+    expect(formatRentangTanggal(null, "2026-09-30")).toMatch(/^Sampai 30\s?(Sep|September)\s?2026$/)
+  })
+
+  it("tidak menampilkan teks tanggal rusak apa adanya", () => {
+    expect(formatRentangTanggal("bukan tanggal", null)).toBe("Tanpa batas")
   })
 })

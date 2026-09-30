@@ -15,6 +15,7 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { navigateFilter } from "@/lib/filter-url"
+import { formatRentangTanggal } from "@/lib/format"
 import type { Pagination as PaginationData } from "@/types"
 
 interface AnnouncementCard {
@@ -301,7 +302,7 @@ export default function AnnouncementsIndex({
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
-                    {item.starts_at || "-"} → {item.ends_at || "-"}
+                    {formatRentangTanggal(item.starts_at, item.ends_at)}
                   </td>
                   <td className="tabular-nums px-3 py-3 text-sm">{item.sort_order}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">

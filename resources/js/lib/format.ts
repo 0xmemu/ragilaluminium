@@ -35,6 +35,39 @@ export function formatDateTime(value: string | number | Date | null | undefined)
   return formatDate(value, true)
 }
 
+/** Tanggal ringkas (gaya medium) untuk rentang; null bila tidak ada/nilai rusak. */
+function tanggalRingkas(value: string | number | Date | null | undefined): string | null {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(date)
+}
+
+/**
+ * Rentang berlaku yang terbaca manusia untuk entitas berjadwal (bar promo,
+ * kampanye, voucher): "1 Jul 2026 → 30 Sep 2026".
+ *
+ * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang:
+ * penyaring tayang memperlakukan tanggal mulai kosong sebagai "sudah boleh
+ * tampil" dan tanggal akhir kosong sebagai "tanpa batas akhir". Karena itu
+ * kedua sisi kosong ditulis sekali saja ("Tanpa batas"), bukan "- → -", dan
+ * sisi yang kosong disebut dengan kata, bukan tanda hubung.
+ */
+export function formatRentangTanggal(
+  mulai: string | number | Date | null | undefined,
+  akhir: string | number | Date | null | undefined,
+): string {
+  const awal = tanggalRingkas(mulai)
+  const ujung = tanggalRingkas(akhir)
+
+  if (!awal && !ujung) return "Tanpa batas"
+  if (awal && !ujung) return `Mulai ${awal}`
+  if (!awal && ujung) return `Sampai ${ujung}`
+
+  return `${awal} → ${ujung}`
+}
+
 /** Singkatan yang harus tetap kapital penuh (bukan Title Case). */
 const HUMANIZE_ACRONYMS: Record<string, string> = {
   cod: "COD",

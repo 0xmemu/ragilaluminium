@@ -6,7 +6,7 @@ import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatNumber } from "@/lib/format"
+import { formatNumber, formatRentangTanggal } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 interface CampaignRow {
@@ -328,7 +328,7 @@ export default function PromotionOverview({
                   <li key={item.id} className="rounded-lg border border-border bg-card p-3 shadow-soft">
                     <p className="line-clamp-2 text-sm font-medium text-foreground">{item.text}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {formatDay(item.starts_at)} → {formatDay(item.ends_at)}
+                      {formatRentangTanggal(item.starts_at, item.ends_at)}
                     </p>
                   </li>
                 ))}
