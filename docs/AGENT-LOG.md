@@ -2871,3 +2871,10 @@ Owner bertanya "rawan?" atas tiga tempat yang saya sebut tidak perlu diubah pada
 Verifikasi: 7 test penjaga di AdminSortOrderBaseOneTest lulus (66 assertions) termasuk tiga kasus baru: urutkan masalah solusi menulis 1-based dan menolak 0, edit masalah solusi dengan nomor warisan 0 tetap bisa disimpan, galeri foto baru memakai nomor berikutnya dan menolak 0; 52 test terkait lulus (656 assertions); typecheck 0; build 0; live: form edit Masalah & Solusi tidak menampilkan field Urutan (sesuai transform baru).
 Sisa yang masih 0-based dan benar-benar aman (angkanya tidak tampil ke admin, dan tidak ada validasi min:1 yang bisa bentrok): sub_models (daftar menampilkan kolom No = nomor baris, bukan sort_order), cms_testimonials (kolom Urutan hanya di tabel tab foto yang sudah dialihkan), dan cms_model_products (form-nya tidak lagi memuat sort_order setelah perubahan agent lain).
 Catatan kolaborasi: GalleryItemController.php dan GalleryForm.tsx sedang memuat kerja agent lain (peralihan tautan balik ke menu Hasil Pemasangan, validasi media_asset_id). Versi yang saya commit untuk kedua berkas itu disusun ulang dari HEAD ditambah perubahan saya, supaya pekerjaan mereka tidak ikut terbawa.
+
+## 2026-09-29 23:40 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner minta layout baris isian form ulasan dijadikan dua baris.
+Perubahan: kelas grid isian setelah Foto ulasan diubah dari empat kolom (xl:grid-cols-4) menjadi dua kolom sehingga menjadi dua baris; marketplace tetap satu baris karena hanya dua isian.
+Dampak spec: tidak berubah.
+Verifikasi: 25 tes ulasan passed; ESLint + typecheck + build bersih; browser terukur 1440 px = 2 baris x 2 kolom lebar sama, 390 px = satu kolom tanpa overflow.
+Agent: zcode-retur
