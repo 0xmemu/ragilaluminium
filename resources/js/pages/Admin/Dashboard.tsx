@@ -274,10 +274,14 @@ function DensityChip({ label, value }: { label: string; value: React.ReactNode }
   )
 }
 
-const ATTENTION_TONE: Record<string, string> = {
-  high: "bg-destructive",
-  medium: "bg-warning",
-  low: "bg-info",
+/**
+ * Nada visual per tingkat kepentingan. Angka ikut berwarna nada ini, bukan merah
+ * untuk semuanya, supaya item mendesak benar-benar menonjol dibanding yang biasa.
+ */
+const ATTENTION_TONE: Record<string, { dot: string; teks: string }> = {
+  high: { dot: "bg-destructive", teks: "text-destructive" },
+  medium: { dot: "bg-warning", teks: "text-warning" },
+  low: { dot: "bg-info", teks: "text-foreground" },
 }
 
 /**
@@ -359,46 +363,46 @@ export default function Dashboard({
           </div>
         ) : null}
 
-        {/* Antrean kerja utama - order selalu didahulukan dari alert pendukung */}
-        <section className="grid gap-4">
-          <SectionCard
-            title="Antrean tindakan hari ini"
-            icon="alert-circle"
-            description="Prioritas order yang perlu segera diproses admin."
-            className="lg:col-span-12"
-            contentClassName="p-0"
-          >
-            {attention.length ? (
-              <ul className="divide-y divide-border">
-                {attention.map((item) => (
-                  <li key={item.key}>
-                    <Link
-                      href={attentionHref(item)}
-                      className="flex items-center justify-between gap-3 px-5 py-3 transition hover:bg-muted/60"
-                    >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span aria-hidden="true" className={"size-1.5 shrink-0 rounded-full " + (ATTENTION_TONE[item.severity ?? "medium"] ?? "bg-destructive")} />
-                        <span className="text-pretty text-[13px] leading-5 text-foreground">
-                          {item.label}
-                        </span>
+        {/* Antrean kerja utama. Petak ringkas, bukan daftar selebar halaman:
+            daftar baris penuh menyisakan rongga ~1300px per baris sehingga
+            halaman terasa kosong dan KPI bisnis terdorong jauh ke bawah. */}
+        <SectionCard
+          title="Antrean tindakan hari ini"
+          icon="alert-circle"
+          description="Pekerjaan yang perlu ditindaklanjuti admin: pesanan, pesan WhatsApp, dan media."
+        >
+          {attention.length ? (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {attention.map((item) => {
+                const nada = ATTENTION_TONE[item.severity ?? "medium"] ?? ATTENTION_TONE.high
+                return (
+                  <Link
+                    key={item.key}
+                    href={attentionHref(item)}
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border bg-surface/60 px-3.5 py-2.5 transition hover:border-primary/40 hover:bg-muted"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span aria-hidden="true" className={"size-1.5 shrink-0 rounded-full " + nada.dot} />
+                      <span className="text-pretty text-[13px] leading-5 text-foreground">
+                        {item.label}
                       </span>
-                      <span className="tabular-nums shrink-0 text-sm font-semibold text-destructive">
-                        {formatNumber(item.count)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex items-center gap-3 px-5 py-6">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-                  <Icon name="check-circle" className="size-4" aria-hidden="true" />
-                </span>
-                <p className="text-[13px] text-muted-foreground">Tidak ada pekerjaan yang perlu ditindaklanjuti.</p>
-              </div>
-            )}
-          </SectionCard>
-        </section>
+                    </span>
+                    <span className={"tabular-nums shrink-0 text-sm font-semibold " + nada.teks}>
+                      {formatNumber(item.count)}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 py-1">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                <Icon name="check-circle" className="size-4" aria-hidden="true" />
+              </span>
+              <p className="text-[13px] text-muted-foreground">Tidak ada pekerjaan yang perlu ditindaklanjuti.</p>
+            </div>
+          )}
+        </SectionCard>
 
         {/* Row 1 - Omzet | Performa Toko */}
         <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
