@@ -4,6 +4,7 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -30,14 +31,14 @@ interface TestimonialRecord {
 /**
  * Satu foto pada daftar foto ulasan.
  *
- * `kind: "library"` berarti foto dipilih dari Media Library dan dikirim sebagai
- * id aset (server yang menyelesaikan URL-nya, jadi URL basi tidak tersimpan).
- * `kind: "url"` berarti URL tempelan admin atau foto lama yang belum punya
- * aset, dikirim apa adanya.
+ * Dua sumber, dua kolom: foto dari Media Library dikirim sebagai id aset
+ * (`media_asset_ids`, skema yang sama dengan form admin lain sehingga server
+ * yang menyelesaikan URL-nya), sedangkan URL tempelan dan foto warisan dikirim
+ * apa adanya lewat `image_urls` (skema lama, tetap dipakai supaya tautan luar
+ * tidak hilang).
  */
 type PhotoRow = {
   key: string
-  kind: "library" | "url"
   url: string
   assetId?: string
   label?: string
@@ -84,6 +85,8 @@ export default function TestimonialForm({
     source: string
     location: string
     product_id: string
+    /** Foto dari Media Library, berurutan seperti skema form admin lain. */
+    media_asset_ids: number[]
     sort_order: number
     published: boolean
     moderation_status: string
@@ -98,6 +101,7 @@ export default function TestimonialForm({
     source: testimonial?.source ?? (isMarketplaceIntent ? sources[0] ?? "shopee" : "website"),
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
+    media_asset_ids: [],
     sort_order: testimonial?.sort_order ?? 0,
     published: testimonial?.published ?? isMarketplaceIntent,
     moderation_status: testimonial?.moderation_status ?? "approved",
@@ -105,23 +109,25 @@ export default function TestimonialForm({
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
 
-  // Daftar foto ulasan (permintaan owner 2026-09-29: satu ulasan boleh punya
-  // banyak foto dari Media Library, bukan hanya satu). Urutan daftar = urutan
-  // tampil; foto pertama adalah gambar utama yang dipakai kartu ringkas.
+  // Foto ulasan (permintaan owner 2026-09-29). Skemanya SAMA dengan form admin
+  // lain (ProductForm, ModelProducts, MasalahSolusi): daftar `media_asset_ids`
+  // berurutan, foto pertama = gambar utama. URL tempelan tetap memakai skema
+  // lama `image_urls` supaya tautan luar dan foto warisan tidak hilang.
   const nomorFoto = React.useRef(0)
   const [photos, setPhotos] = React.useState<PhotoRow[]>(() =>
     (testimonial?.photos ?? [])
       .filter((url): url is string => Boolean(url))
-      .map((url) => ({ key: `awal-${url}`, kind: "url" as const, url })),
+      // Penghitung lokal, bukan ref: mengubah ref saat render dilarang React.
+      .map((url, index) => ({ key: `awal-${index + 1}`, url })),
   )
   const [urlBaru, setUrlBaru] = React.useState("")
   const [pickerOpen, setPickerOpen] = React.useState(false)
 
   const photosPenuh = photos.length >= maxPhotos
-  // Galat foto datang dengan kunci yang dikirim server (photos/image_url/image),
-  // sedangkan `photos` dirakit saat submit sehingga bukan kunci data form.
+  // Galat foto datang dengan kunci yang dikirim server; `photos` dirakit saat
+  // submit sehingga bukan kunci data form.
   const galatForm = form.errors as Record<string, string | undefined>
-  const galatFoto = galatForm.photos ?? galatForm.image_url ?? galatForm.image
+  const galatFoto = galatForm.media_asset_ids ?? galatForm.image_urls ?? galatForm.image_url ?? galatForm.image
 
   function tambahDariLibrary(media: PickedMedia[]) {
     if (media.length === 0) return
@@ -133,7 +139,6 @@ export default function TestimonialForm({
           nomorFoto.current += 1
           return {
             key: `lib-${asset.assetId}-${nomorFoto.current}`,
-            kind: "library" as const,
             url: asset.thumbUrl,
             assetId: String(asset.assetId),
             label: asset.label,
@@ -147,7 +152,7 @@ export default function TestimonialForm({
     const url = urlBaru.trim()
     if (url === "" || photosPenuh) return
     nomorFoto.current += 1
-    setPhotos((current) => [...current, { key: `url-${nomorFoto.current}`, kind: "url", url }])
+    setPhotos((current) => [...current, { key: `url-${nomorFoto.current}`, url }])
     setUrlBaru("")
   }
 
@@ -155,12 +160,24 @@ export default function TestimonialForm({
     setPhotos((current) => current.filter((row) => row.key !== key))
   }
 
-  /** Jadikan foto ini gambar utama (dipindah ke urutan pertama). */
-  function jadikanUtama(key: string) {
+  /** Geser foto satu posisi ke kiri/kanan; urutan daftar = urutan tampil. */
+  function geserFoto(key: string, arah: -1 | 1) {
     setPhotos((current) => {
-      const dipilih = current.find((row) => row.key === key)
-      if (!dipilih) return current
-      return [dipilih, ...current.filter((row) => row.key !== key)]
+      const dari = current.findIndex((row) => row.key === key)
+      if (dari < 0) return current
+      // Geser hanya di dalam kelompoknya (Library atau URL). Skema simpan
+      // menaruh foto Library lebih dulu, jadi mengizinkan URL naik melewati
+      // foto Library akan membuat urutan di layar berbeda dari hasil simpan.
+      const row = current[dari]
+      let ke = dari + arah
+      while (ke >= 0 && ke < current.length && Boolean(current[ke].assetId) !== Boolean(row.assetId)) {
+        ke += arah
+      }
+      if (ke < 0 || ke >= current.length) return current
+      const next = [...current]
+      const [dipindah] = next.splice(dari, 1)
+      next.splice(ke, 0, dipindah)
+      return next
     })
   }
 
@@ -199,13 +216,13 @@ export default function TestimonialForm({
           event.preventDefault()
           form.transform((data) => ({
             ...data,
-            // Foto dikirim berurutan; server menyelesaikan URL aset library
-            // sendiri lalu menetapkan foto pertama sebagai gambar utama.
-            photos: photos.map((row) =>
-              row.kind === "library" && row.assetId
-                ? { kind: "library", asset_id: Number(row.assetId) }
-                : { kind: "url", url: row.url },
-            ),
+            // Skema sama dengan form admin lain: `media_asset_ids` berurutan
+            // (foto pertama = gambar utama) untuk aset Media Library, dan
+            // `image_urls` untuk URL tempelan/foto warisan.
+            media_asset_ids: photos
+              .filter((row) => row.assetId)
+              .map((row) => Number(row.assetId)),
+            image_urls: photos.filter((row) => !row.assetId).map((row) => row.url),
             ...(editing ? { _method: "put" } : {}),
           }))
           form.post(submitUrl, { forceFormData: true })
@@ -231,50 +248,76 @@ export default function TestimonialForm({
             >
               <div className="space-y-3">
                 {photos.length ? (
-                  <ul className="flex flex-wrap gap-3" aria-label="Daftar foto ulasan">
+                  // Grid, badge, geser, dan hapus mengikuti pola galeri Model
+                  // Produk supaya cara kerjanya sama di seluruh panel admin.
+                  <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Daftar foto ulasan">
                     {photos.map((row, index) => (
-                      <li
-                        key={row.key}
-                        className="w-28 space-y-1.5 rounded-md border border-border bg-card p-1.5"
-                      >
-                        <div className="relative size-24 overflow-hidden rounded-md border border-border bg-muted">
-                          <img src={row.url} alt={row.label ?? "Pratinjau foto ulasan"} className="size-full object-cover" />
+                      <li key={row.key} className="group relative">
+                        <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+                          <img
+                            src={row.url}
+                            alt={row.label ?? `Foto ulasan ${index + 1}`}
+                            className="size-full object-cover"
+                          />
                           {index === 0 ? (
-                            <span className="absolute left-1 top-1 rounded bg-foreground/85 px-1.5 py-0.5 text-[10px] font-semibold text-background">
+                            <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
                               Utama
                             </span>
                           ) : null}
+                          {!row.assetId ? (
+                            <span
+                              className="absolute right-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-semibold text-background"
+                              title="Foto dari URL tempelan atau foto lama"
+                            >
+                              URL
+                            </span>
+                          ) : null}
                         </div>
-                        {row.label ? (
-                          <p className="truncate text-[10px] text-muted-foreground" title={row.label}>
-                            {row.label}
-                          </p>
-                        ) : null}
-                        <div className="flex items-center justify-between gap-1">
-                          {index > 0 ? (
+                        <div className="mt-1 flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-0.5">
                             <button
                               type="button"
-                              onClick={() => jadikanUtama(row.key)}
-                              className="text-[11px] text-muted-foreground transition hover:text-foreground"
+                              onClick={() => geserFoto(row.key, -1)}
+                              disabled={index === 0}
+                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                              aria-label={`Geser foto ${index + 1} ke kiri`}
                             >
-                              Jadikan utama
+                              <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
                             </button>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground">Gambar utama</span>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => geserFoto(row.key, 1)}
+                              disabled={index === photos.length - 1}
+                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
+                              aria-label={`Geser foto ${index + 1} ke kanan`}
+                            >
+                              <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
                           <button
                             type="button"
                             onClick={() => hapusFoto(row.key)}
-                            className="text-[11px] text-destructive transition hover:underline"
+                            className="rounded p-0.5 text-muted-foreground transition hover:text-destructive"
+                            aria-label={`Hapus foto ${index + 1}`}
                           >
-                            Hapus
+                            <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
                           </button>
                         </div>
+                        {row.label ? (
+                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground" title={row.label}>
+                            {row.label}
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Belum ada foto.</p>
+                  <div className="rounded-md border border-dashed border-border py-8 text-center">
+                    <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Belum ada foto. Tambah dari Media Library atau tempel URL.
+                    </p>
+                  </div>
                 )}
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -285,6 +328,7 @@ export default function TestimonialForm({
                     disabled={photosPenuh}
                     title={photosPenuh ? `Maksimal ${maxPhotos} foto. Hapus satu foto dulu untuk menambah.` : undefined}
                   >
+                    <Icon name="images" className="size-4" aria-hidden="true" />
                     Tambah dari Media Library
                   </Button>
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -297,7 +341,7 @@ export default function TestimonialForm({
                           tambahUrl()
                         }
                       }}
-                      placeholder="Tempel URL gambar lalu tekan Tambah"
+                      placeholder="Tempel URL gambar untuk foto dari luar"
                       disabled={photosPenuh}
                       aria-label="URL gambar ulasan"
                       className="min-w-[16rem] flex-1"
@@ -314,7 +358,7 @@ export default function TestimonialForm({
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {photos.length} dari {maxPhotos} foto dipakai.
-                  {photos.length > 1 ? " Urutan tampil mengikuti urutan daftar ini." : ""}
+                  {photos.length > 1 ? " Urutan tampil mengikuti urutan grid ini." : ""}
                 </p>
               </div>
             </Field>

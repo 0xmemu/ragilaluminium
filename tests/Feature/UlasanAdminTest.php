@@ -454,12 +454,10 @@ class UlasanAdminTest extends TestCase
                 'message' => 'Fotonya banyak',
                 'source' => 'website',
                 'published' => true,
-                // Urutan: library, URL luar, library. Foto pertama jadi utama.
-                'photos' => [
-                    ['kind' => 'library', 'asset_id' => $pertama->id],
-                    ['kind' => 'url', 'url' => 'https://cdn.example.com/foto-luar.jpg'],
-                    ['kind' => 'library', 'asset_id' => $kedua->id],
-                ],
+                // Skema kanonik: daftar id aset berurutan + URL tempelan.
+                // Foto pertama jadi gambar utama.
+                'media_asset_ids' => [$pertama->id, $kedua->id],
+                'image_urls' => ['https://cdn.example.com/foto-luar.jpg'],
             ])
             ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
 
@@ -469,13 +467,14 @@ class UlasanAdminTest extends TestCase
 
         // Gambar utama = foto pertama; sisanya tersimpan sebagai foto tambahan
         // berurutan (kolom image_url/image_urls tetap dipakai supaya seluruh
-        // konsumen lama tidak perlu berubah).
+        // konsumen lama tidak perlu berubah). Urutan simpan mengikuti skema
+        // form admin lain: foto Library dulu berurutan, lalu URL tempelan.
         $this->assertSame($urlPertama, $ulasan->image_url);
-        $this->assertSame(['https://cdn.example.com/foto-luar.jpg', $urlKedua], $ulasan->image_urls);
+        $this->assertSame([$urlKedua, 'https://cdn.example.com/foto-luar.jpg'], $ulasan->image_urls);
         $this->assertSame(
-            [$urlPertama, 'https://cdn.example.com/foto-luar.jpg', $urlKedua],
+            [$urlPertama, $urlKedua, 'https://cdn.example.com/foto-luar.jpg'],
             $ulasan->imagesPayload(),
-            'urutan foto mengikuti urutan form, gambar utama paling depan',
+            'foto library berurutan lebih dulu, lalu URL tempelan',
         );
     }
 
@@ -493,15 +492,16 @@ class UlasanAdminTest extends TestCase
             'published' => true,
         ]);
 
-        // Form baru selalu mengirim kunci photos; daftar kosong berarti admin
-        // menghapus semua foto dan tidak boleh diisi ulang dari nilai lama.
+        // Form baru selalu mengirim kunci daftar foto; daftar kosong berarti
+        // admin menghapus semua foto dan tidak boleh diisi ulang dari nilai lama.
         $this->actingAs($admin)
             ->put(route('admin.testimonials.update', $ulasan), [
                 'customer_name' => 'Sari',
                 'message' => 'Dengan foto',
                 'source' => 'website',
                 'published' => true,
-                'photos' => [],
+                'media_asset_ids' => [],
+                'image_urls' => [],
             ])
             ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
 
@@ -515,9 +515,15 @@ class UlasanAdminTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        $photos = [];
-        for ($i = 1; $i <= CmsTestimonial::MAX_PHOTOS + 1; $i++) {
-            $photos[] = ['kind' => 'url', 'url' => 'https://cdn.example.com/foto-'.$i.'.jpg'];
+        // Masing-masing daftar masih di bawah batas, tetapi gabungannya
+        // melebihi batas total foto per ulasan.
+        $aset = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $aset[] = $this->asetMedia('aset-'.$i)->id;
+        }
+        $urls = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $urls[] = 'https://cdn.example.com/foto-'.$i.'.jpg';
         }
 
         $this->actingAs($admin)
@@ -525,9 +531,10 @@ class UlasanAdminTest extends TestCase
                 'customer_name' => 'Terlalu Banyak',
                 'source' => 'website',
                 'published' => true,
-                'photos' => $photos,
+                'media_asset_ids' => $aset,
+                'image_urls' => $urls,
             ])
-            ->assertSessionHasErrors('photos');
+            ->assertSessionHasErrors('media_asset_ids');
 
         $this->assertSame(0, CmsTestimonial::query()->count());
     }

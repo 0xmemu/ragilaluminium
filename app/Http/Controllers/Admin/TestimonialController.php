@@ -674,16 +674,15 @@ class TestimonialController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'image_url' => ['nullable', 'string', 'max:2048'],
-            'image_urls' => ['nullable', 'array', 'max:20'],
+            // Skema media form admin: daftar id aset Media Library berurutan
+            // (foto pertama = gambar utama), sama seperti ProductForm,
+            // ModelProducts, dan MasalahSolusi.
+            'media_asset_ids' => ['nullable', 'array', 'max:'.CmsTestimonial::MAX_PHOTOS],
+            'media_asset_ids.*' => ['integer', 'exists:media_assets,id'],
+            // Skema lama untuk URL tempelan dan foto warisan; tetap dipertahankan
+            // supaya tautan luar (screenshot lama) tidak hilang.
+            'image_urls' => ['nullable', 'array', 'max:'.CmsTestimonial::MAX_PHOTOS],
             'image_urls.*' => ['nullable', 'string', 'max:2048'],
-            // Daftar foto berurutan dari form (permintaan owner 2026-09-29:
-            // satu ulasan boleh punya banyak foto dari Media Library, bukan
-            // hanya satu). Foto pertama menjadi gambar utama.
-            'photos' => ['nullable', 'array', 'max:'.CmsTestimonial::MAX_PHOTOS],
-            'photos.*' => ['array'],
-            'photos.*.kind' => ['required_with:photos.*', Rule::in(['library', 'url'])],
-            'photos.*.asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
-            'photos.*.url' => ['nullable', 'string', 'max:2048'],
             'image' => ['nullable', 'image', 'max:5120'],
             'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -697,18 +696,20 @@ class TestimonialController extends Controller
         $validated['rating'] = $validated['rating'] ?? null;
         $validated['message'] = filled($validated['message'] ?? null) ? trim((string) $validated['message']) : null;
 
-        // Form baru selalu mengirim kunci `photos` (walau kosong). Kehadirannya
+        // Form baru selalu mengirim kunci daftar foto (walau kosong). Kehadirannya
         // berarti daftar foto di form adalah sumber kebenaran, sehingga jalur
         // warisan "pertahankan gambar lama" di bawah tidak boleh dipakai: kalau
         // tidak, foto yang dihapus admin akan muncul kembali.
-        $kirimDaftarFoto = $request->exists('photos');
+        $kirimDaftarFoto = $request->exists('media_asset_ids') || $request->exists('image_urls');
 
         $imageUrl = filled($validated['image_url'] ?? null) ? trim((string) $validated['image_url']) : null;
+        $imageUrlEksplisit = $imageUrl !== null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $name = MediaNamer::onDisk('testimonial', $file->getClientOriginalExtension() ?: 'jpg', 'media', 'testimonials');
             $path = $file->storeAs('testimonials', $name, 'media');
             $imageUrl = Storage::disk('media')->url($path);
+            $imageUrlEksplisit = true;
         } elseif ($imageUrl === null && $existing !== null && ! $request->exists('image_url') && ! $kirimDaftarFoto) {
             $imageUrl = $existing->image_url;
         }
@@ -720,6 +721,7 @@ class TestimonialController extends Controller
             $asset = MediaAsset::query()->find((int) $mediaAssetId);
             if ($asset) {
                 $imageUrl = $asset->urlFor('pdp') ?? $asset->urlFor('card') ?? $asset->urlFor('thumb') ?? $imageUrl;
+                $imageUrlEksplisit = true;
             }
         }
         unset($validated['media_asset_id']);
@@ -727,36 +729,45 @@ class TestimonialController extends Controller
         $validated['image_url'] = $imageUrl;
         unset($validated['image']);
 
-        // Foto tambahan (multi-gambar): URL baris-per-baris dari form admin.
+        // Daftar foto berurutan (form baru, 2026-09-29) memakai skema yang sama
+        // dengan form admin lain: `media_asset_ids` berurutan untuk aset Media
+        // Library, `image_urls` untuk URL tempelan/foto warisan. URL aset
+        // ditanyakan ke server (klien hanya mengirim id), lalu seluruh foto
+        // dirapikan: unik dan berurutan. Foto pertama jadi gambar utama; kolom
+        // image_url/image_urls tetap dipakai supaya seluruh konsumen lama
+        // (kartu, scope, ekspor) tidak perlu berubah.
+        $assetUrls = $this->resolveMediaAssetIds($validated['media_asset_ids'] ?? []);
         $imageUrls = array_values(array_filter(array_map(
             static fn ($url) => is_string($url) ? trim($url) : '',
             $validated['image_urls'] ?? [],
         )));
 
-        // Daftar foto berurutan (form baru, 2026-09-29). Aset Media Library
-        // diselesaikan server (URL publiknya yang dipakai, bukan URL pratinjau
-        // dari klien), lalu seluruh foto dirapikan: unik, berurutan, dan foto
-        // pertama ditetapkan sebagai gambar utama. Kolom image_url/image_urls
-        // tetap dipakai supaya seluruh konsumen lama (kartu, scope, ekspor)
-        // tidak perlu berubah.
-        $photos = $this->resolvePhotos($validated['photos'] ?? []);
-        if ($photos !== []) {
-            $imageUrl = $photos[0];
-            $imageUrls = array_slice($photos, 1);
+        $semuaFoto = array_values(array_unique([...$assetUrls, ...$imageUrls]));
+        if (count($semuaFoto) > CmsTestimonial::MAX_PHOTOS) {
+            throw ValidationException::withMessages([
+                'media_asset_ids' => 'Maksimal '.CmsTestimonial::MAX_PHOTOS.' foto per ulasan (termasuk foto dari URL).',
+            ]);
+        }
+
+        if ($imageUrlEksplisit && $imageUrl !== null) {
+            // URL utama dikirim eksplisit (alur screenshot marketplace dan tes
+            // lama): pertahankan sebagai gambar utama, sisanya jadi tambahan.
+            $imageUrls = array_values(array_filter($semuaFoto, fn ($url) => $url !== $imageUrl));
             $validated['image_url'] = $imageUrl;
+        } elseif ($semuaFoto !== []) {
+            $validated['image_url'] = $semuaFoto[0];
+            $imageUrls = array_slice($semuaFoto, 1);
         } elseif ($kirimDaftarFoto) {
             // Daftar foto kosong = admin menghapus semua foto.
-            $imageUrl = null;
-            $imageUrls = [];
             $validated['image_url'] = null;
+            $imageUrls = [];
         }
-        unset($validated['photos']);
+        unset($validated['media_asset_ids']);
+        $validated['image_urls'] = $imageUrls !== [] ? array_values($imageUrls) : null;
 
-        if ($imageUrls !== [] && $imageUrl === null) {
-            $imageUrl = $imageUrls[0];
-            $validated['image_url'] = $imageUrl;
-        }
-        $validated['image_urls'] = $imageUrls !== [] ? $imageUrls : null;
+        // Nilai yang dipakai pemeriksaan wajib-isi di bawah: gambar utama hasil
+        // daftar foto sudah masuk $validated['image_url'] di atas.
+        $imageUrl = $validated['image_url'];
 
         $isMarketplace = in_array((string) $validated['source'], CmsTestimonial::MARKETPLACE_SOURCES, true);
 
@@ -778,45 +789,37 @@ class TestimonialController extends Controller
     }
 
     /**
-     * Ubah daftar foto dari form menjadi daftar URL berurutan.
+     * Ubah daftar id aset Media Library menjadi daftar URL publik berurutan.
      *
-     * Baris `library` dikirim sebagai id aset Media Library, jadi URL publik
-     * aset ditanyakan ke server (klien hanya mengirim URL pratinjau untuk
-     * dilihat admin). Baris `url` dipakai apa adanya untuk tautan luar atau
-     * foto lama. Hasilnya unik dan tetap berurutan supaya foto pertama bisa
-     * ditetapkan sebagai gambar utama.
+     * Skema yang sama dipakai ProductForm, ModelProducts, dan MasalahSolusi:
+     * klien mengirim id aset, server yang menyelesaikan URL-nya sehingga URL
+     * basi atau URL pratinjau tidak pernah tersimpan. Hasilnya unik dan tetap
+     * berurutan supaya foto pertama bisa ditetapkan sebagai gambar utama.
      *
-     * @param  list<array{kind?: string, asset_id?: int|string|null, url?: string|null}>  $rows
+     * @param  list<int|string>  $assetIds
      * @return list<string>
      */
-    protected function resolvePhotos(array $rows): array
+    protected function resolveMediaAssetIds(array $assetIds): array
     {
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn ($id) => is_numeric($id) ? (int) $id : 0,
+            $assetIds,
+        ))));
+
+        if ($ids === []) {
+            return [];
+        }
+
         $urls = [];
-
-        foreach ($rows as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            if (($row['kind'] ?? null) === 'library') {
-                $asset = MediaAsset::query()->find((int) ($row['asset_id'] ?? 0));
-                $url = $asset
-                    ? ($asset->urlFor('pdp') ?? $asset->urlFor('card') ?? $asset->urlFor('thumb'))
-                    : null;
-                if (filled($url)) {
-                    $urls[] = (string) $url;
-                }
-
-                continue;
-            }
-
-            $url = trim((string) ($row['url'] ?? ''));
-            if ($url !== '') {
-                $urls[] = $url;
+        foreach (MediaAsset::query()->whereIn('id', $ids)->get() as $asset) {
+            $url = $asset->urlFor('pdp') ?? $asset->urlFor('card') ?? $asset->urlFor('thumb');
+            if (filled($url)) {
+                $urls[(int) $asset->id] = (string) $url;
             }
         }
 
-        return array_values(array_unique($urls));
+        // Urutan mengikuti urutan kiriman form, bukan urutan hasil query.
+        return array_values(array_filter(array_map(fn (int $id) => $urls[$id] ?? null, $ids)));
     }
 
     protected function testimonialsPageId(): int
