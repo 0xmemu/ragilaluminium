@@ -68,7 +68,7 @@ export default function MasalahSolusiIndex({
     published: pageMeta.published,
   })
   const reorderForm = useForm({
-    rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
+    rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
   })
   // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
   // dan tombol header tidak perlu berubah.
@@ -83,7 +83,8 @@ export default function MasalahSolusiIndex({
     snapshot: initialRows,
     form: reorderForm,
     url: reorderUrl,
-    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    // Nomor urut 1-based: baris pertama dapat 1, bukan 0 (kontrak nomor urut admin).
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
     numbering: true,
     submitOptions: { preserveScroll: true },
   })

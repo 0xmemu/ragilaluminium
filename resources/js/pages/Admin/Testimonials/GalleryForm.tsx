@@ -18,11 +18,14 @@ interface GalleryRecord {
 
 export default function GalleryForm({
   item,
+  nextSortOrder = 1,
   submitUrl,
   indexUrl,
   backUrl,
 }: {
   item: GalleryRecord | null
+  /** Nomor urut usulan untuk baris baru (selalu di bawah baris yang ada). */
+  nextSortOrder?: number
   submitUrl: string
   indexUrl: string
   backUrl?: string | null
@@ -31,7 +34,7 @@ export default function GalleryForm({
   const form = useForm({
     label: item?.label ?? "",
     image_url: item?.image_url ?? "",
-    sort_order: item?.sort_order ?? 0,
+    sort_order: item?.sort_order ?? nextSortOrder,
     published: item?.published ?? true,
     object_key: "",
     media_asset_id: "",
@@ -107,10 +110,16 @@ export default function GalleryForm({
                 </Button>
               </Field>
               <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
-                <Field id="gallery-sort" label="Urutan" error={form.errors.sort_order} className="w-28">
+                <Field
+                  id="gallery-sort"
+                  label="Urutan"
+                  error={form.errors.sort_order}
+                  className="w-28"
+                  hint="Angka 1 tampil paling awal."
+                >
                   <Input
                     type="number"
-                    min="0"
+                    min="1"
                     value={form.data.sort_order}
                     onChange={(event) => form.setData("sort_order", Number(event.target.value))}
                   />

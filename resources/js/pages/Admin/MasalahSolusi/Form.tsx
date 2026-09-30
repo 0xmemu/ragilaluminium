@@ -194,6 +194,10 @@ export default function MasalahSolusiForm({
       solution_options: JSON.stringify(options.filter((option) => option.title.trim() !== "")),
       media_asset_ids: pendingPhotos.map((photo) => photo.assetId),
       photo_alts: pendingPhotos.map((photo) => photo.alt),
+      // Urutan hanya diisi saat membuat; saat mengedit biarkan nomor lama di
+      // server yang berlaku (field-nya pun tidak ditampilkan), supaya nilai
+      // warisan yang kebetulan 0 tidak menabrak validasi min:1.
+      ...(item ? { sort_order: undefined } : {}),
     }))
 
     if (method === "put") {

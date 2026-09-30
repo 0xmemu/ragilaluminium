@@ -172,7 +172,7 @@ class MasalahSolusiController extends Controller
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['required', 'integer', 'exists:cms_problems_solutions,id'],
-            'rows.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'rows.*.sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         ProblemsSolutionsSettings::reorder($validated['rows']);

@@ -16,11 +16,18 @@ use Inertia\Response;
 
 class GalleryItemController extends Controller
 {
+    /** Nomor urut baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) CmsGalleryItem::query()->max('sort_order') + 1;
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
             'backUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
             'item' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.gallery-items.store'),
             'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
             'presignUrl' => route('admin.media.presign'),
@@ -30,6 +37,7 @@ class GalleryItemController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request);
+        $validated['sort_order'] ??= $this->nextSortOrder();
         $image = $this->resolveImage($request, existing: null);
         $validated['cms_page_id'] = InstallationPageSettings::pageId();
 
@@ -60,7 +68,10 @@ class GalleryItemController extends Controller
     public function update(Request $request, CmsGalleryItem $galleryItem): RedirectResponse
     {
         $image = $this->resolveImage($request, existing: $galleryItem);
-        $galleryItem->update($image + $this->validated($request));
+        $validated = $this->validated($request);
+        // Nomor lama dipertahankan bila kolomnya dikosongkan.
+        $validated['sort_order'] ??= (int) $galleryItem->sort_order;
+        $galleryItem->update($image + $validated);
 
         return redirect()
             ->route('admin.testimonials.index', ['tab' => 'foto'])
@@ -88,12 +99,14 @@ class GalleryItemController extends Controller
             'label' => ['nullable', 'string', 'max:255'],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'object_key' => ['nullable', 'string', 'max:255'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'published' => ['boolean'],
         ]);
 
         $validated['published'] = $request->boolean('published');
-        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        // Kosong berarti "belum ditentukan": baris baru ditaruh paling belakang,
+        // baris lama mempertahankan nomornya (lihat store/update).
+        $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
         $validated['label'] = $validated['label'] ?: null;
 
         return $validated;
