@@ -2,7 +2,7 @@ import * as React from "react"
 import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
@@ -90,7 +90,6 @@ export default function TestimonialForm({
     product_id: string
     /** Foto dari Media Library, berurutan seperti skema form admin lain. */
     media_asset_ids: number[]
-    published: boolean
     moderation_status: string
   }>({
     customer_name: testimonial?.customer_name ?? "",
@@ -104,7 +103,6 @@ export default function TestimonialForm({
     location: testimonial?.location ?? "",
     product_id: testimonial?.product_id?.toString() ?? "",
     media_asset_ids: [],
-    published: testimonial?.published ?? isMarketplaceIntent,
     moderation_status: testimonial?.moderation_status ?? "approved",
   })
 
@@ -500,15 +498,6 @@ export default function TestimonialForm({
                   ))}
                 </Select>
               </Field>
-            ) : null}
-
-            {!isMarketplaceIntent ? (
-              <CheckboxField
-                id="testimonial-published"
-                checked={form.data.published}
-                onChange={(checked) => form.setData("published", checked)}
-                label="Tampilkan di storefront"
-              />
             ) : null}
           </div>
         </section>

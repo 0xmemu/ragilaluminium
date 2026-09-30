@@ -225,6 +225,55 @@ class UlasanAdminTest extends TestCase
         $this->assertFalse($testimonial->fresh()->published);
     }
 
+    /**
+     * Keputusan owner 2026-09-29: toggle "Tampilkan di storefront" dihapus dari
+     * form, ulasan langsung aktif saat dibuat. Menyembunyikan tetap bisa lewat
+     * aksi di daftar.
+     */
+    public function test_ulasan_baru_langsung_aktif_tanpa_toggle(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Form baru tidak mengirim kunci published sama sekali.
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Langsung Aktif',
+                'message' => 'Tanpa toggle',
+                'source' => 'website',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $ulasan = CmsTestimonial::query()->firstOrFail();
+        $this->assertTrue((bool) $ulasan->published, 'ulasan baru langsung aktif');
+    }
+
+    /**
+     * Menyunting ulasan yang sudah disembunyikan TIDAK boleh menyalakannya lagi
+     * hanya karena form tidak mengirim published.
+     */
+    public function test_menyunting_ulasan_tersembunyi_tidak_menyalakannya_lagi(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $halaman = CmsPage::create(['slug' => 'testimoni-sembunyi', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $ulasan = CmsTestimonial::create([
+            'cms_page_id' => $halaman->id,
+            'customer_name' => 'Disembunyikan',
+            'message' => 'Teks lama',
+            'source' => 'website',
+            'published' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.testimonials.update', $ulasan), [
+                'customer_name' => 'Disembunyikan',
+                'message' => 'Teks baru',
+                'source' => 'website',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse((bool) $ulasan->fresh()->published, 'status sembunyi dipertahankan');
+    }
+
     public function test_pengaturan_apa_kata_pelanggan_lists_and_updates_meta(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);

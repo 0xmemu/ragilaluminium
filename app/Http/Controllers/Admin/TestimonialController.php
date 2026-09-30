@@ -690,7 +690,14 @@ class TestimonialController extends Controller
         ]);
 
         $validated['customer_name'] = filled($validated['customer_name'] ?? null) ? trim((string) $validated['customer_name']) : 'Pelanggan';
-        $validated['published'] = $request->boolean('published');
+        // Toggle "Tampilkan di storefront" dihapus dari form (keputusan owner
+        // 2026-09-29): ulasan langsung aktif saat dibuat. Saat menyunting,
+        // status lama dipertahankan supaya ulasan yang sudah disembunyikan
+        // lewat aksi Sembunyikan di daftar tidak hidup lagi hanya karena
+        // disunting. Untuk menyembunyikan dipakai aksi di daftar.
+        $validated['published'] = $request->exists('published')
+            ? $request->boolean('published')
+            : ($existing?->published ?? true);
         // Form tidak lagi mengirim urutan (fitur dihapus owner 2026-09-29), jadi
         // saat menyunting urutan lama dipertahankan; hanya ulasan baru yang
         // mulai dari 0 dan bisa diatur lewat Urutkan di daftar.
