@@ -2680,3 +2680,10 @@ Perubahan: Testimonials/Form.tsx (payload media_asset_ids + image_urls, grid gay
 Dampak spec: tidak berubah (tanpa route/kolom/enum baru).
 Verifikasi: UlasanAdminTest 13 passed; suite terkait 47 passed; suite penuh 1311 passed, 1 failed (benturan migrasi agent lain, sudah dilaporkan); ESLint + typecheck + build + Vitest bersih; browser: multi-pilih 3 aset, badge Utama/URL, geser, tanpa overflow 390/1280.
 Agent: zcode-retur
+
+## 2026-09-29 20:45 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner menyorot dropdown rating di Tambah Ulasan (angka polos, minta bintang) dan meminta kolom Urutan dihapus karena fitur/skema belum matang.
+Perubahan: opsi rating jadi bintang + N bintang (label satu string, children array tidak didukung komponen Select); blok Urutan dihapus dari form; server mempertahankan sort_order lama saat update tanpa sort_order.
+Dampak spec: tidak berubah.
+Verifikasi: UlasanAdminTest 13 passed; ESLint + typecheck + build bersih; browser: opsi 1-5 bintang tampil, pemilihan bekerja, kolom Urutan hilang.
+Agent: zcode-retur
