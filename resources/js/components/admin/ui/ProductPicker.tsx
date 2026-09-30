@@ -171,8 +171,10 @@ export function ProductPicker({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-border">
+      {/* Table. Gulir vertikal di dalam tabel saja: tanpa ini popup yang
+          memuat picker bisa memanjang melebihi layar dan bagian atasnya keluar
+          layar (temuan owner 2026-09-29 di Media Library). */}
+      <div className="max-h-[22rem] overflow-y-auto rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
