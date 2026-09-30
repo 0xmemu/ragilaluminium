@@ -48,6 +48,11 @@ class WhatsAppPairingController extends Controller
             'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
             'disconnectUrl' => route('admin.whatsapp.pairing.disconnect'),
             'provider' => $service->connectionStatus()['default_provider'],
+            // Status awal dikirim sejak render pertama supaya halaman tidak
+            // sempat menampilkan section QR dan pairing code lalu berganti ke
+            // kartu terhubung (kedipan konten salah). Timeout diperpendek
+            // karena panggilan ini menahan render halaman.
+            'initialStatus' => $this->statusPayload(3),
             'flash' => [
                 'success' => session('whatsapp_success'),
                 'error' => session('whatsapp_error'),
@@ -88,15 +93,33 @@ class WhatsAppPairingController extends Controller
 
     public function status(): JsonResponse
     {
+        return response()->json($this->statusPayload());
+    }
+
+    /**
+     * Status gateway apa adanya, dipakai dua tempat: endpoint polling
+     * (status()) dan data awal halaman sambungkan nomor (show()).
+     *
+     * Satu pembangun dipakai bersama supaya keadaan yang dilihat admin pada
+     * render pertama identik dengan hasil polling berikutnya; kalau berbeda,
+     * halaman akan tampak berpindah sendiri tanpa sebab.
+     *
+     * Timeout diparamkan karena pemanggilan dari show() menahan render halaman,
+     * sedangkan pemanggilan dari polling tidak.
+     *
+     * @return array<string, mixed>
+     */
+    protected function statusPayload(int $timeoutSeconds = 5): array
+    {
         try {
-            $response = Http::timeout(5)->get($this->baseUrl().'/status');
+            $response = Http::timeout($timeoutSeconds)->get($this->baseUrl().'/status');
 
             if ($response->failed()) {
-                return response()->json([
+                return [
                     'status' => 'unreachable',
                     'statusText' => 'Gateway tidak merespons ('.(string) $response->status().')',
                     'phone' => '',
-                ]);
+                ];
             }
 
             $payload = $response->json() ?? [
@@ -124,13 +147,13 @@ class WhatsAppPairingController extends Controller
                 $merged['connected_phone'] = preg_replace('/[:@].*$/', '', (string) $merged['connected_phone']);
             }
 
-            return response()->json($merged);
+            return $merged;
         } catch (\Throwable $e) {
-            return response()->json([
+            return [
                 'status' => 'unreachable',
                 'statusText' => 'Gateway tidak dapat dijangkau',
                 'phone' => '',
-            ]);
+            ];
         }
     }
 

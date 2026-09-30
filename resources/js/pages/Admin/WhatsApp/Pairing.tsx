@@ -23,6 +23,18 @@ interface Props {
   refreshQrUrl: string
   disconnectUrl?: string
   provider: string
+  /**
+   * Status gateway saat halaman dirender server. Dipakai sebagai keadaan awal
+   * supaya halaman tidak sempat menampilkan section QR dan pairing code lalu
+   * berganti ke kartu terhubung (kedipan konten salah).
+   */
+  initialStatus?: {
+    status?: string
+    statusText?: string
+    has_session?: boolean
+    connected_phone?: string | null
+    session_name?: string | null
+  }
   flash: { success: string | null; error: string | null; code: string | null }
 }
 
@@ -48,14 +60,26 @@ export default function Pairing({
   codeUrl,
   refreshQrUrl,
   disconnectUrl = routeUrl("admin.whatsapp.pairing.disconnect"),
+  initialStatus,
   flash,
 }: Props) {
-  const [status, setStatus] = useState<string>("unknown")
-  const [statusText, setStatusText] = useState<string>("Status belum dimuat")
+  // Keadaan awal diambil dari server, bukan dari nilai kosong. Sebelumnya
+  // halaman selalu mulai dari "belum tahu", sehingga render pertama tampak
+  // seperti belum tersambung (lengkap dengan section QR dan pairing code) dan
+  // baru berganti setelah fetch status selesai: itu kedipan yang mengganggu.
+  const [status, setStatus] = useState<string>(initialStatus?.status ?? "unknown")
+  const [statusText, setStatusText] = useState<string>(
+    initialStatus?.statusText ?? "Status belum dimuat",
+  )
+  // Cap waktu cache-buster QR. Dibiarkan 0 di render pertama (dilarang memanggil
+  // Date.now saat render), lalu diisi oleh fetchStatus yang memang jalan segera
+  // setelah mount.
   const [qrTs, setQrTs] = useState<number>(0)
-  const [hasSession, setHasSession] = useState<boolean>(false)
-  const [connectedPhone, setConnectedPhone] = useState<string>("")
-  const [sessionName, setSessionName] = useState<string>("")
+  const [hasSession, setHasSession] = useState<boolean>(Boolean(initialStatus?.has_session))
+  const [connectedPhone, setConnectedPhone] = useState<string>(
+    (initialStatus?.connected_phone ?? "").replace(/[:@].*$/, ""),
+  )
+  const [sessionName, setSessionName] = useState<string>(initialStatus?.session_name ?? "")
   const [phone, setPhone] = useState<string>("")
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [qrError, setQrError] = useState<boolean>(false)
@@ -64,7 +88,10 @@ export default function Pairing({
   const [pairingNotice, setPairingNotice] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState<boolean>(false)
 
-  const wasLinkedRef = React.useRef<boolean>(false)
+  // Diisi dari keadaan awal supaya pengumuman "berhasil tersambung" hanya
+  // muncul saat perangkat benar-benar baru tersambung, bukan setiap kali
+  // halaman dibuka dalam keadaan sudah tersambung.
+  const wasLinkedRef = React.useRef<boolean>(initialStatus?.status === "open")
 
   const fetchStatus = React.useCallback((): void => {
     fetch(statusUrl, { headers: { Accept: "application/json" } })
