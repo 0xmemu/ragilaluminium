@@ -2687,3 +2687,11 @@ Perubahan: opsi rating jadi bintang + N bintang (label satu string, children arr
 Dampak spec: tidak berubah.
 Verifikasi: UlasanAdminTest 13 passed; ESLint + typecheck + build bersih; browser: opsi 1-5 bintang tampil, pemilihan bekerja, kolom Urutan hilang.
 Agent: zcode-retur
+
+## 2026-09-29 21:00 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner menanyakan kenapa ada dropdown Sumber di form ulasan website.
+Akar: satu komponen form dipakai dua intent (website dan marketplace screenshot); dropdown sumber dirender di keduanya padahal untuk website hanya berarti satu nilai.
+Perubahan: dropdown Sumber hanya dirender pada intent marketplace; form website selalu mengirim source=website.
+Dampak spec: tidak berubah.
+Verifikasi: UlasanAdminTest 13 passed, ESLint + typecheck bersih, build sukses; browser memastikan form website tanpa Sumber dan form marketplace tetap punya pilihan Shopee/WhatsApp.
+Agent: zcode-retur
