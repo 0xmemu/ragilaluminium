@@ -359,12 +359,20 @@ export function MediaPicker({
   onPick,
   multiple = false,
   title = "Pilih media",
+  kind,
 }: {
   open: boolean
   onClose: () => void
   onPick: (media: PickedMedia[]) => void
   multiple?: boolean
   title?: string
+  /**
+   * Batasi daftar ke satu jenis media. Dipakai slot yang hanya menerima
+   * gambar (logo, favicon, banner, foto ulasan) atau hanya menerima video.
+   * Penyaringan dilakukan di server, bukan di sisi klien, karena daftar
+   * dibatasi 48 aset terbaru lebih dulu.
+   */
+  kind?: "image" | "video"
 }) {
   // Owner 2026-09-16: Media Library satu-satunya sumber media. Upload hanya
   // lewat halaman /admin/media (Library); picker tidak punya tab upload.
@@ -382,6 +390,7 @@ export function MediaPicker({
     setLoading(true)
     const params = new URLSearchParams()
     if (q) params.set("q", q)
+    if (kind) params.set("kind", kind)
     if (folderId && folderId !== "all") params.set("folder_id", folderId)
 
     fetch(`${routeUrl("admin.media.picker")}?${params.toString()}`, {
@@ -416,7 +425,7 @@ export function MediaPicker({
         },
       )
       .finally(() => setLoading(false))
-  }, [])
+  }, [kind])
 
   React.useEffect(() => {
     if (open && tab === "library") {
@@ -455,7 +464,7 @@ export function MediaPicker({
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
             <h3 className="text-sm font-bold text-foreground">{title}</h3>
-            <p className="text-[11px] text-muted-foreground">Pilih media dari library atau unggah foto/video baru.</p>
+            <p className="text-[11px] text-muted-foreground">Pilih aset yang sudah ada di Media Library. Unggah berkas baru di halaman Media Library.</p>
           </div>
           <button
             type="button"

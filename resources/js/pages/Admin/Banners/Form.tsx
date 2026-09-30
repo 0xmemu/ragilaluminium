@@ -1,10 +1,11 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { MediaLibrarySelect } from "@/components/admin/media-library-select"
+import { MediaPicker } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface BannerFormData {
@@ -46,7 +47,9 @@ export default function BannerForm({
     published: banner?.published ?? false,
     media_asset_id: banner?.media_asset_id ? String(banner.media_asset_id) : "",
   })
-  const previewUrl = banner?.image_url ?? null
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [pickedPreview, setPickedPreview] = React.useState<string | null>(null)
+  const previewUrl = pickedPreview ?? banner?.image_url ?? null
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -103,13 +106,18 @@ export default function BannerForm({
                 id="image"
                 label="Gambar dari Media Library"
                 error={form.errors.media_asset_id}
-                hint="Pilih aset dari Media Library (rasio banner 2,4:1; rekomendasi 1600 × 664 px). Upload file baru dilakukan di halaman Media Library."
+                hint="Pilih aset dari Media Library (rasio banner 2,4:1; rekomendasi 1600 × 664 px). Unggah berkas baru di halaman Media Library."
               >
-                <MediaLibrarySelect
-                  value={form.data.media_asset_id}
-                  onChange={(value) => form.setData("media_asset_id", value)}
-                  kind="image"
-                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPickerOpen(true)}
+                  className="inline-flex w-fit items-center gap-1.5"
+                >
+                  <Icon name="image" className="size-3.5" aria-hidden="true" />
+                  <span>{form.data.media_asset_id ? "Ganti gambar" : "Pilih gambar"}</span>
+                </Button>
               </Field>
             </div>
           </div>
@@ -159,6 +167,21 @@ export default function BannerForm({
 
         
       </form>
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        multiple={false}
+        kind="image"
+        title="Pilih Gambar Banner Promo"
+        onPick={(picked) => {
+          const asset = picked[0]
+          if (!asset) return
+          form.setData("media_asset_id", String(asset.assetId))
+          setPickedPreview(asset.thumbUrl)
+          setPickerOpen(false)
+        }}
+      />
     </AdminLayout>
   )
 }

@@ -132,7 +132,7 @@ class FrontendPageContractTest extends TestCase
             'parent_sku' => 'WIN-UI-001',
             'name' => 'Jendela Uji UI',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -257,6 +257,46 @@ class FrontendPageContractTest extends TestCase
 
         // Demikian pula carousel "Apa kata pelanggan kami" pada seksi lain.
         $this->assertStringNotContainsString('messageClampClassName', $sections);
+    }
+
+    /**
+     * Pemilihan media hanya boleh lewat SATU komponen (owner 2026-09-29:
+     * "saya ga mau 1 fitur sama tapi model menu beda-beda").
+     *
+     * Sebelumnya ada dua pemilih ke endpoint yang sama: MediaPicker (modal)
+     * dan MediaLibrarySelect (dropdown). Yang kedua sudah tidak dipakai lagi.
+     * Penjaga ini menahan agar pemilih kedua tidak lahir kembali, dan menahan
+     * impor ke berkas yang tidak ada di repo (pernah terjadi: sebuah halaman
+     * mengimpor berkas yang tidak pernah masuk git sehingga clone baru rusak).
+     */
+    public function test_pemilih_media_hanya_satu_komponen(): void
+    {
+        $js = collect(File::allFiles(resource_path('js')))
+            ->reject(fn ($file) => str_contains($file->getFilename(), '.bak'))
+            ->filter(fn ($file) => in_array($file->getExtension(), ['ts', 'tsx'], true));
+
+        $pelanggar = [];
+
+        foreach ($js as $file) {
+            $isi = File::get($file->getPathname());
+
+            if (str_contains($isi, 'media-library-select')) {
+                $pelanggar[] = $file->getRelativePathname();
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $pelanggar,
+            'MediaLibrarySelect sudah digantikan MediaPicker; jangan ada impor baru ke sana.',
+        );
+
+        // Komponen pemilih media yang diizinkan hanya satu.
+        $this->assertFileExists(resource_path('js/components/admin/media-picker.tsx'));
+
+        // Berkas pemilih lama boleh tertinggal sebagai arsip di disk, tetapi
+        // tidak boleh diimpor siapa pun. Itu sudah dijaga oleh daftar kosong
+        // di atas; berkasnya sendiri tidak diwajibkan ada.
     }
 
 }

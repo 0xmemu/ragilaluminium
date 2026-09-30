@@ -1,7 +1,7 @@
 import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { MediaLibrarySelect } from "@/components/admin/media-library-select"
+import { MediaPicker } from "@/components/admin/media-picker"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
@@ -80,6 +80,8 @@ export default function StorefrontPlatformsEdit({
   // aktif setelah admin menekan tombol Edit, dan disimpan lewat tombol Simpan.
   const [mode, setMode] = React.useState<Mode>("view")
   const [saving, setSaving] = React.useState(false)
+  // Slot aset mana yang sedang dibuka di MediaPicker (logo atau favicon).
+  const [pickerTarget, setPickerTarget] = React.useState<"logo" | "favicon" | null>(null)
 
   const initialLinks = Object.fromEntries(platforms.map((p) => [p.key, p.href]))
 
@@ -480,11 +482,16 @@ export default function StorefrontPlatformsEdit({
                     error={brandForm.errors.logo_asset_id}
                     hint="Pilih aset logo (PNG transparan disarankan) dari Media Library, lalu tekan Simpan."
                   >
-                    <MediaLibrarySelect
-                      value={brandForm.data.logo_asset_id ?? ""}
-                      onChange={(value) => brandForm.setData("logo_asset_id", value)}
-                      kind="image"
-                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPickerTarget("logo")}
+                      className="inline-flex w-fit items-center gap-1.5"
+                    >
+                      <Icon name="image" className="size-3.5" aria-hidden="true" />
+                      <span>{brandForm.data.logo_asset_id ? "Ganti logo" : "Pilih logo"}</span>
+                    </Button>
                   </Field>
                 ) : null}
               </div>
@@ -535,11 +542,16 @@ export default function StorefrontPlatformsEdit({
                     error={brandForm.errors.favicon_asset_id}
                     hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library, lalu tekan Simpan."
                   >
-                    <MediaLibrarySelect
-                      value={brandForm.data.favicon_asset_id ?? ""}
-                      onChange={(value) => brandForm.setData("favicon_asset_id", value)}
-                      kind="image"
-                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPickerTarget("favicon")}
+                      className="inline-flex w-fit items-center gap-1.5"
+                    >
+                      <Icon name="image" className="size-3.5" aria-hidden="true" />
+                      <span>{brandForm.data.favicon_asset_id ? "Ganti favicon" : "Pilih favicon"}</span>
+                    </Button>
                   </Field>
                 ) : null}
               </div>
@@ -554,6 +566,24 @@ export default function StorefrontPlatformsEdit({
           </p>
         ) : null}
       </form>
+
+      <MediaPicker
+        open={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        multiple={false}
+        kind="image"
+        title={pickerTarget === "favicon" ? "Pilih Favicon Toko" : "Pilih Logo Toko"}
+        onPick={(picked) => {
+          const asset = picked[0]
+          if (!asset) return
+          if (pickerTarget === "favicon") {
+            brandForm.setData("favicon_asset_id", String(asset.assetId))
+          } else {
+            brandForm.setData("logo_asset_id", String(asset.assetId))
+          }
+          setPickerTarget(null)
+        }}
+      />
     </AdminLayout>
   )
 }
