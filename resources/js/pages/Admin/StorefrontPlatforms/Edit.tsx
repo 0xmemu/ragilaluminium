@@ -4,8 +4,7 @@ import * as React from "react"
 import { MediaLibrarySelect } from "@/components/admin/media-library-select"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
-import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
@@ -47,7 +46,7 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`
 }
 
-/** Nilai kosong tetap ditampilkan sebagai keterangan, bukan kolom kosong. */
+/** Nilai kosong tetap ditampilkan sebagai keterangan, bukan ruang hampa. */
 function NilaiKosong() {
   return <span className="text-xs text-muted-foreground">Belum diisi</span>
 }
@@ -175,25 +174,27 @@ export default function StorefrontPlatformsEdit({
     platformForm.setData("links", { ...platformForm.data.links, [key]: value })
   }
 
-  function barisPlatform(heading: string, hint: string, rows: PlatformRow[]) {
+  /** Satu kartu tabel daftar platform (marketplace atau media sosial). */
+  function kartuPlatform(
+    heading: string,
+    hint: string,
+    rows: PlatformRow[],
+    icon: string,
+  ) {
     if (rows.length === 0) return null
 
     return (
-      <Card className="overflow-hidden p-0">
-        <div className="border-b border-border bg-muted/40 px-4 py-3">
-          <h2 className="text-xs font-semibold text-foreground">{heading}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
-        </div>
+      <SectionCard title={heading} description={hint} icon={icon} contentClassName="p-0">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-border bg-muted/20 text-left text-[11px] font-semibold text-muted-foreground">
-              <th className="w-44 px-4 py-2.5">Platform</th>
-              <th className="px-4 py-2.5">Tautan URL</th>
+            <tr className="border-b border-border bg-surface/80 text-left text-[11px] font-semibold text-muted-foreground">
+              <th className="w-44 px-4 py-3">Platform</th>
+              <th className="px-4 py-3">Tautan URL</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((row) => (
-              <tr key={row.key} className="transition-colors hover:bg-muted/10">
+              <tr key={row.key} className="transition-colors hover:bg-muted/40">
                 <td className="px-4 py-2.5 align-middle">
                   <div className="flex items-center gap-2.5">
                     {row.icon ? (
@@ -237,7 +238,7 @@ export default function StorefrontPlatformsEdit({
             ))}
           </tbody>
         </table>
-      </Card>
+      </SectionCard>
     )
   }
 
@@ -299,230 +300,251 @@ export default function StorefrontPlatformsEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="storefront-profile-form" onSubmit={submitAll} className="w-full max-w-5xl space-y-6">
+      {/* Membentang penuh (kontrak panel admin: Table-First, bukan kartu sempit
+          dengan ruang kosong di samping). */}
+      <form id="storefront-profile-form" onSubmit={submitAll} className="w-full space-y-6">
         {/* 1. Marketplace & Media Sosial */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <FormErrorSummary errors={platformForm.errors} />
           <div className="grid items-start gap-6 lg:grid-cols-2">
-            {barisPlatform(
+            {kartuPlatform(
               "Marketplace Resmi",
               "Tautan toko resmi di platform belanja online. Tampil di kartu informasi toko dan footer.",
               marketplace,
+              "storefront",
             )}
-            {barisPlatform(
+            {kartuPlatform(
               "Media Sosial Resmi",
               "Akun konten dan publikasi resmi toko (Instagram, TikTok, YouTube, Facebook).",
               social,
+              "share",
             )}
           </div>
         </div>
 
         {/* 2. Kontak & Jam Kerja */}
-        <FormErrorSummary errors={kontakForm.errors} />
-
-        <SectionCard
-          title="Informasi Kontak & Komunikasi"
-          description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
-        >
-          <FieldGrid>
-            <Field
-              id="phone"
-              label="Nomor Telepon / WhatsApp Konsultasi"
-              error={kontakForm.errors.phone}
-              hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp."
+        <div className="space-y-4">
+          <FormErrorSummary errors={kontakForm.errors} />
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            <SectionCard
+              title="Informasi Kontak & Komunikasi"
+              description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
+              icon="message-circle"
             >
-              {mode === "edit" ? (
-                <Input
+              <div className="space-y-4">
+                <Field
                   id="phone"
-                  value={kontakForm.data.phone}
-                  onChange={(e) => kontakForm.setData("phone", e.target.value)}
-                  placeholder="Terisi otomatis dari nomor WhatsApp yang tersambung"
-                  className="font-mono text-xs bg-muted text-muted-foreground"
-                  readOnly
-                />
-              ) : kontakForm.data.phone.trim() === "" ? (
-                <div className="flex min-h-9 items-center">
-                  <NilaiKosong />
-                </div>
-              ) : (
-                <p className="flex min-h-9 items-center font-mono text-xs text-foreground">{kontakForm.data.phone}</p>
-              )}
-            </Field>
-            <Field id="email" label="Email Layanan Informasi (Opsional)" error={kontakForm.errors.email}>
-              {mode === "edit" ? (
-                <Input
-                  id="email"
-                  type="email"
-                  value={kontakForm.data.email}
-                  onChange={(e) => kontakForm.setData("email", e.target.value)}
-                  placeholder="Contoh: info@ragilaluminium.com"
-                  className="font-mono text-xs"
-                />
-              ) : kontakForm.data.email.trim() === "" ? (
-                <div className="flex min-h-9 items-center">
-                  <NilaiKosong />
-                </div>
-              ) : (
-                <p className="flex min-h-9 items-center font-mono text-xs text-foreground">{kontakForm.data.email}</p>
-              )}
-            </Field>
-          </FieldGrid>
-        </SectionCard>
+                  label="Nomor Telepon / WhatsApp Konsultasi"
+                  error={kontakForm.errors.phone}
+                  hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp."
+                >
+                  {mode === "edit" ? (
+                    <Input
+                      id="phone"
+                      value={kontakForm.data.phone}
+                      onChange={(e) => kontakForm.setData("phone", e.target.value)}
+                      placeholder="Terisi otomatis dari nomor WhatsApp yang tersambung"
+                      className="font-mono text-xs bg-muted text-muted-foreground"
+                      readOnly
+                    />
+                  ) : kontakForm.data.phone.trim() === "" ? (
+                    <div className="flex min-h-9 items-center">
+                      <NilaiKosong />
+                    </div>
+                  ) : (
+                    <p className="flex min-h-9 items-center font-mono text-xs text-foreground">
+                      {kontakForm.data.phone}
+                    </p>
+                  )}
+                </Field>
+                <Field id="email" label="Email Layanan Informasi (Opsional)" error={kontakForm.errors.email}>
+                  {mode === "edit" ? (
+                    <Input
+                      id="email"
+                      type="email"
+                      value={kontakForm.data.email}
+                      onChange={(e) => kontakForm.setData("email", e.target.value)}
+                      placeholder="Contoh: info@ragilaluminium.com"
+                      className="font-mono text-xs"
+                    />
+                  ) : kontakForm.data.email.trim() === "" ? (
+                    <div className="flex min-h-9 items-center">
+                      <NilaiKosong />
+                    </div>
+                  ) : (
+                    <p className="flex min-h-9 items-center font-mono text-xs text-foreground">
+                      {kontakForm.data.email}
+                    </p>
+                  )}
+                </Field>
+              </div>
+            </SectionCard>
 
-        <SectionCard
-          title="Lokasi Workshop & Jam Operasional"
-          description="Alamat fisik workshop dan jadwal buka layanan pelanggan."
-        >
-          <div className="space-y-4">
-            <Field id="address" label="Alamat Fisik Workshop / Toko" error={kontakForm.errors.address}>
-              {mode === "edit" ? (
-                <Textarea
-                  id="address"
-                  rows={3}
-                  value={kontakForm.data.address}
-                  onChange={(e) => kontakForm.setData("address", e.target.value)}
-                  placeholder="Alamat lengkap workshop produksi dan kantor operasional"
-                  className="text-xs leading-relaxed"
-                />
-              ) : kontakForm.data.address.trim() === "" ? (
-                <NilaiKosong />
-              ) : (
-                <p className="whitespace-pre-line text-xs leading-relaxed text-foreground">{kontakForm.data.address}</p>
-              )}
-            </Field>
-            <Field id="hours" label="Jam Operasional" error={kontakForm.errors.hours}>
-              {mode === "edit" ? (
-                <Input
-                  id="hours"
-                  value={kontakForm.data.hours}
-                  onChange={(e) => kontakForm.setData("hours", e.target.value)}
-                  placeholder="Contoh: Senin - Sabtu: 08.00 - 17.00 WIB (Minggu Libur)"
-                  className="text-xs"
-                />
-              ) : kontakForm.data.hours.trim() === "" ? (
-                <div className="flex min-h-9 items-center">
-                  <NilaiKosong />
-                </div>
-              ) : (
-                <p className="flex min-h-9 items-center text-xs text-foreground">{kontakForm.data.hours}</p>
-              )}
-            </Field>
+            <SectionCard
+              title="Lokasi Workshop & Jam Operasional"
+              description="Alamat fisik workshop dan jadwal buka layanan pelanggan."
+              icon="map-pin"
+            >
+              <div className="space-y-4">
+                <Field id="address" label="Alamat Fisik Workshop / Toko" error={kontakForm.errors.address}>
+                  {mode === "edit" ? (
+                    <Textarea
+                      id="address"
+                      rows={3}
+                      value={kontakForm.data.address}
+                      onChange={(e) => kontakForm.setData("address", e.target.value)}
+                      placeholder="Alamat lengkap workshop produksi dan kantor operasional"
+                      className="text-xs leading-relaxed"
+                    />
+                  ) : kontakForm.data.address.trim() === "" ? (
+                    <NilaiKosong />
+                  ) : (
+                    <p className="whitespace-pre-line text-xs leading-relaxed text-foreground">
+                      {kontakForm.data.address}
+                    </p>
+                  )}
+                </Field>
+                <Field id="hours" label="Jam Operasional" error={kontakForm.errors.hours}>
+                  {mode === "edit" ? (
+                    <Input
+                      id="hours"
+                      value={kontakForm.data.hours}
+                      onChange={(e) => kontakForm.setData("hours", e.target.value)}
+                      placeholder="Contoh: Senin - Sabtu: 08.00 - 17.00 WIB (Minggu Libur)"
+                      className="text-xs"
+                    />
+                  ) : kontakForm.data.hours.trim() === "" ? (
+                    <div className="flex min-h-9 items-center">
+                      <NilaiKosong />
+                    </div>
+                  ) : (
+                    <p className="flex min-h-9 items-center text-xs text-foreground">{kontakForm.data.hours}</p>
+                  )}
+                </Field>
+              </div>
+            </SectionCard>
           </div>
-        </SectionCard>
-
-        {/* 3. Aset Brand */}
-        <FormErrorSummary errors={brandForm.errors} />
-
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Logo dan favicon adalah identitas toko yang tampil di header situs,
-          tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
-          terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
-          berganti karena browser menyimpannya cukup agresif.
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-2">
-          {/* Logo */}
-          <SectionCard
-            title="Logo Toko"
-            description="Tampil di header situs (tema terang dan gelap) dan footer. PNG transparan lebar minimal 300px disarankan."
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                {brandAssets.logo ? (
-                  <img
-                    src={brandAssets.logo.url}
-                    alt="Logo toko saat ini"
-                    className="max-h-20 w-auto max-w-[180px] object-contain"
-                    width={180}
-                    height={80}
-                  />
-                ) : (
-                  <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                    Belum ada logo
-                  </span>
-                )}
-                <div className="min-w-0 text-xs text-muted-foreground">
+        {/* 3. Aset Brand */}
+        <div className="space-y-4">
+          <FormErrorSummary errors={brandForm.errors} />
+
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+            Logo dan favicon adalah identitas toko yang tampil di header situs,
+            tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
+            terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
+            berganti karena browser menyimpannya cukup agresif.
+          </div>
+
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            {/* Logo */}
+            <SectionCard
+              title="Logo Toko"
+              description="Tampil di header situs (tema terang dan gelap) dan footer. PNG transparan lebar minimal 300px disarankan."
+              icon="image"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
                   {brandAssets.logo ? (
-                    <>
-                      <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
-                      <p className="mt-0.5">
-                        {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
-                      </p>
-                    </>
+                    <img
+                      src={brandAssets.logo.url}
+                      alt="Logo toko saat ini"
+                      className="max-h-20 w-auto max-w-[180px] object-contain"
+                      width={180}
+                      height={80}
+                    />
                   ) : (
-                    <p>Belum ada berkas logo terunggah.</p>
+                    <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                      Belum ada logo
+                    </span>
                   )}
+                  <div className="min-w-0 text-xs text-muted-foreground">
+                    {brandAssets.logo ? (
+                      <>
+                        <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
+                        <p className="mt-0.5">
+                          {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
+                        </p>
+                      </>
+                    ) : (
+                      <p>Belum ada berkas logo terunggah.</p>
+                    )}
+                  </div>
                 </div>
+
+                {mode === "edit" ? (
+                  <Field
+                    id="brand-logo"
+                    label="Ganti Logo dari Media Library"
+                    error={brandForm.errors.logo_asset_id}
+                    hint="Pilih aset logo (PNG transparan disarankan) dari Media Library, lalu tekan Simpan."
+                  >
+                    <MediaLibrarySelect
+                      value={brandForm.data.logo_asset_id ?? ""}
+                      onChange={(value) => brandForm.setData("logo_asset_id", value)}
+                      kind="image"
+                    />
+                  </Field>
+                ) : null}
               </div>
+            </SectionCard>
 
-              {mode === "edit" ? (
-                <Field
-                  id="brand-logo"
-                  label="Ganti Logo dari Media Library"
-                  error={brandForm.errors.logo_asset_id}
-                  hint="Pilih aset logo (PNG transparan disarankan) dari Media Library, lalu tekan Simpan."
-                >
-                  <MediaLibrarySelect
-                    value={brandForm.data.logo_asset_id ?? ""}
-                    onChange={(value) => brandForm.setData("logo_asset_id", value)}
-                    kind="image"
-                  />
-                </Field>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          {/* Favicon */}
-          <SectionCard
-            title="Favicon"
-            description="Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px."
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                {brandAssets.favicon ? (
-                  <img
-                    src={brandAssets.favicon.url}
-                    alt="Favicon saat ini"
-                    className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
-                    width={64}
-                    height={64}
-                  />
-                ) : (
-                  <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                    Kosong
-                  </span>
-                )}
-                <div className="min-w-0 text-xs text-muted-foreground">
-                  {brandAssets.faviconIco ? (
-                    <>
-                      <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
-                      <p className="mt-0.5">
-                        {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
-                      </p>
-                      {brandAssets.favicon ? <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p> : null}
-                    </>
+            {/* Favicon */}
+            <SectionCard
+              title="Favicon"
+              description="Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px."
+              icon="image"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+                  {brandAssets.favicon ? (
+                    <img
+                      src={brandAssets.favicon.url}
+                      alt="Favicon saat ini"
+                      className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
+                      width={64}
+                      height={64}
+                    />
                   ) : (
-                    <p>Belum ada favicon terunggah.</p>
+                    <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                      Kosong
+                    </span>
                   )}
+                  <div className="min-w-0 text-xs text-muted-foreground">
+                    {brandAssets.faviconIco ? (
+                      <>
+                        <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
+                        <p className="mt-0.5">
+                          {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
+                        </p>
+                        {brandAssets.favicon ? (
+                          <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p>Belum ada favicon terunggah.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {mode === "edit" ? (
-                <Field
-                  id="brand-favicon"
-                  label="Ganti Favicon dari Media Library"
-                  error={brandForm.errors.favicon_asset_id}
-                  hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library, lalu tekan Simpan."
-                >
-                  <MediaLibrarySelect
-                    value={brandForm.data.favicon_asset_id ?? ""}
-                    onChange={(value) => brandForm.setData("favicon_asset_id", value)}
-                    kind="image"
-                  />
-                </Field>
-              ) : null}
-            </div>
-          </SectionCard>
+                {mode === "edit" ? (
+                  <Field
+                    id="brand-favicon"
+                    label="Ganti Favicon dari Media Library"
+                    error={brandForm.errors.favicon_asset_id}
+                    hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library, lalu tekan Simpan."
+                  >
+                    <MediaLibrarySelect
+                      value={brandForm.data.favicon_asset_id ?? ""}
+                      onChange={(value) => brandForm.setData("favicon_asset_id", value)}
+                      kind="image"
+                    />
+                  </Field>
+                ) : null}
+              </div>
+            </SectionCard>
+          </div>
         </div>
 
         {mode === "view" ? (

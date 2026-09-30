@@ -2709,3 +2709,19 @@ Perubahan: dropdown Select diganti SearchSelect (pemilih bercari) di Testimonial
 Dampak spec: tidak berubah.
 Verifikasi: UlasanAdminTest + ProductReviewsTest 23 passed; ESLint + typecheck + build bersih; browser: picker terbuka, pencarian dan pemilihan bekerja, form tidak disimpan.
 Agent: zcode-retur
+
+## 2026-09-29 16:05 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Tata letak halaman Profil & Kontak Toko. Owner 2026-09-29 setelah melihat hasil penggabungan tab: "looooooooooooook that damn huge space".
+Berkas: resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx
+
+Akar masalah: pembungkus form saya dipatok `max-w-5xl` (terukur 896px) padahal layar kerja owner 2236px, jadi lebih dari separuh lebar halaman kosong melompong. Pembungkus sempit itu saya warisi dari bentuk lama halaman ini waktu masih bertab. Selain jelek, itu juga melanggar kontrak panel admin (Table-First: form dan subhalaman administrasi wajib membentang penuh, bukan kartu sempit dengan whitespace berlebih di samping).
+
+Perubahan: pembungkus form jadi `w-full` tanpa batas lebar. Kelompok isi disusun dua kolom seperti pola dashboard admin lain: Marketplace Resmi sebaris Media Sosial Resmi, Informasi Kontak sebaris Lokasi Workshop & Jam Operasional, Logo Toko sebaris Favicon. Kartu tabel platform dibangun ulang memakai primitif bersama `SectionCard` dengan `contentClassName="p-0"` dan padding sel `px-4 py-3`, mengikuti konvensi halaman admin lain, jadi judul dan keterangannya seragam dengan kartu lain (sebelumnya header tabel buatan sendiri). Ikon kartu ditambahkan (storefront, share, message-circle, map-pin, image).
+
+Dampak spec: Spec tidak berubah. Tidak ada route, parameter, kolom, enum, atau bentuk JSON baru.
+
+Verifikasi: pengukuran live di browser (layar 2236px). Sebelum: form 896px, kartu 438px masing-masing, ruang kosong kanan sekitar 1130px. Sesudah: form 1970px, enam kartu masing-masing 975px dalam dua kolom, ruang kosong kanan 28px (sisa padding halaman). Uji mode edit tetap bekerja: mode ringkasan 0 isian dengan tombol Edit, setelah Edit 12 isian plus Simpan/Batal, setelah Batal kembali 0 isian dan tombol Edit muncul lagi. Test PHP terkait lulus 17 test / 580 asersi (BrandAssetsTabTest, StorefrontPlatformsAdminTest, KontakAdminTest, FrontendPageContractTest). `npx tsc --noEmit` bersih untuk berkas ini, `npx eslint` exit 0, build aset sukses, dan screenshot live sudah saya lihat sendiri.
+
+Pelajaran untuk halaman berikutnya: mengubah form bertab menjadi satu view berarti membuang juga batas lebar sempit yang dulu dipilih untuk bentuk bertab. Batas lebar seperti `max-w-5xl` pada halaman admin hanya pantas untuk form isian tunggal yang memang sempit secara alami, bukan untuk halaman yang menampilkan banyak kartu.
+Agent: zcode
