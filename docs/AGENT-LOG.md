@@ -2855,3 +2855,10 @@ Perubahan: CheckboxField dan kunci published dibuang dari form; validasi server 
 Dampak spec: tidak berubah.
 Verifikasi: UlasanAdminTest 15 passed (dua tes penjaga baru); suite penuh 1332 passed, 1 skipped, 1 failed (benturan migrasi agent lain); ESLint dan typecheck bersih, build sukses; browser memastikan toggle hilang di form website dan marketplace, tanpa overflow.
 Agent: zcode-retur
+
+## 2026-09-29 23:25 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner menegaskan isian "Tambah URL" di section Foto ulasan form ulasan harus dibuang (permintaan sebelumnya belum dieksekusi).
+Perubahan: input URL dan tombol Tambah URL dihapus dari resources/js/pages/Admin/Testimonials/Form.tsx; state urlBaru dan fungsi tambahUrl dihapus; hint tidak lagi menyebut "tempel URL"; badge URL untuk foto lama diberi keterangan bahwa foto itu masih tampil dan bisa diganti dari Media Library.
+Dampak spec: tidak berubah (payload image_urls tetap diterima server untuk foto lama).
+Verifikasi: 32 tes terkait ulasan passed; ESLint + typecheck + build bersih; browser: input/tombol URL hilang, menambah 2 foto lewat Media Library tetap bekerja, state form dikembalikan bersih setelah uji.
+Agent: zcode-retur
