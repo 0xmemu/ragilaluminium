@@ -2695,3 +2695,10 @@ Perubahan: dropdown Sumber hanya dirender pada intent marketplace; form website 
 Dampak spec: tidak berubah.
 Verifikasi: UlasanAdminTest 13 passed, ESLint + typecheck bersih, build sukses; browser memastikan form website tanpa Sumber dan form marketplace tetap punya pilihan Shopee/WhatsApp.
 Agent: zcode-retur
+
+## 2026-09-29 21:20 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner menyebut kotak kosong bergaris putus useless (kesannya drag&drop) dan minta isian setelah foto disatukan satu baris horizontal.
+Perubahan: kotak kosong jadi tombol klik pembuka Media Library; Nama/Lokasi/Rating/Produk disatukan satu baris (grid 4 kolom di xl, 2 kolom untuk intent screenshot); UlasanAdminTest tidak tersentuh (perubahan murni layout).
+Dampak spec: tidak berubah.
+Verifikasi: ESLint + typecheck + build bersih; browser: 4 kontrol segaris (Y identik), kotak klik membuka picker 48 aset, tanpa overflow.
+Agent: zcode-retur
