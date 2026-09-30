@@ -2898,3 +2898,10 @@ Perubahan: panel dibatasi max-h-[calc(100dvh-2rem)] + overflow-y-auto, overlay d
 Dampak spec: tidak berubah.
 Verifikasi: ESLint 0 error, typecheck + build bersih; browser: viewport 720 px panel top 14 px tinggi 692 px judul dan kolom cari terlihat, viewport 600 px top 14 px tinggi 572 px dengan paginasi terjangkau, Escape menutup.
 Agent: zcode-retur
+
+## 2026-09-29 00:10 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: koreksi lanjutan owner atas popup "Pasang ke produk" yang masih bisa menggulir terlalu jauh.
+Perubahan: pembungkus tabel ProductPicker diberi max-h-[22rem] + overflow-y-auto sehingga gulir hanya pada daftar produk; judul, filter, counter, tombol, dan paginasi tetap terlihat. Berlaku untuk seluruh pemakai komponen.
+Dampak spec: tidak berubah.
+Verifikasi: ESLint + typecheck + build bersih; browser: panel top 237 tinggi 578 (viewport 1051), tabel menggulir sendiri, tangkapan layar memperlihatkan popup ringkas dengan paginasi dan tombol Batal/Pasang.
+Agent: zcode-retur
