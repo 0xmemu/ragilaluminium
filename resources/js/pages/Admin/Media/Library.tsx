@@ -21,6 +21,11 @@ import { routeUrl } from "@/lib/routes"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
 // --- Status mapper media khusus (bukan shipping) ---
+// Preferensi tampilan Media Library diingat per peramban. localStorage bisa
+// diblokir; kalau gagal, nilai bawaan tetap dipakai untuk sesi ini.
+const FOLDER_SIDEBAR_KEY = "ragil.admin.mediaLibrary.folderSidebar"
+const FOLDER_EXPANDED_KEY = "ragil.admin.mediaLibrary.folderExpanded"
+
 const MEDIA_STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" }> = {
   pending:    { label: "Menunggu diproses", tone: "neutral" },
   uploading:  { label: "Sedang diunggah",   tone: "info" },
@@ -465,7 +470,14 @@ function FolderTree({
   const [folderQuery, setFolderQuery] = React.useState("")
   const [searchMenuFor, setSearchMenuFor] = React.useState<number | null>(null)
   const [expandedIds, setExpandedIds] = React.useState<Record<number, boolean>>(() => {
-    const init: Record<number, boolean> = {}
+    let saved: Record<number, boolean> = {}
+    try {
+      const raw = window.localStorage.getItem(FOLDER_EXPANDED_KEY)
+      if (raw) saved = JSON.parse(raw) as Record<number, boolean>
+    } catch {
+      saved = {}
+    }
+    const init: Record<number, boolean> = { ...saved }
     if (currentFolderId && currentFolderId !== "0") {
       const activeId = Number(currentFolderId)
       const findAncestors = (list: FolderNode[], path: number[] = []): boolean => {
@@ -484,6 +496,14 @@ function FolderTree({
     }
     return init
   })
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(FOLDER_EXPANDED_KEY, JSON.stringify(expandedIds))
+    } catch {
+      // localStorage bisa diblokir; status tetap berlaku untuk sesi ini.
+    }
+  }, [expandedIds])
 
   React.useEffect(() => {
     if (currentFolderId && currentFolderId !== "0") {
@@ -925,7 +945,13 @@ export default function MediaLibrary({
   const [status, setStatus] = React.useState(filters.status)
   const [visibility, setVisibility] = React.useState(filters.visibility)
   const [folderId, setFolderId] = React.useState(filters.folder_id)
-  const [showSidebar, setShowSidebar] = React.useState(true)
+  const [showSidebar, setShowSidebar] = React.useState(() => {
+    try {
+      return window.localStorage.getItem(FOLDER_SIDEBAR_KEY) !== "0"
+    } catch {
+      return true
+    }
+  })
   // Dialog nama folder (pengganti window.prompt yang diblokir di browser in-app).
   const [folderDialog, setFolderDialog] = React.useState<
     { mode: "create"; parentId: number | null; name: string } | { mode: "rename"; folderId: number; name: string } | null
@@ -1061,6 +1087,14 @@ export default function MediaLibrary({
       { preserveState: true, preserveScroll: true },
     )
   }, [q, kind, status, visibility, folderId])
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(FOLDER_SIDEBAR_KEY, showSidebar ? "1" : "0")
+    } catch {
+      // localStorage bisa diblokir; status tetap berlaku untuk sesi ini.
+    }
+  }, [showSidebar])
 
   const skipFirst = React.useRef(true)
   React.useEffect(() => {

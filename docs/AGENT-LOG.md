@@ -2964,3 +2964,11 @@ Perubahan: ProductPicker (prop filtersGridClassName, searchFieldClassName, filte
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint dua berkas tanpa warning baru, build sukses 21s, tata letak dan rasio dicek di browser.
 Agent: zcode-retur
+
+## 2026-10-01 10:40 UTC | zcode-retur | Standard | 1 berkas | selesai
+Lingkup: owner melaporkan panel folder Media Library selalu terbuka lagi setelah pindah halaman; minta dicek juga fitur lain yang polanya sama.
+Akar masalah: status panel hanya hidup di memori komponen (useState true), komponen ter-unmount saat pindah halaman sehingga preferensi hilang.
+Perubahan: status panel folder dan status buka-tutup cabang pohon folder kini tersimpan di localStorage per peramban (pola yang sama dengan tinggi daftar folder di media-picker); pindai fitur lain menemukan bahwa aksi Sembunyikan lain adalah aksi data atau buka-tutup sementara yang memang wajar hilang, filter daftar tersimpan di URL, dan sidebar navigasi utama tidak punya mode ciut.
+Dampak spec: tidak berubah.
+Verifikasi: typecheck bersih, eslint tanpa warning baru, build sukses 20s, uji browser: sembunyikan panel, pindah halaman, kembali, panel tetap tersembunyi.
+Agent: zcode-retur
