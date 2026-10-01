@@ -2912,3 +2912,11 @@ Perubahan: panel popup memakai resize both + overflow auto (pegangan asli peramb
 Dampak spec: tidak berubah.
 Verifikasi: ESLint + typecheck + build bersih; browser terukur dalam layar di 1440 dan 390 px, pegangan aktif (resize: both terbaca di computed style), lebar bawaan tidak berubah.
 Agent: zcode-retur
+
+## 2026-09-29 00:30 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner melaporkan duplikat nama produk dan "Rp" pindah ke atas angka di tabel ProductPicker (popup Pasang ke produk Media Library).
+Akar masalah: (1) isian dimensions dari endpoint promotions.products berisi teks yang sama dengan nama produk sehingga baris kedua kolom Produk jadi duplikat; (2) kolom Harga terlalu sempit sehingga "Rp" wrap ke baris sendiri.
+Perubahan: baris kedua di ProductPicker.tsx kini hanya SKU, dan sel Harga diberi whitespace-nowrap.
+Dampak spec: tidak berubah.
+Verifikasi: ESLint + typecheck + build bersih; screenshot memperlihatkan kolom Produk nama + SKU tanpa duplikat, harga satu baris; berlaku untuk seluruh pemakai ProductPicker.
+Agent: zcode-retur
