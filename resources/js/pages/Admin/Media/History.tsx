@@ -3,10 +3,9 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { EmptyState } from "@/components/admin/ui/empty-state"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
-import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
@@ -63,15 +62,16 @@ export default function MediaHistory({
   const [to, setTo] = React.useState(filters.to)
 
   function apply(next?: Partial<{ q: string; event: string; from: string; to: string }>) {
+    // Nilai kosong tidak dikirim supaya URL bersih (tidak ada ?event= kosong).
     const params: Record<string, string> = {}
-    if (next?.q !== undefined) params.q = next.q
-    else if (q) params.q = q
-    if (next?.event !== undefined) params.event = next.event
-    else if (filters.event) params.event = filters.event
-    if (next?.from !== undefined) params.from = next.from
-    else if (from) params.from = from
-    if (next?.to !== undefined) params.to = next.to
-    else if (to) params.to = to
+    const nextQ = next?.q !== undefined ? next.q : q
+    const nextEvent = next?.event !== undefined ? next.event : filters.event
+    const nextFrom = next?.from !== undefined ? next.from : from
+    const nextTo = next?.to !== undefined ? next.to : to
+    if (nextQ) params.q = nextQ
+    if (nextEvent) params.event = nextEvent
+    if (nextFrom) params.from = nextFrom
+    if (nextTo) params.to = nextTo
 
     router.get(routeUrl("admin.media.history"), params, {
       preserveState: true,
@@ -83,6 +83,11 @@ export default function MediaHistory({
   // Overrides per log id (hanya di-set dari callback async polling, bukan di
   // body effect) sehingga tidak memicu peringatan setState-in-effect.
   const [liveOverrides, setLiveOverrides] = React.useState<Record<number, Partial<LogRow>>>({})
+  // Galat polling status: dulu ditelan diam-diam, sehingga baris yang masih
+  // "Antre" terlihat sama seperti antrean normal. Sekarang muncul sebagai
+  // ErrorState di atas daftar, dengan tombol untuk mencoba lagi.
+  const [pollError, setPollError] = React.useState<string | null>(null)
+  const [pollNonce, setPollNonce] = React.useState(0)
 
   const liveRows = logs.map((row) => ({ ...row, ...liveOverrides[row.id] }))
   const liveActive = liveRows.some((r) => r.event === "queued" || r.event === "processing")
@@ -110,6 +115,7 @@ export default function MediaHistory({
           ),
         ]
         const statuses: Record<string, { status: string; error_reason?: string | null }> = {}
+        let gagal = false
 
         async function poll(kind: string, ids: number[]) {
           if (ids.length === 0) return
@@ -119,7 +125,10 @@ export default function MediaHistory({
           const res = await fetch(`${route("admin.media.status")}?${params.toString()}`, {
             headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
           })
-          if (!res.ok) return
+          if (!res.ok) {
+            gagal = true
+            return
+          }
           const body = (await res.json()) as {
             statuses: { id: number; status: string; error_reason?: string | null }[]
           }
@@ -159,8 +168,10 @@ export default function MediaHistory({
         if (Object.keys(next).length > 0) {
           setLiveOverrides((prev) => ({ ...prev, ...next }))
         }
+        setPollError(gagal ? "Status pemrosesan media belum dapat dimuat." : null)
       } catch {
-        // Abaikan error polling sesaat; interval berikutnya mencoba lagi.
+        // Jaringan putus sesaat: tandai gagal, interval berikutnya mencoba lagi.
+        if (!cancelled) setPollError("Status pemrosesan media belum dapat dimuat.")
       }
     }
 
@@ -170,7 +181,7 @@ export default function MediaHistory({
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [logs])
+  }, [logs, pollNonce])
 
   return (
     <AdminLayout title="Riwayat Media" description="Audit pemrosesan media (queued → processing → siap / gagal)">
@@ -185,6 +196,7 @@ export default function MediaHistory({
           { key: "processing", label: "Diproses" },
           { key: "queued", label: "Antre" },
           { key: "dedup", label: "Duplikat" },
+          { key: "downloaded", label: "Terunduk" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -258,21 +270,20 @@ export default function MediaHistory({
           className="h-9 rounded-md border border-border bg-surface px-2.5 text-[13px] text-foreground"
           aria-label="Sampai tanggal"
         />
-        <Select
-          value={filters.event}
-          onChange={(event) => apply({ event: event.target.value })}
-          className="w-40"
-          aria-label="Filter status"
-        >
-          <option value="">Semua status</option>
-          <option value="queued">Antre</option>
-          <option value="processing">Diproses</option>
-          <option value="success">Siap</option>
-          <option value="failed">Gagal</option>
-          <option value="dedup">Duplikat</option>
-          <option value="downloaded">Terunduh</option>
-        </Select>
       </ListToolbar>
+
+      {pollError && liveActive ? (
+        <ErrorState
+          title="Status pemrosesan gagal dimuat"
+          description={`${pollError} Baris di bawah mungkin masih menampilkan status lama.`}
+          className="mb-4 min-h-0 p-6"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setPollNonce((n) => n + 1)}>
+              Coba lagi
+            </Button>
+          }
+        />
+      ) : null}
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {liveRows.length ? (

@@ -2972,3 +2972,11 @@ Perubahan: status panel folder dan status buka-tutup cabang pohon folder kini te
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint tanpa warning baru, build sukses 20s, uji browser: sembunyikan panel, pindah halaman, kembali, panel tetap tersembunyi.
 Agent: zcode-retur
+
+## 2026-10-01 11:20 UTC | zcode-retur | Standard | 2 berkas + data | selesai
+Lingkup: owner minta audit halaman Riwayat Media dan perbaiki anomali.
+Temuan: (1) 14 log pemrosesan tertahan berstatus Diproses sejak 4-16 September padahal asetnya selesai, membuat audit salah dan halaman polling tanpa henti dengan badge Live; (2) memilih Semua status meninggalkan parameter kosong ?event= di URL; (3) filter status dobel antara baris tab dan dropdown; (4) tab tidak punya filter Terunduk; (5) tombol Coba lagi pada log aset arsip akan membatalkan arsip karena status aset di-reset pending.
+Perubahan: rekonsiliasi data 16 log (10+2 ke success, 2 ke dedup, 2 log pasangan dari aset terhapus ke success mengikuti log saudaranya); History.tsx (URL bersih dari nilai kosong, tab Terunduk ditambah, dropdown status duplikat dihapus); retryLog diberi pagar aset archived.
+Dampak spec: tidak berubah.
+Verifikasi: php -l, typecheck bersih, eslint tanpa warning baru, build sukses 19s; uji browser: tab Gagal menghasilkan ?event=failed, tab Semua menghasilkan URL bersih tanpa parameter, tabel memperlihatkan Siap/Duplikat tanpa Diproses hantu, sisa processing nol.
+Agent: zcode-retur

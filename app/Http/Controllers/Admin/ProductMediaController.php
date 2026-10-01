@@ -725,6 +725,12 @@ class ProductMediaController extends Controller
     {
         $loggable = $log->loggable;
 
+        // Arsip adalah keputusan final; memproses ulang akan membatalkan arsip
+        // karena status aset di-reset ke pending.
+        if ($loggable instanceof MediaAsset && $loggable->status === 'archived') {
+            return redirect()->back()->with('error', 'Aset sudah diarsipkan sehingga tidak dapat diproses ulang.');
+        }
+
         if ($loggable instanceof MediaAsset) {
             if ($loggable->source_url) {
                 $loggable->update(['status' => 'pending', 'error_reason' => null]);
