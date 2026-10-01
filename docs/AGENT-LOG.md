@@ -2988,3 +2988,11 @@ Perubahan: akses kunci berpenjaga filled plus cast integer.
 Dampak spec: tidak berubah.
 Verifikasi: php -l bersih; uji hidup ulang di browser: status 200 dengan pesan URL sudah ada di library dan asset_id lama dikembalikan, tanpa duplikat.
 Agent: zcode-retur
+
+## 2026-10-01 13:02 UTC | zcode-storefront | Standard | 2 berkas | selesai
+Lingkup: owner melaporkan produk berlabel Flash Sale "bocor" ke dalam grid galeri Paling Banyak Dipesan (/products/all?from=paling-banyak-dipesan&sort=popular), padahal halaman itu sudah menampilkan carousel Flash Sale sendiri di atas daftar.
+Akar masalah: grid memakai filter yang sama persis dengan listing biasa, jadi produk Flash Sale tampil di carousel dan diulang lagi di grid (2 kartu dari 15 di halaman 1).
+Perubahan: CatalogController, produk Flash Sale disaring keluar dari galeri ini lewat scopeFlashSaleInactive (kebalikan definisi scopeFlashSaleActive), hanya aktif selagi periode Flash Sale hidup dan hanya pada konteks penanda from=paling-banyak-dipesan; status periode ikut jadi kunci cache. HomepagePopularTest, satu test penjaga.
+Dampak spec: tidak berubah, tidak ada route, URL, kolom, enum, atau bentuk JSON baru. Catatan: 10 teratas galeri kini bisa menyimpang dari carousel beranda selama periode Flash Sale berjalan, karena carousel beranda tidak menyaring produk Flash Sale. Komentar "tidak pernah bisa berbeda" di Product::palingBanyakDipesanOrderSql masih perlu disesuaikan, berkasnya sedang dipegang agent lain jadi tidak disentuh.
+Verifikasi: php -l dua berkas bersih; test penjaga lulus 17 asersi; HomepagePopularTest 26 lulus 458 asersi; FlashSalePeriodTest 7 lulus 131 asersi; live /products/all?from=paling-banyak-dipesan total 135 jadi 117 dan nol kartu berlabel Flash Sale di grid sementara carousel tetap 8 kartu; /products/all biasa tetap 135 dengan 2 kartu Flash Sale; /flash-sale tetap 18 kartu.
+Agent: zcode-storefront

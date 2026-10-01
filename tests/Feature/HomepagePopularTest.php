@@ -930,4 +930,55 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('products.13.views_after', null)
                 ->where('products.13.clicks_after', null));
     }
+
+    public function test_paling_banyak_dipesan_gallery_tidak_mengulang_produk_flash_sale(): void
+    {
+        CatalogTaxonomy::forgetCache();
+
+        // Dua produk terkurasi: satu ikut Flash Sale, satu tidak.
+        $flash = $this->makePromoProduct('WIN-GAL-FLASH', 'Galeri Flash', homepagePopularSort: 1);
+        $this->makePromoProduct('WIN-GAL-PLAIN', 'Galeri Biasa', homepagePopularSort: 2);
+
+        $campaign = Promotion::create([
+            'type' => Promotion::TYPE_FLASH_SALE,
+            'name' => 'Flash Galeri',
+            'status' => Promotion::STATUS_ACTIVE,
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addDay(),
+            'discount_percent' => 15,
+        ]);
+        PromotionItem::create([
+            'promotion_id' => $campaign->id,
+            'target_type' => 'product',
+            'target_id' => (string) $flash->id,
+        ]);
+        app(\App\Services\CampaignService::class)->flushCache();
+
+        $gallerySkus = null;
+        $this->get(route('catalog.all', ['sort' => 'popular', 'from' => 'paling-banyak-dipesan']))
+            ->assertOk()
+            ->assertInertia(function (AssertableInertia $page) use (&$gallerySkus): void {
+                $props = $page->toArray()['props'];
+                $gallerySkus = array_column($props['products'], 'parent_sku');
+
+                // Carousel Flash Sale tetap membawa produknya sendiri.
+                $this->assertSame(
+                    ['WIN-GAL-FLASH'],
+                    array_column($props['flashSaleSpotlight'], 'parent_sku'),
+                );
+            });
+
+        // Grid tidak mengulang produk yang sudah ada di carousel.
+        $this->assertSame(['WIN-GAL-PLAIN'], $gallerySkus);
+
+        // Listing Populer biasa (tanpa penanda asal carousel) tetap memuatnya.
+        $plainSkus = null;
+        $this->get(route('catalog.all', ['sort' => 'popular']))
+            ->assertOk()
+            ->assertInertia(function (AssertableInertia $page) use (&$plainSkus): void {
+                $plainSkus = array_column($page->toArray()['props']['products'], 'parent_sku');
+            });
+
+        $this->assertContains('WIN-GAL-FLASH', $plainSkus);
+    }
 }

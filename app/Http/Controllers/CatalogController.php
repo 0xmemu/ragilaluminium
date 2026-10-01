@@ -267,7 +267,12 @@ protected function category(?string $category, Request $request, string $mode = 
         // Hanya di konteks ini urutan kurasi admin dipakai; sort=popular biasa
         // tetap murni skor penjualan agar tidak mengubah arti filter Populer.
         // Fragmen urutannya milik Product::palingBanyakDipesanOrderSql() supaya
-        // galeri ini dan carousel beranda/katalog tidak pernah bisa berbeda.
+        // galeri ini dan carousel beranda memakai satu urutan yang sama. Ada
+        // satu pengecualian: selagi periode Flash Sale hidup, produk Flash Sale
+        // disaring keluar dari galeri ini karena halaman ini sudah menampilkan
+        // carousel Flash Sale sendiri di atas daftar. Selama periode itu
+        // berjalan, 10 teratas galeri karena itu bisa menyimpang dari carousel
+        // beranda yang tidak menyaring produk Flash Sale.
         $fromCuratedPopular = $request->input('from') === 'paling-banyak-dipesan';
 
         $promoAttributes = [
@@ -298,6 +303,14 @@ protected function category(?string $category, Request $request, string $mode = 
                 }
                 $this->scopeFlashSaleActive($q);
             })
+            // Grid galeri Paling Banyak Dipesan tidak mengulang produk yang
+            // sudah tampil di carousel Flash Sale pada halaman yang sama.
+            // Hanya berlaku selagi periode Flash Sale hidup; setelah periode
+            // berakhir, produk itu kembali ikut urutan biasa.
+            ->when(
+                $fromCuratedPopular && $flashPeriodLive && ! $flashOnly,
+                fn ($q) => $this->scopeFlashSaleInactive($q)
+            )
             ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withMin('activeVariants as min_price_sort', 'price')
             ->withMin('activeVariants as min_height_sort', 'height_cm')
@@ -374,6 +387,11 @@ protected function category(?string $category, Request $request, string $mode = 
             // Filter Flash Sale harus menjadi bagian dari kunci cache,
             // agar hasil filter flash tidak bertabrakan dengan listing umum.
             $flashOnly ? 'flash' : 'no-flash',
+            // Status periode Flash Sale ikut jadi kunci cache: penyingkiran
+            // produk Flash Sale dari galeri Paling Banyak Dipesan hanya berlaku
+            // selagi periode hidup, jadi hasil kedua keadaan tidak boleh
+            // bertukar.
+            $flashPeriodLive ? 'flash-live' : 'flash-off',
             (string) $request->input('price_min'), (string) $request->input('price_max'),
             (string) $products->currentPage(),
             // Ukuran halaman ikut jadi kunci: hasil 15 dan 16 potongannya beda.
@@ -655,6 +673,36 @@ protected function category(?string $category, Request $request, string $mode = 
         $trueValues = ['true', '1', 'yes', 'on'];
 
         return $query->whereHas('attributes', function ($attr) use ($flashAttributes, $trueValues) {
+            $attr->whereIn('attribute_name', $flashAttributes)
+                ->where(function ($inner) use ($trueValues) {
+                    foreach ($trueValues as $value) {
+                        $inner->orWhereRaw('LOWER(TRIM(attribute_value)) = ?', [$value]);
+                    }
+                });
+        });
+    }
+
+    /**
+     * Kebalikan scopeFlashSaleActive(): produk yang TIDAK sedang Flash Sale.
+     *
+     * Dipakai grid galeri Paling Banyak Dipesan supaya produk yang sudah
+     * tampil di carousel Flash Sale tidak muncul dua kali di halaman yang
+     * sama. Definisi Flash Sale-nya sengaja sama persis dengan
+     * scopeFlashSaleActive(), jadi kedua himpunan tidak pernah bisa berbeda.
+     *
+     * @param  Builder<Product>  $query
+     */
+    protected function scopeFlashSaleInactive($query)
+    {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+        if ($flashIds !== []) {
+            return $query->whereNotIn('id', $flashIds);
+        }
+
+        $flashAttributes = ['promo_flash_sale', 'flash_sale'];
+        $trueValues = ['true', '1', 'yes', 'on'];
+
+        return $query->whereDoesntHave('attributes', function ($attr) use ($flashAttributes, $trueValues) {
             $attr->whereIn('attribute_name', $flashAttributes)
                 ->where(function ($inner) use ($trueValues) {
                     foreach ($trueValues as $value) {
