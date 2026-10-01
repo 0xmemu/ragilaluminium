@@ -77,6 +77,19 @@ class ProductVariant extends Model
     /**
      * Schema-shaped API representation (database-schema.md: product_variants).
      */
+    /** Label ringkas opsi varian untuk pemilih, contoh: "Warna: Hitam · Kaca: Kaca Es". */
+    public function optionLabel(): string
+    {
+        return collect([
+            $this->variation_1_option
+                ? trim(($this->variation_1_name ? $this->variation_1_name.': ' : '').$this->variation_1_option)
+                : null,
+            $this->variation_2_option
+                ? trim(($this->variation_2_name ? $this->variation_2_name.': ' : '').$this->variation_2_option)
+                : null,
+        ])->filter()->implode(' · ');
+    }
+
     public function toApiArray(): array
     {
         return [

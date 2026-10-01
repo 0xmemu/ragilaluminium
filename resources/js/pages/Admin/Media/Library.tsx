@@ -1041,6 +1041,12 @@ export default function MediaLibrary({
   const [attachVisibility] = React.useState("visible")
   const [attachBusy, setAttachBusy] = React.useState(false)
   const [attachError, setAttachError] = React.useState<string | null>(null)
+  const [attachVariant, setAttachVariant] = React.useState("")
+  const [attachVariantOptions, setAttachVariantOptions] = React.useState<{ id: number; sku: string; label: string }[]>([])
+  const [attachExisting, setAttachExisting] = React.useState<{ product_variant_id: number | null; position: number; is_installation: boolean; show_in_catalog: boolean }[]>([])
+  const attachExistingRow = attachExisting.find(
+    (row) => (row.product_variant_id ?? null) === (attachVariant ? Number(attachVariant) : null) && row.is_installation === attachInstallation,
+  ) ?? null
 
   const runSearch = React.useCallback((overrides: Partial<LibraryFilters> = {}) => {
     router.get(
@@ -1461,12 +1467,12 @@ export default function MediaLibrary({
             role="dialog"
             aria-modal="true"
             aria-label="Pasang ke produk"
-            className="min-h-48 w-full max-w-3xl resize overflow-auto rounded-lg bg-surface p-5 shadow-float sm:w-[42rem] sm:max-w-[min(80rem,calc(100vw-2rem))] sm:min-w-[28rem] max-h-[calc(100dvh-2rem)]"
+            className="flex h-[min(40rem,calc(100dvh-2rem))] w-full max-w-3xl resize flex-col overflow-auto rounded-lg bg-surface p-5 shadow-float sm:w-[42rem] sm:max-w-[min(80rem,calc(100vw-2rem))] sm:min-w-[28rem] max-h-[calc(100dvh-2rem)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-3 text-sm font-semibold">Pasang ke produk</h3>
-            <div className="space-y-3">
-              <div>
+            <h3 className="mb-3 shrink-0 text-sm font-semibold">Pasang ke produk</h3>
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex min-h-0 flex-1 flex-col">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold text-muted-foreground">Produk tujuan</span>
                   <span className={cn("min-w-0 truncate text-xs", attachLabel ? "font-medium text-foreground" : "text-muted-foreground")}>
@@ -1478,6 +1484,9 @@ export default function MediaLibrary({
                       onClick={() => {
                         setAttachProduct("")
                         setAttachLabel("")
+                        setAttachVariant("")
+                        setAttachVariantOptions([])
+                        setAttachExisting([])
                       }}
                       className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                     >
@@ -1485,24 +1494,55 @@ export default function MediaLibrary({
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex min-h-0 flex-1 flex-col">
                   <ProductPicker
                     maxSelection={1}
+                    className="flex min-h-0 flex-1 flex-col"
+                    tableClassName="min-h-0 flex-1"
                     onSelect={(products) => {
                       const produk = products[0] ?? null
                       setAttachProduct(produk ? String(produk.id) : "")
                       setAttachLabel(produk ? `${produk.name} (${produk.parent_sku})` : "")
+                      setAttachVariant("")
+                      setAttachVariantOptions([])
+                      setAttachExisting([])
+                      if (produk && attachingId !== null) {
+                        void fetch(`${routeUrl("admin.media.attach-options", { asset: attachingId })}?product_id=${encodeURIComponent(String(produk.id))}`, { headers: { Accept: "application/json" } })
+                          .then((res) => (res.ok ? res.json() : null))
+                          .then((data) => {
+                            setAttachVariantOptions(Array.isArray(data?.variants) ? data.variants : [])
+                            setAttachExisting(Array.isArray(data?.existing) ? data.existing : [])
+                          })
+                          .catch(() => {})
+                      }
                     }}
                   />
                 </div>
               </div>
               {attachProduct ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Posisi</label>
-                    <Input type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
+                <div className="shrink-0 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label htmlFor="attach-variant" className="text-xs font-semibold text-muted-foreground">Varian</label>
+                      <select
+                        id="attach-variant"
+                        value={attachVariant}
+                        onChange={(e) => setAttachVariant(e.target.value)}
+                        disabled={attachVariantOptions.length === 0}
+                        className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-70"
+                      >
+                        <option value="">Tanpa varian (foto katalog)</option>
+                        {attachVariantOptions.map((v) => (
+                          <option key={v.id} value={String(v.id)}>{v.label || v.sku}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="attach-position" className="text-xs font-semibold text-muted-foreground">Posisi</label>
+                      <Input id="attach-position" type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
+                    </div>
                   </div>
-                  <div className="flex items-end gap-1">
+                  <div className="flex items-center gap-4">
                     <label className="flex items-center gap-1 text-xs">
                       <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Tampilkan katalog
                     </label>
@@ -1510,21 +1550,29 @@ export default function MediaLibrary({
                       <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
                     </label>
                   </div>
+                  {attachExistingRow ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setAttachingId(null); setAttachProduct(""); setAttachLabel("") }}>Batal</Button>
+            <div className="mt-4 flex shrink-0 justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setAttachingId(null); setAttachProduct(""); setAttachLabel(""); setAttachVariant(""); setAttachVariantOptions([]); setAttachExisting([]) }}>Batal</Button>
               <Button type="button" size="sm" disabled={!attachProduct || attachBusy} onClick={async () => {
                 setAttachBusy(true); setAttachError(null)
                 try {
-                  const res = await fetch(routeUrl("admin.media.attach", { media: attachingId }), {
+                  const res = await fetch(routeUrl("admin.media.attach", { asset: attachingId }), {
                     method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": csrf },
-                    body: JSON.stringify({ product_id: Number(attachProduct), position: Number(attachPosition), show_in_catalog: attachCatalog, is_installation: attachInstallation, visibility: attachVisibility }),
+                    body: JSON.stringify({ product_ids: [Number(attachProduct)], product_variant_id: attachVariant ? Number(attachVariant) : null, position: Number(attachPosition), show_in_catalog: attachCatalog, is_installation: attachInstallation, visibility: attachVisibility }),
                   })
-                  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Gagal")
-                  setAttachingId(null); setAttachProduct(""); setAttachLabel("")
-                } catch (e) { setAttachError(String(e)) }
+                  if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as { message?: string }
+                    throw new Error(data.message ?? "Gagal memasang media. Coba beberapa saat lagi.")
+                  }
+                  setAttachingId(null); setAttachProduct(""); setAttachLabel(""); setAttachVariant(""); setAttachVariantOptions([]); setAttachExisting([])
+                } catch (e) { setAttachError(e instanceof Error ? e.message : "Gagal memasang media. Coba beberapa saat lagi.") }
                 setAttachBusy(false)
               }}>
                 {attachBusy ? "Memasang…" : "Pasang"}

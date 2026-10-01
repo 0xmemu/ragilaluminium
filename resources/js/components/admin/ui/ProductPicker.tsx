@@ -28,6 +28,8 @@ interface ProductPickerProps {
   initialSelection?: PickerProduct[]
   endpoint?: string
   className?: string
+  /** Kelas tambahan untuk wadah gulir tabel, mis. mengisi tinggi popup. */
+  tableClassName?: string
 }
 
 function formatCurrency(value: number): string {
@@ -44,6 +46,7 @@ export function ProductPicker({
   initialSelection = [],
   endpoint = routeUrl("admin.promotions.products"),
   className,
+  tableClassName = "max-h-[22rem]",
 }: ProductPickerProps) {
   const [search, setSearch] = React.useState("")
   const [category, setCategory] = React.useState("")
@@ -174,7 +177,7 @@ export function ProductPicker({
       {/* Table. Gulir vertikal di dalam tabel saja: tanpa ini popup yang
           memuat picker bisa memanjang melebihi layar dan bagian atasnya keluar
           layar (temuan owner 2026-09-29 di Media Library). */}
-      <div className="max-h-[22rem] overflow-y-auto rounded-lg border border-border">
+      <div className={cn(tableClassName, "overflow-y-auto rounded-lg border border-border")}>
         <Table>
           <TableHeader>
             <TableRow>

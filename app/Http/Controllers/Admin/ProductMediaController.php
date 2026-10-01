@@ -214,38 +214,145 @@ class ProductMediaController extends Controller
             // Nama route wajib berawalan `admin.`: seluruh route admin
             // didaftarkan di dalam grup ->name('admin.'). Tanpa awalan itu
             // `media.attach` tidak pernah terdaftar dan pemanggilnya gagal.
-    public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse
+    public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'product_ids' => ['required', 'array', 'min:1', 'max:100'],
             'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
+            'product_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'position' => ['required', 'integer', 'min:1', 'max:109'],
             'show_in_catalog' => ['boolean'],
             'is_installation' => ['boolean'],
             'is_main_image' => ['boolean'],
             'visibility' => ['required', 'in:visible,hidden,archived'],
+        ], [
+            'product_ids.required' => 'Pilih produk tujuan terlebih dahulu.',
+            'position.required' => 'Isi posisi media dengan angka 1 sampai 109.',
+            'position.min' => 'Posisi minimal 1.',
+            'position.max' => 'Posisi maksimal 109.',
+            'product_variant_id.exists' => 'Varian yang dipilih tidak ditemukan.',
         ]);
 
+        $fail = fn (string $message) => $request->expectsJson()
+            ? response()->json(['message' => $message], 422)
+            : redirect()->back()->with('error', $message);
+
         if ($asset->visibility === 'archived') {
-            return redirect()->back()->with('error', 'Shared asset yang sudah diarsipkan tidak dapat dipasang.');
+            return $fail('Shared asset yang sudah diarsipkan tidak dapat dipasang.');
         }
         if ($asset->kind === 'video' && ! empty($validated['is_main_image'])) {
-            return redirect()->back()->with('error', 'Video tidak dapat dijadikan gambar utama.');
+            return $fail('Video tidak dapat dijadikan gambar utama.');
+        }
+
+        $variantId = isset($validated['product_variant_id']) ? (int) $validated['product_variant_id'] : null;
+        if ($variantId !== null) {
+            $variant = ProductVariant::find($variantId);
+            $productIds = array_map('intval', $validated['product_ids']);
+            if ($variant === null || count($productIds) !== 1 || (int) $variant->product_id !== $productIds[0]) {
+                return $fail('Varian tidak sesuai dengan produk tujuan.');
+            }
         }
 
         $resolver = app(MediaAssetResolver::class);
+        $isInstallation = (bool) ($validated['is_installation'] ?? false);
         $products = Product::query()->whereIn('id', $validated['product_ids'])->get();
         foreach ($products as $product) {
+            // Sisip, bukan nomor kembar: media lain dalam lingkup yang sama
+            // (produk, varian, jenis pemasangan) bergeser satu langkah, lalu
+            // baris untuk aset ini ditulis pada posisi yang diisi.
+            $occupied = ProductMedia::query()
+                ->where('product_id', $product->id)
+                ->where('media_asset_id', $asset->id)
+                ->where('is_installation', $isInstallation)
+                ->when($variantId !== null,
+                    fn ($query) => $query->where('product_variant_id', $variantId),
+                    fn ($query) => $query->whereNull('product_variant_id'),
+                )
+                ->first();
+            $this->makeRoomForInsert($product, $variantId, $isInstallation, (int) $validated['position'], $occupied?->id);
             $resolver->attach($product, $asset, [
                 'position' => $validated['position'],
+                'product_variant_id' => $variantId,
                 'is_main_image' => $asset->kind === 'image' && ($validated['is_main_image'] ?? false),
                 'show_in_catalog' => $validated['show_in_catalog'] ?? true,
-                'is_installation' => $validated['is_installation'] ?? false,
+                'is_installation' => $isInstallation,
                 'visibility' => $validated['visibility'],
             ], (int) $request->user()->id);
         }
 
-        return redirect()->back()->with('success', "Media dipasang ke {$products->count()} produk.");
+        $message = "Media dipasang ke {$products->count()} produk.";
+
+        return $request->expectsJson()
+            ? response()->json(['attached' => $products->count(), 'message' => $message])
+            : redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Sisip posisi: geser media lain dalam lingkup yang sama (produk, lingkup
+     * varian, jenis pemasangan) yang posisinya >= posisi tujuan, supaya media
+     * baru tidak bernomor kembar dengan media eksisting. Baris milik aset yang
+     * sedang dipasang dikecualikan karena akan ditulis ulang oleh attach().
+     */
+    private function makeRoomForInsert(Product $product, ?int $variantId, bool $isInstallation, int $position, ?int $ignoreMediaId = null): void
+    {
+        $query = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('is_installation', $isInstallation)
+            ->where('position', '>=', $position);
+
+        if ($variantId !== null) {
+            $query->where('product_variant_id', $variantId);
+        } else {
+            $query->whereNull('product_variant_id');
+        }
+
+        if ($ignoreMediaId !== null) {
+            $query->where('id', '!=', $ignoreMediaId);
+        }
+
+        $query->increment('position');
+    }
+
+    /**
+     * Opsi popup "Pasang ke produk" di Media Library: varian aktif produk
+     * tujuan dan status keterpasangan aset ini pada produk itu, supaya admin
+     * melihat media eksisting sebelum memasang.
+     */
+    public function attachOptions(Request $request, MediaAsset $asset): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+        ]);
+
+        $product = Product::query()->findOrFail($validated['product_id']);
+        $variants = $product->activeVariants()
+            ->orderBy('id')
+            ->get()
+            ->map(fn (ProductVariant $variant): array => [
+                'id' => (int) $variant->id,
+                'sku' => $variant->variant_sku,
+                'label' => $variant->optionLabel(),
+            ])
+            ->values();
+
+        $existing = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $asset->id)
+            ->where('visibility', '!=', 'archived')
+            ->orderBy('position')
+            ->get()
+            ->map(fn (ProductMedia $media): array => [
+                'product_variant_id' => $media->product_variant_id !== null ? (int) $media->product_variant_id : null,
+                'position' => (int) $media->position,
+                'is_installation' => (bool) $media->is_installation,
+                'show_in_catalog' => (bool) $media->show_in_catalog,
+            ])
+            ->values();
+
+        return response()->json([
+            'variants' => $variants,
+            'existing' => $existing,
+        ]);
     }
 
 

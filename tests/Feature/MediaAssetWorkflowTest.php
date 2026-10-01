@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\MediaAssetResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,13 +83,166 @@ class MediaAssetWorkflowTest extends TestCase
         $this->assertDatabaseHas('product_media', ['id' => $media->id]);
     }
 
+    public function test_attach_options_lists_active_variants_and_existing_rows(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $product = $this->makeProduct('ATTACH-OPT-1');
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'ATTACH-OPT-1-PUTIH',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Putih',
+            'price' => 100000,
+            'stock' => 1,
+            'status' => 'active',
+        ]);
+        $asset = $this->makeAsset('attach-opt-1');
+
+        $this->attachAsset($admin, $asset, $product, 3);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.media.attach-options', $asset).'?product_id='.$product->id)
+            ->assertOk()
+            ->assertJsonPath('variants.0.id', $variant->id)
+            ->assertJsonPath('variants.0.sku', 'ATTACH-OPT-1-PUTIH')
+            ->assertJsonPath('existing.0.position', 3)
+            ->assertJsonPath('existing.0.product_variant_id', null);
+    }
+
+    public function test_attach_insert_shifts_existing_positions_instead_of_duplicate_numbers(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $product = $this->makeProduct('ATTACH-SHIFT-1');
+        $assetA = $this->makeAsset('attach-shift-a');
+        $assetB = $this->makeAsset('attach-shift-b');
+        $assetC = $this->makeAsset('attach-shift-c');
+
+        $this->attachAsset($admin, $assetA, $product, 1);
+        $this->attachAsset($admin, $assetB, $product, 2);
+        $this->attachAsset($admin, $assetC, $product, 2);
+
+        $positions = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->whereIn('media_asset_id', [$assetA->id, $assetB->id, $assetC->id])
+            ->pluck('position', 'media_asset_id');
+
+        $this->assertSame(1, (int) $positions[$assetA->id]);
+        $this->assertSame(2, (int) $positions[$assetC->id]);
+        $this->assertSame(3, (int) $positions[$assetB->id]);
+    }
+
+    public function test_attach_to_variant_scope_does_not_touch_catalog_media(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $product = $this->makeProduct('ATTACH-VAR-1');
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'ATTACH-VAR-1-PUTIH',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Putih',
+            'price' => 100000,
+            'stock' => 1,
+            'status' => 'active',
+        ]);
+        $assetCatalog = $this->makeAsset('attach-var-katalog');
+        $assetVariant = $this->makeAsset('attach-var-varian');
+
+        $this->attachAsset($admin, $assetCatalog, $product, 1);
+        $this->attachAsset($admin, $assetVariant, $product, 1, ['product_variant_id' => $variant->id]);
+
+        $katalog = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $assetCatalog->id)
+            ->first();
+        $varian = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $assetVariant->id)
+            ->first();
+
+        $this->assertNotNull($katalog);
+        $this->assertNull($katalog->product_variant_id);
+        $this->assertSame(1, (int) $katalog->position);
+        $this->assertNotNull($varian);
+        $this->assertSame($variant->id, (int) $varian->product_variant_id);
+        $this->assertSame(1, (int) $varian->position);
+    }
+
+    public function test_attach_rejects_variant_from_another_product(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $product = $this->makeProduct('ATTACH-VAR-2');
+        $other = $this->makeProduct('ATTACH-VAR-2-OTHER');
+        $variant = ProductVariant::create([
+            'product_id' => $other->id,
+            'variant_sku' => 'ATTACH-VAR-2-OTHER-PUTIH',
+            'variation_1_name' => 'Warna',
+            'variation_1_option' => 'Putih',
+            'price' => 100000,
+            'stock' => 1,
+            'status' => 'active',
+        ]);
+        $asset = $this->makeAsset('attach-var-salah');
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.media.attach', $asset), [
+                'product_ids' => [$product->id],
+                'product_variant_id' => $variant->id,
+                'position' => 1,
+                'visibility' => 'visible',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Varian tidak sesuai dengan produk tujuan.');
+    }
+
+    public function test_reattaching_same_asset_updates_row_without_duplicate(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $product = $this->makeProduct('ATTACH-RE-1');
+        $asset = $this->makeAsset('attach-re-1');
+
+        $this->attachAsset($admin, $asset, $product, 1);
+        $this->attachAsset($admin, $asset, $product, 2, ['show_in_catalog' => false]);
+
+        $rows = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $asset->id)
+            ->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(2, (int) $rows[0]->position);
+        $this->assertFalse((bool) $rows[0]->show_in_catalog);
+    }
+
+    private function makeAsset(string $seed): MediaAsset
+    {
+        return MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'Aset '.$seed,
+            'checksum' => hash('sha256', $seed),
+            'object_key' => 'media-assets/'.$seed.'/card.webp',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+    }
+
+    private function attachAsset(User $admin, MediaAsset $asset, Product $product, int $position, array $extra = []): void
+    {
+        $this->actingAs($admin)->post(route('admin.media.attach', $asset), array_merge([
+            'product_ids' => [$product->id],
+            'position' => $position,
+            'show_in_catalog' => true,
+            'is_installation' => false,
+            'visibility' => 'visible',
+        ], $extra))->assertRedirect();
+    }
+
     protected function makeProduct(string $sku): Product
     {
         return Product::create([
             'parent_sku' => $sku,
             'name' => $sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'draft',

@@ -2920,3 +2920,11 @@ Perubahan: baris kedua di ProductPicker.tsx kini hanya SKU, dan sel Harga diberi
 Dampak spec: tidak berubah.
 Verifikasi: ESLint + typecheck + build bersih; screenshot memperlihatkan kolom Produk nama + SKU tanpa duplikat, harga satu baris; berlaku untuk seluruh pemakai ProductPicker.
 Agent: zcode-retur
+
+## 2026-10-01 07:20 UTC | zcode-retur | Standard | 7 berkas | selesai
+Lingkup: popup "Pasang ke produk" Media Library rusak total (klik Pasang menerjang POST / dan gagal 405 dengan teks galat bahasa sistem), tidak bisa memilih varian, ruang mati di bawah popup saat diperbesar, dan posisi baru menimpa nomor media eksisting.
+Akar masalah: popup mengirim nama parameter route  padahal route  memakai  sehingga pembuat URL gagal dan fallback ke ; kiriman  tunggal juga tidak cocok dengan validasi  array.
+Perubahan: ProductMediaController (param route benar di sisi klien, kiriman product_ids array, sisip posisi menggeser media lingkup sama lewat makeRoomForInsert, varian tervalidasi milik produk tujuan, respons JSON untuk fetch, pesan validasi Indonesia, endpoint baru attachOptions), ProductVariant (optionLabel), routes/web.php (GET admin.media.attach-options), ProductPicker (prop tableClassName supaya tabel mengisi tinggi popup), Library.tsx (pilih varian, peringatan aset sudah terpasang pada lingkup, galat Indonesia), MediaAssetWorkflowTest (5 test baru).
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED, docs/api-and-routes-ragil-aluminium.md ditambah attach-options + catatan payload bulkAttach.
+Verifikasi: php -l 3 berkas PHP; MediaAssetWorkflowTest 8 passed 39 asersi sebagai www-data; typecheck bersih; eslint dua berkas TSX tanpa warning baru (3 warning warisan HEAD); npm run build sukses 28s.
+Agent: zcode-retur
