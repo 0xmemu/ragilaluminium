@@ -101,8 +101,8 @@ class MediaLibraryUploadController extends Controller
         $hash = hash('sha256', $validated['source_url']);
         $existing = MediaAsset::where('source_url_hash', $hash)->first();
         if ($existing) {
-            if ($validated['folder_id']) {
-                $existing->update(['folder_id' => $validated['folder_id']]);
+            if (filled($validated['folder_id'] ?? null)) {
+                $existing->update(['folder_id' => (int) $validated['folder_id']]);
             }
 
             return response()->json(['message' => 'URL sudah ada di library; aset dikembalikan.', 'asset_id' => $existing->id], 200);
