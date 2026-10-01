@@ -2957,3 +2957,10 @@ Perubahan: ProductPicker diberi prop slot afterFilters (dirender tepat setelah b
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint dua berkas tanpa warning baru, build sukses 29s, urutan blok dicek di browser.
 Agent: zcode-retur
+
+## 2026-10-01 10:00 UTC | zcode-retur | Standard | 2 berkas | selesai
+Lingkup: owner minta isian Cari produk sendirian di baris atas, Kategori Model Varian Posisi satu baris, label Tampilkan katalog diganti karena istilahnya aneh, dan popup diperlebar dengan rasio sekitar 4:3.
+Perubahan: ProductPicker (prop filtersGridClassName, searchFieldClassName, filterExtras menggantikan afterFilters sehingga isian pemanggil bisa masuk baris filter; default semua pemakai lain tidak berubah), Library.tsx (popup 4 kolom dengan cari full width, label Tampilkan katalog jadi Galeri produk, panel default 56rem x 42rem).
+Dampak spec: tidak berubah.
+Verifikasi: typecheck bersih, eslint dua berkas tanpa warning baru, build sukses 21s, tata letak dan rasio dicek di browser.
+Agent: zcode-retur

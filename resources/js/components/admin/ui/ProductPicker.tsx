@@ -30,8 +30,12 @@ interface ProductPickerProps {
   className?: string
   /** Kelas tambahan untuk wadah gulir tabel, mis. mengisi tinggi popup. */
   tableClassName?: string
-  /** Konten opsional di bawah baris filter, mis. pengaturan tambahan popup pemanggil. */
-  afterFilters?: React.ReactNode
+  /** Kelas wadah baris filter; ubah jumlah kolom bila pemanggil menambah isian. */
+  filtersGridClassName?: string
+  /** Kelas kolom isian cari, mis. md:col-span-full agar sendirian di satu baris. */
+  searchFieldClassName?: string
+  /** Isian filter tambahan dari pemanggil, dirender di dalam baris filter. */
+  filterExtras?: React.ReactNode
 }
 
 function formatCurrency(value: number): string {
@@ -49,7 +53,9 @@ export function ProductPicker({
   endpoint = routeUrl("admin.promotions.products"),
   className,
   tableClassName = "max-h-[22rem]",
-  afterFilters,
+  filtersGridClassName = "grid grid-cols-1 gap-3 md:grid-cols-3",
+  searchFieldClassName = "md:col-span-1",
+  filterExtras,
 }: ProductPickerProps) {
   const [search, setSearch] = React.useState("")
   const [category, setCategory] = React.useState("")
@@ -128,8 +134,8 @@ export function ProductPicker({
   return (
     <div className={cn("space-y-4", className)}>
       {/* Search & Filter */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Field id="picker-search" label="Cari produk" className="md:col-span-1">
+      <div className={filtersGridClassName}>
+        <Field id="picker-search" label="Cari produk" className={searchFieldClassName}>
           <input
             type="search"
             className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
@@ -159,9 +165,8 @@ export function ProductPicker({
             <option value="ZIGZAG">Zigzag</option>
           </Select>
         </Field>
+        {filterExtras}
       </div>
-
-      {afterFilters}
 
       {/* Counter & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -1475,7 +1475,7 @@ export default function MediaLibrary({
             role="dialog"
             aria-modal="true"
             aria-label="Pasang ke produk"
-            className="flex h-[min(40rem,calc(100dvh-2rem))] w-full max-w-3xl resize flex-col overflow-auto rounded-lg bg-surface p-5 shadow-float sm:w-[42rem] sm:max-w-[min(80rem,calc(100vw-2rem))] sm:min-w-[28rem] max-h-[calc(100dvh-2rem)]"
+            className="flex h-[min(42rem,calc(100dvh-2rem))] w-full resize flex-col overflow-auto rounded-lg bg-surface p-5 shadow-float sm:w-[56rem] sm:max-w-[min(80rem,calc(100vw-2rem))] sm:min-w-[28rem] max-h-[calc(100dvh-2rem)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-3 shrink-0 text-sm font-semibold">Pasang ke produk</h3>
@@ -1507,44 +1507,44 @@ export default function MediaLibrary({
                     maxSelection={1}
                     className="flex min-h-0 flex-1 flex-col"
                     tableClassName="min-h-0 flex-1"
-                    afterFilters={
+                    filtersGridClassName="grid grid-cols-1 gap-3 md:grid-cols-4"
+                    searchFieldClassName="md:col-span-full"
+                    filterExtras={
                       attachProduct ? (
-                        <div className="shrink-0 space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label htmlFor="attach-variant" className="text-xs font-semibold text-muted-foreground">Varian</label>
-                              <select
-                                id="attach-variant"
-                                value={attachVariant}
-                                onChange={(e) => setAttachVariant(e.target.value)}
-                                disabled={attachVariantOptions.length === 0}
-                                className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-70"
-                              >
-                                <option value="">Tanpa varian (foto katalog)</option>
-                                {attachVariantOptions.map((v) => (
-                                  <option key={v.id} value={String(v.id)}>{v.label || v.sku}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label htmlFor="attach-position" className="text-xs font-semibold text-muted-foreground">Posisi</label>
-                              <Input id="attach-position" type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
-                            </div>
+                        <>
+                          <div className="grid min-w-0 content-start gap-1.5">
+                            <label htmlFor="attach-variant" className="text-[13px] font-medium text-foreground">Varian</label>
+                            <select
+                              id="attach-variant"
+                              value={attachVariant}
+                              onChange={(e) => setAttachVariant(e.target.value)}
+                              disabled={attachVariantOptions.length === 0}
+                              className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-70"
+                            >
+                              <option value="">Tanpa varian (foto katalog)</option>
+                              {attachVariantOptions.map((v) => (
+                                <option key={v.id} value={String(v.id)}>{v.label || v.sku}</option>
+                              ))}
+                            </select>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="grid min-w-0 content-start gap-1.5">
+                            <label htmlFor="attach-position" className="text-[13px] font-medium text-foreground">Posisi</label>
+                            <Input id="attach-position" type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
+                          </div>
+                          <div className="col-span-full flex flex-wrap items-center gap-4">
                             <label className="flex items-center gap-1 text-xs">
-                              <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Tampilkan katalog
+                              <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Galeri produk
                             </label>
                             <label className="flex items-center gap-1 text-xs">
                               <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
                             </label>
+                            {attachExistingRow ? (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
+                              </p>
+                            ) : null}
                           </div>
-                          {attachExistingRow ? (
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
-                            </p>
-                          ) : null}
-                        </div>
+                        </>
                       ) : null
                     }
                     onSelect={(products) => {
