@@ -125,11 +125,16 @@ function MetricCell({ row, metric }: { row: PopularRow; metric: "views" | "click
   const delta = metric === "views" ? row.delta_views : row.delta_clicks
 
   if (before === null || after === null || delta === null) {
+    // Dua sebab angka tunggal: baris di luar carousel (tidak punya tanggal
+    // masuk) atau baris yang baru masuk carousel hari ini (rentang "sebelum"
+    // belum punya lebar yang sebanding). Keduanya diberi keterangan berbeda
+    // supaya admin tidak menyangka pembandingnya hilang.
+    const reason = row.in_window
+      ? "Baru masuk carousel hari ini, rentang pembanding belum tersedia"
+      : "Total yang tercatat sampai hari ini, belum ada pembanding sebelum dan sesudah"
+
     return (
-      <span
-        className="text-xs tabular-nums text-foreground"
-        title="Total yang tercatat sampai hari ini, belum ada pembanding sebelum dan sesudah"
-      >
+      <span className="text-xs tabular-nums text-foreground" title={reason}>
         {formatNumber(total)}
       </span>
     )
