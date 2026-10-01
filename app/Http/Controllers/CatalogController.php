@@ -266,13 +266,12 @@ protected function category(?string $category, Request $request, string $mode = 
         // Penanda dari carousel "Paling Banyak Dipesan" (tautan Lihat Semua).
         // Hanya di konteks ini urutan kurasi admin dipakai; sort=popular biasa
         // tetap murni skor penjualan agar tidak mengubah arti filter Populer.
-        // Fragmen urutannya milik Product::palingBanyakDipesanOrderSql() supaya
-        // galeri ini dan carousel beranda memakai satu urutan yang sama. Ada
-        // satu pengecualian: selagi periode Flash Sale hidup, produk Flash Sale
-        // disaring keluar dari galeri ini karena halaman ini sudah menampilkan
-        // carousel Flash Sale sendiri di atas daftar. Selama periode itu
-        // berjalan, 10 teratas galeri karena itu bisa menyimpang dari carousel
-        // beranda yang tidak menyaring produk Flash Sale.
+        // Fragmen urutannya milik Product::palingBanyakDipesanOrderSql(), dan
+        // itu SATU-SATUNYA sumber urutan Paling Banyak Dipesan: carousel
+        // beranda mengambil N produk pertamanya, grid halaman memakai urutan
+        // yang sama dengan pagination, dan carousel Flash Sale di halaman ini
+        // hanyalah subset dari urutan itu. Status Flash Sale karena itu tidak
+        // pernah mengecualikan produk dari urutan ini.
         $fromCuratedPopular = $request->input('from') === 'paling-banyak-dipesan';
 
         $promoAttributes = [
@@ -303,14 +302,6 @@ protected function category(?string $category, Request $request, string $mode = 
                 }
                 $this->scopeFlashSaleActive($q);
             })
-            // Grid galeri Paling Banyak Dipesan tidak mengulang produk yang
-            // sudah tampil di carousel Flash Sale pada halaman yang sama.
-            // Hanya berlaku selagi periode Flash Sale hidup; setelah periode
-            // berakhir, produk itu kembali ikut urutan biasa.
-            ->when(
-                $fromCuratedPopular && $flashPeriodLive && ! $flashOnly,
-                fn ($q) => $this->scopeFlashSaleInactive($q)
-            )
             ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withMin('activeVariants as min_price_sort', 'price')
             ->withMin('activeVariants as min_height_sort', 'height_cm')
@@ -356,8 +347,9 @@ protected function category(?string $category, Request $request, string $mode = 
                 function ($q) use ($fromCuratedPopular) {
                     // Halaman "Lihat Semua" milik carousel Paling Banyak Dipesan
                     // (from=paling-banyak-dipesan) memakai SATU urutan bersama
-                    // dengan carousel: kurasi admin dulu, sisanya skor penjualan.
-                    // sort=popular tanpa penanda itu tetap murni penjualan.
+                    // dengan carousel beranda dan carousel Flash Sale: kurasi
+                    // admin dulu, sisanya skor penjualan. sort=popular tanpa
+                    // penanda itu tetap murni penjualan.
                     if ($fromCuratedPopular) {
                         $q->orderByRaw(Product::palingBanyakDipesanOrderSql());
 
@@ -387,11 +379,6 @@ protected function category(?string $category, Request $request, string $mode = 
             // Filter Flash Sale harus menjadi bagian dari kunci cache,
             // agar hasil filter flash tidak bertabrakan dengan listing umum.
             $flashOnly ? 'flash' : 'no-flash',
-            // Status periode Flash Sale ikut jadi kunci cache: penyingkiran
-            // produk Flash Sale dari galeri Paling Banyak Dipesan hanya berlaku
-            // selagi periode hidup, jadi hasil kedua keadaan tidak boleh
-            // bertukar.
-            $flashPeriodLive ? 'flash-live' : 'flash-off',
             (string) $request->input('price_min'), (string) $request->input('price_max'),
             (string) $products->currentPage(),
             // Ukuran halaman ikut jadi kunci: hasil 15 dan 16 potongannya beda.
@@ -406,16 +393,15 @@ protected function category(?string $category, Request $request, string $mode = 
             && $flashPeriodLive
             && ! ($request->is('api/*') || $request->wantsJson())
         ) {
-            // Spotlight Flash Sale di atas daftar produk (halaman 1 saja).
-            // Tampil di halaman promo dan halaman "Paling Banyak Dipesan" (popular/all).
-            $flashQuery = Product::visible();
-            $this->scopeFlashSaleActive($flashQuery);
+            // Carousel Flash Sale di atas daftar (halaman 1 saja) BUKAN feed
+            // terpisah: isinya subset dari urutan Paling Banyak Dipesan yang
+            // sama dengan grid di bawahnya dan carousel beranda, disaring ke
+            // produk yang sedang Flash Sale lalu diambil 8 teratas menurut
+            // urutan itu. Jadi produk Flash Sale tetap ikut tampil di grid, dan
+            // urutan grid tidak pernah bergantung pada status Flash Sale.
             $flashSaleSpotlight = InertiaCatalog::productCards(
-                $flashQuery
+                $this->scopeFlashSaleActive(Product::visible()->orderByPalingBanyakDipesan())
                     ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
-                    ->withPopularityScore()
-                    ->latest('updated_at')
-                    ->orderByDesc('id')
                     ->limit(8)
                     ->get()
             );
@@ -673,36 +659,6 @@ protected function category(?string $category, Request $request, string $mode = 
         $trueValues = ['true', '1', 'yes', 'on'];
 
         return $query->whereHas('attributes', function ($attr) use ($flashAttributes, $trueValues) {
-            $attr->whereIn('attribute_name', $flashAttributes)
-                ->where(function ($inner) use ($trueValues) {
-                    foreach ($trueValues as $value) {
-                        $inner->orWhereRaw('LOWER(TRIM(attribute_value)) = ?', [$value]);
-                    }
-                });
-        });
-    }
-
-    /**
-     * Kebalikan scopeFlashSaleActive(): produk yang TIDAK sedang Flash Sale.
-     *
-     * Dipakai grid galeri Paling Banyak Dipesan supaya produk yang sudah
-     * tampil di carousel Flash Sale tidak muncul dua kali di halaman yang
-     * sama. Definisi Flash Sale-nya sengaja sama persis dengan
-     * scopeFlashSaleActive(), jadi kedua himpunan tidak pernah bisa berbeda.
-     *
-     * @param  Builder<Product>  $query
-     */
-    protected function scopeFlashSaleInactive($query)
-    {
-        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
-        if ($flashIds !== []) {
-            return $query->whereNotIn('id', $flashIds);
-        }
-
-        $flashAttributes = ['promo_flash_sale', 'flash_sale'];
-        $trueValues = ['true', '1', 'yes', 'on'];
-
-        return $query->whereDoesntHave('attributes', function ($attr) use ($flashAttributes, $trueValues) {
             $attr->whereIn('attribute_name', $flashAttributes)
                 ->where(function ($inner) use ($trueValues) {
                     foreach ($trueValues as $value) {

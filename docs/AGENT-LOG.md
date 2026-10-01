@@ -3019,3 +3019,11 @@ Perubahan: input berkas dibuat sr-only, pemicunya kini komponen Button admin (va
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint tanpa warning baru, build sukses; di peramban tombol setinggi 28px sama dengan tombol mode lain (dari 21px), geser 1px lebih tinggi dari tombol primer karena memakai border; aturan tekan terbukti ada di CSS hasil build (scale-[0.97] mengompilasi ke transform scaleX/scaleY .97 dan active:bg-muted ke warna latar saat ditekan, transisi 150ms).
 Agent: zcode-retur
+
+## 2026-10-01 13:55 UTC | zcode-storefront | Standard | 2 berkas | selesai
+Lingkup: owner menetapkan lewat 8 syarat bahwa Paling Banyak Dipesan harus memakai SATU sumber query/ranking, sekaligus membatalkan penyingkiran produk Flash Sale dari grid yang dipasang di commit d6cf43eb.
+Akar masalah: carousel Flash Sale sebelumnya adalah feed terpisah yang diurutkan updated_at, sedangkan grid dan carousel beranda memakai urutan kurasi; ditambah penyingkiran produk Flash Sale dari grid, sehingga tiga permukaan bisa berbeda urutan dan isi.
+Perubahan: CatalogController, carousel Flash Sale kini subset dari urutan Product::palingBanyakDipesanOrderSql() yang sama dengan grid dan carousel beranda (saring Flash Sale lalu ambil 8 teratas menurut urutan itu); penyingkiran produk Flash Sale dari grid dibatalkan (method scopeFlashSaleInactive dihapus, komponen kunci cache dikembalikan); komentar penanda dan cabang sort=popular diperbarui. HomepagePopularTest, test penjaga lama diganti test kontrak baru.
+Dampak spec: tidak berubah, tidak ada route, URL, kolom, enum, atau bentuk JSON baru. Status Flash Sale kini tidak memengaruhi komposisi maupun urutan grid.
+Verifikasi: php -l dua berkas bersih; HomepagePopularTest 26 lulus 493 asersi; FlashSalePeriodTest 7 lulus 131 asersi; 134 test katalog lulus 990 asersi; live carousel beranda 10 teratas identik dengan 10 teratas grid, total grid 135 termasuk 2 produk Flash Sale, carousel Flash Sale 8 kartu berurutan sesuai ranking, /flash-sale tetap 18 kartu semuanya Flash, /products/all?sort=popular tetap 135. Catatan data: urutan teratas live bergeser dari ronde sebelumnya (RAEGG3SZ2A3X kini posisi 1, RAPGGJEVM7WS posisi 2) karena kolom homepage_popular_sort ditulis ulang dari panel admin, bukan karena perubahan kode.
+Agent: zcode-storefront

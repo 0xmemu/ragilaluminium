@@ -938,13 +938,16 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('products.13.clicks_total', fn ($v) => is_int($v)));
     }
 
-    public function test_paling_banyak_dipesan_gallery_tidak_mengulang_produk_flash_sale(): void
+    public function test_galeri_dan_carousel_flash_pakai_satu_urutan_paling_banyak_dipesan(): void
     {
         CatalogTaxonomy::forgetCache();
 
-        // Dua produk terkurasi: satu ikut Flash Sale, satu tidak.
-        $flash = $this->makePromoProduct('WIN-GAL-FLASH', 'Galeri Flash', homepagePopularSort: 1);
-        $this->makePromoProduct('WIN-GAL-PLAIN', 'Galeri Biasa', homepagePopularSort: 2);
+        // Tiga produk terkurasi berurutan: Flash A, Biasa, Flash B. Urutan
+        // kurasi sengaja tidak sama dengan urutan pembuatan, supaya urutan
+        // carousel Flash Sale bisa dibedakan dari urutan updated_at.
+        $flashA = $this->makePromoProduct('WIN-GAL-FA', 'Galeri Flash A', homepagePopularSort: 1);
+        $this->makePromoProduct('WIN-GAL-PL', 'Galeri Biasa', homepagePopularSort: 2);
+        $flashB = $this->makePromoProduct('WIN-GAL-FB', 'Galeri Flash B', homepagePopularSort: 3);
 
         $campaign = Promotion::create([
             'type' => Promotion::TYPE_FLASH_SALE,
@@ -954,38 +957,47 @@ class HomepagePopularTest extends \Tests\TestCase
             'ends_at' => now()->addDay(),
             'discount_percent' => 15,
         ]);
-        PromotionItem::create([
-            'promotion_id' => $campaign->id,
-            'target_type' => 'product',
-            'target_id' => (string) $flash->id,
-        ]);
+        foreach ([$flashA, $flashB] as $product) {
+            PromotionItem::create([
+                'promotion_id' => $campaign->id,
+                'target_type' => 'product',
+                'target_id' => (string) $product->id,
+            ]);
+        }
         app(\App\Services\CampaignService::class)->flushCache();
 
-        $gallerySkus = null;
         $this->get(route('catalog.all', ['sort' => 'popular', 'from' => 'paling-banyak-dipesan']))
             ->assertOk()
-            ->assertInertia(function (AssertableInertia $page) use (&$gallerySkus): void {
-                $props = $page->toArray()['props'];
-                $gallerySkus = array_column($props['products'], 'parent_sku');
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Catalog')
+                // Grid memakai urutan Paling Banyak Dipesan apa adanya: status
+                // Flash Sale TIDAK menyingkirkan produk dari grid.
+                ->where('products.0.parent_sku', 'WIN-GAL-FA')
+                ->where('products.1.parent_sku', 'WIN-GAL-PL')
+                ->where('products.2.parent_sku', 'WIN-GAL-FB')
+                // Harga dan badge promo dari resolver yang sama, jadi kartu
+                // Flash Sale di grid dan di carousel sama-sama bertanda Flash.
+                ->where('products.0.flash_sale', true)
+                ->where('products.1.flash_sale', false)
+                // Carousel Flash Sale = subset urutan itu yang sedang Flash Sale,
+                // jadi urutannya FA lalu FB, bukan urutan updated_at (FB dulu).
+                ->has('flashSaleSpotlight', 2)
+                ->where('flashSaleSpotlight.0.parent_sku', 'WIN-GAL-FA')
+                ->where('flashSaleSpotlight.1.parent_sku', 'WIN-GAL-FB')
+                ->where('flashSaleSpotlight.0.flash_sale', true)
+                // Total dari query grid setelah filter (tiga baris), bukan
+                // gabungan carousel dan grid.
+                ->where('pagination.total', 3));
 
-                // Carousel Flash Sale tetap membawa produknya sendiri.
-                $this->assertSame(
-                    ['WIN-GAL-FLASH'],
-                    array_column($props['flashSaleSpotlight'], 'parent_sku'),
-                );
-            });
-
-        // Grid tidak mengulang produk yang sudah ada di carousel.
-        $this->assertSame(['WIN-GAL-PLAIN'], $gallerySkus);
-
-        // Listing Populer biasa (tanpa penanda asal carousel) tetap memuatnya.
-        $plainSkus = null;
-        $this->get(route('catalog.all', ['sort' => 'popular']))
+        // Carousel beranda mengambil N produk pertama dari urutan yang sama,
+        // dan status Flash Sale tidak mengubah urutan itu.
+        $this->get('/')
             ->assertOk()
-            ->assertInertia(function (AssertableInertia $page) use (&$plainSkus): void {
-                $plainSkus = array_column($page->toArray()['props']['products'], 'parent_sku');
-            });
-
-        $this->assertContains('WIN-GAL-FLASH', $plainSkus);
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Public/Home')
+                ->has('popularProducts', 3)
+                ->where('popularProducts.0.parent_sku', 'WIN-GAL-FA')
+                ->where('popularProducts.1.parent_sku', 'WIN-GAL-PL')
+                ->where('popularProducts.2.parent_sku', 'WIN-GAL-FB'));
     }
 }
