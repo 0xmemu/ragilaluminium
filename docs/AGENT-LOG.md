@@ -3080,3 +3080,10 @@ Dampak spec: tidak berubah, tidak ada route, URL, kolom, atau bentuk JSON baru. 
 Verifikasi: eslint berkas bersih tanpa warning; typecheck repo nol error; vitest 244 test lulus; WorkflowAuditP1Test lulus 71 asersi; FlashSalePeriodTest lulus 131 asersi; build sukses 43s; dicek live di peramban pada lebar desktop 2236px dan lebar HP 390px: bingkai tampil bersudut 16px, track tetap bisa digeser (isi 1241px vs tampak 329px), tombol panah tidak terpotong, hitung mundur tampil.
 Catatan: berkas ini juga membawa refactor belum di-commit milik agent lain (memakai FlashSaleLabel/FlashSaleCountdown bersama dari flash-sale-stage); isinya diadopsi apa adanya dan ikut ter-commit, saya hanya mengindentasi ulang karena dibungkus bingkai.
 Agent: zcode-storefront
+
+## 2026-10-01 15:40 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta warna bingkai carousel Flash Sale (commit 96c640bf) dijadikan merah.
+Perubahan: flash-sale-carousel-section.tsx, pembungkus berbingkai jadi border-primary bg-primary/5. Warnanya token primary, merah promo yang sama dengan label FLASH SALE dan badge diskon (nilainya identik dengan token sale, hsl 0 100% 38% = #C20000), mengikuti pola blok ditonjolkan yang sudah dipakai checkout-payment-section.tsx.
+Dampak spec: tidak berubah.
+Verifikasi: eslint berkas bersih tanpa warning; typecheck nol error; vitest 244 test lulus; build sukses 33s; terukur di peramban: garis rgb(194,0,0) tebal 0,67px, latar rgba(194,0,0,0.05), radius 16px.
+Agent: zcode-storefront

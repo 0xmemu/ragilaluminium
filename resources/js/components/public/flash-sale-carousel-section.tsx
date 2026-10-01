@@ -126,11 +126,15 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4 sm:py-5">
         {/* Bingkai blok Flash Sale. Tanpa bingkai, strip ini menyatu dengan grid
             produk di bawahnya sehingga batas sorotan promo tidak terlihat dan
-            produk yang tampil di sini terkesan muncul dua kali. Tombol panah
-            memakai offset dalam (md:left-5/md:right-5, varian inset milik
-            CarouselNavButton) agar tidak tertutup atau terpotong bingkai, dan
-            overflow-hidden menahan track yang bergeser saat aksi geser di HP. */}
-        <div className="overflow-hidden rounded-xl border border-border bg-background p-3 sm:p-4">
+            produk yang tampil di sini terkesan muncul dua kali. Warnanya merah
+            promo (token primary, merah yang sama dengan label FLASH SALE dan
+            badge diskon; nilainya sama dengan token sale, #C20000) mengikuti
+            pola blok ditonjolkan yang sudah dipakai halaman checkout
+            (border-primary bg-primary/5). Tombol panah memakai offset dalam
+            (md:left-5/md:right-5, varian inset milik CarouselNavButton) agar
+            tidak tertutup atau terpotong bingkai, dan overflow-hidden menahan
+            track yang bergeser saat aksi geser di HP. */}
+        <div className="overflow-hidden rounded-xl border border-primary bg-primary/5 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Link
               href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
