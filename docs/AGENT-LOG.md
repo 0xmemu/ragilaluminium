@@ -2980,3 +2980,11 @@ Perubahan: rekonsiliasi data 16 log (10+2 ke success, 2 ke dedup, 2 log pasangan
 Dampak spec: tidak berubah.
 Verifikasi: php -l, typecheck bersih, eslint tanpa warning baru, build sukses 19s; uji browser: tab Gagal menghasilkan ?event=failed, tab Semua menghasilkan URL bersih tanpa parameter, tabel memperlihatkan Siap/Duplikat tanpa Diproses hantu, sisa processing nol.
 Agent: zcode-retur
+
+## 2026-10-01 11:50 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner bertanya apakah tombol Dari URL di Unggah Media masih fungsional dan tidak konflik dengan fitur lain.
+Temuan: fungsional untuk URL baru, tetapi impor ulang URL yang sama meledak 500 saat folder tidak dipilih karena kunci folder_id diakses tanpa penjaga di cabang URL duplikat (MediaLibraryUploadController.php:104); dibuktikan hidup dengan fetch ke endpoint.
+Perubahan: akses kunci berpenjaga filled plus cast integer.
+Dampak spec: tidak berubah.
+Verifikasi: php -l bersih; uji hidup ulang di browser: status 200 dengan pesan URL sudah ada di library dan asset_id lama dikembalikan, tanpa duplikat.
+Agent: zcode-retur
