@@ -2928,3 +2928,10 @@ Perubahan: ProductMediaController (param route benar di sisi klien, kiriman prod
 Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED, docs/api-and-routes-ragil-aluminium.md ditambah attach-options + catatan payload bulkAttach.
 Verifikasi: php -l 3 berkas PHP; MediaAssetWorkflowTest 8 passed 39 asersi sebagai www-data; typecheck bersih; eslint dua berkas TSX tanpa warning baru (3 warning warisan HEAD); npm run build sukses 28s.
 Agent: zcode-retur
+
+## 2026-10-01 08:05 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner merasa daftar produk di popup Pasang ke produk sempit karena blok pengaturan (Varian, Posisi, centang lingkup, peringatan) terjepit di antara daftar dan tombol aksi bawah.
+Perubahan: blok pengaturan dipindah ke atas daftar produk, tepat di bawah header produk tujuan; daftar menempati sisa tinggi sampai footer.
+Dampak spec: tidak berubah.
+Verifikasi: eslint tanpa warning baru (3 warisan HEAD), build sukses 19s, urutan blok diverifikasi di browser.
+Agent: zcode-retur
