@@ -3049,3 +3049,34 @@ Dampak spec: tidak berubah. Tidak ada route, URL, kolom database, enum, status, 
 Verifikasi: typecheck 0 (satu-satunya kegagalan berasal dari tests/frontend/masalah-solusi-media.test.ts milik agent lain yang masih untracked, bukan dari perubahan ini), eslint bersih, build sukses, Vitest 30 berkas 249 tes lulus, HomepagePopularTest 26 lulus 466 asersi. Live di browser dalam aplikasi: cari RAA27629L24T lalu tekan Ke atas pada hasil pencarian, produk pindah ke baris 1, badge berubah jadi Carousel dengan keterangan "Perubahan belum disimpan", dan Urungkan serta Simpan urutan tampil berdampingan dalam keadaan bisa diklik; Urungkan mengembalikan produk ke baris 25 dan menutup mode urut; kotak cari terukur pointer-events auto dan opacity 1 selagi mode urut aktif; pemindahan dari baris 12 menggeser garis batas dengan benar.
 Catatan staging: resources/css/app.css di working tree juga memuat pekerjaan agent lain (label dan badge kartu produk katalog), jadi hanya hunk data-reorder-allow yang di-stage lewat git apply --cached; sisa 19 tambah 41 hapus milik mereka dibiarkan utuh di working tree. Push memakai SKIP_BUILD_CHECK=1 karena typecheck repo gagal oleh berkas untracked agent lain; aset sudah dideploy manual lewat scripts/prod/build-assets.sh lebih dulu.
 Agent: gemini-3.8-flash-high
+
+## 2026-09-30 07:55 UTC | zcode | Deep | (commit ini) | selesai
+
+Lingkup: Media Masalah & Solusi. Owner 2026-09-30: "'tambah media' gausah dibagi foto/video. entah 2 media video semua atau foto semua atau selang seling terserah admin".
+Berkas: app/Support/ProblemsSolutionsSettings.php, app/Http/Controllers/Admin/MasalahSolusiController.php, resources/js/lib/masalah-solusi-media.ts, resources/js/pages/Admin/MasalahSolusi/Form.tsx, resources/js/pages/Public/MasalahSolusi.tsx, tests/Feature/MasalahSolusiAdminTest.php, tests/frontend/masalah-solusi-media.test.ts, docs/database-schema-ragil-aluminium.md
+
+Akar pembatas: data disimpan sebagai `photos[]` + SATU `video`, dan halaman publik merender foto dulu lalu video. Bentuk itu tidak bisa mewakili dua video, dan tidak bisa mewakili urutan campuran.
+
+Perubahan:
+- Bentuk tersimpan jadi SATU daftar `media` berurutan: `{kind, src, alt, poster?, source?, asset_id?, width?, height?}`. Maksimal 2 entri dihitung dari totalnya, bukan per jenis. Tidak ada lagi penulisan `photos`/`video`, jadi hanya ada satu model data.
+- Form: tombol "Tambah foto" + "Tambah video" diganti SATU tombol "Tambah media" yang membuka MediaPicker tanpa penyaring jenis. Daftar media tampil berurutan sesuai pilihan admin, tiap kartu berlabel Foto atau Video plus nama berkasnya, dengan satu kolom keterangan dan satu tombol hapus.
+- Halaman publik: satu daftar berurutan; gambar memakai tata letak lama (lebar berdiri sendiri, persegi dipasangkan), video selalu selebar penuh. Urutannya persis pilihan admin.
+- Kompatibilitas: baris LAMA (`photos` + `video`) tetap dibaca dan disatukan jadi `media` (foto dulu, lalu video) oleh `mediaFromContent`, jadi tidak perlu migrasi data. Bentuk permintaan lama (`media_asset_ids` + `media_video_asset_id`) masih diterima supaya tab admin yang sudah terbuka sebelum deploy tidak kehilangan medianya.
+- Aturan batas media di `lib/masalah-solusi-media.ts` disederhanakan: helper hitung-slot lama (`countUsedSlots`, `allowedMediaKinds`, `remainingSlots`) dibuang karena tidak ada lagi pemisahan jenis; diganti `isMediaLimitReached` + `remainingMedia`.
+
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED. Bentuk JSON kolom `cms_problems_solutions.solution` berubah dan kini didokumentasikan di `docs/database-schema-ragil-aluminium.md` bagian 5.7. Tidak ada perubahan kolom, route, atau enum. Untuk agent berikutnya: kalau menambah jenis media baru (mis. dokumen), tambahkan sebagai entri di `media` dengan `kind` baru, bukan kunci baru di sampingnya.
+
+Verifikasi: MasalahSolusiAdminTest 9 lulus / 120 asersi (termasuk dua video sekaligus, urutan video-lalu-foto, batas 2 ditolak dengan galat `media`, bentuk lama tetap diterima, dan baris lama tanpa migrasi tetap tampil di halaman publik DAN di form edit). FrontendPageContractTest + AdminSortOrderBaseOneTest ikut lulus dalam 27 test / 689 asersi. Vitest masalah-solusi-media 18 lulus. `npx tsc --noEmit` bersih, ESLint 0 error untuk tiga berkas yang disentuh, build aset sukses.
+Uji live di browser pada /admin/masalah-solusi/4/edit: hanya ada satu tombol "Tambah media" (tombol foto dan video hilang); pemanggilan endpoint pemilih TERBUKTI tanpa penyaring jenis (URL `admin/media/picker?` tanpa `kind=`); memilih satu video lewat pencarian menghasilkan kartu berlabel "Video" dengan nama berkasnya; lalu menambah satu gambar menghasilkan "2 dari 2 media terpakai" dengan kartu "Video" di atas kartu "Foto" (urutan pilihan dipertahankan) dan pesan "Media sudah penuh (maksimal 2)" muncul menggantikan tombol. Form TIDAK disimpan, keadaan edit dibuang dengan muat ulang supaya data owner tidak berubah.
+
+Catatan data: Media Library saat ini hanya punya SATU aset video, jadi "dua video sekaligus" terbukti lewat test PHP (dua aset video berbeda), bukan lewat data live; untuk mencobanya di layar, unggah video kedua dulu di Media Library. Ini batas data, bukan batas kode.
+Agent: zcode
+
+## 2026-10-01 15:30 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta carousel Flash Sale dibuatkan semacam bungkus/frame.
+Akar masalah: blok Flash Sale di halaman Paling Banyak Dipesan berupa strip polos (border-b bg-surface tanpa bingkai), jadi menyatu dengan grid produk di bawahnya. Batas sorotan promo tidak terlihat dan produk di dalam carousel terkesan muncul dua kali di grid bawahnya.
+Perubahan: flash-sale-carousel-section.tsx, isi section dibungkus kartu bersudut (rounded-xl border border-border bg-background p-3 sm:p-4); tombol panah memakai offset dalam md:left-5 / md:right-5 (varian inset yang sudah dipakai CarouselNavButton) supaya tidak terpotong bingkai; overflow-hidden hanya di pembungkus karena bidang ber-radius memotong anak yang bergeser, children langsung section tetap tidak diklip.
+Dampak spec: tidak berubah, tidak ada route, URL, kolom, atau bentuk JSON baru. Ini konvensi tampilan baru untuk blok ini (sebelumnya pola strip section biasa), belum tercatat di dokumen desain.
+Verifikasi: eslint berkas bersih tanpa warning; typecheck repo nol error; vitest 244 test lulus; WorkflowAuditP1Test lulus 71 asersi; FlashSalePeriodTest lulus 131 asersi; build sukses 43s; dicek live di peramban pada lebar desktop 2236px dan lebar HP 390px: bingkai tampil bersudut 16px, track tetap bisa digeser (isi 1241px vs tampak 329px), tombol panah tidak terpotong, hitung mundur tampil.
+Catatan: berkas ini juga membawa refactor belum di-commit milik agent lain (memakai FlashSaleLabel/FlashSaleCountdown bersama dari flash-sale-stage); isinya diadopsi apa adanya dan ikut ter-commit, saya hanya mengindentasi ulang karena dibungkus bingkai.
+Agent: zcode-storefront

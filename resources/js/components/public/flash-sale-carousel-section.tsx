@@ -1,17 +1,14 @@
 import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
-import { Lightning } from "@phosphor-icons/react"
 
 import { MobileEndActionReveal, useEndActionReveal } from "@/components/public/home-carousels"
+import { FlashSaleCountdown, FlashSaleLabel } from "@/components/public/flash-sale-stage"
 import { Icon } from "@/components/shared/icon"
 import { useDragScroll } from "@/hooks/use-drag-scroll"
-import { useFlashSaleCountdown, splitCountdown } from "@/hooks/use-flash-sale-countdown"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { ProductCardData, SharedPageProps } from "@/types"
-
-const pad = (n: number) => String(n).padStart(2, "0")
 
 function FlashSaleCarouselCard({ product }: { product: ProductCardData }) {
   const price =
@@ -23,7 +20,10 @@ function FlashSaleCarouselCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={product.href}
-      className="product-card group block min-w-0 overflow-hidden rounded-[5px] border border-border bg-white transition hover:border-foreground/20"
+      // product-card--model = varian tipografi kartu katalog (judul 13px/400,
+      // harga & compare mengikuti lebar kartu). Dipakai supaya kartu carousel
+      // Flash Sale tampil sama dengan kartu produk biasa, bukan gaya terpisah.
+      className="product-card product-card--model group block min-w-0 overflow-hidden rounded-[5px] border border-border bg-white transition hover:border-foreground/20"
     >
       <div className="product-card__media relative aspect-square w-full overflow-hidden bg-surface-muted">
         {product.image ? (
@@ -118,91 +118,84 @@ function useFlashSaleNav(itemCount: number) {
  */
 export function FlashSaleCarouselSection({ products }: { products: ProductCardData[] }) {
   const { flashSalePeriod } = usePage<SharedPageProps>().props
-  // Sumber sama dengan countdown di nav header (harian, bergulir tengah malam).
-  const remaining = useFlashSaleCountdown(flashSalePeriod ?? null)
-  const countdown = remaining === null ? null : splitCountdown(remaining)
   const { trackRef, canGoBack, canGoNext, move } = useFlashSaleNav(products.length)
   const reveal = useEndActionReveal(trackRef)
 
   return (
     <section id="flash-sale-carousel" className="border-b border-border bg-surface">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4 sm:py-5">
-        <div className="flex items-center gap-2">
-          <Link
-            href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
-            className="flex shrink-0 items-center gap-1.5"
-            aria-label="Lihat halaman Flash Sale"
-          >
-            <Lightning weight="fill" className="size-5 shrink-0 text-primary" aria-hidden />
-            <h2 className="flash-sale-headline whitespace-nowrap font-display text-lg font-extrabold italic tracking-tight text-primary">
-              FLASH SALE
-            </h2>
-          </Link>
-          <span className="ml-auto" />
+        {/* Bingkai blok Flash Sale. Tanpa bingkai, strip ini menyatu dengan grid
+            produk di bawahnya sehingga batas sorotan promo tidak terlihat dan
+            produk yang tampil di sini terkesan muncul dua kali. Tombol panah
+            memakai offset dalam (md:left-5/md:right-5, varian inset milik
+            CarouselNavButton) agar tidak tertutup atau terpotong bingkai, dan
+            overflow-hidden menahan track yang bergeser saat aksi geser di HP. */}
+        <div className="overflow-hidden rounded-xl border border-border bg-background p-3 sm:p-4">
+          <div className="flex items-center gap-2">
+            <Link
+              href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
+              className="flex shrink-0 items-center gap-1.5"
+              aria-label="Lihat halaman Flash Sale"
+            >
+              <h2 className="flex min-w-0 items-center">
+                <FlashSaleLabel />
+              </h2>
+            </Link>
+            <span className="ml-auto" />
 
-          {countdown ? (
-            <div className="flex shrink-0 items-center gap-1">
-              {[countdown.h, countdown.m, countdown.s].map((v, i) => (
-                <React.Fragment key={i}>
-                  <span className="flex h-7 min-w-7 items-center justify-center rounded-[4px] bg-foreground px-1 font-mono text-[12px] font-bold tabular-nums text-background">
-                    {pad(v)}
-                  </span>
-                  {i < 2 ? <span className="text-xs font-bold text-foreground">:</span> : null}
-                </React.Fragment>
+            <FlashSaleCountdown period={flashSalePeriod ?? null} />
+          </div>
+
+          <div className="relative mt-3">
+            <div
+              ref={trackRef}
+              id="flash-sale-carousel-track"
+              className={flashSaleTrackClass}
+              style={{
+                transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+                transition: reveal.pull ? "none" : "transform 360ms ease-out",
+              }}
+              onPointerDown={reveal.onPointerDown}
+              onPointerMove={reveal.onPointerMove}
+              onPointerUp={reveal.onPointerUp}
+              onPointerCancel={reveal.onPointerUp}
+            >
+              {products.map((product) => (
+                <div key={product.id} className={flashSaleCardClass}>
+                  <FlashSaleCarouselCard product={product} />
+                </div>
               ))}
             </div>
-          ) : null}
-        </div>
-
-        <div className="relative mt-3">
-          <div
-            ref={trackRef}
-            id="flash-sale-carousel-track"
-            className={flashSaleTrackClass}
-            style={{
-              transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
-              transition: reveal.pull ? "none" : "transform 360ms ease-out",
-            }}
-            onPointerDown={reveal.onPointerDown}
-            onPointerMove={reveal.onPointerMove}
-            onPointerUp={reveal.onPointerUp}
-            onPointerCancel={reveal.onPointerUp}
-          >
-            {products.map((product) => (
-              <div key={product.id} className={flashSaleCardClass}>
-                <FlashSaleCarouselCard product={product} />
-              </div>
-            ))}
+            {products.length > 0 ? (
+              <MobileEndActionReveal
+                href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
+                pull={reveal.pull}
+                revealed={reveal.revealed}
+              />
+            ) : null}
+            {canGoBack ? (
+              <button
+                type="button"
+                onClick={() => move(-1)}
+                aria-label="Lihat produk flash sale sebelumnya"
+                aria-controls="flash-sale-carousel-track"
+                className={cn(flashSaleNavBtnClass, "md:left-5")}
+              >
+                <Icon name="caret-left" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
+              </button>
+            ) : null}
+            {canGoNext ? (
+              <button
+                type="button"
+                onClick={() => move(1)}
+                aria-label="Lihat produk flash sale berikutnya"
+                aria-controls="flash-sale-carousel-track"
+                className={cn(flashSaleNavBtnClass, "md:right-5")}
+              >
+                <Icon name="caret-right" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
-          {products.length > 0 ? (
-            <MobileEndActionReveal
-              href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
-              pull={reveal.pull}
-              revealed={reveal.revealed}
-            />
-          ) : null}
-          {canGoBack ? (
-            <button
-              type="button"
-              onClick={() => move(-1)}
-              aria-label="Lihat produk flash sale sebelumnya"
-              aria-controls="flash-sale-carousel-track"
-              className={cn(flashSaleNavBtnClass, "md:-left-5")}
-            >
-              <Icon name="caret-left" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
-            </button>
-          ) : null}
-          {canGoNext ? (
-            <button
-              type="button"
-              onClick={() => move(1)}
-              aria-label="Lihat produk flash sale berikutnya"
-              aria-controls="flash-sale-carousel-track"
-              className={cn(flashSaleNavBtnClass, "md:-right-5")}
-            >
-              <Icon name="caret-right" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
-            </button>
-          ) : null}
         </div>
       </div>
     </section>
