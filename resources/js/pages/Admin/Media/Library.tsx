@@ -754,6 +754,7 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   const [files, setFiles] = React.useState<File[]>([])
   const [url, setUrl] = React.useState("")
   const [urlResult, setUrlResult] = React.useState<{ name: string; status: string; error?: string } | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { csrf } = usePage<SharedPageProps>().props
   const uploading = uploads.filter((u) => u.status === "uploading").length
 
@@ -795,14 +796,33 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
         </div>
 
         {mode !== "url" ? (
-          <input
-            type="file"
-            multiple={mode !== "file"}
-            {...(mode === "folder" ? { webkitdirectory: "" as any } : {})}
-            accept="image/*,video/*"
-            className="mb-3 w-full text-xs text-muted-foreground file:mr-3 file:rounded file:border-0 file:bg-primary/10 file:px-2 file:py-1 file:text-xs file:font-medium file:text-primary"
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-          />
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {/* Input berkas asli disembunyikan. Tombol bawaan peramban menolak
+                transform, bayangan, dan opacity, jadi tidak bisa diberi animasi
+                tekan; karena itu pemicunya tombol admin sungguhan. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple={mode !== "file"}
+              {...(mode === "folder" ? { webkitdirectory: "" as any } : {})}
+              accept="image/*,video/*"
+              className="sr-only"
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="active:scale-[0.97] active:bg-muted"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Icon name="upload" className="size-4" aria-hidden="true" />
+              {mode === "folder" ? "Pilih Folder" : mode === "multiple" ? "Pilih Banyak Berkas" : "Pilih Berkas"}
+            </Button>
+            <span className="text-[13px] text-muted-foreground">
+              {files.length > 0 ? files.length + " berkas dipilih" : "Belum ada berkas dipilih"}
+            </span>
+          </div>
         ) : (
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="mb-3" />
         )}
