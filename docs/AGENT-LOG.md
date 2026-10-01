@@ -3087,3 +3087,10 @@ Perubahan: flash-sale-carousel-section.tsx, pembungkus berbingkai jadi border-pr
 Dampak spec: tidak berubah.
 Verifikasi: eslint berkas bersih tanpa warning; typecheck nol error; vitest 244 test lulus; build sukses 33s; terukur di peramban: garis rgb(194,0,0) tebal 0,67px, latar rgba(194,0,0,0.05), radius 16px.
 Agent: zcode-storefront
+
+## 2026-10-01 23:28 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta bingkai carousel Flash Sale dicoba tanpa garis tepi (linestroke).
+Perubahan: flash-sale-carousel-section.tsx, kelas pembungkus dari border-primary bg-primary/5 menjadi bg-primary/5 saja; borderRadius, padding, dan overflow-hidden tetap. Blok kini dikenali dari sapuan latar merah (token primary, rgba(194,0,0,0.05)) tanpa garis.
+Dampak spec: tidak berubah.
+Verifikasi: eslint berkas bersih; typecheck nol error; vitest 244 test lulus; build sukses 21s; terukur di peramban: tebal garis 0px, latar panel rgba(194,0,0,0.05), radius 16px, latar section tetap putih sehingga sapuan masih terbaca sebagai blok.
+Agent: zcode-storefront
