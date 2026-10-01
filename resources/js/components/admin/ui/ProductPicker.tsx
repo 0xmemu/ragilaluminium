@@ -225,14 +225,14 @@ export function ProductPicker({
                     </TableCell>
                     <TableCell>
                       <p className="text-sm font-medium text-foreground">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {product.parent_sku}
-                        {product.dimensions ? ` · ${product.dimensions}` : ""}
-                      </p>
+                      {/* Cukup SKU: isian dimensions berisi teks yang sama dengan
+                          nama produk, jadi menampilkannya lagi mubazig
+                          (catatan owner 2026-09-29: "ini duplikat nama produk"). */}
+                      <p className="text-xs text-muted-foreground">{product.parent_sku}</p>
                     </TableCell>
                     <TableCell className="text-sm">{product.category}</TableCell>
                     <TableCell className="text-sm">{product.model}</TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
+                    <TableCell className="text-right text-sm tabular-nums whitespace-nowrap">
                       {product.price > 0 ? formatCurrency(product.price) : "-"}
                     </TableCell>
                   </TableRow>
