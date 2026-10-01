@@ -82,7 +82,7 @@ function ProductCell({ row }: { row: PopularRow }) {
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           href={row.href}
-          className="truncate font-semibold text-primary hover:underline"
+          className="line-clamp-2 sm:line-clamp-1 font-semibold text-primary hover:underline text-xs sm:text-sm"
           title={`Lihat detail ${row.name}`}
           draggable={false}
           onMouseDown={(event) => event.stopPropagation()}
@@ -329,7 +329,7 @@ export default function BerandaPopular({
                 {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
                 <th className="w-10 px-3 py-2 text-center">No</th>
                 <th className="px-3 py-2">Nama produk</th>
-                <th className="px-3 py-2 whitespace-nowrap">Taksonomi</th>
+                <th className="hidden md:table-cell px-3 py-2 whitespace-nowrap">Taksonomi</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">Views sebelum → sesudah</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">Clicks sebelum → sesudah</th>
               </tr>
@@ -357,7 +357,7 @@ export default function BerandaPopular({
                     <td className="px-3 py-2.5 align-middle">
                       <ProductCell row={row} />
                     </td>
-                    <td className="px-3 py-2.5 align-middle text-[13px] whitespace-nowrap">
+                    <td className="hidden md:table-cell px-3 py-2.5 align-middle text-[13px] whitespace-nowrap">
                       {taxonomy(row)}
                     </td>
                     <td className="px-3 py-2.5 text-right align-middle">
@@ -397,7 +397,7 @@ export default function BerandaPopular({
               <tr className="text-left text-xs font-medium text-muted-foreground">
                 {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
                 <th className="px-3 py-2">Nama produk</th>
-                <th className="px-3 py-2 whitespace-nowrap">Taksonomi</th>
+                <th className="hidden md:table-cell px-3 py-2 whitespace-nowrap">Taksonomi</th>
                 <th className="px-3 py-2 whitespace-nowrap">Status</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">Aksi</th>
               </tr>
@@ -421,7 +421,7 @@ export default function BerandaPopular({
                   <td className="px-3 py-2 align-middle">
                     <ProductCell row={row} />
                   </td>
-                  <td className="px-3 py-2 align-middle text-[13px] text-muted-foreground whitespace-nowrap">
+                  <td className="hidden md:table-cell px-3 py-2 align-middle text-[13px] text-muted-foreground whitespace-nowrap">
                     {taxonomy(row)}
                   </td>
                   <td className="px-3 py-2 align-middle">
@@ -438,14 +438,14 @@ export default function BerandaPopular({
                   <td className="px-3 py-2 text-right align-middle">
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="outline"
                       size="xs"
                       data-reorder-allow
                       onClick={() => moveToTop(index)}
                       title="Pindahkan produk ini ke urutan paling atas (masuk carousel)"
-                      className="inline-flex items-center gap-1 text-xs"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary shrink-0"
                     >
-                      <Icon name="caret-up" className="size-3.5" aria-hidden="true" />
+                      <Icon name="caret-up" weight="bold" className="size-4 text-primary" aria-hidden="true" />
                       Ke atas
                     </Button>
                   </td>
