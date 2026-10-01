@@ -178,6 +178,17 @@ export default function BerandaPopular({
     )
   }
 
+  function moveToTop(targetIndex: number) {
+    if (targetIndex <= 0 || targetIndex >= rows.length) return
+    const next = [...rows]
+    const [item] = next.splice(targetIndex, 1)
+    next.unshift(item)
+    syncRows(next)
+    if (!reorderMode) {
+      setReorderMode(true)
+    }
+  }
+
   const needle = query.trim().toLowerCase()
   const matches = React.useCallback(
     (row: PopularRow) =>
@@ -200,7 +211,7 @@ export default function BerandaPopular({
     .filter(({ row }) => matches(row))
 
   const OTHERS_PREVIEW = 15
-  // Mode urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
+  // Mode Urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
   // pasti ingin menggeser, jadi jangan suruh dia membuka daftar dulu.
   const visibleOthers = reorderMode || showAllOthers ? others : others.slice(0, OTHERS_PREVIEW)
 
@@ -289,9 +300,9 @@ export default function BerandaPopular({
 
       {reorderMode ? (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode urutkan aktif: tarik ikon <span className="font-semibold text-foreground">titik enam</span> di kiri baris untuk memindahkan produk, lalu tekan Simpan urutan.
+          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan produk, lalu tekan Simpan urutan.
           {!canReorder ? (
-            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa digeser.</span>
+            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa diubah.</span>
           ) : null}
         </p>
       ) : (
@@ -384,10 +395,11 @@ export default function BerandaPopular({
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs font-medium text-muted-foreground">
-                <th className="w-12 px-3 py-2" />
+                {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
                 <th className="px-3 py-2">Nama produk</th>
                 <th className="px-3 py-2 whitespace-nowrap">Taksonomi</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">Status</th>
+                <th className="px-3 py-2 whitespace-nowrap">Status</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -401,27 +413,47 @@ export default function BerandaPopular({
                   )}
                   {...(canReorder ? dnd.rowProps(index) : {})}
                 >
-                  <td className="px-3 py-2 align-middle">
-                    <ReorderDragHandle enabled={canReorder} />
-                  </td>
+                  {canReorder ? (
+                    <td className="px-3 py-2 align-middle">
+                      <ReorderDragHandle enabled />
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2 align-middle">
                     <ProductCell row={row} />
                   </td>
                   <td className="px-3 py-2 align-middle text-[13px] text-muted-foreground whitespace-nowrap">
                     {taxonomy(row)}
                   </td>
-                  <td className="px-3 py-2 text-right align-middle">
+                  <td className="px-3 py-2 align-middle">
                     {row.is_eligible ? (
-                      <span className="text-xs text-muted-foreground">Siap naik</span>
+                      <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                        Siap naik
+                      </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Belum aktif</span>
+                      <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        Belum aktif
+                      </span>
                     )}
+                  </td>
+                  <td className="px-3 py-2 text-right align-middle">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      data-reorder-allow
+                      onClick={() => moveToTop(index)}
+                      title="Pindahkan produk ini ke urutan paling atas (masuk carousel)"
+                      className="inline-flex items-center gap-1 text-xs"
+                    >
+                      <Icon name="caret-up" className="size-3.5" aria-hidden="true" />
+                      Ke atas
+                    </Button>
                   </td>
                 </tr>
               ))}
               {visibleOthers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={canReorder ? 5 : 4} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     {others.length === 0
                       ? "Semua produk sudah masuk carousel."
                       : "Tidak ada produk yang cocok dengan pencarian."}
