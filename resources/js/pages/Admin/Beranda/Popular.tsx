@@ -26,6 +26,8 @@ interface PopularRow {
   in_window: boolean
   since: string | null
   since_label: string | null
+  views_total: number
+  clicks_total: number
   views_before: number | null
   clicks_before: number | null
   views_after: number | null
@@ -34,41 +36,51 @@ interface PopularRow {
   delta_clicks: number | null
 }
 
-/** Angka views/clicks "sebelum → sesudah" dengan selisih berwarna. */
-function EngagementCell({
-  before,
-  after,
-  delta,
-}: {
-  before: number | null
-  after: number | null
-  delta: number | null
-}) {
-  if (before === null && after === null) {
-    return <span className="text-xs text-muted-foreground">-</span>
+/**
+ * Keadaan baris terhadap sorotan toko.
+ *
+ * "Carousel" berarti produk sedang menempati salah satu slot tayang di beranda
+ * dan halaman katalog. "Tayang" berarti produk lolos syarat tayang tetapi belum
+ * masuk slot. "Belum aktif" berarti produk belum bisa tayang sama sekali.
+ */
+function StatusBadge({ row }: { row: PopularRow }) {
+  if (row.in_window) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+        title={
+          row.since_label
+            ? `Masuk carousel sejak ${row.since_label}`
+            : "Masuk carousel dalam 24 jam terakhir"
+        }
+      >
+        Carousel
+      </span>
+    )
+  }
+
+  if (row.is_eligible) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success"
+        title="Lolos syarat tayang, belum menempati slot carousel"
+      >
+        Tayang
+      </span>
+    )
   }
 
   return (
-    <span className="inline-flex items-baseline gap-1.5 text-xs tabular-nums">
-      <span className="text-muted-foreground">{formatNumber(before ?? 0)}</span>
-      <span className="text-muted-foreground" aria-hidden="true">
-        →
-      </span>
-      <span className="font-semibold text-foreground">{formatNumber(after ?? 0)}</span>
-      {delta !== null && delta !== 0 ? (
-        <span
-          className={cn("font-semibold", delta > 0 ? "text-success" : "text-destructive")}
-          title="Selisih dibanding periode sebelumnya"
-        >
-          ({delta > 0 ? "+" : ""}
-          {formatNumber(delta)})
-        </span>
-      ) : null}
+    <span
+      className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+      title="Belum tayang di toko: status bukan aktif atau belum punya varian aktif"
+    >
+      Belum aktif
     </span>
   )
 }
 
-/** Sel produk yang dipakai di kedua tabel (carousel & produk lain). */
+/** Sel produk: thumbnail, nama (tautan detail), SKU dengan tombol salin. */
 function ProductCell({ row }: { row: PopularRow }) {
   return (
     <div className="flex items-center gap-3">
@@ -82,41 +94,64 @@ function ProductCell({ row }: { row: PopularRow }) {
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           href={row.href}
-          className="line-clamp-2 sm:line-clamp-1 font-semibold text-primary hover:underline text-xs sm:text-sm"
+          className="line-clamp-2 text-xs font-semibold text-primary hover:underline sm:line-clamp-1 sm:text-sm"
           title={`Lihat detail ${row.name}`}
           draggable={false}
           onMouseDown={(event) => event.stopPropagation()}
         >
           {row.name}
         </Link>
-        <span className="flex flex-wrap items-center gap-1.5">
-          <span className="flex items-center gap-1">
-            <span className="font-mono text-[11px] text-muted-foreground">{row.parent_sku}</span>
-            <CopyButton text={row.parent_sku} label="Salin SKU" compact showTextInTitle />
-          </span>
-          {row.in_window ? (
-            <span
-              className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
-              title={
-                row.since_label
-                  ? `Masuk carousel sejak ${row.since_label}`
-                  : "Masuk carousel dalam 24 jam terakhir"
-              }
-            >
-              Carousel
-            </span>
-          ) : null}
-          {!row.is_eligible ? (
-            <span
-              className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
-              title="Belum tayang di toko: status bukan aktif atau belum punya varian aktif"
-            >
-              Belum aktif
-            </span>
-          ) : null}
+        <span className="flex items-center gap-1">
+          <span className="font-mono text-[11px] text-muted-foreground">{row.parent_sku}</span>
+          <CopyButton text={row.parent_sku} label="Salin SKU" compact showTextInTitle />
         </span>
       </span>
     </div>
+  )
+}
+
+/**
+ * Sel views/clicks.
+ *
+ * Baris di dalam carousel punya dua rentang sama panjang (sebelum dan sesudah
+ * produk masuk sorotan), jadi angkanya tampil "sebelum → sesudah (+selisih)".
+ * Baris di luar carousel tidak punya tanggal masuk, sehingga tidak ada pembanding
+ * yang adil: yang ditampilkan hanya total angka yang tercatat sampai hari ini.
+ */
+function MetricCell({ row, metric }: { row: PopularRow; metric: "views" | "clicks" }) {
+  const total = metric === "views" ? row.views_total : row.clicks_total
+  const before = metric === "views" ? row.views_before : row.clicks_before
+  const after = metric === "views" ? row.views_after : row.clicks_after
+  const delta = metric === "views" ? row.delta_views : row.delta_clicks
+
+  if (before === null || after === null || delta === null) {
+    return (
+      <span
+        className="text-xs tabular-nums text-foreground"
+        title="Total yang tercatat sampai hari ini, belum ada pembanding sebelum dan sesudah"
+      >
+        {formatNumber(total)}
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-baseline gap-1.5 text-xs tabular-nums">
+      <span className="text-muted-foreground">{formatNumber(before)}</span>
+      <span className="text-muted-foreground" aria-hidden="true">
+        →
+      </span>
+      <span className="font-semibold text-foreground">{formatNumber(after)}</span>
+      {delta !== 0 ? (
+        <span
+          className={cn("font-semibold", delta > 0 ? "text-success" : "text-destructive")}
+          title="Selisih dibanding periode sebelumnya"
+        >
+          ({delta > 0 ? "+" : ""}
+          {formatNumber(delta)})
+        </span>
+      ) : null}
+    </span>
   )
 }
 
@@ -128,10 +163,16 @@ function taxonomy(row: PopularRow): string {
 /**
  * Pengaturan urutan "Paling Banyak Dipesan".
  *
- * Urutan baris = urutan galeri /products/all?from=paling-banyak-dipesan; 10
- * teratas mengisi carousel beranda & halaman katalog. Zona carousel dipisah
- * dari produk lain supaya batas 10 teratas langsung terlihat, dan daftar
- * sisanya bisa dicari (katalog bisa ratusan SKU).
+ * SATU daftar untuk seluruh katalog, bukan dua tabel terpisah: urutan baris =
+ * urutan galeri /products/all?from=paling-banyak-dipesan, dan sejumlah baris
+ * teratas mengisi carousel beranda serta halaman katalog. Batas carousel tetap
+ * ditandai di dalam daftar supaya admin tahu baris mana yang tayang.
+ *
+ * Kolom metrik sama untuk semua baris. Baris di dalam carousel menampilkan
+ * sebelum → sesudah, baris di luar carousel menampilkan total yang tercatat.
+ *
+ * Tombol "Ke atas" memindahkan produk mana pun ke posisi 1, jadi produk lama atau
+ * tidak populer bisa naik ke carousel tanpa menyeretnya dari baris ke-150.
  */
 export default function BerandaPopular({
   title,
@@ -149,7 +190,7 @@ export default function BerandaPopular({
   const [rows, setRows] = React.useState(initialProducts)
   const [reorderMode, setReorderMode] = React.useState(false)
   const [query, setQuery] = React.useState("")
-  const [showAllOthers, setShowAllOthers] = React.useState(false)
+  const [showAll, setShowAll] = React.useState(false)
   const form = useForm({ product_ids: initialProducts.map((row) => row.id) })
 
   React.useEffect(() => {
@@ -179,14 +220,14 @@ export default function BerandaPopular({
   }
 
   function moveToTop(targetIndex: number) {
-    if (targetIndex <= 0 || targetIndex >= rows.length) return
+    if (targetIndex <= 0) return
     const next = [...rows]
     const [item] = next.splice(targetIndex, 1)
     next.unshift(item)
     syncRows(next)
-    if (!reorderMode) {
-      setReorderMode(true)
-    }
+    // Tombol simpan hanya dirender saat mode urut aktif (kontrak
+    // ReorderActionButton), jadi memindahkan produk sekaligus menyalakan mode itu.
+    if (!reorderMode) setReorderMode(true)
   }
 
   const needle = query.trim().toLowerCase()
@@ -201,19 +242,17 @@ export default function BerandaPopular({
 
   // Indeks asli (ke `rows`) dipertahankan supaya geser-urut tetap menulis
   // urutan global, bukan urutan hasil filter.
-  const carousel = rows
-    .map((row, index) => ({ row, index }))
-    .slice(0, carouselLimit)
-    .filter(({ row }) => matches(row))
-  const others = rows
-    .map((row, index) => ({ row, index }))
-    .slice(carouselLimit)
-    .filter(({ row }) => matches(row))
+  const filtered = rows.map((row, index) => ({ row, index })).filter(({ row }) => matches(row))
 
-  const OTHERS_PREVIEW = 15
+  // Baris carousel selalu menempel di atas (server menyusunnya begitu), jadi
+  // jumlah baris carousel sekaligus jadi nomor baris pertama di luar carousel.
+  const windowCount = rows.filter((row) => row.in_window).length
+
+  const PREVIEW = carouselLimit + 15
   // Mode Urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
   // pasti ingin menggeser, jadi jangan suruh dia membuka daftar dulu.
-  const visibleOthers = reorderMode || showAllOthers ? others : others.slice(0, OTHERS_PREVIEW)
+  const visible = reorderMode || showAll ? filtered : filtered.slice(0, PREVIEW)
+  const hiddenCount = filtered.length - visible.length
 
   // Geser-urut dimatikan saat daftar tersaring: posisi target tidak mewakili
   // urutan global, jadi hasil geser bisa salah tempat.
@@ -253,7 +292,7 @@ export default function BerandaPopular({
   }
 
   const dirty = form.isDirty
-  const carouselShown = carousel.length
+  const columnCount = canReorder ? 8 : 7
 
   return (
     <AdminLayout
@@ -294,7 +333,7 @@ export default function BerandaPopular({
           className="w-full sm:max-w-xs"
         />
         <p className="text-xs text-muted-foreground">
-          {carouselShown} baris carousel · {others.length} produk lain
+          {filtered.length} produk · {windowCount} baris carousel
         </p>
       </div>
 
@@ -307,19 +346,18 @@ export default function BerandaPopular({
         </p>
       ) : (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Urutan baris di bawah ini sama persis dengan urutan produk di halaman daftar produk toko. {carouselLimit} baris pertama mengisi carousel beranda dan halaman katalog.
+          Urutan baris di bawah ini sama persis dengan urutan produk di halaman daftar produk toko. {carouselLimit} baris pertama mengisi carousel beranda dan halaman katalog. Tekan <span className="font-semibold text-foreground">Ke atas</span> pada baris mana pun untuk memindahkannya ke posisi 1.
         </p>
       )}
 
-      {/* Zona carousel: batas 10 teratas dibuat eksplisit. */}
       <Card className="overflow-hidden border border-border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Icon name="trend-up" className="size-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-foreground">Tampil di carousel</h2>
+            <h2 className="text-sm font-semibold text-foreground">Urutan paling banyak dipesan</h2>
           </div>
           <span className="text-xs text-muted-foreground">
-            {carouselShown} dari {carouselLimit} slot
+            {windowCount} dari {carouselLimit} slot carousel terisi
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -329,159 +367,108 @@ export default function BerandaPopular({
                 {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
                 <th className="w-10 px-3 py-2 text-center">No</th>
                 <th className="px-3 py-2">Nama produk</th>
-                <th className="hidden md:table-cell px-3 py-2 whitespace-nowrap">Taksonomi</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">Views sebelum → sesudah</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">Clicks sebelum → sesudah</th>
+                <th className="hidden px-3 py-2 whitespace-nowrap md:table-cell">Taksonomi</th>
+                <th className="px-3 py-2 whitespace-nowrap">Status</th>
+                <th
+                  className="px-3 py-2 text-right whitespace-nowrap"
+                  title="Baris carousel: sebelum → sesudah masuk sorotan. Baris lain: total yang tercatat."
+                >
+                  Views
+                </th>
+                <th
+                  className="px-3 py-2 text-right whitespace-nowrap"
+                  title="Baris carousel: sebelum → sesudah masuk sorotan. Baris lain: total yang tercatat."
+                >
+                  Clicks
+                </th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {carousel.length ? (
-                carousel.map(({ row, index }) => (
-                  <tr
-                    key={row.id}
-                    className={cn(
-                      "border-b border-border last:border-0",
-                      dnd.draggingIndex === index && "opacity-40",
-                      dnd.targetIndex === index && canReorder && "bg-muted/50",
-                    )}
-                    {...(canReorder ? dnd.rowProps(index) : {})}
-                  >
-                    {canReorder ? (
-                      <td className="px-3 py-2.5 align-middle">
-                        <ReorderDragHandle enabled />
-                      </td>
+              {visible.length ? (
+                visible.map(({ row, index }) => (
+                  <React.Fragment key={row.id}>
+                    {needle === "" && windowCount > 0 && index === windowCount ? (
+                      <tr className="bg-muted/30">
+                        <td
+                          colSpan={columnCount}
+                          className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
+                        >
+                          Batas carousel · {carouselLimit} baris di atas tayang di beranda dan halaman katalog
+                        </td>
+                      </tr>
                     ) : null}
-                    <td className="px-3 py-2.5 text-center align-middle text-xs text-muted-foreground tabular-nums">
-                      {index + 1}
-                    </td>
-                    <td className="px-3 py-2.5 align-middle">
-                      <ProductCell row={row} />
-                    </td>
-                    <td className="hidden md:table-cell px-3 py-2.5 align-middle text-[13px] whitespace-nowrap">
-                      {taxonomy(row)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right align-middle">
-                      <EngagementCell before={row.views_before} after={row.views_after} delta={row.delta_views} />
-                    </td>
-                    <td className="px-3 py-2.5 text-right align-middle">
-                      <EngagementCell before={row.clicks_before} after={row.clicks_after} delta={row.delta_clicks} />
-                    </td>
-                  </tr>
+                    <tr
+                      className={cn(
+                        "border-b border-border last:border-0",
+                        dnd.draggingIndex === index && "opacity-40",
+                        dnd.targetIndex === index && canReorder && "bg-muted/50",
+                      )}
+                      {...(canReorder ? dnd.rowProps(index) : {})}
+                    >
+                      {canReorder ? (
+                        <td className="px-3 py-2.5 align-middle">
+                          <ReorderDragHandle enabled />
+                        </td>
+                      ) : null}
+                      <td className="px-3 py-2.5 text-center align-middle text-xs text-muted-foreground tabular-nums">
+                        {index + 1}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        <ProductCell row={row} />
+                      </td>
+                      <td className="hidden px-3 py-2.5 align-middle text-[13px] whitespace-nowrap md:table-cell">
+                        {taxonomy(row)}
+                      </td>
+                      <td className="px-3 py-2.5 align-middle">
+                        <StatusBadge row={row} />
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-middle">
+                        <MetricCell row={row} metric="views" />
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-middle">
+                        <MetricCell row={row} metric="clicks" />
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-middle">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          data-reorder-allow
+                          disabled={index === 0}
+                          onClick={() => moveToTop(index)}
+                          title="Pindahkan produk ini ke urutan paling atas (masuk carousel)"
+                          className="inline-flex shrink-0 items-center gap-1 border-primary/30 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/10"
+                        >
+                          <Icon name="caret-up" weight="bold" className="size-4 text-primary" aria-hidden="true" />
+                          Ke atas
+                        </Button>
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={canReorder ? 6 : 5} className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    Tidak ada produk carousel yang cocok dengan pencarian.
+                  <td colSpan={columnCount} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    Tidak ada produk yang cocok dengan pencarian.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* Zona produk lain: dilipat agar halaman tidak jadi belasan ribu piksel. */}
-      <Card className="mt-4 overflow-hidden border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Icon name="list" className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-foreground">Produk lain</h2>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {others.length} produk di luar carousel
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border">
-              <tr className="text-left text-xs font-medium text-muted-foreground">
-                {canReorder ? <th className="w-12 px-3 py-2" aria-label="Seret" /> : null}
-                <th className="px-3 py-2">Nama produk</th>
-                <th className="hidden md:table-cell px-3 py-2 whitespace-nowrap">Taksonomi</th>
-                <th className="px-3 py-2 whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleOthers.map(({ row, index }) => (
-                <tr
-                  key={row.id}
-                  className={cn(
-                    "border-b border-border last:border-0",
-                    dnd.draggingIndex === index && "opacity-40",
-                    dnd.targetIndex === index && canReorder && "bg-muted/50",
-                  )}
-                  {...(canReorder ? dnd.rowProps(index) : {})}
-                >
-                  {canReorder ? (
-                    <td className="px-3 py-2 align-middle">
-                      <ReorderDragHandle enabled />
-                    </td>
-                  ) : null}
-                  <td className="px-3 py-2 align-middle">
-                    <ProductCell row={row} />
-                  </td>
-                  <td className="hidden md:table-cell px-3 py-2 align-middle text-[13px] text-muted-foreground whitespace-nowrap">
-                    {taxonomy(row)}
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    {row.is_eligible ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                        Siap naik
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        Belum aktif
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right align-middle">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      data-reorder-allow
-                      onClick={() => moveToTop(index)}
-                      title="Pindahkan produk ini ke urutan paling atas (masuk carousel)"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary shrink-0"
-                    >
-                      <Icon name="caret-up" weight="bold" className="size-4 text-primary" aria-hidden="true" />
-                      Ke atas
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {visibleOthers.length === 0 ? (
-                <tr>
-                  <td colSpan={canReorder ? 5 : 4} className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    {others.length === 0
-                      ? "Semua produk sudah masuk carousel."
-                      : "Tidak ada produk yang cocok dengan pencarian."}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-        {others.length > OTHERS_PREVIEW && !reorderMode ? (
+        {hiddenCount > 0 && !reorderMode ? (
           <div className="border-t border-border px-4 py-3">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAllOthers((value) => !value)}
-            >
-              <Icon name={showAllOthers ? "caret-up" : "caret-down"} className="size-4" aria-hidden="true" />
-              {showAllOthers
-                ? "Ringkas daftar"
-                : `Tampilkan semua (${others.length - OTHERS_PREVIEW} lagi)`}
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowAll((value) => !value)}>
+              <Icon name={showAll ? "caret-up" : "caret-down"} className="size-4" aria-hidden="true" />
+              {showAll ? "Ringkas daftar" : `Tampilkan semua (${hiddenCount} lagi)`}
             </Button>
           </div>
         ) : null}
       </Card>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Views &amp; clicks hanya dihitung untuk baris carousel, membandingkan rentang sama panjang sebelum dan sesudah produk masuk carousel. Produk yang belum pernah masuk carousel belum punya pembanding.
+        Views &amp; clicks baris di dalam carousel membandingkan rentang sama panjang sebelum dan sesudah produk masuk carousel. Baris di luar carousel belum punya tanggal masuk, jadi yang ditampilkan hanya total yang tercatat.
       </p>
     </AdminLayout>
   )

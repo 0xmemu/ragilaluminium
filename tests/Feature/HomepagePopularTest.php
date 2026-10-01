@@ -928,7 +928,14 @@ class HomepagePopularTest extends \Tests\TestCase
                 // Baris terakhir di luar carousel: kolom engagement kosong.
                 ->where('products.13.in_window', false)
                 ->where('products.13.views_after', null)
-                ->where('products.13.clicks_after', null));
+                ->where('products.13.clicks_after', null)
+                // Baris carousel punya angka eksisting juga.
+                ->where('products.0.views_total', fn ($v) => is_int($v))
+                ->where('products.0.clicks_total', fn ($v) => is_int($v))
+                // Baris di luar carousel tetap punya angka eksisting (total),
+                // karena kolom metrik di daftar tunggal sama untuk semua baris.
+                ->where('products.13.views_total', fn ($v) => is_int($v))
+                ->where('products.13.clicks_total', fn ($v) => is_int($v)));
     }
 
     public function test_paling_banyak_dipesan_gallery_tidak_mengulang_produk_flash_sale(): void
