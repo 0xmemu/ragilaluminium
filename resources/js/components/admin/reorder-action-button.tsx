@@ -10,7 +10,8 @@ import { HintTip } from "@/components/admin/ui/hint-tip"
  * Satu tombol yang berubah peran mengikuti keadaan, bukan dua tombol menumpuk:
  *   - belum aktif       : "Urutkan" (mengaktifkan mode urut)
  *   - aktif, belum geser: "Urungkan" (membatalkan, urutan kembali seperti semula)
- *   - aktif, sudah geser: "Simpan urutan" (satu-satunya primari di header)
+ *   - aktif, sudah geser: "Urungkan" + "Simpan urutan" berdampingan
+ *     (Simpan tetap satu-satunya tombol bernada primari)
  *
  * Alasannya: menampilkan "Simpan urutan" sebelum mode urut aktif itu tidak masuk
  * akal, karena belum ada yang perlu disimpan. Tombol simpan hanya muncul saat
@@ -84,11 +85,29 @@ export function ReorderActionButton({
   }
 
   if (dirty) {
+    // Kontrak owner 2026-10-01: begitu urutan digeser, Urungkan WAJIB tetap ada di
+    // samping Simpan urutan. Sebelumnya hanya Simpan yang tampil, sehingga admin
+    // yang salah geser tidak punya jalan keluar selain menyimpan perubahan yang
+    // tidak dia inginkan. Di halaman yang mengunci seluruh kontrol saat mode urut
+    // aktif, tidak ada tombol lain yang bisa dipakai, jadi jalan keluarnya hilang
+    // sama sekali.
+    //
     // `disabled` juga mengunci simpan: kalau daftar jadi tersaring saat mode urut
     // berjalan, payload simpan hanya memuat baris yang tampil dan urutan baris di
     // luar filter ikut tertimpa. Mengurungkan tetap boleh, jadi hanya simpan yang dikunci.
     return (
       <>
+        <Button
+          type="button"
+          data-reorder-allow
+          variant="secondary"
+          size={size}
+          disabled={processing}
+          onClick={onCancel}
+        >
+          <Icon name="arrow-counter-clockwise" className="size-4" aria-hidden="true" />
+          Urungkan
+        </Button>
         {denganHint(
           <Button
             type="button"

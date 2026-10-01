@@ -1253,7 +1253,7 @@ input[type="search"]::-ms-clear {
     opacity: 0.45;
   }
 
-  .admin-reorder-lock :is(a, button, [role="button"])[data-reorder-allow],
+  .admin-reorder-lock :is(a, button, input, select, textarea, [role="button"])[data-reorder-allow],
   .admin-reorder-lock [data-reorder-handle] {
     pointer-events: auto !important;
     opacity: 1;

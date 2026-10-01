@@ -39,19 +39,25 @@ interface PopularRow {
 /**
  * Keadaan baris terhadap sorotan toko.
  *
- * "Carousel" berarti produk sedang menempati salah satu slot tayang di beranda
- * dan halaman katalog. "Tayang" berarti produk lolos syarat tayang tetapi belum
+ * Slot carousel dihitung dari URUTAN YANG SEDANG TAMPIL, bukan bendera kiriman
+ * server, supaya badge ikut bergerak begitu admin memindahkan produk ke atas dan
+ * hasilnya terbaca sebelum disimpan.
+ *
+ * "Carousel" berarti produk menempati salah satu slot tayang di beranda dan
+ * halaman katalog. "Tayang" berarti produk lolos syarat tayang tetapi belum
  * masuk slot. "Belum aktif" berarti produk belum bisa tayang sama sekali.
  */
-function StatusBadge({ row }: { row: PopularRow }) {
-  if (row.in_window) {
+function StatusBadge({ row, inWindow }: { row: PopularRow; inWindow: boolean }) {
+  if (inWindow) {
     return (
       <span
         className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
         title={
-          row.since_label
-            ? `Masuk carousel sejak ${row.since_label}`
-            : "Masuk carousel dalam 24 jam terakhir"
+          !row.in_window
+            ? "Perubahan belum disimpan. Produk ini menempati slot carousel setelah urutan disimpan"
+            : row.since_label
+              ? `Masuk carousel sejak ${row.since_label}`
+              : "Masuk carousel dalam 24 jam terakhir"
         }
       >
         Carousel
@@ -118,19 +124,28 @@ function ProductCell({ row }: { row: PopularRow }) {
  * Baris di luar carousel tidak punya tanggal masuk, sehingga tidak ada pembanding
  * yang adil: yang ditampilkan hanya total angka yang tercatat sampai hari ini.
  */
-function MetricCell({ row, metric }: { row: PopularRow; metric: "views" | "clicks" }) {
+function MetricCell({
+  row,
+  metric,
+  inWindow,
+}: {
+  row: PopularRow
+  metric: "views" | "clicks"
+  inWindow: boolean
+}) {
   const total = metric === "views" ? row.views_total : row.clicks_total
   const before = metric === "views" ? row.views_before : row.clicks_before
   const after = metric === "views" ? row.views_after : row.clicks_after
   const delta = metric === "views" ? row.delta_views : row.delta_clicks
 
   if (before === null || after === null || delta === null) {
-    // Dua sebab angka tunggal: baris di luar carousel (tidak punya tanggal
-    // masuk) atau baris yang baru masuk carousel hari ini (rentang "sebelum"
-    // belum punya lebar yang sebanding). Keduanya diberi keterangan berbeda
-    // supaya admin tidak menyangka pembandingnya hilang.
-    const reason = row.in_window
-      ? "Baru masuk carousel hari ini, rentang pembanding belum tersedia"
+    // Tiga sebab angka tunggal: baris di luar carousel (tidak punya tanggal
+    // masuk), baris yang baru masuk carousel (rentang "sebelum" belum punya
+    // lebar yang sebanding), dan baris yang baru dipindah ke carousel tetapi
+    // urutannya belum disimpan. Ketiganya diberi keterangan berbeda supaya
+    // admin tidak menyangka pembandingnya hilang.
+    const reason = inWindow
+      ? "Baru masuk carousel, rentang pembanding belum tersedia"
       : "Total yang tercatat sampai hari ini, belum ada pembanding sebelum dan sesudah"
 
     return (
@@ -196,6 +211,8 @@ export default function BerandaPopular({
   const [reorderMode, setReorderMode] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [showAll, setShowAll] = React.useState(false)
+  const [movedId, setMovedId] = React.useState<number | null>(null)
+  const tableRef = React.useRef<HTMLDivElement>(null)
   const form = useForm({ product_ids: initialProducts.map((row) => row.id) })
 
   React.useEffect(() => {
@@ -230,6 +247,10 @@ export default function BerandaPopular({
     const [item] = next.splice(targetIndex, 1)
     next.unshift(item)
     syncRows(next)
+    // Baris yang dipindah disorot sekilas lalu halaman digulir ke baris itu:
+    // tanpa itu, admin yang menekan "Ke atas" pada produk di baris ke-150 tidak
+    // melihat apa pun berubah karena hasilnya berada jauh di atas layar.
+    setMovedId(item.id)
     // Tombol simpan hanya dirender saat mode urut aktif (kontrak
     // ReorderActionButton), jadi memindahkan produk sekaligus menyalakan mode itu.
     if (!reorderMode) setReorderMode(true)
@@ -249,9 +270,23 @@ export default function BerandaPopular({
   // urutan global, bukan urutan hasil filter.
   const filtered = rows.map((row, index) => ({ row, index })).filter(({ row }) => matches(row))
 
-  // Baris carousel selalu menempel di atas (server menyusunnya begitu), jadi
-  // jumlah baris carousel sekaligus jadi nomor baris pertama di luar carousel.
-  const windowCount = rows.filter((row) => row.in_window).length
+  // Slot carousel dihitung dari URUTAN YANG SEDANG TAMPIL, bukan bendera kiriman
+  // server. Kalau memakai bendera server, produk yang baru dipindah ke posisi 1
+  // masih tertulis "Tayang" dan garis batasnya tidak bergerak, sehingga hasil
+  // pemindahan tidak terbaca sebelum disimpan. Aturannya sama dengan server:
+  // hanya baris yang lolos syarat tayang yang mengambil slot, dan hanya
+  // `carouselLimit` slot pertama yang terisi.
+  const slotIds = new Set<number>()
+  let slotTerpakai = 0
+  let lastSlotIndex = -1
+  rows.forEach((row, index) => {
+    if (!row.is_eligible || slotTerpakai >= carouselLimit) return
+    slotIds.add(row.id)
+    slotTerpakai += 1
+    lastSlotIndex = index
+  })
+  const windowCount = slotIds.size
+  const rowInWindow = (row: PopularRow) => slotIds.has(row.id)
 
   const PREVIEW = carouselLimit + 15
   // Mode Urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
@@ -296,6 +331,15 @@ export default function BerandaPopular({
     setReorderMode(false)
   }
 
+  // Gulirkan pandangan ke baris yang baru dipindah, lalu lepas sorotannya.
+  React.useEffect(() => {
+    if (movedId === null) return
+    const baris = tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${movedId}"]`)
+    baris?.scrollIntoView({ block: "center", behavior: "smooth" })
+    const timer = window.setTimeout(() => setMovedId(null), 1800)
+    return () => window.clearTimeout(timer)
+  }, [movedId])
+
   const dirty = form.isDirty
   const columnCount = canReorder ? 8 : 7
 
@@ -329,12 +373,16 @@ export default function BerandaPopular({
       <Head title={`${title} | Admin`} />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        {/* Kotak cari sengaja tetap hidup saat mode Urutkan aktif: alur yang
+            dituju halaman ini adalah "cari produk lama, lalu pindahkan ke atas",
+            dan mengunci kotak cari membuat alur itu buntu di tengah jalan. */}
         <Input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Cari nama produk atau SKU"
           aria-label="Cari produk"
+          data-reorder-allow
           className="w-full sm:max-w-xs"
         />
         <p className="text-xs text-muted-foreground">
@@ -344,9 +392,9 @@ export default function BerandaPopular({
 
       {reorderMode ? (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan produk, lalu tekan Simpan urutan.
+          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris atau tombol <span className="font-semibold text-foreground">Ke atas</span> untuk memindahkan produk, lalu tekan Simpan urutan.
           {!canReorder ? (
-            <span className="font-semibold text-foreground"> Kosongkan pencarian agar urutan bisa diubah.</span>
+            <span className="font-semibold text-foreground"> Selagi daftar tersaring, hanya tombol Ke atas yang bisa memindahkan produk; kosongkan pencarian untuk menggeser bebas.</span>
           ) : null}
         </p>
       ) : (
@@ -365,7 +413,7 @@ export default function BerandaPopular({
             {windowCount} dari {carouselLimit} slot carousel terisi
           </span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" ref={tableRef}>
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr className="text-left text-xs font-medium text-muted-foreground">
@@ -393,7 +441,7 @@ export default function BerandaPopular({
               {visible.length ? (
                 visible.map(({ row, index }) => (
                   <React.Fragment key={row.id}>
-                    {needle === "" && windowCount > 0 && index === windowCount ? (
+                    {needle === "" && windowCount > 0 && index === lastSlotIndex + 1 ? (
                       <tr className="bg-muted/30">
                         <td
                           colSpan={columnCount}
@@ -404,10 +452,12 @@ export default function BerandaPopular({
                       </tr>
                     ) : null}
                     <tr
+                      data-row-id={row.id}
                       className={cn(
-                        "border-b border-border last:border-0",
+                        "border-b border-border last:border-0 transition-colors duration-500",
                         dnd.draggingIndex === index && "opacity-40",
                         dnd.targetIndex === index && canReorder && "bg-muted/50",
+                        movedId === row.id && "bg-primary/15",
                       )}
                       {...(canReorder ? dnd.rowProps(index) : {})}
                     >
@@ -426,13 +476,13 @@ export default function BerandaPopular({
                         {taxonomy(row)}
                       </td>
                       <td className="px-3 py-2.5 align-middle">
-                        <StatusBadge row={row} />
+                        <StatusBadge row={row} inWindow={rowInWindow(row)} />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
-                        <MetricCell row={row} metric="views" />
+                        <MetricCell row={row} metric="views" inWindow={rowInWindow(row)} />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
-                        <MetricCell row={row} metric="clicks" />
+                        <MetricCell row={row} metric="clicks" inWindow={rowInWindow(row)} />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
                         <Button

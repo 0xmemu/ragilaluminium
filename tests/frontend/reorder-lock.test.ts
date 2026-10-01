@@ -68,7 +68,19 @@ describe("kunci mode Urutkan", () => {
       })
       .join(pemisah)
 
-    expect(barisKode.split("data-reorder-allow")).toHaveLength(4)
+    // Empat tombol bertanda: Urutkan, Simpan urutan, dan Urungkan dua keadaan
+    // (mode aktif belum digeser, dan mode aktif sudah digeser).
+    expect(barisKode.split("data-reorder-allow")).toHaveLength(5)
+  })
+
+  it("isian juga boleh ditandai agar tetap hidup saat mode urut", () => {
+    // Penanda yang sama dipakai kotak cari halaman Paling Banyak Dipesan.
+    // Tanpa isian di daftar selektor ini, penandanya tidak berpengaruh apa pun.
+    const barisPengecualian = css
+      .split(String.fromCharCode(10))
+      .filter((baris) => baris.includes("[data-reorder-allow]"))
+    expect(barisPengecualian.length).toBeGreaterThan(0)
+    expect(barisPengecualian.some((baris) => baris.includes("input"))).toBe(true)
   })
 
   it("pegangan geser bertanda pegangan", () => {
