@@ -1461,7 +1461,7 @@ export default function MediaLibrary({
             role="dialog"
             aria-modal="true"
             aria-label="Pasang ke produk"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg bg-surface p-5 shadow-float"
+            className="min-h-48 w-full max-w-3xl resize overflow-auto rounded-lg bg-surface p-5 shadow-float sm:w-[42rem] sm:max-w-[min(80rem,calc(100vw-2rem))] sm:min-w-[28rem] max-h-[calc(100dvh-2rem)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-3 text-sm font-semibold">Pasang ke produk</h3>
