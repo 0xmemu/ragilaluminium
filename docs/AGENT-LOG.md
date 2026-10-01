@@ -2905,3 +2905,10 @@ Perubahan: pembungkus tabel ProductPicker diberi max-h-[22rem] + overflow-y-auto
 Dampak spec: tidak berubah.
 Verifikasi: ESLint + typecheck + build bersih; browser: panel top 237 tinggi 578 (viewport 1051), tabel menggulir sendiri, tangkapan layar memperlihatkan popup ringkas dengan paginasi dan tombol Batal/Pasang.
 Agent: zcode-retur
+
+## 2026-09-29 23:59 UTC | zcode-retur | Trivial | - | selesai
+Lingkup: owner minta popup "Pasang ke produk" bisa diubah ukurannya manual dari sudut, seperti isian formulir.
+Perubahan: panel popup memakai resize both + overflow auto (pegangan asli peramban di sudut kanan bawah), dengan batas aman: default lebar tetap, bisa dilebarkan sampai maks 80rem/lebar layar, tinggi tetap dibatasi layar, dan tidak bisa diciutkan di bawah 28rem di layar lebar.
+Dampak spec: tidak berubah.
+Verifikasi: ESLint + typecheck + build bersih; browser terukur dalam layar di 1440 dan 390 px, pegangan aktif (resize: both terbaca di computed style), lebar bawaan tidak berubah.
+Agent: zcode-retur
