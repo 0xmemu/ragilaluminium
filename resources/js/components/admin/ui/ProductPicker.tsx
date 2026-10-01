@@ -30,6 +30,8 @@ interface ProductPickerProps {
   className?: string
   /** Kelas tambahan untuk wadah gulir tabel, mis. mengisi tinggi popup. */
   tableClassName?: string
+  /** Konten opsional di bawah baris filter, mis. pengaturan tambahan popup pemanggil. */
+  afterFilters?: React.ReactNode
 }
 
 function formatCurrency(value: number): string {
@@ -47,6 +49,7 @@ export function ProductPicker({
   endpoint = routeUrl("admin.promotions.products"),
   className,
   tableClassName = "max-h-[22rem]",
+  afterFilters,
 }: ProductPickerProps) {
   const [search, setSearch] = React.useState("")
   const [category, setCategory] = React.useState("")
@@ -157,6 +160,8 @@ export function ProductPicker({
           </Select>
         </Field>
       </div>
+
+      {afterFilters}
 
       {/* Counter & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">

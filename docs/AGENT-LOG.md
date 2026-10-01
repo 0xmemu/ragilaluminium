@@ -2950,3 +2950,10 @@ Perubahan: tombol Pasang kartu aset kini ikon link plus teks Pasang (h-6 + teks 
 Dampak spec: tidak berubah.
 Verifikasi: eslint tanpa warning baru, build sukses, tampilan dicek di browser.
 Agent: zcode-retur
+
+## 2026-10-01 09:25 UTC | zcode-retur | Trivial | 2 berkas | selesai
+Lingkup: owner minta blok Varian dan Posisi di popup Pasang ke produk berada di bawah baris filter Cari produk, bukan di atasnya.
+Perubahan: ProductPicker diberi prop slot afterFilters (dirender tepat setelah baris filter, opsional sehingga pemakai lain tak berubah); blok pengaturan pindah ke slot itu lewat prop di Library.tsx.
+Dampak spec: tidak berubah.
+Verifikasi: typecheck bersih, eslint dua berkas tanpa warning baru, build sukses 29s, urutan blok dicek di browser.
+Agent: zcode-retur

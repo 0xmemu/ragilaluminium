@@ -1502,49 +1502,51 @@ export default function MediaLibrary({
                     </button>
                   ) : null}
                 </div>
-                {attachProduct ? (
-                  <div className="mt-2 shrink-0 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label htmlFor="attach-variant" className="text-xs font-semibold text-muted-foreground">Varian</label>
-                        <select
-                          id="attach-variant"
-                          value={attachVariant}
-                          onChange={(e) => setAttachVariant(e.target.value)}
-                          disabled={attachVariantOptions.length === 0}
-                          className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-70"
-                        >
-                          <option value="">Tanpa varian (foto katalog)</option>
-                          {attachVariantOptions.map((v) => (
-                            <option key={v.id} value={String(v.id)}>{v.label || v.sku}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="attach-position" className="text-xs font-semibold text-muted-foreground">Posisi</label>
-                        <Input id="attach-position" type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1 text-xs">
-                        <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Tampilkan katalog
-                      </label>
-                      <label className="flex items-center gap-1 text-xs">
-                        <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
-                      </label>
-                    </div>
-                    {attachExistingRow ? (
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
                 <div className="mt-2 flex min-h-0 flex-1 flex-col">
                   <ProductPicker
                     maxSelection={1}
                     className="flex min-h-0 flex-1 flex-col"
                     tableClassName="min-h-0 flex-1"
+                    afterFilters={
+                      attachProduct ? (
+                        <div className="shrink-0 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label htmlFor="attach-variant" className="text-xs font-semibold text-muted-foreground">Varian</label>
+                              <select
+                                id="attach-variant"
+                                value={attachVariant}
+                                onChange={(e) => setAttachVariant(e.target.value)}
+                                disabled={attachVariantOptions.length === 0}
+                                className="h-9 w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-70"
+                              >
+                                <option value="">Tanpa varian (foto katalog)</option>
+                                {attachVariantOptions.map((v) => (
+                                  <option key={v.id} value={String(v.id)}>{v.label || v.sku}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label htmlFor="attach-position" className="text-xs font-semibold text-muted-foreground">Posisi</label>
+                              <Input id="attach-position" type="number" value={attachPosition} onChange={(e) => setAttachPosition(e.target.value)} min="1" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-1 text-xs">
+                              <input type="checkbox" checked={attachCatalog} onChange={(e) => setAttachCatalog(e.target.checked)} /> Tampilkan katalog
+                            </label>
+                            <label className="flex items-center gap-1 text-xs">
+                              <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
+                            </label>
+                          </div>
+                          {attachExistingRow ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null
+                    }
                     onSelect={(products) => {
                       const produk = products[0] ?? null
                       setAttachProduct(produk ? String(produk.id) : "")
