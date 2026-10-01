@@ -1434,11 +1434,12 @@ export default function MediaLibrary({
                       <button
                         type="button"
                         onClick={() => setAttachingId(asset.id)}
-                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
+                        className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition hover:bg-surface hover:text-foreground"
                         title="Pasang ke produk"
                         aria-label={`Pasang ${asset.label}`}
                       >
                         <Icon name="link" className="size-3.5" aria-hidden="true" />
+                        <span>Pasang</span>
                       </button>
                     </div>
                   </div>

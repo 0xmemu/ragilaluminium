@@ -2943,3 +2943,10 @@ Perubahan: penutup overlay kini memakai onMouseDown dengan penjaga target, hanya
 Dampak spec: tidak berubah.
 Verifikasi: eslint tanpa warning baru, typecheck bersih, build sukses 22s; uji browser: mousedown dari dalam panel tidak menutup, mousedown di latar menutup.
 Agent: zcode-retur
+
+## 2026-10-01 09:00 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner minta tombol ikon saja Pasang pada kartu aset Media Library jadi ikon plus teks.
+Perubahan: tombol Pasang kartu aset kini ikon link plus teks Pasang (h-6 + teks xs), title dan aria-label tidak berubah.
+Dampak spec: tidak berubah.
+Verifikasi: eslint tanpa warning baru, build sukses, tampilan dicek di browser.
+Agent: zcode-retur
