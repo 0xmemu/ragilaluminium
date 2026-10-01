@@ -17,26 +17,25 @@ interface RichSolutionOption {
   icon?: string
 }
 
-interface RichSolutionPhoto {
+interface RichSolutionMedia {
+  /** Media lama tanpa penanda jenis diperlakukan sebagai gambar. */
+  kind?: "image" | "video"
   src: string
-  alt: string
-  /** Ukuran asli aset, dipakai menentukan tata letak (lebar atau dipasangkan). */
+  alt?: string
+  /** Ukuran asli aset gambar, dipakai menentukan tata letak. */
   width?: number | null
   height?: number | null
-}
-
-interface RichSolutionVideo {
-  src: string
-  poster?: string
-  duration?: string
+  /** Khusus video: poster dan asal berkasnya. */
+  poster?: string | null
+  source?: "library" | "url"
 }
 
 interface RichSolutionContent {
   type: "rich"
   examples_label?: string
   examples_hint?: string
-  photos?: RichSolutionPhoto[]
-  video?: (RichSolutionVideo & { source?: "library" | "url" }) | null
+  /** Satu daftar media berurutan, bisa gambar dan video bercampur. */
+  media?: RichSolutionMedia[]
   solutions_label?: string
   lead?: string
   body?: string
@@ -99,7 +98,7 @@ function resolveSolution(raw: ProblemSolutionItem["solution"] | string | null | 
  * itu belum ada, gambar diukur sendiri begitu selesai dimuat supaya tata letaknya
  * tetap benar tanpa perlu menunggu muat ulang halaman.
  */
-function MediaFigure({ photo }: { photo: RichSolutionPhoto }) {
+function MediaFigure({ photo }: { photo: RichSolutionMedia }) {
   const [terukur, setTerukur] = React.useState<MasalahSolusiMediaLayout | null>(null)
   const layout = mediaLayout(photo.width, photo.height) ?? terukur
 
@@ -124,6 +123,59 @@ function MediaFigure({ photo }: { photo: RichSolutionPhoto }) {
   )
 }
 
+function MediaVideo({ media }: { media: RichSolutionMedia }) {
+  return (
+    <figure className="min-w-0">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <Icon name="video" className="size-4" aria-hidden="true" />
+        Video
+      </div>
+      {media.source === "library" ? (
+        /* Berkas video dari Media Library: diputar langsung di halaman. */
+        <div className="overflow-hidden rounded-lg border border-border bg-black">
+          <video
+            src={media.src}
+            poster={media.poster ?? undefined}
+            controls
+            playsInline
+            preload="metadata"
+            className="max-h-[min(70dvh,32rem)] w-full bg-black object-contain"
+          />
+        </div>
+      ) : (
+        /* Tautan luar (mis. YouTube): dibuka di tab baru dengan pratinjau poster. */
+        <a
+          href={media.src}
+          target="_blank"
+          rel="noreferrer"
+          className="group relative block overflow-hidden rounded-lg border border-border bg-muted"
+        >
+          {media.poster ? (
+            <ResponsiveImage
+              src={media.poster}
+              alt="Video contoh kondisi kerusakan"
+              wrapperClassName="aspect-video"
+              className="object-cover transition group-hover:scale-[1.02]"
+            />
+          ) : (
+            <div className="flex aspect-video items-center justify-center bg-muted">
+              <Icon name="video" className="size-10 text-muted-foreground" aria-hidden="true" />
+            </div>
+          )}
+          <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
+            <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface/95 text-primary shadow-sm">
+              <Icon name="caret-right" className="size-5" weight="fill" aria-hidden="true" />
+            </span>
+          </span>
+        </a>
+      )}
+      {media.alt ? (
+        <figcaption className="mt-1.5 text-xs leading-5 text-muted-foreground">{media.alt}</figcaption>
+      ) : null}
+    </figure>
+  )
+}
+
 function RichSolutionPanel({
   content,
   whatsappUrl,
@@ -131,7 +183,7 @@ function RichSolutionPanel({
   content: RichSolutionContent
   whatsappUrl: string | null
 }) {
-  const photos = content.photos ?? []
+  const media = content.media ?? []
   const options = content.options ?? []
 
   return (
@@ -141,66 +193,30 @@ function RichSolutionPanel({
           {content.examples_label ?? "Contoh kondisi kerusakan"}
         </p>
 
-        {photos.length ? (
-          /* Tata letak mengikuti bentuk media (kontrak owner 2026-09-20): foto lebar
-             seperti banner dipakai sebagai gambar pembuka dan berdiri sendiri selebar
-             penuh, sedangkan foto persegi atau tegak dipasangkan berjejer dua kolom
-             seperti pasangan foto before dan after. Rasio asli tidak pernah dipotong. */
+        {media.length ? (
+          /* Satu daftar berurutan mengikuti pilihan admin (kontrak owner
+             2026-09-30): media tidak lagi dipisah foto dan video, jadi urutan
+             di sini sama dengan urutan di form. Tata letak gambar mengikuti
+             bentuk aslinya (kontrak 2026-09-20): banner dan landscape berdiri
+             sendiri selebar penuh, persegi atau tegak dipasangkan berjejer.
+             Video selalu selebar penuh karena butuh ruang putar. */
           <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
-            {photos.map((photo) => (
-              <MediaFigure key={photo.src} photo={photo} />
-            ))}
+            {media.map((item, index) => {
+              const kunci = `${item.kind ?? "image"}-${item.src}-${index}`
+
+              if (item.kind === "video") {
+                return (
+                  <div key={kunci} className="col-span-2 min-w-0">
+                    <MediaVideo media={item} />
+                  </div>
+                )
+              }
+
+              return <MediaFigure key={kunci} photo={item} />
+            })}
           </div>
         ) : content.examples_hint ? (
           <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.examples_hint}</p>
-        ) : null}
-
-        {content.video?.src ? (
-          <div className="mt-4">
-            <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <Icon name="video" className="size-4" aria-hidden="true" />
-              Video
-            </p>
-            {content.video.source === "library" ? (
-              /* Berkas video dari Media Library: diputar langsung di halaman. */
-              <div className="overflow-hidden rounded-lg border border-border bg-black">
-                <video
-                  src={content.video.src}
-                  poster={content.video.poster ?? undefined}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="max-h-[min(70dvh,32rem)] w-full bg-black object-contain"
-                />
-              </div>
-            ) : (
-              /* Tautan luar (mis. YouTube): dibuka di tab baru dengan pratinjau poster. */
-              <a
-                href={content.video.src}
-                target="_blank"
-                rel="noreferrer"
-                className="group relative block overflow-hidden rounded-lg border border-border bg-muted"
-              >
-                {content.video.poster ? (
-                  <ResponsiveImage
-                    src={content.video.poster}
-                    alt="Video contoh kondisi kerusakan"
-                    wrapperClassName="aspect-video"
-                    className="object-cover transition group-hover:scale-[1.02]"
-                  />
-                ) : (
-                  <div className="flex aspect-video items-center justify-center bg-muted">
-                    <Icon name="video" className="size-10 text-muted-foreground" aria-hidden="true" />
-                  </div>
-                )}
-                <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
-                  <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface/95 text-primary shadow-sm">
-                    <Icon name="caret-right" className="size-5" weight="fill" aria-hidden="true" />
-                  </span>
-                </span>
-              </a>
-            )}
-          </div>
         ) : null}
       </div>
 

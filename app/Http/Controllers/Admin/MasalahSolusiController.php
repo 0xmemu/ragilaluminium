@@ -102,14 +102,6 @@ class MasalahSolusiController extends Controller
     {
         $parsed = ProblemsSolutionsSettings::parseForAdmin($masalahSolusi->solution);
 
-        // Label aset video untuk pratinjau di form: admin melihat nama berkas
-        // yang dipilih, bukan nomor id aset (koreksi owner 2026-09-29).
-        $videoLabel = null;
-        $videoAssetId = $parsed['video']['asset_id'] ?? null;
-        if ($videoAssetId) {
-            $videoLabel = MediaAsset::query()->whereKey((int) $videoAssetId)->value('label');
-        }
-
         return Inertia::render('Admin/MasalahSolusi/Form', [
             'backUrl' => route('admin.masalah-solusi.index'),
             'item' => array_merge(
@@ -117,7 +109,6 @@ class MasalahSolusiController extends Controller
                     'id' => $masalahSolusi->id,
                     'problem' => $masalahSolusi->problem,
                     'sort_order' => $masalahSolusi->sort_order,
-                    'video_label' => $videoLabel,
                 ],
                 $parsed,
             ),
@@ -198,14 +189,17 @@ class MasalahSolusiController extends Controller
             'solution_body' => ['nullable', 'string', 'max:10000'],
             'examples_label' => ['nullable', 'string', 'max:120'],
             'examples_hint' => ['nullable', 'string', 'max:500'],
-            'existing_photos' => ['nullable', 'string'],
             // Owner 2026-09-16: Media Library satu-satunya sumber foto dan video.
-            // Kontrak owner 2026-09-20: maksimal 2 media per item, foto dan video
-            // dihitung sebagai slot yang sama (lihat MAX_MEDIA_PER_ITEM di
-            // ProblemsSolutionsSettings).
-            // Tidak ada batas ukuran atau rasio foto: admin memakai banner memanjang
+            // Kontrak owner 2026-09-30: satu daftar media berurutan tanpa memisah
+            // foto dan video; jumlahnya dijaga di
+            // ProblemsSolutionsSettings (MAX_MEDIA_PER_ITEM).
+            // Tidak ada batas ukuran atau rasio: admin memakai banner memanjang
             // maupun pasangan media 1:1, jadi rasionya dibiarkan bebas.
-            'media_asset_ids' => ['nullable', 'array', 'max:'.ProblemsSolutionsSettings::MAX_MEDIA_PER_ITEM],
+            'media' => ['nullable', 'string'],
+            // Bentuk lama tetap diterima supaya tab admin yang sudah terbuka
+            // sebelum deploy tidak kehilangan medianya.
+            'existing_photos' => ['nullable', 'string'],
+            'media_asset_ids' => ['nullable', 'array'],
             'media_asset_ids.*' => ['integer', 'exists:media_assets,id'],
             'media_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'photo_alts' => ['nullable', 'array'],

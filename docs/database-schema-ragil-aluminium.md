@@ -694,6 +694,28 @@ Indexes:
 - `created_at` (`DATETIME`), nullable
 - `updated_at` (`DATETIME`), nullable
 
+**Bentuk isi kolom `solution`.** Dua bentuk, ditentukan kunci `type`:
+
+- `{"type":"text","content":"..."}` untuk solusi teks biasa (tanpa dokumentasi media).
+- `{"type":"rich", ...}` untuk solusi dengan dokumentasi. Kunci yang dipakai:
+
+  | Kunci | Isi |
+  |---|---|
+  | `media` | **Satu daftar media berurutan**, bisa gambar dan video bercampur (kontrak owner 2026-09-30). Maksimal 2 entri, dihitung dari totalnya, bukan per jenis. Entri gambar membawa `{kind:"image", src, alt, width, height}`; entri video membawa `{kind:"video", src, alt, poster, source, asset_id}`. |
+  | `examples_label`, `examples_hint` | Judul bagian media dan teks pengganti bila belum ada media. |
+  | `body`, `options`, `lead`, `solutions_label`, `whatsapp_note` | Naskah solusi dan daftar opsinya. |
+
+  Urutan di `media` adalah urutan tampil di halaman publik, jadi admin mengatur
+  pasangan media lewat urutan pemilihan.
+
+  **Data lama** (sebelum 2026-09-30) menyimpan `photos` (daftar gambar) dan
+  `video` (satu video) pada dua kunci terpisah. Keduanya masih DIBACA dan
+  disatukan menjadi `media` (foto dulu, lalu video) oleh
+  `ProblemsSolutionsSettings::mediaFromContent`, jadi tidak perlu migrasi data.
+  Penulisan baru hanya menghasilkan `media`; bentuk permintaan lama
+  (`media_asset_ids` + `media_video_asset_id`) masih diterima demi tab admin
+  yang sudah terbuka saat deploy.
+
 ### 5.8 `cms_testimonials`
 
 - `id` (`INTEGER`), PK, NN

@@ -80,7 +80,22 @@ class MasalahSolusiAdminTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_attach_documentation_media_from_library(): void
+    /**
+     * Daftar media dikirim satu kunci JSON `media`, berurutan sesuai pilihan
+     * admin. Entri yang punya asset_id diambil ulang dari Media Library.
+     *
+     * @param  list<array{asset_id?: int, alt?: string}>  $entri
+     */
+    private function kirimMedia(array $entri): string
+    {
+        return json_encode($entri, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Kontrak owner 2026-09-30: media TIDAK dipisah foto dan video, dan
+     * urutannya pilihan admin. Bentuk tersimpannya satu daftar `media`.
+     */
+    public function test_media_dari_media_library_tersimpan_satu_daftar_berurutan(): void
     {
         Storage::fake('media');
 
@@ -93,9 +108,10 @@ class MasalahSolusiAdminTest extends TestCase
                 'problem' => 'Barang rusak saat pengiriman',
                 'solution_body' => 'Hubungi kami untuk klaim garansi pengiriman.',
                 'examples_hint' => 'Retak bingkai, goresan kaca',
-                // Owner 2026-09-16: Media Library satu-satunya sumber media.
-                'media_asset_ids' => [$foto1->id, $foto2->id],
-                'photo_alts' => ['Retak bingkai', 'Goresan kaca'],
+                'media' => $this->kirimMedia([
+                    ['asset_id' => $foto1->id, 'alt' => 'Retak bingkai'],
+                    ['asset_id' => $foto2->id, 'alt' => 'Goresan kaca'],
+                ]),
                 'sort_order' => 1,
             ])
             ->assertRedirect(route('admin.masalah-solusi.index'));
@@ -106,42 +122,84 @@ class MasalahSolusiAdminTest extends TestCase
         $decoded = json_decode($item->solution, true);
         $this->assertIsArray($decoded);
         $this->assertSame('rich', $decoded['type'] ?? null);
-        $this->assertCount(2, $decoded['photos'] ?? []);
-        $this->assertSame('Retak bingkai', $decoded['photos'][0]['alt'] ?? null);
+        $this->assertCount(2, $decoded['media'] ?? []);
+        $this->assertSame('image', $decoded['media'][0]['kind'] ?? null);
+        $this->assertSame('Retak bingkai', $decoded['media'][0]['alt'] ?? null);
+        $this->assertSame('Goresan kaca', $decoded['media'][1]['alt'] ?? null);
+
+        // Bentuk lama tidak ditulis lagi, jadi hanya ada satu model data.
+        $this->assertArrayNotHasKey('photos', $decoded);
+        $this->assertArrayNotHasKey('video', $decoded);
 
         $this->get(route('masalah-dan-solusi'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/MasalahSolusi')
-                ->where('guide.items.0.solution.type', 'rich'));
+                ->has('guide.items.0.solution.content.media', 2)
+                ->where('guide.items.0.solution.content.media.0.kind', 'image'));
     }
 
-    public function test_video_can_come_from_media_library(): void
+    public function test_video_dan_foto_bisa_bercampur_dengan_urutan_pilihan_admin(): void
     {
         Storage::fake('media');
 
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $video = $this->mediaAsset('video', 'video-pasang');
+        $foto = $this->mediaAsset('image', 'campur-foto');
+        $video = $this->mediaAsset('video', 'campur-video');
 
+        // Urutannya video dulu, baru foto: itu yang harus tersimpan apa adanya.
         $this->actingAs($admin)
             ->post(route('admin.masalah-solusi.store'), [
-                'problem' => 'Cara memasang yang benar',
-                'solution_body' => 'Ikuti langkah pada video.',
-                'media_video_asset_id' => $video->id,
+                'problem' => 'Video lebih dulu',
+                'solution_body' => 'Solusi.',
+                'media' => $this->kirimMedia([
+                    ['asset_id' => $video->id, 'alt' => ''],
+                    ['asset_id' => $foto->id, 'alt' => 'Setelah dipasang'],
+                ]),
                 'sort_order' => 1,
             ])
             ->assertRedirect(route('admin.masalah-solusi.index'));
 
         $decoded = json_decode(CmsProblemSolution::query()->first()->solution, true);
 
-        $this->assertSame('rich', $decoded['type'] ?? null);
-        $this->assertSame('library', $decoded['video']['source'] ?? null);
-        $this->assertSame($video->id, $decoded['video']['asset_id'] ?? null);
-        $this->assertNotNull($decoded['video']['src'] ?? null);
+        $this->assertCount(2, $decoded['media'] ?? []);
+        $this->assertSame('video', $decoded['media'][0]['kind'] ?? null);
+        $this->assertSame('library', $decoded['media'][0]['source'] ?? null);
+        $this->assertNotNull($decoded['media'][0]['src'] ?? null);
+        $this->assertSame('image', $decoded['media'][1]['kind'] ?? null);
+        $this->assertSame('Setelah dipasang', $decoded['media'][1]['alt'] ?? null);
     }
 
-    /** Kontrak owner 2026-09-20: maksimal 2 media per item, foto dan video satu slot. */
-    public function test_media_beyond_two_slots_is_rejected(): void
+    /** Kemampuan baru kontrak 2026-09-30: dua video sekaligus diizinkan. */
+    public function test_dua_video_sekaligus_diizinkan(): void
+    {
+        Storage::fake('media');
+
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $videoA = $this->mediaAsset('video', 'video-a');
+        $videoB = $this->mediaAsset('video', 'video-b');
+
+        $this->actingAs($admin)
+            ->post(route('admin.masalah-solusi.store'), [
+                'problem' => 'Dua video',
+                'solution_body' => 'Solusi.',
+                'media' => $this->kirimMedia([
+                    ['asset_id' => $videoA->id, 'alt' => ''],
+                    ['asset_id' => $videoB->id, 'alt' => ''],
+                ]),
+                'sort_order' => 1,
+            ])
+            ->assertRedirect(route('admin.masalah-solusi.index'));
+
+        $decoded = json_decode(CmsProblemSolution::query()->first()->solution, true);
+
+        $this->assertCount(2, $decoded['media'] ?? []);
+        $this->assertSame('video', $decoded['media'][0]['kind'] ?? null);
+        $this->assertSame('video', $decoded['media'][1]['kind'] ?? null);
+    }
+
+    /** Batas dua media tetap berlaku, apa pun jenisnya. */
+    public function test_media_lebih_dari_dua_ditolak(): void
     {
         Storage::fake('media');
 
@@ -150,67 +208,58 @@ class MasalahSolusiAdminTest extends TestCase
         $b = $this->mediaAsset('image', 'b');
         $c = $this->mediaAsset('image', 'c');
 
-        // Tiga foto sekaligus: ditolak validasi (max 2).
         $this->actingAs($admin)
             ->post(route('admin.masalah-solusi.store'), [
-                'problem' => 'Tiga foto',
+                'problem' => 'Tiga media',
                 'solution_body' => 'Solusi.',
-                'media_asset_ids' => [$a->id, $b->id, $c->id],
+                'media' => $this->kirimMedia([
+                    ['asset_id' => $a->id, 'alt' => ''],
+                    ['asset_id' => $b->id, 'alt' => ''],
+                    ['asset_id' => $c->id, 'alt' => ''],
+                ]),
             ])
-            ->assertSessionHasErrors('media_asset_ids');
+            ->assertSessionHasErrors('media');
 
         $this->assertDatabaseCount('cms_problems_solutions', 0);
     }
 
-    public function test_two_photos_plus_video_is_rejected(): void
+    /**
+     * Bentuk permintaan lama tetap diterima supaya tab admin yang sudah terbuka
+     * sebelum deploy tidak kehilangan medianya.
+     */
+    public function test_bentuk_lama_media_asset_ids_dan_video_tetap_diterima(): void
     {
         Storage::fake('media');
 
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $a = $this->mediaAsset('image', 'dua-a');
-        $b = $this->mediaAsset('image', 'dua-b');
-        $video = $this->mediaAsset('video', 'dua-video');
-
-        // Dua foto + satu video = 3 slot, melewati batas walau masing-masing di
-        // dalam batasnya sendiri.
-        $this->actingAs($admin)
-            ->post(route('admin.masalah-solusi.store'), [
-                'problem' => 'Dua foto dan satu video',
-                'solution_body' => 'Solusi.',
-                'media_asset_ids' => [$a->id, $b->id],
-                'media_video_asset_id' => $video->id,
-            ])
-            ->assertSessionHasErrors('media_asset_ids');
-
-        $this->assertDatabaseCount('cms_problems_solutions', 0);
-    }
-
-    public function test_one_photo_plus_video_is_allowed(): void
-    {
-        Storage::fake('media');
-
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $foto = $this->mediaAsset('image', 'campur-foto');
-        $video = $this->mediaAsset('video', 'campur-video');
+        $foto = $this->mediaAsset('image', 'lama-foto');
+        $video = $this->mediaAsset('video', 'lama-video');
 
         $this->actingAs($admin)
             ->post(route('admin.masalah-solusi.store'), [
-                'problem' => 'Satu foto dan satu video',
+                'problem' => 'Bentuk lama',
                 'solution_body' => 'Solusi.',
                 'media_asset_ids' => [$foto->id],
+                'photo_alts' => ['Keterangan lama'],
                 'media_video_asset_id' => $video->id,
+                'sort_order' => 1,
             ])
             ->assertRedirect(route('admin.masalah-solusi.index'));
 
         $decoded = json_decode(CmsProblemSolution::query()->first()->solution, true);
-        $this->assertCount(1, $decoded['photos'] ?? []);
-        $this->assertSame('library', $decoded['video']['source'] ?? null);
+
+        // Foto dulu lalu video, itu urutan bentuk lama.
+        $this->assertCount(2, $decoded['media'] ?? []);
+        $this->assertSame('image', $decoded['media'][0]['kind'] ?? null);
+        $this->assertSame('Keterangan lama', $decoded['media'][0]['alt'] ?? null);
+        $this->assertSame('video', $decoded['media'][1]['kind'] ?? null);
+        $this->assertSame('library', $decoded['media'][1]['source'] ?? null);
     }
 
     /**
      * Koreksi owner 2026-09-29: video hanya dari Media Library. Tautan video
      * luar, isian durasi, dan poster manual dihapus dari form, jadi ketiganya
-     * tidak lagi berpengaruh walau tetap dikirim ke server.
+     * tidak berpengaruh walau tetap dikirim ke server.
      */
     public function test_field_video_lama_diabaikan(): void
     {
@@ -225,7 +274,6 @@ class MasalahSolusiAdminTest extends TestCase
                 'problem' => 'Video dengan field lama',
                 'solution_body' => 'Solusi.',
                 'media_video_asset_id' => $video->id,
-                // Tiga field yang sudah dihapus dari form:
                 'video_url' => 'https://youtube.com/watch?v=abc',
                 'video_duration' => '02:37',
                 'video_poster_asset_id' => $poster->id,
@@ -234,21 +282,17 @@ class MasalahSolusiAdminTest extends TestCase
             ->assertRedirect(route('admin.masalah-solusi.index'));
 
         $decoded = json_decode(CmsProblemSolution::query()->first()->solution, true);
-        $videoPayload = $decoded['video'] ?? [];
+        $entri = $decoded['media'][0] ?? [];
 
-        $this->assertSame('library', $videoPayload['source'] ?? null);
-        $this->assertStringNotContainsString('youtube.com', (string) ($videoPayload['src'] ?? ''));
-        // Durasi tidak lagi disimpan sama sekali.
-        $this->assertArrayNotHasKey('duration', $videoPayload);
-        // Poster selalu dari berkas videonya, bukan aset poster pilihan admin.
-        $this->assertStringNotContainsString(
-            'poster-manual',
-            (string) ($videoPayload['poster'] ?? ''),
-        );
+        $this->assertSame('video', $entri['kind'] ?? null);
+        $this->assertSame('library', $entri['source'] ?? null);
+        $this->assertStringNotContainsString('youtube.com', (string) ($entri['src'] ?? ''));
+        $this->assertArrayNotHasKey('duration', $entri);
+        $this->assertStringNotContainsString('poster-manual', (string) ($entri['poster'] ?? ''));
     }
 
-    /** Tautan video luar tanpa berkas Library tidak menghasilkan video sama sekali. */
-    public function test_tautan_video_luar_tanpa_berkas_tidak_menghasilkan_video(): void
+    /** Tautan video luar tanpa berkas Library tidak menghasilkan media apa pun. */
+    public function test_tautan_video_luar_tanpa_berkas_tidak_menghasilkan_media(): void
     {
         Storage::fake('media');
 
@@ -262,40 +306,56 @@ class MasalahSolusiAdminTest extends TestCase
             ])
             ->assertRedirect(route('admin.masalah-solusi.index'));
 
-        $decoded = json_decode(CmsProblemSolution::query()->first()->solution, true);
-        $this->assertNull($decoded['video'] ?? null);
+        // Tanpa media sama sekali, solusinya disimpan sebagai teks biasa
+        // (bukan rich), jadi memang tidak ada daftar media untuk disimpan.
+        $this->assertSame('Solusi.', CmsProblemSolution::query()->first()->solution);
     }
 
     /**
-     * Halaman edit memuat video terpasang lengkap dengan NAMA BERKASNYA, bukan
-     * nomor id aset, supaya admin tahu video mana yang sedang dipakai
-     * (koreksi owner 2026-09-29).
+     * Baris LAMA (tersimpan sebagai photos + video) tetap tampil di halaman
+     * publik sebagai satu daftar media, tanpa perlu migrasi data.
      */
-    public function test_form_edit_memuat_video_terpasang_dengan_namanya(): void
+    public function test_baris_lama_dengan_photos_dan_video_tetap_tampil(): void
     {
-        Storage::fake('media');
-
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $video = $this->mediaAsset('video', 'video-nama-berkas');
-
-        $this->actingAs($admin)->post(route('admin.masalah-solusi.store'), [
-            'problem' => 'Video dengan nama berkas',
-            'solution_body' => 'Solusi.',
-            'media_video_asset_id' => $video->id,
+        $item = CmsProblemSolution::create([
+            'cms_page_id' => \App\Support\ProblemsSolutionsSettings::pageId(),
+            'problem' => 'Baris lama',
+            'solution' => json_encode([
+                'type' => 'rich',
+                'photos' => [
+                    ['src' => 'https://contoh.test/foto-lama.webp', 'alt' => 'Foto lama', 'width' => 1024, 'height' => 1024],
+                ],
+                'video' => [
+                    'src' => 'https://contoh.test/video-lama.mp4',
+                    'poster' => 'https://contoh.test/poster-lama.webp',
+                    'source' => 'library',
+                    'asset_id' => 99,
+                ],
+                'body' => 'Solusi lama.',
+            ], JSON_UNESCAPED_UNICODE),
             'sort_order' => 1,
         ]);
 
-        $item = CmsProblemSolution::query()->first();
+        $this->get(route('masalah-dan-solusi'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/MasalahSolusi')
+                ->has('guide.items.0.solution.content.media', 2)
+                ->where('guide.items.0.solution.content.media.0.kind', 'image')
+                ->where('guide.items.0.solution.content.media.0.alt', 'Foto lama')
+                ->where('guide.items.0.solution.content.media.1.kind', 'video')
+                ->where('guide.items.0.solution.content.media.1.src', 'https://contoh.test/video-lama.mp4'));
+
+        // Halaman edit juga memakai daftar yang sama.
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
             ->get(route('admin.masalah-solusi.edit', $item))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/MasalahSolusi/Form')
-                ->where('item.video.source', 'library')
-                ->where('item.video.asset_id', $video->id)
-                ->where('item.video_label', $video->label)
-                // Durasi tidak lagi ikut di payload.
-                ->missing('item.video.duration'));
+                ->has('item.media', 2)
+                ->where('item.media.0.kind', 'image')
+                ->where('item.media.1.kind', 'video'));
     }
 }

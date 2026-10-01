@@ -112,7 +112,7 @@ class ProblemsSolutionsSettings
                 'no' => $index + 1,
                 'problem' => $item->problem,
                 'solution' => $parsed['solution_preview'],
-                'media_count' => count($parsed['photos']) + ($parsed['video']['src'] ?? null ? 1 : 0),
+                'media_count' => count($parsed['media']),
                 'sort_order' => $item->sort_order,
                 'edit_href' => route('admin.masalah-solusi.edit', $item),
                 'destroy_url' => route('admin.masalah-solusi.destroy', $item),
@@ -136,11 +136,22 @@ class ProblemsSolutionsSettings
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->map(fn (CmsProblemSolution $item) => [
-                'id' => $item->id,
-                'problem' => $item->problem,
-                'solution' => self::normalizeSolution($item->solution),
-            ])
+            ->map(function (CmsProblemSolution $item) {
+                $normalized = self::normalizeSolution($item->solution);
+
+                // Baris lama menyimpan foto dan video pada dua kunci terpisah;
+                // halaman publik kini hanya mengenal satu daftar `media`, jadi
+                // keduanya disatukan di sini (tanpa mengubah data tersimpan).
+                if ($normalized['type'] === 'rich' && is_array($normalized['content'])) {
+                    $normalized['content']['media'] = self::mediaFromContent($normalized['content']);
+                }
+
+                return [
+                    'id' => $item->id,
+                    'problem' => $item->problem,
+                    'solution' => $normalized,
+                ];
+            })
             ->values()
             ->all();
 
@@ -205,8 +216,7 @@ class ProblemsSolutionsSettings
                 'solution_body' => $body,
                 'examples_label' => 'Contoh kondisi kerusakan',
                 'examples_hint' => '',
-                'photos' => [],
-                'video' => null,
+                'media' => [],
                 'solutions_label' => 'Solusi yang kami tawarkan',
                 'solution_lead' => '',
                 'solution_options' => [],
@@ -218,30 +228,9 @@ class ProblemsSolutionsSettings
 
         /** @var array<string, mixed> $content */
         $content = is_array($normalized['content']) ? $normalized['content'] : [];
-        $photos = collect($content['photos'] ?? [])
-            ->filter(fn ($photo) => is_array($photo) && filled($photo['src'] ?? null))
-            ->map(fn (array $photo) => [
-                'src' => (string) $photo['src'],
-                'alt' => trim((string) ($photo['alt'] ?? '')),
-                'width' => filled($photo['width'] ?? null) ? (int) $photo['width'] : null,
-                'height' => filled($photo['height'] ?? null) ? (int) $photo['height'] : null,
-            ])
-            ->values()
-            ->all();
-
-        $video = null;
-        if (is_array($content['video'] ?? null) && filled($content['video']['src'] ?? null)) {
-            $video = [
-                'src' => (string) $content['video']['src'],
-                'poster' => filled($content['video']['poster'] ?? null) ? (string) $content['video']['poster'] : null,
-                // Durasi dihapus dari kontrak (koreksi owner 2026-09-29):
-                // isiannya jarang dipakai dan hanya menambah kolom yang harus
-                // diisi admin. Baris lama yang masih menyimpannya tidak lagi
-                // ditampilkan.
-                'source' => ($content['video']['source'] ?? null) === 'library' ? 'library' : 'url',
-                'asset_id' => filled($content['video']['asset_id'] ?? null) ? (int) $content['video']['asset_id'] : null,
-            ];
-        }
+        // Kontrak owner 2026-09-30: satu daftar media berurutan, tanpa
+        // memisahkan foto dan video.
+        $media = self::mediaFromContent($content);
 
         $options = collect($content['options'] ?? [])
             ->filter(fn ($option) => is_array($option) && filled($option['title'] ?? null))
@@ -259,21 +248,224 @@ class ProblemsSolutionsSettings
             'solution_body' => $body,
             'examples_label' => trim((string) ($content['examples_label'] ?? 'Contoh kondisi kerusakan')) ?: 'Contoh kondisi kerusakan',
             'examples_hint' => trim((string) ($content['examples_hint'] ?? '')),
-            'photos' => $photos,
-            'video' => $video,
+            'media' => $media,
             'solutions_label' => trim((string) ($content['solutions_label'] ?? 'Solusi yang kami tawarkan')) ?: 'Solusi yang kami tawarkan',
             'solution_lead' => trim((string) ($content['lead'] ?? '')),
             'solution_options' => $options,
             'whatsapp_note' => trim((string) ($content['whatsapp_note'] ?? '')),
-            'solution_preview' => self::previewText($body, $options, count($photos), $video !== null),
+            'solution_preview' => self::previewText($body, $options, $media),
             'use_options' => count($options) > 0,
         ];
     }
 
     /**
-     * @param  list<array{title:string,description:string,icon:string}>  $options
+     * Daftar media berurutan dari isi JSON yang tersimpan.
+     *
+     * Bentuk baru menyimpan `media` sebagai satu daftar, urutannya pilihan
+     * admin. Baris lama menyimpan `photos` lalu `video` terpisah; keduanya
+     * disatukan di sini supaya data lama tetap tampil tanpa migrasi.
+     *
+     * @param  array<string, mixed>  $content
+     * @return list<array<string, mixed>>
      */
-    public static function previewText(string $body, array $options, int $photoCount = 0, bool $hasVideo = false): string
+    public static function mediaFromContent(array $content): array
+    {
+        $media = $content['media'] ?? null;
+        if (is_array($media) && $media !== []) {
+            $out = [];
+            foreach ($media as $entry) {
+                if (is_array($entry) && filled($entry['src'] ?? null)) {
+                    $out[] = self::normalizeMediaEntry($entry);
+                }
+            }
+
+            return $out;
+        }
+
+        // Bentuk lama: foto dulu, video di akhir (itu urutan render publik lama).
+        $out = [];
+        foreach (($content['photos'] ?? []) as $photo) {
+            if (is_array($photo) && filled($photo['src'] ?? null)) {
+                $out[] = self::normalizeMediaEntry(['kind' => 'image'] + $photo);
+            }
+        }
+        if (is_array($content['video'] ?? null) && filled($content['video']['src'] ?? null)) {
+            $out[] = self::normalizeMediaEntry(['kind' => 'video'] + $content['video']);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Samakan bentuk satu entri media, apa pun asalnya.
+     *
+     * @param  array<string, mixed>  $entry
+     * @return array<string, mixed>
+     */
+    private static function normalizeMediaEntry(array $entry): array
+    {
+        $kind = ($entry['kind'] ?? 'image') === 'video' ? 'video' : 'image';
+        $base = [
+            'kind' => $kind,
+            'src' => (string) $entry['src'],
+            'alt' => trim((string) ($entry['alt'] ?? '')),
+        ];
+
+        if ($kind === 'video') {
+            $base['poster'] = filled($entry['poster'] ?? null) ? (string) $entry['poster'] : null;
+            $base['source'] = ($entry['source'] ?? null) === 'library' ? 'library' : 'url';
+            $base['asset_id'] = filled($entry['asset_id'] ?? null) ? (int) $entry['asset_id'] : null;
+
+            return $base;
+        }
+
+        // Ukuran asli dipakai halaman publik untuk menentukan tata letak: media
+        // lebar berdiri sendiri, media persegi dipasangkan berjejer.
+        $base['width'] = filled($entry['width'] ?? null) ? (int) $entry['width'] : null;
+        $base['height'] = filled($entry['height'] ?? null) ? (int) $entry['height'] : null;
+
+        return $base;
+    }
+
+    /**
+     * Daftar media dari permintaan form, berurutan sesuai pilihan admin.
+     *
+     * Isian `media` berbentuk JSON: tiap entri membawa `asset_id` (pilihan baru
+     * dari Media Library) atau `src` (media lama yang dibiarkan apa adanya).
+     *
+     * Bila `media` tidak ada, bentuk lama tetap dilayani (foto dari
+     * media_asset_ids lalu satu video dari media_video_asset_id), supaya tab
+     * admin yang dibuka sebelum deploy tidak kehilangan medianya.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function mediaFromRequest(Request $request): array
+    {
+        $raw = $request->input('media');
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+
+        if (is_array($raw) && $raw !== []) {
+            $alts = $request->input('photo_alts', []);
+            $out = [];
+
+            foreach (array_values($raw) as $index => $entry) {
+                if (! is_array($entry)) {
+                    continue;
+                }
+
+                $alt = trim((string) ($entry['alt'] ?? (is_array($alts) ? ($alts[$index] ?? '') : '')));
+                $assetId = (int) ($entry['asset_id'] ?? 0);
+
+                if ($assetId > 0) {
+                    $resolved = self::mediaFromAsset($assetId, $alt);
+                    if ($resolved !== null) {
+                        $out[] = $resolved;
+                    }
+
+                    continue;
+                }
+
+                if (filled($entry['src'] ?? null)) {
+                    $out[] = self::normalizeMediaEntry(['alt' => $alt] + $entry);
+                }
+            }
+
+            return $out;
+        }
+
+        return self::legacyMediaFromRequest($request);
+    }
+
+    /**
+     * Bentuk permintaan lama: existing_photos + media_asset_ids + satu video.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function legacyMediaFromRequest(Request $request): array
+    {
+        $alts = $request->input('photo_alts', []);
+        if (! is_array($alts)) {
+            $alts = [];
+        }
+
+        $out = [];
+        $existing = json_decode((string) $request->input('existing_photos', '[]'), true);
+        if (is_array($existing)) {
+            foreach ($existing as $photo) {
+                if (is_array($photo) && filled($photo['src'] ?? null)) {
+                    $out[] = self::normalizeMediaEntry(['kind' => 'image'] + $photo);
+                }
+            }
+        }
+
+        $mediaAssetIds = array_values(array_filter(array_map(
+            'intval',
+            (array) $request->input('media_asset_ids', []),
+        )));
+        foreach ($mediaAssetIds as $index => $assetId) {
+            $resolved = self::mediaFromAsset($assetId, trim((string) ($alts[$index] ?? '')));
+            if ($resolved !== null) {
+                $out[] = $resolved;
+            }
+        }
+
+        if (filled($request->input('media_video_asset_id'))) {
+            $resolved = self::mediaFromAsset((int) $request->input('media_video_asset_id'), '');
+            if ($resolved !== null) {
+                $out[] = $resolved;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Satu entri media dari aset Media Library. Gambar memakai turunan pdp/card
+     * beserta ukuran aslinya; video memakai berkas videonya sendiri dengan poster
+     * dari aset itu (poster manual dihapus dari kontrak 2026-09-29).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function mediaFromAsset(int $assetId, string $alt): ?array
+    {
+        $asset = \App\Models\MediaAsset::query()
+            ->where('status', 'ready')
+            ->where('visibility', '!=', 'archived')
+            ->find($assetId);
+
+        if (! $asset) {
+            return null;
+        }
+
+        $alt = trim($alt);
+        $label = $alt !== '' ? $alt : (string) ($asset->label ?? '');
+
+        if ($asset->kind === 'video') {
+            return [
+                'kind' => 'video',
+                'src' => $asset->urlFor('video'),
+                'alt' => $label,
+                'poster' => $asset->urlFor('poster') ?? $asset->urlFor('card'),
+                'source' => 'library',
+                'asset_id' => (int) $asset->id,
+            ];
+        }
+
+        return [
+            'kind' => 'image',
+            'src' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+            'alt' => $label,
+            'width' => $asset->width_px ? (int) $asset->width_px : null,
+            'height' => $asset->height_px ? (int) $asset->height_px : null,
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $options
+     */
+    public static function previewText(string $body, array $options, array $media = []): string
     {
         if ($body !== '') {
             return $body;
@@ -283,12 +475,15 @@ class ProblemsSolutionsSettings
             return collect($options)->pluck('title')->implode(' · ');
         }
 
+        $foto = count(array_filter($media, fn ($item) => ($item['kind'] ?? 'image') !== 'video'));
+        $video = count($media) - $foto;
+
         $parts = [];
-        if ($photoCount > 0) {
-            $parts[] = $photoCount.' foto';
+        if ($foto > 0) {
+            $parts[] = $foto.' foto';
         }
-        if ($hasVideo) {
-            $parts[] = 'video';
+        if ($video > 0) {
+            $parts[] = $video.' video';
         }
 
         return count($parts) > 0 ? 'Dokumentasi: '.implode(', ', $parts) : '';
@@ -305,95 +500,15 @@ class ProblemsSolutionsSettings
         $whatsappNote = trim((string) $request->input('whatsapp_note', ''));
         $useOptions = $request->boolean('use_options');
 
-        $keptPhotos = collect(json_decode((string) $request->input('existing_photos', '[]'), true) ?: [])
-            ->filter(fn ($photo) => is_array($photo) && filled($photo['src'] ?? null))
-            ->map(fn (array $photo) => [
-                'src' => (string) $photo['src'],
-                'alt' => trim((string) ($photo['alt'] ?? '')),
-                'width' => filled($photo['width'] ?? null) ? (int) $photo['width'] : null,
-                'height' => filled($photo['height'] ?? null) ? (int) $photo['height'] : null,
-            ])
-            ->values()
-            ->all();
-
-        $newPhotoAlts = $request->input('photo_alts', []);
-        if (! is_array($newPhotoAlts)) {
-            $newPhotoAlts = [];
-        }
-
-        $photos = $keptPhotos;
-        // Owner 2026-09-16: media baru hanya dari Media Library (media_asset_ids).
-        $mediaAssetIds = array_values(array_filter(array_map(
-            'intval',
-            (array) $request->input('media_asset_ids', []),
-        )));
-        if ($mediaAssetIds !== []) {
-            $assets = \App\Models\MediaAsset::query()
-                ->whereIn('id', $mediaAssetIds)
-                ->where('status', 'ready')
-                ->where('visibility', '!=', 'archived')
-                ->get()
-                ->keyBy('id');
-            foreach ($mediaAssetIds as $index => $assetId) {
-                $asset = $assets->get($assetId);
-                if (! $asset) {
-                    continue;
-                }
-                $photos[] = [
-                    'src' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
-                    'alt' => trim((string) ($newPhotoAlts[$index] ?? $asset->label ?? '')),
-                    // Ukuran asli dipakai halaman publik untuk menentukan tata letak:
-                    // media lebar berdiri sendiri, media persegi dipasangkan berjejer.
-                    'width' => $asset->width_px ? (int) $asset->width_px : null,
-                    'height' => $asset->height_px ? (int) $asset->height_px : null,
-                ];
-            }
-        }
-
-        // Kontrak owner 2026-09-20: maksimal 2 media per item, dan foto serta video
-        // dihitung sebagai slot yang sama. Dihitung setelah foto dari Media Library
-        // masuk, sebelum video diproses, supaya totalnya tidak bisa lewat batas.
-        $videoSlotRequested = filled($request->input('media_video_asset_id'));
-        $usedSlots = count($photos) + ($videoSlotRequested ? 1 : 0);
-        if ($usedSlots > self::MAX_MEDIA_PER_ITEM) {
+        // Media jadi satu daftar berurutan, tanpa memisahkan foto dan video
+        // (kontrak owner 2026-09-30). Bentuk permintaan lama tetap diterima.
+        $media = self::mediaFromRequest($request);
+        if (count($media) > self::MAX_MEDIA_PER_ITEM) {
             throw ValidationException::withMessages([
-                'media_asset_ids' => 'Maksimal '.self::MAX_MEDIA_PER_ITEM
-                    .' media per item, dihitung dari foto dan video.',
+                'media' => 'Maksimal '.self::MAX_MEDIA_PER_ITEM.' media per item.',
             ]);
         }
 
-        // Video HANYA dari Media Library (koreksi owner 2026-09-29): tautan video
-        // luar, isian durasi, dan poster manual dihapus dari form karena
-        // menambah isian yang jarang dipakai dan mudah salah. Poster tetap ada
-        // di payload, tetapi selalu diambil dari berkas videonya sendiri.
-        $videoFromLibrary = null;
-        $videoPoster = null;
-        if (filled($request->input('media_video_asset_id'))) {
-            $videoAsset = \App\Models\MediaAsset::query()
-                ->where('status', 'ready')
-                ->where('visibility', '!=', 'archived')
-                ->find((int) $request->input('media_video_asset_id'));
-            if ($videoAsset && $videoAsset->kind === 'video') {
-                $videoFromLibrary = $videoAsset->urlFor('video');
-                $videoPoster = $videoAsset->urlFor('poster') ?? $videoAsset->urlFor('card');
-            }
-        }
-
-        $video = null;
-        if ($videoFromLibrary !== null) {
-            $video = [
-                'src' => $videoFromLibrary,
-                'poster' => $videoPoster,
-                // Video kini selalu berkas Media Library; penanda sumber
-                // dipertahankan supaya halaman publik dan data lama tetap
-                // terbaca (baris lama bertaut luar tetap dirender sebagai tautan).
-                'source' => 'library',
-                'asset_id' => (int) $request->input('media_video_asset_id'),
-            ];
-        }
-
-        // Video bisa dipilih dari Media Library (berkas video) atau berupa tautan
-        // luar seperti YouTube. Bila keduanya terisi, berkas dari Library yang dipakai.
         $options = [];
         if ($useOptions) {
             $rawOptions = json_decode((string) $request->input('solution_options', '[]'), true);
@@ -412,8 +527,7 @@ class ProblemsSolutionsSettings
         }
 
         $hasRichPayload = $hint !== ''
-            || count($photos) > 0
-            || $video !== null
+            || count($media) > 0
             || count($options) > 0
             || $lead !== ''
             || $whatsappNote !== '';
@@ -438,8 +552,7 @@ class ProblemsSolutionsSettings
             'type' => 'rich',
             'examples_label' => $examplesLabel !== '' ? $examplesLabel : 'Contoh kondisi kerusakan',
             'examples_hint' => $hint !== '' ? $hint : null,
-            'photos' => $photos,
-            'video' => $video,
+            'media' => $media,
             'body' => $body !== '' ? $body : null,
             'solutions_label' => $solutionsLabel !== '' ? $solutionsLabel : 'Solusi yang kami tawarkan',
             'lead' => $lead !== '' ? $lead : null,

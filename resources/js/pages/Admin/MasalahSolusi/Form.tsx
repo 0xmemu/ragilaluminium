@@ -7,13 +7,13 @@ import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
-import { MASALAH_SOLUSI_MAX_MEDIA, countUsedSlots } from "@/lib/masalah-solusi-media"
+import {
+  MASALAH_SOLUSI_MAX_MEDIA,
+  isMediaLimitReached,
+  type MasalahSolusiMedia,
+  type MasalahSolusiMediaKind,
+} from "@/lib/masalah-solusi-media"
 import AdminLayout from "@/layouts/admin-layout"
-
-interface PhotoItem {
-  src: string
-  alt: string
-}
 
 interface SolutionOption {
   title: string
@@ -25,19 +25,11 @@ interface RecordItem {
   id?: number
   problem: string
   sort_order: number
-  /** Nama berkas aset video terpasang, untuk pratinjau di form. */
-  video_label?: string | null
   solution_body: string
   examples_label: string
   examples_hint: string
-  photos: PhotoItem[]
-  video: {
-    src: string | null
-    poster: string | null
-    /** "library" berarti berkas dari Media Library, "url" berarti tautan lama. */
-    source?: "library" | "url"
-    asset_id?: number | null
-  } | null
+  /** Satu daftar media berurutan, tanpa memisah foto dan video. */
+  media: MasalahSolusiMedia[]
   solutions_label: string
   solution_lead: string
   solution_options: SolutionOption[]
@@ -45,13 +37,25 @@ interface RecordItem {
   use_options: boolean
 }
 
-interface PendingPhoto {
-  assetId: string
+/**
+ * Satu media di form. Entri "simpan" sudah ada di server (dibawa saat
+ * menyunting), entri "baru" baru dipilih dari Media Library dan belum
+ * tersimpan.
+ */
+interface DaftarMedia {
+  sumber: "simpan" | "baru"
+  kind: MasalahSolusiMediaKind
   alt: string
-  /** Thumbnail aset dari Media Library, dipakai sebagai pratinjau sebelum disimpan. */
+  /** Pratinjau: tautan aset lama, atau thumbnail aset yang baru dipilih. */
   preview: string
-  /** Nama berkas aset, dipakai sebagai keterangan bila thumbnail tidak ada. */
-  label?: string
+  /** Nama berkas aset, dipakai sebagai keterangan kecil di kartu. */
+  label?: string | null
+  assetId?: number | null
+  src?: string
+  width?: number | null
+  height?: number | null
+  poster?: string | null
+  source?: "library" | "url"
 }
 
 const OPTION_ICONS = ["package", "wrench", "check-circle", "shield-check", "truck"] as const
@@ -73,8 +77,24 @@ export default function MasalahSolusiForm({
   method?: "post" | "put"
 }) {
   const editing = Boolean(item?.id)
-  const [keptPhotos, setKeptPhotos] = React.useState<PhotoItem[]>(item?.photos ?? [])
-  const [pendingPhotos, setPendingPhotos] = React.useState<PendingPhoto[]>([])
+  // Media disimpan sebagai SATU daftar berurutan (kontrak owner 2026-09-30):
+  // urutan di sini sama dengan urutan tampil di halaman publik.
+  const [daftarMedia, setDaftarMedia] = React.useState<DaftarMedia[]>(
+    (item?.media ?? []).map((media) => ({
+      sumber: "simpan" as const,
+      kind: media.kind,
+      alt: media.alt ?? "",
+      preview: media.kind === "video" ? (media.poster ?? "") : media.src,
+      label: null,
+      assetId: media.assetId ?? null,
+      src: media.src,
+      width: media.width ?? null,
+      height: media.height ?? null,
+      poster: media.poster ?? null,
+      source: media.source,
+    })),
+  )
+  const [mediaPickerOpen, setMediaPickerOpen] = React.useState(false)
   const [options, setOptions] = React.useState<SolutionOption[]>(
     item?.solution_options?.length ? item.solution_options : [{ title: "", description: "", icon: "check-circle" }],
   )
@@ -89,15 +109,8 @@ export default function MasalahSolusiForm({
     solution_body: item?.solution_body ?? "",
     examples_label: item?.examples_label ?? "Contoh kondisi kerusakan",
     examples_hint: item?.examples_hint ?? "",
-    existing_photos: JSON.stringify(item?.photos ?? []),
-    // Foto contoh dan video sama-sama hanya dari Media Library (koreksi owner
-    // 2026-09-29: tautan video luar, durasi, dan poster manual dihapus).
-    media_asset_ids: [] as string[],
-    photo_alts: [] as string[],
-    media_video_asset_id:
-      item?.video?.source === "library" && item?.video?.asset_id
-        ? String(item.video.asset_id)
-        : "",
+    // Media dikirim sebagai satu daftar berurutan (lihat onSubmit).
+    media: "",
     solutions_label: item?.solutions_label ?? "Solusi yang kami tawarkan",
     solution_lead: item?.solution_lead ?? "",
     use_options: item?.use_options ?? false,
@@ -106,72 +119,40 @@ export default function MasalahSolusiForm({
     sort_order: item?.sort_order ?? nextSortOrder,
   })
 
-  const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false)
-  const [videoPickerOpen, setVideoPickerOpen] = React.useState(false)
-
-  // Label video yang sedang terpasang: dari aset yang baru dipilih, atau dari
-  // payload server saat menyunting. Dipakai agar admin melihat nama berkasnya,
-  // bukan nomor id aset.
-  const [videoLabel, setVideoLabel] = React.useState(item?.video_label ?? null)
-  // Poster video: dari berkas tersimpan saat menyunting, atau thumbnail aset
-  // yang baru dipilih (aset video Media Library punya poster sendiri).
-  const [videoPreview, setVideoPreview] = React.useState<string | null>(item?.video?.poster ?? null)
-  // Batas media dihitung dari slot: foto dan video sama-sama satu slot.
-  const videoSlotFilled = Boolean(form.data.media_video_asset_id)
-  const usedSlots = countUsedSlots([
-    keptPhotos.length + pendingPhotos.length,
-    videoSlotFilled ? 1 : 0,
-  ])
-  const photoSlotsFull = keptPhotos.length + pendingPhotos.length >= MASALAH_SOLUSI_MAX_MEDIA
-  const mediaFull = usedSlots >= MASALAH_SOLUSI_MAX_MEDIA
-  const canAddVideo = !videoSlotFilled && keptPhotos.length + pendingPhotos.length < MASALAH_SOLUSI_MAX_MEDIA
+  const mediaFull = isMediaLimitReached(daftarMedia.length)
 
   /**
-   * Tambah beberapa aset sekaligus (pemilih media bisa memilih banyak). Batas
-   * slot ditegakkan di sini, bukan hanya di server, supaya admin tidak sempat
-   * menyusun lebih dari jatah lalu ditolak saat menyimpan. Sisa jatah dihitung
-   * dari daftar terbaru, bukan dari state yang belum tentu sudah diperbarui.
+   * Tambah media pilihan admin. Batas jumlah ditegakkan di sini juga, bukan
+   * hanya di server, supaya admin tidak sempat menyusun lebih dari jatah lalu
+   * ditolak saat menyimpan.
    */
-  function addMediaAssets(assets: Array<{ assetId: string; label: string; preview: string }>) {
-    setPendingPhotos((current) => {
+  function tambahMedia(
+    aset: Array<{ assetId: string; kind: MasalahSolusiMediaKind; label: string; preview: string }>,
+  ) {
+    setDaftarMedia((current) => {
       const next = [...current]
-      for (const asset of assets) {
+      for (const satu of aset) {
         if (next.length >= MASALAH_SOLUSI_MAX_MEDIA) break
-        if (!asset.assetId || next.some((p) => p.assetId === asset.assetId)) continue
-        next.push({ assetId: asset.assetId, alt: asset.label, preview: asset.preview, label: asset.label })
+        if (!satu.assetId || next.some((m) => String(m.assetId ?? "") === satu.assetId)) continue
+        next.push({
+          sumber: "baru",
+          kind: satu.kind,
+          alt: satu.label,
+          preview: satu.preview,
+          label: satu.label,
+          assetId: Number(satu.assetId),
+        })
       }
-      form.setData("media_asset_ids", next.map((p) => p.assetId))
-      form.setData("photo_alts", next.map((p) => p.alt))
       return next
     })
   }
 
-  function removePendingPhoto(index: number) {
-    const next = pendingPhotos.filter((_, i) => i !== index)
-    setPendingPhotos(next)
-    form.setData("media_asset_ids", next.map((photo) => photo.assetId))
-    form.setData("photo_alts", next.map((photo) => photo.alt))
+  function hapusMedia(index: number) {
+    setDaftarMedia((current) => current.filter((_, i) => i !== index))
   }
 
-  function updatePendingAlt(index: number, alt: string) {
-    const next = pendingPhotos.map((photo, i) => (i === index ? { ...photo, alt } : photo))
-    setPendingPhotos(next)
-    form.setData(
-      "photo_alts",
-      next.map((photo) => photo.alt),
-    )
-  }
-
-  function removeKeptPhoto(index: number) {
-    const next = keptPhotos.filter((_, i) => i !== index)
-    setKeptPhotos(next)
-    form.setData("existing_photos", JSON.stringify(next))
-  }
-
-  function updateKeptAlt(index: number, alt: string) {
-    const next = keptPhotos.map((photo, i) => (i === index ? { ...photo, alt } : photo))
-    setKeptPhotos(next)
-    form.setData("existing_photos", JSON.stringify(next))
+  function ubahAltMedia(index: number, alt: string) {
+    setDaftarMedia((current) => current.map((media, i) => (i === index ? { ...media, alt } : media)))
   }
 
   function updateOption(index: number, patch: Partial<SolutionOption>) {
@@ -190,10 +171,22 @@ export default function MasalahSolusiForm({
     event.preventDefault()
     form.transform((data) => ({
       ...data,
-      existing_photos: JSON.stringify(keptPhotos),
       solution_options: JSON.stringify(options.filter((option) => option.title.trim() !== "")),
-      media_asset_ids: pendingPhotos.map((photo) => photo.assetId),
-      photo_alts: pendingPhotos.map((photo) => photo.alt),
+      // Satu daftar berurutan. Entri dengan asset_id diambil ulang dari Media
+      // Library oleh server (tautan dan ukurannya ikut segar); entri lama tanpa
+      // asset_id dibawa apa adanya supaya tidak hilang saat menyunting.
+      media: JSON.stringify(
+        daftarMedia.map((media) => ({
+          asset_id: media.assetId ?? null,
+          alt: media.alt,
+          kind: media.kind,
+          src: media.src,
+          width: media.width ?? null,
+          height: media.height ?? null,
+          poster: media.poster ?? null,
+          source: media.source,
+        })),
+      ),
       // Urutan hanya diisi saat membuat; saat mengedit biarkan nomor lama di
       // server yang berlaku (field-nya pun tidak ditampilkan), supaya nilai
       // warisan yang kebetulan 0 tidak menabrak validasi min:1.
@@ -217,7 +210,7 @@ export default function MasalahSolusiForm({
     <AdminLayout
       backUrl={backUrl}
       title={editing ? "Edit Masalah & Solusi" : "Tambah Masalah & Solusi"}
-      description="Unggah foto/video dokumentasi masalah dan tulis rekomendasi solusi untuk halaman publik."
+      description="Pilih media dokumentasi masalah dari Media Library dan tulis rekomendasi solusi untuk halaman publik."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
@@ -278,158 +271,79 @@ export default function MasalahSolusiForm({
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-3">
             <h2 className="text-sm font-bold text-foreground">Media contoh</h2>
             <p className="text-xs text-muted-foreground">
-              {usedSlots} dari {MASALAH_SOLUSI_MAX_MEDIA} media terpakai
+              {daftarMedia.length} dari {MASALAH_SOLUSI_MAX_MEDIA} media terpakai
             </p>
           </div>
           <div className="p-4 sm:p-5">
           <p className="text-sm text-muted-foreground">
-            Maksimal {MASALAH_SOLUSI_MAX_MEDIA} media per item, boleh foto atau video.
+            Maksimal {MASALAH_SOLUSI_MAX_MEDIA} media per item; bebas diisi foto, video, atau campuran keduanya.
             Ukuran rekomendasi: sisi terpanjang 1200 sampai 1600 px, rasio bebas, maksimal 5 MB.
           </p>
 
           <div className="mt-4 space-y-4">
-            {keptPhotos.length || pendingPhotos.length || videoSlotFilled ? (
-              // Satu grid seragam: kartu foto terpasang, foto yang baru dipilih,
-              // dan video tampil dengan bentuk yang sama (gambar pratinjau,
-              // keterangan, satu tombol hapus). Kartu bergaris putus-putus dan
-              // label "Media #id" dibuang karena membingungkan (audit owner
-              // 2026-09-29).
+            {daftarMedia.length ? (
+              // Satu daftar seragam untuk semua jenis media, urut sesuai
+              // pilihan admin. Kartu video dan foto memakai bentuk yang sama
+              // supaya tidak ada dua model tampilan di halaman yang sama.
               <div className="grid gap-3 sm:grid-cols-2">
-                {keptPhotos.map((photo, index) => (
-                  <div key={photo.src} className="min-w-0 rounded-lg border border-border p-3">
-                    {/* Pratinjau mengikuti rasio asli berkas supaya admin melihat bentuk
-                        yang benar-benar tampil di halaman publik. */}
+                {daftarMedia.map((media, index) => (
+                  <div
+                    key={`${media.sumber}-${media.assetId ?? media.src}-${index}`}
+                    className="min-w-0 rounded-lg border border-border p-3"
+                  >
                     <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
-                      <img
-                        src={photo.src}
-                        alt={photo.alt || "Media contoh"}
-                        className="max-h-52 w-auto max-w-full rounded object-contain"
-                      />
+                      {media.preview ? (
+                        <img
+                          src={media.preview}
+                          alt={media.alt || "Media contoh"}
+                          className="max-h-52 w-auto max-w-full rounded object-contain"
+                        />
+                      ) : (
+                        <div className="flex h-32 items-center justify-center gap-2 text-xs text-muted-foreground">
+                          <Icon name={media.kind === "video" ? "video" : "image"} className="size-4" aria-hidden="true" />
+                          {media.label || (media.kind === "video" ? "Video" : "Media")}
+                        </div>
+                      )}
                     </div>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <Icon name={media.kind === "video" ? "video" : "image"} className="size-3.5" aria-hidden="true" />
+                      <span>{media.kind === "video" ? "Video" : "Foto"}</span>
+                      {media.label ? <span className="truncate font-normal">· {media.label}</span> : null}
+                    </p>
                     <Input
                       className="mt-2"
-                      value={photo.alt}
-                      onChange={(event) => updateKeptAlt(index, event.target.value)}
-                      placeholder="Keterangan media"
+                      value={media.alt}
+                      onChange={(event) => ubahAltMedia(index, event.target.value)}
+                      placeholder="Keterangan media (opsional)"
                     />
                     <Button
                       type="button"
                       variant="secondary"
                       size="xs"
                       className="mt-2 text-destructive"
-                      onClick={() => removeKeptPhoto(index)}
+                      onClick={() => hapusMedia(index)}
                     >
                       Hapus media
                     </Button>
                   </div>
                 ))}
-
-                {pendingPhotos.map((photo, index) => (
-                  <div key={photo.assetId} className="min-w-0 rounded-lg border border-border p-3">
-                    <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
-                      {photo.preview ? (
-                        <img
-                          src={photo.preview}
-                          alt={photo.alt || "Media baru dari Media Library"}
-                          className="max-h-52 w-auto max-w-full rounded object-contain"
-                        />
-                      ) : (
-                        <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
-                          {photo.label || "Media baru"}
-                        </div>
-                      )}
-                    </div>
-                    <Input
-                      className="mt-2"
-                      value={photo.alt}
-                      onChange={(event) => updatePendingAlt(index, event.target.value)}
-                      placeholder="Keterangan media"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      className="mt-2 text-destructive"
-                      onClick={() => removePendingPhoto(index)}
-                    >
-                      Batalkan pilihan
-                    </Button>
-                  </div>
-                ))}
-
-                {videoSlotFilled ? (
-                  // Kartu video mengikuti bentuk yang sama dengan kartu foto:
-                  // pratinjau poster (atau penanda kalau posternya belum ada),
-                  // nama berkas aslinya, dan satu tombol hapus.
-                  <div className="min-w-0 rounded-lg border border-border p-3">
-                    <div className="flex items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
-                      {videoPreview ? (
-                        <img
-                          src={videoPreview}
-                          alt="Pratinjau video"
-                          className="max-h-52 w-auto max-w-full rounded object-contain"
-                        />
-                      ) : (
-                        <div className="flex h-32 items-center justify-center gap-2 text-xs text-muted-foreground">
-                          <Icon name="video" className="size-4" aria-hidden="true" />
-                          Video terpasang
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-2 truncate text-xs font-semibold text-foreground" title={videoLabel ?? undefined}>
-                      {videoLabel || "Video dari Media Library"}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Diputar langsung di halaman publik.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      className="mt-2 text-destructive"
-                      onClick={() => {
-                        form.setData("media_video_asset_id", "")
-                        setVideoLabel(null)
-                        setVideoPreview(null)
-                      }}
-                    >
-                      Hapus video
-                    </Button>
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
             {!mediaFull ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {!photoSlotsFull ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setPhotoPickerOpen(true)}
-                    className="inline-flex w-fit items-center gap-1.5"
-                  >
-                    <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                    <span>Tambah foto</span>
-                  </Button>
-                ) : null}
-                {canAddVideo ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setVideoPickerOpen(true)}
-                    className="inline-flex w-fit items-center gap-1.5"
-                  >
-                    <Icon name="video" className="size-3.5" aria-hidden="true" />
-                    <span>{form.data.media_video_asset_id ? "Ganti video" : "Tambah video"}</span>
-                  </Button>
-                ) : null}
-              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setMediaPickerOpen(true)}
+                className="inline-flex w-fit items-center gap-1.5"
+              >
+                <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                <span>Tambah media</span>
+              </Button>
             ) : (
               <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Slot media sudah penuh. Hapus salah satu media dulu untuk menambah lagi.
+                Media sudah penuh (maksimal {MASALAH_SOLUSI_MAX_MEDIA}). Hapus salah satu dulu untuk menambah lagi.
               </p>
             )}
 
@@ -589,36 +503,20 @@ export default function MasalahSolusiForm({
       </form>
 
       <MediaPicker
-        open={photoPickerOpen}
-        onClose={() => setPhotoPickerOpen(false)}
+        open={mediaPickerOpen}
+        onClose={() => setMediaPickerOpen(false)}
         multiple
-        kind="image"
-        title="Pilih Foto Contoh Kerusakan"
+        title="Tambah media contoh"
         onPick={(picked) => {
-          addMediaAssets(
+          tambahMedia(
             picked.map((asset) => ({
               assetId: String(asset.assetId),
+              kind: asset.kind === "video" ? "video" : "image",
               label: asset.label,
               preview: asset.thumbUrl ?? "",
             })),
           )
-          setPhotoPickerOpen(false)
-        }}
-      />
-
-      <MediaPicker
-        open={videoPickerOpen}
-        onClose={() => setVideoPickerOpen(false)}
-        multiple={false}
-        kind="video"
-        title="Pilih Video dari Media Library"
-        onPick={(picked) => {
-          const asset = picked[0]
-          if (!asset) return
-          form.setData("media_video_asset_id", String(asset.assetId))
-          setVideoLabel(asset.label || "Video dari Media Library")
-          setVideoPreview(asset.thumbUrl ?? null)
-          setVideoPickerOpen(false)
+          setMediaPickerOpen(false)
         }}
       />
     </AdminLayout>
