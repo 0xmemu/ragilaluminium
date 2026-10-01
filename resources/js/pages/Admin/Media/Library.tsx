@@ -1462,7 +1462,14 @@ export default function MediaLibrary({
           layar, bagian atasnya (judul dan kolom cari) keluar layar dan tidak
           bisa dicapai karena overlay-nya tidak menggulir. */}
       {attachingId !== null ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setAttachingId(null)}>
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/40 p-4"
+          onMouseDown={(e) => {
+            // Tutup hanya bila tekanan mulai di latar belakang. Drag pegangan
+            // resize yang berakhir di luar panel tidak boleh menutup popup.
+            if (e.target === e.currentTarget) setAttachingId(null)
+          }}
+        >
           <div
             role="dialog"
             aria-modal="true"

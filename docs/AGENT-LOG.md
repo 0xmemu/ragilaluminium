@@ -2935,3 +2935,11 @@ Perubahan: blok pengaturan dipindah ke atas daftar produk, tepat di bawah header
 Dampak spec: tidak berubah.
 Verifikasi: eslint tanpa warning baru (3 warisan HEAD), build sukses 19s, urutan blok diverifikasi di browser.
 Agent: zcode-retur
+
+## 2026-10-01 08:35 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner melaporkan popup tertutup sendiri saat mulai drag pegangan resize.
+Akar masalah: overlay menutup popup lewat event klik pada latar; drag pegangan yang berakhir di luar panel membuat klik tercatat pada latar sehingga penutup terpicu.
+Perubahan: penutup overlay kini memakai onMouseDown dengan penjaga target, hanya tekanan yang dimulai langsung di latar belakang yang menutup.
+Dampak spec: tidak berubah.
+Verifikasi: eslint tanpa warning baru, typecheck bersih, build sukses 22s; uji browser: mousedown dari dalam panel tidak menutup, mousedown di latar menutup.
+Agent: zcode-retur
