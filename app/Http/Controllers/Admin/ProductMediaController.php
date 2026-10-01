@@ -73,6 +73,10 @@ class ProductMediaController extends Controller
         $folderTree = $this->folderTree();
 
         return Inertia::render('Admin/Media/Library', [
+            // Media Library adalah item mandiri di grup menu Produk; tombol
+            // Kembali mengarah ke daftar Produk supaya navigasi tidak
+            // bergantung pada sidebar saja saat halaman dibuka dari sana.
+            'backUrl' => route('admin.products.index'),
             'assets' => $assets->getCollection()->map(fn (MediaAsset $asset) => [
                 'id' => $asset->id,
                 'label' => $asset->label ?: 'Media #'.$asset->id,
@@ -502,7 +506,9 @@ class ProductMediaController extends Controller
         $pruneDays = (int) config('media.log_retention_days', 30);
 
         return Inertia::render('Admin/Media/History', [
-            'libraryHref' => route('admin.media.library'),
+            // Riwayat Media berada di bawah Media Library (lihat daftar active
+            // pada config/admin-sitemap.php), jadi Kembali menuju Media Library.
+            'backUrl' => route('admin.media.library'),
             'logs' => $logs,
             'pagination' => InertiaAdmin::pagination($paginator),
             'filters' => [

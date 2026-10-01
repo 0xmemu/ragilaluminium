@@ -951,13 +951,14 @@ async function copyText(text: string): Promise<boolean> {
 
 // ====== MAIN PAGE ======
 export default function MediaLibrary({
-  assets, pagination, filters, folders, historyHref,
+  assets, pagination, filters, folders, historyHref, backUrl,
 }: {
   assets: LibraryAsset[]
   pagination: PaginationData | null
   filters: LibraryFilters
   folders: FolderNode[]
   historyHref: string
+  backUrl?: string | null
 }) {
   const { csrf } = usePage<SharedPageProps>().props
   const [q, setQ] = React.useState(filters.q)
@@ -1186,6 +1187,7 @@ export default function MediaLibrary({
   return (
     <AdminLayout
       title="Media Library"
+      backUrl={backUrl}
       description="Semua aset media bersama: folder, unggah, salin URL, dan pasang ke produk/banner."
       actions={
         <div className="flex items-center gap-2">

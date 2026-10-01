@@ -3033,3 +3033,11 @@ Lingkup: push commit a7626716 ditolak hook pre-push karena npm run typecheck gag
 Temuan: satu-satunya error ada di tests/frontend/reorder-lock.test.ts baris 79 (error TS1517, range karakter tidak urut) pada test baru "isian juga boleh ditandai agar tetap hidup saat mode urut". Berkas itu berstatus M dan dimodifikasi 14:03 UTC, jadi pekerjaan agent lain yang sedang berjalan; versi di HEAD tidak bermasalah. Penyebabnya regex /[data-reorder-allow]/ yang bracket sengaja dibaca sebagai kelas karakter, seharusnya di-escape atau dicocokkan sebagai string.
 Tindakan: berkas agent lain tidak disentuh. Push dilanjutkan dengan SKIP_BUILD_CHECK=1 karena commit ini hanya menyentuh PHP dan markdown sehingga tidak mengubah aset frontend. Pemilik berkas itu perlu membetulkan bracket tersebut sebelum push berikutnya.
 Agent: zcode-storefront
+
+## 2026-10-01 13:10 UTC | zcode-retur | Standard | 4 berkas | selesai
+Lingkup: owner melaporkan Media Library tidak punya tombol Kembali padahal dibuka dari halaman Produk.
+Temuan: Media Library adalah item mandiri di grup menu PRODUK (config/admin-sitemap.php), jadi induknya daftar Produk, bukan sub-halaman; halaman Riwayat Media justru berada di bawah Media Library sehingga punya induk jelas; keduanya hanya bisa ditinggalkan lewat sidebar. Kontrak tombol Kembali sudah ada (memory halaman-anak-menu-punya-tombol-kembali, commit 3493d6b9) tetapi cakupannya baru halaman Promo.
+Perubahan: ProductMediaController mengirim backUrl untuk library (admin.products.index) dan history (admin.media.library); Library.tsx dan History.tsx meneruskan prop backUrl ke AdminLayout; test penjaga baru AdminMediaBackButtonTest (2 kasus).
+Dampak spec: tidak berubah (prop Inertia baru, bukan route/schema).
+Verifikasi: php -l bersih, typecheck bersih, eslint tanpa warning baru, build sukses; test AdminMediaBackButtonTest 2 lulus; regresi media 24 lulus (termasuk AdminPromoPagesBackButtonTest); di peramban tombol Kembali muncul di atas judul dan mengarah benar (library ke /admin/kelola/produk, history ke /admin/media/library).
+Agent: zcode-retur

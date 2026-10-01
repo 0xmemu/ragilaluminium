@@ -51,11 +51,13 @@ export default function MediaHistory({
   pagination,
   filters,
   prune,
+  backUrl,
 }: {
   logs: LogRow[]
   pagination: PaginationData | null
   filters: { event: string; q: string; from: string; to: string }
   prune?: { days: number; count: number } | null
+  backUrl?: string | null
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [from, setFrom] = React.useState(filters.from)
@@ -184,7 +186,7 @@ export default function MediaHistory({
   }, [logs, pollNonce])
 
   return (
-    <AdminLayout title="Riwayat Media" description="Audit pemrosesan media (queued → processing → siap / gagal)">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media (queued → processing → siap / gagal)">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">
