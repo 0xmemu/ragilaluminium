@@ -129,11 +129,13 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
             produk yang tampil di sini terkesan muncul dua kali. Warnanya merah
             promo (token primary, merah yang sama dengan label FLASH SALE dan
             badge diskon; nilainya sama dengan token sale, #C20000) sebagai
-            sapuan latar saja, tanpa garis tepi. Tombol panah memakai offset
-            dalam (md:left-5/md:right-5, varian inset milik CarouselNavButton)
-            agar tidak tertutup bingkai, dan overflow-hidden menahan track yang
-            bergeser saat aksi geser di HP. */}
-        <div className="overflow-hidden rounded-xl bg-primary/5 p-3 sm:p-4">
+            sapuan latar saja, tanpa garis tepi.
+            Bingkai ini sengaja TIDAK menahan limpahan: tombol panah menonjol
+            keluar dari tepi kartu seperti carousel beranda, jadi kalau bingkai
+            yang menahan limpahan tombolnya ikut terpotong. Yang ditahan hanya
+            track, sebab saat aksi geser di HP track bergeser ke kiri dan tanpa
+            penahan akan menembus keluar bingkai. */}
+        <div className="rounded-xl bg-primary/5 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Link
               href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
@@ -150,24 +152,26 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
           </div>
 
           <div className="relative mt-3">
-            <div
-              ref={trackRef}
-              id="flash-sale-carousel-track"
-              className={flashSaleTrackClass}
-              style={{
-                transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
-                transition: reveal.pull ? "none" : "transform 360ms ease-out",
-              }}
-              onPointerDown={reveal.onPointerDown}
-              onPointerMove={reveal.onPointerMove}
-              onPointerUp={reveal.onPointerUp}
-              onPointerCancel={reveal.onPointerUp}
-            >
-              {products.map((product) => (
-                <div key={product.id} className={flashSaleCardClass}>
-                  <FlashSaleCarouselCard product={product} />
-                </div>
-              ))}
+            <div className="overflow-hidden">
+              <div
+                ref={trackRef}
+                id="flash-sale-carousel-track"
+                className={flashSaleTrackClass}
+                style={{
+                  transform: `translateX(${reveal.revealed ? -76 : -Math.min(reveal.pull * 1.45, 76)}px)`,
+                  transition: reveal.pull ? "none" : "transform 360ms ease-out",
+                }}
+                onPointerDown={reveal.onPointerDown}
+                onPointerMove={reveal.onPointerMove}
+                onPointerUp={reveal.onPointerUp}
+                onPointerCancel={reveal.onPointerUp}
+              >
+                {products.map((product) => (
+                  <div key={product.id} className={flashSaleCardClass}>
+                    <FlashSaleCarouselCard product={product} />
+                  </div>
+                ))}
+              </div>
             </div>
             {products.length > 0 ? (
               <MobileEndActionReveal
@@ -182,7 +186,7 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
                 onClick={() => move(-1)}
                 aria-label="Lihat produk flash sale sebelumnya"
                 aria-controls="flash-sale-carousel-track"
-                className={cn(flashSaleNavBtnClass, "md:left-5")}
+                className={cn(flashSaleNavBtnClass, "md:-left-5")}
               >
                 <Icon name="caret-left" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
               </button>
@@ -193,7 +197,7 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
                 onClick={() => move(1)}
                 aria-label="Lihat produk flash sale berikutnya"
                 aria-controls="flash-sale-carousel-track"
-                className={cn(flashSaleNavBtnClass, "md:right-5")}
+                className={cn(flashSaleNavBtnClass, "md:-right-5")}
               >
                 <Icon name="caret-right" className="size-5 md:size-6" weight="bold" aria-hidden="true" />
               </button>

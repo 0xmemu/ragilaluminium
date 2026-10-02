@@ -3094,3 +3094,11 @@ Perubahan: flash-sale-carousel-section.tsx, kelas pembungkus dari border-primary
 Dampak spec: tidak berubah.
 Verifikasi: eslint berkas bersih; typecheck nol error; vitest 244 test lulus; build sukses 21s; terukur di peramban: tebal garis 0px, latar panel rgba(194,0,0,0.05), radius 16px, latar section tetap putih sehingga sapuan masih terbaca sebagai blok.
 Agent: zcode-storefront
+
+## 2026-10-02 13:24 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner meminta tombol panah carousel Flash Sale dikembalikan ke posisi semula (menonjol keluar tepi kartu seperti carousel beranda), bukan dipindah ke dalam blok.
+Akar masalah: waktu memasang bingkai (9c612979) saya memindahkan tombol dari md:-left-5/md:-right-5 ke md:left-5/md:right-5 supaya tidak terpotong bingkai. Itu mengubah tata letak kontrol yang sudah ada hanya demi penyesuaian pembungkus baru, dan hasilnya tombol menumpuk gambar kartu.
+Perubahan: flash-sale-carousel-section.tsx, tombol kembali ke md:-left-5/md:-right-5; overflow-hidden dilepas dari bingkai dan dipindah ke pembungkus track saja, jadi tombol boleh menembus tepi bingkai tanpa terpotong sementara track yang bergeser saat geser di HP tetap tertahan. Menonjolnya hanya 4px di luar tepi bingkai.
+Dampak spec: tidak berubah.
+Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 25s; terukur di peramban lebar 1440px: tombol kanan 1260-1308, track berakhir 1288, jadi 20px di luar tepi track (pola sama carousel beranda), dan setiap titik x=1302..1308 tetap bagian tombol sehingga tidak terpotong. Di lebar HP 390px: bingkai overflow visible, pembungkus track overflow hidden, track tetap di dalam bingkai dan tetap bisa digeser.
+Agent: zcode-storefront
