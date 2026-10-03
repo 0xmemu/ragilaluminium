@@ -6,7 +6,7 @@ import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatNumber, formatRentangTanggal } from "@/lib/format"
+import { formatNumber, formatRentangTanggal, formatRentangWaktu } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 interface CampaignRow {
@@ -76,17 +76,10 @@ const CAMPAIGN_ACCENTS: Record<string, { icon: string; chip: string; text: strin
   },
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "tanpa batas"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "tanpa batas"
-  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
-}
-
 function formatDay(iso: string | null): string {
-  if (!iso) return "tanpa batas"
+  if (!iso) return "Tanpa batas"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "tanpa batas"
+  if (Number.isNaN(date.getTime())) return "Tanpa batas"
   return date.toLocaleDateString("id-ID", { dateStyle: "medium" })
 }
 
@@ -243,7 +236,7 @@ export default function PromotionOverview({
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className={cn("font-semibold tabular-nums", accent.text)}>{campaign.discount_percent}%</span>
-                    <span>{formatDateTime(campaign.starts_at)} → {formatDateTime(campaign.ends_at)}</span>
+                    <span>{formatRentangWaktu(campaign.starts_at, campaign.ends_at)}</span>
                     <span>{formatNumber(campaign.products_count)} produk</span>
                   </div>
                   <Link href={campaign.detail_href} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
@@ -281,7 +274,7 @@ export default function PromotionOverview({
                       <span className="shrink-0 font-semibold tabular-nums text-primary">{voucher.discount_label}</span>
                     </div>
                     <span className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
-                      {voucher.code} · s.d. {formatDay(voucher.ends_at)}
+                      {voucher.code} · {voucher.ends_at ? `s.d. ${formatDay(voucher.ends_at)}` : "Tanpa batas"}
                       <CopyButton text={voucher.code} label="Salin kode voucher" compact showTextInTitle />
                     </span>
                   </li>

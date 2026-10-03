@@ -68,6 +68,44 @@ export function formatRentangTanggal(
   return `${awal} → ${ujung}`
 }
 
+/**
+ * Tanggal dan jam satu titik waktu, gaya ringkas tabel admin
+ * ("4 Sep 2026, 17.13"). Mengembalikan null bila nilainya kosong atau rusak,
+ * supaya pemanggil yang membutuhkan nilai pasti bisa memberi fallback sendiri.
+ */
+export function formatWaktuRingkas(
+  value: string | number | Date | null | undefined,
+): string | null {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+}
+
+/**
+ * Rentang berlaku BESERTA JAM untuk entitas berjadwal yang jamnya penting
+ * (kampanye, voucher): "4 Sep 2026, 17.13 → 4 Des 2027, 17.14".
+ *
+ * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang, jadi
+ * sisi kosong disebut dengan kata ("Mulai ..." / "Sampai ...") dan kedua sisi
+ * kosong ditulis sekali saja ("Tanpa batas") supaya tidak pernah muncul
+ * rangkaian tanda hubung atau kata kembar tanpa arti.
+ */
+export function formatRentangWaktu(
+  mulai: string | number | Date | null | undefined,
+  akhir: string | number | Date | null | undefined,
+): string {
+  const awal = formatWaktuRingkas(mulai)
+  const ujung = formatWaktuRingkas(akhir)
+
+  if (!awal && !ujung) return "Tanpa batas"
+  if (awal && !ujung) return `Mulai ${awal}`
+  if (!awal && ujung) return `Sampai ${ujung}`
+
+  return `${awal} → ${ujung}`
+}
+
 /** Singkatan yang harus tetap kapital penuh (bukan Title Case). */
 const HUMANIZE_ACRONYMS: Record<string, string> = {
   cod: "COD",

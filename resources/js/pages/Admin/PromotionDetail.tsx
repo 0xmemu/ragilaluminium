@@ -14,7 +14,7 @@ import {
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber } from "@/lib/format"
+import { formatCurrency, formatNumber, formatRentangWaktu, formatWaktuRingkas } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 interface TargetRow {
@@ -70,11 +70,9 @@ interface ReportPayload {
   rows: SalesRow[]
 }
 
+/** Tanggal dan jam untuk kalimat periode; kosong berarti tanpa batas di sisi itu. */
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "tanpa batas"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "tanpa batas"
-  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+  return formatWaktuRingkas(iso) ?? "Tanpa batas"
 }
 
 function formatDateOnly(iso: string | null): string {
@@ -160,7 +158,7 @@ export default function PromotionDetail({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatDateTime(promotion.starts_at)} → {formatDateTime(promotion.ends_at)}
+                {formatRentangWaktu(promotion.starts_at, promotion.ends_at)}
               </p>
             </div>
           </CardHeader>

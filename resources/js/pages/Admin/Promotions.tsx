@@ -21,7 +21,7 @@ import {
 import { Icon } from "@/components/shared/icon"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatNumber } from "@/lib/format"
+import { formatNumber, formatRentangWaktu, formatWaktuRingkas } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 
@@ -69,36 +69,9 @@ function canEdit(status: string): boolean {
   return status !== "ended" && status !== "finished"
 }
 
-/** Tanggal dan jam satu titik waktu dalam gaya baku admin ("4 Sep 2026, 17.13"). */
-function formatWaktu(iso?: string | null): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
-}
-
 /** Jadwal mulai untuk teks konfirmasi aktivasi; kosong berarti mulai segera. */
 function formatSchedule(iso?: string | null): string {
-  return formatWaktu(iso) ?? "segera"
-}
-
-/**
- * Rentang berlaku yang terbaca manusia ("4 Sep 2026, 17.13 → 4 Des 2027, 17.14").
- *
- * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang, jadi
- * sisi kosong disebut dengan kata ("Mulai ..." / "Sampai ...") dan kedua sisi
- * kosong ditulis sekali saja ("Tanpa batas") supaya tidak pernah muncul
- * rangkaian tanda hubung tanpa arti.
- */
-function formatRentang(mulai?: string | null, akhir?: string | null): string {
-  const awal = formatWaktu(mulai)
-  const ujung = formatWaktu(akhir)
-
-  if (!awal && !ujung) return "Tanpa batas"
-  if (awal && !ujung) return `Mulai ${awal}`
-  if (!awal && ujung) return `Sampai ${ujung}`
-
-  return `${awal} → ${ujung}`
+  return formatWaktuRingkas(iso) ?? "segera"
 }
 
 function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boolean; setBusy: (v: boolean) => void }) {
@@ -307,7 +280,7 @@ export default function PromotionsIndex({
                       <span className="font-semibold text-primary">{row.discount_percent}%</span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {formatRentang(row.starts_at, row.ends_at)}
+                      {formatRentangWaktu(row.starts_at, row.ends_at)}
                     </TableCell>
                     <TableCell>
                       <ul className="max-w-64 space-y-0.5">
