@@ -312,6 +312,56 @@ class MasalahSolusiAdminTest extends TestCase
     }
 
     /**
+     * Owner 2026-09-30: item baru selalu ditaruh paling belakang, dan halaman
+     * tambah tidak lagi menanyakan nomor urut (pengurutan ulang ada di fitur
+     * Urutkan pada halaman daftar).
+     */
+    public function test_item_baru_otomatis_ditaruh_paling_belakang(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        foreach ([['A', 1], ['B', 2], ['C', 7]] as [$problem, $urutan]) {
+            CmsProblemSolution::create([
+                'cms_page_id' => \App\Support\ProblemsSolutionsSettings::pageId(),
+                'problem' => $problem,
+                'solution' => 'Solusi '.$problem,
+                'sort_order' => $urutan,
+            ]);
+        }
+
+        // Form tidak mengirim nomor urut sama sekali.
+        $this->actingAs($admin)
+            ->post(route('admin.masalah-solusi.store'), [
+                'problem' => 'Item baru',
+                'solution_body' => 'Solusi item baru.',
+            ])
+            ->assertRedirect(route('admin.masalah-solusi.index'));
+
+        $baru = CmsProblemSolution::query()->where('problem', 'Item baru')->first();
+        $this->assertNotNull($baru);
+        $this->assertSame(
+            8,
+            (int) $baru->sort_order,
+            'nomor tertinggi yang ada adalah 7, jadi item baru harus dapat 8',
+        );
+    }
+
+    public function test_halaman_tambah_tidak_lagi_meminta_nomor_urut(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.masalah-solusi.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/MasalahSolusi/Form')
+                // Prop nomor urut usulan sudah tidak dikirim; halaman ini tidak
+                // lagi ikut memikirkan penomoran.
+                ->missing('nextSortOrder')
+            );
+    }
+
+    /**
      * Baris LAMA (tersimpan sebagai photos + video) tetap tampil di halaman
      * publik sebagai satu daftar media, tanpa perlu migrasi data.
      */

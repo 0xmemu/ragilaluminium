@@ -3116,3 +3116,16 @@ Perubahan: flash-sale-carousel-section.tsx, pembungkus track diberi -mx-3 dengan
 Dampak spec: tidak berubah.
 Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 22s. Terukur di mobile 390px: selisih kartu pertama ke tepi blok 0px (sebelumnya 12px), track selebar blok 355px, kartu 156px (dari 145px), kartu terlihat tetap 2,27, baris judul masih berjarak 12px dari tepi blok. Di desktop 1440px tidak berubah: kartu masih 16px dari tepi blok (padding sm:p-4), kartu 218px, tombol panah tetap menonjol 20px di luar track.
 Agent: zcode-storefront
+
+## 2026-09-30 08:25 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Halaman tambah Masalah & Solusi. Owner 2026-09-30: "secara default item yang baru urutannya akan terakhir. dan jika ingin re sort harusnya di fitur urutkan bukan di halaman tambah".
+Berkas: resources/js/pages/Admin/MasalahSolusi/Form.tsx, app/Http/Controllers/Admin/MasalahSolusiController.php, tests/Feature/MasalahSolusiAdminTest.php
+
+Perubahan: isian "Urutan tampil" beserta teks bantuannya dihapus dari halaman tambah, dan prop `nextSortOrder` tidak lagi dikirim controller (helper `nextSortOrder()` ikut dibuang karena tidak ada pemakai lain). Nomor urut tetap ditetapkan SERVER saat menyimpan (max + 1), jadi janji "item baru paling belakang" tidak hilang; yang dihapus hanya isiannya, supaya admin tidak perlu memikirkan nomor. Grid bagian "Masalah pelanggan" disederhanakan jadi satu kolom karena kolom kanannya dulu dipakai isian itu.
+
+Catatan: pengurutan ulang sudah tersedia di halaman daftar lewat tombol Urutkan (ReorderActionButton + useReorderMode + route admin.masalah-solusi.reorder), jadi menghapus isian ini tidak menghilangkan kemampuan apa pun. Halaman edit memang sudah tidak pernah menampilkan isian itu (dulu dijaga `!editing`), dan server tetap mempertahankan nomor lama saat mengedit, termasuk baris warisan bernilai 0 (ada test penjaganya).
+
+Verifikasi: MasalahSolusiAdminTest 11 lulus / 133 asersi, termasuk dua penjaga baru: item baru dapat nomor 8 saat nomor tertinggi yang ada 7, dan halaman tambah tidak lagi mengirim prop `nextSortOrder`. `npx tsc --noEmit` bersih, ESLint 0 error 0 warning, build aset sukses.
+Uji live: /admin/masalah-solusi/create bersih dari "Urutan tampil", teks bantuan lama, dan input number (0 kemunculan); bagian Masalah pelanggan hanya berisi Deskripsi masalah; tombol Tambah media dan Simpan tetap ada. /admin/masalah-solusi menampilkan tombol Urutkan pada 5 baris. /admin/masalah-solusi/4/edit tetap utuh tanpa field urutan.
+Agent: zcode

@@ -56,20 +56,11 @@ class MasalahSolusiController extends Controller
             ->with('success', 'Meta halaman Masalah & Solusi disimpan.');
     }
 
-    /** Nomor urut baris baru: selalu di bawah baris lain di halaman yang sama. */
-    private function nextSortOrder(): int
-    {
-        return (int) CmsProblemSolution::query()
-            ->where('cms_page_id', ProblemsSolutionsSettings::pageId())
-            ->max('sort_order') + 1;
-    }
-
     public function create(): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
             'backUrl' => route('admin.masalah-solusi.index'),
             'item' => null,
-            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.masalah-solusi.store'),
             'indexUrl' => route('admin.masalah-solusi.index'),
             'method' => 'post',

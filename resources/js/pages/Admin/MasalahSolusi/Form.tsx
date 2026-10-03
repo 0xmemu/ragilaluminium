@@ -24,7 +24,6 @@ interface SolutionOption {
 interface RecordItem {
   id?: number
   problem: string
-  sort_order: number
   solution_body: string
   examples_label: string
   examples_hint: string
@@ -62,7 +61,6 @@ const OPTION_ICONS = ["package", "wrench", "check-circle", "shield-check", "truc
 
 export default function MasalahSolusiForm({
   item,
-  nextSortOrder = 1,
   submitUrl,
   indexUrl,
   method = "post",
@@ -70,8 +68,6 @@ export default function MasalahSolusiForm({
 }: {
   backUrl?: string | null
   item: RecordItem | null
-  /** Nomor urut usulan untuk item baru (selalu di bawah item yang ada). */
-  nextSortOrder?: number
   submitUrl: string
   indexUrl: string
   method?: "post" | "put"
@@ -116,7 +112,9 @@ export default function MasalahSolusiForm({
     use_options: item?.use_options ?? false,
     solution_options: JSON.stringify(item?.solution_options ?? []),
     whatsapp_note: item?.whatsapp_note ?? "",
-    sort_order: item?.sort_order ?? nextSortOrder,
+    // Nomor urut sengaja TIDAK dikirim: saat membuat, server menaruh item baru
+    // paling belakang; saat mengedit, nomor lama dipertahankan. Pengurutan
+    // ulang dilakukan lewat mode Urutkan di halaman daftar.
   })
 
   const mediaFull = isMediaLimitReached(daftarMedia.length)
@@ -187,10 +185,6 @@ export default function MasalahSolusiForm({
           source: media.source,
         })),
       ),
-      // Urutan hanya diisi saat membuat; saat mengedit biarkan nomor lama di
-      // server yang berlaku (field-nya pun tidak ditampilkan), supaya nilai
-      // warisan yang kebetulan 0 tidak menabrak validasi min:1.
-      ...(item ? { sort_order: undefined } : {}),
     }))
 
     if (method === "put") {
@@ -233,11 +227,7 @@ export default function MasalahSolusiForm({
           </div>
           <div className="p-4 sm:p-5">
           <div
-            className={
-              editing
-                ? "grid gap-4"
-                : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start"
-            }
+            className="grid gap-4"
           >
             <Field id="ms-problem" label="Deskripsi masalah" required error={form.errors.problem}>
               <Textarea
@@ -247,22 +237,6 @@ export default function MasalahSolusiForm({
                 placeholder="Contoh: Barang rusak saat pengiriman…"
               />
             </Field>
-            {!editing ? (
-              <Field
-                id="ms-sort"
-                label="Urutan tampil"
-                error={form.errors.sort_order}
-                hint="Angka 1 tampil paling awal. Item baru otomatis ditaruh paling belakang. Urutan juga bisa diubah lewat tombol Urutkan di halaman daftar."
-              >
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.data.sort_order}
-                  onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-                  className="max-w-xs"
-                />
-              </Field>
-            ) : null}
             </div>
           </div>
         </section>
