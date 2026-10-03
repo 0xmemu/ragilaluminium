@@ -3173,3 +3173,22 @@ Uji live: Teruskan Popularitas 0 tombol (sebelumnya 1 ke /admin/kelola/produk); 
 Agent: zcode
 
 CATATAN HIGIENE GIT (commit `02d416c8`): berkas `app/Http/Controllers/Admin/ProductPopularityBoostController.php` TERNYATA sudah berisi pekerjaan agent lain yang belum di-commit (161 tambahan / 59 hapusan di luar perubahan satu baris milik saya: konstruktor, `store`, dan blok `disable` sampai `index`). Pekerjaan itu kini ikut ter-commit di commit ini. Isinya utuh, tidak ada yang hilang, dan sudah lulus `php -l` serta 12 test popularity boost yang saya jalankan setelahnya; yang keliru hanya pesan commit dan kepemilikannya. Kalau Anda pemilik pekerjaan itu, lihat `git show 02d416c8 -- app/Http/Controllers/Admin/ProductPopularityBoostController.php`. Pelajarannya sama seperti kejadian 29 Sep: `git commit` dengan daftar path tetap membawa SELURUH isi working tree berkas itu, jadi sebelum commit periksa `git diff <berkas>` dulu untuk berkas yang mungkin sedang dikerjakan agent lain.
+
+## 2026-10-03 16:05 UTC | zcode | Standard | 61ec0c33, b624ae8b | selesai
+
+Lingkup: Teks periode di halaman promo. Owner 2026-10-03: "text nya tolong di sesuaikan. pastikan semuanya sesuai dengan standar penulisan website atau se normalnya saja" sambil menunjuk sel Periode di /admin/promotions?type=store.
+Berkas: resources/js/lib/format.ts, resources/js/pages/Admin/Promotions.tsx, resources/js/pages/Admin/PromotionOverview.tsx, resources/js/pages/Admin/PromotionDetail.tsx, tests/frontend/format.test.ts
+
+Akar masalah: kolom Periode memakai format tanggal mesin (dateStyle "short") sehingga tampil "04/09/26, 17.13", dan menulis "Tanpa batas" serta "tanpa batas" dalam satu sel yang sama. Lebih dalam: tiga permukaan promo (daftar kampanye, hub, detail) masing-masing menulis format tanggal dan fallback sendiri, jadi gaya dan penulisannya bercabang; satu sisi kosong bahkan bisa memunculkan kata kembar. Judul tab halaman daftar juga tidak memuat kata Admin seperti halaman admin lain.
+
+Perubahan (dua commit, dipisah karena satu berkas sedang dipegang agent lain):
+- `61ec0c33`: kolom Periode halaman daftar memakai satu formatter, sisi kosong disebut dengan kata (Mulai / Sampai / Tanpa batas), dan judul tab memakai pola baku.
+- `b624ae8b`: formatWaktuRingkas dan formatRentangWaktu ditambahkan ke lib/format.ts, lalu DIPAKAI TIGA PERMUKAAN promo sekaligus supaya tidak ada lagi salinan aturan. Baris voucher tanpa tanggal akhir kini "Tanpa batas", bukan "s.d. tanpa batas". Kalimat periode di halaman detail tetap berbunyi apa adanya (tidak diubah redaksinya), hanya format tangalnya yang ikut baku.
+
+Dampak spec: Spec tidak berubah.
+
+Verifikasi: Vitest tests/frontend/format.test.ts 18 lulus (12 lama + 6 penjaga baru: gaya tanggal baku, null untuk nilai kosong/rusak, panah saat dua sisi terisi, "Tanpa batas" sekali saat dua sisi kosong, sisi kosong disebut dengan kata, dan larangan kata kembar). `npx tsc --noEmit` bersih, ESLint 0 error untuk empat berkas milik saya, build aset sukses.
+Uji live di peramban: hub /admin/promotions "16 Sep 2026, 22.27 → 16 Okt 2026, 22.37"; daftar ?type=store "4 Sep 2026, 17.13 → 4 Des 2027, 17.14" dan "Tanpa batas"; detail /admin/promotions/35 "16 Sep 2026, 22.27 → 16 Okt 2026, 22.37" dengan kalimat "Penjualan dihitung untuk pesanan pada 16 Sep 2026, 22.27 sampai 3 Okt 2026, 22.58." Di ketiganya tidak ada lagi format mesin dd/mm/yy maupun "tanpa batas" huruf kecil. Judul tab ketiganya memuat "| Admin".
+
+CATATAN HIGIENE GIT: `Promotions.tsx` sedang dipegang agent lain (perubahannya menghapus tab jenis kampanye dan meninggalkan prop `activeType` tanpa pemakai, sehingga `npx eslint` pada berkas itu masih 1 error MILIK MEREKA, bukan dari perubahan ini). Karena `git commit <path>` mengambil versi working tree dan akan menyapu pekerjaan itu, kedua commit di atas disusun dengan `git apply --cached` dari patch yang dibuat di atas versi HEAD, sehingga hanya perubahan zcode yang masuk indeks. Sudah diverifikasi: pekerjaan agent lain tetap utuh di working tree (`git status` berkas itu masih ` M`), dan `git commit` dijalankan tanpa daftar path agar hanya indeks yang di-commit.
+Agent: zcode

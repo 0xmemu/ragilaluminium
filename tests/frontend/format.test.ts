@@ -5,6 +5,8 @@ import {
   formatDate,
   formatNumber,
   formatRentangTanggal,
+  formatRentangWaktu,
+  formatWaktuRingkas,
   humanize,
   productName,
   stripHtml,
@@ -93,5 +95,46 @@ describe("rentang berlaku entitas berjadwal", () => {
 
   it("tidak menampilkan teks tanggal rusak apa adanya", () => {
     expect(formatRentangTanggal("bukan tanggal", null)).toBe("Tanpa batas")
+  })
+})
+
+describe("rentang waktu entitas berjadwal (beserta jam)", () => {
+  it("menulis tanggal dan jam dalam gaya baku tabel admin", () => {
+    // Waktu bervariasi menurut zona, jadi yang dikunci bentuknya, bukan jamnya.
+    expect(formatWaktuRingkas("2026-09-16T22:27:00+07:00")).toMatch(
+      /^\d{1,2}\s?(Sep|September)\s?2026,\s?\d{2}\.\d{2}$/,
+    )
+  })
+
+  it("mengembalikan null untuk nilai kosong atau rusak", () => {
+    expect(formatWaktuRingkas(null)).toBeNull()
+    expect(formatWaktuRingkas(undefined)).toBeNull()
+    expect(formatWaktuRingkas("bukan tanggal")).toBeNull()
+    expect(formatWaktuRingkas("")).toBeNull()
+  })
+
+  it("menulis kedua sisi dengan tanda panah saat keduanya terisi", () => {
+    const teks = formatRentangWaktu("2026-09-16T22:27:00+07:00", "2026-10-16T22:37:00+07:00")
+
+    expect(teks).toContain("→")
+    expect(teks).not.toContain("Tanpa batas")
+    expect(teks).toMatch(/\d{4},\s?\d{2}\.\d{2}\s→\s\d{1,2}/)
+  })
+
+  it("menulis Tanpa batas sekali saja saat kedua sisi kosong", () => {
+    expect(formatRentangWaktu(null, null)).toBe("Tanpa batas")
+    expect(formatRentangWaktu(null, null)).not.toContain("→")
+    expect(formatRentangWaktu("", undefined)).toBe("Tanpa batas")
+  })
+
+  it("menyebut sisi yang kosong dengan kata, bukan tanda hubung", () => {
+    expect(formatRentangWaktu("2026-09-16T22:27:00+07:00", null)).toMatch(/^Mulai /)
+    expect(formatRentangWaktu(null, "2026-10-16T22:37:00+07:00")).toMatch(/^Sampai /)
+  })
+
+  it("tidak pernah menampilkan kata kembar tanpa arti", () => {
+    // Dulu kolom periode bisa berbunyi "tanpa batas → tanpa batas".
+    expect(formatRentangWaktu("bukan tanggal", "juga bukan")).toBe("Tanpa batas")
+    expect(formatRentangWaktu("2026-09-16T22:27:00+07:00", "rusak")).toMatch(/^Mulai /)
   })
 })
