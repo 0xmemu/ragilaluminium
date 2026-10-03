@@ -3102,3 +3102,10 @@ Perubahan: flash-sale-carousel-section.tsx, tombol kembali ke md:-left-5/md:-rig
 Dampak spec: tidak berubah.
 Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 25s; terukur di peramban lebar 1440px: tombol kanan 1260-1308, track berakhir 1288, jadi 20px di luar tepi track (pola sama carousel beranda), dan setiap titik x=1302..1308 tetap bagian tombol sehingga tidak terpotong. Di lebar HP 390px: bingkai overflow visible, pembungkus track overflow hidden, track tetap di dalam bingkai dan tetap bisa digeser.
 Agent: zcode-storefront
+
+## 2026-10-03 10:03 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta radius pembungkus blok Flash Sale diganti jadi 8.
+Perubahan: flash-sale-carousel-section.tsx, pembungkus dari rounded-xl (token --radius + 2px = 16px) menjadi rounded-md (token --radius-control = 8px, nilai storefront 0.5rem). Warna sapuan, padding, dan struktur tidak berubah.
+Dampak spec: tidak berubah.
+Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 20s; terukur di peramban: borderRadius terhitung 8px, latar tetap rgba(194,0,0,0.05), dan tombol panah tetap menonjol 4px melewati tepi bingkai seperti semula (tidak terpotong).
+Agent: zcode-storefront

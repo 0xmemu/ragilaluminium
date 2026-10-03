@@ -135,7 +135,7 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
             yang menahan limpahan tombolnya ikut terpotong. Yang ditahan hanya
             track, sebab saat aksi geser di HP track bergeser ke kiri dan tanpa
             penahan akan menembus keluar bingkai. */}
-        <div className="rounded-xl bg-primary/5 p-3 sm:p-4">
+        <div className="rounded-md bg-primary/5 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Link
               href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
