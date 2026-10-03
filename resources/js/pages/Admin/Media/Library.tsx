@@ -951,7 +951,7 @@ async function copyText(text: string): Promise<boolean> {
 
 // ====== MAIN PAGE ======
 export default function MediaLibrary({
-  assets, pagination, filters, folders, historyHref, backUrl,
+  assets, pagination, filters, folders, historyHref, backUrl, origin,
 }: {
   assets: LibraryAsset[]
   pagination: PaginationData | null
@@ -959,6 +959,8 @@ export default function MediaLibrary({
   folders: FolderNode[]
   historyHref: string
   backUrl?: string | null
+  /** Penanda asal halaman ("products" bila dibuka dari halaman Produk). */
+  origin?: string | null
 }) {
   const { csrf } = usePage<SharedPageProps>().props
   const [q, setQ] = React.useState(filters.q)
@@ -1104,10 +1106,11 @@ export default function MediaLibrary({
         status: overrides.status ?? (status || undefined),
         visibility: overrides.visibility ?? (visibility || undefined),
         folder_id: overrides.folder_id ?? (folderId || undefined),
+        origin: origin ?? undefined,
       },
       { preserveState: true, preserveScroll: true },
     )
-  }, [q, kind, status, visibility, folderId])
+  }, [q, kind, status, visibility, folderId, origin])
 
   React.useEffect(() => {
     try {

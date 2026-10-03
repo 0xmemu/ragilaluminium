@@ -72,11 +72,18 @@ class ProductMediaController extends Controller
 
         $folderTree = $this->folderTree();
 
+        // Media Library adalah item mandiri di grup menu Produk. Tombol
+        // Kembali hanya berguna bila halaman ini DIBUKA dari halaman Produk
+        // (tautan di sana membawa `origin=products`); saat dibuka langsung dari
+        // sidebar, tidak ada tujuan kembali yang wajar, jadi tombolnya tidak
+        // ditampilkan (koreksi owner 2026-09-30).
+        $origin = (string) $request->query('origin', '');
+
         return Inertia::render('Admin/Media/Library', [
-            // Media Library adalah item mandiri di grup menu Produk; tombol
-            // Kembali mengarah ke daftar Produk supaya navigasi tidak
-            // bergantung pada sidebar saja saat halaman dibuka dari sana.
-            'backUrl' => route('admin.products.index'),
+            'backUrl' => $origin === 'products' ? route('admin.products.index') : null,
+            // Penanda diteruskan ke halaman supaya ikut terbawa saat filter
+            // dipakai dan saat membuka Riwayat Media.
+            'origin' => $origin !== '' ? $origin : null,
             'assets' => $assets->getCollection()->map(fn (MediaAsset $asset) => [
                 'id' => $asset->id,
                 'label' => $asset->label ?: 'Media #'.$asset->id,
@@ -100,7 +107,7 @@ class ProductMediaController extends Controller
                 'visibility' => (string) $request->query('visibility', ''),
                 'folder_id' => (string) $request->query('folder_id', ''),
             ],
-            'historyHref' => route('admin.media.history'),
+            'historyHref' => route('admin.media.history', array_filter(['origin' => $origin])),
         ]);
     }
 
@@ -505,10 +512,14 @@ class ProductMediaController extends Controller
 
         $pruneDays = (int) config('media.log_retention_days', 30);
 
+        // Riwayat Media berada di bawah Media Library (lihat daftar active
+        // pada config/admin-sitemap.php), jadi Kembali menuju Media Library.
+        // Penanda asal diteruskan supaya saat kembali lagi ke Media Library
+        // tombol Kembali ke Produk tetap ada.
+        $origin = (string) $request->query('origin', '');
+
         return Inertia::render('Admin/Media/History', [
-            // Riwayat Media berada di bawah Media Library (lihat daftar active
-            // pada config/admin-sitemap.php), jadi Kembali menuju Media Library.
-            'backUrl' => route('admin.media.library'),
+            'backUrl' => route('admin.media.library', array_filter(['origin' => $origin])),
             'logs' => $logs,
             'pagination' => InertiaAdmin::pagination($paginator),
             'filters' => [

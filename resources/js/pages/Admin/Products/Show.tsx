@@ -409,7 +409,7 @@ function MediaTable({
                     <TableCell className="max-w-[16rem] truncate px-4 font-mono text-[11px]">
                       {row.file ? (
                         <Link
-                          href={row.library_url ?? routeUrl("admin.media.library")}
+                          href={row.library_url ?? routeUrl("admin.media.library", { origin: "products" })}
                           className="text-primary transition hover:underline"
                           title="Buka asal media di Media Library"
                         >

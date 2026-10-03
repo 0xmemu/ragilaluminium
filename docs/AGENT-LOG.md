@@ -3129,3 +3129,25 @@ Catatan: pengurutan ulang sudah tersedia di halaman daftar lewat tombol Urutkan 
 Verifikasi: MasalahSolusiAdminTest 11 lulus / 133 asersi, termasuk dua penjaga baru: item baru dapat nomor 8 saat nomor tertinggi yang ada 7, dan halaman tambah tidak lagi mengirim prop `nextSortOrder`. `npx tsc --noEmit` bersih, ESLint 0 error 0 warning, build aset sukses.
 Uji live: /admin/masalah-solusi/create bersih dari "Urutan tampil", teks bantuan lama, dan input number (0 kemunculan); bagian Masalah pelanggan hanya berisi Deskripsi masalah; tombol Tambah media dan Simpan tetap ada. /admin/masalah-solusi menampilkan tombol Urutkan pada 5 baris. /admin/masalah-solusi/4/edit tetap utuh tanpa field urutan.
 Agent: zcode
+
+## 2026-09-30 09:05 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Tombol Kembali di Media Library. Owner 2026-09-30: "kenapa media library yang direct dari sidebar ada tombol back. padahal kemarin saya minta kalau direct dari halaman kelola produk".
+Berkas: app/Http/Controllers/Admin/ProductMediaController.php, app/Http/Controllers/Admin/ProductController.php, resources/js/pages/Admin/Media/Library.tsx, resources/js/pages/Admin/Products/Show.tsx, tests/Feature/AdminMediaBackButtonTest.php
+
+Akar masalah: perbaikan sebelumnya (memori halaman-anak-menu-punya-tombol-kembali) memasang `backUrl` di Media Library TANPA SYARAT, jadi tombol Kembali muncul juga saat halaman dibuka langsung dari sidebar. Maksud permintaan waktu itu adalah tombol hanya berguna bila halaman dibuka DARI halaman Produk.
+
+Perubahan: `ProductMediaController::library` hanya mengirim `backUrl` bila permintaan membawa penanda asal `origin=products`; tanpa penanda, `backUrl` null sehingga layout tidak merender tombol Kembali. Penanda itu dipasang oleh semua tautan yang berasal dari halaman Produk (daftar Produk lewat `mediaHref`, tombol "Kelola media" dan tautan asal media per baris di detail Produk), dan diteruskan ke halaman supaya ikut terbawa saat admin memakai filter/pencarian di Media Library (kalau tidak, tombolnya hilang di tengah kerja) serta saat membuka Riwayat Media.
+
+Nama parameter `origin` dipilih, BUKAN `from`, karena `from` sudah dipakai filter tanggal di halaman Riwayat Media sehingga akan bentrok.
+
+Riwayat Media tetap SELALU punya tombol Kembali ke Media Library karena ia memang anak halaman itu; yang diteruskan ke sana hanya penanda asal supaya rantainya tidak putus (Produk → Media Library → Riwayat → kembali lagi tetap punya tombol ke Produk).
+
+Dampak spec: Spec tidak berubah. `origin` adalah parameter kueri internal halaman admin, bukan bagian kontrak API publik.
+
+Verifikasi: AdminMediaBackButtonTest 6 lulus / 61 asersi (kasus baru: tanpa penanda `backUrl` null; dengan penanda menuju daftar Produk; penanda terbawa ke tautan Riwayat; tautan media di daftar Produk membawa penanda; Riwayat selalu punya Kembali; Riwayat meneruskan penanda). Media dan produk terkait 36 lulus. Suite penuh 1349 lulus, 1 gagal (kegagalan lama milik agent lain di ReturnRefundIntegrityTest, bentrok migrasi kolom retur, tidak berkaitan).
+`npx tsc --noEmit` bersih, ESLint 0 error untuk dua berkas frontend, build aset sukses.
+Uji live di peramban: (1) buka /admin/media/library langsung, tautan "Kembali" 0 kemunculan; (2) dari daftar Produk klik tautan "Media Library" yang membawa `?origin=products`, tombol Kembali muncul menuju /admin/kelola/produk; (3) setelah pencarian dipakai, URL jadi `?origin=products&q=JSW` dan tombolnya TETAP ada (bukti penanda tidak hilang saat filter); (4) di detail produk tab media, tombol "Kelola media" dan lima tautan asal media semuanya membawa `origin=products`.
+
+Catatan: konsekuensi dari syarat ini, pintu masuk lain ke Media Library (dasbor, notifikasi, halaman ulasan) kini TIDAK menampilkan tombol Kembali. Itu memang yang diminta (hanya dari halaman Produk); jalan keluarnya menu sidebar.
+Agent: zcode

@@ -120,7 +120,7 @@ class ProductController extends Controller
             'exportUrl' => route('admin.products.export', $request->query()),
             'importHref' => route('admin.imports.index'),
             'importPerformanceHref' => route('admin.analytics.import-performance'),
-            'mediaHref' => route('admin.media.library'),
+            'mediaHref' => route('admin.media.library', ['origin' => 'products']),
         ]);
     }
 
@@ -550,8 +550,10 @@ class ProductController extends Controller
                     ?? $m->stored_url;
 
                 $libraryUrl = $m->media_asset_id
-                    ? route('admin.media.library', ['q' => $m->mediaAsset?->label ?: ($sumber ?: '')])
-                    : ($sumber ? route('admin.media.library', ['q' => $sumber]) : route('admin.media.library'));
+                    ? route('admin.media.library', ['q' => $m->mediaAsset?->label ?: ($sumber ?: ''), 'origin' => 'products'])
+                    : ($sumber
+                        ? route('admin.media.library', ['q' => $sumber, 'origin' => 'products'])
+                        : route('admin.media.library', ['origin' => 'products']));
 
                 return [
                     'id' => $m->id,
@@ -598,7 +600,7 @@ class ProductController extends Controller
                 'variants' => route('admin.products.edit', ['product' => $product, 'tab' => 'varian']),
                 'attributes' => route('admin.products.attributes.index', $product),
                 // Tombol kelola media mengarah ke Media Library pusat
-                'media' => route('admin.media.library'),
+                'media' => route('admin.media.library', ['origin' => 'products']),
                 'import' => route('admin.imports.index'),
             ],
         ]);
