@@ -245,6 +245,11 @@ class PaymentController extends Controller
         $order->load(['payments' => fn ($q) => $q->latest('id')]);
 
         return Inertia::render('Admin/Payments/Index', [
+            // Halaman ini dibuka dari detail pesanan, jadi tombol Kembali menuju
+            // pesanan itu. Halaman DAFTAR pembayaran memakai komponen yang sama
+            // tetapi merupakan item menu sidebar, jadi di sana backUrl tidak
+            // dikirim sama sekali (koreksi owner 2026-10-03).
+            'backUrl' => route('admin.orders.show', $order),
             'title' => 'Pembayaran Pesanan '.$order->order_number,
             'description' => 'Riwayat transaksi pembayaran untuk pesanan '.$order->order_number,
             'summary' => [

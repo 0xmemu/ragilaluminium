@@ -80,6 +80,8 @@ export interface PaymentRekonsiliasi {
 }
 
 export interface PaymentsIndexProps {
+  /** Hanya diisi jalur per pesanan; daftar Pembayaran (item sidebar) tidak mengirimnya. */
+  backUrl?: string | null
   title: string
   description?: string
   bankTransfer?: BankTransferDetails | null
@@ -108,6 +110,7 @@ export interface PaymentsIndexProps {
 
 
 export default function PaymentsIndex({
+  backUrl,
   title,
   description,
   bankTransfer,
@@ -195,6 +198,7 @@ export default function PaymentsIndex({
 
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={title}
       description={
         description ??

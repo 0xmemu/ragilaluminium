@@ -3151,3 +3151,23 @@ Uji live di peramban: (1) buka /admin/media/library langsung, tautan "Kembali" 0
 
 Catatan: konsekuensi dari syarat ini, pintu masuk lain ke Media Library (dasbor, notifikasi, halaman ulasan) kini TIDAK menampilkan tombol Kembali. Itu memang yang diminta (hanya dari halaman Produk); jalan keluarnya menu sidebar.
 Agent: zcode
+
+## 2026-10-03 10:10 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Kelas bug tombol Kembali, lanjutan dari laporan owner soal Media Library. Owner: "telusuri juga menu/halaman yang mengalami hal serupa. mapping dulu", lalu "proses".
+Berkas: app/Http/Controllers/Admin/ProductPopularityBoostController.php, app/Http/Controllers/Admin/PaymentController.php, resources/js/pages/Admin/Payments/Index.tsx, tests/Feature/AdminSidebarPagesBackButtonTest.php
+
+Pemetaan menyeluruh: 33 item menu sidebar x 151 route GET admin, memeriksa `backUrl` di badan method controller DAN di komponen .tsx (sebagian halaman memasangnya di JS, bukan di controller: Users/Form, Products/Show, ProductForm, Orders/Show). Ditemukan DUA masalah.
+
+1. "Teruskan Popularitas" (admin.products.popularity-boosts.index) — item menu sidebar, tetapi mengirim backUrl ke daftar Produk, yaitu halaman SAUDARA sesama item sidebar, bukan atasan. Persis kasus Media Library. Diperbaiki jadi `backUrl => null`, mengikuti pola halaman Kategori yang sudah benar sejak dulu.
+2. "Kelola pembayaran" per pesanan (admin.orders.payments) — dibuka dari detail pesanan tetapi TIDAK punya tombol Kembali sama sekali. Halaman DAFTAR Pembayaran memakai komponen yang sama (Admin/Payments/Index) dan itu item sidebar, jadi backUrl kini dikirim HANYA dari jalur per pesanan (menuju detail pesanan), dan komponen meneruskan prop opsional itu. Ini pola yang sama dengan Media Library: satu komponen, dua pintu masuk, tombol hanya pada jalur yang punya atasan.
+
+Test penjaga baru AdminSidebarPagesBackButtonTest memeriksa SEMUA item menu sidebar sekaligus (dibaca dari config/admin-sitemap.navigation, jadi item baru ikut terjaga otomatis) dan memastikan tidak ada yang mengirim backUrl. Ditambah dua kasus pendukung: kontrol positif (halaman anak yang memakai tombol HARUS terbaca nilainya, supaya test tidak lulus semu) dan pembayaran per pesanan wajib punya tombol ke pesanan.
+
+Catatan yang sengaja TIDAK diubah: hub Promo Toko sudah benar (tanpa tombol) sedangkan sub-tampilannya ?type=store|flash_sale punya tombol ke hub, karena hub memang atasannya. Halaman WhatsApp pairing/templates punya navigasi tab internal, imports.failed-rows anak dari imports show yang punya tombol, ketentuan-layanan/kebijakan-privasi punya tautan sendiri, hasil-pemasangan.model punya tautan sendiri. admin.storefront-platforms.edit adalah URL alternatif halaman item sidebar admin.store-settings.index (komponen sama).
+
+Dampak spec: Spec tidak berubah.
+
+Verifikasi: AdminSidebarPagesBackButtonTest 3 lulus / 39 asersi (33 halaman diperiksa, dijaga assertGreaterThan(25) supaya tidak lulus diam-diam bila daftar menu berubah bentuk). Test terkait lain 36 lulus. `npx tsc --noEmit` bersih, ESLint 0 error 0 warning, build aset sukses.
+Uji live: Teruskan Popularitas 0 tombol (sebelumnya 1 ke /admin/kelola/produk); Kategori 0 tombol (tetap benar); Daftar Pembayaran 0 tombol; Pembayaran per pesanan (/admin/orders/100086/payments) 1 tombol menuju /admin/orders/100086.
+Agent: zcode
