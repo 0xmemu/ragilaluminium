@@ -152,7 +152,11 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
           </div>
 
           <div className="relative mt-3">
-            <div className="overflow-hidden">
+            {/* Di mobile padding dalam blok dibatalkan khusus untuk deretan
+                kartu, jadi kartunya mepet ke tepi blok dan bukan mengambang di
+                tengah. Baris judul dan hitung mundur di atas tetap memakai
+                padding blok. Mulai sm ke atas jarak itu kembali normal. */}
+            <div className="overflow-hidden -mx-3 sm:mx-0">
               <div
                 ref={trackRef}
                 id="flash-sale-carousel-track"

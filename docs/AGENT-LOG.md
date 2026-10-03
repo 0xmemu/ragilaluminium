@@ -3109,3 +3109,10 @@ Perubahan: flash-sale-carousel-section.tsx, pembungkus dari rounded-xl (token --
 Dampak spec: tidak berubah.
 Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 20s; terukur di peramban: borderRadius terhitung 8px, latar tetap rgba(194,0,0,0.05), dan tombol panah tetap menonjol 4px melewati tepi bingkai seperti semula (tidak terpotong).
 Agent: zcode-storefront
+
+## 2026-10-03 10:33 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta kartu carousel Flash Sale mepet tepi blok di mobile (bukan mepet tepi layar), jadi deretan kartu tidak mengambang di tengah blok.
+Perubahan: flash-sale-carousel-section.tsx, pembungkus track diberi -mx-3 dengan pemulih sm:mx-0. Di bawah sm padding dalam blok dibatalkan untuk deretan kartu saja, jadi kartu menempel tepi blok; baris judul dan hitung mundur tetap memakai padding blok. Mulai sm ke atas jarak kembali normal seperti semula.
+Dampak spec: tidak berubah.
+Verifikasi: eslint bersih; typecheck nol error; vitest 244 test lulus; build sukses 22s. Terukur di mobile 390px: selisih kartu pertama ke tepi blok 0px (sebelumnya 12px), track selebar blok 355px, kartu 156px (dari 145px), kartu terlihat tetap 2,27, baris judul masih berjarak 12px dari tepi blok. Di desktop 1440px tidak berubah: kartu masih 16px dari tepi blok (padding sm:p-4), kartu 218px, tombol panah tetap menonjol 20px di luar track.
+Agent: zcode-storefront
