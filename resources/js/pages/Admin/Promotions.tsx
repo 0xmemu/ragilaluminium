@@ -69,11 +69,36 @@ function canEdit(status: string): boolean {
   return status !== "ended" && status !== "finished"
 }
 
-function formatSchedule(iso?: string | null): string {
-  if (!iso) return "segera"
+/** Tanggal dan jam satu titik waktu dalam gaya baku admin ("4 Sep 2026, 17.13"). */
+function formatWaktu(iso?: string | null): string | null {
+  if (!iso) return null
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return "segera"
+  if (Number.isNaN(d.getTime())) return null
   return d.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+}
+
+/** Jadwal mulai untuk teks konfirmasi aktivasi; kosong berarti mulai segera. */
+function formatSchedule(iso?: string | null): string {
+  return formatWaktu(iso) ?? "segera"
+}
+
+/**
+ * Rentang berlaku yang terbaca manusia ("4 Sep 2026, 17.13 → 4 Des 2027, 17.14").
+ *
+ * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang, jadi
+ * sisi kosong disebut dengan kata ("Mulai ..." / "Sampai ...") dan kedua sisi
+ * kosong ditulis sekali saja ("Tanpa batas") supaya tidak pernah muncul
+ * rangkaian tanda hubung tanpa arti.
+ */
+function formatRentang(mulai?: string | null, akhir?: string | null): string {
+  const awal = formatWaktu(mulai)
+  const ujung = formatWaktu(akhir)
+
+  if (!awal && !ujung) return "Tanpa batas"
+  if (awal && !ujung) return `Mulai ${awal}`
+  if (!awal && ujung) return `Sampai ${ujung}`
+
+  return `${awal} → ${ujung}`
 }
 
 function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boolean; setBusy: (v: boolean) => void }) {
@@ -210,7 +235,7 @@ export default function PromotionsIndex({
         </div>
       }
     >
-      <Head title={title} />
+      <Head title={`${title} | Admin`} />
       <ManagePromotionsTabs active="promotions" />
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -282,9 +307,7 @@ export default function PromotionsIndex({
                       <span className="font-semibold text-primary">{row.discount_percent}%</span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {row.starts_at ? new Date(row.starts_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" }) : "Tanpa batas"}
-                      <span className="block">→</span>
-                      {row.ends_at ? new Date(row.ends_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" }) : "tanpa batas"}
+                      {formatRentang(row.starts_at, row.ends_at)}
                     </TableCell>
                     <TableCell>
                       <ul className="max-w-64 space-y-0.5">
