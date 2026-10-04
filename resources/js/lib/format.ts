@@ -46,12 +46,12 @@ function tanggalRingkas(value: string | number | Date | null | undefined): strin
 
 /**
  * Rentang berlaku yang terbaca manusia untuk entitas berjadwal (bar promo,
- * kampanye, voucher): "1 Jul 2026 → 30 Sep 2026".
+ * kampanye, voucher): "1 Jul 2026 – 30 Sep 2026".
  *
  * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang:
  * penyaring tayang memperlakukan tanggal mulai kosong sebagai "sudah boleh
  * tampil" dan tanggal akhir kosong sebagai "tanpa batas akhir". Karena itu
- * kedua sisi kosong ditulis sekali saja ("Tanpa batas"), bukan "- → -", dan
+ * kedua sisi kosong ditulis sekali saja ("Tanpa batas"), bukan rangkaian tanda hubung, dan
  * sisi yang kosong disebut dengan kata, bukan tanda hubung.
  */
 export function formatRentangTanggal(
@@ -65,7 +65,7 @@ export function formatRentangTanggal(
   if (awal && !ujung) return `Mulai ${awal}`
   if (!awal && ujung) return `Sampai ${ujung}`
 
-  return `${awal} → ${ujung}`
+  return `${awal} – ${ujung}`
 }
 
 /**
@@ -85,7 +85,7 @@ export function formatWaktuRingkas(
 
 /**
  * Rentang berlaku BESERTA JAM untuk entitas berjadwal yang jamnya penting
- * (kampanye, voucher): "4 Sep 2026, 17.13 → 4 Des 2027, 17.14".
+ * (kampanye, voucher): "4 Sep 2026, 17.13 – 4 Des 2027, 17.14".
  *
  * Satu sisi kosong berarti TIDAK ADA batas di sisi itu, bukan data hilang, jadi
  * sisi kosong disebut dengan kata ("Mulai ..." / "Sampai ...") dan kedua sisi
@@ -103,7 +103,7 @@ export function formatRentangWaktu(
   if (awal && !ujung) return `Mulai ${awal}`
   if (!awal && ujung) return `Sampai ${ujung}`
 
-  return `${awal} → ${ujung}`
+  return `${awal} – ${ujung}`
 }
 
 /** Singkatan yang harus tetap kapital penuh (bukan Title Case). */

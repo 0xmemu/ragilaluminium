@@ -3192,3 +3192,23 @@ Uji live di peramban: hub /admin/promotions "16 Sep 2026, 22.27 → 16 Okt 2026,
 
 CATATAN HIGIENE GIT: `Promotions.tsx` sedang dipegang agent lain (perubahannya menghapus tab jenis kampanye dan meninggalkan prop `activeType` tanpa pemakai, sehingga `npx eslint` pada berkas itu masih 1 error MILIK MEREKA, bukan dari perubahan ini). Karena `git commit <path>` mengambil versi working tree dan akan menyapu pekerjaan itu, kedua commit di atas disusun dengan `git apply --cached` dari patch yang dibuat di atas versi HEAD, sehingga hanya perubahan zcode yang masuk indeks. Sudah diverifikasi: pekerjaan agent lain tetap utuh di working tree (`git status` berkas itu masih ` M`), dan `git commit` dijalankan tanpa daftar path agar hanya indeks yang di-commit.
 Agent: zcode
+
+## 2026-10-03 17:05 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Pemisah rentang tanggal di panel admin. Owner 2026-10-03: "kenapa pakai ->" setelah saya mengganti format periode kampanye di commit sebelumnya.
+Berkas: resources/js/lib/format.ts, tests/frontend/format.test.ts, resources/js/pages/Admin/Vouchers/Index.tsx, app/Models/StoreVoucher.php
+
+Jawaban atas pertanyaan owner: tanda panah itu bukan penulisan standar untuk rentang. Ia dipilih perubahan 30 Sep semata-mata untuk menghindari tanda hubung yang ambigu, padahal kontrak kerja repo justru MENGIZINKAN en dash untuk rentang (jam, tanggal, harga) dan repo sudah memakainya untuk rentang angka ("50-60 karakter" di form Kategori). Jadi diganti ke EN DASH.
+
+Perubahan:
+- Kedua formatter rentang (formatRentangTanggal, formatRentangWaktu) memakai en dash, jadi tiga permukaan promo + bar promo ikut berubah sekaligus.
+- Vouchers/Index disatukan ke formatRentangWaktu: dulu ia memakai "s/d" dan helper formatDateTime lokal yang menampilkan "s/d -" bila tanggal akhirnya kosong (cacat). Sekarang satu cara menulis rentang di seluruh panel admin, dan sisi kosong berbunyi "Tanpa batas".
+- app/Models/StoreVoucher.php: pesan "Periode voucher belum dimulai / sudah berakhir" memakai jam bergaya titik dua ("06:32") sementara rentang di sebelahnya memakai gaya id-ID bertitik ("06.32") di baris yang SAMA. Disamakan ke titik. Konfirmasi gaya rumah: FlashSalePeriodSettings sudah memakai 'H.i' (titik) dan frontend id-ID memang bertitik.
+
+Dampak spec: Spec tidak berubah.
+
+Verifikasi: Vitest tests/frontend/format.test.ts 18 lulus (assertion diperbarui ke en dash, plus judul test dan komentar ikut disesuaikan). PHPUnit StoreVoucherTest + PricePromoOrderContractTest + FlashSalePeriodTest + AdminAnnouncement 24 lulus (test hanya memeriksa `str_contains('sudah berakhir')`, jadi perubahan pemisah jam tidak merusaknya). `npx tsc --noEmit` bersih, ESLint 0 error untuk tiga berkas frontend, build aset sukses.
+Uji live: daftar kampanye "4 Sep 2026, 17.13 – 4 Des 2027, 17.14"; voucher "3 Sep 2026, 06.32 – 30 Sep 2026, 06.32" bersebelahan dengan "Periode voucher sudah berakhir (30 Sep 2026, 06.32)." (kini titik dua jam hilang, "s/d" hilang); bar promo "1 Jul 2026 – 30 Sep 2026". Di ketiganya tidak ada lagi tanda panah.
+
+TIDAK diubah, dengan alasan: Store Performance (`compare_label`, `range_detail` di StorePerformanceService) juga memakai titik dua dan pemisah " - ", TETAPI lapisan itu berada di bawah kontrak BEKU ADR-026 (golden test + gerbang), jadi perubahan teks di sana wajib lewat protokol freeze; saya tidak menyentuhnya tanpa persetujuan. Ekspor Excel (OrderExport, StorePerformanceExport) juga masih memakai titik dua; mediumnya sel spreadsheet, bukan teks di layar, dan perubahan di sana menyentuh banyak ekspektasi ekspor, jadi dijadikan usulan terpisah. Tanda panah yang masih ada di teks tampilan adalah transisi/arus, bukan rentang ("Status: Diterima -> Selesai" di OrderEventLabels, perubahan kolom di ActivityLogService, "queued -> processing -> siap / gagal" di Media/History, "menu Produk -> Import"), dan panah memang penanda yang lazim untuk arti "berubah menjadi"; itu saya laporkan supaya owner bisa memutuskan.
+Agent: zcode

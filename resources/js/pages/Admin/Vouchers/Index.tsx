@@ -14,7 +14,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatRentangWaktu } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
@@ -40,19 +40,6 @@ interface VoucherCard {
   unpublish_url: string
   duplicate_url: string
   end_url: string
-}
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "-"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "-"
-  return date.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
 }
 
 function discountLabel(voucher: VoucherCard): string {
@@ -332,7 +319,7 @@ export default function VouchersIndex({
                 <TargetChip label={voucher.target_label} />
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                {formatDateTime(voucher.starts_at)} s/d {formatDateTime(voucher.ends_at)}
+                {formatRentangWaktu(voucher.starts_at, voucher.ends_at)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Minimum {formatCurrency(voucher.min_purchase)}
@@ -375,8 +362,7 @@ export default function VouchersIndex({
                       {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-muted-foreground">
-                      <div>{formatDateTime(voucher.starts_at)}</div>
-                      <div>s/d {formatDateTime(voucher.ends_at)}</div>
+                      {formatRentangWaktu(voucher.starts_at, voucher.ends_at)}
                     </td>
                     <td className="px-4 py-3 text-center font-semibold tabular-nums text-primary">{discountLabel(voucher)}</td>
                     <td className="px-4 py-3 text-center">

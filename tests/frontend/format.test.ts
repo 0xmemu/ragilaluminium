@@ -73,10 +73,10 @@ describe("format helpers", () => {
 })
 
 describe("rentang berlaku entitas berjadwal", () => {
-  it("menulis kedua tanggal dengan tanda panah saat keduanya terisi", () => {
+  it("menulis kedua tanggal dengan tanda pisah saat keduanya terisi", () => {
     const teks = formatRentangTanggal("2026-07-01", "2026-09-30")
 
-    expect(teks).toMatch(/^1\s?(Jul|Juli)\s?2026\s→\s30\s?(Sep|September)\s?2026$/)
+    expect(teks).toMatch(/^1\s?(Jul|Juli)\s?2026\s–\s30\s?(Sep|September)\s?2026$/)
   })
 
   it("menulis Tanpa batas sekali saja saat kedua sisi kosong, bukan tanda hubung", () => {
@@ -113,17 +113,17 @@ describe("rentang waktu entitas berjadwal (beserta jam)", () => {
     expect(formatWaktuRingkas("")).toBeNull()
   })
 
-  it("menulis kedua sisi dengan tanda panah saat keduanya terisi", () => {
+  it("menulis kedua sisi dengan tanda pisah saat keduanya terisi", () => {
     const teks = formatRentangWaktu("2026-09-16T22:27:00+07:00", "2026-10-16T22:37:00+07:00")
 
-    expect(teks).toContain("→")
+    expect(teks).toContain("–")
     expect(teks).not.toContain("Tanpa batas")
-    expect(teks).toMatch(/\d{4},\s?\d{2}\.\d{2}\s→\s\d{1,2}/)
+    expect(teks).toMatch(/\d{4},\s?\d{2}\.\d{2}\s–\s\d{1,2}/)
   })
 
   it("menulis Tanpa batas sekali saja saat kedua sisi kosong", () => {
     expect(formatRentangWaktu(null, null)).toBe("Tanpa batas")
-    expect(formatRentangWaktu(null, null)).not.toContain("→")
+    expect(formatRentangWaktu(null, null)).not.toContain("–")
     expect(formatRentangWaktu("", undefined)).toBe("Tanpa batas")
   })
 
@@ -133,7 +133,7 @@ describe("rentang waktu entitas berjadwal (beserta jam)", () => {
   })
 
   it("tidak pernah menampilkan kata kembar tanpa arti", () => {
-    // Dulu kolom periode bisa berbunyi "tanpa batas → tanpa batas".
+    // Dulu kolom periode bisa berbunyi "Tanpa batas" dua kali berturut-turut.
     expect(formatRentangWaktu("bukan tanggal", "juga bukan")).toBe("Tanpa batas")
     expect(formatRentangWaktu("2026-09-16T22:27:00+07:00", "rusak")).toMatch(/^Mulai /)
   })
