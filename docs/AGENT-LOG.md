@@ -3302,3 +3302,21 @@ Verifikasi: typecheck 0, eslint bersih untuk lima berkas yang diubah, build suks
 Catatan untuk agent berikutnya: item barang pecah (id 10) masih berisi naskah uji seadanya dan kini tampil utuh di halaman publik termasuk tombol WhatsApp ke nomor perangkat uji owner; menunggu keputusan owner apakah disunting menjadi naskah sungguhan atau dihapus.
 Catatan kolaborasi: entri ini ditulis ulang karena versi pertamanya hilang saat berkas ini ditulis agent lain secara bersamaan. Commit 540f4e93 milik saya juga tanpa sengaja memuat dua perubahan agent lain yang sudah distage di indeks bersama (active:scale pada row-actions.tsx dan admin-layout.tsx, animasi tekan tombol aksi); isinya utuh dan tidak hilang, hanya pesan commitnya tidak menyebut pemiliknya.
 Agent: gemini-3.8-flash-high
+
+## 2026-10-05 10:45 UTC | zcode | Trivial | (lihat catatan atribusi) | selesai
+
+Lingkup: Umpan balik tekan untuk elemen aksi yang tertinggal. Owner 2026-10-05: "harusnya di perlakukan sama dengan ini", membandingkan tombol header "Log aktivitas" (punya active:scale) dengan tautan "Kembali" (tidak punya).
+Berkas: resources/js/layouts/admin-layout.tsx, resources/js/components/admin/row-actions.tsx
+
+Temuan: setelah commit 1f4fce3e (animasi tekan di komponen Button), masih ada elemen aksi yang TIDAK memakai komponen itu sehingga tanpa umpan balik tekan.
+1. Tautan "Kembali" di header layout admin: ditulis sebagai <Link> mentah dengan gaya sendiri, jadi tidak ikut animasi komponen Button. Ditambahkan `active:scale-[0.97] motion-reduce:active:scale-100` TANPA mengubah bentuk visualnya (tetap teks primary + garis bawah saat disorot, sesuai kontrak visual tombol Kembali 1 Okt 2026).
+2. `rowActionTextClass` di row-actions.tsx: dipakai tombol aksi teks dalam tabel pada 4 halaman (Faq, Product, Resource, InstallationGallery). Sama-sama elemen aksi, jadi diberi perlakuan sama.
+
+Diperiksa dan TIDAK diubah, karena bentuknya kontrol berbeda, bukan tombol aksi: pemicu "Cari menu admin" (berbentuk kotak pencarian), "Menu akun admin" (pil avatar), "Buka menu navigasi admin" (hamburger mobile), dan "Filter status" (select bawaan). Tautan "Kembali" di dalam halaman lain (InstallationGallery, PromotionDetail, Attributes, CmsDocument) juga tidak perlu disentuh karena semuanya sudah terbungkus komponen Button (asChild) sehingga sudah beranimasi.
+
+Verifikasi: `npx tsc --noEmit` bersih, ESLint 0 error 0 warning untuk kedua berkas, build aset sukses. Uji live di /admin/announcements: tautan "Kembali" kini memuat kelas `active:scale-[0.97]` (dibaca langsung dari DOM), dan 13 dari 17 tombol di halaman itu beranimasi.
+
+CATATAN ATRIBUSI (bahaya berulang, lihat juga entri 29 Sep 2026): perubahan saya di KEDUA berkas ini di-stage lebih dulu (row-actions.tsx di-stage sebagian lewat `git apply --cached` karena berkas itu juga memuat perubahan agent lain yang belum di-commit: flex-wrap -> flex-nowrap). Sebelum sempat saya commit, agent `gemini-3.8-flash-high` menjalankan `git commit` yang menyapu seluruh isi indeks, sehingga perubahan saya masuk ke commit `540f4e93` yang pesannya "docs: catat entri AGENT-LOG untuk perbaikan halaman Masalah & Solusi" (stat-nya hanya berisi 2 berkas ini, 2 baris, jadi pesannya memang tidak mencerminkan isinya). Commit itu sudah ter-push ke origin. Tidak ada kode yang hilang dan tidak ada yang perlu di-commit ulang; yang keliru hanya pesan commit dan atribusinya, dicatat di sini supaya riwayat tidak menyesatkan. Pekerjaan agent lain (flex-nowrap) tetap utuh di working tree, belum ter-commit.
+
+Pelajaran: meng-stage perubahan lebih awal TIDAK melindunginya, karena indeks dipakai bersama; di repo ini commit orang lain bisa mengambil isi indeks yang sedang saya siapkan. Sesudah men-stage, sebaiknya langsung commit pada kesempatan yang sama, jangan menunda melewati langkah verifikasi yang panjang.
+Agent: zcode
