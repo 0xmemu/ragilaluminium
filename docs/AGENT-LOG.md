@@ -3325,3 +3325,8 @@ Agent: zcode
 
 - Owner di Kelola Pelanggan: hapus text (menunjuk label Periode di toolbar). HintTip Periode (label + hover penjelasan) dibuang seluruhnya: label kosong akan menyisakan pemicu mati, dropdown Semua waktu sudah jelas, dan penjelasan status tetap ada di header tabel. Dropdown filter periode tidak disentuh.
 - Verifikasi: typecheck+build lulus; live: teks Periode dan penjelasannya hilang, dropdown Filter periode pelanggan tetap.
+
+## 2026-10-05 11:03 UTC | zcode | Trivial | resources/js/pages/Admin/PromotionOverview.tsx | selesai
+
+- Owner di Promo Toko: semua card harus clickable. Empat jenis kartu kini navigasi saat diklik: kampanye diskon ke detail kampanye, voucher ke Kelola Voucher, banner terbit ke Kelola Banner, bar promo ke halaman bar promo. Helper klikKartu menjaga klik pada button/a/input di dalam kartu (tautan judul, Lihat detail, tombol salin kode voucher) tetap ditangani elemennya sendiri tanpa navigasi dobel. Tambah impor React + router.
+- Verifikasi: typecheck+build lulus; live: klik angka diskon kartu kampanye pindah ke /admin/promotions/35, klik kartu banner Boven jungkit pindah ke /admin/banners; voucher dan bar promo memakai jalur kode sama.
