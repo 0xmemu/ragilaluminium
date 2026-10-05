@@ -33,6 +33,10 @@ membuat pekerjaan mereka terlihat tanpa perlu bertanya.
    bawah adalah RIWAYAT, bukan kondisi terkini.
 
 Ledger perubahan: `docs/AGENT-LOG.md`. Prosedur rinci: `docs/AGENT-COLLABORATION.md`.
+- **Push: cek dulu, jangan ulang buta.** Sebelum push jalankan `git fetch`
+  lalu `git log HEAD..origin/<branch>`. Kalau ada isi, integrasikan dulu dan
+  jangan mengirim ulang perintah push yang sama. Rinci: bagian 7
+  `docs/AGENT-COLLABORATION.md`.
 
 ## Non-negotiables
 

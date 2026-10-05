@@ -109,7 +109,42 @@ informasi yang dibutuhkan agent berikutnya.
 
 Bila ada keputusan produk atau milestone, tambahkan juga di `docs/MEMORY.md`.
 
-## 7. Ringkas dalam laporan
+## 7. Push: cek dulu, jangan ulang buta
+
+Branch ini dipakai bersama, jadi ref di origin sering bergerak di bawah kaki.
+Sesi 2026-09-21: tiga percobaan push gagal berturut-turut, dua karena ref sudah
+bergerak (pertama non-fast-forward, lalu cannot lock ref dengan expected hash
+lama). Itu murni kerja yang terbuang, dan penyebabnya bukan repo melainkan urutan
+yang salah.
+
+Urutan yang benar sebelum push:
+
+    git fetch origin
+    git log --oneline HEAD..origin/<branch>      # ada isi = origin sudah maju
+    git push origin HEAD:<branch>
+
+- Kalau `HEAD..origin/<branch>` kosong, push aman (fast-forward).
+- Kalau ada isi, JANGAN mengirim ulang perintah push. Integrasikan dulu commit Anda
+  di atas origin (rebase commit sendiri), baru push.
+- Kalau push gagal dengan non-fast-forward atau cannot lock ref, hentikan.
+  Jalankan `git fetch` lalu nilai ulang.
+
+Larangan paksa: jangan menulis ulang riwayat remote (opsi paksa pada push), dan
+jangan membuang perubahan yang belum di-commit dengan reset keras pada working
+tree. Dua hal itu sudah ditegakkan guard repo ini, lihat bagian guard di
+`AGENTS.md`. Opsi lease (force-with-lease) hanya untuk membungkus ulang commit
+Anda SENDIRI yang sudah di-push, misal setelah rebase, dan hanya setelah fetch
+sehingga Anda tahu persis posisi origin.
+
+Sesudah push, pastikan commit Anda benar-benar mendarat:
+
+    git merge-base --is-ancestor <commit> origin/<branch> && echo OK
+
+Catatan: pre-push hook repo ini menjalankan `npm run typecheck && npm run build`.
+Build mengosongkan `public/build`, sehingga halaman live 500 sementara. Pilih waktu
+push, dan jangan menjalankannya bersamaan dengan test.
+
+## 8. Ringkas dalam laporan
 
 Setiap laporan perubahan menyebut: tier yang dipakai, jumlah panggilan tool
 aktual, dan berkas yang disentuh. Tujuannya supaya pemakaian anggaran bisa
