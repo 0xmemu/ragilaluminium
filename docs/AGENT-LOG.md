@@ -3217,3 +3217,21 @@ Agent: zcode
 
 - Owner di Media Library: sudut kiri atas kartu harusnya ada titik 3, isinya detail singkat gambar (folder, link, nama img, dll), non action. Tombol dots-three-vertical ditambah di kiri atas (muncul saat hover, data-no-select supaya tidak memicu pratinjau), membuka Dialog ringkas non-aksi: Nama, Media #, Folder (diresolve dari folder tree, Inbox bila null), Jenis/status, Dipakai Nx, Diunggah, URL publik. Tidak ada aksi di dalam dialog.
 - Verifikasi: typecheck+build lulus; live: klik titik tiga kartu pertama membuka dialog berisi Nama sg-11134201..., Media # 955, Folder Inbox (tanpa folder), image/Siap digunakan, 20x, 16/9/2026, URL pdp.webp; tertutup bersih.
+
+## 2026-10-03 18:10 UTC | zcode | Standard | (commit ini) | selesai
+
+Lingkup: Animasi tekan tombol aksi admin. Owner 2026-10-03: "still no action animate?" saat melihat daftar Bar Promo.
+Berkas: resources/js/components/admin/ui/button.tsx, resources/js/components/admin/ui/dropdown-menu.tsx
+
+Akar masalah: komponen bersama `Button` admin sama sekali TIDAK punya keadaan `active:`. Animasi tekan pernah diminta owner (1 Okt 2026) tetapi diperbaiki SEKALI PAKAI hanya di tombol pilih berkas Media Library (commit 0b3a6574); `active:scale` hanya ada di 2 berkas di seluruh resources/js (SystemHealth dan Media/Library). Karena itu semua tombol aksi admin (Muat ulang, Tambah, Edit, Simpan, item menu Lainnya) tidak memberi umpan balik saat ditekan.
+
+Perubahan: `active:scale-[0.97]` plus penjaga `motion-reduce:active:scale-100` disatukan ke STRING DASAR `cva` di button.tsx, jadi berlaku ke semua varian dan ukuran sekaligus, tidak perlu disalin per halaman. Item `dropdown-menu` (menu Lainnya) diberi `active:bg-muted active:scale-[0.98]` supaya umpan balik tekan di menu juga ada (sebelumnya hanya `focus:bg-muted`, yang tidak terlihat saat diklik dengan tetikus).
+
+Catatan proses: percobaan pertama saya menaruh kelas itu sebagai argumen KEDUA `cva()` sehingga `cva` menerima tiga argumen dan inferensi tipe variannya rusak; `npx tsc --noEmit` menangkapnya (`Property 'variant' does not exist on type ButtonProps`) dan saya perbaiki dengan menyambung ke string dasar. Ini bukti typecheck memang gerbang yang berguna untuk komponen bersama.
+
+Dampak spec: Spec tidak berubah.
+
+Verifikasi: `npx tsc --noEmit` bersih, ESLint 0 error 0 warning untuk kedua berkas, build aset sukses. Animasi tekan tidak bisa dibuktikan dengan tangkapan layar (transisi membeku di tangkapan), jadi dibuktikan dua cara: (1) aturan CSS terkompilasi memuat `.active\:scale-\[0\.97\]:active{--tw-scale-x:.97;...}` dan `.motion-reduce\:active\:scale-100:active{...}`; (2) di halaman live /admin/announcements, 9 dari 10 tombol di dalam main memakai kelas `active:scale` (contoh: "Muat ulang", "Simpan", "Lainnya"), dan pemeriksaan di peramban memastikan aturan `active:scale-[0.97]:active` benar-benar ada di stylesheet yang termuat.
+
+TIDAK diubah: tombol publik (`resources/js/components/ui/button.tsx`) juga belum punya animasi tekan; belum saya sentuh karena konteks laporan ini panel admin dan bahasa desain publik berbeda. Tautan teks "Kembali" di header admin juga belum diberi animasi tekan (animasi tekan pada tautan teks bukan kebiasaan, dan cukup diberi warna/underline saat hover seperti sekarang).
+Agent: zcode

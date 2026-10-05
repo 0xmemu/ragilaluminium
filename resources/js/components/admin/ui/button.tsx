@@ -9,7 +9,10 @@ import { cn } from "@/lib/utils"
  * API drop-in dengan components/ui/button (variant & size names sama).
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium tracking-tight transition duration-150 ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  // Umpan balik tekan untuk SEMUA tombol aksi disatukan di string dasar ini.
+  // Polanya sudah dipakai di Media Library (commit 0b3a6574) tetapi hanya di
+  // satu tempat; di sini berlaku untuk seluruh tombol tanpa disalin per halaman.
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium tracking-tight transition duration-150 ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] motion-reduce:active:scale-100",
   {
     variants: {
       variant: {
