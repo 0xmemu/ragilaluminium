@@ -72,6 +72,20 @@ interface LibraryFilters {
   folder_id: string
 }
 
+/** Nama folder aset untuk info singkat; Inbox untuk tanpa folder. */
+function folderNama(folderId: number | null, folders: FolderNode[]): string {
+  if (folderId === null) return "Inbox (tanpa folder)"
+  const temukan = (nodes: FolderNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.id === folderId) return node.name
+      const dalam = temukan(node.children)
+      if (dalam) return dalam
+    }
+    return null
+  }
+  return temukan(folders) ?? `Folder #${folderId}`
+}
+
 function flattenFolders(nodes: FolderNode[], depth = 0, out: Array<{ id: number; name: string; indent: string; assets_count: number }> = []) {
   for (const node of nodes) {
     out.push({ id: node.id, name: node.name, indent: "\u00a0".repeat(depth * 4) + (depth > 0 ? "\u21b3 " : ""), assets_count: node.assets_count ?? 0 })
@@ -986,6 +1000,8 @@ export default function MediaLibrary({
   // "Pilih Media" yang dinyalakan lewat tombol di header.
   const [selectMode, setSelectMode] = React.useState(false)
   const [previewAsset, setPreviewAsset] = React.useState<(typeof assets)[number] | null>(null)
+  // Aset yang info singkatnya (titik tiga) sedang terbuka.
+  const [infoAsset, setInfoAsset] = React.useState<(typeof assets)[number] | null>(null)
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
   const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
@@ -1450,6 +1466,19 @@ export default function MediaLibrary({
                       }`}
                       title={meta.label}
                     />
+                    <button
+                      type="button"
+                      data-no-select
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setInfoAsset(asset)
+                      }}
+                      aria-label={`Info ${asset.label}`}
+                      title="Info media"
+                      className="absolute left-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
+                    >
+                      <Icon name="dots-three-vertical" className="size-3.5" aria-hidden="true" />
+                    </button>
                     {asset.status === "ready" ? (
                       <button
                         type="button"
@@ -1650,6 +1679,45 @@ export default function MediaLibrary({
             {attachError ? <p className="mt-2 text-xs text-destructive">{attachError}</p> : null}
           </div>
         </div>
+      ) : null}
+
+      {infoAsset ? (
+        <Dialog open onOpenChange={(next) => { if (!next) setInfoAsset(null) }}>
+          <DialogContent className="max-w-md bg-card text-card-foreground">
+            <DialogTitle>Info media</DialogTitle>
+            <DialogDescription>Ringkasan singkat aset ini. Semua aksi ada di kartu dan pratinjaunya.</DialogDescription>
+            <dl className="space-y-2 text-xs">
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Nama</dt>
+                <dd className="break-all font-medium text-foreground">{infoAsset.label}</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Media #</dt>
+                <dd className="tabular-nums text-foreground">{infoAsset.id}</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Folder</dt>
+                <dd className="text-foreground">{folderNama(infoAsset.folder_id, folders)}</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Jenis / status</dt>
+                <dd className="text-foreground">{infoAsset.kind} / {mediaStatusMeta(infoAsset.status).label}</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Dipakai</dt>
+                <dd className="tabular-nums text-foreground">{infoAsset.usage_count}x</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">Diunggah</dt>
+                <dd className="text-foreground">{infoAsset.created_at ? new Date(infoAsset.created_at).toLocaleString("id-ID") : "-"}</dd>
+              </div>
+              <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
+                <dt className="text-muted-foreground">URL</dt>
+                <dd className="break-all text-foreground">{infoAsset.public_url}</dd>
+              </div>
+            </dl>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {previewAsset ? (
