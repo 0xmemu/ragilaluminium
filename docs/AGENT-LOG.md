@@ -3250,3 +3250,24 @@ Catatan: guard repo ini memblokir PENULISAN dokumentasi yang memuat frasa perint
 terlarang secara harfiah, karena guard memindai seluruh teks perintah termasuk isi
 heredoc. Saat menulis aturan tentang perintah terlarang, deskripsikan tanpa frasa
 pemicu.
+
+Lingkup: owner meminta audit end-to-end halaman /admin/masalah-solusi/10/edit dan /masalah-dan-solusi, lalu memutuskan perbaikannya sekaligus.
+Akar masalah: tiga cacat yang semuanya sudah tayang di produksi. (1) Di komponen publik, cabang render daftar opsi dan teks solusi saling meniadakan lewat ternary, sehingga begitu item memakai daftar opsi, naskah teks solusi tidak pernah dirender walau tersimpan di database dan tampil di kolom Solusi pada daftar admin; item nomor 10 kehilangan naskah retur-nya. (2) Judul bagian contoh punya nilai bawaan di form admin dan selalu dirender, sehingga item tanpa media dan tanpa teks pengganti menampilkan judul menggantung. (3) Nomor WhatsApp yang ditulis di keterangan opsi hanya teks, sehingga pelanggan menyalin manual, dan pada item yang nomornya berbeda dari nomor konsultasi toko tombol WhatsApp yang tersedia menuju nomor lain. Ditambah satu kontrol menyesatkan: centang Terbitkan halaman tidak dipakai rute publik mana pun dan menyimpan meta justru menulis published=false karena controller mengirim nilai bawaan false.
+Perubahan: (a) RichSolutionPanel dirender ulang; teks solusi selalu tampil di atas daftar opsi, judul bagian contoh hanya tampil bila ada media atau teks pengganti, dan keterangan opsi dipecah menjadi potongan teks dan tombol CTA WhatsApp. (b) Pustaka baru resources/js/lib/masalah-solusi-content.ts memuat aturan yang bisa diuji: normalizeWhatsappNumber (hanya seluler Indonesia 08xx/628xx; nomor rumah atau kantor tidak ditautkan), splitOptionDescription (potongan teks dan nomor), dan hasExampleContent. (c) Panel diekspor supaya bisa dirender test DOM tanpa halaman penuh. (d) Kontrol Terbitkan halaman dihapus dari form meta beserta sambungannya: field published tidak lagi dikirim payload Inertia, validasi published dibuang dari updateMeta, dan ProblemsSolutionsSettings::updatePageMeta tidak lagi menimpa kolom published dari payload yang tidak menyertakannya. (e) Form meta kembali satu kolom supaya tiga kontrolnya seragam lebar.
+Dampak spec: bentuk payload Inertia halaman admin berubah karena field published dihapus (pageMeta tidak lagi dikirim controller; kunci published di ProblemsSolutionsSettings::pageMeta dibiarkan untuk kompatibilitas). Tidak ada route, URL, kolom database, enum, atau status baru; skema database tidak berubah. docs/admin-menu-functions.md dan docs/sitemap/admin-sitemap.md diperbarui.
+Penjaga dan pembuktiannya: dua penjaga baru ditambahkan dan dibuktikan menangkap regresi, bukan hanya lulus. Penjaga PHP (menyimpan meta tidak menonaktifkan halaman) gagal 1 asersi saat perilaku lama controller dipasang sesaat; penjaga DOM (teks solusi tetap tampil walau item pakai daftar opsi) gagal 2 asersi saat cabang render lama dipasang. Keduanya dijalankan apa adanya, lalu berkas dipulihkan dan sha diverifikasi sama.
+Verifikasi: typecheck 0, eslint bersih untuk lima berkas yang diubah, build sukses, Vitest 32 berkas 272 tes lulus, MasalahSolusiAdminTest 13 lulus 167 asersi. Live di browser dalam aplikasi: panel barang pecah kini memuat baris retur tepat di atas daftar opsi, judul contoh kosong hilang, dan nomor 0857251168117 menjadi tombol CTA menuju wa.me/6285725116817 sementara tautan konsultasi toko tetap menuju nomornya sendiri; halaman admin tidak lagi menampilkan kontrol Terbitkan halaman, form meta berisi tiga field seragam, dan tombol Simpan meta rata kanan.
+Catatan untuk agent berikutnya: item barang pecah (id 10) masih berisi naskah uji seadanya dan kini tampil utuh di halaman publik termasuk tombol WhatsApp ke nomor perangkat uji owner; menunggu keputusan owner apakah disunting menjadi naskah sungguhan atau dihapus.
+Agent: gemini-3.8-flash-high
+
+## 2026-10-05 10:34 UTC | zcode-workflow | Trivial | (commit ini) | selesai
+Lingkup: `scripts/agent-state.sh`. Perbaiki urutan entri di briefing.
+Sebelumnya memakai `tail` atas urutan baris, dan karena agent menulis bersamaan,
+urutan baris tidak kronologis (terbukti: 03, 05, 03, 05 berselang di ekor).
+Kini memakai `sort -r` atas heading bertanggal ISO, jadi urutannya benar dan
+terbaru di atas. Ditambah pencetakan jumlah entri dan ukuran berkas, plus
+peringatan bila ledger melewati 300000 byte.
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: jangan mengandalkan urutan baris AGENT-LOG.md untuk
+menentukan yang terbaru, selalu urutkan menurut tanggal di heading.
+Bukti: `bash scripts/agent-state.sh 4` kini menampilkan 10-05, 10-05, 10-03, 10-03.

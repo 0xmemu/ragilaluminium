@@ -45,10 +45,18 @@ echo "--- 8 COMMIT TERAKHIR ---"
 git log --format="  %ad %h %an %s" --date=short -8
 
 echo
-echo "--- $N ENTRI TERAKHIR docs/AGENT-LOG.md ---"
+echo "--- $N ENTRI TERBARU docs/AGENT-LOG.md (urut waktu, bukan urutan baris) ---"
 if [ -f docs/AGENT-LOG.md ]; then
-  grep "^## 2026" docs/AGENT-LOG.md | tail -"$N" | sed "s/^/  /"
-  echo "  (isi lengkap: docs/AGENT-LOG.md)"
+  # Agent menulis bersamaan, jadi urutan baris tidak selalu kronologis.
+  # sort -r atas heading yang berawalan tanggal ISO memberi urutan waktu benar.
+  grep "^## 2026" docs/AGENT-LOG.md | sort -r | head -"$N" | sed "s/^/  /"
+  NENTRI=$(grep -c "^## 2026" docs/AGENT-LOG.md)
+  BESAR=$(wc -c < docs/AGENT-LOG.md)
+  echo "  ($NENTRI entri, $BESAR byte; isi lengkap: docs/AGENT-LOG.md)"
+  if [ "$BESAR" -gt 300000 ]; then
+    echo "  PERHATIAN: ledger sudah besar. Kalau terus tumbuh, pertimbangkan"
+    echo "  mengarsipkan entri lama ke docs/AGENT-LOG-ARSIP.md dan sisakan yang terkini."
+  fi
 else
   echo "  BELUM ADA docs/AGENT-LOG.md"
 fi
