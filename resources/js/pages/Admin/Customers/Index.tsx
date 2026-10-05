@@ -240,11 +240,6 @@ export default function CustomersIndex({
             periode itu", sejalan dengan halaman Pesanan dan Pembayaran; basis
             tanggalnya created_at pesanan. */}
         <div className="flex flex-wrap items-center gap-2">
-          <HintTip
-            label={<span className="text-xs font-medium text-muted-foreground">Periode</span>}
-            hint="Menyaring daftar ke pelanggan yang berbelanja pada periode itu, dan angka Pesanan serta Total Belanja per pelanggan dihitung dalam periode yang sama. Status (Aktif/Baru/Tidak aktif) tetap dihitung dari seluruh riwayat, bukan dari periode ini."
-            side="bottom"
-          />
           <Select
             value={datePreset || "all"}
             onChange={(event) => pilihPeriode(event.target.value === "all" ? "" : event.target.value)}
