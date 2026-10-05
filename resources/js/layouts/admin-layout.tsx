@@ -308,7 +308,7 @@ function AdminPageFrame({
               {title && backUrl ? (
                 <Link
                   href={backUrl}
-                  className="mb-1.5 inline-flex items-center gap-1.5 rounded-md py-1 text-sm font-semibold leading-none text-primary transition duration-150 ease-standard hover:underline focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-1 focus:ring-offset-background"
+                  className="mb-1.5 inline-flex items-center gap-1.5 rounded-md py-1 text-sm font-semibold leading-none text-primary transition duration-150 ease-standard hover:underline focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-1 focus:ring-offset-background active:scale-[0.97] motion-reduce:active:scale-100"
                 >
                   <Icon name="arrow-left" weight="bold" className="size-5 shrink-0" aria-hidden="true" />
                   <span>Kembali</span>

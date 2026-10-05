@@ -56,4 +56,4 @@ export function RowActionsMenu({
 
 /** Text/link trigger styled like a compact row action (for ConfirmAction). */
 export const rowActionTextClass =
-  "inline-flex h-7 items-center justify-center px-2 text-xs font-medium transition hover:underline disabled:pointer-events-none disabled:opacity-50"
+  "inline-flex h-7 items-center justify-center px-2 text-xs font-medium transition hover:underline active:scale-[0.97] motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50"
