@@ -3330,3 +3330,7 @@ Agent: zcode
 
 - Owner di Promo Toko: semua card harus clickable. Empat jenis kartu kini navigasi saat diklik: kampanye diskon ke detail kampanye, voucher ke Kelola Voucher, banner terbit ke Kelola Banner, bar promo ke halaman bar promo. Helper klikKartu menjaga klik pada button/a/input di dalam kartu (tautan judul, Lihat detail, tombol salin kode voucher) tetap ditangani elemennya sendiri tanpa navigasi dobel. Tambah impor React + router.
 - Verifikasi: typecheck+build lulus; live: klik angka diskon kartu kampanye pindah ke /admin/promotions/35, klik kartu banner Boven jungkit pindah ke /admin/banners; voucher dan bar promo memakai jalur kode sama.
+
+## 2026-10-05 11:13 UTC | zcode | Trivial | resources/js/pages/Admin/Announcements/Index.tsx | selesai
+
+- Owner di /admin/announcements: why no hover animate. Baris tabel daftar bar promo polos tanpa efek hover, tidak konsisten dengan daftar admin lain. Ditambah transition-colors hover:bg-muted/40 (pola sama dengan InstallationGallery Show). Verifikasi: typecheck+build lulus; live: kelas baris terbaca dengan hover, halaman memuat versi baru.
