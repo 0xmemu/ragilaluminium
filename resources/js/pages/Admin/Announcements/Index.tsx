@@ -296,7 +296,7 @@ export default function AnnouncementsIndex({
             </thead>
             <tbody>
               {announcements.map((item) => (
-                <tr key={item.id} className="border-b border-border last:border-0">
+                <tr key={item.id} className="border-b border-border transition-colors hover:bg-muted/40 last:border-0">
                   <td className="px-3 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">{item.text}</p>
