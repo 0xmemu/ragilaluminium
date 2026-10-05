@@ -1,4 +1,5 @@
-import { Head, Link } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
+import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { CopyButton } from "@/components/admin/ui/copy-button"
@@ -7,6 +8,17 @@ import { EmptyState } from "@/components/admin/ui/empty-state"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber, formatRentangTanggal, formatRentangWaktu } from "@/lib/format"
+
+/**
+ * Seluruh kartu ringkasan bisa diklik (owner 2026-09-29). Klik pada tautan,
+ * tombol, dan input di dalam kartu tetap ditangani elemennya sendiri; sisanya
+ * membuka tujuan kartu.
+ */
+function klikKartu(event: React.MouseEvent, href: string) {
+  const target = event.target as HTMLElement
+  if (target.closest("button, a, input, [data-no-select]")) return
+  router.visit(href)
+}
 import { cn } from "@/lib/utils"
 
 interface CampaignRow {
@@ -210,8 +222,9 @@ export default function PromotionOverview({
                 return (
                 <Card
                   key={campaign.id}
+                  onClick={(event) => klikKartu(event, campaign.detail_href)}
                   className={cn(
-                    "relative overflow-hidden border border-border bg-card p-4 pl-5",
+                    "relative cursor-pointer overflow-hidden border border-border bg-card p-4 pl-5 transition hover:shadow-md",
                     (campaign.live || campaign.scheduled) ? cn("ring-1", accent.ring) : "",
                   )}
                 >
@@ -268,7 +281,11 @@ export default function PromotionOverview({
             ) : (
               <ul className="space-y-2">
                 {vouchers.map((voucher) => (
-                  <li key={voucher.id} className="rounded-lg border border-border bg-card p-3 shadow-soft">
+                  <li
+                    key={voucher.id}
+                    onClick={(event) => klikKartu(event, vouchersUrl)}
+                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium text-foreground">{voucher.name}</p>
                       <span className="shrink-0 font-semibold tabular-nums text-primary">{voucher.discount_label}</span>
@@ -295,7 +312,11 @@ export default function PromotionOverview({
             ) : (
               <ul className="space-y-2">
                 {banners.map((banner) => (
-                  <li key={banner.id} className="rounded-lg border border-border bg-card p-3 shadow-soft">
+                  <li
+                    key={banner.id}
+                    onClick={(event) => klikKartu(event, bannersUrl)}
+                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                  >
                     <p className="truncate text-sm font-medium text-foreground">{banner.title}</p>
                     {banner.link_url ? (
                       <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{banner.link_url}</p>
@@ -318,7 +339,11 @@ export default function PromotionOverview({
             ) : (
               <ul className="space-y-2">
                 {announcements.map((item) => (
-                  <li key={item.id} className="rounded-lg border border-border bg-card p-3 shadow-soft">
+                  <li
+                    key={item.id}
+                    onClick={(event) => klikKartu(event, announcementsUrl)}
+                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                  >
                     <p className="line-clamp-2 text-sm font-medium text-foreground">{item.text}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {formatRentangTanggal(item.starts_at, item.ends_at)}
