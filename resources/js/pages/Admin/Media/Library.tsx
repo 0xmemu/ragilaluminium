@@ -1685,7 +1685,6 @@ export default function MediaLibrary({
         <Dialog open onOpenChange={(next) => { if (!next) setInfoAsset(null) }}>
           <DialogContent className="max-w-md bg-card text-card-foreground">
             <DialogTitle>Info media</DialogTitle>
-            <DialogDescription>Ringkasan singkat aset ini. Semua aksi ada di kartu dan pratinjaunya.</DialogDescription>
             <dl className="space-y-2 text-xs">
               <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                 <dt className="text-muted-foreground">Nama</dt>
