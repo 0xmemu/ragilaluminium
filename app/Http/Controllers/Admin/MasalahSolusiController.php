@@ -37,9 +37,7 @@ class MasalahSolusiController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'heading' => ['required', 'string', 'max:120'],
             'subtitle' => ['nullable', 'string', 'max:320'],
-            'published' => ['boolean'],
         ]);
-        $validated['published'] = $validated['published'] ?? false;
 
         ProblemsSolutionsSettings::updatePageMeta($validated, $request->user()?->id);
 

@@ -10,7 +10,7 @@ import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { CheckboxField, Field } from "@/components/admin/ui/field"
+import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
@@ -65,7 +65,6 @@ export default function MasalahSolusiIndex({
     title: pageMeta.title,
     heading: pageMeta.heading,
     subtitle: pageMeta.subtitle,
-    published: pageMeta.published,
   })
   const reorderForm = useForm({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
@@ -187,7 +186,7 @@ export default function MasalahSolusiIndex({
 
         <form
           id="ms-meta-form"
-          className={showMeta ? "mt-4 grid gap-4 sm:grid-cols-2" : "hidden"}
+          className={showMeta ? "mt-4 grid gap-4" : "hidden"}
           onSubmit={(event) => {
             event.preventDefault()
             metaForm.put(metaUrl)
@@ -196,16 +195,10 @@ export default function MasalahSolusiIndex({
           <Field id="ms-title" label="Judul CMS">
             <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
           </Field>
-          <CheckboxField
-            id="ms-published"
-            checked={metaForm.data.published}
-            onChange={(checked) => metaForm.setData("published", checked)}
-            label="Terbitkan halaman"
-          />
-          <Field id="ms-heading" label="Judul hero" className="sm:col-span-2">
+          <Field id="ms-heading" label="Judul hero">
             <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
           </Field>
-          <Field id="ms-subtitle" label="Subjudul" className="sm:col-span-2">
+          <Field id="ms-subtitle" label="Subjudul">
             <Textarea
               rows={2}
               value={metaForm.data.subtitle}
@@ -214,7 +207,7 @@ export default function MasalahSolusiIndex({
           </Field>
           {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
               bukan daftar item di bawahnya. Ikut tersembunyi bersama formnya. */}
-          <div className="flex justify-end sm:col-span-2">
+          <div className="flex justify-end">
             <Button type="submit" disabled={metaForm.processing}>
               {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
             </Button>

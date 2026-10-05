@@ -4,9 +4,11 @@ import * as React from "react"
 import { Icon } from "@/components/shared/icon"
 import { HelpPageFrame } from "@/components/public/help-page-frame"
 import { ClosingCTASection } from "@/components/public/closing-cta"
+import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import PublicLayout from "@/layouts/public-layout"
+import { hasExampleContent, splitOptionDescription } from "@/lib/masalah-solusi-content"
 import { mediaLayout, mediaLayoutClass, type MasalahSolusiMediaLayout } from "@/lib/masalah-solusi-media"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -176,7 +178,13 @@ function MediaVideo({ media }: { media: RichSolutionMedia }) {
   )
 }
 
-function RichSolutionPanel({
+/**
+ * Panel isi satu item di halaman publik.
+ *
+ * Diekspor supaya test DOM bisa merender panel ini langsung dari payload tanpa
+ * menjalankan halaman penuh beserta layout publiknya.
+ */
+export function RichSolutionPanel({
   content,
   whatsappUrl,
 }: {
@@ -185,40 +193,47 @@ function RichSolutionPanel({
 }) {
   const media = content.media ?? []
   const options = content.options ?? []
+  const body = (content.body ?? "").trim()
 
   return (
     <div className="grid min-w-0 gap-6">
-      <div>
-        <p className="text-sm font-bold text-foreground">
-          {content.examples_label ?? "Contoh kondisi kerusakan"}
-        </p>
+      {/* Judul bagian contoh hanya tampil bila memang ada isinya. Judul ini
+          punya nilai bawaan di form admin, jadi tanpa penjaga ini item yang
+          belum punya media maupun teks pengganti menampilkan judul menggantung
+          tanpa apa pun di bawahnya. */}
+      {hasExampleContent(content) ? (
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {content.examples_label ?? "Contoh kondisi kerusakan"}
+          </p>
 
-        {media.length ? (
-          /* Satu daftar berurutan mengikuti pilihan admin (kontrak owner
-             2026-09-30): media tidak lagi dipisah foto dan video, jadi urutan
-             di sini sama dengan urutan di form. Tata letak gambar mengikuti
-             bentuk aslinya (kontrak 2026-09-20): banner dan landscape berdiri
-             sendiri selebar penuh, persegi atau tegak dipasangkan berjejer.
-             Video selalu selebar penuh karena butuh ruang putar. */
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
-            {media.map((item, index) => {
-              const kunci = `${item.kind ?? "image"}-${item.src}-${index}`
+          {media.length ? (
+            /* Satu daftar berurutan mengikuti pilihan admin (kontrak owner
+               2026-09-30): media tidak lagi dipisah foto dan video, jadi urutan
+               di sini sama dengan urutan di form. Tata letak gambar mengikuti
+               bentuk aslinya (kontrak 2026-09-20): banner dan landscape berdiri
+               sendiri selebar penuh, persegi atau tegak dipasangkan berjejer.
+               Video selalu selebar penuh karena butuh ruang putar. */
+            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
+              {media.map((item, index) => {
+                const kunci = `${item.kind ?? "image"}-${item.src}-${index}`
 
-              if (item.kind === "video") {
-                return (
-                  <div key={kunci} className="col-span-2 min-w-0">
-                    <MediaVideo media={item} />
-                  </div>
-                )
-              }
+                if (item.kind === "video") {
+                  return (
+                    <div key={kunci} className="col-span-2 min-w-0">
+                      <MediaVideo media={item} />
+                    </div>
+                  )
+                }
 
-              return <MediaFigure key={kunci} photo={item} />
-            })}
-          </div>
-        ) : content.examples_hint ? (
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.examples_hint}</p>
-        ) : null}
-      </div>
+                return <MediaFigure key={kunci} photo={item} />
+              })}
+            </div>
+          ) : content.examples_hint ? (
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.examples_hint}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-primary/15 bg-accent/35 p-4 sm:p-5">
         <div className="flex items-start gap-3">
@@ -235,10 +250,19 @@ function RichSolutionPanel({
           </div>
         </div>
 
+        {/* Kontrak owner 2026-10-01: teks solusi SELALU tampil, juga saat item
+            memakai daftar opsi. Sebelumnya daftar opsi menutup teks ini sehingga
+            naskah yang sudah ditulis admin tidak pernah terbaca pelanggan
+            padahal tersimpan di database dan tampil di kolom Solusi di daftar
+            admin. */}
+        {body ? (
+          <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{body}</p>
+        ) : null}
+
         {options.length ? (
           <ol className="mt-4 grid gap-4">
             {options.map((option, index) => (
-              <li key={option.title} className="flex gap-3">
+              <li key={`${index}-${option.title}`} className="flex gap-3">
                 <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon
                     name={option.icon ?? "check-circle"}
@@ -251,13 +275,26 @@ function RichSolutionPanel({
                   <p className="text-sm font-bold text-primary">
                     {index + 1}. {option.title}
                   </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{option.description}</p>
+                  {/* Kontrak owner 2026-10-01: nomor WhatsApp yang ditulis di
+                      keterangan opsi menjadi tombol CTA, sisanya tetap teks. */}
+                  {splitOptionDescription(option.description).map((segmen, segmenIndex) =>
+                    segmen.kind === "phone" ? (
+                      <Button key={`wa-${segmenIndex}`} asChild variant="primary" size="sm" className="mt-2">
+                        <a href={segmen.href} target="_blank" rel="noreferrer">
+                          <Icon name="whatsapp" className="size-4 shrink-0" aria-hidden="true" />
+                          {segmen.display}
+                        </a>
+                      </Button>
+                    ) : (
+                      <p key={`teks-${segmenIndex}`} className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {segmen.text}
+                      </p>
+                    ),
+                  )}
                 </div>
               </li>
             ))}
           </ol>
-        ) : content.body ? (
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{content.body}</p>
         ) : null}
 
         {content.whatsapp_note ? (

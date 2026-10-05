@@ -166,7 +166,8 @@ Biaya COD tetap item flat di grup yang sama.
   - Accordion FAQ (`cms_faq_items`): tab Aktif / Diarsipkan, list first, tambah on-demand, meta halaman tersembunyi; filter kategori, reorder, archive.
   - Route: `admin.faq.*` → `Admin/Faq/Index`. Publik: `/faq` → `Public/Faq` (hanya `status=active`).
 - **Masalah & Solusi** (Tipe: `Content/CMS`)
-  - Pasangan kendala/rekomendasi (`cms_problems_solutions`) + meta `cms_pages.masalah-solusi`.
+  - Pasangan kendala/rekomendasi (`cms_problems_solutions`) + meta `cms_pages.masalah-solusi` (judul CMS, judul hero, subjudul). Kontrol "Terbitkan halaman" tidak ada: halaman ini selalu tayang.
+  - Form item: deskripsi masalah, teks solusi (selalu tampil di publik, termasuk saat daftar opsi dipakai), judul/teks bagian contoh, sampai dua media berurutan, judul & lead solusi, daftar opsi bernomor (nomor WhatsApp di keterangannya menjadi tombol CTA), catatan WhatsApp.
   - Route: `admin.masalah-solusi.*` → `Admin/MasalahSolusi/{Index,Form}`. Publik: `/masalah-dan-solusi` → `Public/MasalahSolusi`.
 - **Informasi Toko / Tentang Kami** (Tipe: `Content/CMS` & Pusat Profil Terpadu)
   - Pusat pengelolaan profil perusahaan terpadu: informasi utama (hero/headline/deskripsi), foto utama & galeri workshop (1-4 foto), statistik keunggulan, proses produksi, cara kerja pemesanan, dan jaminan pelanggan (`cms_pages.tentang-kami` via `AboutPageSettings`).

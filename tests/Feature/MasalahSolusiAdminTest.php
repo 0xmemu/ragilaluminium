@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\CmsProblemSolution;
 use App\Models\MediaAsset;
 use App\Models\User;
+use App\Support\ProblemsSolutionsSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -65,6 +67,69 @@ class MasalahSolusiAdminTest extends TestCase
         $this->assertDatabaseMissing('cms_problems_solutions', ['id' => $item->id]);
     }
 
+    /**
+     * Kontrak owner 2026-10-01: teks solusi tidak boleh hilang saat item juga
+     * memakai daftar opsi. Dulu keduanya saling meniadakan di halaman publik,
+     * sehingga naskah yang tersimpan dan tampil di daftar admin tidak pernah
+     * terbaca pelanggan. Penjaga ini memastikan teks itu benar-benar ikut
+     * terkirim ke halaman publik bersama daftar opsinya.
+     */
+    public function test_teks_solusi_ikut_terkirim_ke_halaman_publik_saat_pakai_daftar_opsi(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.masalah-solusi.store'), [
+                'problem' => 'Barang pecah saat pengiriman',
+                'solution_body' => 'Ajukan retur lewat WhatsApp kami.',
+                'solution_lead' => 'Chat ke nomor tim kami',
+                'use_options' => true,
+                'solution_options' => json_encode([
+                    ['title' => 'Hubungi Admin', 'description' => '085725116817', 'icon' => 'check-circle'],
+                ]),
+                'whatsapp_note' => 'WhatsApp',
+            ])
+            ->assertRedirect(route('admin.masalah-solusi.index'));
+
+        $this->get(route('masalah-dan-solusi'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/MasalahSolusi')
+                ->has('guide.items', 1)
+                ->where('guide.items.0.solution.content.body', 'Ajukan retur lewat WhatsApp kami.')
+                ->where('guide.items.0.solution.content.lead', 'Chat ke nomor tim kami')
+                ->has('guide.items.0.solution.content.options', 1)
+                ->where('guide.items.0.solution.content.options.0.title', 'Hubungi Admin')
+                ->where('guide.items.0.solution.content.options.0.description', '085725116817'));
+    }
+
+    /**
+     * Kontrol Terbitkan halaman sengaja dihapus dari form meta (keputusan owner
+     * 2026-10-01): halaman ini selalu tayang. Karena itu menyimpan meta tidak
+     * boleh diam-diam menonaktifkan halaman, yang dulu terjadi karena controller
+     * mengirim published=false saat form tidak menyertakannya.
+     */
+    public function test_menyimpan_meta_halaman_tidak_menonaktifkan_halaman(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $pageId = ProblemsSolutionsSettings::pageId();
+
+        $this->assertTrue((bool) DB::table('cms_pages')->where('id', $pageId)->value('published'));
+
+        $this->actingAs($admin)
+            ->put(route('admin.masalah-solusi.meta.update'), [
+                'title' => 'Masalah & Solusi',
+                'heading' => 'Masalah & Solusi',
+                'subtitle' => 'Temukan solusi untuk masalah yang mungkin Anda hadapi.',
+            ])
+            ->assertRedirect(route('admin.masalah-solusi.index'));
+
+        $this->assertTrue((bool) DB::table('cms_pages')->where('id', $pageId)->value('published'));
+
+        $this->get(route('masalah-dan-solusi'))->assertOk()->assertInertia(
+            fn (Assert $page) => $page->component('Public/MasalahSolusi')
+        );
+    }
     /** Buat aset Media Library yang siap pakai. */
     private function mediaAsset(string $kind = 'image', ?string $key = null): MediaAsset
     {
