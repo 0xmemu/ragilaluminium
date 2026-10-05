@@ -3320,3 +3320,8 @@ CATATAN ATRIBUSI (bahaya berulang, lihat juga entri 29 Sep 2026): perubahan saya
 
 Pelajaran: meng-stage perubahan lebih awal TIDAK melindunginya, karena indeks dipakai bersama; di repo ini commit orang lain bisa mengambil isi indeks yang sedang saya siapkan. Sesudah men-stage, sebaiknya langsung commit pada kesempatan yang sama, jangan menunda melewati langkah verifikasi yang panjang.
 Agent: zcode
+
+## 2026-10-05 10:53 UTC | zcode | Trivial | resources/js/pages/Admin/Customers/Index.tsx | selesai
+
+- Owner di Kelola Pelanggan: hapus text (menunjuk label Periode di toolbar). HintTip Periode (label + hover penjelasan) dibuang seluruhnya: label kosong akan menyisakan pemicu mati, dropdown Semua waktu sudah jelas, dan penjelasan status tetap ada di header tabel. Dropdown filter periode tidak disentuh.
+- Verifikasi: typecheck+build lulus; live: teks Periode dan penjelasannya hilang, dropdown Filter periode pelanggan tetap.
