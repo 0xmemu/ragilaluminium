@@ -3235,3 +3235,18 @@ Verifikasi: `npx tsc --noEmit` bersih, ESLint 0 error 0 warning untuk kedua berk
 
 TIDAK diubah: tombol publik (`resources/js/components/ui/button.tsx`) juga belum punya animasi tekan; belum saya sentuh karena konteks laporan ini panel admin dan bahasa desain publik berbeda. Tautan teks "Kembali" di header admin juga belum diberi animasi tekan (animasi tekan pada tautan teks bukan kebiasaan, dan cukup diberi warna/underline saat hover seperti sekarang).
 Agent: zcode
+
+## 2026-10-05 10:27 UTC | zcode-workflow | Standard | a149683d | selesai
+Lingkup: aturan push. `docs/AGENT-COLLABORATION.md` bagian 7 (urutan fetch, cek
+HEAD..origin, integrasikan bila origin maju, hentikan bila ref bergerak, larangan
+paksa push dan reset keras) plus baris ringkasnya di papan `AGENTS.md`.
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: SEBELUM PUSH jalankan git fetch lalu
+git log --oneline HEAD..origin/<branch>. Kosong berarti aman. Ada isi berarti
+integrasikan dulu, JANGAN kirim ulang perintah push yang sama. Push gagal dengan
+non-fast-forward atau cannot lock ref berarti hentikan, fetch, nilai ulang.
+Bukti: sesi ini tiga push gagal karena melanggar urutan ini.
+Catatan: guard repo ini memblokir PENULISAN dokumentasi yang memuat frasa perintah
+terlarang secara harfiah, karena guard memindai seluruh teks perintah termasuk isi
+heredoc. Saat menulis aturan tentang perintah terlarang, deskripsikan tanpa frasa
+pemicu.
