@@ -3256,7 +3256,7 @@ Akar masalah: tiga cacat yang semuanya sudah tayang di produksi. (1) Di komponen
 Perubahan: (a) RichSolutionPanel dirender ulang; teks solusi selalu tampil di atas daftar opsi, judul bagian contoh hanya tampil bila ada media atau teks pengganti, dan keterangan opsi dipecah menjadi potongan teks dan tombol CTA WhatsApp. (b) Pustaka baru resources/js/lib/masalah-solusi-content.ts memuat aturan yang bisa diuji: normalizeWhatsappNumber (hanya seluler Indonesia 08xx/628xx; nomor rumah atau kantor tidak ditautkan), splitOptionDescription (potongan teks dan nomor), dan hasExampleContent. (c) Panel diekspor supaya bisa dirender test DOM tanpa halaman penuh. (d) Kontrol Terbitkan halaman dihapus dari form meta beserta sambungannya: field published tidak lagi dikirim payload Inertia, validasi published dibuang dari updateMeta, dan ProblemsSolutionsSettings::updatePageMeta tidak lagi menimpa kolom published dari payload yang tidak menyertakannya. (e) Form meta kembali satu kolom supaya tiga kontrolnya seragam lebar.
 Dampak spec: bentuk payload Inertia halaman admin berubah karena field published dihapus (pageMeta tidak lagi dikirim controller; kunci published di ProblemsSolutionsSettings::pageMeta dibiarkan untuk kompatibilitas). Tidak ada route, URL, kolom database, enum, atau status baru; skema database tidak berubah. docs/admin-menu-functions.md dan docs/sitemap/admin-sitemap.md diperbarui.
 Penjaga dan pembuktiannya: dua penjaga baru ditambahkan dan dibuktikan menangkap regresi, bukan hanya lulus. Penjaga PHP (menyimpan meta tidak menonaktifkan halaman) gagal 1 asersi saat perilaku lama controller dipasang sesaat; penjaga DOM (teks solusi tetap tampil walau item pakai daftar opsi) gagal 2 asersi saat cabang render lama dipasang. Keduanya dijalankan apa adanya, lalu berkas dipulihkan dan sha diverifikasi sama.
-Verifikasi: typecheck 0, eslint bersih untuk lima berkas yang diubah, build sukses, Vitest 32 berkas 272 tes lulus, MasalahSolusiAdminTest 13 lulus 167 asersi. Live di browser dalam aplikasi: panel barang pecah kini memuat baris retur tepat di atas daftar opsi, judul contoh kosong hilang, dan nomor 0857251168117 menjadi tombol CTA menuju wa.me/6285725116817 sementara tautan konsultasi toko tetap menuju nomornya sendiri; halaman admin tidak lagi menampilkan kontrol Terbitkan halaman, form meta berisi tiga field seragam, dan tombol Simpan meta rata kanan.
+Verifikasi: typecheck 0, eslint bersih untuk lima berkas yang diubah, build sukses, Vitest 32 berkas 272 tes lulus, MasalahSolusiAdminTest 13 lulus 167 asersi. Live di browser dalam aplikasi: panel barang pecah kini memuat baris retur tepat di atas daftar opsi, judul contoh kosong hilang, dan nomor 085725116817 menjadi tombol CTA menuju wa.me/6285725116817 sementara tautan konsultasi toko tetap menuju nomornya sendiri; halaman admin tidak lagi menampilkan kontrol Terbitkan halaman, form meta berisi tiga field seragam, dan tombol Simpan meta rata kanan.
 Catatan untuk agent berikutnya: item barang pecah (id 10) masih berisi naskah uji seadanya dan kini tampil utuh di halaman publik termasuk tombol WhatsApp ke nomor perangkat uji owner; menunggu keputusan owner apakah disunting menjadi naskah sungguhan atau dihapus.
 Agent: gemini-3.8-flash-high
 
@@ -3271,3 +3271,23 @@ Dampak spec: tidak berubah.
 Untuk agent berikutnya: jangan mengandalkan urutan baris AGENT-LOG.md untuk
 menentukan yang terbaru, selalu urutkan menurut tanggal di heading.
 Bukti: `bash scripts/agent-state.sh 4` kini menampilkan 10-05, 10-05, 10-03, 10-03.
+
+## 2026-10-05 10:36 UTC | zcode-workflow | Standard | (commit ini) | selesai
+Lingkup: `AGENTS.md` dan `docs/archive/status-agustus-2026.md`. Bagian
+"Current status" (96 baris narasi harian 2026-08-11 sampai 2026-08-13) dipindah
+apa adanya ke arsip, diganti 23 baris yang menunjuk sumber kebenaran
+(docs/AGENT-LOG.md, git log, docs/TEKNIS/) dan perintah briefing.
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: AGENTS.md dimuat otomatis tiap sesi, jadi 73 baris basi
+yang terbuang itu hemat konteks setiap sesi. Peringatan lama "folder lokal
+D:/website_5.0 snapshot basi" SUDAH TIDAK BERLAKU, karena mirror lokal kini
+diselaraskan lewat sync.sh dan dipakai untuk inspeksi baca.
+TEMUAN PENTING: working tree AGENTS.md menyimpan TIGA kontrak hidup yang BELUM
+pernah di-commit meski sudah 374 commit sejak dipasang: nomor test WhatsApp
+(2026-09-27), gerbang visual lintas halaman, dan aturan menjelaskan istilah
+sistem (2026-09-21). Ketiganya hanya hidup di working tree, jadi satu
+`git checkout` pada berkas itu akan menghapusnya. Ketiganya saya PERTAHANKAN apa
+adanya dan tidak saya commit karena bukan pekerjaan saya; pemiliknya perlu
+commit sendiri atau memberi izin.
+Bukti: staged AGENTS.md 96 baris dihapus dan 23 ditambah, net -73; worktree
+masih memuat ketiga kontrak itu (grep masing-masing = 1); arsip 106 baris.
