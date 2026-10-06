@@ -39,8 +39,8 @@ class HomepagePromotions
     }
 
     /**
-     * Landing slide always first, then manual published banners, then automatic
-     * promo product slides when enabled. Promo fallbacks only when both empty.
+     * Landing slide always first, then manual published banners.
+     * Promo fallbacks only when both empty.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -83,14 +83,6 @@ class HomepagePromotions
         }
 
         return array_slice($slides, 0, 10);
-    }
-
-    /**
-     * Count of currently eligible automatic candidates (for admin UI).
-     */
-    public static function automaticCandidateCount(): int
-    {
-        return self::eligibleProducts()->count();
     }
 
     /**
@@ -147,92 +139,6 @@ class HomepagePromotions
                 'disclaimer' => '*Untuk berbagai produk pilihan',
             ];
         })->values()->all();
-    }
-
-    /**
-     * @param  list<string>  $excludeSkus
-     * @return array<int, array<string, mixed>>
-     */
-    private static function automaticSlides(array $excludeSkus, int $limit): array
-    {
-        $exclude = array_fill_keys($excludeSkus, true);
-
-        return self::eligibleProducts()
-            ->filter(fn (Product $product) => ! isset($exclude[$product->parent_sku]))
-            ->take($limit)
-            ->values()
-            ->map(function (Product $product, int $index): array {
-                $promo = ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false);
-                $categoryLabel = self::categoryLabel($product->product_category);
-                $discount = $promo['discount_percent'];
-
-                return [
-                    'id' => -1000 - $index,
-                    'source' => 'automatic',
-                    'layout' => 'promo_card',
-                    'eyebrow' => $discount ? 'Promo Diskon' : 'Promo',
-                    'headline' => self::modelHeadline($product),
-                    'subheadline' => 'Harga miring, kualitas terjamin',
-                    'accent' => $discount ? '-'.$discount.'%' : null,
-                    'image' => self::productMediaUrl($product),
-                    'image_alt' => self::modelHeadline($product, multiline: false),
-                    'href' => self::modelListingHref($product),
-                    'disclaimer' => '*Promo model '.$categoryLabel.' pilihan',
-                    'sticker' => true,
-                ];
-            })
-            ->all();
-    }
-
-    /**
-     * @return Collection<int, Product>
-     */
-    private static function eligibleProducts(): Collection
-    {
-        return Product::visible()
-            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
-            ->withPopularityScore()
-            ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
-            ->whereHas('mainImage')
-            ->where(function ($query) {
-                $campaignIds = array_values(array_unique(array_merge(
-                    app(\App\Services\CampaignService::class)->flashProductIds(),
-                    app(\App\Services\CampaignService::class)->promoProductIds(),
-                )));
-                if ($campaignIds !== []) {
-                    $query->whereIn('id', $campaignIds);
-                }
-                $query->orWhereHas('attributes', function ($attr) {
-                    $attr->whereIn('attribute_name', [
-                        'promo_compare_price',
-                        'compare_price',
-                        'harga_asli',
-                        'harga_sebelum_diskon',
-                    ]);
-                })->orWhereHas('attributes', function ($attr) {
-                    $attr->whereIn('attribute_name', ['promo_flash_sale', 'flash_sale'])
-                        ->whereIn('attribute_value', ['1', 'true', 'TRUE', 'True', 'yes', 'YES', 'on', 'ON']);
-                });
-            })
-            ->orderByDesc('homepage_popular')
-            ->orderBy('homepage_popular_sort')
-            ->orderByRaw(Product::popularityScoreSql().' DESC')
-            ->orderByDesc('id')
-            ->limit(24)
-            ->get()
-            ->filter(fn (Product $product) => ProductPromotionMetadata::isEligibleForAutoBanner($product))
-            ->sortBy(function (Product $product) {
-                // Prefer newest BOVEN for banner imagery, then curated/popular, then discount.
-                $bouvenRank = self::isBouven($product->product_category) ? '0' : '1';
-                $popularRank = $product->homepage_popular ? '0' : '1';
-                $sort = str_pad((string) (int) ($product->homepage_popular_sort ?? 9999), 6, '0', STR_PAD_LEFT);
-                $discount = str_pad((string) (1000 - (int) (ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false)['discount_percent'] ?? 0)), 4, '0', STR_PAD_LEFT);
-                $sold = str_pad((string) (1000000 - ((int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0))), 7, '0', STR_PAD_LEFT);
-                $id = str_pad((string) (1000000000 - $product->id), 10, '0', STR_PAD_LEFT);
-
-                return $bouvenRank.$popularRank.$sort.$discount.$sold.$id;
-            })
-            ->values();
     }
 
     /**

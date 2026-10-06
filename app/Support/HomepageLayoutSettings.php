@@ -10,7 +10,6 @@ use App\Models\CmsPage;
  * content.layout.sections[] = { key, enabled, sort_order }
  * content.service_highlights = { title, subtitle, items[] }
  * content.how_to_order = { title, subtitle, steps[] }
- * content.auto_promotions preserved via HomepagePromotionSettings.
  */
 class HomepageLayoutSettings
 {
@@ -228,7 +227,7 @@ class HomepageLayoutSettings
             return $content;
         }
 
-        foreach (['layout', 'service_highlights', 'how_to_order', 'auto_promotions'] as $key) {
+        foreach (['layout', 'service_highlights', 'how_to_order'] as $key) {
             $existing = $page?->content[$key] ?? null;
             if ($existing !== null && ! array_key_exists($key, $content)) {
                 $content[$key] = $existing;
@@ -372,7 +371,6 @@ class HomepageLayoutSettings
             'slug' => self::PAGE_SLUG,
             'title' => 'Beranda',
             'content' => [
-                'auto_promotions' => HomepagePromotionSettings::DEFAULTS,
                 'layout' => [
                     'sections' => array_map(fn (array $s) => [
                         'key' => $s['key'],

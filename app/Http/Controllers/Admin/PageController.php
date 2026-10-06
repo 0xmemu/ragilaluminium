@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CmsPage;
 use App\Support\HomepageLayoutSettings;
-use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
 use App\Support\MediaNamer;
 use Illuminate\Http\RedirectResponse;
@@ -87,12 +86,9 @@ class PageController extends Controller
             'published' => ['boolean'],
         ]);
         $validated['content'] = HomepageLayoutSettings::mergePreserving(
-            HomepagePromotionSettings::mergePreservingAutoPromotions(
-                \App\Support\CaraPemesananSettings::mergePreserving(
-                    \App\Support\CmsDocumentSettings::mergePreserving(
-                        $validated['content'] ?? null,
-                        $page,
-                    ),
+            \App\Support\CaraPemesananSettings::mergePreserving(
+                \App\Support\CmsDocumentSettings::mergePreserving(
+                    $validated['content'] ?? null,
                     $page,
                 ),
                 $page,
@@ -111,13 +107,19 @@ class PageController extends Controller
         $request->validate([
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
             'favicon' => 'nullable|image|mimes:ico,png|max:2048',
+            // Owner 2026-09-16: Media Library satu-satunya sumber aset.
+            'logo_asset_id' => 'nullable|integer|exists:media_assets,id',
+            'favicon_asset_id' => 'nullable|integer|exists:media_assets,id',
         ]);
 
-        if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $file->move(public_path('images'), 'site-logo.png');
-            $version = MediaNamer::local('logo', $file->getClientOriginalExtension() ?: 'png', public_path('images'));
-            copy(public_path('images/site-logo.png'), public_path('images/'.$version));
+        // Owner 2026-09-16: logo dari Media Library -> disalin ke file sistem.
+        if ($request->filled('logo_asset_id')) {
+            $asset = \App\Models\MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('logo_asset_id'));
+            $sourcePath = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->path($asset->object_key);
+            copy($sourcePath, public_path('images/site-logo.png'));
 
             // Logo yang dipakai situs ada di images/brand/ (header desktop,
             // mobile, dan footer). Satu unggahan dipakai untuk kedua varian
@@ -133,12 +135,14 @@ class PageController extends Controller
             }
         }
 
-        if ($request->hasFile('favicon')) {
-            $file = $request->file('favicon');
-            $ext = $file->getClientOriginalExtension() ?: 'ico';
-            $file->move(public_path('images'), 'site-favicon.ico');
-            $version = MediaNamer::local('favicon', $ext, public_path('images'));
-            copy(public_path('images/site-favicon.ico'), public_path('images/'.$version));
+        // Owner 2026-09-16: favicon dari Media Library -> disalin ke file sistem.
+        if ($request->filled('favicon_asset_id')) {
+            $asset = \App\Models\MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('favicon_asset_id'));
+            $sourcePath = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->path($asset->object_key);
+            copy($sourcePath, public_path('images/site-favicon.ico'));
 
             // Turunan PNG dipakai <head> untuk browser modern; tanpa ini PNG
             // lama tetap tampil walau favicon sudah diganti.

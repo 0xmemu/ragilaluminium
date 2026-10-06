@@ -13,7 +13,6 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\CatalogTaxonomy;
 use App\Support\FlashSalePeriodSettings;
-use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -461,23 +460,7 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.2.source', 'placeholder'));
     }
 
-    public function test_automatic_promos_can_be_disabled_from_admin_settings(): void
-    {
-        $this->makePromoProduct('WIN-OFF-1', 'Jendela Off', [
-            'promo_compare_price' => '1000000',
-        ]);
-
-        HomepagePromotionSettings::update(['enabled' => false, 'max_slides' => 3]);
-
-        $this->get('/')
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('promoSlides', 10)
-                ->where('promoSlides.0.source', 'placeholder')
-                ->where('promoSlides.0.layout', 'placeholder'));
-    }
-
-    public function test_manual_promos_are_the_only_campaign_slides_when_automatic_mode_is_off(): void
+    public function test_manual_promos_are_the_only_campaign_slides(): void
     {
         $this->makePromoProduct('BOU-MANUAL-1', 'Boven Manual', [
             'promo_compare_price' => '1000000',
@@ -491,8 +474,6 @@ class HomepagePopularTest extends \Tests\TestCase
             'published' => true,
         ]);
 
-        HomepagePromotionSettings::update(['enabled' => false, 'max_slides' => 3]);
-
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
@@ -500,36 +481,6 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('promoSlides.0.source', 'manual')
                 ->where('promoSlides.0.href', '/product/BOU-MANUAL-1')
                 ->where('promoSlides.1.source', 'placeholder'));
-    }
-
-    public function test_admin_can_update_auto_promotion_settings(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-
-        $this->actingAs($admin)
-            ->get(route('admin.banners.index'))
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/Banners/Index')
-                ->where('autoPromotions.enabled', true)
-                ->where('autoPromotions.max_slides', 3)
-                ->where('autoPromotions.candidate_count', 0)
-                ->has('autoPromotions.updateUrl'));
-
-        $this->actingAs($admin)
-            ->put(route('admin.banners.auto-promotions.update'), [
-                'enabled' => false,
-                'max_slides' => 2,
-            ])
-            ->assertRedirect(route('admin.banners.index'));
-
-        $settings = HomepagePromotionSettings::get();
-        $this->assertFalse($settings['enabled']);
-        $this->assertSame(2, $settings['max_slides']);
-
-        $page = CmsPage::query()->where('slug', 'beranda')->first();
-        $this->assertNotNull($page);
-        $this->assertFalse((bool) ($page->content['auto_promotions']['enabled'] ?? true));
     }
 
     public function test_banner_slides_are_excluded_from_announcement_ticker(): void

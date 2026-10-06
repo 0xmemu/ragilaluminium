@@ -385,7 +385,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('banners', [BannerController::class, 'index'])->name('banners.index');
     Route::get('banners/create', [BannerController::class, 'create'])->name('banners.create');
     Route::post('banners', [BannerController::class, 'store'])->name('banners.store');
-    Route::put('banners/auto-promotions', [BannerController::class, 'updateAutoPromotions'])->name('banners.auto-promotions.update');
     Route::get('banners/{banner}/edit', [BannerController::class, 'edit'])->name('banners.edit');
     Route::put('banners/{banner}', [BannerController::class, 'update'])->name('banners.update');
     Route::post('banners/{banner}/publish', [BannerController::class, 'publish'])->name('banners.publish');

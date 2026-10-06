@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
 import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
@@ -9,7 +9,6 @@ import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { CheckboxField, Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
@@ -32,13 +31,6 @@ interface BannerCard {
   publish_url: string
   unpublish_url: string
   destroy_url: string
-}
-
-interface AutoPromotionsProps {
-  enabled: boolean
-  max_slides: number
-  candidate_count: number
-  updateUrl: string
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -144,7 +136,6 @@ export default function BannersIndex({
   banners,
   pagination,
   createHref,
-  autoPromotions,
 }: {
   title: string
   /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
@@ -156,15 +147,9 @@ export default function BannersIndex({
   banners: BannerCard[]
   pagination: PaginationData
   createHref: string
-  autoPromotions: AutoPromotionsProps
 }) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
-
-  const autoForm = useForm({
-    enabled: autoPromotions.enabled,
-    max_slides: autoPromotions.max_slides,
-  })
 
   function visit(params: Record<string, string | undefined>) {
     navigateFilter(
@@ -202,57 +187,6 @@ export default function BannersIndex({
       }
     >
       <Head title={`${title} | Admin`} />
-
-      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold">Mode banner promosi</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {autoForm.data.enabled
-                ? "Mode otomatis aktif. Produk dengan harga coret atau Flash Sale dapat masuk setelah banner manual."
-                : "Mode manual aktif. Hanya banner manual yang dipublish yang tampil setelah slide pembuka brand."}
-            </p>
-          </div>
-          <StatusBadge status={autoForm.data.enabled ? "active" : "inactive"} />
-        </div>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            autoForm.put(autoPromotions.updateUrl, { preserveScroll: true })
-          }}
-          className="mt-4 grid gap-4 content-start md:grid-cols-[1fr_10rem_auto]"
-        >
-          <FormErrorSummary errors={autoForm.errors} className="md:col-span-3" />
-          <CheckboxField
-            id="auto-enabled"
-            checked={autoForm.data.enabled}
-            onChange={(checked) => autoForm.setData("enabled", checked)}
-            label="Gunakan banner otomatis dari produk"
-          />
-          <Field id="auto-max-slides" label="Maks. slide" error={autoForm.errors.max_slides}>
-            <Input
-              type="number"
-              min={1}
-              max={8}
-              value={autoForm.data.max_slides}
-              onChange={(event) => autoForm.setData("max_slides", Number(event.target.value))}
-            />
-          </Field>
-          <FieldAction>
-            <Button type="submit" disabled={autoForm.processing}>
-              {autoForm.processing ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </FieldAction>
-          <p className="text-xs text-muted-foreground md:col-span-3">
-            Kandidat produk:{" "}
-            <span className="font-semibold text-foreground">{autoPromotions.candidate_count}</span>
-          </p>
-          <p className="text-xs leading-5 text-muted-foreground md:col-span-3">
-            Rekomendasi desain banner: <span className="font-semibold text-foreground">1024 × 426 px</span>
-            {" "}(rasio sekitar 2,4:1). Tampilan publik melakukan crop responsif.
-          </p>
-        </form>
-      </section>
 
       <ListToolbar
         search={{
@@ -312,11 +246,7 @@ export default function BannersIndex({
         <EmptyState
           className="mt-6"
           title="Belum ada banner"
-          description={
-            autoForm.data.enabled
-              ? "Tambah slide promo beranda, atau matikan mode otomatis untuk menyiapkan mode manual penuh."
-              : "Mode manual aktif. Tambahkan dan publish banner agar tampil setelah slide pembuka brand."
-          }
+          description="Tambah slide promo beranda dan publish agar tampil setelah slide pembuka brand."
           action={
             <Button asChild>
               <Link href={createHref}>Tambah</Link>

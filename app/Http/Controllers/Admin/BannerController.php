@@ -10,7 +10,6 @@ use App\Models\ProductMedia;
 use App\Support\MediaNamer;
 use App\Models\MediaAsset;
 use App\Support\HomepagePromotions;
-use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
@@ -42,24 +41,16 @@ class BannerController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $settings = HomepagePromotionSettings::get();
-
         return Inertia::render('Admin/Banners/Index', [
             'backUrl' => route('admin.promotions.index'),
             'title' => 'Banner Promo',
-            'description' => 'Kelola slide promo beranda (cms_banners) dan banner otomatis dari produk diskon / Flash Sale.',
+            'description' => 'Kelola slide promo beranda (cms_banners) yang tampil setelah slide pembuka brand.',
             'viewMode' => $view,
             'searchQuery' => $q,
             'activeStatus' => in_array($status, ['active', 'inactive'], true) ? $status : 'all',
             'banners' => $banners->getCollection()->map(fn (CmsBanner $b) => $this->bannerCard($b))->values()->all(),
             'pagination' => InertiaAdmin::pagination($banners),
             'createHref' => route('admin.banners.create'),
-            'autoPromotions' => [
-                'enabled' => $settings['enabled'],
-                'max_slides' => $settings['max_slides'],
-                'candidate_count' => HomepagePromotions::automaticCandidateCount(),
-                'updateUrl' => route('admin.banners.auto-promotions.update'),
-            ],
         ]);
     }
 
@@ -97,6 +88,9 @@ class BannerController extends Controller
         ]);
 
         \App\Support\HomepagePromotions::flushCache();
+
+        // Simpan sukses = keluar dari form ke daftar banner.
+        return redirect()->route('admin.banners.index')->with('success', 'Banner promo dibuat.');
     }
 
     public function edit(CmsBanner $banner): Response
@@ -126,6 +120,9 @@ class BannerController extends Controller
         ]);
 
         \App\Support\HomepagePromotions::flushCache();
+
+        // Simpan sukses = keluar dari form ke daftar banner.
+        return redirect()->route('admin.banners.index')->with('success', 'Banner promo diperbarui.');
     }
 
     public function destroy(CmsBanner $banner): RedirectResponse
@@ -194,23 +191,6 @@ class BannerController extends Controller
         \App\Support\HomepagePromotions::flushCache();
     }
 
-    public function updateAutoPromotions(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'enabled' => ['required', 'boolean'],
-            'max_slides' => ['nullable', 'integer', 'min:1', 'max:8'],
-        ]);
-
-        HomepagePromotionSettings::update([
-            'enabled' => $validated['enabled'],
-            'max_slides' => $validated['max_slides'] ?? HomepagePromotionSettings::DEFAULTS['max_slides'],
-        ], $request->user()?->id);
-
-        \App\Support\HomepagePromotions::flushCache();
-
-        return redirect()->route('admin.banners.index')->with('success', 'Pengaturan banner otomatis disimpan.');
-    }
-
     /**
      * Validasi field non-gambar. Resolusi sumber gambar ditangani
      * resolveBannerImage() (upload langsung presigned / file legacy / link produk).
@@ -235,6 +215,8 @@ class BannerController extends Controller
             'published' => ['boolean'],
             'image' => ['nullable', 'file', 'image', 'max:10240'],
             'object_key' => ['nullable', 'string', 'max:255'],
+            // Owner 2026-09-16: Media Library satu-satunya sumber media banner.
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
         ]);
 
         return [
@@ -255,6 +237,25 @@ class BannerController extends Controller
      */
     private function resolveBannerImage(Request $request, ?CmsBanner $existing, bool $requireImage): array
     {
+        // 0) Owner 2026-09-16: Media Library satu-satunya sumber gambar banner.
+        if ($request->filled('media_asset_id')) {
+            $asset = MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('media_asset_id'));
+
+            if ($existing?->media_asset_id && $existing->media_asset_id !== $asset->id) {
+                MediaAsset::where('id', $existing->media_asset_id)
+                    ->where('status', '!=', 'archived')
+                    ->update(['status' => 'archived']);
+            }
+
+            return [
+                'image_url' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+                'media_asset_id' => $asset->id,
+            ];
+        }
+
         // 1) Upload langsung browser -> R2 (presigned PUT): object pending + job WebP async.
         if ($request->filled('object_key')) {
             $key = (string) $request->input('object_key');
@@ -315,7 +316,7 @@ class BannerController extends Controller
             ?: HomepagePromotions::productImageFromUrl($request->input('link_url') ?? $existing?->link_url);
         if (! $imageUrl && $requireImage) {
             throw ValidationException::withMessages([
-                'image' => 'Unggah gambar atau isi link produk aktif yang memiliki gambar utama.',
+                'image' => 'Pilih gambar dari Media Library atau isi link produk aktif yang memiliki gambar utama.',
             ]);
         }
         if (! $imageUrl) {

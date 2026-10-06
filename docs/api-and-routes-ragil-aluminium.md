@@ -134,7 +134,6 @@ Kontrak payload Performa Toko: report.sections berisi lima grup KPI, dan jumlah 
 - `PUT /admin/kelola/atribut/{attribute}` -> `Admin\ProductAttributeController@update`  (name: `admin.attributes.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/banners` -> `Admin\BannerController@index`  (name: `admin.banners.index`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `POST /admin/banners` -> `Admin\BannerController@store`  (name: `admin.banners.store`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
-- `PUT /admin/banners/auto-promotions` -> `Admin\BannerController@updateAutoPromotions`  (name: `admin.banners.auto-promotions.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/banners/create` -> `Admin\BannerController@create`  (name: `admin.banners.create`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `PUT /admin/banners/{banner}` -> `Admin\BannerController@update`  (name: `admin.banners.update`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
 - `GET /admin/banners/{banner}/edit` -> `Admin\BannerController@edit`  (name: `admin.banners.edit`)  [Illuminate\Auth\Middleware\Authenticate|App\Http\Middleware\EnsureUserIsAdmin]
