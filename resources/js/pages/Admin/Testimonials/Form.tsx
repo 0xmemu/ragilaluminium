@@ -81,6 +81,12 @@ export default function TestimonialForm({
   const editing = Boolean(testimonial)
   const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
   const isMarketplaceIntent = intent === "marketplace"
+
+  // Kontrak ADR-023: halaman yang membuka data yang SUDAH ada dimulai dari
+  // RINGKASAN (baca saja), bukan form langsung aktif. Inilah yang membuat klik
+  // nama pelanggan di daftar tidak lagi mendarat langsung di form edit.
+  // Alur tambah data baru tetap form langsung (pengecualian ADR-023).
+  const [mode, setMode] = React.useState<"view" | "edit">(editing ? "view" : "edit")
   const form = useForm<{
     customer_name: string
     message: string
@@ -176,18 +182,124 @@ export default function TestimonialForm({
     })
   }
 
+  // Judul menyesuaikan mode: halaman ini punya tiga keadaan (tambah, baca,
+  // ubah), supaya tidak lagi berbunyi "Edit" saat sedang dibaca.
+  const judulHalaman = !editing
+    ? `Tambah ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
+    : mode === "view"
+      ? `Detail ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
+      : `Edit ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
+
+  const labelSumber = labels[form.data.source] ?? form.data.source
+  const labelModerasi =
+    form.data.moderation_status === "pending"
+      ? "Menunggu moderasi"
+      : form.data.moderation_status === "rejected"
+        ? "Ditolak"
+        : "Disetujui"
+
+  /** Nilai kosong tetap ditampilkan sebagai keterangan, bukan ruang hampa. */
+  const kosong = <span className="text-muted-foreground">Belum ada data</span>
+
+  // Ringkasan (mode baca): nilai tampil sebagai bacaan, bukan input, supaya
+  // admin bisa memeriksa ulasan tanpa risiko salah ubah.
+  const ringkasan = (
+    <section className="w-full overflow-hidden rounded-lg border border-border bg-card">
+      <dl className="grid gap-x-6 gap-y-4 p-5 sm:grid-cols-2 sm:p-6">
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-muted-foreground">Pelanggan</dt>
+          <dd className="mt-0.5 break-words text-sm text-foreground">
+            {form.data.customer_name.trim() || "Pelanggan"}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-muted-foreground">Lokasi</dt>
+          <dd className="mt-0.5 break-words text-sm text-foreground">
+            {form.data.location.trim() || kosong}
+          </dd>
+        </div>
+        {!isMarketplaceIntent ? (
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-muted-foreground">Rating</dt>
+            <dd className="mt-0.5 text-sm text-foreground">
+              {form.data.rating ? `${"★".repeat(Number(form.data.rating))} ${form.data.rating} bintang` : kosong}
+            </dd>
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-muted-foreground">Sumber</dt>
+          <dd className="mt-0.5 text-sm text-foreground">{labelSumber}</dd>
+        </div>
+        {editing ? (
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-muted-foreground">Status moderasi</dt>
+            <dd className="mt-0.5 text-sm text-foreground">{labelModerasi}</dd>
+          </div>
+        ) : null}
+        {!isMarketplaceIntent ? (
+          <div className="min-w-0 sm:col-span-2">
+            <dt className="text-xs font-medium text-muted-foreground">Produk terkait</dt>
+            <dd className="mt-0.5 break-words text-sm text-foreground">
+              {produkPicked ? (
+                <>
+                  {produkPicked.name}{" "}
+                  <span className="font-mono text-[11px] text-muted-foreground">{produkPicked.parent_sku}</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Ulasan umum (tanpa produk)</span>
+              )}
+            </dd>
+          </div>
+        ) : null}
+        <div className="min-w-0 sm:col-span-2">
+          <dt className="text-xs font-medium text-muted-foreground">
+            {isMarketplaceIntent ? "Deskripsi" : "Isi ulasan"}
+          </dt>
+          <dd className="mt-0.5 whitespace-pre-line break-words text-sm leading-6 text-foreground">
+            {form.data.message.trim() || kosong}
+          </dd>
+        </div>
+        <div className="min-w-0 sm:col-span-2">
+          <dt className="text-xs font-medium text-muted-foreground">
+            Media ({photos.length} dari {maxPhotos})
+          </dt>
+          <dd className="mt-2">
+            {photos.length ? (
+              <ul className="flex flex-wrap gap-3">
+                {photos.map((row, index) => (
+                  <li
+                    key={row.key}
+                    className="relative size-20 overflow-hidden rounded-md border border-border bg-surface-muted"
+                  >
+                    <img src={row.url} alt={row.label ?? `Media ${index + 1}`} className="size-full object-cover" />
+                    {index === 0 ? (
+                      <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
+                        Utama
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              kosong
+            )}
+          </dd>
+        </div>
+      </dl>
+      <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground sm:px-6">
+        Isi di atas adalah yang tersimpan. Tekan{" "}
+        <strong className="font-semibold text-foreground">
+          {isMarketplaceIntent ? "Edit screenshot" : "Edit ulasan"}
+        </strong>{" "}
+        untuk mengubahnya.
+      </p>
+    </section>
+  )
+
   return (
     <AdminLayout
       backUrl={backUrl}
-      title={
-        editing
-          ? isMarketplaceIntent
-            ? "Edit screenshot"
-            : "Edit ulasan"
-          : isMarketplaceIntent
-            ? "Tambah screenshot"
-            : "Tambah ulasan"
-      }
+      title={judulHalaman}
       description={
         isMarketplaceIntent
           ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
@@ -195,16 +307,35 @@ export default function TestimonialForm({
       }
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="testimonial-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={indexUrl}>Batal</Link>
-          </Button>
+          {mode === "view" ? (
+            <Button type="button" onClick={() => setMode("edit")} className="inline-flex items-center gap-1.5">
+              <Icon name="pencil-simple" className="size-4" aria-hidden="true" />
+              <span>{isMarketplaceIntent ? "Edit screenshot" : "Edit ulasan"}</span>
+            </Button>
+          ) : (
+            <>
+              <Button type="submit" form="testimonial-form" disabled={form.processing}>
+                {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+              </Button>
+              {editing ? (
+                // Batal mengembalikan ke ringkasan, bukan meninggalkan halaman.
+                <Button type="button" variant="secondary" onClick={() => setMode("view")}>
+                  Batal
+                </Button>
+              ) : (
+                <Button asChild variant="secondary">
+                  <Link href={indexUrl}>Batal</Link>
+                </Button>
+              )}
+            </>
+          )}
         </div>
       }
     >
-      <Head title={`${editing ? "Edit" : "Tambah"} ${isMarketplaceIntent ? "Screenshot" : "Ulasan"} | Admin`} />
+      <Head title={`${judulHalaman} | Admin`} />
+      {mode === "view" ? (
+        ringkasan
+      ) : (
       <form
         id="testimonial-form"
         onSubmit={(event) => {
@@ -221,7 +352,11 @@ export default function TestimonialForm({
             product_id: produkPicked ? String(produkPicked.id) : "",
             ...(editing ? { _method: "put" } : {}),
           }))
-          form.post(submitUrl, { forceFormData: true })
+          form.post(submitUrl, {
+            forceFormData: true,
+            // Simpan sukses kembali ke ringkasan (ADR-023).
+            onSuccess: () => setMode("view"),
+          })
         }}
         className="w-full space-y-5"
         encType="multipart/form-data"
@@ -471,6 +606,7 @@ export default function TestimonialForm({
           </div>
         </section>
       </form>
+      )}
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
