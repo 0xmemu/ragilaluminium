@@ -356,7 +356,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Gunakan kotak pencarian untuk mencari pelanggan berdasarkan nama, nomor WhatsApp, atau alamat.",
       "Pilih Periode (hari ini sampai 30 hari terakhir, atau rentang tanggal) untuk menyaring pelanggan yang berbelanja pada periode itu.",
       "Gunakan menu urutkan untuk menyortir pelanggan terbaru, terlama, atau nama A-Z.",
-      "Klik nama pelanggan atau tombol Edit untuk mengelola detail profil dan alamat.",
+      "Klik nama pelanggan untuk membuka detailnya: kontak, alamat kirim, skor risiko, dan riwayat pesanan.",
       "Gunakan tombol Ekspor untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
     ],
     notes: [
@@ -366,15 +366,26 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Nomor WhatsApp terhubung langsung dengan tombol aksi chat satu klik.",
     ],
   },
+  "admin.customers.show": {
+    title: "Detail Pelanggan",
+    summary: "Informasi kontak pelanggan, pemetaan alamat kirim, skor risiko, dan riwayat pesanan.",
+    steps: [
+      "Baca kontak dan alamat kirim pelanggan, lalu tinjau skor risiko dan riwayat pesanannya.",
+      "Buka tombol Chat WA untuk menghubungi pelanggan, atau Cetak untuk menyimpan detailnya.",
+    ],
+    notes: [
+      "Halaman ini hanya untuk membaca. Data pelanggan mengikuti pesanan terakhir dan diperbarui sendiri setiap ada pesanan baru, jadi tidak bisa diubah dari sini; bila ada yang perlu dikoreksi, perbaikannya di pesanannya.",
+    ],
+  },
   "admin.customers.edit": {
     title: "Detail Pelanggan",
     summary: "Informasi kontak pelanggan, pemetaan alamat kirim, skor risiko, dan riwayat pesanan.",
     steps: [
-      "Perbarui nama lengkap atau detail alamat pengiriman bila diperlukan.",
-      "Tinjau daftar riwayat nomor pesanan pelanggan di panel samping.",
-      "Tekan tombol Simpan di kanan atas untuk menyimpan data.",
+      "Baca kontak dan alamat kirim pelanggan, lalu tinjau skor risiko dan riwayat pesanannya.",
+      "Buka tombol Chat WA untuk menghubungi pelanggan, atau Cetak untuk menyimpan detailnya.",
     ],
     notes: [
+      "Halaman ini hanya untuk membaca. Data pelanggan mengikuti pesanan terakhir dan diperbarui sendiri setiap ada pesanan baru, jadi tidak bisa diubah dari sini; bila ada yang perlu dikoreksi, perbaikannya di pesanannya.",
       "Nomor WhatsApp dikunci sebagai identitas unik pelanggan dan tidak dapat diubah.",
       "Fitur email telah ditiadakan sesuai kontrak guest checkout berbasis nomor WhatsApp.",
     ],

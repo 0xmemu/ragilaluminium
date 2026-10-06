@@ -58,12 +58,52 @@ class CustomerAdminTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_edit_customer_and_export_xlsx_without_email(): void
+    /**
+     * Halaman detail pelanggan READ-ONLY (keputusan owner 2026-10-05).
+     *
+     * Data pelanggan adalah cerminan pesanan, jadi tidak ada mode ubah: tidak
+     * ada form, tidak ada submitUrl, dan route PUT-nya dihapus. URL lama
+     * /edit dialihkan ke halaman detail supaya tautan lama tetap hidup.
+     */
+    public function test_halaman_detail_pelanggan_read_only(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $customer = Customer::create([
             'name' => 'Ani',
             'phone' => '628111111111',
+            'default_city' => 'Jakarta',
+            'default_province' => 'DKI Jakarta',
+        ]);
+
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Route::has('admin.customers.update'),
+            'kemampuan ubah data pelanggan sudah dihapus',
+        );
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.show', $customer))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Customers/Detail')
+                ->where('customer.code', 'CUS-'.str_pad((string) $customer->id, 5, '0', STR_PAD_LEFT))
+                // Tanpa alamat tujuan kirim: halaman ini tidak menyimpan apa pun.
+                ->missing('submitUrl'));
+
+        // Tautan lama tetap hidup, dialihkan ke halaman detail.
+        $this->actingAs($admin)
+            ->get(route('admin.customers.edit', $customer))
+            ->assertRedirect(route('admin.customers.show', $customer));
+    }
+
+    public function test_ekspor_pelanggan_membaca_alamat_tersimpan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        // Alamat ditulis lewat data tersimpan (bukan lewat halaman admin, yang
+        // kini read-only): inilah yang dibaca laporan pelanggan.
+        $customer = Customer::create([
+            'name' => 'Ani',
+            'phone' => '628111111111',
+            'default_address_line1' => 'Jl Sudirman No. 10',
             'default_city' => 'Jakarta',
             'default_province' => 'DKI Jakarta',
         ]);
@@ -102,30 +142,6 @@ class CustomerAdminTest extends TestCase
             'shipping_amount' => 20000,
             'total_amount' => 420000,
             'payment_method' => 'transfer',
-        ]);
-
-        $this->actingAs($admin)
-            ->get(route('admin.customers.edit', $customer))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Customers/Edit')
-                ->where('customer.code', 'CUS-'.str_pad((string) $customer->id, 5, '0', STR_PAD_LEFT)));
-
-        $this->actingAs($admin)
-            ->put(route('admin.customers.update', $customer), [
-                'name' => 'Ani Wijaya',
-                'default_address_line1' => 'Jl Sudirman No. 10',
-                'default_city' => 'Jakarta',
-                'default_province' => 'DKI Jakarta',
-                'default_postal_code' => '12190',
-                'default_country' => 'Indonesia',
-            ])
-            ->assertRedirect(route('admin.customers.index'));
-
-        $this->assertDatabaseHas('customers', [
-            'id' => $customer->id,
-            'name' => 'Ani Wijaya',
-            'default_address_line1' => 'Jl Sudirman No. 10',
         ]);
 
         $export = new CustomerExport(Customer::query()->latest('id'));

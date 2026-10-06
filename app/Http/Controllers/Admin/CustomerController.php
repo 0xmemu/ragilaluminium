@@ -93,7 +93,6 @@ class CustomerController extends Controller
                 'fraud' => $metrics['fraud'],
                 'whatsapp_url' => 'https://wa.me/'.preg_replace('/\D+/', '', $customer->phone),
                 'href' => route('admin.customers.show', $customer),
-                'edit_href' => route('admin.customers.edit', $customer),
             ];
         })->all();
 
@@ -171,18 +170,22 @@ class CustomerController extends Controller
         };
     }
 
+    /**
+     * Detail pelanggan. Halaman ini READ-ONLY.
+     *
+     * Data pelanggan adalah cerminan pesanan: setiap checkout menulis ulang nama
+     * dan alamatnya, jadi koreksi yang diketik di sini akan tertimpa pesanan
+     * berikutnya, dan laporan pelanggan (yang membaca kolom alamat ini) jadi
+     * menyimpang dari pesanan yang menjadi sumbernya. Data yang salah
+     * perbaikannya di pesanan, bukan di pelanggan (keputusan owner 2026-10-05).
+     */
     public function show(Customer $customer): Response
-    {
-        return $this->edit($customer);
-    }
-
-    public function edit(Customer $customer): Response
     {
         $metrics = $this->customers->metricsFor($customer);
 
-        return Inertia::render('Admin/Customers/Edit', [
+        return Inertia::render('Admin/Customers/Detail', [
             'title' => 'Detail Customer',
-            'description' => 'Ubah data pelanggan dan tinjau riwayat pesanan.',
+            'description' => 'Tinjau data pelanggan dan riwayat pesanannya.',
             'customer' => [
                 'id' => $customer->id,
                 'code' => $this->customers->publicCode($customer),
@@ -197,30 +200,19 @@ class CustomerController extends Controller
             ],
             'metrics' => $metrics,
             'orders' => $this->customers->orderRows($customer)->all(),
-            'submitUrl' => route('admin.customers.update', $customer),
             'backUrl' => route('admin.customers.index'),
             'whatsappUrl' => 'https://wa.me/'.preg_replace('/\D+/', '', $customer->phone),
         ]);
     }
 
-    public function update(Request $request, Customer $customer): RedirectResponse
+    /**
+     * URL lama /customers/{customer}/edit dialihkan ke halaman detail, supaya
+     * tautan dan bookmark lama tetap hidup. Halaman itu tidak lagi punya mode
+     * ubah (keputusan owner 2026-10-05).
+     */
+    public function edit(Customer $customer): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:191'],
-            'default_address_line1' => ['nullable', 'string', 'max:255'],
-            'default_address_line2' => ['nullable', 'string', 'max:255'],
-            'default_city' => ['nullable', 'string', 'max:191'],
-            'default_province' => ['nullable', 'string', 'max:191'],
-            'default_postal_code' => ['nullable', 'string', 'max:32'],
-            'default_country' => ['nullable', 'string', 'max:191'],
-        ]);
-
-        $customer->update($validated);
-
-        // Simpan sukses = keluar dari form ke daftar customer.
-        return redirect()
-            ->route('admin.customers.index')
-            ->with('success', 'Data pelanggan '.$customer->name.' disimpan.');
+        return redirect()->route('admin.customers.show', $customer);
     }
 
     public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse

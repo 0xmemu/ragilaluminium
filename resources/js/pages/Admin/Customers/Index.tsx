@@ -1,8 +1,7 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
-import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
+import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
@@ -32,7 +31,6 @@ interface CustomerRow {
   fraud: { score: number; label: string; tone: string }
   whatsapp_url: string
   href: string
-  edit_href: string
 }
 
 
@@ -377,13 +375,8 @@ export default function CustomersIndex({
                       <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
                         <RowActions>
                           <Button asChild variant="secondary" size="xs">
-                            <Link href={row.edit_href}>Edit</Link>
+                            <Link href={row.href}>Detail pelanggan</Link>
                           </Button>
-                          <RowActionsMenu>
-                            <DropdownMenuItem asChild>
-                              <Link href={row.href}>Detail pelanggan</Link>
-                            </DropdownMenuItem>
-                          </RowActionsMenu>
                         </RowActions>
                       </td>
                     </tr>
@@ -468,9 +461,6 @@ export default function CustomersIndex({
                   </dl>
                   <div className="mt-4">
                     <RowActions>
-                      <Button asChild variant="secondary" size="xs">
-                        <Link href={row.edit_href}>Edit</Link>
-                      </Button>
                       <Button asChild variant="secondary" size="xs">
                         <Link href={row.href}>Detail</Link>
                       </Button>

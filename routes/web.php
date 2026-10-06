@@ -374,7 +374,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
-    Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
 
     // CMS
     Route::get('pages', [AdminPageController::class, 'index'])->name('pages.index');
