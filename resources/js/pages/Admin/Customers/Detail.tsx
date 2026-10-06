@@ -230,11 +230,6 @@ export default function CustomerDetail({
           <Baris label="Kode pos" nilai={customer.default_postal_code} />
           <Baris label="Negara" nilai={customer.default_country} />
         </dl>
-
-        <p className="mt-5 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
-          Data ini mengikuti pesanan terakhir pemesan ini dan diperbarui sendiri setiap ada pesanan baru, jadi tidak
-          bisa diubah dari sini. Bila ada yang perlu dikoreksi, perbaikannya di pesanannya.
-        </p>
       </SectionCard>
 
       {/* Riwayat pesanan: tabel membentang penuh. */}
