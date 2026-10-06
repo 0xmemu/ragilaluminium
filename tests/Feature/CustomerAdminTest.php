@@ -412,4 +412,114 @@ class CustomerAdminTest extends TestCase
         $this->assertSame(150000.0, (float) $baris[9]);
         $this->assertSame('RA-EXP-DALAM', $baris[3]);
     }
+
+    // =====================================================================
+    // Daftar alamat di halaman detail (permintaan owner 2026-10-05): tampil
+    // HANYA bila pelanggan pernah dikirim ke lebih dari satu alamat.
+    // =====================================================================
+
+    /** Pesanan dengan alamat kirim yang bisa diatur. */
+    private function pesananAlamat(string $nomor, string $phone, array $alamat, string $createdAt): Order
+    {
+        // Baris pelanggan dibuat lebih dulu, sama seperti alur nyata tempat
+        // checkout mencatat pelanggan saat pesanan dibuat.
+        Customer::firstOrCreate(['phone' => $phone], ['name' => 'Pelanggan Alamat']);
+
+        $order = Order::create([
+            'order_number' => $nomor,
+            'customer_name' => 'Pelanggan Alamat',
+            'customer_phone' => $phone,
+            'shipping_address_line1' => $alamat['line1'],
+            'shipping_address_line2' => $alamat['line2'] ?? null,
+            'shipping_village' => $alamat['village'] ?? null,
+            'shipping_district' => $alamat['district'] ?? null,
+            'shipping_city' => $alamat['city'],
+            'shipping_province' => $alamat['province'] ?? 'Jawa Tengah',
+            'shipping_postal_code' => $alamat['postal'] ?? '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'completed',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 100000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000,
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        // created_at tidak fillable; ditempatkan lewat query supaya urutannya
+        // pasti dan bisa menguji "terbaru dulu".
+        \Illuminate\Support\Facades\DB::table('orders')
+            ->where('id', $order->id)
+            ->update(['created_at' => $createdAt]);
+
+        return $order->fresh();
+    }
+
+    /** @return array<string, mixed> */
+    private function propsDetail(string $phone): array
+    {
+        $customer = Customer::query()->where('phone', $phone)->firstOrFail();
+        $props = [];
+
+        $this->actingAs($this->adminPelanggan())
+            ->get(route('admin.customers.show', $customer))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) use (&$props) {
+                $props = $page->component('Admin/Customers/Detail')->toArray()['props'];
+            });
+
+        return $props;
+    }
+
+    public function test_alamat_berbeda_didaftar_dengan_yang_terbaru_dulu(): void
+    {
+        $this->pesananAlamat('RA-ALM-1', '6285711120001', ['line1' => 'Jl Melati 1', 'city' => 'Semarang'], now()->subDays(10)->toDateTimeString());
+        $this->pesananAlamat('RA-ALM-2', '6285711120001', ['line1' => 'Jl Melati 2', 'city' => 'Semarang'], now()->subDays(5)->toDateTimeString());
+        $this->pesananAlamat('RA-ALM-3', '6285711120001', ['line1' => 'Jl Melati 3', 'city' => 'Bandung'], now()->subDays(2)->toDateTimeString());
+
+        $daftar = $this->propsDetail('6285711120001')['metrics']['address_list'];
+
+        $this->assertCount(3, $daftar, 'tiga tujuan kirim berbeda');
+        $this->assertSame('Jl Melati 3', $daftar[0]['line1'], 'terbaru dulu');
+        $this->assertSame('Bandung', $daftar[0]['city']);
+        $this->assertSame(1, (int) $daftar[0]['order_count']);
+        $this->assertNotNull($daftar[0]['last_used_at']);
+        $this->assertSame('Jl Melati 1', $daftar[2]['line1'], 'yang paling lama di urutan terakhir');
+    }
+
+    public function test_alamat_identik_tidak_dihitung_dua_kali(): void
+    {
+        $alamat = [
+            'line1' => 'Jl Beji No. 10',
+            'village' => 'KEMIRI',
+            'district' => 'KEBAKKRAMAT',
+            'city' => 'KABUPATEN KARANGANYAR',
+        ];
+
+        $this->pesananAlamat('RA-SAMA-1', '6285711120002', $alamat, now()->subDays(6)->toDateTimeString());
+        $this->pesananAlamat('RA-SAMA-2', '6285711120002', $alamat, now()->subDays(3)->toDateTimeString());
+
+        $props = $this->propsDetail('6285711120002');
+        $daftar = $props['metrics']['address_list'];
+
+        // Satu alamat saja: halaman tidak menampilkan daftar (dijaga di
+        // frontend), jadi daftarnya cukup berisi satu entri.
+        $this->assertCount(1, $daftar, 'alamat identik tidak menghasilkan entri kedua');
+        $this->assertSame(2, (int) $daftar[0]['order_count'], 'dua pesanan di entri yang sama');
+        $this->assertNull($props['metrics']['duplicate_warning'], 'satu alamat bukan duplikat');
+    }
+
+    public function test_desa_berbeda_di_jalan_sama_dihitung_alamat_berbeda(): void
+    {
+        $dasar = ['line1' => 'Jl Beji No. 10', 'city' => 'KABUPATEN KARANGANYAR'];
+
+        $this->pesananAlamat('RA-DESA-1', '6285711120003', $dasar + ['village' => 'KEMIRI'], now()->subDays(4)->toDateTimeString());
+        $this->pesananAlamat('RA-DESA-2', '6285711120003', $dasar + ['village' => 'NGEMPLAK'], now()->subDays(2)->toDateTimeString());
+
+        $daftar = $this->propsDetail('6285711120003')['metrics']['address_list'];
+
+        $this->assertCount(2, $daftar, 'desa berbeda di jalan yang sama adalah tujuan kirim berbeda');
+    }
 }

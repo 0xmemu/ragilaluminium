@@ -375,6 +375,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     ],
     notes: [
       "Halaman ini hanya untuk membaca. Data pelanggan mengikuti pesanan terakhir dan diperbarui sendiri setiap ada pesanan baru, jadi tidak bisa diubah dari sini; bila ada yang perlu dikoreksi, perbaikannya di pesanannya.",
+      "Bila pelanggan pernah dikirim ke beberapa alamat, semuanya didaftar di kartu Alamat Pengiriman dengan jumlah pesanan dan tanggal pemakaian terakhirnya. Alamat terbaru ditandai Terbaru.",
     ],
   },
   "admin.customers.edit": {

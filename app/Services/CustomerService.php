@@ -221,13 +221,9 @@ class CustomerService
         $fraud = $this->fraudAssessment($customer);
         $status = $this->statusFor($customer, $lifetimeCount, $lastAt);
         $nameVariants = (clone $orders)->distinct()->pluck('customer_name')->filter()->unique()->values();
-        $addressVariants = (clone $orders)
-            ->select(['shipping_address_line1', 'shipping_city'])
-            ->get()
-            ->map(fn ($o) => trim(($o->shipping_address_line1 ?? '').'|'.($o->shipping_city ?? '')))
-            ->filter()
-            ->unique()
-            ->values();
+        // Satu sumber untuk dua pemakai: peringatan duplikat dan daftar alamat
+        // di halaman detail, supaya angkanya tidak pernah berbeda dari daftar.
+        $addressList = $this->addressListFor($orders);
 
         return [
             'order_count' => $orderCount,
@@ -236,12 +232,13 @@ class CustomerService
             'status' => $status,
             'fraud' => $fraud,
             'name_variants' => $nameVariants->all(),
-            'address_variant_count' => $addressVariants->count(),
-            'duplicate_warning' => $nameVariants->count() > 1 || $addressVariants->count() > 1
+            'address_variant_count' => count($addressList),
+            'address_list' => $addressList,
+            'duplicate_warning' => $nameVariants->count() > 1 || count($addressList) > 1
                 ? sprintf(
                     'Peringatan Duplikat: Terdeteksi %d Nama & %d Alamat',
                     max(1, $nameVariants->count()),
-                    max(1, $addressVariants->count())
+                    max(1, count($addressList))
                 )
                 : null,
         ];
@@ -326,6 +323,68 @@ class CustomerService
     /**
      * @return Collection<int, array<string, mixed>>
      */
+    /**
+     * Daftar alamat berbeda dari pesanan pelanggan ini, terbaru dulu.
+     *
+     * Dipakai untuk peringatan duplikat DAN untuk daftar alamat di halaman
+     * detail, supaya jumlah pada peringatan selalu sama dengan jumlah baris
+     * yang tampil. Satu entri berarti satu tujuan kirim yang berbeda; alamat
+     * dibandingkan lengkap (jalan, desa, kecamatan, kota, provinsi, kode pos)
+     * karena dua pesanan di jalan yang sama bisa ditujukan ke desa berbeda.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Order>  $orders
+     * @return list<array<string, mixed>>
+     */
+    protected function addressListFor($orders): array
+    {
+        return (clone $orders)
+            ->orderByDesc('id')
+            ->get([
+                'shipping_address_line1',
+                'shipping_address_line2',
+                'shipping_village',
+                'shipping_district',
+                'shipping_city',
+                'shipping_province',
+                'shipping_postal_code',
+                'shipping_country',
+                'created_at',
+            ])
+            ->groupBy(fn (Order $order) => implode('|', array_map(
+                fn ($bagian) => trim((string) $bagian),
+                [
+                    $order->shipping_address_line1,
+                    $order->shipping_address_line2,
+                    $order->shipping_village,
+                    $order->shipping_district,
+                    $order->shipping_city,
+                    $order->shipping_province,
+                    $order->shipping_postal_code,
+                ],
+            )))
+            ->reject(fn ($group, $kunci) => trim((string) $kunci, '|') === '')
+            ->map(function ($group) {
+                // Pesanan diurut id menurun, jadi elemen pertama grup = paling baru.
+                /** @var Order $terbaru */
+                $terbaru = $group->first();
+
+                return [
+                    'line1' => $terbaru->shipping_address_line1,
+                    'line2' => $terbaru->shipping_address_line2,
+                    'village' => $terbaru->shipping_village,
+                    'district' => $terbaru->shipping_district,
+                    'city' => $terbaru->shipping_city,
+                    'province' => $terbaru->shipping_province,
+                    'postal_code' => $terbaru->shipping_postal_code,
+                    'country' => $terbaru->shipping_country,
+                    'order_count' => $group->count(),
+                    'last_used_at' => optional($terbaru->created_at)?->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     public function orderRows(Customer $customer, int $limit = 20): Collection
     {
         return Order::query()

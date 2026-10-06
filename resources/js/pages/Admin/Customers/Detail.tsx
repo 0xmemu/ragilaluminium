@@ -35,7 +35,23 @@ interface Metrics {
   fraud: { score: number; label: string; tone: string }
   name_variants: string[]
   address_variant_count: number
+  /** Semua alamat berbeda yang pernah dipakai, terbaru dulu. */
+  address_list?: AlamatPesanan[]
   duplicate_warning: string | null
+}
+
+/** Satu tujuan kirim yang pernah dipakai pelanggan ini. */
+interface AlamatPesanan {
+  line1?: string | null
+  line2?: string | null
+  village?: string | null
+  district?: string | null
+  city?: string | null
+  province?: string | null
+  postal_code?: string | null
+  country?: string | null
+  order_count: number
+  last_used_at: string | null
 }
 
 interface OrderRow {
@@ -117,6 +133,8 @@ export default function CustomerDetail({
   whatsappUrl: string
 }) {
   const { printing, handlePrint } = usePrintCustomer()
+  const daftarAlamat = metrics.address_list ?? []
+  const alamatBeragam = daftarAlamat.length > 1
 
   const nadaPenipuan =
     metrics.fraud.tone === "success"
@@ -218,18 +236,62 @@ export default function CustomerDetail({
           tidak diulang di sini karena sudah tampil di kartu identitas. */}
       <SectionCard
         title="Alamat Pengiriman"
-        description="Alamat yang tercatat dari pesanan terakhir pemesan ini."
+        description={
+          alamatBeragam
+            ? `${formatNumber(daftarAlamat.length)} alamat berbeda tercatat dari pesanan pelanggan ini.`
+            : "Alamat yang tercatat dari pesanan terakhir pemesan ini."
+        }
         className="mt-6"
       >
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Baris label="Alamat" nilai={customer.default_address_line1} />
-          </div>
-          <Baris label="Kota" nilai={customer.default_city} />
-          <Baris label="Provinsi" nilai={customer.default_province} />
-          <Baris label="Kode pos" nilai={customer.default_postal_code} />
-          <Baris label="Negara" nilai={customer.default_country} />
-        </dl>
+        {alamatBeragam ? (
+          /* Pelanggan pernah dikirim ke beberapa alamat: tampilkan semuanya
+             supaya admin tahu ke mana saja paketnya pergi. Kalau alamatnya cuma
+             satu, daftar ini tidak ditampilkan sama sekali. */
+          <ul className="space-y-3">
+            {daftarAlamat.map((alamat, index) => (
+              <li key={index} className="rounded-md border border-border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                      <span className="break-words">{alamat.line1 || "-"}</span>
+                      {index === 0 ? (
+                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          Terbaru
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-0.5 break-words text-xs leading-5 text-muted-foreground">
+                      {[
+                        alamat.line2,
+                        alamat.village,
+                        alamat.district,
+                        alamat.city,
+                        alamat.province,
+                        alamat.postal_code,
+                      ]
+                        .filter((bagian) => (bagian ?? "").trim() !== "")
+                        .join(", ") || "-"}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs text-muted-foreground">
+                    {formatNumber(alamat.order_count)} pesanan
+                    {alamat.last_used_at ? ` · terakhir ${formatDate(alamat.last_used_at)}` : ""}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Baris label="Alamat" nilai={customer.default_address_line1} />
+            </div>
+            <Baris label="Kota" nilai={customer.default_city} />
+            <Baris label="Provinsi" nilai={customer.default_province} />
+            <Baris label="Kode pos" nilai={customer.default_postal_code} />
+            <Baris label="Negara" nilai={customer.default_country} />
+          </dl>
+        )}
       </SectionCard>
 
       {/* Riwayat pesanan: tabel membentang penuh. */}
