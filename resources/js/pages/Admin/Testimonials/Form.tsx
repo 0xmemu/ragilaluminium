@@ -209,64 +209,24 @@ export default function TestimonialForm({
         : "Disetujui"
 
 
-  // Ringkasan (mode baca): tampilan terstruktur rapi untuk membaca ulasan
+  // Ringkasan (mode baca): SATU kartu ulasan utuh membentang penuh, lalu
+  // baris produk slim di bawahnya. Baris kartu KPI dan pemecahan dua kolom
+  // dihapus: datanya cuma satu ulasan, jadi empat kartu besar tampak kosong,
+  // kolom kiri-kanan tak seimbang, dan foto kecil tenggelam di kartu luas.
+  // Info KPI tetap lengkap: tanggal di header kartu, bintang di baris
+  // pelanggan, status visibilitas + moderasi sebagai badge header.
   const ringkasan = (
     <div className="w-full space-y-6">
-      {/* 4 Kartu Ringkasan Status Ulasan Membentang Penuh */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 w-full">
-        <Card className="space-y-1 p-4 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Rating Pembeli</p>
-          <div className="flex items-center gap-1.5 pt-0.5">
-            {form.data.rating ? (
-              <>
-                <span className="inline-flex items-center gap-0.5 text-warning" aria-label={`${form.data.rating} dari 5 bintang`}>
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Icon
-                      key={i}
-                      name="star"
-                      weight="fill"
-                      className={cn("size-3.5", i < Number(form.data.rating) ? "text-warning" : "text-muted/30")}
-                      aria-hidden="true"
-                    />
-                  ))}
-                </span>
-                <span className="font-mono text-sm font-bold text-foreground">
-                  {form.data.rating} / 5
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-medium text-muted-foreground">Tanpa rating</span>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {form.data.rating ? `${form.data.rating} dari 5 bintang` : "Ulasan tanpa penilaian bintang"}
-          </p>
-        </Card>
-
-        <Card className="space-y-1 p-4 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Kanal Sumber</p>
-          <p className="text-lg font-bold text-foreground">{labelSumber}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {testimonial?.created_at ? formatDate(testimonial.created_at) : "Sumber ulasan masuk"}
-          </p>
-        </Card>
-
-        <Card className="space-y-1 p-4 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Visibilitas di Toko</p>
-          <div className="pt-0.5">
+      <SectionCard
+        title={isMarketplaceIntent ? "Screenshot Pelanggan" : "Ulasan Pembeli"}
+        description={testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : undefined}
+        icon="chat"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge
               status={isPublished ? "active" : "inactive"}
               label={isPublished ? "Tampil di website" : "Tersembunyi"}
             />
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {isPublished ? "Ditampilkan di etalase toko" : "Disembunyikan dari publik"}
-          </p>
-        </Card>
-
-        <Card className="space-y-1 p-4 bg-card">
-          <p className="text-xs font-medium text-muted-foreground">Status Moderasi</p>
-          <div className="pt-0.5">
             <StatusBadge
               status={
                 form.data.moderation_status === "approved"
@@ -278,134 +238,88 @@ export default function TestimonialForm({
               label={labelModerasi}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {form.data.moderation_status === "approved"
-              ? "Lolos kurasi admin"
-              : form.data.moderation_status === "rejected"
-                ? "Ditolak / tidak layak"
-                : "Menunggu peninjauan"}
-          </p>
-        </Card>
-      </div>
-
-      {/* Konten 2 Kolom Membentang Penuh (tanpa ruang kosong di samping) */}
-      <div className="grid items-start gap-6 lg:grid-cols-2 w-full">
-        {/* Kolom Kiri: Ulasan Pembeli & Balasan */}
-        <div className="space-y-6">
-          <SectionCard
-            title={isMarketplaceIntent ? "Informasi Screenshot" : "Ulasan Pembeli"}
-            description={
-              [
-                form.data.location ? `Lokasi: ${form.data.location}` : null,
-                testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : null,
-              ].filter(Boolean).join(" · ") || undefined
-            }
-            icon="chat"
-          >
-            <div className="space-y-4">
-              {/* Header Pelanggan */}
-              <div className="flex items-center gap-3">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
-                  {form.data.customer_name.trim() ? form.data.customer_name.trim()[0].toUpperCase() : "P"}
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-foreground truncate">
-                    {form.data.customer_name.trim() || "Pelanggan"}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {[
-                      labelSumber,
-                      form.data.location ? form.data.location : null,
-                    ].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-              </div>
-
-              {/* Kotak Teks Ulasan */}
-              <div className="rounded-lg border border-border bg-surface p-4">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {isMarketplaceIntent ? "Deskripsi / Catatan" : "Isi Ulasan"}
-                </p>
-                <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground">
-                  {form.data.message.trim() || (
-                    <span className="italic text-muted-foreground">
-                      Tidak ada ulasan teks (hanya foto / screenshot).
-                    </span>
-                  )}
+        }
+      >
+        <div className="space-y-5">
+          {/* Pelanggan di kiri, rating di kanan: satu baris, tanpa kartu terpisah */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
+                {form.data.customer_name.trim() ? form.data.customer_name.trim()[0].toUpperCase() : "P"}
+              </span>
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-bold text-foreground">
+                  {form.data.customer_name.trim() || "Pelanggan"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {[labelSumber, form.data.location].filter(Boolean).join(" · ")}
                 </p>
               </div>
-
-              {/* Balasan Admin (jika ada) */}
-              {testimonial?.admin_reply ? (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                      <Icon name="storefront" className="size-3.5" aria-hidden="true" />
-                      <span>Balasan Ragil Aluminium</span>
-                    </p>
-                    {testimonial.admin_replied_at ? (
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatDate(testimonial.admin_replied_at)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-foreground">
-                    {testimonial.admin_reply}
-                  </p>
-                </div>
-              ) : null}
             </div>
-          </SectionCard>
-        </div>
+            {form.data.rating ? (
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-0.5 text-warning"
+                  aria-label={`${form.data.rating} dari 5 bintang`}
+                >
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Icon
+                      key={i}
+                      name="star"
+                      weight="fill"
+                      className={cn("size-4", i < Number(form.data.rating) ? "text-warning" : "text-muted/30")}
+                      aria-hidden="true"
+                    />
+                  ))}
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground">{form.data.rating} / 5</span>
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground">Tanpa rating</span>
+            )}
+          </div>
 
-        {/* Kolom Kanan: Produk Terkait & Foto Media */}
-        <div className="space-y-6">
-          {!isMarketplaceIntent ? (
-            <SectionCard
-              title="Produk Terkait"
-              description="Produk di katalog yang ditautkan dengan ulasan ini."
-              icon="package"
-            >
-              {produkPicked ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{produkPicked.name}</p>
-                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                      SKU: {produkPicked.parent_sku}
-                    </p>
-                    {produkPicked.category || produkPicked.model || produkPicked.sub_model ? (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {[produkPicked.category, produkPicked.model, produkPicked.sub_model]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  {produkPicked.id ? (
-                    <Button asChild variant="secondary" size="sm">
-                      <Link href={routeUrl("admin.products.show", { product: produkPicked.id })} className="inline-flex items-center gap-1.5">
-                        <span>Buka produk</span>
-                      </Link>
-                    </Button>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
-                  Ulasan umum (tidak dikaitkan dengan produk spesifik di katalog).
-                </div>
-              )}
-            </SectionCard>
+          {/* Isi ulasan: teks utama halaman, tanpa kotak ganda */}
+          <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
+            {form.data.message.trim() || (
+              <span className="italic text-muted-foreground">
+                Tidak ada ulasan teks (hanya foto / screenshot).
+              </span>
+            )}
+          </p>
+
+          {/* Balasan toko (jika ada) */}
+          {testimonial?.admin_reply ? (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Icon name="storefront" className="size-3.5" aria-hidden="true" />
+                  <span>Balasan Ragil Aluminium</span>
+                </p>
+                {testimonial.admin_replied_at ? (
+                  <span className="text-[11px] text-muted-foreground">
+                    {formatDate(testimonial.admin_replied_at)}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">
+                {testimonial.admin_reply}
+              </p>
+            </div>
           ) : null}
 
+          {/* Foto menyatu dengan ulasannya, tile besar sesuai lebar kartu */}
           {photos.length > 0 ? (
-            <SectionCard
-              title={`Foto & Media (${photos.length})`}
-              description={`${photos.length} dari maksimal ${maxPhotos} foto tersimpan.`}
-              icon="image"
-            >
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4" aria-label="Foto ulasan">
+            <div className="space-y-2.5">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {isMarketplaceIntent ? `Screenshot (${photos.length})` : `Foto (${photos.length})`}
+              </p>
+              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Foto ulasan">
                 {photos.map((row, index) => (
-                  <li key={row.key} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted">
+                  <li
+                    key={row.key}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted"
+                  >
                     <img
                       src={row.url}
                       alt={row.label ?? `Foto ${index + 1}`}
@@ -428,13 +342,41 @@ export default function TestimonialForm({
                   </li>
                 ))}
               </ul>
-            </SectionCard>
+            </div>
           ) : null}
         </div>
-      </div>
+      </SectionCard>
+
+      {/* Produk terkait: satu baris slim, hanya bila ulasan benar-benar menautkan produk */}
+      {!isMarketplaceIntent && produkPicked ? (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Icon name="package" className="size-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">{produkPicked.name}</p>
+              <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                {[
+                  produkPicked.parent_sku ? `SKU ${produkPicked.parent_sku}` : null,
+                  produkPicked.category,
+                  produkPicked.model,
+                  produkPicked.sub_model,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+          </div>
+          {produkPicked.id ? (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={routeUrl("admin.products.show", { product: produkPicked.id })}>Buka produk</Link>
+            </Button>
+          ) : null}
+        </Card>
+      ) : null}
     </div>
   )
-
   return (
     <AdminLayout
       backUrl={backUrl}
