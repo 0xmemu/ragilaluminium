@@ -360,8 +360,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Gunakan tombol Ekspor untuk mengunduh laporan lengkap riwayat pesanan pelanggan.",
     ],
     notes: [
-      "Status keaktifan pelanggan: Aktif (memiliki transaksi pesanan dalam 90 hari terakhir), Baru (belum pernah memesan), atau Tidak aktif (tidak ada pesanan selama lebih dari 90 hari).",
-      "Filter Periode membatasi daftar ke pelanggan yang berbelanja pada periode itu, dan angka Pesanan serta Total Belanja per pelanggan ikut dihitung dalam periode tersebut. Empat kartu di atas tabel juga mengikuti periode. Status keaktifan tetap dihitung dari seluruh riwayat.",
+      "Filter Periode membatasi daftar ke pelanggan yang berbelanja pada periode itu, dan angka Pesanan serta Total Belanja per pelanggan ikut dihitung dalam periode tersebut. Empat kartu di atas tabel juga mengikuti periode. Angka per pelanggan mengikuti periode yang dipilih.",
       "Ekspor mengikuti filter yang sedang tampil, termasuk periode, dan nama berkasnya memuat penanda periode.",
       "Nomor WhatsApp terhubung langsung dengan tombol aksi chat satu klik.",
     ],

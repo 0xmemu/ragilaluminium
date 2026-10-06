@@ -5,13 +5,11 @@ import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
-import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Input } from "@/components/admin/ui/input"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
@@ -315,12 +313,7 @@ export default function CustomersIndex({
                     <th className="px-3 py-3 font-semibold">Nama lengkap</th>
                     <th className="px-3 py-3 font-semibold">Kontak WhatsApp</th>
                     <th className="px-3 py-3 font-semibold">Alamat</th>
-                    <th className="px-3 py-3 font-semibold">
-                      <HintTip
-                        label="Status"
-                        hint="Status keaktifan pelanggan: Aktif (memiliki pesanan dalam 90 hari terakhir), Baru (belum ada riwayat pesanan), atau Tidak aktif (tidak ada pesanan lebih dari 90 hari)."
-                      />
-                    </th>
+                    <th className="px-3 py-3 font-semibold">Pesanan &amp; Belanja</th>
                     <th className="px-3 py-3 font-semibold">Fraud score</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -337,9 +330,6 @@ export default function CustomersIndex({
                           <p className="font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
                           <CopyButton text={row.code} label="Salin ID customer" compact showTextInTitle />
                         </div>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
-                        </p>
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
@@ -357,7 +347,10 @@ export default function CustomersIndex({
                       </td>
                       <td className="max-w-[14rem] px-3 py-3 text-muted-foreground">{row.address}</td>
                       <td className="px-3 py-3">
-                        <StatusBadge status={row.status.key} label={row.status.label} />
+                        <p className="font-semibold tabular-nums">{formatNumber(row.order_count)} pesanan</p>
+                        <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                          {formatCurrency(row.total_spent)}
+                        </p>
                       </td>
                       <td className="px-3 py-3">
                         <p className="font-bold tabular-nums">{row.fraud.score}/100</p>
@@ -398,9 +391,6 @@ export default function CustomersIndex({
                         <p className="font-mono text-[11px] text-muted-foreground">ID: {row.code}</p>
                         <CopyButton text={row.code} label="Salin ID customer" compact showTextInTitle />
                       </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {formatNumber(row.order_count)} pesanan · {formatCurrency(row.total_spent)}
-                      </p>
                     </div>
                     <Link
                       href={row.href}
@@ -437,9 +427,10 @@ export default function CustomersIndex({
                       <dd className="mt-1 text-sm text-muted-foreground">{row.address}</dd>
                     </div>
                     <div>
-                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Status</dt>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Pesanan &amp; belanja</dt>
                       <dd className="mt-1 text-sm">
-                        <StatusBadge status={row.status.key} label={row.status.label} />
+                        <p className="font-semibold tabular-nums">{formatNumber(row.order_count)} pesanan</p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">{formatCurrency(row.total_spent)}</p>
                       </dd>
                     </div>
                     <div>
