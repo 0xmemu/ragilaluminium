@@ -306,7 +306,10 @@ function AdminPageFrame({
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               {title && backUrl ? (
-                <Button asChild variant="secondary" size="sm" className="mb-2">
+                // Ghost (owner 2026-09-29): tanpa bingkai saat diam, bingkai
+                // halus hanya saat hover/klik, jadi tidak tampak seperti kotak
+                // yang menempel di atas judul.
+                <Button asChild variant="ghost" size="sm" className="mb-2">
                   <Link href={backUrl}>
                     <Icon name="arrow-left" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
                     <span>Kembali</span>
