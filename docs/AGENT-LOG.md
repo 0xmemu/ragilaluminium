@@ -3376,3 +3376,22 @@ Jebakan yang terulang, dicatat supaya tidak terulang: pesan commit pertama saya 
 
 Dampak lanjutan yang belum dikerjakan: ADR-023 masih punya 7 halaman yang belum diterapkan (CodSettings, ShippingSubsidy, CaraPemesanan, CmsDocument, Beranda/HowToOrderForm, Beranda/KontakForm, CmsPageForm), dan daftar itu terbukti tidak lengkap karena halaman Customer saja terlewat. Owner sudah diberi tahu.
 Agent: zcode
+
+## 2026-10-06 10:24 UTC | zcode | Standard | de166067 | selesai
+
+Lingkup: halaman Detail Ulasan admin (/admin/testimonials/129/edit). Owner 2026-10-05: "rapikan", lanjutan dari mode ringkasan read-only yang dibuat di commit 8064006d.
+Berkas: resources/js/pages/Admin/Testimonials/Form.tsx, app/Http/Controllers/Admin/TestimonialController.php
+
+Keadaan sebelum: mode ringkasan sudah ada dan tombol Simpan sudah tidak muncul di mode view, tetapi ISI ringkasannya masih satu kolom daftar label-nilai yang memanjang ke bawah, dan wadahnya dibatasi max-w-5xl sehingga sekitar 420px di kanan kosong. Balasan toko (admin_reply) bahkan tidak ikut dikirim ke halaman ini, jadi tidak terlihat sama sekali.
+
+Perubahan:
+1. Empat kartu angka ringkasan di atas (pola sama dengan halaman Pembayaran dan Pengiriman): Rating Pembeli memakai ikon bintang sungguhan (dulu teks tanda bintang), Kanal Sumber memuat tanggal ulasan, Visibilitas di Toko (badge Tampil/Tersembunyi), Status Moderasi (badge Disetujui/Menunggu/Ditolak). Kartu Status Moderasi memakai isPublished sebagai cadangan karena form.data tidak memuat kunci published.
+2. Isi disusun dua kolom: kiri "Ulasan Pembeli" (avatar inisial pelanggan, kotak isi ulasan, kotak balasan toko yang hanya tampil bila ada balasan), kanan "Produk Terkait" (nama, SKU, kategori/model/sub model, tombol Buka produk) dan "Foto & Media (n)".
+3. Batas max-w-5xl dibuang supaya membentang penuh sesuai kontrak Table-First panel admin.
+4. Kalimat penutup "Isi di atas adalah yang tersimpan. Tekan Edit ulasan untuk mengubahnya." DIHAPUS, mengikuti pola yang sama dengan penghapusan kalimat penjelas di halaman pelanggan (482498c5): tombol Edit sudah jelas di header.
+5. Payload edit() menambah created_at, admin_reply, admin_replied_at supaya ringkasan bisa menampilkan tanggal ulasan dan balasan toko. Tidak ada route/field skema/JSON baru bagi konsumen lain, hanya penambahan kunci di payload halaman admin yang sama.
+
+Dampak spec: Spec tidak berubah.
+
+Verifikasi: UlasanAdminTest + FrontendPageContractTest + TestimonialReplyTest 39 lulus / 783 asersi. npx tsc --noEmit bersih, ESLint 0 error, build-assets.sh sukses (pre-push hook lulus). Uji live di browser: empat kartu KPI terukur masing-masing 382px pada x=238/631/1023/1416; kolom kiri dan kanan masing-masing 770px pada x=238 dan x=1029 (viewport 1826, tanpa ruang terbuang); judul kartu terbaca "Ulasan Pembeli", "Produk Terkait", "Foto & Media (1)"; siklus view ke Edit ulasan kembali ke Batal terbukti (0 isian di mode view, 1 form + 3 isian di mode edit, kembali 0 form setelah Batal). Situs sehat setelah build: beranda 200, storage/logs tetap bisa ditulis www-data.
+Agent: zcode
