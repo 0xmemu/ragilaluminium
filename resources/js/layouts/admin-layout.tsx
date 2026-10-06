@@ -306,13 +306,12 @@ function AdminPageFrame({
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               {title && backUrl ? (
-                <Link
-                  href={backUrl}
-                  className="mb-1.5 -ml-1.5 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm font-semibold leading-none text-primary transition duration-150 ease-standard hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-1 focus:ring-offset-background active:scale-[0.97] motion-reduce:active:scale-100"
-                >
-                  <Icon name="arrow-left" weight="bold" className="size-5 shrink-0" aria-hidden="true" />
-                  <span>Kembali</span>
-                </Link>
+                <Button asChild variant="secondary" size="sm" className="mb-2">
+                  <Link href={backUrl}>
+                    <Icon name="arrow-left" weight="bold" className="size-4 shrink-0" aria-hidden="true" />
+                    <span>Kembali</span>
+                  </Link>
+                </Button>
               ) : null}
               {title ? (
                 <h1 className="text-xl font-semibold tracking-tight text-foreground">
