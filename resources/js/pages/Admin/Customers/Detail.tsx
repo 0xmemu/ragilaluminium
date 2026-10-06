@@ -225,9 +225,6 @@ export default function CustomerDetail({
           <div className="sm:col-span-2">
             <Baris label="Alamat" nilai={customer.default_address_line1} />
           </div>
-          <div className="sm:col-span-2">
-            <Baris label="Alamat 2" nilai={customer.default_address_line2} />
-          </div>
           <Baris label="Kota" nilai={customer.default_city} />
           <Baris label="Provinsi" nilai={customer.default_province} />
           <Baris label="Kode pos" nilai={customer.default_postal_code} />
