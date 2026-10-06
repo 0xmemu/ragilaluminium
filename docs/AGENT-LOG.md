@@ -3402,3 +3402,11 @@ Agent: zcode
 - Susunan baru, dua kartu untuk seluruh halaman: kartu "Ulasan Pembeli" membentang penuh (badge visibilitas + moderasi di slot aksi header, tanggal di deskripsi header, pelanggan dan bintang rating sebaris, teks ulasan tanpa kotak ganda, balasan tetap tersorot, foto menyatu dengan tile 290px) dan kartu produk slim 63px yang hanya muncul bila ada produk tertaut. Kartu "Ulasan umum" berisi kalimat dihapus. Boilerplate "Produk di katalog yang ditautkan dengan ulasan ini." dan "1 dari maksimal 10 foto tersimpan." ikut hilang.
 - Verifikasi: tsc bersih, ESLint 0 warning, test 39 lulus / 783 asersi, build sukses; live 1826px: dua kartu 1545px (x=238), kartu ulasan 597px, kartu produk 63px, mode baca 0 form, siklus Edit ulasan lalu Batal kembali utuh.
 Agent: zcode
+
+## 2026-10-06 11:40 UTC | zcode | Trivial | 2b225ec4 | selesai
+
+- Owner: "jadikan 2 kolom saja. produk terkait di tampilkan di atas media ulasan. formatnya yang bener dong 140x50 emang apaan".
+- Susunan: kembali dua kolom, kolom kanan berisi Produk Terkait di atas lalu Foto & Media di bawah (tile 2/3 kolom, sekitar 240px). Kolom kanan hanya dirender bila ada isinya, jadi ulasan tanpa produk dan tanpa foto tidak menyisakan separuh halaman kosong.
+- Akar "140x50": initialProductFor di TestimonialController mengirim short_name (kolom nama pendek produk yang isinya cuma dimensi, untuk produk 98: "140x50") sebagai nama produk, sedangkan picker produk mengirim nama lengkap ("Tinggi 140 cm x Panjang 50 cm (140x50) Jendela 1 Daun Aluminium Jungkit Polos"). Akibatnya pratinjau saat memilih benar, lalu berubah jadi dimensi telanjang setelah reload. initialProductFor kini mengirim name = nama lengkap dan dimensions = short_name, persis skema picker. Deretan JENDELA - JUNGKIT - POLOS di kartu dihapus karena sudah terkandung di nama lengkap.
+- Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live: kiri x=238 w=770, kanan x=1029 w=770 dengan produk y=243 di atas media y=383, nama lengkap terbaca, siklus Edit/Batal utuh.
+Agent: zcode
