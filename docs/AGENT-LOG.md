@@ -3395,3 +3395,10 @@ Dampak spec: Spec tidak berubah.
 
 Verifikasi: UlasanAdminTest + FrontendPageContractTest + TestimonialReplyTest 39 lulus / 783 asersi. npx tsc --noEmit bersih, ESLint 0 error, build-assets.sh sukses (pre-push hook lulus). Uji live di browser: empat kartu KPI terukur masing-masing 382px pada x=238/631/1023/1416; kolom kiri dan kanan masing-masing 770px pada x=238 dan x=1029 (viewport 1826, tanpa ruang terbuang); judul kartu terbaca "Ulasan Pembeli", "Produk Terkait", "Foto & Media (1)"; siklus view ke Edit ulasan kembali ke Batal terbukti (0 isian di mode view, 1 form + 3 isian di mode edit, kembali 0 form setelah Batal). Situs sehat setelah build: beranda 200, storage/logs tetap bisa ditulis www-data.
 Agent: zcode
+
+## 2026-10-06 11:05 UTC | zcode | Trivial | f4df719e | selesai
+
+- Owner: "rapikan lah bro. layoutnya jelek sekali" pada halaman Detail Ulasan yang baru disusun ulang di de166067. Dari tangkapan layar, yang jelek: empat kartu KPI hampir kosong (datanya satu ulasan, kartunya besar, plus keterangan berulang seperti "5 dari 5 bintang" dan "Ditampilkan di etalase toko"), kolom kiri berhenti di tengah layar sementara kolom kanan memanjang (ruang kosong besar di bawah blok balasan), foto 165px tenggelam di kartu 770px, dan kalimat penjelas di setiap kartu.
+- Susunan baru, dua kartu untuk seluruh halaman: kartu "Ulasan Pembeli" membentang penuh (badge visibilitas + moderasi di slot aksi header, tanggal di deskripsi header, pelanggan dan bintang rating sebaris, teks ulasan tanpa kotak ganda, balasan tetap tersorot, foto menyatu dengan tile 290px) dan kartu produk slim 63px yang hanya muncul bila ada produk tertaut. Kartu "Ulasan umum" berisi kalimat dihapus. Boilerplate "Produk di katalog yang ditautkan dengan ulasan ini." dan "1 dari maksimal 10 foto tersimpan." ikut hilang.
+- Verifikasi: tsc bersih, ESLint 0 warning, test 39 lulus / 783 asersi, build sukses; live 1826px: dua kartu 1545px (x=238), kartu ulasan 597px, kartu produk 63px, mode baca 0 form, siklus Edit ulasan lalu Batal kembali utuh.
+Agent: zcode
