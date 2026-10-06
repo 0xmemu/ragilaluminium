@@ -200,12 +200,6 @@ export default function TestimonialForm({
       : `Edit ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
 
   const labelSumber = labels[form.data.source] ?? form.data.source
-  const labelModerasi =
-    form.data.moderation_status === "pending"
-      ? "Menunggu moderasi"
-      : form.data.moderation_status === "rejected"
-        ? "Ditolak"
-        : "Disetujui"
 
 
   // Ringkasan (mode baca): dua kolom. Kiri: kartu ulasan (pelanggan, rating,
@@ -224,22 +218,10 @@ export default function TestimonialForm({
         description={testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : undefined}
         icon="chat"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge
-              status={isPublished ? "active" : "inactive"}
-              label={isPublished ? "Tampil di website" : "Tersembunyi"}
-            />
-            <StatusBadge
-              status={
-                form.data.moderation_status === "approved"
-                  ? "active"
-                  : form.data.moderation_status === "rejected"
-                    ? "inactive"
-                    : "pending"
-              }
-              label={labelModerasi}
-            />
-          </div>
+          <StatusBadge
+            status={isPublished ? "active" : "inactive"}
+            label={isPublished ? "Tampil di website" : "Tersembunyi"}
+          />
         }
       >
         <div className="space-y-5">
