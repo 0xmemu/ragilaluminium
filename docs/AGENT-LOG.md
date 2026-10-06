@@ -3351,3 +3351,28 @@ Agent: zcode
 
 - Owner di /admin/banners: kenapa langsung ada framenya, harusnya cuma muncul saat hover atau klik (menunjuk tombol Kembali yang berbingkai permanen sejak halaman dimuat). Varian tombol diganti secondary menjadi ghost di layout bersama: tanpa garis, latar transparan, tanpa bayangan saat diam; hover memberi latar lewat varian ghost bawaan. Berlaku untuk seluruh halaman admin yang memakai backUrl karena komponennya bersama.
 - Verifikasi: typecheck 0; build sukses; live terukur: border 0px, background transparan, shadow none; hover tetap bekerja lewat kelas varian ghost.
+
+## 2026-10-05 11:30 UTC | zcode | Standard | b320c88c | selesai
+
+Lingkup: Halaman detail pelanggan. Owner 2026-10-05 bertanya "apakah kamu benar-benar ga merasa aneh dengan tombol simpan di detail customer?" lalu memutuskan: "hilangkan. lalu rapikan layout".
+Berkas: app/Http/Controllers/Admin/CustomerController.php, routes/web.php, resources/js/pages/Admin/Customers/Detail.tsx (dulu Edit.tsx), resources/js/pages/Admin/Customers/Index.tsx, resources/js/config/admin-page-guides.ts, tests/Feature/CustomerAdminTest.php, docs/api-and-routes-ragil-aluminium.md
+
+Akar masalah (ada dua, keduanya dijawab dengan bukti kode):
+1. Halaman berjudul "Detail Customer" dibuka dengan SELURUH kolom berupa isian dan tombol Simpan sudah menunggu di header, jadi tidak ada bedanya antara melihat dan mengubah. Itu melanggar ADR-023 (halaman yang tugasnya mengubah nilai wajib dibuka dalam mode RINGKASAN; tombol header berlabel kerja; Simpan baru muncul di mode edit). Halaman ini terlewat dari daftar penerapan ADR itu.
+2. Kemampuan ubahnya sendiri HAMPIR TIDAK BERGUNANYA, dan ini temuan yang menentukan keputusan owner. Data pelanggan adalah CERMINAN pesanan: CustomerService::upsertFromCheckout dipanggil OrderService saat pesanan dibuat dan menulis ulang nama + alamat, jadi koreksi yang diketik di halaman ini akan tertimpa pesanan berikutnya. Lebih dari itu, laporan pelanggan MEMBACA kolom itu (CustomerExport::map memakai default_address_line1/line2/city/province), jadi koreksi tangan justru membuat laporan menyimpang dari pesanan yang menjadi sumbernya. Pembacaan lain hanya panel admin sendiri (daftar, detail, pencarian) dan statistik provinsi; checkout TIDAK memakai alamat tersimpan sama sekali.
+
+KOREKSI ATAS LAPORAN SAYA SENDIRI: pada pesan sebelumnya saya menyatakan "tidak ada satu pun fitur yang memakai data itu". Itu SALAH untuk CustomerExport, yang memang membacanya. Saya menemukannya saat menelusuri pemakai sebelum mengubah kode, dan justru itu memperkuat alasan menghapus: nilai yang diketik tangan akan menyimpang dari sumbernya. Kesimpulannya tidak berubah, tetapi dasarnya koreksi.
+
+Perubahan: show() merender halaman detail read-only (komponen Admin/Customers/Detail); edit() mengalihkan ke halaman detail supaya URL dan bookmark lama tetap hidup; update() dihapus beserta route PUT-nya. Halaman daftar tidak lagi punya tombol Edit (kolom Aksi jadi satu tombol "Detail pelanggan") dan edit_href dihapus dari payload. Panduan halaman disesuaikan, termasuk menambahkan entri admin.customers.show karena route itulah yang merender halaman detail (tanpa itu panduannya hilang).
+
+Rapikan layout: grid max-w-5xl dibuang (area konten 1320px, ruang kosong kanan turun 408px jadi 28px). Kartu data kini empat kolom di layar lebar, dan riwayat pesanan jadi TABEL dengan kolom No/Nomor/Status/Total/Tanggal (dulu daftar kartu sempit di kolom 22rem). Halaman jadi tiga blok membentang penuh: identitas, data, riwayat.
+
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED. Route PUT /admin/customers/{customer} (admin.customers.update) DIHAPUS dari docs/api-and-routes-ragil-aluminium.md.
+
+Verifikasi: php artisan test penuh 1353 lulus / 1 skipped / 1 gagal (kegagalan lama milik agent lain di ReturnRefundIntegrityTest soal bentrok migrasi kolom retur, tidak berkaitan). CustomerAdminTest + FrontendPageContractTest + AdminSortOrderBaseOneTest 31 lulus (test baru: halaman detail read-only, route update benar-benar tidak ada, tanpa submitUrl, URL lama /edit dialihkan). npx tsc --noEmit bersih, ESLint 0 error untuk dua halaman, build sukses.
+Uji live di /admin/customers/9: 0 kolom isian, 0 tombol Simpan, tombol header hanya badge Aktif + Chat WA + Cetak, panduan tetap muncul; kartu identitas/data/riwayat semuanya 1264px (membentang penuh) dan riwayat tampil sebagai tabel 4 baris. Tangkapan layar diperiksa sendiri.
+
+Jebakan yang terulang, dicatat supaya tidak terulang: pesan commit pertama saya memuat backtick, dan karena dikirim lewat ssh dengan kutip ganda, shell lokal mengeksekusinya sehingga potongan pesannya hilang tanpa galat ("PUT: command not found"). Sudah diperbaiki dengan menulis berkas pesan lokal lalu menyalinnya, dan commit di-amend. Untuk pesan/berkas yang memuat backtick, selalu tulis lokal lalu salin, jangan lewat heredoc di dalam string ssh.
+
+Dampak lanjutan yang belum dikerjakan: ADR-023 masih punya 7 halaman yang belum diterapkan (CodSettings, ShippingSubsidy, CaraPemesanan, CmsDocument, Beranda/HowToOrderForm, Beranda/KontakForm, CmsPageForm), dan daftar itu terbukti tidak lengkap karena halaman Customer saja terlewat. Owner sudah diberi tahu.
+Agent: zcode
