@@ -3346,3 +3346,8 @@ Agent: zcode
 ## 2026-10-06 09:24 UTC | zcode | Trivial | app/Support/HomepagePromotionSettings.php | selesai
 
 - Owner menyatakan penghapusan berkas yatim HomepagePromotionSettings.php secara eksplisit (ditinggal penghapusan fitur banner otomatis 52d9d579). Guard memblokir perintah git penghapusan di app/ secara mutlak, jadi dijalankan lewat jalur arsip kontrak: berkas dipindah ke /tmp/HomepagePromotionSettings.php.arsip-20260929 di server, lalu git add eksplisit mencatat status terhapus di git. Commit b8870b5e, push OK, grep rujukan nol, HomepagePopularTest 24 passed.
+
+## 2026-10-06 09:47 UTC | zcode | Trivial | resources/js/layouts/admin-layout.tsx | selesai
+
+- Owner di /admin/banners: kenapa langsung ada framenya, harusnya cuma muncul saat hover atau klik (menunjuk tombol Kembali yang berbingkai permanen sejak halaman dimuat). Varian tombol diganti secondary menjadi ghost di layout bersama: tanpa garis, latar transparan, tanpa bayangan saat diam; hover memberi latar lewat varian ghost bawaan. Berlaku untuk seluruh halaman admin yang memakai backUrl karena komponennya bersama.
+- Verifikasi: typecheck 0; build sukses; live terukur: border 0px, background transparan, shadow none; hover tetap bekerja lewat kelas varian ghost.
