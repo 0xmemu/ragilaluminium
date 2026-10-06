@@ -351,7 +351,7 @@ export default function TestimonialsIndex({
     snapshot: snapshotRows,
     form: reorderForm,
     url: reorderUrl as string,
-    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
     numbering: true,
     submitOptions: { preserveScroll: true },
     syncEnabled: tab === "website" || tab === "eksternal",
@@ -729,7 +729,10 @@ export default function TestimonialsIndex({
                               ) : null}
                             </>
                           ) : row.can_reply ? (
-                            <Button type="button" variant="secondary" size="xs" onClick={() => setReplyTarget(row)}>
+                            // Ukuran sm (28px), sama dengan tombol header halaman
+                            // lain. Sebelumnya xs (25px) sehingga terlihat lebih
+                            // kecil daripada kontrol di sekitarnya.
+                            <Button type="button" variant="secondary" size="sm" onClick={() => setReplyTarget(row)}>
                               Balas
                             </Button>
                           ) : (
