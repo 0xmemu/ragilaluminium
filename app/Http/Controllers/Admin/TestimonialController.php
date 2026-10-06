@@ -361,6 +361,10 @@ class TestimonialController extends Controller
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
                         : null,
                     'image_url' => $t->image_url,
+                    // Jumlah media memakai sumber yang sama dengan storefront,
+                    // supaya penanda di daftar tidak berbeda dari yang dilihat
+                    // pembeli. Kolom daftar hanya memuat ubin sampul.
+                    'media_count' => count($t->imagesPayload()),
                     'sort_order' => $t->sort_order,
                     'published' => $t->published,
                     'created_at' => optional($t->created_at)?->toIso8601String(),
@@ -491,6 +495,10 @@ class TestimonialController extends Controller
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
                         : null,
                     'image_url' => $t->image_url,
+                    // Jumlah media memakai sumber yang sama dengan storefront,
+                    // supaya penanda di daftar tidak berbeda dari yang dilihat
+                    // pembeli. Kolom daftar hanya memuat ubin sampul.
+                    'media_count' => count($t->imagesPayload()),
                     'sort_order' => $t->sort_order,
                     'published' => $t->published,
                     'created_at' => optional($t->created_at)?->toIso8601String(),

@@ -49,6 +49,8 @@ interface WebsiteRow {
   location?: string | null
   product?: string | null
   image_url?: string | null
+  /** Jumlah semua media ulasan ini (foto dan video), termasuk sampul. */
+  media_count?: number
   sort_order?: number
   published: boolean
   created_at?: string | null
@@ -80,6 +82,28 @@ interface FotoRow {
   unpublish_url?: string | null
   media_asset_id?: number | null
   attach_url?: string | null
+}
+
+/**
+ * Penanda jumlah media pada ubin pratinjau daftar.
+ *
+ * Kolom daftar hanya memuat satu ubin (sampul), padahal satu ulasan bisa memuat
+ * beberapa foto/video. Angka yang tampil adalah TAMBAHAN di luar sampul, sama
+ * seperti penanda pada kartu ulasan storefront. Tidak muncul apa-apa bila
+ * medianya cuma satu, supaya ulasan biasa tidak berisik.
+ */
+function PenandaJumlahMedia({ jumlah }: { jumlah: number }) {
+  const tambahan = jumlah - 1
+  if (tambahan < 1) return null
+
+  return (
+    <span
+      className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-foreground/85 px-1 text-[10px] font-semibold leading-4 tabular-nums text-background"
+      title={`${jumlah} media pada ulasan ini`}
+    >
+      +{tambahan}
+    </span>
+  )
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -679,11 +703,14 @@ export default function TestimonialsIndex({
                       <td className={cn("px-3 py-3", isApaKata ? "" : "max-w-[18rem] text-muted-foreground")}>
                         {isApaKata ? (
                           row.image_url ? (
-                            <img
-                              src={row.image_url}
-                              alt={`Screenshot ${row.customer_name}`}
-                              className="h-20 w-16 rounded-md border border-border object-cover"
-                            />
+                            <div className="relative h-20 w-16 shrink-0">
+                              <img
+                                src={row.image_url}
+                                alt={`Screenshot ${row.customer_name}`}
+                                className="h-20 w-16 rounded-md border border-border object-cover"
+                              />
+                              <PenandaJumlahMedia jumlah={row.media_count ?? 0} />
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )
@@ -696,11 +723,14 @@ export default function TestimonialsIndex({
                       {!isApaKata ? (
                         <td className="px-3 py-3">
                           {row.image_url ? (
-                            <img
-                              src={row.image_url}
-                              alt=""
-                              className="size-12 rounded-md border border-border object-cover"
-                            />
+                            <div className="relative size-12 shrink-0">
+                              <img
+                                src={row.image_url}
+                                alt=""
+                                className="size-12 rounded-md border border-border object-cover"
+                              />
+                              <PenandaJumlahMedia jumlah={row.media_count ?? 0} />
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
