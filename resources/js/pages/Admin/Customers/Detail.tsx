@@ -5,6 +5,7 @@ import { Icon } from "@/components/shared/icon"
 import { Alert } from "@/components/admin/ui/alert"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { PrintCustomerArea, usePrintCustomer } from "@/components/shared/print-customer-detail"
@@ -52,7 +53,7 @@ function NilaiKosong() {
   return <span className="text-muted-foreground">Belum ada data</span>
 }
 
-/** Satu pasangan label dan nilai pada ringkasan data pelanggan. */
+/** Satu pasangan label dan nilai. */
 function Baris({ label, nilai, mono = false }: { label: string; nilai?: string | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
@@ -61,6 +62,31 @@ function Baris({ label, nilai, mono = false }: { label: string; nilai?: string |
         {nilai && nilai.trim() !== "" ? nilai : <NilaiKosong />}
       </dd>
     </div>
+  )
+}
+
+/** Satu kartu angka ringkasan; bentuknya mengikuti kartu KPI halaman admin lain. */
+function KartuAngka({
+  label,
+  nilai,
+  keterangan,
+  nada,
+  mono = true,
+}: {
+  label: string
+  nilai: string
+  keterangan: React.ReactNode
+  nada?: string
+  mono?: boolean
+}) {
+  return (
+    <Card className="space-y-1 p-4">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-bold", mono ? "font-mono tabular-nums" : "tabular-nums", nada ?? "text-foreground")}>
+        {nilai}
+      </p>
+      <p className="text-[11px] text-muted-foreground">{keterangan}</p>
+    </Card>
   )
 }
 
@@ -92,6 +118,15 @@ export default function CustomerDetail({
 }) {
   const { printing, handlePrint } = usePrintCustomer()
 
+  const nadaPenipuan =
+    metrics.fraud.tone === "success"
+      ? "text-success"
+      : metrics.fraud.tone === "warning"
+        ? "text-warning-foreground"
+        : metrics.fraud.tone === "danger"
+          ? "text-destructive"
+          : "text-foreground"
+
   return (
     <AdminLayout
       title={title}
@@ -121,43 +156,51 @@ export default function CustomerDetail({
     >
       <Head title={`${customer.name} | Customer | Admin`} />
 
-      {/* Identitas pelanggan: satu kartu, membentang penuh. */}
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
-              <Icon name="users" className="size-6" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold">{customer.name}</h2>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="flex items-center gap-1">
-                  <span className="font-mono text-sm text-muted-foreground">{customer.code}</span>
-                  <CopyButton text={customer.code} label="Salin ID customer" compact showTextInTitle />
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="font-mono text-sm text-muted-foreground">{customer.phone}</span>
-                  <CopyButton text={customer.phone} label="Salin nomor HP" compact showTextInTitle />
-                </span>
-              </div>
-              {metrics.fraud.score >= 30 ? (
-                <p className="mt-2 text-sm font-semibold text-warning-foreground">Nomor WhatsApp sedang diselidiki</p>
-              ) : null}
+      {/* Kartu angka ringkasan, mengikuti pola halaman Pembayaran dan Pengiriman. */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KartuAngka
+          label="Skor penipuan"
+          nilai={String(metrics.fraud.score)}
+          nada={nadaPenipuan}
+          keterangan={metrics.fraud.label}
+        />
+        <KartuAngka
+          label="Jumlah order"
+          nilai={formatNumber(metrics.order_count)}
+          keterangan="Pesanan dari nomor WhatsApp ini"
+        />
+        <KartuAngka
+          label="Total belanja (fulfillment)"
+          nilai={formatCurrency(metrics.total_spent)}
+          keterangan="Nilai pesanan yang tercatat"
+        />
+        <KartuAngka
+          label="Order terakhir"
+          nilai={metrics.last_order_at ? formatDate(metrics.last_order_at) : "-"}
+          mono={false}
+          keterangan={metrics.last_order_at ? "Tanggal pesanan terakhir" : "Belum pernah memesan"}
+        />
+      </div>
+
+      {/* Identitas: satu baris mengalir dari kiri, tanpa kotak yang terlempar
+          ke ujung kanan (dulu menyisakan celah kosong lebar di tengah). */}
+      <section className="mt-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
+            <Icon name="users" className="size-6" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold">{customer.name}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1">
+                <span className="font-mono text-sm text-muted-foreground">{customer.code}</span>
+                <CopyButton text={customer.code} label="Salin ID customer" compact showTextInTitle />
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-mono text-sm text-muted-foreground">{customer.phone}</span>
+                <CopyButton text={customer.phone} label="Salin nomor HP" compact showTextInTitle />
+              </span>
             </div>
-          </div>
-          <div className="rounded-md border border-border px-4 py-3 text-sm">
-            <p className="text-xs font-semibold tracking-tight text-muted-foreground">Skor penipuan</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{metrics.fraud.score}</p>
-            <p
-              className={cn(
-                "text-xs font-semibold",
-                metrics.fraud.tone === "success" && "text-success",
-                metrics.fraud.tone === "warning" && "text-warning-foreground",
-                metrics.fraud.tone === "danger" && "text-destructive",
-              )}
-            >
-              {metrics.fraud.label}
-            </p>
           </div>
         </div>
 
@@ -166,39 +209,23 @@ export default function CustomerDetail({
             {metrics.duplicate_warning}
           </Alert>
         ) : null}
-
-        <dl className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs font-medium text-muted-foreground">Jumlah order</dt>
-            <dd className="mt-0.5 text-sm font-semibold tabular-nums">{formatNumber(metrics.order_count)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-muted-foreground">Total belanja (fulfillment)</dt>
-            <dd className="mt-0.5 text-sm font-semibold tabular-nums">{formatCurrency(metrics.total_spent)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-muted-foreground">Order terakhir</dt>
-            <dd className="mt-0.5 text-sm font-semibold">
-              {metrics.last_order_at ? formatDate(metrics.last_order_at) : <NilaiKosong />}
-            </dd>
-          </div>
-        </dl>
+        {metrics.fraud.score >= 30 ? (
+          <p className="mt-4 text-sm font-semibold text-warning-foreground">Nomor WhatsApp sedang diselidiki</p>
+        ) : null}
       </section>
 
-      {/* Data pelanggan: membentang penuh, empat kolom pada layar lebar supaya
-          tidak menyisakan ruang kosong di samping. */}
+      {/* Alamat kirim: dua kolom, setiap baris terisi penuh. Nama dan nomor
+          tidak diulang di sini karena sudah tampil di kartu identitas. */}
       <SectionCard
-        title="Data Pelanggan"
-        description="Kontak dan alamat pengiriman yang tercatat dari pesanan terakhir pemesan ini."
+        title="Alamat Pengiriman"
+        description="Alamat yang tercatat dari pesanan terakhir pemesan ini."
         className="mt-6"
       >
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Baris label="Nama lengkap" nilai={customer.name} />
-          <Baris label="Nomor WhatsApp" nilai={customer.phone} mono />
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Baris label="Alamat" nilai={customer.default_address_line1} />
           </div>
-          <div className="sm:col-span-2 xl:col-span-4">
+          <div className="sm:col-span-2">
             <Baris label="Alamat 2" nilai={customer.default_address_line2} />
           </div>
           <Baris label="Kota" nilai={customer.default_city} />
@@ -213,7 +240,7 @@ export default function CustomerDetail({
         </p>
       </SectionCard>
 
-      {/* Riwayat pesanan: tabel membentang penuh, bukan kartu sempit di samping. */}
+      {/* Riwayat pesanan: tabel membentang penuh. */}
       <SectionCard
         title="Riwayat Pesanan"
         description={orders.length ? `${formatNumber(orders.length)} pesanan tercatat.` : undefined}
