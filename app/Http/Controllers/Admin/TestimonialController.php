@@ -869,12 +869,12 @@ class TestimonialController extends Controller
         return [
             'id' => $product->id,
             'parent_sku' => $product->parent_sku,
-            'name' => $product->short_name ?: $product->name,
+            'name' => $product->name,
             'category' => (string) $product->product_category,
             'model' => (string) $product->product_model,
             'sub_model' => (string) $product->design_variant,
             'price' => 0.0,
-            'dimensions' => '',
+            'dimensions' => (string) ($product->short_name ?? ''),
         ];
     }
 

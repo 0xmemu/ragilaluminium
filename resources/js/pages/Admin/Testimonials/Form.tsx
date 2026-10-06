@@ -2,7 +2,6 @@ import * as React from "react"
 import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
 import { SectionCard } from "@/components/admin/section-card"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
@@ -209,14 +208,17 @@ export default function TestimonialForm({
         : "Disetujui"
 
 
-  // Ringkasan (mode baca): SATU kartu ulasan utuh membentang penuh, lalu
-  // baris produk slim di bawahnya. Baris kartu KPI dan pemecahan dua kolom
-  // dihapus: datanya cuma satu ulasan, jadi empat kartu besar tampak kosong,
-  // kolom kiri-kanan tak seimbang, dan foto kecil tenggelam di kartu luas.
-  // Info KPI tetap lengkap: tanggal di header kartu, bintang di baris
-  // pelanggan, status visibilitas + moderasi sebagai badge header.
+  // Ringkasan (mode baca): dua kolom. Kiri: kartu ulasan (pelanggan, rating,
+  // teks, balasan). Kanan: produk terkait di ATAS, media ulasan di bawah
+  // (urutan diminta owner 2026-10-06). Nama produk wajib nama LENGKAP katalog;
+  // short_name hanya berisi dimensi ("140x50") dan tidak berarti apa-apa
+  // tanpa jenisnya (koreksi owner 2026-10-06). Kolom kanan hanya dibuat bila
+  // isinya ada, supaya ulasan tanpa produk dan tanpa foto tidak menyisakan
+  // separuh halaman kosong.
+  const adaKolomKanan = (!isMarketplaceIntent && produkPicked) || photos.length > 0
+
   const ringkasan = (
-    <div className="w-full space-y-6">
+    <div className={cn("grid items-start gap-6 w-full", adaKolomKanan && "lg:grid-cols-2")}>
       <SectionCard
         title={isMarketplaceIntent ? "Screenshot Pelanggan" : "Ulasan Pembeli"}
         description={testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : undefined}
@@ -307,14 +309,41 @@ export default function TestimonialForm({
               </p>
             </div>
           ) : null}
+        </div>
+      </SectionCard>
 
-          {/* Foto menyatu dengan ulasannya, tile besar sesuai lebar kartu */}
+      {adaKolomKanan ? (
+        <div className="space-y-6">
+          {/* Produk terkait: di ATAS media ulasan (urutan owner 2026-10-06) */}
+          {!isMarketplaceIntent && produkPicked ? (
+            <SectionCard title="Produk Terkait" icon="package">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground" title={produkPicked.name}>
+                    {produkPicked.name}
+                  </p>
+                  {produkPicked.parent_sku ? (
+                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                      SKU {produkPicked.parent_sku}
+                    </p>
+                  ) : null}
+                </div>
+                {produkPicked.id ? (
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href={routeUrl("admin.products.show", { product: produkPicked.id })}>Buka produk</Link>
+                  </Button>
+                ) : null}
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {/* Media ulasan di bawah produk */}
           {photos.length > 0 ? (
-            <div className="space-y-2.5">
-              <p className="text-xs font-semibold text-muted-foreground">
-                {isMarketplaceIntent ? `Screenshot (${photos.length})` : `Foto (${photos.length})`}
-              </p>
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Foto ulasan">
+            <SectionCard
+              title={isMarketplaceIntent ? `Screenshot (${photos.length})` : `Foto & Media (${photos.length})`}
+              icon="image"
+            >
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Foto ulasan">
                 {photos.map((row, index) => (
                   <li
                     key={row.key}
@@ -342,38 +371,9 @@ export default function TestimonialForm({
                   </li>
                 ))}
               </ul>
-            </div>
+            </SectionCard>
           ) : null}
         </div>
-      </SectionCard>
-
-      {/* Produk terkait: satu baris slim, hanya bila ulasan benar-benar menautkan produk */}
-      {!isMarketplaceIntent && produkPicked ? (
-        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <Icon name="package" className="size-4" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">{produkPicked.name}</p>
-              <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-                {[
-                  produkPicked.parent_sku ? `SKU ${produkPicked.parent_sku}` : null,
-                  produkPicked.category,
-                  produkPicked.model,
-                  produkPicked.sub_model,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-          </div>
-          {produkPicked.id ? (
-            <Button asChild variant="secondary" size="sm">
-              <Link href={routeUrl("admin.products.show", { product: produkPicked.id })}>Buka produk</Link>
-            </Button>
-          ) : null}
-        </Card>
       ) : null}
     </div>
   )
