@@ -3410,3 +3410,10 @@ Agent: zcode
 - Akar "140x50": initialProductFor di TestimonialController mengirim short_name (kolom nama pendek produk yang isinya cuma dimensi, untuk produk 98: "140x50") sebagai nama produk, sedangkan picker produk mengirim nama lengkap ("Tinggi 140 cm x Panjang 50 cm (140x50) Jendela 1 Daun Aluminium Jungkit Polos"). Akibatnya pratinjau saat memilih benar, lalu berubah jadi dimensi telanjang setelah reload. initialProductFor kini mengirim name = nama lengkap dan dimensions = short_name, persis skema picker. Deretan JENDELA - JUNGKIT - POLOS di kartu dihapus karena sudah terkandung di nama lengkap.
 - Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live: kiri x=238 w=770, kanan x=1029 w=770 dengan produk y=243 di atas media y=383, nama lengkap terbaca, siklus Edit/Batal utuh.
 Agent: zcode
+
+## 2026-10-06 12:05 UTC | zcode | Trivial | 50793084 | selesai
+
+- Owner: "\"disetujui\"? wtf whats that. dulu pernah kita bahas tidak perlu ada moderasi. ulasan pelanggan langsung muncul dan terpublish". Mengacu keputusan 21 Sep 2026 (ulasan pelanggan langsung tayang).
+- Badge "Disetujui" (Status Moderasi) dihapus dari header mode baca Detail Ulasan; badge itu selalu menampilkan keadaan yang sama karena ulasan pelanggan otomatis approved. Yang tersisa badge visibilitas (Tampil di website / Tersembunyi) yang mencerminkan kolom published. Konstanta labelModerasi ikut dihapus karena tak terpakai. Kontrol Status moderasi di mode EDIT dipertahankan sebagai alat tarik ulang sesuai kontrak 21 Sep; owner belum meminta dihapus.
+- Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live setelah reload: tidak ada badge Disetujui/Menunggu/Ditolak, badge "Tampil di website" tetap, dua kolom tak berubah.
+Agent: zcode
