@@ -3511,3 +3511,12 @@ Dampak spec: tidak berubah. Tidak ada route, URL, kolom, enum, status, atau bent
 Penjaga: tests/frontend/media-library-grid.test.ts (3 tes) membaca sumber halaman untuk menahan angka kolomnya, supaya susunan tidak diam-diam kembali ke lima kolom saat halaman ini disunting lagi.
 Verifikasi: typecheck 0, eslint berkas ini bersih (tiga warning yang tersisa sudah ada di HEAD, dibuktikan dengan menyimpan perubahan sementara lalu menjalankan eslint pada versi HEAD), build sukses. Live di browser dalam aplikasi, diukur pada delapan lebar layar: 390 px menjadi 2 kolom (kartu 168 px), 640 menjadi 3 (192 px), 768 menjadi 4 (170 px), 1024 menjadi 5 (140 px), lalu 1280, 1600, 1920, dan 2100 menjadi 6 kolom (158, 211, 264, 294 px). Halaman tidak menampilkan galat dan label panjang tetap terpotong di dalam kartunya.
 Agent: gemini-3.8-flash-high
+
+hapus keterangan jumlah pemakaian dari kartu Media Library (/admin/media/library)
+Lingkup: permintaan owner, keterangan Dipakai Nx di bawah nama aset pada kartu dihapus; cukup tersedia di detail media.
+Perubahan: resources/js/pages/Admin/Media/Library.tsx, blok kondisional yang mencetak jumlah pemakaian di kaki kartu dibuang sehingga kartu hanya memuat nama aset. Jumlah pemakaian tetap tersedia di dialog info (ikon titik tiga di sudut kiri atas kartu) pada baris Dipakai, dan data usage_count tetap dikirim server seperti sebelumnya.
+Alasan tambahan yang saya amati: kartu yang punya pemakaian jadi lebih tinggi dari yang tidak, sehingga tinggi baris grid tidak rata dan nama aset panjang terdesak. Setelah dihapus, baris kartu seragam satu tinggi.
+Dampak spec: tidak berubah. Tidak ada route, URL, kolom, enum, status, atau bentuk JSON baru; ini murni susunan tampilan.
+Penjaga: tests/frontend/media-library-grid.test.ts diperluas dari 3 menjadi 5 tes. Dua tes baru menahan agar keterangan itu tidak kembali ke kartu, dan agar baris Dipakai tetap ada di dialog info. Dibuktikan menangkap regresi: keterangan lama dipasang sesaat, tes isi kartu gagal 1 asersi, lalu berkas dipulihkan dan sha diverifikasi sama.
+Verifikasi: typecheck 0, eslint berkas ini bersih (tiga warning yang tersisa sudah ada di HEAD), build sukses, Vitest 33 berkas 277 tes lulus. Live di browser dalam aplikasi: teks Dipakai Nx tidak lagi ada di halaman, kartu pertama hanya memuat satu paragraf (nama aset), susunan tetap 6 kolom dengan 30 kartu, dan dialog info masih menampilkan baris Dipakai 20x untuk aset yang sama.
+Agent: gemini-3.8-flash-high
