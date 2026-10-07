@@ -1514,12 +1514,12 @@ export default function MediaLibrary({
                       />
                     ) : null}
                   </div>
+                  {/* Kartu sengaja hanya memuat nama aset. Jumlah pemakaian
+                      dipindahkan ke dialog info (ikon titik tiga) supaya baris
+                      kartu tetap satu tinggi dan nama panjang tidak terdesak. */}
                   <div className="flex items-center justify-between gap-2 p-2.5">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
-                      {asset.usage_count > 0 ? (
-                        <p className="text-[10px] text-muted-foreground">Dipakai {asset.usage_count}x</p>
-                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
