@@ -3465,3 +3465,7 @@ Agent: gemini-3.8-flash-high
 - Form.tsx: field sort_order + tipe + default dibuang (backend sudah menangani tanpa field, slide baru tetap paling belakang). Kedua daftar kini punya mode Urutkan: tombol Urutkan di header (banner memaksa tampilan List), baris bisa digeser lewat pegangan drag (hook useRowDragSort pola Paling Banyak Dipesan), nomor urut dinamis per halaman, Urungkan mengembalikan snapshot, Simpan urutan mengirim rows id+sort_order ke route baru banners/reorder dan announcements/reorder. Daftar tersaring tidak bisa digeser.
 - Verifikasi: typecheck 0, build sukses, AdminSortOrderBaseOneTest+HomepagePopularTest+BerandaLayoutAdminTest 34 passed; live: banner digeser, disimpan, muat ulang penuh memuat urutan baru, lalu dikembalikan ke urutan asli via mode yang sama; bar promo digeser lalu Urungkan mengembalikan (data owner tak berubah).
 - Jebakan proses: dua berkas berbeda sama-sama bernama Index.tsx saat ditarik ke folder kerja lokal sehingga saling menimpa, suntingan sempat diterapkan pada berkas yang salah; tarik dengan nama unik per halaman.
+
+## 2026-10-07 10:52 UTC | zcode | Trivial | resources/js/pages/Admin/Banners/Index.tsx | selesai
+
+- Owner: hapus (menunjuk teks label Status di toolbar daftar Banner Promo). Teks label dibuang, dropdown filter tetap berfungsi dengan penanda aksesibilitas aria-label, sejajar dengan halaman Bar Promo yang memang tanpa label terlihat. Verifikasi: typecheck 0, build sukses; live: teks Status hilang, combobox Filter status tetap tampil dengan opsi Semua status.
