@@ -621,7 +621,7 @@ export default function TestimonialsIndex({
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Pelanggan</th>
                     <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
-                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Screenshot" : "Komentar"}</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Media" : "Komentar"}</th>
                     {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
                     {/* Kolom Balasan hanya di tab Ulasan Website, tempat ulasan
                         pelanggan bertaut pesanan. Di tab Apa Kata Pelanggan
