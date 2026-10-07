@@ -3488,3 +3488,10 @@ Agent: gemini-3.8-flash-high
 - Bukti LIVE: pesanan uji RA-SIM-2609-08 dan 09 muncul di daftar pesanan terbuka TANPA interaksi apa pun; hitungan permintaan muat ulang 0 lalu menjadi 1 tepat setelah data berubah; saat halaman diam 20 detik, muat ulang = 0 (poll jalan 3 kali, tanpa thrash); endpoint poll mengembalikan data_version yang sama dengan hitungan SQL langsung.
 - Verifikasi teknis: typecheck 0, eslint bersih untuk berkas tersentuh, build sukses, query agregat diuji di MySQL. Pesanan uji 08 dan 09 masuk pola pembersihan RA-SIM-2609-%; updated_at RA-SIM-2609-09 disentuh sekali untuk menguji jalur versi.
 - Catatan: admin-live-events.ts (useAdminLiveOrders) kini hanya dipakai Order Show; Orders/Index tidak lagi memakainya.
+
+## 2026-10-07 12:53 UTC | zcode | Trivial | resources/js/pages/Admin/Testimonials/Index.tsx | selesai
+
+- Owner di /admin/testimonials?tab=eksternal menulis media sambil menunjuk judul kolom Screenshot. Instruksi ambigu (bisa berarti ganti judul, atau gambar dibuat bisa diklik); konfirmasi singkat dikirim lewat pertanyaan pilihan, tidak dijawab, jadi diambil bacaan paling literal sesuai pola owner: elemen yang ditunjuk adalah judul kolom, maka judulnya diganti.
+- Perubahan (commit f67fa508): judul kolom Screenshot menjadi Media pada tabel yang dipakai tab Ulasan Eksternal DAN halaman Apa Kata Pelanggan. Isi kolom (thumbnail + penanda jumlah media), alt text, dan label form TIDAK diubah karena tidak disebut.
+- Verifikasi: typecheck 0, build sukses, live: Eksternal memakai Media, Apa Kata Pelanggan sama, tab Ulasan Website tetap Komentar dan Foto. Tidak ada test yang mematok teks judul itu.
+- Bila maksud owner sebenarnya gambar bisa diklik untuk melihat seluruh media ulasan, itu belum dikerjakan; tunggu instruksi eksplisit.
