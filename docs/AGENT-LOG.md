@@ -3458,3 +3458,10 @@ Perubahan: resources/js/pages/Admin/PromotionOverview.tsx, blok pembungkus heade
 Dampak spec: tidak berubah. Tidak ada route, URL, kolom, enum, status, atau bentuk JSON baru; tidak ada tautan yang benar-benar hilang karena ketiganya mengulang jalan masuk yang sudah tersedia di kartu hitung dan tautan Kelola.
 Verifikasi: typecheck 0, eslint berkas ini bersih, build sukses. Live di browser dalam aplikasi: teks halaman tidak lagi memuat ketiga kalimat itu, judul seksi Kampanye diskon tetap ada, tiga tautan Kelola di seksi bawah tetap ada, dan halaman tidak menampilkan galat.
 Agent: gemini-3.8-flash-high
+
+## 2026-10-07 10:33 UTC | zcode | Standard | fitur Urutkan banner dan bar promo | selesai
+
+- Owner: hapus isian Urutan slide di form tambah/edit banner, matikan pengaturan urutan dari situ, dan tambahkan fitur urutkan di halaman Banner Promo dan Bar Promo. Commit 298f909f (benar: 298c909f).
+- Form.tsx: field sort_order + tipe + default dibuang (backend sudah menangani tanpa field, slide baru tetap paling belakang). Kedua daftar kini punya mode Urutkan: tombol Urutkan di header (banner memaksa tampilan List), baris bisa digeser lewat pegangan drag (hook useRowDragSort pola Paling Banyak Dipesan), nomor urut dinamis per halaman, Urungkan mengembalikan snapshot, Simpan urutan mengirim rows id+sort_order ke route baru banners/reorder dan announcements/reorder. Daftar tersaring tidak bisa digeser.
+- Verifikasi: typecheck 0, build sukses, AdminSortOrderBaseOneTest+HomepagePopularTest+BerandaLayoutAdminTest 34 passed; live: banner digeser, disimpan, muat ulang penuh memuat urutan baru, lalu dikembalikan ke urutan asli via mode yang sama; bar promo digeser lalu Urungkan mengembalikan (data owner tak berubah).
+- Jebakan proses: dua berkas berbeda sama-sama bernama Index.tsx saat ditarik ke folder kerja lokal sehingga saling menimpa, suntingan sempat diterapkan pada berkas yang salah; tarik dengan nama unik per halaman.
