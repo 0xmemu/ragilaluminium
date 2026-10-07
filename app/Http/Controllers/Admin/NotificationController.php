@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Services\ActivityLogService;
 use App\Support\InertiaAdmin;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -201,7 +202,43 @@ class NotificationController extends Controller
             'unread_count' => AdminNotification::unread()->count(),
             'latest_id' => (int) AdminNotification::max('id'),
             'new_notifications' => $newNotifications,
+            // Penanda versi data panel admin (owner 2026-09-29): berubah bila
+            // data yang tampil di panel berubah, sehingga halaman dapat memuat
+            // ulang dirinya secara otomatis tanpa tombol Muat ulang.
+            'data_version' => $this->dataVersion(),
         ]);
+    }
+
+    /**
+     * Penanda versi data ringan: SATU query agregat ke tabel yang tampil di
+     * panel admin (pesanan, pesan WA, media, import, retur, pembayaran,
+     * ulasan, banner, bar promo, voucher, promo, resi, notifikasi). Nilainya
+     * berubah begitu ada penambahan atau perubahan, jadi panel hanya memuat
+     * ulang saat memang ada yang berubah, bukan tiap detik.
+     */
+    private function dataVersion(): string
+    {
+        $row = DB::selectOne(<<<'SQL'
+            SELECT CONCAT_WS('|',
+                COALESCE((SELECT MAX(id) FROM orders), 0),
+                COALESCE((SELECT MAX(updated_at) FROM orders), ''),
+                COALESCE((SELECT MAX(id) FROM whatsapp_messages), 0),
+                COALESCE((SELECT MAX(updated_at) FROM whatsapp_messages), ''),
+                COALESCE((SELECT MAX(updated_at) FROM media_assets), ''),
+                COALESCE((SELECT MAX(updated_at) FROM import_jobs), ''),
+                COALESCE((SELECT MAX(updated_at) FROM order_return_cases), ''),
+                COALESCE((SELECT MAX(updated_at) FROM payments), ''),
+                COALESCE((SELECT MAX(updated_at) FROM cms_testimonials), ''),
+                COALESCE((SELECT MAX(updated_at) FROM cms_banners), ''),
+                COALESCE((SELECT MAX(updated_at) FROM announcements), ''),
+                COALESCE((SELECT MAX(updated_at) FROM store_vouchers), ''),
+                COALESCE((SELECT MAX(updated_at) FROM promotions), ''),
+                COALESCE((SELECT MAX(updated_at) FROM shipping_records), ''),
+                COALESCE((SELECT MAX(id) FROM admin_notifications), 0)
+            ) AS v
+        SQL);
+
+        return md5((string) ($row->v ?? ''));
     }
 }
 

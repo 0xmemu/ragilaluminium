@@ -1,7 +1,8 @@
 import * as React from "react"
-import { Link } from "@inertiajs/react"
+import { Link, router, usePage } from "@inertiajs/react"
 import { Icon } from "@/components/shared/icon"
 import { routeUrl } from "@/lib/routes"
+import { isAutoRefreshPaused } from "@/lib/admin-auto-refresh"
 
 interface ToastItem {
   id: string
@@ -41,6 +42,8 @@ interface AdminWhatsAppReceivedEvent {
 interface PollResponse {
   unread_count: number
   latest_id: number
+  /** Penanda versi data panel; berubah bila data admin berubah. */
+  data_version?: string
   new_notifications: Array<{
     id: number
     type: string
@@ -119,6 +122,56 @@ export function LiveNotificationManager(): React.ReactElement | null {
   const seenIdsRef = React.useRef<Set<string>>(new Set())
   const lastPollIdRef = React.useRef<number>(0)
 
+  // ---- Muat ulang otomatis (owner 2026-09-29) ----
+  // Halaman memuat ulang datanya sendiri saat ada perubahan nyata: lewat event
+  // live (WebSocket) begitu pesanan/pesan WA berubah, atau lewat penanda versi
+  // pada polling cadangan. Tidak ada tombol Muat ulang lagi.
+  const { component } = usePage()
+  const lastVersionRef = React.useRef<string | null>(null)
+  const autoTimerRef = React.useRef<number | null>(null)
+  const lastReloadRef = React.useRef<number>(0)
+  const busyRef = React.useRef(false)
+
+  // Halaman form tidak ikut dimuat ulang otomatis: tidak menampilkan data hidup
+  // dan isian yang belum disimpan sebaiknya tidak terusik. Disimpan di ref
+  // supaya fungsi penjadwal punya identitas stabil (effect WebSocket tidak
+  // perlu dibangun ulang tiap pindah halaman).
+  const bolehMuatUlangRef = React.useRef(true)
+  React.useEffect(() => {
+    bolehMuatUlangRef.current = !/(Form|Create|Edit)$/.test(component)
+  }, [component])
+
+  const jadwalkanMuatUlang = React.useCallback(() => {
+    if (!bolehMuatUlangRef.current) return
+    if (autoTimerRef.current !== null) window.clearTimeout(autoTimerRef.current)
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = null
+      // Jeda sebentar supaya perubahan beruntun hanya memicu satu pemuatan.
+      if (isAutoRefreshPaused()) return
+      if (typeof document !== "undefined" && document.hidden) return
+      if (busyRef.current) return
+      const sekarang = Date.now()
+      if (sekarang - lastReloadRef.current < 8000) return
+      lastReloadRef.current = sekarang
+      // reload bawaan Inertia sudah mempertahankan posisi gulir dan state.
+      router.reload()
+    }, 1200)
+  }, [])
+
+  // Tandai saat Inertia sedang memuat: jangan menumpuk permintaan.
+  React.useEffect(() => {
+    const mulai = router.on("start", () => {
+      busyRef.current = true
+    })
+    const selesai = router.on("finish", () => {
+      busyRef.current = false
+    })
+    return () => {
+      mulai()
+      selesai()
+    }
+  }, [])
+
   const dismissToast = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
@@ -176,6 +229,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
 
         channel.listen(".order.created", (data: AdminOrderCreatedEvent) => {
           if (disposed) return
+          jadwalkanMuatUlang()
           pushToast({
             id: "order-" + data.event_id,
             type: "order",
@@ -190,6 +244,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
 
         channel.listen(".whatsapp.received", (data: AdminWhatsAppReceivedEvent) => {
           if (disposed) return
+          jadwalkanMuatUlang()
           const senderLabel = data.customer_name
             ? data.customer_name + " (" + data.phone_number + ")"
             : data.phone_number
@@ -214,7 +269,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
     return () => {
       disposed = true
     }
-  }, [pushToast])
+  }, [pushToast, jadwalkanMuatUlang])
 
   // Heartbeat Polling Fallback (setiap 8 detik)
   React.useEffect(() => {
@@ -232,6 +287,18 @@ export function LiveNotificationManager(): React.ReactElement | null {
 
         if (!res.ok || disposed) return
         const data = (await res.json()) as PollResponse
+
+        // Penanda versi: pertama kali hanya dicatat, setelah itu perubahan
+        // memicu pemuatan ulang halaman (menangkap perubahan yang tidak
+        // menghasilkan notifikasi, mis. status resi dari J&T).
+        if (typeof data.data_version === "string" && data.data_version !== "") {
+          if (lastVersionRef.current === null) {
+            lastVersionRef.current = data.data_version
+          } else if (lastVersionRef.current !== data.data_version) {
+            lastVersionRef.current = data.data_version
+            jadwalkanMuatUlang()
+          }
+        }
 
         if (lastPollIdRef.current === 0) {
           // Inisialisasi awal ID, tidak memicu alert notifikasi lama saat halaman pertama kali dimuat
@@ -274,7 +341,7 @@ export function LiveNotificationManager(): React.ReactElement | null {
       disposed = true
       window.clearInterval(timer)
     }
-  }, [pushToast])
+  }, [pushToast, jadwalkanMuatUlang])
 
   if (toasts.length === 0) return null
 

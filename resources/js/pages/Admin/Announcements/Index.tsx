@@ -14,6 +14,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { useAutoRefreshPause } from "@/lib/admin-auto-refresh"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { navigateFilter } from "@/lib/filter-url"
@@ -164,6 +165,10 @@ export default function AnnouncementsIndex({
   // Mode Urutkan (owner 2026-09-29): geser urutan bar promo lewat pegangan
   // di baris, angka urutan tidak lagi di form tambah/edit.
   const [reorderMode, setReorderMode] = React.useState(false)
+  // Selama mode Urutkan, muat ulang otomatis dijeda agar geseran tidak terusik.
+  useAutoRefreshPause(reorderMode)
+  // Urutan lokal dipakai HANYA selama mode Urutkan; di luar itu daftar selalu
+  // mengikuti props server supaya filter/pindah halaman tidak menampilkan data basi.
   const [rows, setRows] = React.useState(announcements)
   const canReorder = reorderMode && q === "" && activeStatus === "all"
   const daftar = canReorder ? rows : announcements

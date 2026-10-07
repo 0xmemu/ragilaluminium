@@ -15,6 +15,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { useAutoRefreshPause } from "@/lib/admin-auto-refresh"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
@@ -157,6 +158,10 @@ export default function BannersIndex({
   // angka di form tambah/edit sudah dihapus. Hanya di tampilan List; daftar
   // tersaring tidak bisa digeser karena posisi target tidak mewakili global.
   const [reorderMode, setReorderMode] = React.useState(false)
+  // Selama mode Urutkan, muat ulang otomatis dijeda agar geseran tidak terusik.
+  useAutoRefreshPause(reorderMode)
+  // Urutan lokal dipakai HANYA selama mode Urutkan; di luar itu daftar selalu
+  // mengikuti props server supaya filter/pindah halaman tidak menampilkan data basi.
   const [rows, setRows] = React.useState(banners)
   const canReorder = reorderMode && q === "" && activeStatus === "all" && viewMode === "list"
   const daftar = canReorder ? rows : banners

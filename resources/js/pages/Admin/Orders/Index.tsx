@@ -34,7 +34,6 @@ import { navigateFilter } from "@/lib/filter-url"
 // import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
-import { useAdminLiveOrders } from "@/lib/admin-live-events"
 
 interface OrderItemPreview {
   id: number
@@ -790,16 +789,6 @@ export default function OrdersIndex({
     date_to: activeDatePreset === "range" ? dateTo : "",
   }
 
-  // Live-event-ready: adapter tidak aktif (broadcast runtime belum ada).
-  // Saat aktif nanti, event utk order pada hasil/filter saat ini memicu notice.
-  const [liveNotice, setLiveNotice] = React.useState<string | null>(null)
-  const { state: _liveState } = useAdminLiveOrders({
-    onOrderUpdated: (event) => {
-      // Jangan sisipkan row palsu; cukup tandai data baru tersedia.
-      setLiveNotice(`Ada pembaruan pesanan ${event.order_number}. Perbarui daftar.`)
-    },
-  })
-
   const visit = React.useCallback((params: Record<string, string | undefined>) => {
     // Setiap navigasi filter membatalkan pilihan preset yang masih menggantung.
     setDateDraft(null)
@@ -1266,28 +1255,6 @@ export default function OrdersIndex({
 
       {/* Daftar pesanan */}
       <div className="mt-4">
-        {liveNotice ? (
-          <div
-            role="status"
-            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-info/20 bg-info/5 px-3 py-2 text-xs text-muted-foreground"
-          >
-            <span className="flex items-center gap-2">
-              <Icon name="info" className="size-3.5 shrink-0 text-info" aria-hidden="true" />
-              {liveNotice}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setLiveNotice(null)
-                router.get(routeUrl("admin.orders.index"), {}, { preserveScroll: true })
-              }}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
-            >
-              <Icon name="refresh" className="size-3" aria-hidden="true" />
-              Perbarui daftar
-            </button>
-          </div>
-        ) : null}
 
         {/* Baris Filter Aktif (hanya tampil jika ada filter aktif) */}
         {activeFilters.length > 0 ? (
