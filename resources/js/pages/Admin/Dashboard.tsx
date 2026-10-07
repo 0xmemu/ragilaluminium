@@ -3,7 +3,6 @@ import * as React from "react"
 
 import { OptionMenu } from "@/components/admin/option-menu"
 import { SectionCard } from "@/components/admin/section-card"
-import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Card } from "@/components/admin/ui/card"
 import { DeltaBadge } from "@/components/admin/ui/delta-badge"
@@ -22,7 +21,6 @@ import AdminLayout from "@/layouts/admin-layout"
 const TrendChart = React.lazy(() => import("@/components/admin/charts/trend-chart"))
 const SalesAreaChart = React.lazy(() => import("@/components/admin/charts/sales-area-chart"))
 import { formatCurrency, formatNumber } from "@/lib/format"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -311,8 +309,6 @@ export default function Dashboard({
   productCount = 0,
 }: DashboardProps) {
   const { auth } = usePage<SharedPageProps>().props
-  const [refreshing, setRefreshing] = React.useState(false)
-  const [refreshError, setRefreshError] = React.useState(false)
   const name = greetingName || auth.user?.name || "Admin"
   const hasOrders =
     statusOrder.reduce((sum, item) => sum + item.total, 0) > 0 || omzet.orders > 0
@@ -327,41 +323,14 @@ export default function Dashboard({
     )
   }
 
-  function refreshDashboard() {
-    setRefreshing(true)
-    setRefreshError(false)
-    router.reload({
-      onError: () => setRefreshError(true),
-      onFinish: () => setRefreshing(false),
-    })
-  }
-
   return (
     <AdminLayout
       title={`${greetingPrefix()}, ${name}`}
       description={`${todayLabel} · Data diperbarui: ${formatDateTime(generatedAt)} WIB`}
-      actions={
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={refreshDashboard}
-          disabled={refreshing}
-          className="gap-2 font-medium"
-        >
-          <Icon name="refresh" className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden="true" />
-          {refreshing ? "Memperbarui..." : "Muat ulang"}
-        </Button>
-      }
     >
       <Head title="Dashboard | Admin" />
 
       <div className="space-y-5">
-        {refreshError ? (
-          <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-2.5 text-xs font-medium text-destructive" role="status">
-            Data belum berhasil diperbarui. Silakan tekan tombol Muat ulang sekali lagi.
-          </div>
-        ) : null}
 
         {/* Antrean kerja utama. Petak ringkas, bukan daftar selebar halaman:
             daftar baris penuh menyisakan rongga ~1300px per baris sehingga

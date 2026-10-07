@@ -215,16 +215,6 @@ export default function VouchersIndex({
       backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />

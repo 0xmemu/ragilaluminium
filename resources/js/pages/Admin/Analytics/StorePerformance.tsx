@@ -1774,7 +1774,6 @@ export default function StorePerformance({
   report: Report
   exportUrl: string
 }) {
-  const [refreshing, setRefreshing] = React.useState(false)
   // Kategori detail pada Sheet samping. null berarti panel tertutup.
   // Pemilihan kategori hanya mengubah state lokal: membangun laporan butuh
   // 418 ms dengan 177 query, jadi berpindah kategori tidak boleh memicu
@@ -1785,7 +1784,6 @@ export default function StorePerformance({
   const [exportFrom, setExportFrom] = React.useState("")
   const [exportTo, setExportTo] = React.useState("")
   const [exportGranularity, setExportGranularity] = React.useState("day")
-  const [refreshError, setRefreshError] = React.useState(false)
   const [period, setPeriod] = React.useState(filters.period)
   const [from, setFrom] = React.useState(filters.from)
   const [to, setTo] = React.useState(filters.to)
@@ -2020,23 +2018,6 @@ export default function StorePerformance({
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setRefreshing(true)
-              setRefreshError(false)
-              router.reload({
-                only: ["report", "filters"],
-                onError: () => setRefreshError(true),
-                onFinish: () => setRefreshing(false),
-              })
-            }}
-            disabled={refreshing}
-          >
-            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-            {refreshing ? "Memuat..." : "Muat ulang"}
-          </Button>
           <div className="relative" ref={exportRef}>
             <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
               <Icon name="download" className="size-4" aria-hidden="true" />
@@ -2105,7 +2086,7 @@ export default function StorePerformance({
             <span className="text-xs text-muted-foreground">({report.range.from_date} - {report.range.to_date})</span>
             <span className="text-xs text-muted-foreground">·</span>
             <span className="text-xs text-muted-foreground" aria-live="polite">
-              {refreshing ? "Memperbarui data..." : `Pembanding: ${report.range.compare_label.replace(/^vs\s+/, "")}`}
+              Pembanding: {report.range.compare_label.replace(/^vs\s+/, "")}
             </span>
             <span className="text-xs text-muted-foreground" title="Waktu laporan dibangun (WIB)">
               · Diperbarui {formatJamIso(report.generated_at)}
@@ -2183,11 +2164,6 @@ export default function StorePerformance({
           </div>
         </div>
 
-        {refreshError ? (
-          <p className="mt-2 text-xs font-medium text-destructive" role="status">
-            Gagal memuat pembaruan data. Coba refresh lagi.
-          </p>
-        ) : null}
 
         {peringatanRentang ? (
           <p className="mt-2 text-xs font-medium text-muted-foreground" role="status">

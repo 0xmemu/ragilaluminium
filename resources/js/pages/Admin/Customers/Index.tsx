@@ -154,17 +154,6 @@ export default function CustomersIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={refreshing}
-            onClick={refreshCustomers}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className={cn("size-3.5", refreshing ? "animate-spin" : "")} aria-hidden="true" />
-            <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
-          </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={exportUrl}>
               <Icon name="download" className="size-4" aria-hidden="true" />

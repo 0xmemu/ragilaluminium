@@ -100,26 +100,6 @@ export default function ImportsIndex({
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={refreshing}
-        onClick={() => {
-          setRefreshing(true)
-          router.reload({
-            onFinish: () => setRefreshing(false),
-          })
-        }}
-        className="inline-flex items-center gap-1.5"
-      >
-        <Icon
-          name="refresh"
-          className={cn("size-3.5", refreshing ? "animate-spin" : "")}
-          aria-hidden="true"
-        />
-        <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
-      </Button>
 
       <Button asChild size="sm">
         <Link href={createHref}>

@@ -106,16 +106,6 @@ export default function ImportShow({
       backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
-          </Button>
           {job.failed_rows > 0 ? (
             <Button asChild variant="secondary" size="sm">
               <a href={routeUrl("admin.imports.correction-file", { import_job: job.id })} className="inline-flex items-center gap-1.5">

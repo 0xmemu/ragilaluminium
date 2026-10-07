@@ -121,18 +121,6 @@ export default function WhatsAppHub({ title, description, stats, connection, con
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              router.reload({
-                only: ["stats", "conversations", "connection", "failed_count", "failed_messages"],
-              })
-            }
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            Muat ulang
-          </button>
         </div>
       }
     >

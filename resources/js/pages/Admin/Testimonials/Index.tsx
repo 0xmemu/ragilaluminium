@@ -452,16 +452,6 @@ export default function TestimonialsIndex({
       lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
           {previewUrl ? (
             <Button asChild variant="secondary" size="sm">
               <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">

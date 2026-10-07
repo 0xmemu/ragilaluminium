@@ -1025,15 +1025,6 @@ export default function OrdersIndex({
       description={description}
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={refreshOrders}
-            disabled={refreshing}
-          >
-            <Icon name="refresh" className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
-            {refreshing ? "Memuat..." : "Muat ulang"}
-          </Button>
 
           <div className="relative">
             <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>

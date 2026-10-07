@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
@@ -127,7 +127,6 @@ export default function PaymentsIndex({
   periodLabel,
   payments,
 }: PaymentsIndexProps) {
-  const [refreshing, setRefreshing] = React.useState(false)
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
   const [rangeTo, setRangeTo] = React.useState(initialDateTo)
@@ -171,30 +170,6 @@ export default function PaymentsIndex({
     })
   }
 
-  const actions = (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={refreshing}
-        onClick={() => {
-          setRefreshing(true)
-          router.reload({
-            onFinish: () => setRefreshing(false),
-          })
-        }}
-        className="inline-flex items-center gap-1.5"
-      >
-        <Icon
-          name="refresh"
-          className={cn("size-3.5", refreshing ? "animate-spin" : "")}
-          aria-hidden="true"
-        />
-        <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
-      </Button>
-    </div>
-  )
 
   return (
     <AdminLayout
@@ -204,7 +179,6 @@ export default function PaymentsIndex({
         description ??
         "Rekonsiliasi transaksi pembayaran toko, verifikasi transfer bank, dan penerimaan COD."
       }
-      actions={actions}
     >
       <Head title={`${title} | Admin`} />
 

@@ -1,4 +1,4 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -93,7 +93,6 @@ export default function ShippingIndex({
   searchQuery,
   records,
 }: ShippingIndexProps) {
-  const [refreshing, setRefreshing] = React.useState(false)
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
   const [rangeTo, setRangeTo] = React.useState(initialDateTo)
@@ -127,30 +126,6 @@ export default function ShippingIndex({
     })
   }
 
-  const actions = (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        disabled={refreshing}
-        onClick={() => {
-          setRefreshing(true)
-          router.reload({
-            onFinish: () => setRefreshing(false),
-          })
-        }}
-        className="inline-flex items-center gap-1.5"
-      >
-        <Icon
-          name="refresh"
-          className={cn("size-3.5", refreshing ? "animate-spin" : "")}
-          aria-hidden="true"
-        />
-        <span>{refreshing ? "Memuat..." : "Muat ulang"}</span>
-      </Button>
-    </div>
-  )
 
   return (
     <AdminLayout
@@ -159,7 +134,6 @@ export default function ShippingIndex({
         description ??
         "Monitoring paket ekspedisi J&T Cargo, pelacakan resi, dan serah terima pengiriman pelanggan."
       }
-      actions={actions}
     >
       <Head title={`${title} | Admin`} />
 

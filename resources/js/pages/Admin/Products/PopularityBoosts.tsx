@@ -78,16 +78,6 @@ export default function PopularityBoosts({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Refresh data</span>
-          </Button>
           <Button type="submit" form="boost-create-form" size="sm" disabled={form.processing}>
             {form.processing ? "Menyimpan..." : "Aktifkan"}
           </Button>

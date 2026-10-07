@@ -2,7 +2,7 @@ import { Head, Link, router } from "@inertiajs/react"
 import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
-import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
@@ -26,7 +26,6 @@ import AdminLayout from "@/layouts/admin-layout"
 import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -325,16 +324,6 @@ export default function ProductsIndex({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={exportUrl}>Ekspor</a>
           </Button>

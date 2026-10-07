@@ -165,10 +165,8 @@ export default function AnnouncementsIndex({
   // di baris, angka urutan tidak lagi di form tambah/edit.
   const [reorderMode, setReorderMode] = React.useState(false)
   const [rows, setRows] = React.useState(announcements)
-  React.useEffect(() => {
-    setRows(announcements)
-  }, [announcements])
   const canReorder = reorderMode && q === "" && activeStatus === "all"
+  const daftar = canReorder ? rows : announcements
   const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
   const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
     rows: [],
@@ -186,7 +184,7 @@ export default function AnnouncementsIndex({
 
   const dnd = useRowDragSort({
     enabled: canReorder,
-    count: rows.length,
+    count: daftar.length,
     onReorder: geser,
   })
 
@@ -241,16 +239,6 @@ export default function AnnouncementsIndex({
       backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
           {reorderMode ? (
             <>
               <Button
@@ -386,7 +374,7 @@ export default function AnnouncementsIndex({
               </tr>
             </thead>
             <tbody>
-              {rows.map((item, index) => (
+              {daftar.map((item, index) => (
                 <tr
                   key={item.id}
                   className={cn(

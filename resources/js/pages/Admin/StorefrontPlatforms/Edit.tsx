@@ -1,4 +1,4 @@
-import { Head, router, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker } from "@/components/admin/media-picker"
@@ -250,16 +250,6 @@ export default function StorefrontPlatformsEdit({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
 
           {previewUrl ? (
             <Button asChild variant="secondary" size="sm">

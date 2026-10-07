@@ -11,7 +11,6 @@ import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Select } from "@/components/admin/ui/select"
@@ -159,10 +158,8 @@ export default function BannersIndex({
   // tersaring tidak bisa digeser karena posisi target tidak mewakili global.
   const [reorderMode, setReorderMode] = React.useState(false)
   const [rows, setRows] = React.useState(banners)
-  React.useEffect(() => {
-    setRows(banners)
-  }, [banners])
   const canReorder = reorderMode && q === "" && activeStatus === "all" && viewMode === "list"
+  const daftar = canReorder ? rows : banners
   const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
   const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
     rows: [],
@@ -180,7 +177,7 @@ export default function BannersIndex({
 
   const dnd = useRowDragSort({
     enabled: canReorder,
-    count: rows.length,
+    count: daftar.length,
     onReorder: geser,
   })
 
@@ -226,16 +223,6 @@ export default function BannersIndex({
       backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => router.reload()}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Icon name="refresh" className="size-3.5" aria-hidden="true" />
-            <span>Muat ulang</span>
-          </Button>
           {reorderMode ? (
             <>
               <Button
@@ -362,7 +349,7 @@ export default function BannersIndex({
               </tr>
             </thead>
             <tbody>
-              {rows.map((banner, index) => (
+              {daftar.map((banner, index) => (
                 <tr
                   key={banner.id}
                   className={cn(
