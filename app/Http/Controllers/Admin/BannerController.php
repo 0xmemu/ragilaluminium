@@ -44,7 +44,7 @@ class BannerController extends Controller
         return Inertia::render('Admin/Banners/Index', [
             'backUrl' => route('admin.promotions.index'),
             'title' => 'Banner Promo',
-            'description' => 'Kelola slide promo beranda (cms_banners) yang tampil setelah slide pembuka brand.',
+            'description' => 'Kelola slide promo beranda yang tampil setelah slide pembuka brand.',
             'viewMode' => $view,
             'searchQuery' => $q,
             'activeStatus' => in_array($status, ['active', 'inactive'], true) ? $status : 'all',
