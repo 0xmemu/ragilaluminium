@@ -122,6 +122,11 @@ export default function TestimonialForm({
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
   const isPublished = Boolean(testimonial?.published ?? true)
+  // Ulasan kiriman pelanggan dikunci server: nama, rating, dan teks
+  // dikembalikan ke nilai asli saat menyimpan (kontrak "verified review").
+  // Isian untuk kolom itu tidak boleh tampil bisa diketik, supaya admin
+  // tidak mengetik perubahan yang dibuang diam-diam.
+  const ulasanTerkunci = editing && (testimonial?.author_type ?? "customer") === "customer"
 
   // Foto ulasan (permintaan owner 2026-09-29). Skemanya SAMA dengan form admin
   // lain (ProductForm, ModelProducts, MasalahSolusi): daftar `media_asset_ids`
@@ -436,6 +441,12 @@ export default function TestimonialForm({
         encType="multipart/form-data"
       >
         <FormErrorSummary errors={form.errors} />
+        {ulasanTerkunci ? (
+          <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+            Ulasan kiriman pelanggan: nama, rating, dan isi ulasan terkunci karena itu yang dikirim
+            pelanggan. Yang bisa diubah admin: lokasi, produk terkait, foto, dan status moderasi.
+          </div>
+        ) : null}
         <section className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <Field
@@ -568,23 +579,33 @@ export default function TestimonialForm({
                 error={form.errors.customer_name}
                 hint={isMarketplaceIntent ? "Opsional. Kosongkan untuk tampil sebagai “Pelanggan”." : undefined}
               >
-                <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
+                {ulasanTerkunci ? (
+                  <p className="text-sm text-foreground">{form.data.customer_name.trim() || "Pelanggan"}</p>
+                ) : (
+                  <Input value={form.data.customer_name} onChange={(event) => form.setData("customer_name", event.target.value)} />
+                )}
               </Field>
               <Field id="testimonial-location" label="Lokasi" error={form.errors.location}>
                 <Input value={form.data.location} onChange={(event) => form.setData("location", event.target.value)} />
               </Field>
               {!isMarketplaceIntent ? (
                 <Field id="testimonial-rating" label="Rating" error={form.errors.rating}>
-                  <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
-                    <option value="">Tanpa rating</option>
-                    {[1, 2, 3, 4, 5].map((rating) => (
-                      // Bintang supaya pilihan terlihat seperti rating sungguhan,
-                      // bukan angka polos (catatan owner 2026-09-29). Label wajib
-                      // SATU string: komponen Select memakai children apa adanya,
-                      // children berupa array jatuh ke nilai angka.
-                      <option key={rating} value={rating}>{'★'.repeat(rating) + ' ' + rating + ' bintang'}</option>
-                    ))}
-                  </Select>
+                  {ulasanTerkunci ? (
+                    <p className="text-sm text-foreground">
+                      {form.data.rating ? "★".repeat(Number(form.data.rating)) + " " + form.data.rating + " bintang" : "Tanpa rating"}
+                    </p>
+                  ) : (
+                    <Select value={form.data.rating} onChange={(event) => form.setData("rating", event.target.value)}>
+                      <option value="">Tanpa rating</option>
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        // Bintang supaya pilihan terlihat seperti rating sungguhan,
+                        // bukan angka polos (catatan owner 2026-09-29). Label wajib
+                        // SATU string: komponen Select memakai children apa adanya,
+                        // children berupa array jatuh ke nilai angka.
+                        <option key={rating} value={rating}>{'★'.repeat(rating) + ' ' + rating + ' bintang'}</option>
+                      ))}
+                    </Select>
+                  )}
                 </Field>
               ) : null}
               {!isMarketplaceIntent ? (
@@ -645,7 +666,11 @@ export default function TestimonialForm({
                 className="sm:col-span-2"
                 hint="Opsional jika ada gambar. Wajib salah satu: teks atau gambar."
               >
-                <Textarea rows={7} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+                {ulasanTerkunci ? (
+                  <p className="whitespace-pre-line text-sm text-foreground">{form.data.message.trim() || "-"}</p>
+                ) : (
+                  <Textarea rows={7} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+                )}
               </Field>
             ) : (
               <Field
@@ -655,7 +680,11 @@ export default function TestimonialForm({
                 className="sm:col-span-2"
                 hint="Tidak wajib. Storefront menampilkan screenshot, bukan teks panjang."
               >
-                <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+                {ulasanTerkunci ? (
+                  <p className="whitespace-pre-line text-sm text-foreground">{form.data.message.trim() || "-"}</p>
+                ) : (
+                  <Textarea rows={3} value={form.data.message} onChange={(event) => form.setData("message", event.target.value)} />
+                )}
               </Field>
             )}
             {isMarketplace ? (

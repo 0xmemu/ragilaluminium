@@ -236,6 +236,9 @@ class TestimonialController extends Controller
                 'published' => $testimonial->published,
                 'moderation_status' => $testimonial->moderation_status ?: 'approved',
                 'created_at' => optional($testimonial->created_at)?->toIso8601String(),
+                // Jenis penulis dipakai form untuk mengunci isian yang
+                // memang tidak bisa disimpan server (teks pelanggan).
+                'author_type' => $testimonial->author_type ?: 'customer',
                 'admin_reply' => $testimonial->admin_reply,
                 'admin_replied_at' => optional($testimonial->admin_replied_at)?->toIso8601String(),
             ],
@@ -269,8 +272,11 @@ class TestimonialController extends Controller
                 ->with('success', 'Screenshot ulasan eksternal diperbarui.');
         }
 
+        // Kembali ke halaman ringkasan ulasan (bukan daftar): halaman ini
+        // dibuka dalam mode baca (ADR-023), jadi menyimpan harus mengembalikan
+        // ke ringkasan yang menampilkan hasilnya, bukan melempar ke daftar.
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])
+            ->route('admin.testimonials.edit', $testimonial)
             ->with('success', 'Ulasan website diperbarui.');
     }
 

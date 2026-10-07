@@ -553,7 +553,10 @@ class UlasanAdminTest extends TestCase
                 'media_asset_ids' => [],
                 'image_urls' => [],
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
+            // Simpan mengembalikan ke halaman ringkasan ulasan (ADR-023), bukan
+            // ke daftar. Tujuan redirect bukan inti test ini; test ini menguji
+            // foto benar-benar dikosongkan.
+            ->assertRedirect(route('admin.testimonials.edit', $ulasan));
 
         $ulasan->refresh();
         $this->assertNull($ulasan->image_url);
@@ -637,5 +640,42 @@ class UlasanAdminTest extends TestCase
         $this->assertSame('https://cdn.example.com/lama-utama.jpg', $ulasan->image_url);
         $this->assertSame(['https://cdn.example.com/lama-kedua.jpg'], $ulasan->image_urls);
     }
+
+
+    /**
+     * Penjaga kontrak "ulasan pelanggan":
+     *
+     * 1. Halaman edit WAJIB mengirim author_type. Tanpa itu frontend tidak bisa
+     *    tahu ulasan ini kiriman pelanggan, sehingga nama/rating/teks tampil
+     *    sebagai isian yang bisa diketik padahal server membuang perubahannya
+     *    (dilaporkan owner 2026-10-06: "ga fungsional").
+     * 2. Simpan mengembalikan ke halaman ringkasan ulasan, bukan ke daftar,
+     *    supaya mode baca ADR-023 benar-benar terpakai setelah menyimpan.
+     */
+    public function test_edit_mengirim_author_type_dan_simpan_kembali_ke_ringkasan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $page = CmsPage::create(['slug' => 'testimoni', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $review = CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'customer_name' => 'Pelanggan Asli', 'message' => 'Teks asli pelanggan',
+            'rating' => 5, 'source' => 'website', 'published' => true, 'moderation_status' => 'approved',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.edit', $review))
+            ->assertOk()
+            ->assertInertia(fn (Assert $inertia) => $inertia
+                ->component('Admin/Testimonials/Form')
+                ->where('testimonial.author_type', 'customer'));
+
+        $this->actingAs($admin)->put(route('admin.testimonials.update', $review), [
+            '_method' => 'put', 'customer_name' => 'Pelanggan Asli', 'message' => 'Teks asli pelanggan', 'rating' => 5,
+            'source' => 'website', 'location' => 'Bandung', 'image_url' => '', 'image_urls' => [], 'published' => true,
+        ])->assertRedirect(route('admin.testimonials.edit', $review));
+
+        // Lokasi memang bidang yang boleh diubah admin pada ulasan pelanggan.
+        $this->assertSame('Bandung', $review->fresh()->location);
+    }
+
 
 }
