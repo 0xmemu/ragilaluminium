@@ -3431,3 +3431,9 @@ Agent: zcode
 - Owner: "tempatkan ulassan pelanggan di bawah rating. sesuaikan dimensi card". Teks ulasan pindah ke kolom kiri di bawah blok rating; kolom kini dua setengah sama (751px per kolom, dulu kiri sempit 17rem); kolom kanan (balasan + foto) hanya dirender bila isinya ada; grid foto 2/3 kolom mengikuti lebar kolom.
 - Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live terukur kedua kolom 751px dengan urutan kiri identitas, rating, teks ulasan.
 Agent: zcode
+
+## 2026-10-06 13:50 UTC | zcode | Trivial | selesai
+
+- Owner: "tempatkan balasan dan media di bawah ulasan pelanggan. lalu tempatkan produk yg dibeli di kolom kanan. kecilkan media sedikit". Kolom kiri jadi alur utuh (identitas, rating, ulasan, balasan, media); kolom kanan berisi label "Produk yang Dibeli" dengan baris standar isi pesanan dalam kotak berbingkai; kartu Produk Terkait terpisah dihapus sehingga halaman tinggal satu kartu; tile media 175px (dulu 242px); kolom kanan hanya bila ada produk tertaut.
+- Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live terukur satu kartu, kedua kolom 751px, tile 175px.
+Agent: zcode
