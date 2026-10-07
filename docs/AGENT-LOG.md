@@ -3437,3 +3437,7 @@ Agent: zcode
 - Owner: "tempatkan balasan dan media di bawah ulasan pelanggan. lalu tempatkan produk yg dibeli di kolom kanan. kecilkan media sedikit". Kolom kiri jadi alur utuh (identitas, rating, ulasan, balasan, media); kolom kanan berisi label "Produk yang Dibeli" dengan baris standar isi pesanan dalam kotak berbingkai; kartu Produk Terkait terpisah dihapus sehingga halaman tinggal satu kartu; tile media 175px (dulu 242px); kolom kanan hanya bila ada produk tertaut.
 - Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live terukur satu kartu, kedua kolom 751px, tile 175px.
 Agent: zcode
+
+## 2026-10-07 09:46 UTC | zcode | Trivial | app/Http/Controllers/Admin/BannerController.php | selesai
+
+- Owner di /admin/banners: sesuaikan (menunjuk deskripsi halaman yang masih memuat nama tabel cms_banners). Kata (cms_banners) dibuang, deskripsi kini berbunyi Kelola slide promo beranda yang tampil setelah slide pembuka brand. Verifikasi: php -l bersih; live di browser teks baru tampil dan istilah teknis hilang.
