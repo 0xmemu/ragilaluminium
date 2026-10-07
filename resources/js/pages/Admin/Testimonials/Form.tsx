@@ -202,16 +202,15 @@ export default function TestimonialForm({
   const labelSumber = labels[form.data.source] ?? form.data.source
 
 
-  // Ringkasan (mode baca): satu kartu ulasan dengan DUA kolom di dalamnya,
-  // pola kartu ulasan storefront: kiri identitas pelanggan + rating, kanan
-  // teks ulasan lalu balasan, dan foto MENYATU di bawah ulasan tanpa section
-  // terpisah (owner 2026-10-06). Produk terkait di bawahnya memakai baris
-  // standar isi pesanan: foto katalog, nama standar productName() berikon
-  // salin, SKU berikon salin, dan qty x harga, TANPA tombol Buka produk.
+  // Ringkasan (mode baca): satu kartu dengan DUA kolom di dalamnya. KIRI:
+  // identitas pelanggan, rating, ulasan, lalu balasan dan media menyatu di
+  // bawahnya (owner 2026-10-06). KANAN: produk yang dibeli dalam baris
+  // standar isi pesanan (foto katalog, nama productName() berikon salin, SKU
+  // berikon salin, qty x harga, tanpa tombol).
   const namaProduk = produkPicked ? productName(produkPicked.name, produkPicked.dimensions) : ""
-  // Kolom kanan (balasan + foto) hanya dibuat bila isinya ada, supaya
-  // ulasan tanpa keduanya tidak menyisakan separuh kartu kosong.
-  const adaKolomKanan = Boolean(testimonial?.admin_reply) || photos.length > 0
+  // Kolom kanan berisi produk yang dibeli; hanya bila ulasan benar-benar
+  // menautkan produk (marketplace tidak punya kolom produk).
+  const adaKolomKanan = !isMarketplaceIntent && Boolean(produkPicked)
 
   const ringkasan = (
     <div className="w-full space-y-6">
@@ -227,9 +226,8 @@ export default function TestimonialForm({
         }
       >
         <div className={cn("grid items-start gap-6", adaKolomKanan && "lg:grid-cols-2")}>
-          {/* Kiri: pelanggan, rating, lalu teks ulasan di bawah rating
-              (owner 2026-10-06). Dimensi kolom dua setengah sama agar teks
-              termuat, bukan kolom sempit tetap. */}
+          {/* Kiri: pelanggan, rating, ulasan, lalu balasan dan media di
+              bawahnya (owner 2026-10-06). Kolom dua setengah sama. */}
           <div className={cn("min-w-0", adaKolomKanan && "lg:border-r lg:border-border lg:pr-6")}>
             <div className="flex items-center gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
@@ -266,7 +264,7 @@ export default function TestimonialForm({
               <p className="mt-4 text-xs text-muted-foreground">Tanpa rating</p>
             )}
 
-            {/* Ulasan pelanggan di bawah rating (owner 2026-10-06) */}
+            {/* Ulasan pelanggan di bawah rating */}
             <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-foreground">
               {form.data.message.trim() || (
                 <span className="italic text-muted-foreground">
@@ -274,11 +272,9 @@ export default function TestimonialForm({
                 </span>
               )}
             </p>
-          </div>
 
-          {/* Kanan: balasan toko dan foto ulasan */}
-          {adaKolomKanan ? (
-            <div className="min-w-0 space-y-5">
+            {/* Balasan dan media menyatu di bawah ulasan pelanggan
+                (owner 2026-10-06) */}
             {testimonial?.admin_reply ? (
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -299,7 +295,7 @@ export default function TestimonialForm({
             ) : null}
 
             {photos.length > 0 ? (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Foto ulasan">
+              <ul className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-4" aria-label="Foto ulasan">
                 {photos.map((row, index) => (
                   <li
                     key={row.key}
@@ -328,44 +324,45 @@ export default function TestimonialForm({
                 ))}
               </ul>
             ) : null}
+          </div>
+
+          {/* Kanan: produk yang dibeli (owner 2026-10-06), baris standar isi
+              pesanan: foto, nama + salin, SKU + salin, qty x harga. */}
+          {!isMarketplaceIntent && produkPicked ? (
+            <div className="min-w-0 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground">Produk yang Dibeli</p>
+              <div className="rounded-lg border border-border p-4">
+                <div className="flex gap-3.5">
+                  <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                    {produkPicked.image ? (
+                      <img src={produkPicked.image} alt="" className="size-full object-cover" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                        <Icon name="image" className="size-4" aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-1.5">
+                      <p className="text-sm font-normal leading-5 text-foreground">{namaProduk}</p>
+                      <CopyButton text={namaProduk} label="Salin ukuran & nama produk" compact showTextInTitle />
+                    </div>
+                    {produkPicked.parent_sku ? (
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="font-mono">SKU {produkPicked.parent_sku}</span>
+                        <CopyButton text={produkPicked.parent_sku} label="Salin SKU produk" compact />
+                      </p>
+                    ) : null}
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      1 × {formatCurrency(produkPicked.price)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>
       </SectionCard>
-
-      {/* Produk terkait: baris standar isi pesanan. Tanpa tombol Buka produk,
-          sesuai format baris produk panel admin (foto, nama + salin, SKU +
-          salin, qty x harga). */}
-      {!isMarketplaceIntent && produkPicked ? (
-        <SectionCard title="Produk Terkait" icon="package" contentClassName="p-0">
-          <div className="flex gap-3.5 px-5 py-4">
-            <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-              {produkPicked.image ? (
-                <img src={produkPicked.image} alt="" className="size-full object-cover" />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground">
-                  <Icon name="image" className="size-4" aria-hidden="true" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start gap-1.5">
-                <p className="text-sm font-normal leading-5 text-foreground">{namaProduk}</p>
-                <CopyButton text={namaProduk} label="Salin ukuran & nama produk" compact showTextInTitle />
-              </div>
-              {produkPicked.parent_sku ? (
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="font-mono">SKU {produkPicked.parent_sku}</span>
-                  <CopyButton text={produkPicked.parent_sku} label="Salin SKU produk" compact />
-                </p>
-              ) : null}
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                1 × {formatCurrency(produkPicked.price)}
-              </p>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
     </div>
   )
   return (
