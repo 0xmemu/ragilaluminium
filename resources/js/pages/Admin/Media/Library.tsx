@@ -1419,8 +1419,11 @@ export default function MediaLibrary({
             </div>
           ) : null}
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {/* Susunan kartu: enam per layar di desktop lebar, lalu mengecil
+              bertingkat begitu lebar layar berkurang (2/3/4/5/6 kolom). Kartu
+              memakai aspek persegi, jadi tinggi baris mengikuti lebar kartu dengan
+              sendirinya: layar sempit berarti kartu lebih kecil, bukan terpotong. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {assets.map((asset) => {
               const meta = mediaStatusMeta(asset.status)
               const isCopied = copiedId === asset.id
