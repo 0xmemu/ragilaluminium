@@ -187,16 +187,7 @@ export default function PromotionOverview({
         </div>
 
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">Kampanye diskon</h2>
-            <div className="flex items-center gap-2 text-xs">
-              <Link href={storeUrl} className="text-primary hover:underline">Semua Diskon Reguler</Link>
-              <span className="text-muted-foreground">·</span>
-              <Link href={flashSaleUrl} className="text-primary hover:underline">Semua Flash Sale</Link>
-              <span className="text-muted-foreground">·</span>
-              <Link href={vouchersUrl} className="text-primary hover:underline">Kelola Voucher</Link>
-            </div>
-          </div>
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">Kampanye diskon</h2>
 
           {campaigns.length === 0 ? (
             <Card className="border border-border bg-card">
