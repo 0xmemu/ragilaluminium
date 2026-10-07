@@ -3425,3 +3425,9 @@ Agent: zcode
 - Standar yang wajib diingat: nama produk tampil SELALU lewat productName(name, short_name); baris produk admin meniru baris "Isi pesanan" Orders/Show (foto size-14, nama font-normal + ikon salin, varian, qty x harga, total kanan); CopyButton komponen bersama untuk semua ikon salin.
 - Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live: kolom kiri-kanan terpisah garis, foto di bawah balasan satu kartu, tutorial hilang, produk berfoto dengan "1 × Rp 2.150.000" dan 2 tombol salin tanpa tombol Buka produk.
 Agent: zcode
+
+## 2026-10-06 13:20 UTC | zcode | Trivial | selesai
+
+- Owner: "tempatkan ulassan pelanggan di bawah rating. sesuaikan dimensi card". Teks ulasan pindah ke kolom kiri di bawah blok rating; kolom kini dua setengah sama (751px per kolom, dulu kiri sempit 17rem); kolom kanan (balasan + foto) hanya dirender bila isinya ada; grid foto 2/3 kolom mengikuti lebar kolom.
+- Verifikasi: tsc + lint bersih, test 39 lulus / 783 asersi, build sukses; live terukur kedua kolom 751px dengan urutan kiri identitas, rating, teks ulasan.
+Agent: zcode
