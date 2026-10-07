@@ -127,7 +127,7 @@ function CountCard({
       </span>
       <div className="min-w-0">
         <p className="text-lg font-semibold tabular-nums leading-none text-foreground">{formatNumber(value)}</p>
-        <p className="mt-1 truncate text-xs text-muted-foreground group-hover:text-foreground">{label}</p>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-foreground">{label}</p>
       </div>
     </Link>
   )
@@ -146,6 +146,8 @@ export default function PromotionOverview({
   vouchersUrl,
   bannersUrl,
   announcementsUrl,
+  createStoreUrl,
+  createFlashSaleUrl,
 }: {
   title: string
   description: string
@@ -165,6 +167,9 @@ export default function PromotionOverview({
   vouchersUrl: string
   bannersUrl: string
   announcementsUrl: string
+  /** Form buat kampanye; dipakai tombol di keadaan kosong. */
+  createStoreUrl?: string
+  createFlashSaleUrl?: string
 }) {
   // Ringkasan hanya menampilkan kampanye yang berjalan atau terjadwal.
   // Draft/diakhiri/selesai dikelola di tab Diskon Reguler dan Flash Sale.
@@ -196,16 +201,30 @@ export default function PromotionOverview({
                 title="Belum ada kampanye diskon"
                 description="Buat Diskon Reguler untuk potongan berkelanjutan, atau Flash Sale untuk diskon ekstra jangka pendek."
                 action={
-                  <Link
-                    href={storeUrl}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-soft transition hover:bg-primary-hover"
-                  >
-                    Buat kampanye pertama
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Link
+                      href={createStoreUrl ?? storeUrl}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-soft transition hover:bg-primary-hover"
+                    >
+                      <Icon name="ticket-percent" className="size-4" aria-hidden="true" />
+                      Buat Diskon Reguler
+                    </Link>
+                    <Link
+                      href={createFlashSaleUrl ?? flashSaleUrl}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium text-foreground shadow-soft transition hover:bg-muted"
+                    >
+                      <Icon name="zap" className="size-4" aria-hidden="true" />
+                      Buat Flash Sale
+                    </Link>
+                  </div>
                 }
                 className="border-0"
               />
             </Card>
+          ) : runningCampaigns.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border bg-surface/50 px-4 py-3 text-xs text-muted-foreground">
+              Tidak ada kampanye yang sedang berjalan. Kampanye draft, diakhiri, dan selesai dikelola di halaman Diskon Reguler dan Flash Sale.
+            </p>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {runningCampaigns.map((campaign) => {
@@ -226,9 +245,7 @@ export default function PromotionOverview({
                         <Icon name={accent.icon} className="size-4" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <Link href={campaign.detail_href} className="font-semibold text-foreground hover:text-primary hover:underline">
-                          {campaign.name}
-                        </Link>
+                        <p className="truncate font-semibold text-foreground">{campaign.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{campaign.type_label}</p>
                       </div>
                     </div>
@@ -252,30 +269,23 @@ export default function PromotionOverview({
               })}
             </div>
           )}
-          {runningCampaigns.length === 0 && campaigns.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Tidak ada kampanye yang sedang berjalan. Kampanye draft, diakhiri, dan selesai dikelola di tab Diskon Reguler dan Flash Sale.
-            </p>
-          ) : null}
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-3">
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card className="flex flex-col overflow-hidden border border-border bg-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">Voucher berlaku</h2>
               <Link href={vouchersUrl} className="text-xs text-primary hover:underline">Kelola</Link>
             </div>
             {vouchers.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-surface/50 p-3 text-xs text-muted-foreground">
-                Tidak ada voucher yang sedang berlaku.
-              </p>
+              <p className="px-4 py-3 text-xs text-muted-foreground">Tidak ada voucher yang sedang berlaku.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="divide-y divide-border">
                 {vouchers.map((voucher) => (
                   <li
                     key={voucher.id}
                     onClick={(event) => klikKartu(event, vouchersUrl)}
-                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                    className="cursor-pointer px-4 py-2.5 transition-colors hover:bg-muted/40"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium text-foreground">{voucher.name}</p>
@@ -289,24 +299,22 @@ export default function PromotionOverview({
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+          <Card className="flex flex-col overflow-hidden border border-border bg-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">Banner terbit</h2>
               <Link href={bannersUrl} className="text-xs text-primary hover:underline">Kelola</Link>
             </div>
             {banners.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-surface/50 p-3 text-xs text-muted-foreground">
-                Tidak ada banner yang terbit.
-              </p>
+              <p className="px-4 py-3 text-xs text-muted-foreground">Tidak ada banner yang terbit.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="divide-y divide-border">
                 {banners.map((banner) => (
                   <li
                     key={banner.id}
                     onClick={(event) => klikKartu(event, bannersUrl)}
-                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                    className="cursor-pointer px-4 py-2.5 transition-colors hover:bg-muted/40"
                   >
                     <p className="truncate text-sm font-medium text-foreground">{banner.title}</p>
                     {banner.link_url ? (
@@ -316,24 +324,22 @@ export default function PromotionOverview({
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+          <Card className="flex flex-col overflow-hidden border border-border bg-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">Bar Promo aktif</h2>
               <Link href={announcementsUrl} className="text-xs text-primary hover:underline">Kelola</Link>
             </div>
             {announcements.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-surface/50 p-3 text-xs text-muted-foreground">
-                Tidak ada bar promo yang aktif.
-              </p>
+              <p className="px-4 py-3 text-xs text-muted-foreground">Tidak ada bar promo yang aktif.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="divide-y divide-border">
                 {announcements.map((item) => (
                   <li
                     key={item.id}
                     onClick={(event) => klikKartu(event, announcementsUrl)}
-                    className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-soft transition hover:shadow-md"
+                    className="cursor-pointer px-4 py-2.5 transition-colors hover:bg-muted/40"
                   >
                     <p className="line-clamp-2 text-sm font-medium text-foreground">{item.text}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -343,7 +349,7 @@ export default function PromotionOverview({
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
         </div>
       </div>
     </AdminLayout>
