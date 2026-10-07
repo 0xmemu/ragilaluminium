@@ -318,20 +318,16 @@ export default function BannersIndex({
           </div>
         }
       >
-        <div className="w-full sm:w-48">
-          <label className="text-[11px] font-semibold tracking-tight text-muted-foreground">
-            Status
-          </label>
-          <Select
-            className="mt-1.5"
-            value={activeStatus}
-            onChange={(event) => visit({ status: event.target.value })}
-          >
-            <option value="all">Semua status</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
-          </Select>
-        </div>
+        <Select
+          className="w-full sm:w-48"
+          value={activeStatus}
+          onChange={(event) => visit({ status: event.target.value })}
+          aria-label="Filter status"
+        >
+          <option value="all">Semua status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </Select>
       </ListToolbar>
 
       {reorderMode ? (
