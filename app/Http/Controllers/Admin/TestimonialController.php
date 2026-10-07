@@ -853,7 +853,7 @@ class TestimonialController extends Controller
      * ProductPicker (skema reusable yang dipakai form promo). Taxa pratinjau
      * di form saat menyunting tanpa memuat ulang daftar produk.
      *
-     * @return array{id:int,parent_sku:string,name:string,category:string,model:string,sub_model:string,price:float,dimensions:string}|null
+     * @return array{id:int,parent_sku:string,name:string,category:string,model:string,sub_model:string,price:float,dimensions:string,image:string|null}|null
      */
     protected function initialProductFor(?CmsTestimonial $testimonial): ?array
     {
@@ -873,8 +873,13 @@ class TestimonialController extends Controller
             'category' => (string) $product->product_category,
             'model' => (string) $product->product_model,
             'sub_model' => (string) $product->design_variant,
-            'price' => 0.0,
+            // Harga varian aktif termurah, skema sama dengan picker promo
+            // (withMin activeVariants) supaya baris "qty x harga" tidak nol.
+            'price' => (float) ($product->activeVariants()->min('price') ?? 0),
             'dimensions' => (string) ($product->short_name ?? ''),
+            // Foto utama katalog untuk baris produk, pola sama dengan daftar
+            // produk di halaman Kelola Produk (urlFor card).
+            'image' => $product->mainImage?->urlFor('card'),
         ];
     }
 

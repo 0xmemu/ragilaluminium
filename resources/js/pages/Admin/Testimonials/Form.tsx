@@ -5,6 +5,7 @@ import { Button } from "@/components/admin/ui/button"
 import { SectionCard } from "@/components/admin/section-card"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
@@ -13,8 +14,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatDate } from "@/lib/format"
-import { routeUrl } from "@/lib/routes"
+import { formatCurrency, formatDate, productName } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 interface TestimonialRecord {
@@ -202,17 +202,16 @@ export default function TestimonialForm({
   const labelSumber = labels[form.data.source] ?? form.data.source
 
 
-  // Ringkasan (mode baca): dua kolom. Kiri: kartu ulasan (pelanggan, rating,
-  // teks, balasan). Kanan: produk terkait di ATAS, media ulasan di bawah
-  // (urutan diminta owner 2026-10-06). Nama produk wajib nama LENGKAP katalog;
-  // short_name hanya berisi dimensi ("140x50") dan tidak berarti apa-apa
-  // tanpa jenisnya (koreksi owner 2026-10-06). Kolom kanan hanya dibuat bila
-  // isinya ada, supaya ulasan tanpa produk dan tanpa foto tidak menyisakan
-  // separuh halaman kosong.
-  const adaKolomKanan = (!isMarketplaceIntent && produkPicked) || photos.length > 0
+  // Ringkasan (mode baca): satu kartu ulasan dengan DUA kolom di dalamnya,
+  // pola kartu ulasan storefront: kiri identitas pelanggan + rating, kanan
+  // teks ulasan lalu balasan, dan foto MENYATU di bawah ulasan tanpa section
+  // terpisah (owner 2026-10-06). Produk terkait di bawahnya memakai baris
+  // standar isi pesanan: foto katalog, nama standar productName() berikon
+  // salin, SKU berikon salin, dan qty x harga, TANPA tombol Buka produk.
+  const namaProduk = produkPicked ? productName(produkPicked.name, produkPicked.dimensions) : ""
 
   const ringkasan = (
-    <div className={cn("grid items-start gap-6 w-full", adaKolomKanan && "lg:grid-cols-2")}>
+    <div className="w-full space-y-6">
       <SectionCard
         title={isMarketplaceIntent ? "Screenshot Pelanggan" : "Ulasan Pembeli"}
         description={testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : undefined}
@@ -224,10 +223,10 @@ export default function TestimonialForm({
           />
         }
       >
-        <div className="space-y-5">
-          {/* Pelanggan di kiri, rating di kanan: satu baris, tanpa kartu terpisah */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+          {/* Kiri: nama pelanggan dan rating */}
+          <div className="lg:border-r lg:border-border lg:pr-6">
+            <div className="flex items-center gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
                 {form.data.customer_name.trim() ? form.data.customer_name.trim()[0].toUpperCase() : "P"}
               </span>
@@ -241,7 +240,7 @@ export default function TestimonialForm({
               </div>
             </div>
             {form.data.rating ? (
-              <div className="flex items-center gap-2">
+              <div className="mt-4 flex items-center gap-2">
                 <span
                   className="inline-flex items-center gap-0.5 text-warning"
                   aria-label={`${form.data.rating} dari 5 bintang`}
@@ -259,73 +258,41 @@ export default function TestimonialForm({
                 <span className="font-mono text-sm font-bold text-foreground">{form.data.rating} / 5</span>
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground">Tanpa rating</span>
+              <p className="mt-4 text-xs text-muted-foreground">Tanpa rating</p>
             )}
           </div>
 
-          {/* Isi ulasan: teks utama halaman, tanpa kotak ganda */}
-          <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
-            {form.data.message.trim() || (
-              <span className="italic text-muted-foreground">
-                Tidak ada ulasan teks (hanya foto / screenshot).
-              </span>
-            )}
-          </p>
+          {/* Kanan: teks ulasan, balasan, dan foto yang menyatu dengan ulasan */}
+          <div className="min-w-0 space-y-5">
+            <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
+              {form.data.message.trim() || (
+                <span className="italic text-muted-foreground">
+                  Tidak ada ulasan teks (hanya foto / screenshot).
+                </span>
+              )}
+            </p>
 
-          {/* Balasan toko (jika ada) */}
-          {testimonial?.admin_reply ? (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                  <Icon name="storefront" className="size-3.5" aria-hidden="true" />
-                  <span>Balasan Ragil Aluminium</span>
-                </p>
-                {testimonial.admin_replied_at ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    {formatDate(testimonial.admin_replied_at)}
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">
-                {testimonial.admin_reply}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </SectionCard>
-
-      {adaKolomKanan ? (
-        <div className="space-y-6">
-          {/* Produk terkait: di ATAS media ulasan (urutan owner 2026-10-06) */}
-          {!isMarketplaceIntent && produkPicked ? (
-            <SectionCard title="Produk Terkait" icon="package">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground" title={produkPicked.name}>
-                    {produkPicked.name}
+            {testimonial?.admin_reply ? (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Icon name="storefront" className="size-3.5" aria-hidden="true" />
+                    <span>Balasan Ragil Aluminium</span>
                   </p>
-                  {produkPicked.parent_sku ? (
-                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                      SKU {produkPicked.parent_sku}
-                    </p>
+                  {testimonial.admin_replied_at ? (
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatDate(testimonial.admin_replied_at)}
+                    </span>
                   ) : null}
                 </div>
-                {produkPicked.id ? (
-                  <Button asChild variant="secondary" size="sm">
-                    <Link href={routeUrl("admin.products.show", { product: produkPicked.id })}>Buka produk</Link>
-                  </Button>
-                ) : null}
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">
+                  {testimonial.admin_reply}
+                </p>
               </div>
-            </SectionCard>
-          ) : null}
+            ) : null}
 
-          {/* Media ulasan di bawah produk */}
-          {photos.length > 0 ? (
-            <SectionCard
-              title={isMarketplaceIntent ? `Screenshot (${photos.length})` : `Foto & Media (${photos.length})`}
-              icon="image"
-            >
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Foto ulasan">
+            {photos.length > 0 ? (
+              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Foto ulasan">
                 {photos.map((row, index) => (
                   <li
                     key={row.key}
@@ -353,9 +320,43 @@ export default function TestimonialForm({
                   </li>
                 ))}
               </ul>
-            </SectionCard>
-          ) : null}
+            ) : null}
+          </div>
         </div>
+      </SectionCard>
+
+      {/* Produk terkait: baris standar isi pesanan. Tanpa tombol Buka produk,
+          sesuai format baris produk panel admin (foto, nama + salin, SKU +
+          salin, qty x harga). */}
+      {!isMarketplaceIntent && produkPicked ? (
+        <SectionCard title="Produk Terkait" icon="package" contentClassName="p-0">
+          <div className="flex gap-3.5 px-5 py-4">
+            <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+              {produkPicked.image ? (
+                <img src={produkPicked.image} alt="" className="size-full object-cover" />
+              ) : (
+                <div className="flex size-full items-center justify-center text-muted-foreground">
+                  <Icon name="image" className="size-4" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-1.5">
+                <p className="text-sm font-normal leading-5 text-foreground">{namaProduk}</p>
+                <CopyButton text={namaProduk} label="Salin ukuran & nama produk" compact showTextInTitle />
+              </div>
+              {produkPicked.parent_sku ? (
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="font-mono">SKU {produkPicked.parent_sku}</span>
+                  <CopyButton text={produkPicked.parent_sku} label="Salin SKU produk" compact />
+                </p>
+              ) : null}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                1 × {formatCurrency(produkPicked.price)}
+              </p>
+            </div>
+          </div>
+        </SectionCard>
       ) : null}
     </div>
   )
@@ -364,9 +365,14 @@ export default function TestimonialForm({
       backUrl={backUrl}
       title={judulHalaman}
       description={
-        isMarketplaceIntent
-          ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
-          : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
+        // Kalimat pengajaran (boleh SS WA, gambar wajib, dst.) hanya berarti
+        // saat mengisi form. Di mode baca ia menjadi teks tutorial permanen
+        // di halaman detail (koreksi owner 2026-10-06: "tolol").
+        mode === "view"
+          ? undefined
+          : isMarketplaceIntent
+            ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
+            : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       }
       actions={
         <div className="flex flex-wrap gap-2">

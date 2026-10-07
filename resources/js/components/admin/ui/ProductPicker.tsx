@@ -20,6 +20,8 @@ export interface PickerProduct {
   sub_model: string
   price: number
   dimensions: string
+  /** Foto utama katalog; picker endpoint belum mengirimnya, halaman detail mengirim. */
+  image?: string | null
 }
 
 interface ProductPickerProps {
