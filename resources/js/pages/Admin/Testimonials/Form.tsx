@@ -209,6 +209,9 @@ export default function TestimonialForm({
   // standar isi pesanan: foto katalog, nama standar productName() berikon
   // salin, SKU berikon salin, dan qty x harga, TANPA tombol Buka produk.
   const namaProduk = produkPicked ? productName(produkPicked.name, produkPicked.dimensions) : ""
+  // Kolom kanan (balasan + foto) hanya dibuat bila isinya ada, supaya
+  // ulasan tanpa keduanya tidak menyisakan separuh kartu kosong.
+  const adaKolomKanan = Boolean(testimonial?.admin_reply) || photos.length > 0
 
   const ringkasan = (
     <div className="w-full space-y-6">
@@ -223,9 +226,11 @@ export default function TestimonialForm({
           />
         }
       >
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
-          {/* Kiri: nama pelanggan dan rating */}
-          <div className="lg:border-r lg:border-border lg:pr-6">
+        <div className={cn("grid items-start gap-6", adaKolomKanan && "lg:grid-cols-2")}>
+          {/* Kiri: pelanggan, rating, lalu teks ulasan di bawah rating
+              (owner 2026-10-06). Dimensi kolom dua setengah sama agar teks
+              termuat, bukan kolom sempit tetap. */}
+          <div className={cn("min-w-0", adaKolomKanan && "lg:border-r lg:border-border lg:pr-6")}>
             <div className="flex items-center gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
                 {form.data.customer_name.trim() ? form.data.customer_name.trim()[0].toUpperCase() : "P"}
@@ -260,18 +265,20 @@ export default function TestimonialForm({
             ) : (
               <p className="mt-4 text-xs text-muted-foreground">Tanpa rating</p>
             )}
-          </div>
 
-          {/* Kanan: teks ulasan, balasan, dan foto yang menyatu dengan ulasan */}
-          <div className="min-w-0 space-y-5">
-            <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
+            {/* Ulasan pelanggan di bawah rating (owner 2026-10-06) */}
+            <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-foreground">
               {form.data.message.trim() || (
                 <span className="italic text-muted-foreground">
                   Tidak ada ulasan teks (hanya foto / screenshot).
                 </span>
               )}
             </p>
+          </div>
 
+          {/* Kanan: balasan toko dan foto ulasan */}
+          {adaKolomKanan ? (
+            <div className="min-w-0 space-y-5">
             {testimonial?.admin_reply ? (
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -292,7 +299,7 @@ export default function TestimonialForm({
             ) : null}
 
             {photos.length > 0 ? (
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Foto ulasan">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Foto ulasan">
                 {photos.map((row, index) => (
                   <li
                     key={row.key}
@@ -321,7 +328,8 @@ export default function TestimonialForm({
                 ))}
               </ul>
             ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </SectionCard>
 
