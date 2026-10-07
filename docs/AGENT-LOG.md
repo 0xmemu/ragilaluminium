@@ -3451,3 +3451,10 @@ Agent: zcode
 - Verifikasi: tsc + lint bersih, UlasanAdminTest + FrontendPageContractTest + TestimonialReplyTest 40 lulus / 796 asersi, build sukses; live: mode edit menampilkan catatan pengunci, 0 select dan 0 textarea di form (nama "Sari Dewi" dan "Pengiriman cepat" jadi teks), hanya lokasi dan produk terkait berupa isian; Simpan kembali ke Detail Ulasan di URL sama.
 - Catatan kolaborasi: push pertama ditolak (remote bergerak karena agent lain push 9c4a7ced di branch yang sama); commit saya 374eee99 ternyata sudah ikut ter-push bersama commit agent itu, terverifikasi lewat git branch -r --contains.
 Agent: zcode
+
+hapus tiga tautan di header seksi Kampanye diskon (/admin/promotions)
+Lingkup: owner menunjuk tiga tautan kecil di kanan judul seksi Kampanye diskon (Semua Diskon Reguler, Semua Flash Sale, Kelola Voucher) dan meminta dihapus karena dinilai tidak berguna.
+Perubahan: resources/js/pages/Admin/PromotionOverview.tsx, blok pembungkus header seksi dibuang sehingga tinggal judul Kampanye diskon. Tautan Kelola di tiga seksi lain (Voucher berlaku, Banner terbit, Bar Promo aktif) tidak disentuh karena itu satu-satunya jalan masuk dari halaman ringkasan. Tidak ada variabel yang jadi tidak terpakai: storeUrl dan flashSaleUrl masih dipakai kartu hitung, vouchersUrl masih dipakai tautan Kelola dan kartu hitung.
+Dampak spec: tidak berubah. Tidak ada route, URL, kolom, enum, status, atau bentuk JSON baru; tidak ada tautan yang benar-benar hilang karena ketiganya mengulang jalan masuk yang sudah tersedia di kartu hitung dan tautan Kelola.
+Verifikasi: typecheck 0, eslint berkas ini bersih, build sukses. Live di browser dalam aplikasi: teks halaman tidak lagi memuat ketiga kalimat itu, judul seksi Kampanye diskon tetap ada, tiga tautan Kelola di seksi bawah tetap ada, dan halaman tidak menampilkan galat.
+Agent: gemini-3.8-flash-high
