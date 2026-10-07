@@ -13,7 +13,6 @@ interface BannerFormData {
   title?: string | null
   image_url?: string | null
   link_url?: string | null
-  sort_order: number
   published: boolean
   media_asset_id?: number | null
 }
@@ -40,13 +39,11 @@ export default function BannerForm({
   const form = useForm<{
     title: string
     link_url: string
-    sort_order: number
     published: boolean
     media_asset_id: string
   }>({
     title: banner?.title ?? "",
     link_url: banner?.link_url ?? "",
-    sort_order: banner?.sort_order ?? nextSortOrder,
     published: banner?.published ?? false,
     media_asset_id: banner?.media_asset_id ? String(banner.media_asset_id) : "",
   })
@@ -152,21 +149,7 @@ export default function BannerForm({
                 placeholder="/product/WIN-JUNG-001"
               />
             </Field>
-            <Field
-              id="sort"
-              label="Urutan slide"
-              error={form.errors.sort_order}
-              className="sm:max-w-40"
-              hint="Angka 1 tampil paling awal. Slide baru otomatis ditaruh paling belakang."
-            >
-              <Input
-                type="number"
-                min={1}
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
-            </Field>
-            <CheckboxField
+<CheckboxField
               id="banner-published"
               checked={form.data.published}
               onChange={(checked) => form.setData("published", checked)}

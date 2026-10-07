@@ -384,6 +384,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('banners', [BannerController::class, 'index'])->name('banners.index');
     Route::get('banners/create', [BannerController::class, 'create'])->name('banners.create');
     Route::post('banners', [BannerController::class, 'store'])->name('banners.store');
+    Route::put('banners/reorder', [BannerController::class, 'reorder'])->name('banners.reorder');
     Route::get('banners/{banner}/edit', [BannerController::class, 'edit'])->name('banners.edit');
     Route::put('banners/{banner}', [BannerController::class, 'update'])->name('banners.update');
     Route::post('banners/{banner}/publish', [BannerController::class, 'publish'])->name('banners.publish');
@@ -394,6 +395,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
     Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::put('announcements/reorder', [AnnouncementController::class, 'reorder'])->name('announcements.reorder');
     Route::post('announcements/slide', [AnnouncementController::class, 'saveSlide'])->name('announcements.slide');
     Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::get('announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('announcements.edit');

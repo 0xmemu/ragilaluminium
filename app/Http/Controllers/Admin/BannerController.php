@@ -54,6 +54,27 @@ class BannerController extends Controller
         ]);
     }
 
+    /**
+     * Simpan urutan slide hasil geser di daftar banner (owner 2026-09-29:
+     * atur urutan lewat angka di form dimatikan, urutan kini hanya dari sini).
+     */
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.id' => ['required', 'integer', 'exists:cms_banners,id'],
+            'rows.*.sort_order' => ['required', 'integer', 'min:1', 'max:9999'],
+        ]);
+
+        foreach ($validated['rows'] as $row) {
+            CmsBanner::whereKey((int) $row['id'])->update(['sort_order' => (int) $row['sort_order']]);
+        }
+
+        \App\Support\HomepagePromotions::flushCache();
+
+        return redirect()->route('admin.banners.index')->with('success', 'Urutan banner disimpan.');
+    }
+
     /** Nomor urut baris baru: selalu di bawah baris yang sudah ada. */
     private function nextSortOrder(): int
     {

@@ -1,6 +1,7 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
@@ -13,8 +14,11 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { navigateFilter } from "@/lib/filter-url"
+import { routeUrl } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 import { formatRentangTanggal } from "@/lib/format"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -156,6 +160,58 @@ export default function AnnouncementsIndex({
 }) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+
+  // Mode Urutkan (owner 2026-09-29): geser urutan bar promo lewat pegangan
+  // di baris, angka urutan tidak lagi di form tambah/edit.
+  const [reorderMode, setReorderMode] = React.useState(false)
+  const [rows, setRows] = React.useState(announcements)
+  React.useEffect(() => {
+    setRows(announcements)
+  }, [announcements])
+  const canReorder = reorderMode && q === "" && activeStatus === "all"
+  const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
+  const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
+    rows: [],
+  })
+
+  function geser(from: number, to: number) {
+    if (from === to) return
+    setRows((current) => {
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
+
+  const dnd = useRowDragSort({
+    enabled: canReorder,
+    count: rows.length,
+    onReorder: geser,
+  })
+
+  function mulaiUrutkan() {
+    setRows(announcements)
+    setReorderMode(true)
+  }
+
+  function batalkanUrutkan() {
+    setRows(announcements)
+    urutanForm.setData("rows", [])
+    urutanForm.setDefaults("rows", [])
+    setReorderMode(false)
+  }
+
+  function simpanUrutan() {
+    urutanForm.setData(
+      "rows",
+      rows.map((row, index) => ({ id: row.id, sort_order: urutanDasar + index + 1 })),
+    )
+    urutanForm.put(routeUrl("admin.announcements.reorder"), {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
   const [slideEnabled, setSlideEnabled] = React.useState(announcementSlide?.enabled ?? false)
   const [slideInterval, setSlideInterval] = React.useState(announcementSlide?.interval ?? 5)
   const [savingSlide, setSavingSlide] = React.useState(false)
@@ -195,6 +251,33 @@ export default function AnnouncementsIndex({
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
             <span>Muat ulang</span>
           </Button>
+          {reorderMode ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={batalkanUrutkan}
+                disabled={urutanForm.processing}
+              >
+                Urungkan
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={simpanUrutan}
+                disabled={urutanForm.processing || !canReorder}
+                title={canReorder ? undefined : "Kosongkan pencarian dan pilih Semua status untuk menyimpan urutan"}
+              >
+                {urutanForm.processing ? "Menyimpan..." : "Simpan urutan"}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="secondary" size="sm" onClick={mulaiUrutkan}>
+              <Icon name="list" className="size-3.5" aria-hidden="true" />
+              Urutkan
+            </Button>
+          )}
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
@@ -282,10 +365,18 @@ export default function AnnouncementsIndex({
           }
         />
       ) : (
+        <>
+        {reorderMode ? (
+          <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan bar promo, lalu tekan Simpan urutan.
+            {!canReorder ? <span className="font-semibold text-foreground"> Kosongkan pencarian dan pilih Semua status agar urutan bisa digeser.</span> : null}
+          </p>
+        ) : null}
         <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left">
             <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
               <tr>
+                {canReorder ? <th className="w-12 px-2 py-3" aria-label="Seret" /> : <th className="px-3 py-3">No</th>}
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Periode</th>
                 <th className="px-3 py-3">Urutan</th>
@@ -295,8 +386,19 @@ export default function AnnouncementsIndex({
               </tr>
             </thead>
             <tbody>
-              {announcements.map((item) => (
-                <tr key={item.id} className="border-b border-border transition-colors hover:bg-muted/40 last:border-0">
+              {rows.map((item, index) => (
+                <tr
+                  key={item.id}
+                  className={cn(
+                    "border-b border-border transition-colors hover:bg-muted/40 last:border-0",
+                    dnd.draggingIndex === index && "opacity-40",
+                    dnd.targetIndex === index && canReorder && "bg-muted/50",
+                  )}
+                  {...(canReorder ? dnd.rowProps(index) : {})}
+                >
+                  <td className="w-12 px-2 py-3 align-middle">
+                    {canReorder ? <ReorderDragHandle enabled /> : <span className="text-xs text-muted-foreground tabular-nums">{urutanDasar + index + 1}</span>}
+                  </td>
                   <td className="px-3 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">{item.text}</p>
@@ -308,7 +410,7 @@ export default function AnnouncementsIndex({
                   <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
                     {formatRentangTanggal(item.starts_at, item.ends_at)}
                   </td>
-                  <td className="tabular-nums px-3 py-3 text-sm">{item.sort_order}</td>
+                  <td className="tabular-nums px-3 py-3 text-sm">{urutanDasar + index + 1}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
                     {formatDateTime(item.updated_at)}
                   </td>
@@ -323,6 +425,7 @@ export default function AnnouncementsIndex({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {pagination.last_page > 1 ? (

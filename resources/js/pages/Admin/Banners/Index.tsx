@@ -1,7 +1,9 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import { navigateFilter } from "@/lib/filter-url"
+import { routeUrl } from "@/lib/routes"
 import * as React from "react"
 
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
@@ -14,6 +16,7 @@ import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -151,6 +154,62 @@ export default function BannersIndex({
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
+  // Mode Urutkan (owner 2026-09-29): geser urutan lewat pegangan di baris,
+  // angka di form tambah/edit sudah dihapus. Hanya di tampilan List; daftar
+  // tersaring tidak bisa digeser karena posisi target tidak mewakili global.
+  const [reorderMode, setReorderMode] = React.useState(false)
+  const [rows, setRows] = React.useState(banners)
+  React.useEffect(() => {
+    setRows(banners)
+  }, [banners])
+  const canReorder = reorderMode && q === "" && activeStatus === "all" && viewMode === "list"
+  const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
+  const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
+    rows: [],
+  })
+
+  function geser(from: number, to: number) {
+    if (from === to) return
+    setRows((current) => {
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
+
+  const dnd = useRowDragSort({
+    enabled: canReorder,
+    count: rows.length,
+    onReorder: geser,
+  })
+
+  function mulaiUrutkan() {
+    if (viewMode !== "list") {
+      visit({ view: "list" })
+    }
+    setRows(banners)
+    setReorderMode(true)
+  }
+
+  function batalkanUrutkan() {
+    setRows(banners)
+    urutanForm.setData("rows", [])
+    urutanForm.setDefaults("rows", [])
+    setReorderMode(false)
+  }
+
+  function simpanUrutan() {
+    urutanForm.setData(
+      "rows",
+      rows.map((row, index) => ({ id: row.id, sort_order: urutanDasar + index + 1 })),
+    )
+    urutanForm.put(routeUrl("admin.banners.reorder"), {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
   function visit(params: Record<string, string | undefined>) {
     navigateFilter(
       "admin.banners.index",
@@ -177,6 +236,39 @@ export default function BannersIndex({
             <Icon name="refresh" className="size-3.5" aria-hidden="true" />
             <span>Muat ulang</span>
           </Button>
+          {reorderMode ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={batalkanUrutkan}
+                disabled={urutanForm.processing}
+              >
+                Urungkan
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={simpanUrutan}
+                disabled={urutanForm.processing || !canReorder}
+                title={canReorder ? undefined : "Kosongkan pencarian dan pilih Semua status untuk menyimpan urutan"}
+              >
+                {urutanForm.processing ? "Menyimpan..." : "Simpan urutan"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={mulaiUrutkan}
+              title="Geser urutan slide di tampilan List"
+            >
+              <Icon name="list" className="size-3.5" aria-hidden="true" />
+              Urutkan
+            </Button>
+          )}
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
@@ -242,6 +334,13 @@ export default function BannersIndex({
         </div>
       </ListToolbar>
 
+      {reorderMode ? (
+        <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan slide, lalu tekan Simpan urutan.
+          {!canReorder ? <span className="font-semibold text-foreground"> Kosongkan pencarian dan pilih Semua status agar urutan bisa digeser.</span> : null}
+        </p>
+      ) : null}
+
       {!banners.length ? (
         <EmptyState
           className="mt-6"
@@ -258,6 +357,7 @@ export default function BannersIndex({
           <table className="min-w-full text-left">
             <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
               <tr>
+                {canReorder ? <th className="w-12 px-2 py-3" aria-label="Seret" /> : <th className="px-3 py-3">No</th>}
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Urutan</th>
                 <th className="px-3 py-3">Diperbarui</th>
@@ -266,8 +366,19 @@ export default function BannersIndex({
               </tr>
             </thead>
             <tbody>
-              {banners.map((banner) => (
-                <tr key={banner.id} className="border-b border-border last:border-0">
+              {rows.map((banner, index) => (
+                <tr
+                  key={banner.id}
+                  className={cn(
+                    "border-b border-border transition-colors hover:bg-muted/40 last:border-0",
+                    dnd.draggingIndex === index && "opacity-40",
+                    dnd.targetIndex === index && canReorder && "bg-muted/50",
+                  )}
+                  {...(canReorder ? dnd.rowProps(index) : {})}
+                >
+                  <td className="w-12 px-2 py-3 align-middle">
+                    {canReorder ? <ReorderDragHandle enabled /> : <span className="text-xs text-muted-foreground tabular-nums">{urutanDasar + index + 1}</span>}
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
                       <div className="size-14 shrink-0 overflow-hidden rounded bg-muted">
@@ -287,7 +398,7 @@ export default function BannersIndex({
                       </div>
                     </div>
                   </td>
-                  <td className="tabular-nums px-3 py-3 text-sm">{banner.sort_order}</td>
+                  <td className="tabular-nums px-3 py-3 text-sm">{urutanDasar + index + 1}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">
                     {formatDateTime(banner.updated_at)}
                   </td>

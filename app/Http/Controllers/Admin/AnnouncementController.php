@@ -93,6 +93,24 @@ class AnnouncementController extends Controller
         return redirect()->route('admin.announcements.index')->with('success', 'Bar promo diperbarui.');
     }
 
+    /**
+     * Simpan urutan bar promo hasil geser di daftar (owner 2026-09-29).
+     */
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.id' => ['required', 'integer', 'exists:announcements,id'],
+            'rows.*.sort_order' => ['required', 'integer', 'min:1', 'max:9999'],
+        ]);
+
+        foreach ($validated['rows'] as $row) {
+            Announcement::whereKey((int) $row['id'])->update(['sort_order' => (int) $row['sort_order']]);
+        }
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Urutan bar promo disimpan.');
+    }
+
     public function unpublish(Announcement $announcement): RedirectResponse
     {
         $announcement->update(['published' => false]);
