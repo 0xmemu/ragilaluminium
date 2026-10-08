@@ -3572,3 +3572,11 @@ Agent: zcode
 - Perbaikan: kotak dilepas, teks jadi prosa (whitespace-pre-line text-base leading-relaxed text-foreground), sama seperti kartu ulasan storefront (testimonial-card.tsx, product-info-sections.tsx) yang juga polos tanpa kotak. Kotak berbingkai yang sengaja dipertahankan: kartu produk, kartu pelanggan, blok balasan toko (tetap tersorot supaya jelas tulisan toko), dan ubin media.
 - Verifikasi: tsc + lint bersih, build sukses; live terukur: teks ulasan border 0px, latar transparan, padding 0px, warna rgb(245,245,245), 14px; balasan toko tetap berbingkai sebagai pembanding.
 Agent: zcode
+
+## 2026-10-08 21:00 UTC | zcode | Trivial | 21c56879 | selesai
+
+- Owner: "ini masih loh tolol, ga ada frame sama sekali", setelah perbaikan sebelumnya mencabut kotak ulasan. Saya salah paham arahan sebelumnya ("atur warna kolomnya agar ulasan ga kelihatan kaya text ui"): yang diminta MEMBEDAKAN WARNA, bukan membuang framenya.
+- AKAR VISUAL (dari token tema, bukan selera): kartu popup memakai --surface yang di tema admin gelap = #1d1d22; kolom isian (Input) memakai border-input bg-surface, jadi latar kolom isian SAMA PERSIS dengan latar kartu. Kotak ulasan berlatar surface karena itu tenggelam ke kartu (keluhan pertama: terbaca lubang input), dan mencabut kotaknya memunculkan keluhan kedua (tidak ada frame).
+- Perbaikan: ulasan memakai panel baca --surface-muted (#24242b, 8 tingkat lebih terang dari kartu) plus garis tepi --border, pola panel info read-only yang sudah dipakai InstallationGallery. ATURAN UNTUK HALAMAN LAIN: jangan pakai latar surface sebagai kotak di atas kartu yang juga berlatar surface; pakai surface-muted.
+- Verifikasi: tsc + lint bersih, build sukses; live terukur kotak bg rgb(36,36,43) vs kartu rgb(28,28,33), garis tepi 0,67px, padding 14px, teks rgb(245,245,245).
+Agent: zcode
