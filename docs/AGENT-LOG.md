@@ -3564,3 +3564,11 @@ Agent: zcode
 - Diganti aria-describedby={undefined}, pola resmi Radix untuk menyatakan popup sengaja tanpa deskripsi; konvensi sama sudah dipakai command.tsx (CommandDialog) di repo ini.
 - Verifikasi: tsc + lint bersih, 24 test lulus / 215 asersi, build sukses; live: kalimat tidak ada, isi popup langsung dimulai dari judul lalu bagian Produk yang diulas, urutan bagian tetap.
 Agent: zcode
+
+## 2026-10-08 20:40 UTC | zcode | Trivial | 8ea7be43 | selesai
+
+- Owner: "warna kolomnya tolong di atur agar ulasan ga kelihatan kaya text ui" pada section Ulasan pelanggan di popup detail.
+- Akar: bukan warna teksnya, tapi wadahnya. Teks ulasan dibungkus rounded-lg + border + bg-surface + p-4, gabungan yang SAMA dengan kolom isian admin, sehingga ulasan satu baris ("Pengiriman cepat") terbaca seperti input kosong padahal popup ini murni baca.
+- Perbaikan: kotak dilepas, teks jadi prosa (whitespace-pre-line text-base leading-relaxed text-foreground), sama seperti kartu ulasan storefront (testimonial-card.tsx, product-info-sections.tsx) yang juga polos tanpa kotak. Kotak berbingkai yang sengaja dipertahankan: kartu produk, kartu pelanggan, blok balasan toko (tetap tersorot supaya jelas tulisan toko), dan ubin media.
+- Verifikasi: tsc + lint bersih, build sukses; live terukur: teks ulasan border 0px, latar transparan, padding 0px, warna rgb(245,245,245), 14px; balasan toko tetap berbingkai sebagai pembanding.
+Agent: zcode
