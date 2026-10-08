@@ -4,6 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -34,6 +35,17 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
   dedup: { label: "Duplikat", tone: "warning" },
   downloaded: { label: "Terunduh", tone: "info" },
 }
+
+/**
+ * Urutan tab filter, disusun menurut kepentingan audit: yang perlu ditindak
+ * lebih dulu.
+ *
+ * Labelnya SENGAJA dibaca dari EVENT_META, bukan ditulis ulang di sini. Dulu
+ * keduanya berupa daftar terpisah dan sempat berbeda satu huruf di ujung kata,
+ * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
+ * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
+ */
+const EVENT_TABS = ["failed", "success", "processing", "queued", "dedup", "downloaded"] as const
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"
@@ -186,19 +198,14 @@ export default function MediaHistory({
   }, [logs, pollNonce])
 
   return (
-    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media (queued → processing → siap / gagal)">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Antre, Diproses, lalu Siap atau Gagal">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1 overflow-x-auto rounded-lg border border-border bg-muted/40 p-1">
         {[
           { key: "", label: "Semua" },
-          { key: "failed", label: "Gagal" },
-          { key: "success", label: "Siap" },
-          { key: "processing", label: "Diproses" },
-          { key: "queued", label: "Antre" },
-          { key: "dedup", label: "Duplikat" },
-          { key: "downloaded", label: "Terunduk" },
+          ...EVENT_TABS.map((key) => ({ key, label: EVENT_META[key].label })),
         ].map((tab) => (
           <button
             key={tab.key}
@@ -234,6 +241,7 @@ export default function MediaHistory({
           placeholder: "Cari berdasarkan label media atau pesan",
         }}
         className="mb-4"
+        summary={pagination ? `${pagination.total} log` : undefined}
         actions={
           prune && prune.count > 0 ? (
             <ConfirmAction
@@ -256,22 +264,40 @@ export default function MediaHistory({
           ) : undefined
         }
       >
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          onBlur={() => apply({ from })}
-          className="h-9 rounded-md border border-border bg-surface px-2.5 text-[13px] text-foreground"
-          aria-label="Dari tanggal"
-        />
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          onBlur={() => apply({ to })}
-          className="h-9 rounded-md border border-border bg-surface px-2.5 text-[13px] text-foreground"
-          aria-label="Sampai tanggal"
-        />
+        {/* Rentang tanggal punya penerapan eksplisit lewat tombol. Sebelumnya
+            nilai dikirim saat fokus berpindah, sehingga mengisi tanggal awal lalu
+            pindah ke tanggal akhir sudah memicu muat ulang di tengah pengisian, dan
+            tidak ada tanda kapan filternya benar-benar berlaku. */}
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            apply({ from, to })
+          }}
+        >
+          <Input
+            type="date"
+            value={from}
+            onChange={(event) => setFrom(event.target.value)}
+            className="h-9 w-36 min-h-9 text-[13px]"
+            aria-label="Dari tanggal"
+          />
+          {/* Kata penghubung cukup untuk mata; pembaca layar sudah mendapat
+              keterangan lengkap dari aria-label kedua isian di atas. */}
+          <span className="text-xs text-muted-foreground" aria-hidden="true">
+            sampai
+          </span>
+          <Input
+            type="date"
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+            className="h-9 w-36 min-h-9 text-[13px]"
+            aria-label="Sampai tanggal"
+          />
+          <Button type="submit" variant="secondary" size="sm">
+            Terapkan
+          </Button>
+        </form>
       </ListToolbar>
 
       {pollError && liveActive ? (
