@@ -167,19 +167,24 @@ export function TestimonialDetailDialog({
 
             {/* 3. Ulasan pelanggan */}
             <Bagian judul="Ulasan pelanggan" bagian="ulasan">
-              {/* Teks ulasan ditulis sebagai PROSA, tanpa kotak berbingkai.
-                  Sebelumnya memakai border + bg-surface + padding, wujud yang
-                  sama dengan kolom isian admin, sehingga ulasan pelanggan
-                  terbaca seperti input yang bisa diketik (owner 2026-10-06:
-                  "agar ulasan ga kelihatan kaya text ui"). Di kartu ulasan
-                  storefront teksnya juga polos tanpa kotak. */}
-              <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
-                {row.message?.trim() || (
-                  <span className="italic text-muted-foreground">
-                    Tidak menulis ulasan teks, hanya mengirim media.
-                  </span>
-                )}
-              </p>
+              {/* Ulasan pelanggan diberi KOTAK, dengan warna panel baca.
+                  Jangan pakai bg-surface untuk ini: di tema admin gelap token
+                  surface bernilai SAMA dengan latar kartu popup (#1d1d22), dan
+                  itulah latar yang dipakai kolom isian. Jadi kotak berlatar
+                  surface terbaca seperti input kosong (owner 2026-10-06 dua
+                  kali: "agar ulasan ga kelihatan kaya text ui", lalu "ga ada
+                  frame sama sekali" setelah kotaknya dicabut). Panel baca
+                  memakai bg-surface-muted (#27272c, lebih terang dari kartu),
+                  sama dengan panel info read-only di InstallationGallery. */}
+              <div className="rounded-lg border border-border bg-surface-muted p-4">
+                <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
+                  {row.message?.trim() || (
+                    <span className="italic text-muted-foreground">
+                      Tidak menulis ulasan teks, hanya mengirim media.
+                    </span>
+                  )}
+                </p>
+              </div>
             </Bagian>
 
             {/* 4. Media dari pelanggan */}
