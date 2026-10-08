@@ -167,7 +167,13 @@ export function TestimonialDetailDialog({
 
             {/* 3. Ulasan pelanggan */}
             <Bagian judul="Ulasan pelanggan" bagian="ulasan">
-              <p className="whitespace-pre-line rounded-lg border border-border bg-surface p-4 text-sm leading-relaxed text-foreground">
+              {/* Teks ulasan ditulis sebagai PROSA, tanpa kotak berbingkai.
+                  Sebelumnya memakai border + bg-surface + padding, wujud yang
+                  sama dengan kolom isian admin, sehingga ulasan pelanggan
+                  terbaca seperti input yang bisa diketik (owner 2026-10-06:
+                  "agar ulasan ga kelihatan kaya text ui"). Di kartu ulasan
+                  storefront teksnya juga polos tanpa kotak. */}
+              <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
                 {row.message?.trim() || (
                   <span className="italic text-muted-foreground">
                     Tidak menulis ulasan teks, hanya mengirim media.
