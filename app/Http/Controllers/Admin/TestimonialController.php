@@ -272,11 +272,10 @@ class TestimonialController extends Controller
                 ->with('success', 'Screenshot ulasan eksternal diperbarui.');
         }
 
-        // Kembali ke halaman ringkasan ulasan (bukan daftar): halaman ini
-        // dibuka dalam mode baca (ADR-023), jadi menyimpan harus mengembalikan
-        // ke ringkasan yang menampilkan hasilnya, bukan melempar ke daftar.
+        // Kembali ke daftar: halaman baca ulasan sudah diganti popup detail
+        // (owner 2026-10-06), jadi halaman edit bukan tempat mendarat.
         return redirect()
-            ->route('admin.testimonials.edit', $testimonial)
+            ->route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website'])
             ->with('success', 'Ulasan website diperbarui.');
     }
 
@@ -308,7 +307,7 @@ class TestimonialController extends Controller
         $query = CmsTestimonial::query()
             ->published()
             ->withScreenshot()
-            ->with('product:id,parent_sku,name,short_name')
+            ->with(['product:id,parent_sku,name,short_name', 'product.mainImage.mediaAsset'])
             ->orderBy('sort_order')
             ->orderByDesc('id');
 
@@ -369,11 +368,18 @@ class TestimonialController extends Controller
                     'product' => $t->product
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
                         : null,
+                    // Rincian produk untuk popup detail: nama LENGKAP katalog
+                    // (short_name hanya berisi dimensi), SKU, dan foto utama.
+                    'product_name' => $t->product?->name,
+                    'product_sku' => $t->product?->parent_sku,
+                    'product_image' => $t->product?->mainImage?->urlFor('card'),
                     'image_url' => $t->image_url,
                     // Jumlah media memakai sumber yang sama dengan storefront,
                     // supaya penanda di daftar tidak berbeda dari yang dilihat
                     // pembeli. Kolom daftar hanya memuat ubin sampul.
                     'media_count' => count($t->imagesPayload()),
+                    // Seluruh media berurutan untuk grid di popup detail.
+                    'photos' => $t->imagesPayload(),
                     'sort_order' => $t->sort_order,
                     'published' => $t->published,
                     'created_at' => optional($t->created_at)?->toIso8601String(),
@@ -406,7 +412,7 @@ class TestimonialController extends Controller
             $reply = 'all';
         }
 
-        $query = CmsTestimonial::query()->with('product:id,parent_sku,name,short_name');
+        $query = CmsTestimonial::query()->with(['product:id,parent_sku,name,short_name', 'product.mainImage.mediaAsset']);
 
         if ($channel === 'marketplace') {
             $query->marketplace();
@@ -503,11 +509,18 @@ class TestimonialController extends Controller
                     'product' => $t->product
                         ? ($t->product->short_name ?: $t->product->name).' ('.$t->product->parent_sku.')'
                         : null,
+                    // Rincian produk untuk popup detail: nama LENGKAP katalog
+                    // (short_name hanya berisi dimensi), SKU, dan foto utama.
+                    'product_name' => $t->product?->name,
+                    'product_sku' => $t->product?->parent_sku,
+                    'product_image' => $t->product?->mainImage?->urlFor('card'),
                     'image_url' => $t->image_url,
                     // Jumlah media memakai sumber yang sama dengan storefront,
                     // supaya penanda di daftar tidak berbeda dari yang dilihat
                     // pembeli. Kolom daftar hanya memuat ubin sampul.
                     'media_count' => count($t->imagesPayload()),
+                    // Seluruh media berurutan untuk grid di popup detail.
+                    'photos' => $t->imagesPayload(),
                     'sort_order' => $t->sort_order,
                     'published' => $t->published,
                     'created_at' => optional($t->created_at)?->toIso8601String(),

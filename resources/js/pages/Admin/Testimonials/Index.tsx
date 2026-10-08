@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
+import { TestimonialDetailDialog } from "@/components/admin/testimonial-detail-dialog"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
@@ -51,6 +52,12 @@ interface WebsiteRow {
   image_url?: string | null
   /** Jumlah semua media ulasan ini (foto dan video), termasuk sampul. */
   media_count?: number
+  /** Rincian produk untuk popup detail: nama LENGKAP katalog, SKU, foto utama. */
+  product_name?: string | null
+  product_sku?: string | null
+  product_image?: string | null
+  /** Seluruh media ulasan berurutan, untuk grid di popup detail. */
+  photos?: string[]
   sort_order?: number
   published: boolean
   created_at?: string | null
@@ -139,6 +146,7 @@ function RatingStars({ rating }: { rating?: number | null }) {
 function PublishActions({
   published,
   editHref,
+  onDetail,
   publishUrl,
   unpublishUrl,
   busy,
@@ -151,6 +159,12 @@ function PublishActions({
 }: {
   published: boolean
   editHref: string
+  /**
+   * Bila diisi, tombol utama baris menjadi "Detail" yang membuka popup, dan
+   * halaman edit pindah ke menu. Dipakai daftar ulasan; baris galeri foto
+   * tetap memakai tautan halaman seperti semula.
+   */
+  onDetail?: () => void
   publishUrl?: string | null
   unpublishUrl?: string | null
   busy: boolean
@@ -163,14 +177,30 @@ function PublishActions({
   onReply?: () => void
 }) {
   const showMenu = (!readonly && (published || publishUrl)) || canReply
+  // Baris ulasan memakai tombol Detail + menu, jadi menunya selalu ada
+  // supaya jalan masuk "Edit ulasan" tidak hilang.
+  const adaMenu = showMenu || Boolean(onDetail)
 
   return (
     <RowActions>
-      <Button asChild variant="secondary" size="xs">
-        <Link href={editHref}>{readonly ? "Kelola media" : "Edit"}</Link>
-      </Button>
-      {showMenu ? (
+      {onDetail ? (
+        <Button type="button" variant="secondary" size="xs" onClick={onDetail}>
+          Detail
+        </Button>
+      ) : (
+        <Button asChild variant="secondary" size="xs">
+          <Link href={editHref}>{readonly ? "Kelola media" : "Edit"}</Link>
+        </Button>
+      )}
+      {adaMenu ? (
         <RowActionsMenu>
+          {onDetail ? (
+            <DropdownMenuItem asChild>
+              <Link href={editHref} className="w-full text-left">
+                Edit ulasan
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
           {canReply && onReply ? (
             <DropdownMenuItem asChild>
               <button type="button" className="w-full text-left" onClick={onReply}>
@@ -346,6 +376,7 @@ export default function TestimonialsIndex({
   const [channel, setChannel] = React.useState(filters.channel ?? "all")
   const [reply, setReply] = React.useState(filters.reply ?? "all")
   const [replyTarget, setReplyTarget] = React.useState<WebsiteRow | null>(null)
+  const [detailTarget, setDetailTarget] = React.useState<WebsiteRow | null>(null)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
@@ -646,9 +677,13 @@ export default function TestimonialsIndex({
                       ) : null}
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                       <td className="px-3 py-3">
-                        <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => setDetailTarget(row)}
+                          className="text-left font-semibold hover:text-primary hover:underline"
+                        >
                           {row.customer_name}
-                        </Link>
+                        </button>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
                           {row.source_label ?? humanize(row.source)}
                           {row.location ? ` · ${row.location}` : ""}
@@ -783,6 +818,7 @@ export default function TestimonialsIndex({
                             canReply={Boolean(row.can_reply)}
                             hasReply={Boolean(row.has_reply)}
                             onReply={() => setReplyTarget(row)}
+                            onDetail={() => setDetailTarget(row)}
                           />
                         )}
                       </td>
@@ -894,6 +930,17 @@ export default function TestimonialsIndex({
       {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman.
           Komponennya dipakai bersama halaman detail pesanan admin. */}
       <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
+
+      {/* Popup detail ulasan (owner 2026-10-06) menggantikan halaman detail.
+          Tombol balas di dalamnya membuka dialog balasan bersama yang sama. */}
+      <TestimonialDetailDialog
+        row={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onReply={(row) => {
+          setDetailTarget(null)
+          setReplyTarget(row as WebsiteRow)
+        }}
+      />
     </AdminLayout>
   )
 }

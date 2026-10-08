@@ -2,10 +2,7 @@ import * as React from "react"
 import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
-import { SectionCard } from "@/components/admin/section-card"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
-import { CopyButton } from "@/components/admin/ui/copy-button"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
@@ -14,8 +11,6 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatDate, productName } from "@/lib/format"
-import { cn } from "@/lib/utils"
 
 interface TestimonialRecord {
   id: number
@@ -90,11 +85,9 @@ export default function TestimonialForm({
   const labels = sourceLabels ?? DEFAULT_SOURCE_LABELS
   const isMarketplaceIntent = intent === "marketplace"
 
-  // Kontrak ADR-023: halaman yang membuka data yang SUDAH ada dimulai dari
-  // RINGKASAN (baca saja), bukan form langsung aktif. Inilah yang membuat klik
-  // nama pelanggan di daftar tidak lagi mendarat langsung di form edit.
-  // Alur tambah data baru tetap form langsung (pengecualian ADR-023).
-  const [mode, setMode] = React.useState<"view" | "edit">(editing ? "view" : "edit")
+  // Halaman ini MURNI form (tambah dan ubah). Membaca ulasan pindah ke popup
+  // detail di daftar (owner 2026-10-06: "hapus halaman detail ulasan, gantikan
+  // dengan popup saja"), jadi mode ringkasan di sini dihapus.
   const form = useForm<{
     customer_name: string
     message: string
@@ -121,7 +114,6 @@ export default function TestimonialForm({
   })
 
   const isMarketplace = ["shopee", "whatsapp"].includes(form.data.source) || isMarketplaceIntent
-  const isPublished = Boolean(testimonial?.published ?? true)
   // Ulasan kiriman pelanggan dikunci server: nama, rating, dan teks
   // dikembalikan ke nilai asli saat menyimpan (kontrak "verified review").
   // Isian untuk kolom itu tidak boleh tampil bisa diketik, supaya admin
@@ -196,225 +188,33 @@ export default function TestimonialForm({
     })
   }
 
-  // Judul menyesuaikan mode: halaman ini punya tiga keadaan (tambah, baca,
-  // ubah), supaya tidak lagi berbunyi "Edit" saat sedang dibaca.
+  // Dua keadaan saja: tambah dan ubah. Keadaan baca pindah ke popup detail.
   const judulHalaman = !editing
     ? `Tambah ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
-    : mode === "view"
-      ? `Detail ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
-      : `Edit ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
-
-  const labelSumber = labels[form.data.source] ?? form.data.source
+    : `Edit ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
 
 
-  // Ringkasan (mode baca): satu kartu dengan DUA kolom di dalamnya. KIRI:
-  // identitas pelanggan, rating, ulasan, lalu balasan dan media menyatu di
-  // bawahnya (owner 2026-10-06). KANAN: produk yang dibeli dalam baris
-  // standar isi pesanan (foto katalog, nama productName() berikon salin, SKU
-  // berikon salin, qty x harga, tanpa tombol).
-  const namaProduk = produkPicked ? productName(produkPicked.name, produkPicked.dimensions) : ""
-  // Kolom kanan berisi produk yang dibeli; hanya bila ulasan benar-benar
-  // menautkan produk (marketplace tidak punya kolom produk).
-  const adaKolomKanan = !isMarketplaceIntent && Boolean(produkPicked)
-
-  const ringkasan = (
-    <div className="w-full space-y-6">
-      <SectionCard
-        title={isMarketplaceIntent ? "Screenshot Pelanggan" : "Ulasan Pembeli"}
-        description={testimonial?.created_at ? `Dikirim ${formatDate(testimonial.created_at)}` : undefined}
-        icon="chat"
-        action={
-          <StatusBadge
-            status={isPublished ? "active" : "inactive"}
-            label={isPublished ? "Tampil di website" : "Tersembunyi"}
-          />
-        }
-      >
-        <div className={cn("grid items-start gap-6", adaKolomKanan && "lg:grid-cols-2")}>
-          {/* Kiri: pelanggan, rating, ulasan, lalu balasan dan media di
-              bawahnya (owner 2026-10-06). Kolom dua setengah sama. */}
-          <div className={cn("min-w-0", adaKolomKanan && "lg:border-r lg:border-border lg:pr-6")}>
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
-                {form.data.customer_name.trim() ? form.data.customer_name.trim()[0].toUpperCase() : "P"}
-              </span>
-              <div className="min-w-0">
-                <h3 className="truncate text-base font-bold text-foreground">
-                  {form.data.customer_name.trim() || "Pelanggan"}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {[labelSumber, form.data.location].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-            </div>
-            {form.data.rating ? (
-              <div className="mt-4 flex items-center gap-2">
-                <span
-                  className="inline-flex items-center gap-0.5 text-warning"
-                  aria-label={`${form.data.rating} dari 5 bintang`}
-                >
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <Icon
-                      key={i}
-                      name="star"
-                      weight="fill"
-                      className={cn("size-4", i < Number(form.data.rating) ? "text-warning" : "text-muted/30")}
-                      aria-hidden="true"
-                    />
-                  ))}
-                </span>
-                <span className="font-mono text-sm font-bold text-foreground">{form.data.rating} / 5</span>
-              </div>
-            ) : (
-              <p className="mt-4 text-xs text-muted-foreground">Tanpa rating</p>
-            )}
-
-            {/* Ulasan pelanggan di bawah rating */}
-            <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-foreground">
-              {form.data.message.trim() || (
-                <span className="italic text-muted-foreground">
-                  Tidak ada ulasan teks (hanya foto / screenshot).
-                </span>
-              )}
-            </p>
-
-            {/* Balasan dan media menyatu di bawah ulasan pelanggan
-                (owner 2026-10-06) */}
-            {testimonial?.admin_reply ? (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                    <Icon name="storefront" className="size-3.5" aria-hidden="true" />
-                    <span>Balasan Ragil Aluminium</span>
-                  </p>
-                  {testimonial.admin_replied_at ? (
-                    <span className="text-[11px] text-muted-foreground">
-                      {formatDate(testimonial.admin_replied_at)}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">
-                  {testimonial.admin_reply}
-                </p>
-              </div>
-            ) : null}
-
-            {photos.length > 0 ? (
-              <ul className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-4" aria-label="Foto ulasan">
-                {photos.map((row, index) => (
-                  <li
-                    key={row.key}
-                    className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted"
-                  >
-                    <img
-                      src={row.url}
-                      alt={row.label ?? `Foto ${index + 1}`}
-                      className="size-full object-cover transition duration-150 group-hover:scale-105"
-                    />
-                    {index === 0 ? (
-                      <span className="absolute left-2 top-2 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-xs">
-                        Foto Utama
-                      </span>
-                    ) : null}
-                    <a
-                      href={row.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs font-semibold text-white opacity-0 transition-opacity hover:opacity-100"
-                      title="Buka foto ukuran penuh"
-                    >
-                      Lihat foto
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-
-          {/* Kanan: produk yang dibeli (owner 2026-10-06), baris standar isi
-              pesanan: foto, nama + salin, SKU + salin, qty x harga. */}
-          {!isMarketplaceIntent && produkPicked ? (
-            <div className="min-w-0 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground">Produk yang Dibeli</p>
-              <div className="rounded-lg border border-border p-4">
-                <div className="flex gap-3.5">
-                  <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                    {produkPicked.image ? (
-                      <img src={produkPicked.image} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
-                        <Icon name="image" className="size-4" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-1.5">
-                      <p className="text-sm font-normal leading-5 text-foreground">{namaProduk}</p>
-                      <CopyButton text={namaProduk} label="Salin ukuran & nama produk" compact showTextInTitle />
-                    </div>
-                    {produkPicked.parent_sku ? (
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="font-mono">SKU {produkPicked.parent_sku}</span>
-                        <CopyButton text={produkPicked.parent_sku} label="Salin SKU produk" compact />
-                      </p>
-                    ) : null}
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      1 × {formatCurrency(produkPicked.price)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </SectionCard>
-    </div>
-  )
   return (
     <AdminLayout
       backUrl={backUrl}
       title={judulHalaman}
       description={
-        // Kalimat pengajaran (boleh SS WA, gambar wajib, dst.) hanya berarti
-        // saat mengisi form. Di mode baca ia menjadi teks tutorial permanen
-        // di halaman detail (koreksi owner 2026-10-06: "tolol").
-        mode === "view"
-          ? undefined
-          : isMarketplaceIntent
-            ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
-            : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
+        isMarketplaceIntent
+          ? "Screenshot percakapan Shopee atau WhatsApp di luar transaksi website. Gambar wajib."
+          : "Ulasan pembeli website: teks dan/atau gambar (boleh SS WA bila pelanggan tidak menulis ulasan)."
       }
       actions={
         <div className="flex flex-wrap gap-2">
-          {mode === "view" ? (
-            <Button type="button" onClick={() => setMode("edit")} className="inline-flex items-center gap-1.5">
-              <Icon name="pencil-simple" className="size-4" aria-hidden="true" />
-              <span>{isMarketplaceIntent ? "Edit screenshot" : "Edit ulasan"}</span>
-            </Button>
-          ) : (
-            <>
-              <Button type="submit" form="testimonial-form" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
-              </Button>
-              {editing ? (
-                // Batal mengembalikan ke ringkasan, bukan meninggalkan halaman.
-                <Button type="button" variant="secondary" onClick={() => setMode("view")}>
-                  Batal
-                </Button>
-              ) : (
-                <Button asChild variant="secondary">
-                  <Link href={indexUrl}>Batal</Link>
-                </Button>
-              )}
-            </>
-          )}
+          <Button type="submit" form="testimonial-form" disabled={form.processing}>
+            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={indexUrl}>Batal</Link>
+          </Button>
         </div>
       }
     >
       <Head title={`${judulHalaman} | Admin`} />
-      {mode === "view" ? (
-        ringkasan
-      ) : (
       <form
         id="testimonial-form"
         onSubmit={(event) => {
@@ -431,11 +231,8 @@ export default function TestimonialForm({
             product_id: produkPicked ? String(produkPicked.id) : "",
             ...(editing ? { _method: "put" } : {}),
           }))
-          form.post(submitUrl, {
-            forceFormData: true,
-            // Simpan sukses kembali ke ringkasan (ADR-023).
-            onSuccess: () => setMode("view"),
-          })
+          // Arah setelah simpan ditentukan server (kembali ke daftar ulasan).
+          form.post(submitUrl, { forceFormData: true })
         }}
         className="w-full space-y-5"
         encType="multipart/form-data"
@@ -709,7 +506,6 @@ export default function TestimonialForm({
           </div>
         </section>
       </form>
-      )}
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
