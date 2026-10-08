@@ -2,12 +2,7 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/admin/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/admin/ui/dialog"
 import { Icon } from "@/components/shared/icon"
 import { formatDateTime, productName } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -88,11 +83,11 @@ export function TestimonialDetailDialog({
 
   return (
     <Dialog open={Boolean(row)} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="max-w-2xl bg-card text-card-foreground">
+      {/* aria-describedby={undefined}: popup ini sengaja tanpa kalimat
+          pengantar, jadi kehadirannya dinyatakan kosong secara eksplisit
+          (pola resmi Radix) supaya pembaca layar tidak menebak-nebak. */}
+      <DialogContent aria-describedby={undefined} className="max-w-2xl bg-card text-card-foreground">
         <DialogTitle>Detail ulasan</DialogTitle>
-        <DialogDescription>
-          Ulasan pelanggan apa adanya: produk yang diulas, identitas pembeli, isi ulasan, media, dan balasan toko.
-        </DialogDescription>
 
         {row ? (
           <div className="space-y-5">
