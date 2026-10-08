@@ -111,6 +111,12 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - Bisa dinonaktifkan dengan alasan; audit dan notifikasi ambang masuk ke Akun & Sistem.
   - Route: admin.products.popularity-boosts.*.
 - **Media Library** (Tipe: Operational) — global shared asset, submenu Kelola Produk.
+  - Sebelum unggah, isi setiap berkas diperiksa lebih dulu lewat `POST /admin/media/check-duplicates`
+    (sidik jari SHA-256). Berkas yang isinya sudah ada ditahan dan admin diberi peringatan berisi aset
+    yang sama, dengan pilihan Lewati (bawaan) atau Tetap unggah. Aset berstatus arsip tidak dihitung
+    duplikat karena berkasnya sudah dihapus, jadi mengunggahnya lagi menghasilkan aset baru.
+  - Penggabungan otomatis di server tetap berlaku sebagai penjaga terakhir: kalau pemeriksaan di klien
+    tidak bisa dijalankan, berkas tetap dikirim dan digabungkan seperti sebelumnya.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
 
 ### 4. Orders & Payments (Pesanan & Pembayaran)

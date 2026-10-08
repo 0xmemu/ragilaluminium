@@ -95,6 +95,10 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
 
             $canonical = MediaAsset::where('checksum', $checksum)
                 ->where('id', '!=', $asset->id)
+                // Aset arsip bukan tujuan penggabungan yang sah: berkasnya sudah
+                // dihapus dari penyimpanan dan tampilannya disembunyikan, jadi
+                // mengarahkan lampiran ke sana membuat media hilang dari galeri.
+                ->where('status', '!=', 'archived')
                 ->first();
             if ($canonical) {
                 DB::transaction(function () use ($asset, $canonical): void {

@@ -248,6 +248,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('media/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('media.folders.destroy');
     Route::post('media/upload', [MediaLibraryUploadController::class, 'upload'])->name('media.upload');
     Route::post('media/import-url', [MediaLibraryUploadController::class, 'importUrl'])->name('media.import-url');
+    Route::post('media/check-duplicates', [MediaLibraryUploadController::class, 'checkDuplicates'])->name('media.check-duplicates');
     Route::get('media/history', [ProductMediaController::class, 'history'])->name('media.history');
     Route::post('media/logs/{log}/retry', [ProductMediaController::class, 'retryLog'])->name('media.logs.retry');
     Route::delete('media/logs/{log}', [ProductMediaController::class, 'destroyLog'])->name('media.logs.destroy');

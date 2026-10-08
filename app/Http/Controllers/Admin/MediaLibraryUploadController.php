@@ -22,6 +22,12 @@ use Illuminate\Validation\Rule;
  */
 class MediaLibraryUploadController extends Controller
 {
+    /**
+     * Batas jumlah sidik jari per permintaan pemeriksaan duplikat. Selaras
+     * MAX_CHECKSUMS_PER_REQUEST di resources/js/lib/media-duplicate.ts.
+     */
+    private const MAX_CHECKSUMS = 50;
+
     public function upload(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -122,5 +128,53 @@ class MediaLibraryUploadController extends Controller
         DownloadMediaAsset::dispatch($asset->id);
 
         return response()->json(['message' => 'Media sedang diambil.', 'asset_id' => $asset->id], 201);
+    }
+
+    /**
+     * Periksa sidik jari berkas SEBELUM diunggah (kontrak owner 2026-10-08).
+     *
+     * Dipakai klien untuk memperingatkan admin saat berkas yang dipilih sudah ada
+     * di Media Library, supaya berkas identik tidak dikirim sama sekali. Penjagaan
+     * di sisi server tidak bisa menggantikan ini: pada saat server sudah bisa
+     * memeriksa, berkasnya telanjur terkirim.
+     *
+     * Hanya aset yang masih hidup yang dihitung duplikat. Aset berstatus arsip
+     * sengaja dilewati, karena aset arsip tidak lagi tayang dan berkasnya sudah
+     * dihapus dari penyimpanan, jadi mengunggahnya lagi justru wajar: hasilnya
+     * menjadi aset baru yang segar.
+     *
+     * Bentuk sidik jarinya divalidasi ketat supaya endpoint ini tidak bisa dipakai
+     * menyisir nilai checksum sembarangan.
+     */
+    public function checkDuplicates(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'checksums' => ['required', 'array', 'max:'.self::MAX_CHECKSUMS],
+            'checksums.*' => ['string', 'regex:/^[a-f0-9]{64}$/'],
+        ]);
+
+        $checksums = array_values(array_unique($validated['checksums']));
+
+        $duplikat = MediaAsset::query()
+            ->whereIn('checksum', $checksums)
+            ->whereNotNull('checksum')
+            ->where('checksum', '!=', '')
+            ->where('status', '!=', 'archived')
+            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+            ->get(['id', 'checksum', 'label', 'kind', 'status'])
+            ->keyBy('checksum');
+
+        return response()->json([
+            'duplicates' => $duplikat
+                ->map(fn (MediaAsset $asset) => [
+                    'id' => (int) $asset->id,
+                    'label' => (string) $asset->label,
+                    'kind' => (string) $asset->kind,
+                    'status' => (string) $asset->status,
+                    'usage_count' => (int) $asset->usage_count,
+                    'thumb_url' => $asset->urlFor('thumb'),
+                ])
+                ->all(),
+        ]);
     }
 }

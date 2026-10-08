@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
+import { MediaDuplicateDialog } from "@/components/admin/media-duplicate-dialog"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import {
@@ -18,6 +19,12 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import {
+  collectChecksums,
+  fileChecksum,
+  partitionByDuplicate,
+  type MediaDuplicate,
+} from "@/lib/media-duplicate"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
 // --- Status mapper media khusus (bukan shipping) ---
@@ -755,7 +762,16 @@ function FolderTree({
 // --- Upload preview modal ---
 // State upload dinaikkan ke halaman (uploads + startUploads) agar progress
 // tetap terlihat walau modal ditutup (lihat UploadTracker di bawah).
-type UploadItem = { id: number; name: string; status: "uploading" | "sukses" | "gagal"; progress: number; error?: string }
+type UploadItem = {
+  id: number
+  name: string
+  status: "memeriksa" | "uploading" | "sukses" | "gagal" | "dilewati"
+  progress: number
+  error?: string
+}
+
+/** Satu berkas di dalam batch unggah, beserta sidik jarinya. */
+type UploadEntry = { id: number; name: string; file: File; checksum: string | null }
 
 function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   open: boolean
@@ -770,7 +786,7 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   const [urlResult, setUrlResult] = React.useState<{ name: string; status: string; error?: string } | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { csrf } = usePage<SharedPageProps>().props
-  const uploading = uploads.filter((u) => u.status === "uploading").length
+  const uploading = uploads.filter((u) => u.status === "uploading" || u.status === "memeriksa").length
 
   const reset = () => { setFiles([]); setUrl(""); setUrlResult(null) }
 
@@ -857,13 +873,17 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
             {uploads.map((r) => (
               <div key={r.id} className="flex items-center gap-2 py-0.5">
                 <span className="truncate">{r.name}</span>
-                {r.status === "uploading" ? (
+                {r.status === "memeriksa" ? (
+                  <span className="shrink-0 text-muted-foreground">memeriksa…</span>
+                ) : r.status === "uploading" ? (
                   <span className="flex w-28 shrink-0 items-center gap-1.5">
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
                       <span className="block h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${r.progress}%` }} />
                     </span>
                     <span className="tabular-nums text-muted-foreground">{r.progress}%</span>
                   </span>
+                ) : r.status === "dilewati" ? (
+                  <span className="shrink-0 text-muted-foreground">dilewati</span>
                 ) : (
                   <span className={cn("shrink-0", r.status === "sukses" ? "text-success" : "text-destructive")}>
                     {r.status === "sukses" ? "✓" : `✗ ${r.error ?? ""}`}
@@ -904,7 +924,7 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
 // --- Panel tracking upload (persisten walau modal ditutup) ---
 function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => void }) {
   const [hidden, setHidden] = React.useState(false)
-  const active = uploads.filter((u) => u.status === "uploading").length
+  const active = uploads.filter((u) => u.status === "uploading" || u.status === "memeriksa").length
   const allDone = uploads.length > 0 && active === 0
 
   React.useEffect(() => {
@@ -916,6 +936,7 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
   if (uploads.length === 0 || hidden) return null
   const ok = uploads.filter((u) => u.status === "sukses").length
   const fail = uploads.filter((u) => u.status === "gagal").length
+  const skip = uploads.filter((u) => u.status === "dilewati").length
 
   return (
     <div className="fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-3 shadow-float">
@@ -930,10 +951,14 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
           <div key={u.id} className="text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">{u.name}</span>
-              {u.status === "uploading" ? (
+              {u.status === "memeriksa" ? (
+                <span className="shrink-0 text-muted-foreground">memeriksa…</span>
+              ) : u.status === "uploading" ? (
                 <span className="shrink-0 tabular-nums text-muted-foreground">{u.progress}%</span>
               ) : u.status === "sukses" ? (
                 <span className="shrink-0 text-success">✓</span>
+              ) : u.status === "dilewati" ? (
+                <span className="shrink-0 text-muted-foreground" title={u.error ?? ""}>dilewati</span>
               ) : (
                 <span className="shrink-0 text-destructive" title={u.error ?? ""}>✗</span>
               )}
@@ -947,7 +972,9 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
         ))}
       </div>
       <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
-        {allDone ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}` : `Sedang mengunggah ${active} media…`}
+        {allDone
+          ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}${skip ? `, ${skip} dilewati karena sudah ada` : ""}`
+          : `Sedang mengunggah ${active} media…`}
       </p>
     </div>
   )
@@ -1009,6 +1036,14 @@ export default function MediaLibrary({
   // Upload tracking (persisten walau modal ditutup)
   const [uploads, setUploads] = React.useState<UploadItem[]>([])
   const uploadIdRef = React.useRef(0)
+  // Peringatan berkas duplikat: satu batch ditahan dulu sampai admin memutuskan.
+  const [duplicatePrompt, setDuplicatePrompt] = React.useState<{
+    folder: string | null
+    all: UploadEntry[]
+    dup: UploadEntry[]
+    rest: UploadEntry[]
+    found: MediaDuplicate[]
+  } | null>(null)
 
   /** Buat folder (root atau subfolder) memakai dialog. */
   function submitFolderDialog(name: string) {
@@ -1082,14 +1117,95 @@ export default function MediaLibrary({
     })
   }
 
-  async function startUploads(files: File[]): Promise<void> {
-    const folder = folderId || null
-    const items = files.map((f) => ({ id: ++uploadIdRef.current, name: f.name, file: f }))
-    setUploads((prev) => [...prev, ...items.map(({ id, name }) => ({ id, name, status: "uploading" as const, progress: 0 }))])
-    for (const it of items) {
+  /**
+   * Cari aset yang sidik jarinya sudah ada di Media Library.
+   *
+   * Gagal memeriksa bukan alasan menahan unggahan: kalau permintaan ini gagal,
+   * hasilnya objek kosong dan berkas tetap dikirim, karena penggabungan otomatis
+   * di server tetap menjadi penjaga terakhirnya.
+   */
+  async function findExistingDuplicates(checksums: string[]): Promise<Record<string, MediaDuplicate>> {
+    if (checksums.length === 0) return {}
+
+    try {
+      const res = await fetch(routeUrl("admin.media.check-duplicates"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-TOKEN": csrf,
+        },
+        body: JSON.stringify({ checksums }),
+      })
+      if (!res.ok) return {}
+
+      const body = (await res.json()) as { duplicates?: Record<string, MediaDuplicate> }
+
+      return body.duplicates ?? {}
+    } catch {
+      return {}
+    }
+  }
+
+  async function runUploads(entries: UploadEntry[], folder: string | null): Promise<void> {
+    for (const it of entries) {
+      patchUpload(it.id, { status: "uploading", progress: 0 })
       await uploadOne(it.id, it.file, folder)
     }
     runSearch()
+  }
+
+  /** Lewati berkas yang sudah ada, lalu lanjutkan sisanya. */
+  function skipDuplicates(): void {
+    const prompt = duplicatePrompt
+    if (!prompt) return
+    setDuplicatePrompt(null)
+    for (const d of prompt.dup) {
+      patchUpload(d.id, { status: "dilewati", error: "Sudah ada di Media Library" })
+    }
+    void runUploads(prompt.rest, prompt.folder)
+  }
+
+  /** Kirim semuanya, termasuk yang sudah ada, karena admin memilih begitu. */
+  function uploadDuplicatesAnyway(): void {
+    const prompt = duplicatePrompt
+    if (!prompt) return
+    setDuplicatePrompt(null)
+    void runUploads(prompt.all, prompt.folder)
+  }
+
+  async function startUploads(files: File[]): Promise<void> {
+    const folder = folderId || null
+    const dasar: UploadEntry[] = files.map((f) => ({
+      id: ++uploadIdRef.current,
+      name: f.name,
+      file: f,
+      checksum: null,
+    }))
+
+    // Sidik jari dihitung lebih dulu, dan statusnya sudah tampil supaya berkas
+    // besar tidak terkesan tidak terjadi apa-apa.
+    setUploads((prev) => [
+      ...prev,
+      ...dasar.map(({ id, name }) => ({ id, name, status: "memeriksa" as const, progress: 0 })),
+    ])
+
+    const entries: UploadEntry[] = []
+    for (const it of dasar) {
+      entries.push({ ...it, checksum: await fileChecksum(it.file) })
+    }
+
+    const found = await findExistingDuplicates(collectChecksums(entries))
+    const { dup, rest } = partitionByDuplicate(entries, found)
+
+    if (dup.length > 0) {
+      // Berkas identik ditahan dulu: jangan kirim sebelum admin memutuskan.
+      setDuplicatePrompt({ folder, all: entries, dup, rest, found: Object.values(found) })
+
+      return
+    }
+
+    await runUploads(entries, folder)
   }
 
   const assetsRef = React.useRef(assets)
@@ -1243,6 +1359,12 @@ export default function MediaLibrary({
         onStart={(files) => { void startUploads(files) }}
       />
       <UploadTracker uploads={uploads} onDismiss={() => setUploads([])} />
+      <MediaDuplicateDialog
+        open={duplicatePrompt !== null}
+        duplicates={duplicatePrompt?.found ?? []}
+        onSkip={skipDuplicates}
+        onUploadAnyway={uploadDuplicatesAnyway}
+      />
 
       {/* Toggle panel folder: ikon folder, kiri */}
       <div className="mb-2 flex items-center">
