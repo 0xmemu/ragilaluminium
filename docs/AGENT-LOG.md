@@ -3557,3 +3557,10 @@ Agent: zcode
 - Verifikasi: tsc + lint bersih, 69 test lulus / 1138 asersi, build sukses; live: dropdown Sumber 0 (combobox 0, select 0), kolom Sumber kembali teks "Website", dan curl halaman publik /reviews/web kembali memuat "Sari Dewi".
 - Pelajaran proses: commit pertama saya (8e252dbc) TIDAK memuat test penjaga karena skrip patch berhenti di tengah (assertion jumlah kemunculan sourceLabels meleset: 4, bukan 2) sebelum bagian test dijalankan. Pesan commit menyebut test yang belum ada. Sudah diperbaiki dengan menulis test lalu meng-amend commit sebelum push. Jangan percaya pesan commit yang ditulis sebelum patch selesai; periksa daftar berkas di commit SESUDAH semua langkah tuntas.
 Agent: zcode
+
+## 2026-10-08 20:25 UTC | zcode | Trivial | d1e60b3c | selesai
+
+- Owner: "apasih cringe abis. hapus", menunjuk kalimat pengantar di bawah judul popup detail ulasan ("Ulasan pelanggan apa adanya: produk yang diulas, ..."). Kalimat itu menggambarkan isi yang sudah terbaca dari judul tiap bagian, jadi hanya menambah baris tanpa informasi baru. Ini teguran ketiga owner atas pola yang sama di halaman ulasan (kalimat penutup ringkasan, kalimat pengajaran di halaman detail, kini kalimat pengantar popup).
+- Diganti aria-describedby={undefined}, pola resmi Radix untuk menyatakan popup sengaja tanpa deskripsi; konvensi sama sudah dipakai command.tsx (CommandDialog) di repo ini.
+- Verifikasi: tsc + lint bersih, 24 test lulus / 215 asersi, build sukses; live: kalimat tidak ada, isi popup langsung dimulai dari judul lalu bagian Produk yang diulas, urutan bagian tetap.
+Agent: zcode
