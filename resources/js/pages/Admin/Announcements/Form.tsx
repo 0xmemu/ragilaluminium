@@ -2,7 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import AdminLayout from "@/layouts/admin-layout"
 
@@ -45,6 +45,11 @@ export default function AnnouncementForm({
   indexHref: string
 }) {
   const isEdit = Boolean(announcement?.id)
+  // Urutan tampil dan status aktif sengaja TIDAK ditampilkan di form (owner
+  // 2026-09-29): urutan diatur lewat mode Urutkan di daftar, status lewat aksi
+  // Aktifkan/Sembunyikan. Keduanya tetap ikut terkirim dari nilai awal supaya
+  // perilakunya tidak berubah: baris baru tetap ditaruh paling bawah dan aktif,
+  // dan menyunting teks tidak pernah mengubah urutan atau menonaktifkan baris.
   const form = useForm<{
     text: string
     href: string
@@ -74,6 +79,19 @@ export default function AnnouncementForm({
     form.post(submitUrl, { preserveScroll: true })
   }
 
+  /** Isi cepat tanggal berakhir; "mulai hari ini" sekaligus mengisi tanggal mulai. */
+  const isiCepat = [
+    { label: "Mulai hari ini", aksi: () => {
+      const today = todayDateString()
+      form.setData("starts_at", today)
+      if (!form.data.ends_at) form.setData("ends_at", addDaysDateString(today, 7))
+    } },
+    { label: "+3 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 3)) },
+    { label: "+7 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 7)) },
+    { label: "+14 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 14)) },
+    { label: "+30 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 30)) },
+  ]
+
   return (
     <AdminLayout
       backUrl={indexHref}
@@ -97,12 +115,7 @@ export default function AnnouncementForm({
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           <FieldGrid className="p-5 sm:p-6">
-            <Field
-              id="text"
-              label="Teks promo"
-              error={form.errors.text}
-              hint="Maksimal 64 karakter agar tetap ringkas di mobile."
-            >
+            <Field id="text" label="Teks promo" error={form.errors.text} required>
               <Input
                 value={form.data.text}
                 onChange={(event) => form.setData("text", event.target.value)}
@@ -110,116 +123,55 @@ export default function AnnouncementForm({
                 maxLength={64}
               />
             </Field>
-            <Field
-              id="href"
-              label="Link tujuan / produk terkait"
-              error={form.errors.href}
-              hint="Path internal (mis. /products/boven/jungkit) atau URL penuh. Kosongkan untuk arahkan ke katalog."
-            >
+            <Field id="href" label="Link tujuan" error={form.errors.href} hint="Kosongkan untuk arahkan ke katalog.">
               <Input
                 value={form.data.href}
                 onChange={(event) => form.setData("href", event.target.value)}
                 placeholder="/products/boven/jungkit"
               />
             </Field>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="starts" className="text-xs font-semibold">
-                  Mulai (Opsional)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const today = todayDateString()
-                    form.setData("starts_at", today)
-                    if (!form.data.ends_at) {
-                      form.setData("ends_at", addDaysDateString(today, 7))
-                    }
-                  }}
-                  className="text-[11px] font-medium text-primary hover:underline"
-                >
-                  Mulai Hari Ini
-                </button>
-              </div>
+
+            <Field id="starts_at" label="Mulai" error={form.errors.starts_at}>
               <Input
-                id="starts"
                 type="date"
                 value={form.data.starts_at}
                 onChange={(event) => form.setData("starts_at", event.target.value)}
               />
-              {form.errors.starts_at && <p className="text-xs text-destructive">{form.errors.starts_at}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="ends" className="text-xs font-semibold">
-                  Berakhir (Kustom)
-                </label>
-                <span className="text-[10px] text-muted-foreground">Pilih tanggal kustom</span>
-              </div>
+            </Field>
+            <Field id="ends_at" label="Berakhir" error={form.errors.ends_at}>
               <Input
-                id="ends"
                 type="date"
                 value={form.data.ends_at}
                 onChange={(event) => form.setData("ends_at", event.target.value)}
               />
-              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
-                <span className="text-muted-foreground">Preset cepat:</span>
-                {[
-                  { label: "+3 Hari", days: 3 },
-                  { label: "+7 Hari", days: 7 },
-                  { label: "+14 Hari", days: 14 },
-                  { label: "+30 Hari", days: 30 },
-                ].map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => {
-                      const base = form.data.starts_at || todayDateString()
-                      form.setData("ends_at", addDaysDateString(base, preset.days))
-                    }}
-                    className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-                {form.data.ends_at && (
-                  <button
-                    type="button"
-                    onClick={() => form.setData("ends_at", "")}
-                    className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
-                  >
-                    Kosongkan
-                  </button>
-                )}
-              </div>
-              {form.errors.ends_at && <p className="text-xs text-destructive">{form.errors.ends_at}</p>}
-            </div>
-            <Field
-              id="sort"
-              label="Urutan tampil"
-              error={form.errors.sort_order}
-              className="sm:max-w-40"
-              hint="Angka 1 tampil paling atas. Baris baru otomatis ditaruh paling bawah."
-            >
-              <Input
-                type="number"
-                min={1}
-                max={9999}
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
             </Field>
-            <CheckboxField
-              id="announcement-published"
-              checked={form.data.published}
-              onChange={(checked) => form.setData("published", checked)}
-              label="Status aktif (published)"
-            />
+
+            <div className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
+              {isiCepat.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.aksi}
+                  className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground transition-colors hover:bg-muted"
+                >
+                  {item.label}
+                </button>
+              ))}
+              {form.data.starts_at || form.data.ends_at ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    form.setData("starts_at", "")
+                    form.setData("ends_at", "")
+                  }}
+                  className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  Kosongkan tanggal
+                </button>
+              ) : null}
+            </div>
           </FieldGrid>
         </section>
-
-        
       </form>
     </AdminLayout>
   )
