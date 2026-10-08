@@ -110,7 +110,7 @@ export default function AnnouncementForm({
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Bar Promo | Admin`} />
 
-      <form id="announcement-form" onSubmit={onSubmit} className="w-full max-w-4xl space-y-6">
+      <form id="announcement-form" onSubmit={onSubmit} className="w-full space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
