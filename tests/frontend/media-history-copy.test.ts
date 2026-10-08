@@ -41,14 +41,28 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"failed", "success"')
   })
 
-  it("enam jenis event tetap terdaftar di EVENT_TABS", () => {
+  it("lima jenis event punya tab", () => {
     const baris = sumber()
       .split(String.fromCharCode(10))
       .find((b) => b.includes("const EVENT_TABS")) as string
 
-    for (const event of ["failed", "success", "processing", "queued", "dedup", "downloaded"]) {
+    for (const event of ["failed", "success", "processing", "queued", "downloaded"]) {
       expect(baris).toContain(`"${event}"`)
     }
+  })
+
+  it("Duplikat tidak lagi punya tab, tetapi labelnya tetap terpetakan", () => {
+    // Keputusan owner 2026-10-08: penjagaan berkas kembar sudah berjalan di
+    // halaman Media Library sebelum berkas dikirim, jadi tidak perlu tab.
+    // Labelnya WAJIB tetap ada supaya baris dedup lama atau baris yang lolos
+    // lewat jalur server tetap tampil sebagai Duplikat, bukan mentah.
+    const teks = sumber()
+    const barisTab = teks
+      .split(String.fromCharCode(10))
+      .find((b) => b.includes("const EVENT_TABS")) as string
+
+    expect(barisTab).not.toContain("dedup")
+    expect(teks).toContain('dedup: { label: "Duplikat"')
   })
 })
 
