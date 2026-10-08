@@ -282,4 +282,78 @@ class CustomerReviewTest extends TestCase
                 ->where('testimonials.data.0.message', 'Versi setelah diperbaiki.')
                 ->where('testimonials.data.0.rating', 5));
     }
+
+    /**
+     * Pesanan berisi beberapa produk: satu ulasan harus muncul di halaman
+     * SETIAP produk yang ada di pesanan itu (keputusan owner 2026-10-06).
+     *
+     * Sebelum ini, ulasan hanya menempel di produk yang dipilih pelanggan saat
+     * mengulas, sehingga produk lain di pesanan yang sama tidak pernah mendapat
+     * ulasan meskipun jelas dibeli dan diterima. Produk di luar pesanan harus
+     * TETAP tidak kebagian, jadi aturannya bukan "sebar ke semua produk".
+     */
+    public function test_ulasan_pesanan_multi_produk_tampil_di_semua_produk_pesanan_itu(): void
+    {
+        [$order, $produkA] = $this->orderWithProduct('delivered', 'RA-REVIEW-MULTI');
+
+        $produkB = Product::create([
+            'parent_sku' => 'WIN-MULTI-B',
+            'name' => 'Produk Kedua',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $produkB->id,
+            'parent_sku' => $produkB->parent_sku,
+            'name' => $produkB->name,
+            'unit_price' => 500000,
+            'quantity' => 1,
+            'line_subtotal' => 500000,
+            'line_discount' => 0,
+            'line_total' => 500000,
+        ]);
+
+        $produkLain = Product::create([
+            'parent_sku' => 'WIN-MULTI-LUAR',
+            'name' => 'Produk Di Luar Pesanan',
+            'category_id' => 1,
+            'product_category' => 'PINTU',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->postJson(route('order.review.store', $order->order_number), [
+            'customer_phone' => '081234567890',
+            'product_id' => $produkA->id,
+            'rating' => 5,
+            'message' => 'Dua produk sekaligus, ulasannya satu.',
+        ])->assertCreated();
+
+        $review = CmsTestimonial::query()->where('order_id', $order->id)->sole();
+        $service = app(\App\Services\ProductPopularityService::class);
+
+        $this->assertTrue(
+            $service->inheritedTestimonials($produkA)->contains('id', $review->id),
+            'Produk yang diulas harus tetap menampilkan ulasannya.'
+        );
+        $this->assertTrue(
+            $service->inheritedTestimonials($produkB)->contains('id', $review->id),
+            'Produk lain DI DALAM pesanan yang sama harus ikut menampilkan ulasan itu.'
+        );
+        $this->assertFalse(
+            $service->inheritedTestimonials($produkLain)->contains('id', $review->id),
+            'Produk di luar pesanan tidak boleh kebagian ulasan.'
+        );
+
+        // Kunci bentuk payload: di halaman produk yang bukan pemilik ulasan,
+        // baris produk disembunyikan supaya kartu tidak menyebut produk lain.
+        $this->assertNull($review->toPublicArray(false)['product']);
+    }
+
+
 }

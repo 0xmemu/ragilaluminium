@@ -205,7 +205,7 @@ class ProductPopularityService
             return CmsTestimonial::query()
                 ->published()
                 ->website()
-                ->where('product_id', $target->id)
+                ->forProduct($target->id)
                 ->with(['product:id,parent_sku,name,short_name,product_category,product_model,design_variant', 'order.items'])
                 ->orderBy('sort_order')
                 ->orderByDesc('id')
@@ -222,7 +222,9 @@ class ProductPopularityService
             ->published()
             ->website()
             ->where(function ($query) use ($target, $sourceIds): void {
-                $query->where('product_id', $target->id);
+                // forProduct: ulasan yang menyebut produk ini, ATAU ulasan dari
+                // pesanan yang memuat produk ini (keputusan owner 2026-10-06).
+                $query->forProduct($target->id);
                 if ($sourceIds->isNotEmpty()) {
                     $query->orWhereIn('product_id', $sourceIds);
                 }

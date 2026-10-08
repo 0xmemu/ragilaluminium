@@ -52,7 +52,31 @@ class CmsTestimonial extends Model
     {
         return $query->where('published', true)->where('moderation_status', 'approved');
     }
-    public function scopeForProduct(Builder $query, int $productId): Builder { return $query->where('product_id', $productId); }
+    /**
+     * Ulasan yang BERLAKU untuk sebuah produk.
+     *
+     * Dua sumber, bukan satu:
+     * 1. ulasan yang MENYEBUT produk itu (`product_id`), dan
+     * 2. ulasan dari PESANAN yang memuat produk itu (`order_items`).
+     *
+     * Sumber kedua ditambahkan 2026-10-06 (keputusan owner). Alasannya: satu
+     * pesanan hanya boleh punya SATU ulasan, jadi pembeli yang memesan beberapa
+     * produk sekaligus hanya bisa mengulas salah satunya. Sebelum aturan ini,
+     * produk lain di pesanan yang sama tidak pernah mendapat ulasan sama sekali
+     * meskipun jelas dibeli dan diterima. Sekarang ulasan itu ikut tampil di
+     * halaman tiap produk yang ada di pesanan tersebut.
+     *
+     * Ini definisi TUNGGAL; jangan menulis ulang syaratnya di pemanggil.
+     */
+    public function scopeForProduct(Builder $query, int $productId): Builder
+    {
+        return $query->where(function (Builder $inner) use ($productId): void {
+            $inner->where('product_id', $productId)
+                ->orWhereIn('order_id', function (\Illuminate\Database\Query\Builder $sub) use ($productId): void {
+                    $sub->select('order_id')->from('order_items')->where('product_id', $productId);
+                });
+        });
+    }
     public function scopeMarketplace(Builder $query): Builder { return $query->whereIn('source', self::MARKETPLACE_SOURCES); }
     public function scopeWithScreenshot(Builder $query): Builder { return $query->whereNotNull('image_url')->where('image_url', '!=', ''); }
     public function scopeWebsite(Builder $query): Builder { return $query->where('source', 'website'); }
