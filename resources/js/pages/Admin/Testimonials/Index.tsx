@@ -46,7 +46,6 @@ interface WebsiteRow {
   rating?: number | null
   source: string
   source_label?: string
-  source_url?: string | null
   location?: string | null
   product?: string | null
   image_url?: string | null
@@ -344,7 +343,6 @@ export default function TestimonialsIndex({
   previewUrl = null,
   reorderUrl = null,
   canReorder = false,
-  sourceLabels = {},
   replyOptions = [],
 }: {
   title: string
@@ -367,7 +365,6 @@ export default function TestimonialsIndex({
   previewUrl?: string | null
   reorderUrl?: string | null
   canReorder?: boolean
-  sourceLabels?: Record<string, string>
   replyOptions?: Array<{ value: string; label: string }>
 }) {
   const [q, setQ] = React.useState(filters.q)
@@ -696,31 +693,20 @@ export default function TestimonialsIndex({
                         ) : null}
                       </td>
                       <td className="px-3 py-3">
+                        {/* Sumber ditampilkan sebagai TEKS, bukan dropdown.
+                            Sebelumnya ada dropdown yang langsung menyimpan ke
+                            endpoint ubah sumber. Pada tab ini isinya hampir
+                            seluruhnya ulasan website (62 dari 63 baris), dan
+                            mengubah sumber ulasan website membuatnya KELUAR dari
+                            halaman ulasan publik (/reviews/web memakai
+                            published()->website()). Satu klik tanpa konfirmasi
+                            bisa menghilangkan ulasan terverifikasi dari storefront;
+                            itu benar-benar terjadi pada ulasan #129 (Sari Dewi)
+                            yang terset "other" lalu dipulihkan. Sumber adalah
+                            FAKTA asal ulasan (ditetapkan saat dibuat lewat form),
+                            bukan preferensi yang diubah cepat dari daftar. */}
                         {isApaKata ? (
-                          row.source_url ? (
-                            <Select
-                              value={row.source}
-                              aria-label={"Sumber " + row.customer_name}
-                              disabled={busyId === row.id}
-                              onChange={(event) => {
-                                setBusyId(row.id)
-                                router.post(
-                                  row.source_url as string,
-                                  { source: event.target.value },
-                                  { preserveScroll: true, onFinish: () => setBusyId(null) },
-                                )
-                              }}
-                              className="h-8 w-36 text-xs"
-                            >
-                              {Object.entries(sourceLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
-                          )
+                          <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
                         ) : (
                           <RatingStars rating={row.rating} />
                         )}

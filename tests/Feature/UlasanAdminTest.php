@@ -161,7 +161,7 @@ class UlasanAdminTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_change_testimonial_source_from_table(): void
+    public function test_endpoint_ubah_sumber_ulasan_tetap_tervalidasi(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $page = CmsPage::create([
@@ -724,6 +724,32 @@ class UlasanAdminTest extends TestCase
                     'https://cdn.example.com/popup-1.jpg',
                     'https://cdn.example.com/popup-2.jpg',
                 ]));
+    }
+
+
+
+    /**
+     * Daftar ulasan TIDAK boleh lagi menyediakan dropdown ubah Sumber.
+     *
+     * Ulasan #129 (Sari Dewi) berubah jadi "other" lewat dropdown itu pada
+     * 2026-10-08, dan karena halaman publik /reviews/web memakai
+     * published()->website(), ulasan terverifikasi itu langsung hilang dari
+     * storefront. Sumber adalah fakta asal ulasan yang ditetapkan saat dibuat,
+     * bukan pilihan cepat di daftar.
+     *
+     * Kontrak ini hidup di TSX, jadi diperiksa dari sumber.
+     */
+    public function test_daftar_tidak_lagi_menyediakan_ubah_sumber(): void
+    {
+        $isi = file_get_contents(base_path('resources/js/pages/Admin/Testimonials/Index.tsx'));
+        $this->assertNotFalse($isi, 'halaman daftar ulasan harus terbaca');
+        $isi = (string) $isi;
+
+        $this->assertStringNotContainsString('source_url', $isi, 'Baris daftar tidak boleh lagi membawa source_url.');
+        $this->assertStringNotContainsString('admin.testimonials.source', $isi, 'Daftar tidak boleh memanggil endpoint ubah sumber.');
+        $this->assertStringNotContainsString('aria-label={"Sumber " + row.customer_name}', $isi, 'Dropdown Sumber di baris harus tetap dicabut.');
+        // Sumber tetap terlihat sebagai teks.
+        $this->assertStringContainsString('{row.source_label ?? humanize(row.source)}', $isi, 'Sumber tetap harus tampil sebagai teks.');
     }
 
 

@@ -353,7 +353,6 @@ class TestimonialController extends Controller
             'previewUrl' => route('reviews.screenshots'),
             'reorderUrl' => route('admin.apa-kata-pelanggan.reorder'),
             'canReorder' => true,
-            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'rows' => $items->values()->map(function (CmsTestimonial $t, int $index) {
                 return [
                     'id' => $t->id,
@@ -493,7 +492,6 @@ class TestimonialController extends Controller
             'previewUrl' => route('reviews.website'),
             'reorderUrl' => null,
             'canReorder' => false,
-            'sourceLabels' => CmsTestimonial::SOURCE_LABELS,
             'rows' => $rows->getCollection()->values()->map(function (CmsTestimonial $t, int $index) use ($rows) {
                 $no = (($rows->currentPage() - 1) * $rows->perPage()) + $index + 1;
 
