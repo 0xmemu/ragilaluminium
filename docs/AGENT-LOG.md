@@ -3580,3 +3580,9 @@ Agent: zcode
 - Perbaikan: ulasan memakai panel baca --surface-muted (#24242b, 8 tingkat lebih terang dari kartu) plus garis tepi --border, pola panel info read-only yang sudah dipakai InstallationGallery. ATURAN UNTUK HALAMAN LAIN: jangan pakai latar surface sebagai kotak di atas kartu yang juga berlatar surface; pakai surface-muted.
 - Verifikasi: tsc + lint bersih, build sukses; live terukur kotak bg rgb(36,36,43) vs kartu rgb(28,28,33), garis tepi 0,67px, padding 14px, teks rgb(245,245,245).
 Agent: zcode
+
+## 2026-10-08 15:19 UTC | zcode | Trivial | resources/js/pages/Admin/Announcements/Form.tsx | selesai
+
+- Owner di /admin/announcements/create: damn space (menunjuk area konten). Terukur: batas max-w-4xl membuat kartu hanya 741px di area konten 1142px, jadi ~400px kosong di kanan.
+- Perubahan (commit b054bbf2): batas max-w-4xl dibuang, kartu kini mengisi lebar konten (1014px pada viewport 1280), isian tetap grid dua kolom. Dampak: input Teks promo 478px (sebelumnya 349px).
+- Catatan: form admin lain (Banners/Form dll) masih memakai max-w-4xl sehingga masih ada ruang kosong kanan; TIDAK saya ubah karena tidak diminta. Bila mau diseragamkan, permintaan terpisah.
