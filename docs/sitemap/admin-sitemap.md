@@ -118,6 +118,14 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - Penggabungan otomatis di server tetap berlaku sebagai penjaga terakhir: kalau pemeriksaan di klien
     tidak bisa dijalankan, berkas tetap dikirim dan digabungkan seperti sebelumnya.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
+  - Filter: tab status (Semua, Gagal, Siap, Diproses, Antre, Terunduh), pencarian label/pesan,
+    dan SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang tanggal)
+    memakai pola yang sama dengan halaman daftar admin lain. Rentang tanggal hanya muncul
+    setelah "Rentang tanggal" dipilih, dan periode aktif ditandai chip beserta jalan melepasnya.
+  - Nilai status yang tidak punya tab lagi (mis. `?event=dedup` dari tautan lama) diabaikan,
+    bukan ditolak, supaya halaman tidak pernah tampil tanpa tab aktif. Daftar jenis event
+    yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`, sinkron dengan
+    `EVENT_TABS` di `resources/js/pages/Admin/Media/History.tsx`.
 
 ### 4. Orders & Payments (Pesanan & Pembayaran)
 - **Orders** (Tipe: `Operational`)

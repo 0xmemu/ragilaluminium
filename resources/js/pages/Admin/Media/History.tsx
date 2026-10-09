@@ -7,9 +7,11 @@ import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { Input } from "@/components/admin/ui/input"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
+import { navigateFilter } from "@/lib/filter-url"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -68,35 +70,56 @@ export default function MediaHistory({
   logs = [],
   pagination,
   filters,
+  activeDatePreset,
+  dateFrom: initialDateFrom,
+  dateTo: initialDateTo,
+  periodLabel,
   prune,
   backUrl,
 }: {
   logs: LogRow[]
   pagination: PaginationData | null
-  filters: { event: string; q: string; from: string; to: string }
+  filters: { event: string; q: string }
+  activeDatePreset: string
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
   prune?: { days: number; count: number } | null
   backUrl?: string | null
 }) {
   const [q, setQ] = React.useState(filters.q)
-  const [from, setFrom] = React.useState(filters.from)
-  const [to, setTo] = React.useState(filters.to)
+  const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
+  const [rangeTo, setRangeTo] = React.useState(initialDateTo)
 
-  function apply(next?: Partial<{ q: string; event: string; from: string; to: string }>) {
-    // Nilai kosong tidak dikirim supaya URL bersih (tidak ada ?event= kosong).
-    const params: Record<string, string> = {}
-    const nextQ = next?.q !== undefined ? next.q : q
-    const nextEvent = next?.event !== undefined ? next.event : filters.event
-    const nextFrom = next?.from !== undefined ? next.from : from
-    const nextTo = next?.to !== undefined ? next.to : to
-    if (nextQ) params.q = nextQ
-    if (nextEvent) params.event = nextEvent
-    if (nextFrom) params.from = nextFrom
-    if (nextTo) params.to = nextTo
+  /**
+   * Satu jalur navigasi filter, memakai pembangun query bersama supaya nilai
+   * kosong dan kunci yang tidak berlaku tidak ikut masuk URL.
+   *
+   * Rentang tanggal hanya ditulis saat periode "range" yang aktif, sama seperti
+   * halaman daftar admin lain. Kalau tidak, tanggal sisa pilihan lama akan
+   * terbawa dan menyaring daftar tanpa terlihat di kontrol mana pun.
+   */
+  function visit(params: Record<string, string | undefined>) {
+    navigateFilter(
+      "admin.media.history",
+      {
+        event: filters.event,
+        q: filters.q,
+        date_preset: activeDatePreset,
+        date_from: activeDatePreset === "range" ? rangeFrom : undefined,
+        date_to: activeDatePreset === "range" ? rangeTo : undefined,
+      },
+      params,
+      {
+        shouldDrop: (key, _value, merged) =>
+          (key === "date_from" || key === "date_to") && merged.date_preset !== "range",
+      },
+    )
+  }
 
-    router.get(routeUrl("admin.media.history"), params, {
-      preserveState: true,
-      preserveScroll: true,
-    })
+  function applyDateRange(event: React.FormEvent) {
+    event.preventDefault()
+    visit({ date_preset: "range", date_from: rangeFrom || undefined, date_to: rangeTo || undefined })
   }
 
   // ---- Live: polling status entitas yang masih queued/processing ----
@@ -216,7 +239,7 @@ export default function MediaHistory({
           <button
             key={tab.key}
             type="button"
-            onClick={() => apply({ event: tab.key })}
+            onClick={() => visit({ event: tab.key })}
             className={cn(
               "shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
               filters.event === tab.key
@@ -243,7 +266,7 @@ export default function MediaHistory({
         search={{
           value: q,
           onChange: setQ,
-          onSubmit: () => apply({ q }),
+          onSubmit: () => visit({ q }),
           placeholder: "Cari berdasarkan label media atau pesan",
         }}
         className="mb-4"
@@ -270,41 +293,78 @@ export default function MediaHistory({
           ) : undefined
         }
       >
-        {/* Rentang tanggal punya penerapan eksplisit lewat tombol. Sebelumnya
-            nilai dikirim saat fokus berpindah, sehingga mengisi tanggal awal lalu
-            pindah ke tanggal akhir sudah memicu muat ulang di tengah pengisian, dan
-            tidak ada tanda kapan filternya benar-benar berlaku. */}
-        <form
-          className="flex flex-wrap items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            apply({ from, to })
+        {/* Periode memakai pola yang sama dengan halaman daftar admin lain: satu
+            pilihan periode, dan rentang tanggal baru muncul setelah "Rentang
+            tanggal" dipilih. Sebelumnya dua kolom tanggal tampil terus sehingga
+            baris kontrolnya berbeda dari halaman lain dan terlihat seperti filter
+            yang sedang berlaku padahal belum tentu. */}
+        <Select
+          value={activeDatePreset || "all"}
+          onChange={(event) => {
+            const value = event.target.value
+            if (value === "all") {
+              visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
+              return
+            }
+            if (value === "range") {
+              visit({ date_preset: "range", date_from: rangeFrom || undefined, date_to: rangeTo || undefined })
+              return
+            }
+            visit({ date_preset: value, date_from: undefined, date_to: undefined })
           }}
+          className="w-auto"
+          aria-label="Filter periode riwayat media"
         >
-          <Input
-            type="date"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-            className="h-9 w-36 min-h-9 text-[13px]"
-            aria-label="Dari tanggal"
-          />
-          {/* Kata penghubung cukup untuk mata; pembaca layar sudah mendapat
-              keterangan lengkap dari aria-label kedua isian di atas. */}
-          <span className="text-xs text-muted-foreground" aria-hidden="true">
-            sampai
-          </span>
-          <Input
-            type="date"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-            className="h-9 w-36 min-h-9 text-[13px]"
-            aria-label="Sampai tanggal"
-          />
-          <Button type="submit" variant="secondary" size="sm">
-            Terapkan
-          </Button>
-        </form>
+          <option value="all">Semua waktu</option>
+          <option value="today">Hari ini</option>
+          <option value="3d">3 hari terakhir</option>
+          <option value="7d">7 hari terakhir</option>
+          <option value="30d">30 hari terakhir</option>
+          <option value="range">Rentang tanggal</option>
+        </Select>
+        {activeDatePreset === "range" ? (
+          <form onSubmit={applyDateRange} className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={rangeFrom}
+              onChange={(event) => setRangeFrom(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal mulai"
+            />
+            <span className="text-xs text-muted-foreground">sampai</span>
+            <Input
+              type="date"
+              value={rangeTo}
+              onChange={(event) => setRangeTo(event.target.value)}
+              className="w-36"
+              aria-label="Tanggal akhir"
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Terapkan
+            </Button>
+          </form>
+        ) : null}
       </ListToolbar>
+
+      {/* Chip periode aktif, sama seperti halaman Pengiriman dan Pembayaran,
+          supaya periode yang sedang menyaring daftar selalu terbaca beserta jalan
+          cepat untuk melepasnya. */}
+      {activeDatePreset ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium text-muted-foreground">Periode</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {periodLabel}
+            <button
+              type="button"
+              onClick={() => visit({ date_preset: undefined, date_from: undefined, date_to: undefined })}
+              className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label="Hapus filter periode"
+            >
+              <Icon name="x" className="size-3" aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      ) : null}
 
       {pollError && liveActive ? (
         <ErrorState
@@ -457,8 +517,10 @@ export default function MediaHistory({
             icon="history"
             title="Belum ada riwayat pemrosesan"
             description={
-              filters.event || filters.q
-                ? "Tidak ada log yang cocok dengan filter. Coba ubah pencarian atau status."
+              // Periode ikut dihitung: kalau hanya periode yang menyaring, pesan
+              // "belum ada riwayat" akan menyesatkan karena datanya ada.
+              filters.event || filters.q || activeDatePreset
+                ? "Tidak ada log yang cocok dengan filter. Coba ubah pencarian, status, atau periode."
                 : "Log pemrosesan media akan muncul di sini setelah media diunggah."
             }
             className="py-14"

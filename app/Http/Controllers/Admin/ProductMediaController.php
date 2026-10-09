@@ -475,30 +475,69 @@ class ProductMediaController extends Controller
      */
 
     /**
+     * Jenis event yang punya tab di halaman Riwayat Media. Dipakai untuk
+     * memvalidasi filter status sekaligus menjaga daftarnya sinkron dengan
+     * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
+     */
+    private const HISTORY_EVENT_TABS = [
+        'failed',
+        'success',
+        'processing',
+        'queued',
+        'downloaded',
+    ];
+
+    /**
      * Riwayat pemrosesan media (queued -> processing -> success / failed / dedup)
      * untuk audit job WebP yang gagal. Filter event, pencarian label/pesan, dan rentang tanggal.
      */
     public function history(Request $request): Response
     {
-        $validated = $request->validate([
-            'event' => ['nullable', 'in:queued,processing,success,failed,dedup,downloaded'],
-            'q' => ['nullable', 'string', 'max:120'],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date'],
-        ]);
+        // Filter dibaca apa adanya lalu dinormalkan, mengikuti pola filter di Order,
+        // Payment, dan Shipping: nilai yang tidak dikenal dibuat kosong, bukan
+        // ditolak dengan galat. Menolaknya membuat tautan lama seperti
+        // ?event=dedup memantul ke halaman sebelumnya, padahal yang diinginkan
+        // hanyalah filter itu diabaikan.
+        $event = (string) $request->input('event', '');
+        $q = trim((string) $request->input('q', ''));
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+
+        // Status hanya menerima nilai yang punya tab. Nilai lain, misalnya
+        // ?event=dedup dari tautan lama, dibuang supaya halaman tidak pernah
+        // tampil tanpa tab aktif: keadaan yang tidak bisa diwakili tombol filter
+        // akan terbaca seperti halaman rusak.
+        if (! in_array($event, self::HISTORY_EVENT_TABS, true)) {
+            $event = '';
+        }
+
+        // Periode memakai pola yang sama dengan halaman daftar admin lain: satu
+        // pilihan periode, dan rentang tanggal hanya berlaku saat periode rentang
+        // yang dipilih. Dasar perbandingannya created_at.
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+        if (strlen($q) > 120) {
+            $q = mb_substr($q, 0, 120);
+        }
 
         $query = MediaProcessingLog::query()
-            ->when($validated['event'] ?? null, fn ($q) => $q->where('event', $validated['event']))
-            ->when(filled($validated['q'] ?? null), function ($q) use ($validated) {
-                $search = LikeSearch::escape((string) $validated['q']);
+            ->when($event !== '', fn ($builder) => $builder->where('event', $event))
+            ->when($q !== '', function ($builder) use ($q) {
+                $search = LikeSearch::escape($q);
 
-                return $q->where(function ($sub) use ($search) {
+                return $builder->where(function ($sub) use ($search) {
                     $sub->where('entity_label', 'like', "%{$search}%")
                         ->orWhere('message', 'like', "%{$search}%");
                 });
             })
-            ->when(filled($validated['from'] ?? null), fn ($q) => $q->whereDate('created_at', '>=', $validated['from']))
-            ->when(filled($validated['to'] ?? null), fn ($q) => $q->whereDate('created_at', '<=', $validated['to']));
+            ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+            ->when($datePreset === '3d', fn ($q) => $q->where('created_at', '>=', now()->subDays(3)->startOfDay()))
+            ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+            ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
+            ->when($datePreset === 'range' && $dateFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
+            ->when($datePreset === 'range' && $dateTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $dateTo));
 
         $paginator = (clone $query)->latest('created_at')->paginate(30)->withQueryString();
 
@@ -523,16 +562,38 @@ class ProductMediaController extends Controller
             'logs' => $logs,
             'pagination' => InertiaAdmin::pagination($paginator),
             'filters' => [
-                'event' => $validated['event'] ?? '',
-                'q' => $validated['q'] ?? '',
-                'from' => $validated['from'] ?? '',
-                'to' => $validated['to'] ?? '',
+                'event' => $event,
+                'q' => $q,
             ],
+            'activeDatePreset' => $datePreset,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'periodLabel' => $this->periodLabel($datePreset, $dateFrom, $dateTo),
             'prune' => [
                 'days' => $pruneDays,
                 'count' => MediaProcessingLog::where('created_at', '<', now()->subDays($pruneDays))->count(),
             ],
         ]);
+    }
+
+    /**
+     * Label periode aktif untuk chip "Filter aktif" di halaman Riwayat Media.
+     * Selaras dengan label periode di halaman daftar admin lain.
+     */
+    private function periodLabel(string $preset, string $from, string $to): string
+    {
+        return match ($preset) {
+            'today' => 'Hari ini',
+            '3d' => '3 hari terakhir',
+            '7d' => '7 hari terakhir',
+            '30d' => '30 hari terakhir',
+            'range' => trim(
+                ($from !== '' ? \Carbon\Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                .' sampai '.
+                ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang'),
+            ),
+            default => 'Semua waktu',
+        };
     }
 
     /**

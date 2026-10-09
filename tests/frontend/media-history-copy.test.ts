@@ -66,12 +66,30 @@ describe("label status Riwayat Media", () => {
   })
 })
 
-describe("filter tanggal Riwayat Media", () => {
+describe("filter periode Riwayat Media", () => {
+  it("memakai pola yang sama dengan halaman daftar admin lain", () => {
+    // Standar di halaman lain: SATU pilihan periode, dan rentang tanggal baru
+    // muncul setelah "Rentang tanggal" dipilih. Halaman ini dulu menampilkan dua
+    // kolom tanggal terus-menerus, sehingga baris kontrolnya berbeda dari halaman
+    // lain dan terlihat seperti filter yang sedang berlaku padahal belum tentu.
+    const teks = sumber()
+
+    expect(teks).toContain('<option value="range">Rentang tanggal</option>')
+    expect(teks).toContain('<option value="7d">7 hari terakhir</option>')
+    expect(teks).toContain('<option value="all">Semua waktu</option>')
+    expect(teks).toContain('import { Select } from "@/components/admin/ui/select"')
+  })
+
+  it("rentang tanggal hanya dirender saat periode rentang dipilih", () => {
+    expect(sumber()).toContain('{activeDatePreset === "range" ? (')
+  })
+
   it("diterapkan lewat tombol, bukan saat fokus berpindah", () => {
     const teks = sumber()
 
     expect(teks).not.toContain("onBlur={() => apply(")
-    expect(teks).toContain('<Button type="submit" variant="secondary" size="sm">')
+    expect(teks).toContain("onSubmit={applyDateRange}")
+    expect(teks).toContain("applyDateRange(event: React.FormEvent)")
   })
 
   it("memakai isian bersama, bukan input tanggal mentah", () => {
@@ -79,5 +97,18 @@ describe("filter tanggal Riwayat Media", () => {
     // isian lain di panel admin.
     expect(sumber()).not.toMatch(/<input[^>]*type="date"/)
     expect(sumber()).toContain('import { Input } from "@/components/admin/ui/input"')
+  })
+
+  it("periode aktif ditandai chip beserta jalan melepasnya", () => {
+    const teks = sumber()
+
+    expect(teks).toContain("{periodLabel}")
+    expect(teks).toContain('aria-label="Hapus filter periode"')
+  })
+
+  it("rentang tanggal tidak ikut ke URL saat periode bukan rentang", () => {
+    // Kalau tanggal sisa pilihan lama ikut terbawa, daftar akan tersaring
+    // tanpa terlihat di kontrol mana pun.
+    expect(sumber()).toContain('merged.date_preset !== "range"')
   })
 })
