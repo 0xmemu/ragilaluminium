@@ -46,16 +46,20 @@ class MediaHistoryFilterTest extends TestCase
         $this->log('dedup');
         $this->log('success');
 
-        // ?event=dedup berasal dari tab yang sudah dilepas. Tanpa normalisasi,
-        // halaman menyaring ke event itu dan tampil tanpa tab aktif.
-        $this->actingAs($this->admin())
-            ->get(route('admin.media.history', ['event' => 'dedup']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Media/History')
-                ->where('filters.event', '')
-                // Daftar kembali memuat semua log, bukan kosong.
-                ->has('logs', 2));
+        // Dua nilai yang tidak punya tab: "dedup" (tabnya dilepas karena penjagaan
+        // berkas kembar sudah jalan di klien) dan "downloaded" (bukan event sama
+        // sekali, melainkan status lampiran media). Tanpa normalisasi, halaman
+        // menyaring ke event itu dan tampil tanpa tab aktif, terbaca seperti rusak.
+        foreach (['dedup', 'downloaded'] as $event) {
+            $this->actingAs($this->admin())
+                ->get(route('admin.media.history', ['event' => $event]))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Admin/Media/History')
+                    ->where('filters.event', '')
+                    // Daftar kembali memuat semua log, bukan kosong.
+                    ->has('logs', 2));
+        }
     }
 
     public function test_event_yang_punya_tab_tetap_menyaring(): void

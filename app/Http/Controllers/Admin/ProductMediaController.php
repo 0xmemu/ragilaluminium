@@ -484,7 +484,6 @@ class ProductMediaController extends Controller
         'success',
         'processing',
         'queued',
-        'downloaded',
     ];
 
     /**

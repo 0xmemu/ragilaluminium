@@ -11,8 +11,9 @@ import { describe, expect, it } from "vitest"
  * dan filter tanggal dikirim saat fokus berpindah sehingga muat ulang terpicu di
  * tengah pengisian tanpa penanda kapan filternya berlaku.
  *
- * Penjaga membaca sumber, bukan DOM, karena dua hal ini keputusan tetap: satu
- * sumber label untuk badge dan tab, dan penerapan rentang tanggal yang eksplisit.
+ * Penjaga membaca sumber, bukan DOM, karena hal-hal ini keputusan tetap: satu
+ * sumber label untuk badge dan tab, daftar event bertab yang sinkron antara klien
+ * dan server, dan penerapan rentang tanggal yang eksplisit.
  */
 
 const akar = fileURLToPath(new URL("../../", import.meta.url))
@@ -21,12 +22,27 @@ function sumber(): string {
   return readFileSync(join(akar, "resources/js/pages/Admin/Media/History.tsx"), "utf8")
 }
 
-describe("label status Riwayat Media", () => {
-  it("unduhan dieja Terunduh, tidak ada ejaan Terunduk", () => {
-    expect(sumber()).toContain('label: "Terunduh"')
-    expect(sumber()).not.toContain("Terunduk")
-  })
+/** Daftar event yang punya tab menurut sisi klien (EVENT_TABS). */
+function daftarEventKlien(): string[] {
+  const baris = sumber()
+    .split(String.fromCharCode(10))
+    .find((b) => b.includes("const EVENT_TABS")) as string
 
+  return (baris.match(/"([a-z_]+)"/g) ?? []).map((s) => s.replace(/"/g, ""))
+}
+
+/** Daftar event yang dianggap punya tab oleh server (HISTORY_EVENT_TABS). */
+function daftarEventServer(): string[] {
+  const teks = readFileSync(
+    join(akar, "app/Http/Controllers/Admin/ProductMediaController.php"),
+    "utf8",
+  )
+  const blok = teks.split("HISTORY_EVENT_TABS = [")[1]?.split("];")[0] ?? ""
+
+  return (blok.match(/'([a-z_]+)'/g) ?? []).map((s) => s.replace(/'/g, ""))
+}
+
+describe("label status Riwayat Media", () => {
   it("tab filter membaca label dari EVENT_META, bukan daftar terpisah", () => {
     expect(sumber()).toContain("...EVENT_TABS.map((key) => ({ key, label: EVENT_META[key].label }))")
     expect(sumber()).toContain("const EVENT_TABS = [")
@@ -41,14 +57,29 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"failed", "success"')
   })
 
-  it("lima jenis event punya tab", () => {
-    const baris = sumber()
-      .split(String.fromCharCode(10))
-      .find((b) => b.includes("const EVENT_TABS")) as string
+  it("empat jenis event punya tab", () => {
+    expect(daftarEventKlien()).toEqual(["failed", "success", "processing", "queued"])
+  })
 
-    for (const event of ["failed", "success", "processing", "queued", "downloaded"]) {
-      expect(baris).toContain(`"${event}"`)
-    }
+  it("daftar event bertab sinkron antara klien dan server", () => {
+    // Kalau salah satu sisi berubah tanpa yang lain, filter ?event=<x> dari sisi
+    // yang tertinggal akan diabaikan server sementara tombolnya masih ditawarkan
+    // klien, atau sebaliknya. Itu tepat masalah yang dulu terjadi pada ?event=dedup.
+    expect(daftarEventKlien()).toEqual(daftarEventServer())
+  })
+
+  it("Terunduh dibuang seluruhnya, bukan hanya tabnya", () => {
+    // "downloaded" adalah STATUS lampiran media, bukan event riwayat: tidak ada
+    // kode yang pernah menuliskannya sebagai event. Karena itu labelnya pun tidak
+    // disisakan, supaya tidak ada pemetaan yang tidak mungkin terpakai.
+    //
+    // Yang diperiksa adalah PEMETAAN-nya, bukan katanya: komentar di berkas itu
+    // menjelaskan kenapa "downloaded" dibuang, dan penjelasan itu memang perlu ada.
+    const teks = sumber()
+
+    expect(teks).not.toContain('label: "Terunduh"')
+    expect(teks).not.toMatch(/^s*downloaded:s*{/m)
+    expect(daftarEventServer()).not.toContain("downloaded")
   })
 
   it("Duplikat tidak lagi punya tab, tetapi labelnya tetap terpetakan", () => {

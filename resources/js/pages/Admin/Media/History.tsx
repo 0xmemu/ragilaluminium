@@ -35,7 +35,6 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
   success: { label: "Siap", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },
   dedup: { label: "Duplikat", tone: "warning" },
-  downloaded: { label: "Terunduh", tone: "info" },
 }
 
 /**
@@ -47,13 +46,19 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
  * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
  *
- * Duplikat sengaja TIDAK punya tab (keputusan owner 2026-10-08): penjagaan
- * berkas kembar sudah berjalan di halaman Media Library SEBELUM berkas dikirim,
- * jadi kejadiannya tidak lagi perlu disaring sehari-hari. Entrinya tetap ada di
- * EVENT_META supaya baris lama atau baris yang lolos lewat jalur server tetap
- * tampil berlabel dan bernada benar di tab Semua, bukan tampil mentah.
+ * Dua jenis event sengaja TIDAK punya tab, karena dua sebab yang berbeda:
+ *
+ * - Duplikat: penjagaan berkas kembar sudah berjalan di halaman Media Library
+ *   SEBELUM berkas dikirim, jadi tidak perlu disaring sehari-hari. Labelnya
+ *   TETAP ada di EVENT_META karena event ini masih ditulis oleh penggabungan di
+ *   server, sehingga baris lama atau baris yang lolos tetap tampil berlabel dan
+ *   bernada benar di tab Semua, bukan tampil mentah.
+ * - Terunduh: bukan event sama sekali. "downloaded" adalah STATUS pada tabel
+ *   lampiran media (berkas sudah diunduh dari URL sumber), dan tidak ada satu pun
+ *   kode yang pernah menuliskannya sebagai event riwayat. Tabnya karena itu selalu
+ *   kosong, dan labelnya ikut dibuang supaya tidak menyisakan pemetaan mati.
  */
-const EVENT_TABS = ["failed", "success", "processing", "queued", "downloaded"] as const
+const EVENT_TABS = ["failed", "success", "processing", "queued"] as const
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"
