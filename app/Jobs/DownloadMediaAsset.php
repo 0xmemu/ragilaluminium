@@ -130,7 +130,12 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                         });
                     $asset->update(['status' => 'archived', 'error_reason' => null]);
                 });
-                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.');
+                // Aset tujuan ikut dicatat, sama seperti jalur unggahan: tanpa ini
+                // penggabungan tidak bisa ditelusuri dari halaman Riwayat Media.
+                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.', [
+                    'merged_into_asset_id' => (int) $canonical->id,
+                    'merged_into_label' => (string) $canonical->label,
+                ]);
 
                 return;
             }

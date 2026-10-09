@@ -159,6 +159,66 @@ class MediaHistoryFilterTest extends TestCase
                 ->has('logs', 1));
     }
 
+    public function test_baris_log_menyertakan_media_href_ke_library_atau_produk(): void
+    {
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-banner.png',
+            'object_key' => 'media/foto-banner.png',
+            'mime_type' => 'image/png',
+            'size_bytes' => 100,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::record($asset, 'success', 'Derivatif WebP siap.');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.media_href', route('admin.media.library', ['q' => 'foto-banner.png']))
+                ->where('logs.0.merged_into', null));
+    }
+
+    public function test_baris_log_penggabungan_duplikat_menyertakan_tujuan_penggabungan(): void
+    {
+        $canonical = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-asli.png',
+            'object_key' => 'media/foto-asli.png',
+            'mime_type' => 'image/png',
+            'size_bytes' => 100,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        $dup = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-duplikat.png',
+            'object_key' => 'media/foto-duplikat.png',
+            'mime_type' => 'image/png',
+            'size_bytes' => 100,
+            'status' => 'archived',
+            'visibility' => 'archived',
+        ]);
+
+        MediaProcessingLog::record($dup, 'dedup', 'File identik dengan aset lain.', [
+            'merged_into_asset_id' => $canonical->id,
+            'merged_into_label' => $canonical->label,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.merged_into.asset_id', $canonical->id)
+                ->where('logs.0.merged_into.label', 'foto-asli.png')
+                ->where('logs.0.merged_into.href', route('admin.media.library', ['q' => 'foto-asli.png'])));
+    }
+
     public function test_label_periode_rentang_menyebut_tanggal(): void
     {
         $this->actingAs($this->admin())

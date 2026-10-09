@@ -7,6 +7,9 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Jobs\ProcessUploadedMediaAsset;
+use App\Models\MediaProcessingLog;
+use App\Services\MediaDerivativeService;
 use App\Services\MediaAssetResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -211,6 +214,66 @@ class MediaAssetWorkflowTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(2, (int) $rows[0]->position);
         $this->assertFalse((bool) $rows[0]->show_in_catalog);
+    }
+
+    public function test_process_uploaded_media_asset_records_dedup_meta_when_duplicate_found(): void
+    {
+        Storage::fake('media');
+        $disk = Storage::disk('media');
+
+        $content = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        $checksum = hash('sha256', $content);
+
+        $canonical = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-asli.png',
+            'checksum' => $checksum,
+            'object_key' => 'media-assets/'.$checksum.'/card.webp',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        $product = $this->makeProduct('DEDUP-P1');
+
+        $uploadKey = 'media/library/pending-upload.png';
+        $disk->put($uploadKey, $content);
+
+        $duplicateAsset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-duplikat.png',
+            'checksum' => null,
+            'object_key' => $uploadKey,
+            'status' => 'pending',
+            'visibility' => 'visible',
+        ]);
+
+        $attachment = ProductMedia::create([
+            'product_id' => $product->id,
+            'media_asset_id' => $duplicateAsset->id,
+            'position' => 1,
+            'status' => 'pending',
+        ]);
+
+        (new ProcessUploadedMediaAsset($duplicateAsset->id))->handle(app(MediaDerivativeService::class));
+
+        $duplicateAsset->refresh();
+        $this->assertSame('archived', $duplicateAsset->status);
+        $this->assertFalse($disk->exists($uploadKey), 'Berkas duplikat di R2 harus terhapus');
+
+        $attachment->refresh();
+        $this->assertSame($canonical->id, $attachment->media_asset_id, 'Attachment dialihkan ke canonical');
+
+        $dedupLogs = MediaProcessingLog::query()
+            ->where('loggable_type', MediaAsset::class)
+            ->where('loggable_id', $duplicateAsset->id)
+            ->where('event', 'dedup')
+            ->get();
+
+        $this->assertCount(1, $dedupLogs, 'Hanya 1 baris log dedup yang dicatat');
+        $meta = $dedupLogs->first()->meta;
+        $this->assertIsArray($meta);
+        $this->assertSame($canonical->id, $meta['merged_into_asset_id']);
+        $this->assertSame('foto-asli.png', $meta['merged_into_label']);
     }
 
     private function makeAsset(string $seed): MediaAsset

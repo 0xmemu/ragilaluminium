@@ -540,13 +540,7 @@ class ProductMediaController extends Controller
 
         $paginator = (clone $query)->latest('created_at')->paginate(30)->withQueryString();
 
-        $logs = collect($paginator->items())->map(function (MediaProcessingLog $log) {
-            $row = $log->toArray();
-            $row['retry_url'] = $log->event === 'failed' ? route('admin.media.logs.retry', $log) : null;
-            $row['delete_url'] = route('admin.media.logs.destroy', $log);
-
-            return $row;
-        })->all();
+        $logs = $this->historyRows($paginator->items());
 
         $pruneDays = (int) config('media.log_retention_days', 30);
 
@@ -573,6 +567,106 @@ class ProductMediaController extends Controller
                 'count' => MediaProcessingLog::where('created_at', '<', now()->subDays($pruneDays))->count(),
             ],
         ]);
+    }
+
+    /**
+     * Baris log siap tampil: tautan ke medianya, dan untuk penggabungan duplikat
+     * tautan ke aset TUJUANNYA.
+     *
+     * Status aset diambil sekali untuk semua baris karena tautan ke Media Library
+     * bergantung padanya: aset yang diarsipkan disembunyikan Library secara bawaan,
+     * jadi tanpa parameter status tautannya berakhir di daftar kosong.
+     *
+     * @param  array<int, MediaProcessingLog>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function historyRows(array $items): array
+    {
+        $assetIds = [];
+        foreach ($items as $log) {
+            if ($log->loggable_type === MediaAsset::class) {
+                $assetIds[] = (int) $log->loggable_id;
+            }
+            $target = data_get($log->meta, 'merged_into_asset_id');
+            if ($target) {
+                $assetIds[] = (int) $target;
+            }
+        }
+
+        $assetStatus = $assetIds === []
+            ? collect()
+            : MediaAsset::query()->whereIn('id', array_unique($assetIds))->pluck('status', 'id');
+
+        $mediaIds = collect($items)
+            ->filter(fn (MediaProcessingLog $log) => $log->loggable_type === ProductMedia::class)
+            ->map(fn (MediaProcessingLog $log) => (int) $log->loggable_id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $productOf = $mediaIds === []
+            ? collect()
+            : ProductMedia::query()->whereIn('id', $mediaIds)->pluck('product_id', 'id');
+
+        return collect($items)->map(function (MediaProcessingLog $log) use ($assetStatus, $productOf): array {
+            $row = $log->toArray();
+            $row['retry_url'] = $log->event === 'failed' ? route('admin.media.logs.retry', $log) : null;
+            $row['delete_url'] = route('admin.media.logs.destroy', $log);
+            $row['media_href'] = $this->mediaHrefFor($log, $assetStatus, $productOf);
+
+            $targetId = data_get($log->meta, 'merged_into_asset_id');
+            $targetLabel = (string) data_get($log->meta, 'merged_into_label', '');
+            $row['merged_into'] = $targetId
+                ? [
+                    'asset_id' => (int) $targetId,
+                    'label' => $targetLabel !== '' ? $targetLabel : ('Aset #'.$targetId),
+                    'href' => $this->libraryHrefFor($targetLabel, $assetStatus[(int) $targetId] ?? null),
+                ]
+                : null;
+
+            return $row;
+        })->values()->all();
+    }
+
+    /**
+     * Tautan baris ke medianya.
+     *
+     * Hanya aset Media Library yang bisa ditautkan lewat pencarian label. Media
+     * produk tidak: labelnya berbentuk "Media: <nama produk>", dan mencarinya di
+     * Media Library tidak akan menemukan apa pun, jadi tautannya langsung ke tab
+     * media produknya.
+     */
+    private function mediaHrefFor(MediaProcessingLog $log, $assetStatus, $productOf): ?string
+    {
+        if ($log->loggable_type === MediaAsset::class) {
+            return $this->libraryHrefFor((string) $log->entity_label, $assetStatus[(int) $log->loggable_id] ?? null);
+        }
+
+        if ($log->loggable_type === ProductMedia::class) {
+            $productId = $productOf[(int) $log->loggable_id] ?? null;
+
+            return $productId ? route('admin.products.show', ['product' => $productId, 'tab' => 'media']) : null;
+        }
+
+        return null;
+    }
+
+    /** Tautan ke Media Library yang sudah tersaring ke satu label. */
+    private function libraryHrefFor(string $label, ?string $status): ?string
+    {
+        if (trim($label) === '') {
+            return null;
+        }
+
+        $params = ['q' => $label];
+
+        // Aset arsip disembunyikan Library secara bawaan, jadi tautannya wajib
+        // menyertakan statusnya atau daftarnya kosong.
+        if ($status === 'archived') {
+            $params['status'] = 'archived';
+        }
+
+        return route('admin.media.library', $params);
     }
 
     /**

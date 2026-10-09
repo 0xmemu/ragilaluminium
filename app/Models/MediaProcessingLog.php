@@ -19,6 +19,7 @@ class MediaProcessingLog extends Model
         'entity_label',
         'event',
         'message',
+        'meta',
         'created_at',
     ];
 
@@ -26,6 +27,7 @@ class MediaProcessingLog extends Model
     {
         return [
             'created_at' => 'datetime',
+            'meta' => 'array',
         ];
     }
 
@@ -34,11 +36,19 @@ class MediaProcessingLog extends Model
         return $this->morphTo();
     }
 
-    /** Catat satu transisi status. */
+    /**
+     * Catat satu transisi status.
+     *
+     * `$meta` menampung keterangan tambahan yang hanya berlaku untuk sebagian
+     * kejadian, misalnya aset TUJUAN pada penggabungan duplikat. Bentuk JSON
+     * (bukan kolom per kejadian) supaya kejadian lain bisa ikut memakainya tanpa
+     * menambah kolom baru lagi.
+     */
     public static function record(
         Model $loggable,
         string $event,
         ?string $message = null,
+        ?array $meta = null,
     ): self {
         return static::create([
             'loggable_type' => $loggable->getMorphClass(),
@@ -46,6 +56,7 @@ class MediaProcessingLog extends Model
             'entity_label' => static::labelFor($loggable),
             'event' => $event,
             'message' => $message,
+            'meta' => $meta,
             'created_at' => now(),
         ]);
     }

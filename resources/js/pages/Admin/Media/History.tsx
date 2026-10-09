@@ -1,4 +1,4 @@
-import { Head, router } from "@inertiajs/react"
+import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
@@ -27,6 +27,34 @@ interface LogRow {
   delete_url?: string | null
   created_at?: string | null
   created_at_label?: string | null
+  /** Tautan ke medianya; null bila tidak ada tujuan yang wajar. */
+  media_href?: string | null
+  /** Aset tujuan penggabungan duplikat; null bila kejadian ini bukan penggabungan. */
+  merged_into?: { asset_id: number; label: string; href: string | null } | null
+}
+
+/**
+ * Keterangan aset TUJUAN pada baris penggabungan duplikat.
+ *
+ * Dipakai bersama oleh tabel desktop dan kartu mobile: dua markup terpisah untuk
+ * hal yang sama gampang berbeda saat salah satunya disunting (lihat pengalaman
+ * pada kartu ulasan yang punya dua implementasi).
+ */
+function MergedIntoNote({ merged }: { merged: LogRow["merged_into"] }) {
+  if (!merged) return null
+
+  return (
+    <p className="mt-1 text-[11px] text-muted-foreground">
+      Digabungkan ke{" "}
+      {merged.href ? (
+        <Link href={merged.href} className="font-medium text-primary hover:underline">
+          {merged.label}
+        </Link>
+      ) : (
+        <span className="font-medium text-foreground">{merged.label}</span>
+      )}
+    </p>
+  )
 }
 
 const EVENT_META: Record<string, { label: string; tone: string }> = {
@@ -407,10 +435,21 @@ export default function MediaHistory({
                           {formatDate(row.created_at)}
                         </td>
                         <td className="max-w-[16rem] px-3 py-3">
-                          <p className="truncate font-medium text-foreground">{row.entity_label ?? "-"}</p>
+                          {row.media_href ? (
+                            <Link
+                              href={row.media_href}
+                              className="block truncate font-medium text-primary hover:underline"
+                              title={row.entity_label ?? undefined}
+                            >
+                              {row.entity_label ?? "-"}
+                            </Link>
+                          ) : (
+                            <p className="truncate font-medium text-foreground">{row.entity_label ?? "-"}</p>
+                          )}
                           <p className="text-[11px] text-muted-foreground">
                             {row.loggable_type.includes("ProductMedia") ? "Media produk" : "Aset"} #{row.loggable_id}
                           </p>
+                          <MergedIntoNote merged={row.merged_into} />
                         </td>
                         <td className="px-3 py-3">
                           <StatusBadge status={meta.tone} label={meta.label} />
@@ -469,13 +508,23 @@ export default function MediaHistory({
                 return (
                   <div key={row.id} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "-"}</p>
+                      {row.media_href ? (
+                        <Link
+                          href={row.media_href}
+                          className="block truncate text-sm font-medium text-primary hover:underline"
+                        >
+                          {row.entity_label ?? "-"}
+                        </Link>
+                      ) : (
+                        <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "-"}</p>
+                      )}
                       <StatusBadge status={meta.tone} label={meta.label} />
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDate(row.created_at)}</p>
                     {row.message ? (
                       <p className="mt-1 text-[13px] text-muted-foreground">{row.message}</p>
                     ) : null}
+                    <MergedIntoNote merged={row.merged_into} />
                     <div className="mt-2 flex items-center gap-1.5">
                       {row.retry_url ? (
                         <Button

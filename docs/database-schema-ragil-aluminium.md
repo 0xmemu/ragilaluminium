@@ -226,6 +226,7 @@ Log pemrosesan media (unduh/finalisasi) berbasis polimorfik `loggable`.
 - entity_label (VARCHAR), nullable
 - event (VARCHAR), NN
 - message (TEXT), nullable
+- meta (JSON), nullable; menyimpan informasi kontekstual tambahan kejadian (mis. {merged_into_asset_id: 953, merged_into_label: banner_4} pada event dedup)
 - created_at (DATETIME), nullable
 
 Indexes:

@@ -135,7 +135,13 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                     $asset->update(['status' => 'archived', 'error_reason' => null]);
                 });
                 $disk->delete($key);
-                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.');
+                // Aset tujuan ikut dicatat: tanpa ini pesannya hanya bilang
+                // "aset lain" tanpa menyebut yang mana, sehingga berkas yang
+                // digabungkan tidak bisa ditelusuri dari halaman Riwayat Media.
+                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.', [
+                    'merged_into_asset_id' => (int) $canonical->id,
+                    'merged_into_label' => (string) $canonical->label,
+                ]);
 
                 return;
             }

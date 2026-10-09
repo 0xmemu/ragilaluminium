@@ -143,3 +143,21 @@ describe("filter periode Riwayat Media", () => {
     expect(sumber()).toContain('merged.date_preset !== "range"')
   })
 })
+
+describe("tautan media dan catatan tujuan penggabungan", () => {
+  it("label media menjadi tautan ke medianya bila media_href ada", () => {
+    const teks = sumber()
+
+    expect(teks).toContain("row.media_href ? (")
+    expect(teks).toContain("<Link")
+    expect(teks).toContain("href={row.media_href}")
+  })
+
+  it("penggabungan duplikat menampilkan aset tujuan lewat MergedIntoNote", () => {
+    const teks = sumber()
+
+    expect(teks).toContain("function MergedIntoNote(")
+    expect(teks).toContain("Digabungkan ke")
+    expect(teks).toContain("<MergedIntoNote merged={row.merged_into} />")
+  })
+})
