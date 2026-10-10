@@ -397,11 +397,7 @@ export default function BerandaPopular({
             <span className="font-semibold text-foreground"> Selagi daftar tersaring, hanya tombol Ke atas yang bisa memindahkan produk; kosongkan pencarian untuk menggeser bebas.</span>
           ) : null}
         </p>
-      ) : (
-        <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Urutan baris di bawah ini sama persis dengan urutan produk di halaman daftar produk toko. {carouselLimit} baris pertama mengisi carousel beranda dan halaman katalog. Tekan <span className="font-semibold text-foreground">Ke atas</span> pada baris mana pun untuk memindahkannya ke posisi 1.
-        </p>
-      )}
+      ) : null}
 
       <Card className="overflow-hidden border border-border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
