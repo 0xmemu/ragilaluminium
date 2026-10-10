@@ -46,11 +46,14 @@ class MediaHistoryFilterTest extends TestCase
         $this->log('dedup');
         $this->log('success');
 
-        // Dua nilai yang tidak punya tab: "dedup" (tabnya dilepas karena penjagaan
-        // berkas kembar sudah jalan di klien) dan "downloaded" (bukan event sama
-        // sekali, melainkan status lampiran media). Tanpa normalisasi, halaman
-        // menyaring ke event itu dan tampil tanpa tab aktif, terbaca seperti rusak.
-        foreach (['dedup', 'downloaded'] as $event) {
+        // Empat nilai yang tidak punya tab, karena tiga sebab berbeda:
+        // - dedup: penjagaan berkas kembar sudah jalan di klien.
+        // - downloaded: bukan event sama sekali, melainkan status lampiran media.
+        // - processing dan queued: bukan keadaan yang bertahan, karena setiap tahap
+        //   menambah barisnya sendiri sehingga tabnya tidak menyaring apa pun.
+        // Tanpa normalisasi, halaman menyaring ke event itu dan tampil tanpa tab
+        // aktif, terbaca seperti halaman rusak.
+        foreach (['dedup', 'downloaded', 'processing', 'queued'] as $event) {
             $this->actingAs($this->admin())
                 ->get(route('admin.media.history', ['event' => $event]))
                 ->assertOk()

@@ -74,19 +74,24 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
  * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
  *
- * Dua jenis event sengaja TIDAK punya tab, karena dua sebab yang berbeda:
+ * Empat jenis event TIDAK punya tab, karena tiga sebab yang berbeda, dan semuanya
+ * bermuara pada satu hal: tab hanya layak untuk keadaan yang bisa DISARING.
  *
  * - Duplikat: penjagaan berkas kembar sudah berjalan di halaman Media Library
- *   SEBELUM berkas dikirim, jadi tidak perlu disaring sehari-hari. Labelnya
- *   TETAP ada di EVENT_META karena event ini masih ditulis oleh penggabungan di
- *   server, sehingga baris lama atau baris yang lolos tetap tampil berlabel dan
- *   bernada benar di tab Semua, bukan tampil mentah.
+ *   SEBELUM berkas dikirim, jadi tidak perlu disaring sehari-hari. Labelnya tetap
+ *   ada di EVENT_META karena event ini masih ditulis oleh penggabungan di server.
  * - Terunduh: bukan event sama sekali. "downloaded" adalah STATUS pada tabel
- *   lampiran media (berkas sudah diunduh dari URL sumber), dan tidak ada satu pun
- *   kode yang pernah menuliskannya sebagai event riwayat. Tabnya karena itu selalu
- *   kosong, dan labelnya ikut dibuang supaya tidak menyisakan pemetaan mati.
+ *   lampiran media, dan tidak ada satu pun kode yang pernah menuliskannya sebagai
+ *   event riwayat. Labelnya ikut dibuang supaya tidak menyisakan pemetaan mati.
+ * - Antre dan Diproses: KEDUANYA bukan keadaan yang bertahan. Setiap tahap
+ *   pemrosesan MENAMBAH baris barunya sendiri dan tidak pernah memperbarui yang
+ *   lama, jadi baris "Diproses" tetap tinggal walau pekerjaannya selesai tiga detik
+ *   kemudian (terukur: jarak Diproses ke Siap hanya 3 detik). Menyaring dengan tab
+ *   itu karena itu tidak menyaring apa pun, dan pemantauan pekerjaan berjalan sudah
+ *   ditangani badge Live serta penyegaran otomatis di tab Semua. Labelnya tetap
+ *   dipetakan di EVENT_META karena baris lama masih perlu tampil bernada benar.
  */
-const EVENT_TABS = ["failed", "success", "processing", "queued"] as const
+const EVENT_TABS = ["failed", "success"] as const
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"

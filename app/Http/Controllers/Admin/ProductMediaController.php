@@ -482,8 +482,6 @@ class ProductMediaController extends Controller
     private const HISTORY_EVENT_TABS = [
         'failed',
         'success',
-        'processing',
-        'queued',
     ];
 
     /**

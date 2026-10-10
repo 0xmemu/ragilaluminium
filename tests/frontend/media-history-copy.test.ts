@@ -57,8 +57,19 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"failed", "success"')
   })
 
-  it("empat jenis event punya tab", () => {
-    expect(daftarEventKlien()).toEqual(["failed", "success", "processing", "queued"])
+  it("dua jenis event punya tab: Gagal dan Siap", () => {
+    // Antre dan Diproses dibuang karena bukan keadaan yang bertahan: setiap
+    // tahap menambah barisnya sendiri, jadi tabnya tidak menyaring apa pun.
+    expect(daftarEventKlien()).toEqual(["failed", "success"])
+  })
+
+  it("Antre dan Diproses tidak punya tab tetapi labelnya tetap terpetakan", () => {
+    // Barisnya masih ditulis oleh job dan masih muncul di tab Semua, jadi label
+    // dan nadanya wajib tetap ada supaya tidak tampil mentah.
+    const teks = sumber()
+
+    expect(teks).toContain('queued: { label: "Antre"')
+    expect(teks).toContain('processing: { label: "Diproses"')
   })
 
   it("daftar event bertab sinkron antara klien dan server", () => {
