@@ -57,10 +57,34 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"failed", "success"')
   })
 
-  it("dua jenis event punya tab: Gagal dan Siap", () => {
+  it("dua jenis event punya tab: Gagal dan Berhasil", () => {
     // Antre dan Diproses dibuang karena bukan keadaan yang bertahan: setiap
     // tahap menambah barisnya sendiri, jadi tabnya tidak menyaring apa pun.
     expect(daftarEventKlien()).toEqual(["failed", "success"])
+  })
+
+  it("kejadian berhasil dilabeli Berhasil, bukan Siap", () => {
+    // "Siap" menjawab pertanyaan lain (keadaan barang) dan kata itu sudah dipakai
+    // Media Library untuk keadaan aset. Pasangan seimbang untuk "Gagal" adalah
+    // "Berhasil", dan kosakata bersama di lib/status.ts juga tidak memakai "Siap"
+    // untuk kunci success.
+    const teks = sumber()
+
+    expect(teks).toContain('success: { label: "Berhasil"')
+    expect(teks).not.toContain('success: { label: "Siap"')
+  })
+
+  it("deskripsi halaman tidak menyebut tab yang sudah tidak ada", () => {
+    // Deskripsi sempat berbunyi "Antre, Diproses, lalu Siap atau Gagal" padahal
+    // tab Antre dan Diproses sudah dibuang, sehingga pembaca mencari tab yang
+    // tidak pernah ada.
+    const deskripsi = sumber()
+      .split(String.fromCharCode(10))
+      .find((b) => b.includes("description=\"Audit pemrosesan media"))
+
+    expect(deskripsi).toBeDefined()
+    expect(deskripsi).not.toContain("Antre")
+    expect(deskripsi).not.toContain("Diproses")
   })
 
   it("Antre dan Diproses tidak punya tab tetapi labelnya tetap terpetakan", () => {

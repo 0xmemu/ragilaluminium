@@ -57,10 +57,24 @@ function MergedIntoNote({ merged }: { merged: LogRow["merged_into"] }) {
   )
 }
 
+/**
+ * Label dan nada tiap jenis kejadian.
+ *
+ * `success` sengaja dilabeli "Berhasil", BUKAN "Siap". Dua sebab:
+ *
+ * 1. Pasangan alaminya adalah "Gagal". Keduanya menjawab pertanyaan yang sama,
+ *    yaitu "berhasil atau tidak percobaan ini", sehingga sederet tabnya terbaca
+ *    seimbang. "Siap" menjawab pertanyaan lain, yaitu keadaan barangnya.
+ * 2. Kata "Siap" sudah punya arti lain di MEDIA LIBRARY, tempat kata itu dipakai
+ *    untuk keadaan aset (tampil sebagai "Siap digunakan"). Karena kedua halaman
+ *    sering dibuka berdampingan, memakai kata yang sama untuk maksud berbeda
+ *    membuat pembaca menebak. Kosakata status bersama di lib/status.ts juga sudah
+ *    memetakan success ke "Sukses"/"Berhasil", bukan "Siap".
+ */
 const EVENT_META: Record<string, { label: string; tone: string }> = {
   queued: { label: "Antre", tone: "neutral-soft" },
   processing: { label: "Diproses", tone: "info" },
-  success: { label: "Siap", tone: "success" },
+  success: { label: "Berhasil", tone: "success" },
   failed: { label: "Gagal", tone: "danger" },
   dedup: { label: "Duplikat", tone: "warning" },
 }
@@ -86,7 +100,7 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * - Antre dan Diproses: KEDUANYA bukan keadaan yang bertahan. Setiap tahap
  *   pemrosesan MENAMBAH baris barunya sendiri dan tidak pernah memperbarui yang
  *   lama, jadi baris "Diproses" tetap tinggal walau pekerjaannya selesai tiga detik
- *   kemudian (terukur: jarak Diproses ke Siap hanya 3 detik). Menyaring dengan tab
+ *   kemudian (terukur: jarak Diproses ke Berhasil hanya 3 detik). Menyaring dengan tab
  *   itu karena itu tidak menyaring apa pun, dan pemantauan pekerjaan berjalan sudah
  *   ditangani badge Live serta penyegaran otomatis di tab Semua. Labelnya tetap
  *   dipetakan di EVENT_META karena baris lama masih perlu tampil bernada benar.
@@ -265,7 +279,7 @@ export default function MediaHistory({
   }, [logs, pollNonce])
 
   return (
-    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Antre, Diproses, lalu Siap atau Gagal">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil atau Gagal">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">
