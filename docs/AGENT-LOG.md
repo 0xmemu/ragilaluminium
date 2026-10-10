@@ -3668,3 +3668,11 @@ Penjaga: test klien menjadi 17 tes dengan dua tes baru, yaitu label success waji
 Verifikasi: typecheck 0, eslint bersih, build sukses, Vitest 35 berkas 310 tes lulus, MediaHistoryFilterTest 10 tes 163 asersi lulus. Live di browser dalam aplikasi: tiga tab tampil, keempat baris berbadge Berhasil, dan deskripsi baru terlihat.
 Catatan pola untuk agent berikutnya: kosakata status panel admin punya satu sumber di resources/js/lib/status.ts, dan komentar di sana menyebut sendiri bahwa berkas itu melayani log aktivitas, riwayat media, serta antrean proses. Sebelum menulis label status baru di halaman mana pun, periksa dulu kunci yang sama di berkas itu supaya tidak ada satu kunci dengan dua istilah berbeda di halaman berdekatan.
 Agent: gemini-3.8-flash-high
+
+## 2026-10-08 16:20 UTC | zcode | Trivial | 2dcbdce5 | selesai
+
+- Owner: "hapus" pada paragraf di bawah kotak cari halaman /admin/beranda/paling-banyak-dipesan ("Urutan baris di bawah ini sama persis dengan urutan produk di halaman daftar produk toko. 10 baris pertama mengisi carousel beranda dan halaman katalog. Tekan Ke atas ...").
+- Paragraf itu mengulang hal yang sudah ada di halaman yang sama: deskripsi judul halaman sudah menyebut urutan berlaku di daftar produk dan 10 teratas mengisi carousel beranda + katalog, dan tombol "Ke atas" sudah tertulis di setiap baris. Cabang "bukan mode urutkan" yang merendernya dihapus (jadi null). Pesan "Mode Urutkan aktif" TETAP ada karena hanya muncul saat mode menyala dan menerangkan kontrol yang sedang tersedia.
+- Verifikasi: tsc + lint bersih, build sukses; live: paragraf tidak ada, tidak ada kotak petunjuk tersisa di luar mode urut, tabel tetap 26 baris dengan tombol Ke atas, deskripsi judul tetap.
+- Berkas Popular.tsx diperiksa lebih dulu (pelajaran insiden 235fdcf7): diff-nya satu hunk murni milik saya, tidak ada kerja agent lain di dalamnya.
+Agent: zcode
