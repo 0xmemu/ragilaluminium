@@ -3676,3 +3676,10 @@ Agent: gemini-3.8-flash-high
 - Verifikasi: tsc + lint bersih, build sukses; live: paragraf tidak ada, tidak ada kotak petunjuk tersisa di luar mode urut, tabel tetap 26 baris dengan tombol Ke atas, deskripsi judul tetap.
 - Berkas Popular.tsx diperiksa lebih dulu (pelajaran insiden 235fdcf7): diff-nya satu hunk murni milik saya, tidak ada kerja agent lain di dalamnya.
 Agent: zcode
+
+## 2026-10-08 16:45 UTC | zcode | Trivial | 87427157 | selesai
+
+- Owner: hint badge status "Tayang" di /admin/beranda/paling-banyak-dipesan harusnya berkaitan dengan "tidak di carousel, ada di halaman paling banyak dipesan". Hint lama "Lolos syarat tayang, belum menempati slot carousel" menyebut syarat teknis internal, bukan apa yang terjadi pada produk itu di toko. Hint baru: "Tidak menempati slot carousel, tetapi tetap tampil di halaman Paling Banyak Dipesan".
+- Klaim hint DIBUKTIKAN dulu: badge "Tayang" = is_eligible, dihitung dari Product::visible() (aktif + punya varian aktif); halaman publik /products/all?from=paling-banyak-dipesan juga memakai Product::visible(); uji langsung parent_sku RAWGR5H99ZN8 (badge Tayang, baris 11) ditemukan di halaman publik itu. Kebalikannya juga benar: produk "Belum aktif" gagal Product::visible() sehingga tidak muncul di situ, dan itu kini disebut di komentar komponen.
+- Verifikasi: tsc + lint bersih, build sukses; live: 15 badge Tayang, hint baru terpasang, teks lama tidak ada lagi di halaman, hint badge Carousel tidak tersentuh.
+Agent: zcode
