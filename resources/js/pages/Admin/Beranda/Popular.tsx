@@ -44,8 +44,10 @@ interface PopularRow {
  * hasilnya terbaca sebelum disimpan.
  *
  * "Carousel" berarti produk menempati salah satu slot tayang di beranda dan
- * halaman katalog. "Tayang" berarti produk lolos syarat tayang tetapi belum
- * masuk slot. "Belum aktif" berarti produk belum bisa tayang sama sekali.
+ * halaman katalog. "Tayang" berarti produk tidak menempati slot carousel
+ * tetapi tetap tampil di halaman Paling Banyak Dipesan. "Belum aktif" berarti
+ * produk belum bisa tayang sama sekali (status bukan aktif atau tanpa varian
+ * aktif), sehingga tidak muncul di halaman itu.
  */
 function StatusBadge({ row, inWindow }: { row: PopularRow; inWindow: boolean }) {
   if (inWindow) {
@@ -69,7 +71,7 @@ function StatusBadge({ row, inWindow }: { row: PopularRow; inWindow: boolean }) 
     return (
       <span
         className="inline-flex items-center rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success"
-        title="Lolos syarat tayang, belum menempati slot carousel"
+        title="Tidak menempati slot carousel, tetapi tetap tampil di halaman Paling Banyak Dipesan"
       >
         Tayang
       </span>
