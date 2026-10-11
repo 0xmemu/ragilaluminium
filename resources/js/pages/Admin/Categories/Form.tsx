@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
+import { storeExampleUrl } from "@/lib/routes"
 
 interface CategoryData {
   id?: number
@@ -146,7 +147,7 @@ export default function CategoryForm({
                   id="cat-slug"
                   label="Slug URL"
                   error={form.errors.slug}
-                  hint="Alamat link publik toko: /products/{slug}. Otomatis dibuat jika dikosongkan."
+                  hint={`Alamat link publik toko: ${storeExampleUrl("/products/")}{slug}. Otomatis dibuat jika dikosongkan.`}
                 >
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">

@@ -86,7 +86,6 @@ class BannerController extends Controller
         return Inertia::render('Admin/Banners/Form', [
             'backUrl' => route('admin.banners.index'),
             'banner' => null,
-            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.banners.store'),
             'method' => 'post',
             'indexHref' => route('admin.banners.index'),

@@ -14,6 +14,20 @@ export function routeUrl(
   }
 }
 
+/**
+ * Alamat lengkap toko untuk contoh pada placeholder/hint kolom link tujuan.
+ *
+ * Memakai origin peramban, bukan domain yang ditulis tetap, supaya contohnya
+ * tetap benar bila domain toko berganti (mis. saat pindah ke server produksi).
+ * Halaman admin dilayani dari domain yang sama dengan storefront, jadi origin
+ * yang terbaca di sini memang alamat toko.
+ */
+export function storeExampleUrl(path: string): string {
+  const bersih = path.startsWith("/") ? path : `/${path}`
+  if (typeof window === "undefined") return bersih
+  return `${window.location.origin}${bersih}`
+}
+
 export function isRouteActive(patterns: string[] | undefined): boolean {
   if (!patterns?.length) return false
 

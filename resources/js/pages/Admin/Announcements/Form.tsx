@@ -7,6 +7,7 @@ import { Input } from "@/components/admin/ui/input"
 import { PeriodeField, type PeriodeMode, type PeriodePreset } from "@/components/admin/ui/period-field"
 import AdminLayout from "@/layouts/admin-layout"
 import { todayDateString } from "@/lib/period"
+import { storeExampleUrl } from "@/lib/routes"
 
 const PRESET_TANGGAL: PeriodePreset[] = [
   { label: "+3 hari", days: 3 },
@@ -137,7 +138,7 @@ export default function AnnouncementForm({
               <Input
                 value={form.data.href}
                 onChange={(event) => form.setData("href", event.target.value)}
-                placeholder="/products/boven/jungkit"
+                placeholder={storeExampleUrl("/products/boven/jungkit-2-daun")}
               />
             </Field>
 

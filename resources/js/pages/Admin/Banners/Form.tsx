@@ -7,6 +7,7 @@ import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { storeExampleUrl } from "@/lib/routes"
 
 interface BannerFormData {
   id?: number
@@ -19,7 +20,6 @@ interface BannerFormData {
 
 export default function BannerForm({
   banner,
-  nextSortOrder = 1,
   submitUrl,
   method,
   indexHref,
@@ -28,8 +28,6 @@ export default function BannerForm({
 }: {
   backUrl?: string | null
   banner: BannerFormData | null
-  /** Nomor urut usulan untuk slide baru (selalu di bawah slide yang ada). */
-  nextSortOrder?: number
   submitUrl: string
   method: "post" | "put"
   indexHref: string
@@ -141,12 +139,12 @@ export default function BannerForm({
               id="link"
               label="Link tujuan / produk terkait"
               error={form.errors.link_url}
-              hint="Path internal /product/SKU atau URL penuh."
+              hint="Alamat lengkap toko, atau cukup bagian setelah nama domain."
             >
               <Input
                 value={form.data.link_url}
                 onChange={(event) => form.setData("link_url", event.target.value)}
-                placeholder="/product/WIN-JUNG-001"
+                placeholder={storeExampleUrl("/product/RAF3QHJA5FHY")}
               />
             </Field>
 <CheckboxField
