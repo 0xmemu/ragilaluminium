@@ -119,7 +119,13 @@ export default function AnnouncementForm({
 
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           <FieldGrid className="p-5 sm:p-6">
-            <Field id="text" label="Teks promo" error={form.errors.text} required>
+            <Field
+              id="text"
+              label="Teks promo"
+              error={form.errors.text}
+              required
+              hint="Rekomendasi maksimal 40 karakter agar utuh di ponsel; di desktop 64 karakter (batas kolom) masih tampil."
+            >
               <Input
                 value={form.data.text}
                 onChange={(event) => form.setData("text", event.target.value)}
