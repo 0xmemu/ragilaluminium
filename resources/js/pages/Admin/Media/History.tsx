@@ -322,7 +322,6 @@ export default function MediaHistory({
           placeholder: "Cari berdasarkan label media atau pesan",
         }}
         className="mb-4"
-        summary={pagination ? `${pagination.total} log` : undefined}
         actions={
           prune && prune.count > 0 ? (
             <ConfirmAction
