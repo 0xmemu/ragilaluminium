@@ -3683,3 +3683,10 @@ Agent: zcode
 - Klaim hint DIBUKTIKAN dulu: badge "Tayang" = is_eligible, dihitung dari Product::visible() (aktif + punya varian aktif); halaman publik /products/all?from=paling-banyak-dipesan juga memakai Product::visible(); uji langsung parent_sku RAWGR5H99ZN8 (badge Tayang, baris 11) ditemukan di halaman publik itu. Kebalikannya juga benar: produk "Belum aktif" gagal Product::visible() sehingga tidak muncul di situ, dan itu kini disebut di komentar komponen.
 - Verifikasi: tsc + lint bersih, build sukses; live: 15 badge Tayang, hint baru terpasang, teks lama tidak ada lagi di halaman, hint badge Carousel tidak tersentuh.
 Agent: zcode
+
+Hapus ringkasan jumlah log dari toolbar Riwayat Media (/admin/media/history)
+Lingkup: owner menunjuk keterangan '4 log' pada toolbar Riwayat Media dan meminta untuk dihapus.
+Perubahan: resources/js/pages/Admin/Media/History.tsx, menghapus properti summary pada komponen ListToolbar.
+Dampak spec: tidak berubah. Ini murni penyesuaian visual antarmuka.
+Verifikasi: typecheck 0, eslint bersih, build sukses, Vitest suite 35 files 308 tests lulus. Live in-app browser: teks '4 log' sudah tidak ada di toolbar maupun halaman, antarmuka toolbar menjadi lebih ringkas dan bersih.
+Agent: gemini-3.8-flash-high
