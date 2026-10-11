@@ -45,11 +45,11 @@ export default function AnnouncementForm({
   indexHref: string
 }) {
   const isEdit = Boolean(announcement?.id)
-  // Urutan tampil dan status aktif sengaja TIDAK ditampilkan di form (owner
-  // 2026-09-29): urutan diatur lewat mode Urutkan di daftar, status lewat aksi
-  // Aktifkan/Sembunyikan. Keduanya tetap ikut terkirim dari nilai awal supaya
-  // perilakunya tidak berubah: baris baru tetap ditaruh paling bawah dan aktif,
-  // dan menyunting teks tidak pernah mengubah urutan atau menonaktifkan baris.
+  // Urutan tampil dan status aktif TIDAK ditampilkan di form (owner 2026-09-29):
+  // urutan diatur lewat mode Urutkan di daftar, status lewat aksi
+  // Aktifkan/Sembunyikan. Nilainya tetap ikut terkirim dari nilai awal supaya
+  // perilakunya tidak berubah: baris baru tetap di bawah dan aktif, dan
+  // menyunting teks tidak mengubah urutan atau menonaktifkan baris.
   const form = useForm<{
     text: string
     href: string
@@ -66,6 +66,25 @@ export default function AnnouncementForm({
     published: announcement?.published ?? true,
   })
 
+  // Pola sama dengan form Promo Toko ("Waktu berlaku"): periode dipilih lebih
+  // dulu, pemilih tanggal baru muncul saat dijadwalkan (owner 2026-09-29).
+  // Sebelumnya tanggal langsung terlihat walau periodenya memang opsional.
+  const [mode, setMode] = React.useState<"always" | "scheduled">(
+    announcement?.starts_at || announcement?.ends_at ? "scheduled" : "always",
+  )
+
+  function pilihMode(next: "always" | "scheduled") {
+    setMode(next)
+    if (next === "always") {
+      form.setData("starts_at", "")
+      form.setData("ends_at", "")
+      return
+    }
+    if (!form.data.starts_at) {
+      form.setData("starts_at", todayDateString())
+    }
+  }
+
   function onSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (method === "put") {
@@ -79,17 +98,11 @@ export default function AnnouncementForm({
     form.post(submitUrl, { preserveScroll: true })
   }
 
-  /** Isi cepat tanggal berakhir; "mulai hari ini" sekaligus mengisi tanggal mulai. */
-  const isiCepat = [
-    { label: "Mulai hari ini", aksi: () => {
-      const today = todayDateString()
-      form.setData("starts_at", today)
-      if (!form.data.ends_at) form.setData("ends_at", addDaysDateString(today, 7))
-    } },
-    { label: "+3 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 3)) },
-    { label: "+7 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 7)) },
-    { label: "+14 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 14)) },
-    { label: "+30 hari", aksi: () => form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), 30)) },
+  const presetTanggal = [
+    { label: "+3 hari", days: 3 },
+    { label: "+7 hari", days: 7 },
+    { label: "+14 hari", days: 14 },
+    { label: "+30 hari", days: 30 },
   ]
 
   return (
@@ -131,45 +144,75 @@ export default function AnnouncementForm({
               />
             </Field>
 
-            <Field id="starts_at" label="Mulai" error={form.errors.starts_at}>
-              <Input
-                type="date"
-                value={form.data.starts_at}
-                onChange={(event) => form.setData("starts_at", event.target.value)}
-              />
-            </Field>
-            <Field id="ends_at" label="Berakhir" error={form.errors.ends_at}>
-              <Input
-                type="date"
-                value={form.data.ends_at}
-                onChange={(event) => form.setData("ends_at", event.target.value)}
-              />
-            </Field>
-
-            <div className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
-              {isiCepat.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.aksi}
-                  className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground transition-colors hover:bg-muted"
-                >
-                  {item.label}
-                </button>
-              ))}
-              {form.data.starts_at || form.data.ends_at ? (
+            <div className="grid min-w-0 content-start gap-1.5 sm:col-span-2">
+              <span className="text-[13px] font-medium text-foreground">Periode tampil</span>
+              <div className="flex w-fit items-center gap-1 rounded-lg border border-border bg-surface p-1 text-xs">
                 <button
                   type="button"
-                  onClick={() => {
-                    form.setData("starts_at", "")
-                    form.setData("ends_at", "")
-                  }}
-                  className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+                  onClick={() => pilihMode("always")}
+                  className={`rounded px-2.5 py-1 transition-colors ${
+                    mode === "always"
+                      ? "bg-card font-semibold text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  Kosongkan tanggal
+                  Selalu tampil
                 </button>
-              ) : null}
+                <button
+                  type="button"
+                  onClick={() => pilihMode("scheduled")}
+                  className={`rounded px-2.5 py-1 transition-colors ${
+                    mode === "scheduled"
+                      ? "bg-card font-semibold text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Jadwalkan periode
+                </button>
+              </div>
             </div>
+
+            {mode === "scheduled" ? (
+              <>
+                <Field id="starts_at" label="Mulai" error={form.errors.starts_at}>
+                  <Input
+                    type="date"
+                    value={form.data.starts_at}
+                    onChange={(event) => form.setData("starts_at", event.target.value)}
+                  />
+                </Field>
+                <Field id="ends_at" label="Berakhir" error={form.errors.ends_at}>
+                  <Input
+                    type="date"
+                    value={form.data.ends_at}
+                    onChange={(event) => form.setData("ends_at", event.target.value)}
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
+                  {presetTanggal.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() =>
+                        form.setData("ends_at", addDaysDateString(form.data.starts_at || todayDateString(), preset.days))
+                      }
+                      className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground transition-colors hover:bg-muted"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  {form.data.ends_at ? (
+                    <button
+                      type="button"
+                      onClick={() => form.setData("ends_at", "")}
+                      className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+                    >
+                      Kosongkan berakhir
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </FieldGrid>
         </section>
       </form>
