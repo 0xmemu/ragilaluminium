@@ -3820,3 +3820,11 @@ Agent: zcode-retur
 - PERBAIKAN LINT WARISAN: prop nextSortOrder di Banners/Form.tsx menganggur (sisa penghapusan isian urutan slide beberapa waktu lalu) dan sudah error eslint di HEAD; prop dibuang dari form dan dari payload create controller (helper nextSortOrder() tetap dipakai saat menyimpan). Kini eslint 0 masalah.
 - Verifikasi live: placeholder Bar Promo "https://ra.333labs.tech/products/boven/jungkit-2-daun", Banner "https://ra.333labs.tech/product/RAF3QHJA5FHY" + hint "Alamat lengkap toko, atau cukup bagian setelah nama domain.", Kategori hint "Alamat link publik toko: https://ra.333labs.tech/products/{slug}. Otomatis dibuat jika dikosongkan.". typecheck 0, eslint 0, build sukses, php -l bersih.
 - Catatan: placeholder tetap berawalan https:// karena aturan validasi MENOLAK domain telanjang (ra.333labs.tech/produk ditolak, harus "/" atau http(s)://). Contoh tanpa https akan menyesatkan admin karena pasti gagal saat disimpan.
+
+## 2026-10-11 16:10 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner minta ikon salin di samping nomor kartu Status WhatsApp, dan nilai yang disalin tidak memakai en dash.
+Temuan: nomor tampil 0881-0807-33754 memakai tanda hubung biasa (U+002D, dicek per karakter), bukan en dash; tidak ada en dash yang perlu dibersihkan.
+Perubahan: whatsapp-connection-card.tsx memakai CopyButton bersama (compact) di samping nomor; NILAI yang disalin dibersihkan dari semua pemisah jadi 0881080733754, supaya bisa langsung ditempel ke WhatsApp. Nomor tetap tampil berformat supaya mudah dibaca.
+Dampak spec: tidak berubah.
+Verifikasi: typecheck dan lint bersih, build sukses; di browser tombol ada sebaris dengan nomor, title/aria-label menyebut 0881080733754 (tanpa pemisah, tanpa dash).
+Agent: zcode-retur

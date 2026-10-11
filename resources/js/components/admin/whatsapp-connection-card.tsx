@@ -1,5 +1,6 @@
 import { Link } from "@inertiajs/react"
 
+import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Icon } from "@/components/shared/icon"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -96,9 +97,19 @@ export function WhatsAppConnectionCard({
               <span className={TONE_ICON[tone].split(" ").pop()}>{label}</span>
             </span>
           </p>
-          <p className="mt-1 text-xl font-semibold leading-tight tracking-tight text-foreground tabular-nums">
-            <span className="sr-only">Nomor WhatsApp: </span>
-            {nomor}
+          <p className="mt-1 flex items-center gap-1.5">
+            <span className="text-xl font-semibold leading-tight tracking-tight text-foreground tabular-nums">
+              <span className="sr-only">Nomor WhatsApp: </span>
+              {nomor}
+            </span>
+            {nomor !== "-" ? (
+              <CopyButton
+                text={nomor.replace(/\D+/g, "")}
+                label="Salin nomor WhatsApp"
+                compact
+                showTextInTitle
+              />
+            ) : null}
           </p>
           {catatan ? (
             <p className="mt-1 text-xs leading-5 text-destructive">{catatan}</p>
