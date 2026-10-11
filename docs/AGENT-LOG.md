@@ -3958,3 +3958,15 @@ Checkbox publikasi dihapus; tombol header create menjadi "Simpan tanpa aktifkan"
 Form Voucher dan PromotionForm masih memakai UI periode masing-masing, belum migrasi ke PeriodeField
 bersama (menunggu arahan owner).
 Agent: zcode
+
+## 2026-10-11 23:24 UTC | zcode | Standard | 9ab081f1 | selesai
+
+Permintaan owner: tombol Hapus kategori harus disable bila kategori memang
+tidak bisa dihapus. Item Hapus di menu Lainnya /admin/kelola/kategori kini
+disabled dengan keterangan "Dipakai N produk" bila products_count > 0
+(data sudah dikirim controller, jadi hanya frontend yang berubah). Popup
+konfirmasi tidak terbuka karena tombol pemicunya disabled. Penjaga server
+di destroy() tetap sebagai lapis kedua. Verifikasi: tsc bersih, eslint 0
+warning, build sukses, cek live lewat browser dalam aplikasi: baris Jendela
+menunjukkan menu "Hapus Dipakai 120 produk" berstatus disabled. Berkas:
+resources/js/pages/Admin/Categories/Index.tsx.
