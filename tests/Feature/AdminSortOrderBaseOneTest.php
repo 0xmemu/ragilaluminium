@@ -94,10 +94,12 @@ class AdminSortOrderBaseOneTest extends TestCase
             ->post(route('admin.banners.store'), ['title' => 'Slide C', 'media_asset_id' => $aset->id, 'sort_order' => 0])
             ->assertSessionHasErrors('sort_order');
 
+        // Form banner tidak lagi punya isian urutan (urutan diatur lewat mode
+        // Urutkan di daftar), jadi prop nextSortOrder tidak dikirim lagi.
         $this->actingAs($admin)
             ->get(route('admin.banners.create'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('nextSortOrder', 3));
+            ->assertInertia(fn (Assert $page) => $page->missing('nextSortOrder'));
     }
 
     public function test_banner_edit_tanpa_nomor_urut_mempertahankan_nomor_lama(): void

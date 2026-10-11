@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { MediaPicker } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -23,17 +23,19 @@ export default function BannerForm({
   submitUrl,
   method,
   indexHref,
-  _presignUrl,
-  backUrl
+  backUrl,
 }: {
   backUrl?: string | null
   banner: BannerFormData | null
   submitUrl: string
   method: "post" | "put"
   indexHref: string
-  _presignUrl?: string
 }) {
   const isEdit = Boolean(banner?.id)
+  // Status aktif tidak ditampilkan di form (sejajar dengan form Bar Promo):
+  // dinyalakan/dimatikan lewat aksi Terbitkan/Sembunyikan di daftar. Nilainya
+  // tetap ikut terkirim dari nilai awal supaya menyunting banner tidak pernah
+  // mengubah status terbitnya tanpa disengaja.
   const form = useForm<{
     title: string
     link_url: string
@@ -66,49 +68,51 @@ export default function BannerForm({
     <AdminLayout
       backUrl={backUrl}
       title={isEdit ? "Edit Banner Promo" : "Tambah Banner Promo"}
-      description="Slide manual beranda (cms_banners): judul, gambar, link, urutan, status published."
+      description="Slide banner di beranda, tampil setelah slide pembuka."
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
             <Link href={indexHref}>Batal</Link>
           </Button>
           <Button type="submit" form="banner-form" disabled={form.processing}>
-            {form.processing
-              ? "Menyimpan..."
-              : isEdit
-                ? "Simpan"
-                  : "Tambah"}
+            {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
           </Button>
         </div>
       }
     >
       <Head title={`${isEdit ? "Edit" : "Tambah"} Banner Promo | Admin`} />
 
-      <form id="banner-form" onSubmit={onSubmit} className="w-full max-w-4xl space-y-6">
+      <form id="banner-form" onSubmit={onSubmit} className="w-full space-y-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="overflow-hidden rounded-lg border border-border bg-card">
-          {/* Stripe media: thumbnail kiri, upload inline kanan */}
-          <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:p-6">
-            <div className="aspect-[1024/426] w-full max-w-[280px] shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-              {previewUrl ? (
-                <img src={previewUrl} alt="Pratinjau" className="size-full object-cover" />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground/60">
-                  <span className="px-1 text-center text-[10px] leading-tight">Tanpa gambar</span>
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Baris media ikut grid field (ADR-022), bukan stripe ber-padding
+              sendiri, supaya tepi kiri/kanan lurus dengan field lain. */}
+          <FieldGrid className="p-5 sm:p-6">
+            <Field
+              id="image"
+              label="Gambar banner"
+              error={form.errors.media_asset_id}
+              required
+              hint="Rasio 2,4:1 (rekomendasi 1600 × 664 px), dipilih dari Media Library."
+              className="sm:col-span-2"
+            >
+              {/* Pratinjau lalu tombol, bertumpuk satu kolom: tombol selalu
+                  lurus dengan tepi kiri pratinjau tanpa perlu trik penyelarasan
+                  (ADR-022). */}
+              <div className="space-y-3">
+                <div className="aspect-[1024/426] w-full max-w-[260px] overflow-hidden rounded-md border border-border bg-muted">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Pratinjau banner" className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center px-2 text-center text-[11px] leading-tight text-muted-foreground">
+                      Tanpa gambar
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="grid min-w-0 flex-1 gap-4">
-              <Field
-                id="image"
-                label="Gambar dari Media Library"
-                error={form.errors.media_asset_id}
-                hint="Pilih aset dari Media Library (rasio banner 2,4:1; rekomendasi 1600 × 664 px). Unggah berkas baru di halaman Media Library."
-              >
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setPickerOpen(true)}
                   className="inline-flex w-fit items-center gap-1.5"
@@ -116,17 +120,14 @@ export default function BannerForm({
                   <Icon name="image" className="size-3.5" aria-hidden="true" />
                   <span>{form.data.media_asset_id ? "Ganti gambar" : "Pilih gambar"}</span>
                 </Button>
-              </Field>
-            </div>
-          </div>
+              </div>
+            </Field>
 
-          {/* Field informasi promo */}
-          <FieldGrid className="p-5 sm:p-6">
             <Field
               id="title"
-              label="Nama / judul promo"
+              label="Nama banner"
               error={form.errors.title}
-              hint="Maksimal 64 karakter agar tetap ringkas di mobile."
+              hint="Untuk daftar admin dan keterangan gambar di pembaca layar; tidak dicetak di atas gambar."
             >
               <Input
                 value={form.data.title}
@@ -137,9 +138,9 @@ export default function BannerForm({
             </Field>
             <Field
               id="link"
-              label="Link tujuan / produk terkait"
+              label="Link tujuan"
               error={form.errors.link_url}
-              hint="Alamat lengkap toko, atau cukup bagian setelah nama domain."
+              hint="Boleh alamat lengkap atau cukup bagian setelah nama domain."
             >
               <Input
                 value={form.data.link_url}
@@ -147,16 +148,8 @@ export default function BannerForm({
                 placeholder={storeExampleUrl("/product/RAF3QHJA5FHY")}
               />
             </Field>
-<CheckboxField
-              id="banner-published"
-              checked={form.data.published}
-              onChange={(checked) => form.setData("published", checked)}
-              label="Status aktif (published)"
-            />
           </FieldGrid>
         </section>
-
-        
       </form>
 
       <MediaPicker

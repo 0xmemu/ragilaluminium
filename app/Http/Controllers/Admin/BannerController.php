@@ -89,7 +89,6 @@ class BannerController extends Controller
             'submitUrl' => route('admin.banners.store'),
             'method' => 'post',
             'indexHref' => route('admin.banners.index'),
-            'presignUrl' => route('admin.media.presign'),
         ]);
     }
 
@@ -121,7 +120,6 @@ class BannerController extends Controller
             'submitUrl' => route('admin.banners.update', $banner),
             'method' => 'put',
             'indexHref' => route('admin.banners.index'),
-            'presignUrl' => route('admin.media.presign'),
         ]);
     }
 
