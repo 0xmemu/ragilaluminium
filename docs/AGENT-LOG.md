@@ -3709,3 +3709,10 @@ Agent: zcode
 - Perbaikan (commit 064d2ebe): form Bar Promo kini memakai segmented Selalu tampil / Jadwalkan periode meniru pola form Promo Toko; tanggal + preset +3/+7/+14/+30 hari hanya muncul saat dijadwalkan; berpindah ke Selalu tampil mengosongkan tanggal; saat menyunting bar promo berjadwal form terbuka di mode Jadwalkan.
 - Verifikasi live: create -> 0 input tanggal, klik Jadwalkan -> 2 input tanggal dengan Mulai terisi hari ini; edit #5 (1 Jul - 31 Des) -> terbuka 2 input terisi; klik Selalu tampil -> 0 input. typecheck 0, eslint bersih, build sukses. Simpan tidak diuji ulang karena perilaku backend tidak berubah (tanggal kosong = tanpa batas).
 - SISA: form Voucher BELUM dirapikan (pola sama menyimpang); menunggu keputusan owner karena tanggal voucher nyaris selalu dipakai.
+
+## 2026-10-11 12:52 UTC | zcode-storefront | Trivial | 1 berkas | selesai
+Lingkup: owner minta warna bingkai blok Flash Sale diganti grey memakai token design system.
+Perubahan: flash-sale-carousel-section.tsx, pembungkus dari bg-primary/5 (sapuan merah) menjadi bg-muted. Token muted di storefront bernilai hsl(150 8% 94%) = #EEF1F0, di atas latar halaman putih #FFFFFF. Sengaja TIDAK memakai surface-muted: nilainya #F7F8F7 sehingga blok nyaris tak terlihat di atas halaman putih (owner menolaknya). Radius, padding, dan tata letak tidak berubah.
+Dampak spec: tidak berubah.
+Verifikasi: eslint bersih; typecheck nol error; vitest 318 test lulus (35 berkas, naik dari 244 karena agent lain menambah test); build sukses 27s; terukur dari DOM live: latar blok rgb(238,241,240), latar halaman rgb(255,255,255), radius 8px, label FLASH SALE tetap merah rgb(194,0,0). Screenshot pane gagal (surface preparation timeout) jadi bukti visual tidak diambil ronde ini; angka computed style dibaca langsung dari DOM.
+Agent: zcode-storefront

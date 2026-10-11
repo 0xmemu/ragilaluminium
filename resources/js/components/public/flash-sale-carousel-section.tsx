@@ -127,15 +127,15 @@ export function FlashSaleCarouselSection({ products }: { products: ProductCardDa
         {/* Bingkai blok Flash Sale. Tanpa bingkai, strip ini menyatu dengan grid
             produk di bawahnya sehingga batas sorotan promo tidak terlihat dan
             produk yang tampil di sini terkesan muncul dua kali. Warnanya merah
-            promo (token primary, merah yang sama dengan label FLASH SALE dan
-            badge diskon; nilainya sama dengan token sale, #C20000) sebagai
-            sapuan latar saja, tanpa garis tepi.
+            netral (token muted, #EEF1F0 di storefront) sebagai latar saja, tanpa
+            garis tepi. Sengaja bukan surface-muted: nilainya #F7F8F7 sehingga di
+            atas latar halaman yang putih blok ini nyaris tidak terlihat.
             Bingkai ini sengaja TIDAK menahan limpahan: tombol panah menonjol
             keluar dari tepi kartu seperti carousel beranda, jadi kalau bingkai
             yang menahan limpahan tombolnya ikut terpotong. Yang ditahan hanya
             track, sebab saat aksi geser di HP track bergeser ke kiri dan tanpa
             penahan akan menembus keluar bingkai. */}
-        <div className="rounded-md bg-primary/5 p-3 sm:p-4">
+        <div className="rounded-md bg-muted p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Link
               href={routeUrl("catalog.flash-sale", undefined, "/flash-sale")}
