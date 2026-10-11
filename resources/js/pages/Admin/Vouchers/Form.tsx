@@ -15,8 +15,8 @@ interface VoucherFormData {
   name: string
   code: string
   discount_type: "percent" | "fixed"
-  discount_value: number
-  min_purchase: number
+  discount_value: string
+  min_purchase: string
   stackable: boolean
   target_type: "general" | "model" | "product"
   target_model: string
@@ -58,8 +58,8 @@ export default function VoucherForm({
     name: voucher?.name ?? "",
     code: voucher?.code ?? "",
     discount_type: voucher?.discount_type ?? ("percent" as "percent" | "fixed"),
-    discount_value: voucher?.discount_value ?? 10,
-    min_purchase: voucher?.min_purchase ?? 0,
+    discount_value: voucher?.discount_value != null ? String(voucher.discount_value) : "10",
+    min_purchase: voucher?.min_purchase ? String(voucher.min_purchase) : "",
     stackable: voucher?.stackable ?? false,
     target_type: voucher?.target_type ?? ("general" as "general" | "model" | "product"),
     target_model: voucher?.target_model ?? "",
@@ -85,6 +85,8 @@ export default function VoucherForm({
       ...data,
       starts_at: form.data.starts_at || null,
       ends_at: form.data.ends_at || null,
+      discount_value: form.data.discount_value === "" ? null : Number(form.data.discount_value),
+      min_purchase: form.data.min_purchase === "" ? null : Number(form.data.min_purchase),
       target_model: form.data.target_type === "model" ? form.data.target_model : null,
       target_product_id: form.data.target_type === "product" ? form.data.target_product_id || null : null,
       publish_now: activate,
@@ -174,7 +176,7 @@ export default function VoucherForm({
                   min={0}
                   step="0.01"
                   value={form.data.discount_value}
-                  onChange={(event) => form.setData("discount_value", Number(event.target.value))}
+                  onChange={(event) => form.setData("discount_value", event.target.value)}
                   className="w-32"
                   required
                 />
@@ -186,7 +188,7 @@ export default function VoucherForm({
                 min={0}
                 step="1"
                 value={form.data.min_purchase}
-                onChange={(event) => form.setData("min_purchase", Number(event.target.value))}
+                onChange={(event) => form.setData("min_purchase", event.target.value)}
               />
             </Field>
             <Field id="voucher-stackable" label="Tumpuk (stackable)">
