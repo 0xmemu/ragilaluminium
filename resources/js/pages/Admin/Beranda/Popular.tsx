@@ -305,7 +305,8 @@ export default function BerandaPopular({
   // Daftar dipaginasi di sisi klien: seluruh baris tetap dimuat karena geser
   // dan "Ke atas" menulis urutan global lewat indeks aslinya, tapi yang tampil
   // per halaman dibatasi supaya 183 baris tidak menumpuk.
-  const PER_HALAMAN = 25
+  // 15 per halaman, selaras dengan galeri storefront (catalog_page_size).
+  const PER_HALAMAN = 15
   const totalHalaman = Math.max(1, Math.ceil(filtered.length / PER_HALAMAN))
   const halamanKini = Math.min(page, totalHalaman)
   const awalBaris = (halamanKini - 1) * PER_HALAMAN
