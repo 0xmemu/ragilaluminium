@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { ProductListingFrame } from "@/components/public/product-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
+import { shouldShowFlashCarousel } from "@/lib/catalog-flash-carousel"
 import { catalogPageSizeParam, clampCatalogPage, resolveCatalogPageSize, type CatalogPageSizes } from "@/lib/catalog-page-size"
 import { useCatalogViewportWidth } from "@/hooks/use-catalog-viewport-width"
 import { resolveCtaActions } from "@/lib/cta-actions"
@@ -371,6 +372,16 @@ export default function Catalog({
     .filter((value) => value !== null && value !== "")
     .length
 
+  // Sorotan Flash Sale hanya milik halaman "Paling Banyak Dipesan" dalam
+  // keadaan aslinya. Isinya diambil dari peringkat Flash Sale global dan tidak
+  // mengikuti filter yang aktif, jadi ia disembunyikan begitu pembeli memilih
+  // urutan lain atau mempersempit daftar dengan filter.
+  const showFlashCarousel = shouldShowFlashCarousel({
+    fromTopSold,
+    sort: resolvedSort,
+    activeFilterCount,
+  })
+
   const sidebarProps = {
     filterModels,
     filterDesigns,
@@ -577,7 +588,7 @@ export default function Catalog({
             ]),
       ]}
       toolbar={catalogNav}
-      beforeChildren={fromTopSold && flashCarouselProducts.length > 0 ? (
+      beforeChildren={showFlashCarousel && flashCarouselProducts.length > 0 ? (
         <FlashSaleCarouselSection products={flashCarouselProducts} />
       ) : null}
       pagination={products.length ? <Pagination pagination={pagination} /> : null}
