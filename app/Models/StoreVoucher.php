@@ -10,6 +10,26 @@ use Illuminate\Support\Carbon;
 
 class StoreVoucher extends Model
 {
+    /**
+     * Status tampil voucher (owner 2026-09-29).
+     *
+     * Sebelumnya daftar admin hanya mengenal "published", sehingga voucher yang
+     * masanya sudah lewat tetap berlabel "Aktif" dan keadaannya hanya dijelaskan
+     * lewat label peringatan tambahan. Status ini menurunkan keadaan sesungguhnya
+     * dari data yang sudah ada (published + jadwal), tanpa kolom baru.
+     */
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_SCHEDULED = 'scheduled';
+    public const STATUS_EXPIRED = 'expired';
+    public const STATUS_INACTIVE = 'inactive';
+
+    public const DISPLAY_STATUSES = [
+        self::STATUS_ACTIVE,
+        self::STATUS_SCHEDULED,
+        self::STATUS_EXPIRED,
+        self::STATUS_INACTIVE,
+    ];
+
     public const TARGET_GENERAL = 'general';
     public const TARGET_MODEL = 'model';
     public const TARGET_PRODUCT = 'product';
@@ -131,6 +151,50 @@ class StoreVoucher extends Model
      * Alasan voucher tidak dapat dipakai sekarang, untuk UI admin (Fase 12).
      * Mengembalikan null bila voucher siap dipakai (published && dalam periode).
      */
+    /**
+     * Status tampil: nonaktif / terjadwal / aktif / berakhir.
+     *
+     * "Berakhir" hanya muncul untuk voucher yang MASIH dipublikasikan tetapi
+     * jadwalnya sudah lewat. Voucher yang dinonaktifkan admin tetap "Nonaktif",
+     * jadi memanjangkan tanggal berakhir cukup mengubah jadwalnya.
+     */
+    public function displayStatus(?Carbon $at = null): string
+    {
+        $at ??= now();
+
+        if (! $this->published) {
+            return self::STATUS_INACTIVE;
+        }
+        if ($this->starts_at && $at->lt($this->starts_at)) {
+            return self::STATUS_SCHEDULED;
+        }
+        if ($this->ends_at && $at->gt($this->ends_at)) {
+            return self::STATUS_EXPIRED;
+        }
+
+        return self::STATUS_ACTIVE;
+    }
+
+    /** Saring daftar menurut status tampil; status asing diabaikan. */
+    public function scopeWithDisplayStatus(Builder $query, string $status, ?Carbon $at = null): Builder
+    {
+        $at ??= now();
+
+        return match ($status) {
+            self::STATUS_INACTIVE => $query->where('published', false),
+            self::STATUS_SCHEDULED => $query->where('published', true)
+                ->whereNotNull('starts_at')
+                ->where('starts_at', '>', $at),
+            self::STATUS_EXPIRED => $query->where('published', true)
+                ->whereNotNull('ends_at')
+                ->where('ends_at', '<', $at),
+            self::STATUS_ACTIVE => $query->where('published', true)
+                ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $at))
+                ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', $at)),
+            default => $query,
+        };
+    }
+
     public function unusableReason(?Carbon $at = null): ?string
     {
         $at ??= now();

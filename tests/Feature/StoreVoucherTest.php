@@ -514,4 +514,100 @@ class StoreVoucherTest extends TestCase
         $this->assertEquals(100000.0, (float) $order->voucher_discount_amount);
         $this->assertEquals('SLID10', $order->voucher_code);
     }
+    /**
+     * Status tampil voucher (kontrak 2026-09-29): daftar admin menyatakan
+     * keadaan sebenarnya, bukan sekadar "Aktif" untuk setiap voucher yang
+     * published. Voucher yang masanya sudah lewat berstatus "Berakhir", yang
+     * belum mulai "Terjadwal", dan yang dinonaktifkan admin "Nonaktif".
+     */
+    public function test_status_tampil_voucher_mengikuti_masa_berlaku(): void
+    {
+        $sekarang = \Illuminate\Support\Carbon::setTestNow('2026-09-29 12:00:00');
+
+        $dasar = [
+            'discount_type' => 'percent',
+            'discount_value' => 10,
+            'min_purchase' => 0,
+            'published' => true,
+        ];
+
+        $aktif = StoreVoucher::create(array_merge($dasar, [
+            'name' => 'Aktif', 'code' => 'AKTIF',
+            'starts_at' => '2026-09-01 00:00:00', 'ends_at' => '2026-10-31 23:59:59',
+        ]));
+        $terjadwal = StoreVoucher::create(array_merge($dasar, [
+            'name' => 'Terjadwal', 'code' => 'JADWAL',
+            'starts_at' => '2026-10-01 00:00:00',
+        ]));
+        $berakhir = StoreVoucher::create(array_merge($dasar, [
+            'name' => 'Berakhir', 'code' => 'HABIS',
+            'starts_at' => '2026-09-01 00:00:00', 'ends_at' => '2026-09-15 06:32:00',
+        ]));
+        $nonaktif = StoreVoucher::create(array_merge($dasar, [
+            'name' => 'Nonaktif', 'code' => 'MATI', 'published' => false,
+            'starts_at' => '2026-10-01 00:00:00',
+        ]));
+
+        $this->assertSame('active', $aktif->displayStatus());
+        $this->assertSame('scheduled', $terjadwal->displayStatus());
+        $this->assertSame('expired', $berakhir->displayStatus());
+        // Dinonaktifkan admin tetap "Nonaktif", walau jadwalnya belum mulai:
+        // memanjangkan tanggal berakhir cukup mengubah jadwalnya.
+        $this->assertSame('inactive', $nonaktif->displayStatus());
+
+        // "Berakhir" berarti tidak bisa dipakai (sejalan dengan layar).
+        $this->assertFalse($berakhir->isCurrentlyRunnable());
+        $this->assertTrue($aktif->isCurrentlyRunnable());
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_daftar_voucher_membawa_status_dan_ringkasan_aktif_yang_benar(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        \Illuminate\Support\Carbon::setTestNow('2026-09-29 12:00:00');
+
+        StoreVoucher::create([
+            'name' => 'Masih Jalan', 'code' => 'JALAN', 'discount_type' => 'percent',
+            'discount_value' => 10, 'min_purchase' => 0, 'published' => true,
+            'starts_at' => '2026-09-01 00:00:00', 'ends_at' => '2026-10-31 23:59:59',
+        ]);
+        $lewat = StoreVoucher::create([
+            'name' => 'Sudah Lewat', 'code' => 'LEWAT', 'discount_type' => 'percent',
+            'discount_value' => 10, 'min_purchase' => 0, 'published' => true,
+            'starts_at' => '2026-09-01 00:00:00', 'ends_at' => '2026-09-15 00:00:00',
+        ]);
+        // Urutan daftar = published desc lalu updated_at desc; keduanya published,
+        // jadi updated_at dibuat berbeda supaya posisi barisnya pasti.
+        $lewat->forceFill(['updated_at' => now()->addMinute()])->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.vouchers.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                // Voucher kedaluwarsa TIDAK dihitung aktif lagi.
+                ->where('summary.active_count', 1)
+                ->where('summary.total_count', 2)
+                ->where('vouchers.0.code', 'LEWAT')
+                ->where('vouchers.0.status', 'expired')
+                ->where('vouchers.1.code', 'JALAN')
+                ->where('vouchers.1.status', 'active'));
+
+        // Filter status memakai keadaan sebenarnya.
+        $this->actingAs($admin)
+            ->get(route('admin.vouchers.index', ['status' => 'expired']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('vouchers', 1)
+                ->where('vouchers.0.code', 'LEWAT'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.vouchers.index', ['status' => 'active']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('vouchers', 1)
+                ->where('vouchers.0.code', 'JALAN'));
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
 }

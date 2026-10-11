@@ -32,8 +32,9 @@ interface VoucherCard {
   starts_at: string | null
   ends_at: string | null
   published: boolean
+  /** Status tampil dari server: active / scheduled / expired / inactive. */
+  status: "active" | "scheduled" | "expired" | "inactive"
   runnable: boolean
-  reason: string | null
   updated_at: string | null
   edit_href: string
   publish_url: string
@@ -47,15 +48,6 @@ function discountLabel(voucher: VoucherCard): string {
     return `${voucher.discount_value}%`
   }
   return formatCurrency(voucher.discount_value)
-}
-
-function VoucherUnusableReason({ reason }: { reason: string }) {
-  return (
-    <p className="mt-2 inline-flex items-start gap-1 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] font-medium text-warning-foreground">
-      <span aria-hidden="true">&#9888;</span>
-      <span>{reason}</span>
-    </p>
-  )
 }
 
 function TargetChip({ label }: { label: string }) {
@@ -149,7 +141,7 @@ function VoucherActions({
             onConfirm={publish}
           />
         )}
-        {voucher.published || voucher.runnable ? (
+        {voucher.status === "active" || voucher.status === "scheduled" ? (
           <ConfirmAction
             trigger={
               <button
@@ -277,6 +269,8 @@ export default function VouchersIndex({
           >
             <option value="all">Semua status</option>
             <option value="active">Aktif</option>
+            <option value="scheduled">Terjadwal</option>
+            <option value="expired">Berakhir</option>
             <option value="inactive">Nonaktif</option>
           </Select>
         </div>
@@ -297,7 +291,7 @@ export default function VouchersIndex({
           {vouchers.map((voucher) => (
             <article key={voucher.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={voucher.published ? "active" : "inactive"} />
+                <StatusBadge status={voucher.status} />
                 <span className="text-sm font-bold tabular-nums text-primary">{discountLabel(voucher)}</span>
               </div>
               <div className="mt-2 flex items-center gap-1.5 font-semibold text-foreground">
@@ -314,7 +308,6 @@ export default function VouchersIndex({
               <p className="mt-1 text-xs text-muted-foreground">
                 {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Minimum {formatCurrency(voucher.min_purchase)}
               </p>
-              {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
               <div className="mt-3">
                 <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
               </div>
@@ -349,14 +342,13 @@ export default function VouchersIndex({
                       <p className="text-[11px] text-muted-foreground">
                         {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
                       </p>
-                      {voucher.reason ? <VoucherUnusableReason reason={voucher.reason} /> : null}
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-muted-foreground">
                       {formatRentangWaktu(voucher.starts_at, voucher.ends_at)}
                     </td>
                     <td className="px-4 py-3 text-center font-semibold tabular-nums text-primary">{discountLabel(voucher)}</td>
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge status={voucher.published ? "active" : "inactive"} />
+                      <StatusBadge status={voucher.status} />
                     </td>
                     <td className="w-[1%] whitespace-nowrap px-4 py-3 text-right align-middle">
                       <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />

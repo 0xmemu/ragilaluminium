@@ -52,6 +52,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   pending_payment: { label: "Menunggu Konfirmasi", tone: "warning" },
   // Status kampanye/promo & import sekunder (nada lembut).
   scheduled: { label: "Terjadwal", tone: "info-soft" },
+  expired: { label: "Berakhir", tone: "warning-soft" },
   ended: { label: "Diakhiri", tone: "neutral-soft" },
   finished: { label: "Selesai", tone: "success-soft" },
   picked_up: { label: "Paket dijemput kurir", tone: "info" },

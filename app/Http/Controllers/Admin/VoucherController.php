@@ -37,8 +37,10 @@ class VoucherController extends Controller
                     LikeSearch::orWhereLike($inner, 'code', $q);
                 });
             })
-            ->when($status === 'active', fn ($query) => $query->where('published', true))
-            ->when($status === 'inactive', fn ($query) => $query->where('published', false))
+            ->when(
+                in_array($status, StoreVoucher::DISPLAY_STATUSES, true),
+                fn ($query) => $query->withDisplayStatus($status)
+            )
             ->orderByDesc('published')
             ->orderByDesc('updated_at')
             ->paginate(20)
@@ -50,12 +52,15 @@ class VoucherController extends Controller
             'description' => 'Kelola kode voucher checkout. Voucher aktif dapat dipakai bersama sesuai pengaturan stacking.',
             'viewMode' => $view,
             'searchQuery' => $q,
-            'activeStatus' => in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'all',
+            'activeStatus' => in_array($status, [...StoreVoucher::DISPLAY_STATUSES, 'all'], true) ? $status : 'all',
             'vouchers' => $vouchers->getCollection()->map(fn (StoreVoucher $v) => $this->card($v))->values()->all(),
             'pagination' => InertiaAdmin::pagination($vouchers),
             'createHref' => route('admin.vouchers.create'),
             'summary' => [
-                'active_count' => StoreVoucher::query()->where('published', true)->count(),
+                // "Aktif" dihitung dari voucher yang benar-benar bisa dipakai
+                // (published DAN dalam masa berlaku), bukan sekadar published,
+                // supaya angkanya sejalan dengan badge status di daftar.
+                'active_count' => StoreVoucher::query()->withDisplayStatus(StoreVoucher::STATUS_ACTIVE)->count(),
                 'total_count' => StoreVoucher::query()->count(),
             ],
         ]);
@@ -306,6 +311,7 @@ class VoucherController extends Controller
             'published' => (bool) $voucher->published,
             'stackable' => (bool) $voucher->stackable,
             'runnable' => $voucher->isCurrentlyRunnable(),
+            'status' => $voucher->displayStatus(),
             'reason' => $voucher->unusableReason(),
             'duplicate_url' => route('admin.vouchers.duplicate', $voucher),
             'end_url' => route('admin.vouchers.end', $voucher),
