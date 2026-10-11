@@ -505,8 +505,8 @@ class ProductMediaController extends Controller
      * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
      */
     private const HISTORY_EVENT_TABS = [
-        'failed',
         'success',
+        'failed',
     ];
 
     /**

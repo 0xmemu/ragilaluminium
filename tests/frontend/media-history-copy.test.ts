@@ -48,19 +48,23 @@ describe("label status Riwayat Media", () => {
     expect(sumber()).toContain("const EVENT_TABS = [")
   })
 
-  it("urutan tab menaruh Gagal lebih dulu karena itu yang perlu ditindak", () => {
+  it("urutan tab menaruh Berhasil lebih dulu", () => {
+    // Keputusan owner 11 Okt 2026: hasil yang berhasil ditampilkan lebih dulu,
+    // kegagalan menyusul. Angka tab Gagal tetap diberi penekanan saat isinya di
+    // atas nol, jadi kegagalan tidak menjadi kurang terlihat hanya karena
+    // urutannya di belakang.
     const baris = sumber()
       .split(String.fromCharCode(10))
       .find((b) => b.includes("const EVENT_TABS"))
 
     expect(baris).toBeDefined()
-    expect(baris).toContain('"failed", "success"')
+    expect(baris).toContain('"success", "failed"')
   })
 
-  it("dua jenis event punya tab: Gagal dan Berhasil", () => {
+  it("dua jenis event punya tab: Berhasil dan Gagal", () => {
     // Antre dan Diproses dibuang karena bukan keadaan yang bertahan: setiap
     // tahap menambah barisnya sendiri, jadi tabnya tidak menyaring apa pun.
-    expect(daftarEventKlien()).toEqual(["failed", "success"])
+    expect(daftarEventKlien()).toEqual(["success", "failed"])
   })
 
   it("kejadian berhasil dilabeli Berhasil, bukan Siap", () => {

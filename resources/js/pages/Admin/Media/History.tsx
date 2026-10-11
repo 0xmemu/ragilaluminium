@@ -101,8 +101,11 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
 }
 
 /**
- * Urutan tab filter, disusun menurut kepentingan audit: yang perlu ditindak
- * lebih dulu.
+ * Urutan tab filter: Semua, Berhasil, Gagal.
+ *
+ * Owner 11 Okt 2026: hasil yang berhasil ditampilkan lebih dulu, kegagalan
+ * menyusul. Urutan ini TIDAK membuat kegagalan kurang terlihat, karena angka pada
+ * tab Gagal tetap diberi penekanan merah saat isinya di atas nol.
  *
  * Labelnya SENGAJA dibaca dari EVENT_META, bukan ditulis ulang di sini. Dulu
  * keduanya berupa daftar terpisah dan sempat berbeda satu huruf di ujung kata,
@@ -126,7 +129,7 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  *   ditangani badge Live serta penyegaran otomatis di tab Semua. Labelnya tetap
  *   dipetakan di EVENT_META karena baris lama masih perlu tampil bernada benar.
  */
-const EVENT_TABS = ["failed", "success"] as const
+const EVENT_TABS = ["success", "failed"] as const
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"
