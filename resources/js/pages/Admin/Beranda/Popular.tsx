@@ -6,7 +6,8 @@ import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { Card } from "@/components/admin/ui/card"
-import { Input } from "@/components/admin/ui/input"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { Select } from "@/components/admin/ui/select"
 import { Icon } from "@/components/shared/icon"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
@@ -212,6 +213,7 @@ export default function BerandaPopular({
   const [rows, setRows] = React.useState(initialProducts)
   const [reorderMode, setReorderMode] = React.useState(false)
   const [query, setQuery] = React.useState("")
+  const [statusFilter, setStatusFilter] = React.useState("")
   const [showAll, setShowAll] = React.useState(false)
   const [movedId, setMovedId] = React.useState<number | null>(null)
   const tableRef = React.useRef<HTMLDivElement>(null)
@@ -268,10 +270,6 @@ export default function BerandaPopular({
     [needle],
   )
 
-  // Indeks asli (ke `rows`) dipertahankan supaya geser-urut tetap menulis
-  // urutan global, bukan urutan hasil filter.
-  const filtered = rows.map((row, index) => ({ row, index })).filter(({ row }) => matches(row))
-
   // Slot carousel dihitung dari URUTAN YANG SEDANG TAMPIL, bukan bendera kiriman
   // server. Kalau memakai bendera server, produk yang baru dipindah ke posisi 1
   // masih tertulis "Tayang" dan garis batasnya tidak bergerak, sehingga hasil
@@ -289,6 +287,16 @@ export default function BerandaPopular({
   })
   const windowCount = slotIds.size
   const rowInWindow = (row: PopularRow) => slotIds.has(row.id)
+  // Status baris mengikuti slot: Carousel = dalam jendela, Tayang = lolos syarat
+  // tayang tapi di luar jendela, Belum aktif = tidak lolos syarat tayang sama
+  // sekali. Dipakai badge, penghitung, dan filter status.
+  const statusOf = (row: PopularRow) => (rowInWindow(row) ? "carousel" : row.is_eligible ? "tayang" : "belum-aktif")
+
+  // Indeks asli (ke `rows`) dipertahankan supaya geser-urut tetap menulis
+  // urutan global, bukan urutan hasil filter.
+  const filtered = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => matches(row) && (statusFilter === "" || statusOf(row) === statusFilter))
 
   const PREVIEW = carouselLimit + 15
   // Mode Urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
@@ -298,7 +306,7 @@ export default function BerandaPopular({
 
   // Geser-urut dimatikan saat daftar tersaring: posisi target tidak mewakili
   // urutan global, jadi hasil geser bisa salah tempat.
-  const canReorder = reorderMode && needle === ""
+  const canReorder = reorderMode && needle === "" && statusFilter === ""
 
   const dnd = useRowDragSort({
     enabled: canReorder,
@@ -374,29 +382,41 @@ export default function BerandaPopular({
     >
       <Head title={`${title} | Admin`} />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {/* Kotak cari sengaja tetap hidup saat mode Urutkan aktif: alur yang
-            dituju halaman ini adalah "cari produk lama, lalu pindahkan ke atas",
-            dan mengunci kotak cari membuat alur itu buntu di tengah jalan. */}
-        <Input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Cari nama produk atau SKU"
-          aria-label="Cari produk"
-          data-reorder-allow
-          className="w-full sm:max-w-xs"
-        />
-        <p className="text-xs text-muted-foreground">
-          {filtered.length} produk · {windowCount} baris carousel
-        </p>
-      </div>
+      <ListToolbar
+        search={{
+          value: query,
+          onChange: setQuery,
+          placeholder: "Cari nama produk atau SKU",
+          // Kotak cari sengaja tetap hidup saat mode Urutkan aktif: alur yang
+          // dituju halaman ini adalah "cari produk lama, lalu pindahkan ke atas",
+          // dan mengunci kotak cari membuat alur itu buntu di tengah jalan.
+          inputProps: { "data-reorder-allow": "", "aria-label": "Cari produk" },
+        }}
+        summary={
+          <span>
+            {filtered.length} produk · {windowCount} baris carousel
+          </span>
+        }
+        className="mb-4"
+      >
+        <Select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          aria-label="Filter status tayang"
+          className="w-44"
+        >
+          <option value="">Semua status</option>
+          <option value="carousel">Carousel</option>
+          <option value="tayang">Tayang</option>
+          <option value="belum-aktif">Belum aktif</option>
+        </Select>
+      </ListToolbar>
 
       {reorderMode ? (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris atau tombol <span className="font-semibold text-foreground">Ke atas</span> untuk memindahkan produk, lalu tekan Simpan urutan.
           {!canReorder ? (
-            <span className="font-semibold text-foreground"> Selagi daftar tersaring, hanya tombol Ke atas yang bisa memindahkan produk; kosongkan pencarian untuk menggeser bebas.</span>
+            <span className="font-semibold text-foreground"> Selagi daftar tersaring (pencarian atau filter status), hanya tombol Ke atas yang bisa memindahkan produk; kosongkan keduanya untuk menggeser bebas.</span>
           ) : null}
         </p>
       ) : null}
@@ -439,7 +459,7 @@ export default function BerandaPopular({
               {visible.length ? (
                 visible.map(({ row, index }) => (
                   <React.Fragment key={row.id}>
-                    {needle === "" && windowCount > 0 && index === lastSlotIndex + 1 ? (
+                    {needle === "" && statusFilter === "" && windowCount > 0 && index === lastSlotIndex + 1 ? (
                       <tr className="bg-muted/30">
                         <td
                           colSpan={columnCount}

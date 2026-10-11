@@ -9,6 +9,12 @@ interface ListToolbarSearch {
   onChange: (value: string) => void
   onSubmit?: (event: React.FormEvent) => void
   placeholder?: string
+  /**
+   * Atribut tambahan untuk kotak cari. Dipakai halaman ber-reorder untuk
+   * membawa data-reorder-allow, supaya kotak cari tetap hidup saat mode
+   * Urutkan mengunci seluruh kontrol lain (lihat .admin-reorder-lock).
+   */
+  inputProps?: Record<string, unknown>
 }
 
 interface ListToolbarProps {
@@ -70,6 +76,7 @@ export function ListToolbar({
                 placeholder={search.placeholder ?? "Cari…"}
                 className="pl-9"
                 data-admin-search
+                {...(search.inputProps ?? {})}
               />
             </form>
           ) : null}
