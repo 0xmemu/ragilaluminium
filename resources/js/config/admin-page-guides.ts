@@ -280,6 +280,8 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     ],
     notes: [
       "Nilai biaya (%). Rumus: biaya COD = 4% x (subtotal produk + ongkir yang dibayar pembeli). Subtotal produk dihitung dari harga yang sudah dikurangi diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, ongkir Rp 20.000. Biaya COD = 4% x (Rp 90.000 + Rp 20.000) = Rp 4.400.",
+      "Limit transaksi: kosongkan atau isi 0 untuk tanpa batas. Di luar batas itu, COD disembunyikan di checkout.",
+      "Biaya COD berbeda dari subsidi ongkir dan tidak mengubah status pembayaran.",
     ],
   },
   "admin.shipping-subsidy.edit": {
@@ -289,7 +291,11 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Atur persentase subsidi dan kurir yang mendapat subsidi.",
       "Simpan, lalu cek estimasi ongkir di halaman checkout.",
     ],
-    notes: ["Subsidi dihitung dari ongkir kurir, bukan dari harga produk."],
+    notes: [
+      "Subsidi dihitung dari ongkir kurir, bukan dari harga produk.",
+      "Isi 100 untuk ongkir gratis.",
+      "Hanya kurir yang dicentang yang mendapat subsidi; skema memakai aturan kurir tersimpan.",
+    ],
   },
   "admin.faq.index": {
     title: "Sering Ditanyakan",

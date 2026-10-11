@@ -115,10 +115,6 @@ export default function CodSettingsEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      <p className="mb-4 -mt-2 text-xs text-muted-foreground">
-        Biaya COD berbeda dari subsidi ongkir dan tidak mengubah status pembayaran.
-      </p>
-
       <form id="cod-settings-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
@@ -139,9 +135,6 @@ export default function CodSettingsEdit({
                     standalone
                     disabled={terkunci}
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Aktifkan atau nonaktifkan Bayar di Tempat untuk seluruh pelanggan.
-                  </p>
                 </td>
               </tr>
               <tr>
@@ -167,9 +160,6 @@ export default function CodSettingsEdit({
                   {form.errors.fee_value ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai persentase (%). Arahkan kursor ke label atau buka Panduan untuk rincian rumus dan contoh perhitungan.
-                  </p>
                 </td>
               </tr>
               <tr>
@@ -192,9 +182,6 @@ export default function CodSettingsEdit({
                   {form.errors.max_order_amount ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.max_order_amount}</p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Maksimal nilai belanja (opsional). Kosongkan atau 0 = tanpa batas. Di luar batas, COD disembunyikan di checkout.
-                  </p>
                 </td>
               </tr>
             </tbody>

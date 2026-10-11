@@ -122,9 +122,6 @@ export default function ShippingSubsidyEdit({
                     standalone
                     disabled={terkunci}
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Aktifkan untuk memberikan potongan biaya pengiriman kepada pembeli.
-                  </p>
                 </td>
               </tr>
               <tr>
@@ -157,9 +154,6 @@ export default function ShippingSubsidyEdit({
                   {form.errors.subsidy_value ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.subsidy_value}</p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Persentase dari tarif kurir, maksimal 100. Isi 100 untuk ongkir gratis.
-                  </p>
                 </td>
               </tr>
               <tr>
@@ -173,14 +167,7 @@ export default function ShippingSubsidyEdit({
                     onChange={(checked) => form.setData("jnt_enabled", checked)}
                     standalone
                     disabled={terkunci}
-                    label={
-                      <span>
-                        J&T Cargo
-                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                          Skema subsidi menggunakan aturan kurir tersimpan. Hanya kurir yang dicentang yang mendapat subsidi.
-                        </span>
-                      </span>
-                    }
+                    label="J&T Cargo"
                   />
                 </td>
               </tr>

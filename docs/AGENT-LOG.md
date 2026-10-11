@@ -3876,3 +3876,10 @@ Perubahan: hapus baris "Nilai di atas adalah kondisi yang sedang aktif. Tekan Ed
 Dampak spec: tidak berubah.
 Verifikasi: eslint 0 warning, typecheck bersih, build sukses; di browser catatan tidak ada lagi di kedua halaman dan keadaan terkunci tetap berlaku (semua input disabled).
 Agent: zcode-retur
+
+## 2026-10-11 17:45 UTC | zcode-retur | Standard | 3 berkas | selesai
+Lingkup: owner menunjuk enam paragraf bantuan di halaman Biaya COD dan Subsidi Ongkir lalu minta dihapus.
+Perubahan: hapus seluruh paragraf bantuan di kedua halaman (COD: paragraf pengantar "berbeda dari subsidi ongkir", keterangan baris status, keterangan baris biaya penanganan, keterangan baris limit transaksi; Subsidi: keterangan baris status, keterangan baris persentase, anak teks pada label J&T sehingga label tinggal "J&T Cargo"). Keterangan perilaku yang tidak terbaca dari UI dipindah ke entri panduan halaman yang sudah ada (admin.cod-settings.edit: semantik limit transaksi kosong/0 = tanpa batas plus catatan beda dengan subsidi ongkir; admin.shipping-subsidy.edit: isi 100 = ongkir gratis plus hanya kurir dicentang yang dapat subsidi), mengikuti pola owner memindahkan penjelasan ke hint atau panduan. Rumus biaya COD tetap ada di HintTip label dan di panduan.
+Dampak spec: tidak berubah.
+Verifikasi: eslint 0 warning, typecheck bersih, build sukses; di browser (muat ulang tanpa cache) kedua halaman bersih dari ketujuh frasa bantuan, tidak ada sisa paragraf bantuan, keadaan terkunci tetap berlaku, tombol hanya Panduan dan Edit; bundel hasil build memuat catatan panduan baru dan tidak memuat paragraf halaman.
+Agent: zcode-retur
