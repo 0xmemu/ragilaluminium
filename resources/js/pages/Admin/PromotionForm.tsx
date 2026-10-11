@@ -10,6 +10,7 @@ import { Icon } from "@/components/shared/icon"
 import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
 import { routeUrl } from "@/lib/routes"
+import { addHoursLocalInput, nowLocalInput, toLocalInput } from "@/lib/period"
 
 interface TargetDraft {
   target_type: "model" | "sub_model" | "product"
@@ -32,28 +33,6 @@ interface PromotionFormData {
   starts_at: string
   ends_at: string
   targets: TargetDraft[]
-}
-
-function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return ""
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ""
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-function nowLocalInput(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function addHoursLocalInput(base: string | null | undefined, hours: number): string {
-  const date = base ? new Date(base) : new Date()
-  if (Number.isNaN(date.getTime())) return ""
-  const target = new Date(date.getTime() + hours * 60 * 60 * 1000)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`
 }
 
 export default function PromotionForm({
