@@ -136,7 +136,7 @@ export default function AnnouncementForm({
                 maxLength={64}
               />
             </Field>
-            <Field id="href" label="Link tujuan" error={form.errors.href} hint="Kosongkan untuk arahkan ke katalog.">
+            <Field id="href" label="Link tujuan" error={form.errors.href}>
               <Input
                 value={form.data.href}
                 onChange={(event) => form.setData("href", event.target.value)}
