@@ -3796,3 +3796,10 @@ Perubahan: kelas baru App\Support\WhatsAppFailureReason (menerjemahkan payload g
 Dampak spec: tidak berubah.
 Verifikasi: php -l bersih; test baru WhatsAppFailureReasonTest 7 lulus (termasuk penjaga anti JSON mentah di hub); seluruh test ber-nama WhatsApp 96 lulus; eslint bersih; build sukses; di browser kolom Alasan Gagal kini menampilkan kalimat utuh tanpa terpotong dan tanpa teks JSON.
 Agent: zcode-retur
+
+## 2026-10-11 15:40 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner minta kartu Status WhatsApp menampilkan nomornya saja dengan ukuran besar, bukan kalimat penjelas.
+Perubahan: whatsapp-connection-card.tsx (komponen bersama, dipakai halaman Ringkasan dan Template Pesan) kini menampilkan nomor pada text-2xl font-semibold tabular-nums plus sr-only "Nomor WhatsApp:" untuk pembaca layar; kalimat "dipakai di seluruh website..." dihapus. Keadaan Terputus tetap menampilkan sebabnya (teksnya sudah berbahasa manusia dari gatewayStatus), keadaan Terhubung dan Belum dikonfigurasi tanpa catatan tambahan.
+Dampak spec: tidak berubah.
+Verifikasi: typecheck bersih, eslint bersih, build sukses; di browser kalimat lama hilang, nomor tampil 21px tebal, kartu lebih ringkas.
+Agent: zcode-retur

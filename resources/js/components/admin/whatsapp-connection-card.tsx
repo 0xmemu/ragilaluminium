@@ -24,17 +24,13 @@ function keadaan(connection: WhatsAppConnectionSummary): {
   tone: "success" | "danger" | "warning"
   ikon: string
   label: string
-  keterangan: string
+  nomor: string
+  catatan: string | null
 } {
-  const nomor = connection.storefront_phone ?? connection.phone ?? "-"
+  const nomor = (connection.storefront_phone ?? connection.phone ?? "").trim() || "-"
 
   if (connection.connected) {
-    return {
-      tone: "success",
-      ikon: "whatsapp",
-      label: "Terhubung",
-      keterangan: `Nomor ${nomor} dipakai di seluruh website dan untuk mengirim pesan otomatis pesanan.`,
-    }
+    return { tone: "success", ikon: "whatsapp", label: "Terhubung", nomor, catatan: null }
   }
 
   if (connection.configured) {
@@ -42,16 +38,14 @@ function keadaan(connection: WhatsAppConnectionSummary): {
       tone: "danger",
       ikon: "whatsapp",
       label: "Terputus",
-      keterangan: `${connection.error ?? "Perangkat WhatsApp sedang tidak aktif."} Nomor di website tetap ${nomor}.`,
+      nomor,
+      // Hanya sebab terputusnya yang perlu dibaca; sisanya sudah terbaca dari
+      // nomor besar di bawah dan label status di atas.
+      catatan: connection.error ?? "Perangkat WhatsApp sedang tidak aktif.",
     }
   }
 
-  return {
-    tone: "warning",
-    ikon: "whatsapp",
-    label: "Belum dikonfigurasi",
-    keterangan: `Gateway WhatsApp belum disetel. Nomor di website memakai ${connection.storefront_phone ?? "nomor dari pengaturan kontak"}.`,
-  }
+  return { tone: "warning", ikon: "whatsapp", label: "Belum dikonfigurasi", nomor, catatan: null }
 }
 
 const TONE_ICON: Record<string, string> = {
@@ -76,7 +70,7 @@ export function WhatsAppConnectionCard({
   /** Tautan aksi di kanan kartu. Kirim null untuk menyembunyikannya. */
   actionHref?: string | null
 }) {
-  const { tone, ikon, label, keterangan } = keadaan(connection)
+  const { tone, ikon, label, nomor, catatan } = keadaan(connection)
 
   return (
     <section
@@ -102,7 +96,13 @@ export function WhatsAppConnectionCard({
               <span className={TONE_ICON[tone].split(" ").pop()}>{label}</span>
             </span>
           </p>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{keterangan}</p>
+          <p className="mt-1.5 text-2xl font-semibold leading-none tracking-tight text-foreground tabular-nums">
+            <span className="sr-only">Nomor WhatsApp: </span>
+            {nomor}
+          </p>
+          {catatan ? (
+            <p className="mt-1 text-xs leading-5 text-destructive">{catatan}</p>
+          ) : null}
         </div>
       </div>
       {actionHref ? (
