@@ -141,16 +141,19 @@ class HomepagePopularTest extends \Tests\TestCase
                 // Carousel = 10 teratas urutan galeri, jadi produk yang belum
                 // dikurasi pun ikut tampil bila masih di dalam 10 besar.
                 ->has('popularProducts', 3)
-                ->has('nav.public.hamburger_product', 5)
+                ->has('nav.public.hamburger_product', 6)
                 ->where('nav.public.hamburger_product.0.label', 'Model Produk')
                 ->where('nav.public.hamburger_product.1.label', 'Semua Produk')
                 ->where('nav.public.hamburger_product.2.label', 'Hasil Pemasangan')
                 ->where('nav.public.hamburger_product.3.label', 'Ulasan')
                 ->where('nav.public.hamburger_product.4.label', 'Flash Sale')
+                // Promo ada di drawer (1 Okt 2026): pintu menuju semua diskon
+                // selain Flash Sale, berdampingan dengan Flash Sale.
+                ->where('nav.public.hamburger_product.5.label', 'Promo')
                 ->has('nav.public.hamburger_info', 6)
                 ->where('nav.public.hamburger_info.0.label', 'Lacak Pengiriman')
                 ->where('nav.public.hamburger_info.5.label', 'Tentang Kami')
-                ->has('nav.public.hamburger', 11)
+                ->has('nav.public.hamburger', 12)
                 ->has('nav.public.desktop_main', 5)
                 ->where('nav.public.desktop_main.0.label', 'Model Produk')
                 ->where('nav.public.desktop_main.4.label', 'Tentang Kami')

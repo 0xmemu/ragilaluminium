@@ -296,6 +296,14 @@ return [
                 'icon' => 'bolt',
                 'active' => ['catalog.flash-sale'],
             ],
+            [
+                // Promo = semua diskon selain Flash Sale. Ditaruh tepat setelah
+                // Flash Sale supaya dua pintu diskon berdampingan di drawer.
+                'label' => 'Promo',
+                'route' => 'catalog.promo',
+                'icon' => 'ticket-percent',
+                'active' => ['catalog.promo'],
+            ],
         ],
 
         'hamburger_info' => [

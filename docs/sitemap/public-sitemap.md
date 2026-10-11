@@ -25,8 +25,8 @@ Drawer mobile terstruktur empat zona: **brand header** (wordmark + tagline) → 
 |-------|-------|------|--------|
 | Model Produk | `catalog.index` `/products` | produk | implemented |
 | Semua Produk | `catalog.all` (default Populer) | produk | implemented |
-| Promo | `catalog.promo` `/promo` | — | implemented (tidak di drawer / desktop_main; bottom nav mobile) |
-| Flash Sale | `catalog.flash-sale` `/flash-sale` | — | implemented (halaman tetap; **tidak** di `desktop_main` / `hamburger_product`) |
+| Promo | `catalog.promo` `/promo` | — | implemented (di `hamburger_product` sejak 1 Okt 2026; **tidak** di `desktop_main`; isi = semua diskon selain Flash Sale) |
+| Flash Sale | `catalog.flash-sale` `/flash-sale` | — | implemented (di `hamburger_product`; **tidak** di `desktop_main`) |
 | Hasil Pemasangan | `installation.index` `/hasil-pemasangan` | produk | implemented |
 | Ulasan (screenshot) | `reviews.screenshots` `/reviews/ss` | produk | implemented — galeri screenshot |
 | Ulasan Website (teks) | `reviews.website` `/reviews/web` | produk | implemented — ulasan teks/rating |
@@ -37,7 +37,7 @@ Drawer mobile terstruktur empat zona: **brand header** (wordmark + tagline) → 
 | Masalah & Solusi | `masalah-dan-solusi` | info | implemented |
 | Informasi Toko | `about` `/about` | info | implemented |
 
-Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa garis pembatas. **Mobile header (Figma):** hamburger · kolom cari inline · keranjang — tanpa logo wordmark dan tanpa ikon Pesanan di header (Pesanan ada di bottom nav). **Mobile:** tidak menampilkan footer situs; navigasi bawah: Beranda · Model Produk · Promo · Pesanan. `Model Produk` menampilkan submenu hover/focus berisi model visible dari taxonomy katalog; pada layar sentuh submenu dapat dibuka dengan tap. Desktop menampilkan strip `desktop_main` di bawah bar logo/search: **Model Produk** → `/products` (hub model); **Produk** → `/products/all` (Semua Produk, default Populer); **Ulasan** → `/reviews/web`; **Hasil Pemasangan**; **Informasi Toko**. Flash Sale dan Promo tidak ada di nav utama desktop (halaman `/flash-sale` dan `/promo` tetap ada). Tidak ada carousel Flash Sale di beranda.
+Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa garis pembatas. **Mobile header (Figma):** hamburger · kolom cari inline · keranjang — tanpa logo wordmark dan tanpa ikon Pesanan di header (Pesanan ada di bottom nav). **Mobile:** tidak menampilkan footer situs; navigasi bawah: Beranda · Model Produk · Pesanan · Tentang Kami (tanpa Promo; pintu Promo dan Flash Sale ada di drawer `hamburger_product`). `Model Produk` menampilkan submenu hover/focus berisi model visible dari taxonomy katalog; pada layar sentuh submenu dapat dibuka dengan tap. Desktop menampilkan strip `desktop_main` di bawah bar logo/search: **Model Produk** → `/products` (hub model); **Produk** → `/products/all` (Semua Produk, default Populer); **Ulasan** → `/reviews/web`; **Hasil Pemasangan**; **Informasi Toko**. Flash Sale dan Promo tidak ada di nav utama desktop (halaman `/flash-sale` dan `/promo` tetap ada). Tidak ada carousel Flash Sale di beranda.
 
 ---
 
@@ -50,7 +50,7 @@ Hamburger tampil di kiri pada semua breakpoint dengan drawer surface polos tanpa
 | Halaman Detail Model Produk | `/products/{category}/{model}` | `catalog.model` | `Public/ModelDetail` | implemented — deskripsi + highlight; rail produk per desain (`designRails`) ukuran terurut + CTA “Lihat selengkapnya” per rail |
 | Halaman Semua Produk | `/products/all` (default Populer) | `catalog.all` | `Public/Catalog` | implemented — **kartu produk/SKU** (`card-produk`); berbeda dari hub model |
 | Halaman Kategori Produk | `/products/{category}` | `catalog.category` | `Public/Catalog` | implemented — daftar produk (`card-produk`) |
-| Halaman Promo | `/promo` | `catalog.promo` | `Public/Catalog` | implemented — tanpa sidebar; toggle model di atas galeri; strip Flash Sale di atas listing |
+| Halaman Promo | `/promo` | `catalog.promo` | `Public/Catalog` | implemented — tanpa sidebar; toggle model di atas galeri; isi = semua diskon selain Flash Sale (kampanye diskon reguler + harga pembanding manual), Flash Sale dikeluarkan karena punya halaman sendiri |
 | Halaman Flash Sale | `/flash-sale` | `catalog.flash-sale` | `Public/Catalog` | implemented — banner Signal Red (petir + countdown harian); toolbar Populer/Terbaru/Terlaris + filter harga + cari ukuran (`?q=`); tanpa sidebar; hanya `promo_flash_sale` / `flash_sale` saat periode `cms_pages.flash-sale.content.period` live |
 | Halaman Isi Desain Produk | `/products/{category}/{model}/{design}` | `catalog.design` | `Public/Catalog` | implemented |
 | Halaman Model Produk | `/products` | `catalog.index` | `Public/ModelProduk` | implemented (alias Semua Model) |

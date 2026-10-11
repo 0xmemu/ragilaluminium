@@ -274,25 +274,40 @@ protected function category(?string $category, Request $request, string $mode = 
         // pernah mengecualikan produk dari urutan ini.
         $fromCuratedPopular = $request->input('from') === 'paling-banyak-dipesan';
 
-        $promoAttributes = [
+        // Harga pembanding manual (diskon yang diisi admin per varian). Daftarnya
+        // sengaja sama dengan PriceService::MANUAL_COMPARE_ATTRIBUTES supaya yang
+        // tampil di halaman Promo memang produk yang benar-benar berdiskon.
+        $manualDiscountAttributes = [
             'promo_compare_price',
             'compare_price',
             'harga_asli',
             'harga_sebelum_diskon',
-            'promo_flash_sale',
-            'flash_sale',
         ];
 
         $products = Product::visible()
             ->when($category, fn ($q) => $q->where('product_category', $category))
-            ->when($promoOnly, function ($q) use ($promoAttributes) {
-                $ids = app(\App\Services\CampaignService::class)->promoProductIds();
-                if ($ids !== []) {
-                    $q->whereIn('id', $ids);
+            // Halaman Promo = SEMUA diskon selain Flash Sale: kampanye diskon
+            // reguler (toko) ditambah produk yang harga pembandingnya diisi
+            // manual. Flash Sale dikeluarkan karena pengunjung yang mencari Flash
+            // Sale sudah punya halaman sendiri (/flash-sale) dan pintunya di
+            // drawer, sehingga Promo tidak boleh mengulang isi halaman itu.
+            ->when($promoOnly, function ($q) use ($manualDiscountAttributes) {
+                $storeIds = app(\App\Services\CampaignService::class)->promoProductIds();
 
-                    return;
-                }
-                $q->whereHas('attributes', fn ($qa) => $qa->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes));
+                $q->where(function ($w) use ($storeIds, $manualDiscountAttributes) {
+                    if ($storeIds !== []) {
+                        $w->whereIn('id', $storeIds);
+                    }
+
+                    $w->orWhereHas('activeVariants.attributes', fn ($qa) => $qa
+                        ->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $manualDiscountAttributes)
+                        ->where('attribute_value', '>', '0'))
+                        ->orWhereHas('attributes', fn ($qa) => $qa
+                            ->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $manualDiscountAttributes)
+                            ->where('attribute_value', '>', '0'));
+                });
+
+                $this->scopeFlashSaleExcluded($q);
             })
             ->when($flashOnly, function ($q) use ($flashPeriodLive) {
                 if (! $flashPeriodLive) {
@@ -659,6 +674,37 @@ protected function category(?string $category, Request $request, string $mode = 
         $trueValues = ['true', '1', 'yes', 'on'];
 
         return $query->whereHas('attributes', function ($attr) use ($flashAttributes, $trueValues) {
+            $attr->whereIn('attribute_name', $flashAttributes)
+                ->where(function ($inner) use ($trueValues) {
+                    foreach ($trueValues as $value) {
+                        $inner->orWhereRaw('LOWER(TRIM(attribute_value)) = ?', [$value]);
+                    }
+                });
+        });
+    }
+
+    /**
+     * Kebalikan scopeFlashSaleActive(): produk yang BUKAN Flash Sale.
+     *
+     * Dipakai halaman Promo supaya isinya benar-benar "semua diskon selain Flash
+     * Sale", sebab Flash Sale punya halaman sendiri (/flash-sale). Definisi Flash
+     * Sale-nya sengaja sama persis dengan scopeFlashSaleActive() di atas, jadi
+     * kedua himpunan tidak pernah bisa berbeda; kalau salah satu diubah, yang lain
+     * wajib ikut diubah.
+     *
+     * @param  Builder<Product>  $query
+     */
+    protected function scopeFlashSaleExcluded($query)
+    {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+        if ($flashIds !== []) {
+            return $query->whereNotIn('id', $flashIds);
+        }
+
+        $flashAttributes = ['promo_flash_sale', 'flash_sale'];
+        $trueValues = ['true', '1', 'yes', 'on'];
+
+        return $query->whereDoesntHave('attributes', function ($attr) use ($flashAttributes, $trueValues) {
             $attr->whereIn('attribute_name', $flashAttributes)
                 ->where(function ($inner) use ($trueValues) {
                     foreach ($trueValues as $value) {
