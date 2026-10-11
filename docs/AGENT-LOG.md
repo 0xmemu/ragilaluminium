@@ -3698,3 +3698,14 @@ Agent: gemini-3.8-flash-high
 - ListToolbar tidak terkunci saat mode urut dibuktikan live: filter "Belum aktif" menampilkan 48 baris semuanya berbadge Belum aktif, kotak cari tetap opacity 1 dan pointer-events auto di tengah mode urut, dan setelah filter dikosongkan 183 ikon tarik kembali.
 - Verifikasi: tsc + lint bersih, BerandaPopularToolbarTest (2 test penjaga sumber, baru) + HomepagePopularTest 26 lulus / 467 asersi, build sukses.
 Agent: zcode
+
+## 2026-10-11 12:51 UTC | zcode | Trivial | resources/js/pages/Admin/Announcements/Form.tsx | selesai
+
+- Owner: "aneh, biasanya pick date ditampilkan saat sort custom periode dipilih, bukan langsung terlihat" di form Bar Promo.
+- HASIL ANALISA PEMILIH TANGGAL SELURUH PANEL (18 pemakaian, tidak ada pustaka tanggal sama sekali, semua kalender bawaan browser):
+  (a) FILTER DAFTAR sudah benar bersyarat, tanggal muncul hanya setelah memilih Rentang tanggal: Pesanan (panel di dalam dropdown Urutan & waktu), Pembayaran, Pengiriman, Pelanggan, Riwayat Media, Performa Toko (setelah pilih periode custom).
+  (b) FORM PROMO sudah benar: PromotionForm memakai segmented Mulai Sekarang / Jadwalkan Waktu / Tanpa Batas dan pemilih datetime muncul hanya saat Jadwalkan.
+  (c) YANG MENYIMPANG: form Bar Promo (dibuat sesi ini) menampilkan tanggal langsung; form Voucher juga (tombol Mulai Sekarang + preset durasi + datetime selalu terlihat).
+- Perbaikan (commit 064d2ebe): form Bar Promo kini memakai segmented Selalu tampil / Jadwalkan periode meniru pola form Promo Toko; tanggal + preset +3/+7/+14/+30 hari hanya muncul saat dijadwalkan; berpindah ke Selalu tampil mengosongkan tanggal; saat menyunting bar promo berjadwal form terbuka di mode Jadwalkan.
+- Verifikasi live: create -> 0 input tanggal, klik Jadwalkan -> 2 input tanggal dengan Mulai terisi hari ini; edit #5 (1 Jul - 31 Des) -> terbuka 2 input terisi; klik Selalu tampil -> 0 input. typecheck 0, eslint bersih, build sukses. Simpan tidak diuji ulang karena perilaku backend tidak berubah (tanggal kosong = tanpa batas).
+- SISA: form Voucher BELUM dirapikan (pola sama menyimpang); menunggu keputusan owner karena tanggal voucher nyaris selalu dipakai.
