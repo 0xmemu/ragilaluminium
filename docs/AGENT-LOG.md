@@ -3690,3 +3690,11 @@ Perubahan: resources/js/pages/Admin/Media/History.tsx, menghapus properti summar
 Dampak spec: tidak berubah. Ini murni penyesuaian visual antarmuka.
 Verifikasi: typecheck 0, eslint bersih, build sukses, Vitest suite 35 files 308 tests lulus. Live in-app browser: teks '4 log' sudah tidak ada di toolbar maupun halaman, antarmuka toolbar menjadi lebih ringkas dan bersih.
 Agent: gemini-3.8-flash-high
+
+## 2026-10-08 22:10 UTC | zcode | Standard | ad0a202f | selesai
+
+- Owner: toolbar halaman /admin/beranda/paling-banyak-dipesan cuma kotak cari + penghitung, lalu minta dianalisa ulang kebutuhannya ("analisa kebutuhan lagi"). Hasil analisa: halaman ini satu-satunya dari 7 halaman ber-reorder yang tidak memakai ListToolbar, dan ada kebutuhan nyata yang tidak tercukupi kotak cari: 48 dari 183 baris berbadge "Belum aktif" (semuanya produk arsip) tanpa penanda teks pembeda, jadi satu-satunya cara melihatnya adalah menggulir.
+- Perubahan: toolbar pindah ke ListToolbar (penghitung jadi summary di kanan); filter status BARU (Semua/Carousel/Tayang/Belum aktif, client side, status dari satu fungsi statusOf yang sama dengan badge); ListToolbar dapat prop additive search.inputProps supaya kotak cari bisa membawa data-reorder-allow (mode Urutkan mengunci kontrol lewat CSS .admin-reorder-lock, hanya elemen bertanda itu yang hidup). Geser mati saat tersaring apa pun saringannya; garis "Batas carousel" hanya pada daftar tak tersaring karena posisi batasnya tidak berlaku di subset. Kontrol sort sengaja TIDAK ditambah (halaman ini mengedit urutan; sort membuat geser salah tempat), filter kategori/model juga tidak (kotak cari sudah menjangkau teks taksonomi).
+- ListToolbar tidak terkunci saat mode urut dibuktikan live: filter "Belum aktif" menampilkan 48 baris semuanya berbadge Belum aktif, kotak cari tetap opacity 1 dan pointer-events auto di tengah mode urut, dan setelah filter dikosongkan 183 ikon tarik kembali.
+- Verifikasi: tsc + lint bersih, BerandaPopularToolbarTest (2 test penjaga sumber, baru) + HomepagePopularTest 26 lulus / 467 asersi, build sukses.
+Agent: zcode
