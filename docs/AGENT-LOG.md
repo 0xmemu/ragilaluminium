@@ -3810,3 +3810,13 @@ Perubahan: nomor diturunkan dari text-2xl (21px) ke text-xl (17.5px), sama persi
 Dampak spec: tidak berubah.
 Verifikasi: build sukses; di browser nomor terbaca 17.5px font-weight 600.
 Agent: zcode-retur
+
+## 2026-10-11 14:11 UTC | zcode | Trivial | contoh link tujuan pakai domain | selesai
+
+- Owner di form Bar Promo: hint/placeholder kolom Link tujuan harus menampilkan domain/slug, bukan path relatif.
+- PENCARIAN SEMUA TEMPAT SERUPA (4 temuan): Announcements/Form.tsx placeholder "/products/boven/jungkit"; Banners/Form.tsx hint "Path internal /product/SKU atau URL penuh." + placeholder "/product/WIN-JUNG-001"; Categories/Form.tsx hint "Alamat link publik toko: /products/{slug}.".
+- Perubahan (commit b137a6f7): helper baru storeExampleUrl(path) di lib/routes.ts memakai window.location.origin, BUKAN domain yang ditulis tetap, supaya contohnya tetap benar setelah pindah server/domain produksi (admin dilayani dari domain yang sama dengan storefront; repo ini tanpa SSR dan window.location.origin sudah jadi pola). Dipakai di placeholder Bar Promo (https://ra.333labs.tech/products/boven/jungkit-2-daun) dan Banner Promo (https://ra.333labs.tech/product/RAF3QHJA5FHY), serta hint Kategori (https://ra.333labs.tech/products/{slug}). Hint Banner diringkas jadi "Alamat lengkap toko, atau cukup bagian setelah nama domain."
+- BONUS KOREKSI: slug contoh Bar Promo sebelumnya /products/boven/jungkit yang TERBUKTI 404; diganti jungkit-2-daun (terverifikasi 200), begitu pula contoh Banner memakai SKU nyata RAF3QHJA5FHY (200).
+- PERBAIKAN LINT WARISAN: prop nextSortOrder di Banners/Form.tsx menganggur (sisa penghapusan isian urutan slide beberapa waktu lalu) dan sudah error eslint di HEAD; prop dibuang dari form dan dari payload create controller (helper nextSortOrder() tetap dipakai saat menyimpan). Kini eslint 0 masalah.
+- Verifikasi live: placeholder Bar Promo "https://ra.333labs.tech/products/boven/jungkit-2-daun", Banner "https://ra.333labs.tech/product/RAF3QHJA5FHY" + hint "Alamat lengkap toko, atau cukup bagian setelah nama domain.", Kategori hint "Alamat link publik toko: https://ra.333labs.tech/products/{slug}. Otomatis dibuat jika dikosongkan.". typecheck 0, eslint 0, build sukses, php -l bersih.
+- Catatan: placeholder tetap berawalan https:// karena aturan validasi MENOLAK domain telanjang (ra.333labs.tech/produk ditolak, harus "/" atau http(s)://). Contoh tanpa https akan menyesatkan admin karena pasti gagal saat disimpan.
