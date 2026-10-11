@@ -10,8 +10,6 @@ use App\Models\SubModel;
 use App\Support\LikeSearch;
 use App\Support\short_name;
 use App\Services\CampaignService;
-use App\Services\PromotionOverviewService;
-use App\Services\PromotionSalesService;
 use App\Support\CatalogLabels;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,24 +21,15 @@ use Throwable;
 
 class PromotionController extends Controller
 {
-    public function __construct(
-        protected CampaignService $campaigns,
-        protected PromotionSalesService $sales,
-        protected PromotionOverviewService $overview,
-    ) {}
+    public function __construct(protected CampaignService $campaigns) {}
 
     public function index(Request $request): Response
     {
         $this->campaigns->autoEndExpired();
 
-        // Default tanpa type = ringkasan semua promosi yang berjalan.
-        // type=store / type=flash_sale membuka daftar kampanye per jenis.
-        $typeInput = $request->input('type');
-        if ($typeInput !== 'store' && $typeInput !== Promotion::TYPE_FLASH_SALE) {
-            return $this->overview();
-        }
-
-        $type = $typeInput;
+        $type = $request->input('type') === Promotion::TYPE_FLASH_SALE
+            ? Promotion::TYPE_FLASH_SALE
+            : Promotion::TYPE_STORE;
 
         $promotions = Promotion::query()
             ->where('type', $type)
@@ -51,41 +40,18 @@ class PromotionController extends Controller
         return Inertia::render('Admin/Promotions', [
             // Promo Toko adalah halaman induk daftar ini, jadi tombol Kembali mengarah ke sana.
             'backUrl' => route('admin.promotions.index'),
-            'title' => $this->typeLabel($type),
+            'title' => $type === Promotion::TYPE_STORE ? 'Promo Toko' : 'Flash Sale',
             'description' => $type === Promotion::TYPE_STORE
-                ? 'Kampanye diskon reguler untuk produk terpilih. Satu produk hanya boleh ikut satu diskon reguler aktif; Flash Sale menggantikan diskon reguler.'
-                : 'Flash Sale diskon ekstra. Hanya satu Flash Sale aktif; diskon wajib lebih besar dari diskon reguler.',
+                ? 'Promo diskon menyeluruh untuk produk terpilih. Satu produk hanya boleh di satu promo aktif; Flash Sale menggantikan promo.'
+                : 'Flash Sale diskon ekstra. Hanya satu Flash Sale aktif; diskon wajib lebih besar dari Promo Toko.',
+            'activeType' => $type,
             'typeOptions' => [
-                ['value' => 'store', 'label' => $this->typeLabel(Promotion::TYPE_STORE)],
-                ['value' => 'flash_sale', 'label' => $this->typeLabel(Promotion::TYPE_FLASH_SALE)],
+                ['value' => 'store', 'label' => 'Promo Toko'],
+                ['value' => 'flash_sale', 'label' => 'Flash Sale'],
             ],
             'statusOptions' => $this->statusOptions(),
             'rows' => $promotions->map(fn (Promotion $p) => $this->row($p))->values()->all(),
             'createHref' => route('admin.promotions.create', ['type' => $type]),
-        ]);
-    }
-
-    /**
-     * Ringkasan promosi yang sedang berjalan dari seluruh jenis: kampanye
-     * diskon, voucher, banner, dan bar promo. Halaman default menu Promo Toko.
-     */
-    protected function overview(): Response
-    {
-        return Inertia::render('Admin/PromotionOverview', [
-            'title' => 'Promo Toko',
-            'description' => 'Ringkasan semua promosi yang sedang berjalan: kampanye diskon, voucher, banner, dan bar promo.',
-            'counts' => $this->overview->counts(),
-            'campaigns' => $this->overview->campaignRows(),
-            'vouchers' => $this->overview->voucherRows(),
-            'banners' => $this->overview->bannerRows(),
-            'announcements' => $this->overview->announcementRows(),
-            'storeUrl' => route('admin.promotions.index', ['type' => Promotion::TYPE_STORE]),
-            'flashSaleUrl' => route('admin.promotions.index', ['type' => Promotion::TYPE_FLASH_SALE]),
-            'vouchersUrl' => route('admin.vouchers.index'),
-            'bannersUrl' => route('admin.banners.index'),
-            'createStoreUrl' => route('admin.promotions.create', ['type' => Promotion::TYPE_STORE]),
-            'createFlashSaleUrl' => route('admin.promotions.create', ['type' => Promotion::TYPE_FLASH_SALE]),
-            'announcementsUrl' => route('admin.announcements.index'),
         ]);
     }
 
@@ -97,7 +63,7 @@ class PromotionController extends Controller
 
         return Inertia::render('Admin/PromotionForm', [
             'backUrl' => route('admin.promotions.index', ['type' => $type]),
-            'title' => $this->typeLabel($type).' Baru',
+            'title' => $type === Promotion::TYPE_STORE ? 'Promo Toko Baru' : 'Flash Sale Baru',
             'promotion' => null,
             'submitUrl' => route('admin.promotions.store'),
             'indexUrl' => route('admin.promotions.index', ['type' => $type]),
@@ -108,11 +74,6 @@ class PromotionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateRequest($request);
-
-        // Simpan langsung aktif (keputusan owner 2026-09-17): draft bukan
-        // keharusan. Bila jadwal mulai di masa depan, kampanye disimpan
-        // sebagai Terjadwal; selain itu langsung Aktif.
-        $activate = $request->boolean('activate');
 
         $campaign = new Promotion([
             'type' => $validated['type'],
@@ -125,40 +86,19 @@ class PromotionController extends Controller
             'updated_by_user_id' => $request->user()->id,
         ]);
 
-        $startsInFuture = $campaign->starts_at !== null && $campaign->starts_at->isFuture();
-
-        $this->campaigns->validate($campaign, $validated['targets'], null, isActivating: $activate);
-
-        $campaign->status = $activate
-            ? ($startsInFuture ? Promotion::STATUS_SCHEDULED : Promotion::STATUS_ACTIVE)
-            : Promotion::STATUS_DRAFT;
+        $this->campaigns->validate($campaign, $validated['targets']);
         $campaign->save();
         $this->saveItems($campaign, $validated['targets'], $request->user()->id);
-
-        if ($campaign->status === Promotion::STATUS_ACTIVE) {
-            // Audit + invalidasi cache lewat jalur aktivasi yang sama.
-            $this->campaigns->activate($campaign, (int) $request->user()->id);
-        } elseif ($campaign->status === Promotion::STATUS_SCHEDULED) {
-            $this->campaigns->flushCache();
-        }
 
         \App\Support\CampaignBannerSync::flush();
         \App\Services\ActivityLogService::record('product.promotion.created', 'promotion', $campaign->id, [
             'name' => $campaign->name,
             'type' => $campaign->type,
-            'status' => $campaign->status,
         ], (int) $request->user()->id);
         $this->campaigns->flushCache();
 
-        $message = match ($campaign->status) {
-            Promotion::STATUS_ACTIVE => 'Kampanye "'.$campaign->name.'" dibuat dan langsung aktif.',
-            Promotion::STATUS_SCHEDULED => 'Kampanye "'.$campaign->name.'" dibuat dan dijadwalkan aktif pada '
-                .$campaign->starts_at?->timezone(config('app.timezone'))->translatedFormat('d M Y, H.i').' WIB.',
-            default => 'Kampanye "'.$campaign->name.'" dibuat sebagai draft.',
-        };
-
         return redirect()->route('admin.promotions.index', ['type' => $campaign->type])
-            ->with('success', $message);
+            ->with('success', 'Kampanye "'.$campaign->name.'" dibuat sebagai draft.');
     }
 
     public function edit(Request $request, Promotion $promotion): Response|RedirectResponse
@@ -175,7 +115,7 @@ class PromotionController extends Controller
 
         return Inertia::render('Admin/PromotionForm', [
             'backUrl' => route('admin.promotions.index', ['type' => $promotion->type]),
-            'title' => 'Edit '.$this->typeLabel($promotion->type),
+            'title' => 'Edit '.($promotion->isFlashSale() ? 'Flash Sale' : 'Promo Toko'),
             'promotion' => [
                 'id' => $promotion->id,
                 'type' => $promotion->type,
@@ -295,50 +235,6 @@ class PromotionController extends Controller
         return back()->with('success', 'Kampanye "'.$promotion->name.'" diakhiri.');
     }
 
-    /**
-     * Detail kampanye: daftar produk yang tercakup beserta penjualannya.
-     *
-     * Dipakai tombol "Detail" di daftar promo untuk kedua tipe kampanye
-     * (Promo Toko dan Flash Sale). Ringkasan angka berasal dari
-     * PromotionSalesService supaya definisi penjualan sama di kedua tipe.
-     */
-    public function show(Promotion $promotion): Response
-    {
-        $promotion->load('items');
-
-        $report = $this->sales->report($promotion);
-
-        return Inertia::render('Admin/PromotionDetail', [
-            'title' => 'Detail '.$this->typeLabel($promotion->type),
-            'description' => 'Produk yang tercakup kampanye "'.$promotion->name.'" beserta jumlah yang terjual.',
-            'backUrl' => route('admin.promotions.index', ['type' => $promotion->type]),
-            'promotion' => [
-                'id' => $promotion->id,
-                'name' => $promotion->name,
-                'type' => $promotion->type,
-                'type_label' => $this->typeLabel($promotion->type),
-                'status' => $promotion->status,
-                'status_label' => $this->statusLabels()[$promotion->status] ?? $promotion->status,
-                'discount_percent' => (int) $promotion->discount_percent,
-                'starts_at' => optional($promotion->starts_at)?->toIso8601String(),
-                'ends_at' => optional($promotion->ends_at)?->toIso8601String(),
-                'can_edit' => ! in_array($promotion->status, [Promotion::STATUS_ENDED, Promotion::STATUS_FINISHED], true),
-                'edit_href' => route('admin.promotions.edit', $promotion),
-                'targets' => $promotion->items->map(fn (PromotionItem $item) => [
-                    'label' => $this->targetLabel($item),
-                    'excluded' => (bool) $item->excluded,
-                    'override_discount_percent' => $item->override_discount_percent,
-                ])->values()->all(),
-            ],
-            'report' => $report,
-        ]);
-    }
-
-    private function typeLabel(string $type): string
-    {
-        return $type === Promotion::TYPE_FLASH_SALE ? 'Flash Sale' : 'Diskon Reguler';
-    }
-
     private function row(Promotion $promotion): array
     {
         $productIds = $this->campaigns->resolveProductIds(
@@ -363,7 +259,6 @@ class PromotionController extends Controller
                 'excluded' => (bool) $item->excluded,
                 'override_discount_percent' => $item->override_discount_percent,
             ])->values()->all(),
-            'detail_href' => route('admin.promotions.show', $promotion),
             'edit_href' => route('admin.promotions.edit', $promotion),
             'activate_url' => route('admin.promotions.activate', $promotion),
             'end_url' => route('admin.promotions.end', $promotion),
@@ -451,7 +346,7 @@ class PromotionController extends Controller
                 LikeSearch::whereLike($inner, 'name', $q)
                     ->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\'])
             ))
-            ->when($category !== '', fn ($qry) => $qry->where('product_category', strtoupper($category)))
+            ->when($category !== '', fn ($qry) => $qry->whereIn('product_category', \App\Support\CatalogLabels::categoryCodesWithLegacy($category)))
             ->when($model !== '', function ($qry) use ($model) {
                 $modelPattern = str_replace(' ', '_', $model);
                 $qry->where(function ($inner) use ($modelPattern) {
@@ -505,24 +400,17 @@ class PromotionController extends Controller
         ];
     }
 
-    /** @return array<string, string> */
-    private function statusLabels(): array
+    /** @return list<array{value: string, label: string}> */
+    private function statusOptions(): array
     {
-        return [
+        $labels = [
             Promotion::STATUS_DRAFT => 'Draft',
             Promotion::STATUS_SCHEDULED => 'Terjadwal',
             Promotion::STATUS_ACTIVE => 'Aktif',
             Promotion::STATUS_ENDED => 'Diakhiri',
             Promotion::STATUS_FINISHED => 'Selesai',
         ];
-    }
 
-    /** @return list<array{value: string, label: string}> */
-    private function statusOptions(): array
-    {
-        return collect($this->statusLabels())
-            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
-            ->values()
-            ->all();
+        return collect($labels)->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])->values()->all();
     }
 }
