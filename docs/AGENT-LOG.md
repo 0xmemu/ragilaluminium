@@ -3931,3 +3931,9 @@ Verifikasi koherensi HEAD: seluruh impor Promotions.tsx ada di HEAD (15 modul, t
 1. Berkas di repo VPS sering sudah memuat WIP agent lain. Sebelum commit satu berkas, WAJIB bandingkan `git diff --stat -- <berkas>` dengan perkiraan perubahan sendiri; lonjakan tak wajar = WIP orang lain ikut terbawa.
 2. `git commit -- <path>` meng-commit ISI WORKING TREE berkas itu, bukan isi index. Untuk commit selektif pakai plumbing: `git hash-object -w`, `git update-index --cacheinfo`, lalu `git commit` TANPA path.
 3. Sebelum push, pastikan HEAD tidak merujuk berkas yang belum dilacak: periksa rujukan kelas pada berkas yang di-commit, dan pastikan berkas pendukungnya ada di HEAD lewat git cat-file -e.
+
+## 2026-10-12 01:00 UTC | zcode | Trivial | selesai
+
+- Owner: "sesuaikan ukuran dropdown. pindah ke bukan pindahkan ke." Label pemicu menjadi "Pindah ke" dan lebar menu menyusut dari min-w-[13rem] (208px) ke min-w-[10rem] (terukur 140px) supaya proporsional dengan dua pilihannya. Fungsi tidak berubah.
+- Verifikasi: tsc + lint bersih, build sukses; live: pemicu "Pindah ke" 90px dengan data-reorder-allow tetap ada, menu terbuka 140px berisi "Carousel" dan "Halaman 1".
+Agent: zcode
