@@ -3,9 +3,9 @@ import { usePage } from "@inertiajs/react"
 import type { SharedPageProps } from "@/types"
 import * as React from "react"
 
+import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
 import { Card } from "@/components/admin/ui/card"
-import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
-import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
+import { rowActionTextClass } from "@/components/admin/row-actions"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -23,6 +23,8 @@ import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber, formatRentangWaktu, formatWaktuRingkas } from "@/lib/format"
+import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 
 interface TargetRow {
   label: string
@@ -40,7 +42,6 @@ interface PromotionRow {
   items_count: number
   products_count: number
   targets: TargetRow[]
-  detail_href: string
   edit_href: string
   activate_url: string
   end_url: string
@@ -125,7 +126,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
   return (
     <ConfirmAction
       trigger={
-        <button type="button" className="w-full px-2 py-1.5 text-left text-xs hover:bg-muted" disabled={busy} onClick={fetchImpact}>
+        <button type="button" className={rowActionTextClass} disabled={busy} onClick={fetchImpact}>
           {actionLabel}
         </button>
       }
@@ -149,6 +150,8 @@ export default function PromotionsIndex({
   title,
   backUrl,
   description,
+  activeType,
+  typeOptions,
   statusOptions,
   rows: initialRows = [],
   createHref,
@@ -157,6 +160,8 @@ export default function PromotionsIndex({
   /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
   backUrl?: string | null
   description: string
+  activeType: string
+  typeOptions: Array<{ value: string; label: string }>
   statusOptions: Array<{ value: string; label: string }>
   rows: PromotionRow[]
   createHref: string
@@ -191,14 +196,27 @@ export default function PromotionsIndex({
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah
+              Tambah {activeType === "flash_sale" ? "Flash Sale" : "Promo"}
             </Link>
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
+      <ManagePromotionsTabs active="promotions" />
       <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {typeOptions.map((option) => (
+              <Button key={option.value} asChild variant={option.value === activeType ? "primary" : "secondary"} size="sm">
+                <Link href={routeUrl("admin.promotions.index", { type: option.value })} preserveScroll>
+                  {option.label}
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </div>
+
         <ListToolbar
           className="mt-0"
           search={{
@@ -292,51 +310,40 @@ export default function PromotionsIndex({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{row.products_count}</TableCell>
                     <TableCell className="text-right">
-                      <RowActions>
+                      <div className="flex items-center justify-end gap-3">
                         {canEdit(row.status) ? (
-                          <Button asChild variant="secondary" size="xs">
-                            <Link href={row.edit_href}>Edit</Link>
-                          </Button>
+                          <Link className={rowActionTextClass} href={row.edit_href}>
+                            Edit
+                          </Link>
                         ) : (
-                          <Button
-                            variant="secondary"
-                            size="xs"
-                            disabled
-                            title="Kampanye yang selesai atau diakhiri tidak dapat diubah."
+                          <span
+                            className={cn(rowActionTextClass, "cursor-not-allowed text-muted-foreground/60")}
+                            title="Kampanye yang selesai atau diakhiri tidak dapat diubah. Buat kampanye baru."
                           >
                             Edit
-                          </Button>
+                          </span>
                         )}
-                        <RowActionsMenu>
-                          <DropdownMenuItem asChild>
-                            <Link href={row.detail_href}>Detail promosi</Link>
-                          </DropdownMenuItem>
-                          {canActivate(row.status) ? (
-                            <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
-                          ) : null}
-                          {canEnd(row.status) ? (
-                            <ConfirmAction
-                              trigger={
-                                <button
-                                  type="button"
-                                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
-                                  disabled={busyId === row.id}
-                                >
-                                  Akhiri
-                                </button>
-                              }
-                              title="Akhiri kampanye?"
-                              description={`"${row.name}" akan diakhiri dan diskon berhenti berlaku.`}
-                              confirmLabel="Akhiri"
-                              processing={busyId === row.id}
-                              onConfirm={() => {
-                                setBusyId(row.id)
-                                router.post(row.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-                              }}
-                            />
-                          ) : null}
-                        </RowActionsMenu>
-                      </RowActions>
+                        {canActivate(row.status) ? (
+                          <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
+                        ) : null}
+                        {canEnd(row.status) ? (
+                          <ConfirmAction
+                            trigger={
+                              <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busyId === row.id}>
+                                Akhiri
+                              </button>
+                            }
+                            title="Akhiri kampanye?"
+                            description={`"${row.name}" akan diakhiri dan diskon berhenti berlaku.`}
+                            confirmLabel="Akhiri"
+                            processing={busyId === row.id}
+                            onConfirm={() => {
+                              setBusyId(row.id)
+                              router.post(row.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+                            }}
+                          />
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
