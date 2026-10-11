@@ -261,3 +261,11 @@ export function formatPhoneLocal(value: string | null | undefined, grouped = fal
   const rest = local.slice(8)
   return rest ? `${prefix}-${mid}-${rest}` : `${prefix}-${mid}`
 }
+
+/** Format ukuran bytes ke B / KB / MB. */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0 || !Number.isFinite(bytes)) return "-"
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}

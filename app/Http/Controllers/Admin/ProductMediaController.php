@@ -519,8 +519,7 @@ class ProductMediaController extends Controller
             $q = mb_substr($q, 0, 120);
         }
 
-        $query = MediaProcessingLog::query()
-            ->when($event !== '', fn ($builder) => $builder->where('event', $event))
+        $baseQuery = MediaProcessingLog::query()
             ->when($q !== '', function ($builder) use ($q) {
                 $search = LikeSearch::escape($q);
 
@@ -535,6 +534,21 @@ class ProductMediaController extends Controller
             ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
             ->when($datePreset === 'range' && $dateFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
             ->when($datePreset === 'range' && $dateTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $dateTo));
+
+        $countsByEvent = (clone $baseQuery)
+            ->selectRaw('event, count(*) as count')
+            ->groupBy('event')
+            ->pluck('count', 'event')
+            ->all();
+
+        $tabCounts = [
+            '' => (int) array_sum($countsByEvent),
+            'failed' => (int) ($countsByEvent['failed'] ?? 0),
+            'success' => (int) ($countsByEvent['success'] ?? 0),
+        ];
+
+        $query = (clone $baseQuery)
+            ->when($event !== '', fn ($builder) => $builder->where('event', $event));
 
         $paginator = (clone $query)->latest('created_at')->paginate(30)->withQueryString();
 
@@ -556,6 +570,7 @@ class ProductMediaController extends Controller
                 'event' => $event,
                 'q' => $q,
             ],
+            'tabCounts' => $tabCounts,
             'activeDatePreset' => $datePreset,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
@@ -591,9 +606,9 @@ class ProductMediaController extends Controller
             }
         }
 
-        $assetStatus = $assetIds === []
+        $assets = $assetIds === []
             ? collect()
-            : MediaAsset::query()->whereIn('id', array_unique($assetIds))->pluck('status', 'id');
+            : MediaAsset::query()->whereIn('id', array_unique($assetIds))->get()->keyBy('id');
 
         $mediaIds = collect($items)
             ->filter(fn (MediaProcessingLog $log) => $log->loggable_type === ProductMedia::class)
@@ -602,23 +617,57 @@ class ProductMediaController extends Controller
             ->values()
             ->all();
 
-        $productOf = $mediaIds === []
+        $productMedias = $mediaIds === []
             ? collect()
-            : ProductMedia::query()->whereIn('id', $mediaIds)->pluck('product_id', 'id');
+            : ProductMedia::query()->whereIn('id', $mediaIds)->with('mediaAsset')->get()->keyBy('id');
 
-        return collect($items)->map(function (MediaProcessingLog $log) use ($assetStatus, $productOf): array {
+        return collect($items)->map(function (MediaProcessingLog $log) use ($assets, $productMedias): array {
             $row = $log->toArray();
             $row['retry_url'] = $log->event === 'failed' ? route('admin.media.logs.retry', $log) : null;
             $row['delete_url'] = route('admin.media.logs.destroy', $log);
-            $row['media_href'] = $this->mediaHrefFor($log, $assetStatus, $productOf);
+
+            $asset = null;
+            $productMedia = null;
+            if ($log->loggable_type === MediaAsset::class) {
+                $asset = $assets->get((int) $log->loggable_id);
+            } elseif ($log->loggable_type === ProductMedia::class) {
+                $productMedia = $productMedias->get((int) $log->loggable_id);
+                $asset = $productMedia?->mediaAsset;
+            }
+
+            $row['thumb_url'] = $asset?->urlFor('thumb') ?? $productMedia?->urlFor('thumb');
+            $row['media_kind'] = $asset?->kind ?? ($productMedia ? 'image' : null);
+            $row['size_bytes'] = $asset?->size_bytes ? (int) $asset->size_bytes : null;
+            $row['dimensions'] = null;
+            if ($asset) {
+                if ($asset->kind === 'video' && $asset->duration_ms) {
+                    $secs = (int) round($asset->duration_ms / 1000);
+                    $row['dimensions'] = sprintf('%02d:%02d', floor($secs / 60), $secs % 60);
+                } elseif ($asset->width_px && $asset->height_px) {
+                    $row['dimensions'] = "{$asset->width_px} × {$asset->height_px}";
+                }
+            }
+
+            // Aset yang sudah dihapus tetap punya baris riwayat: tabel ini jejak
+            // audit, dan audit memang bertahan setelah subjeknya hilang. Yang
+            // tidak boleh adalah barisnya berpura-pura masih bisa dibuka, jadi
+            // penandanya dikirim ke tampilan untuk diberi keterangan apa adanya.
+            $row['media_missing'] = match ($log->loggable_type) {
+                MediaAsset::class => $asset === null,
+                ProductMedia::class => $productMedia === null,
+                default => false,
+            };
+
+            $row['media_href'] = $this->mediaHrefFor($log, $assets, $productMedias);
 
             $targetId = data_get($log->meta, 'merged_into_asset_id');
             $targetLabel = (string) data_get($log->meta, 'merged_into_label', '');
+            $targetAsset = $targetId ? $assets->get((int) $targetId) : null;
             $row['merged_into'] = $targetId
                 ? [
                     'asset_id' => (int) $targetId,
                     'label' => $targetLabel !== '' ? $targetLabel : ('Aset #'.$targetId),
-                    'href' => $this->libraryHrefFor($targetLabel, $assetStatus[(int) $targetId] ?? null),
+                    'href' => $this->libraryHrefFor($targetLabel, $targetAsset?->status),
                 ]
                 : null;
 
@@ -634,14 +683,24 @@ class ProductMediaController extends Controller
      * Media Library tidak akan menemukan apa pun, jadi tautannya langsung ke tab
      * media produknya.
      */
-    private function mediaHrefFor(MediaProcessingLog $log, $assetStatus, $productOf): ?string
+    private function mediaHrefFor(MediaProcessingLog $log, $assets, $productMedias): ?string
     {
         if ($log->loggable_type === MediaAsset::class) {
-            return $this->libraryHrefFor((string) $log->entity_label, $assetStatus[(int) $log->loggable_id] ?? null);
+            $asset = $assets->get((int) $log->loggable_id);
+
+            // Aset yang sudah dihapus tidak bisa ditautkan: pencarian di Media
+            // Library tidak akan menemukan apa pun, jadi tautannya hanya
+            // menyesatkan pembaca seolah medianya masih ada.
+            if (! $asset) {
+                return null;
+            }
+
+            return $this->libraryHrefFor((string) $log->entity_label, $asset->status);
         }
 
         if ($log->loggable_type === ProductMedia::class) {
-            $productId = $productOf[(int) $log->loggable_id] ?? null;
+            $pm = $productMedias->get((int) $log->loggable_id);
+            $productId = $pm?->product_id;
 
             return $productId ? route('admin.products.show', ['product' => $productId, 'tab' => 'media']) : null;
         }

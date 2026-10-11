@@ -196,3 +196,74 @@ describe("tautan media dan catatan tujuan penggabungan", () => {
     expect(teks).toContain("<MergedIntoNote merged={row.merged_into} />")
   })
 })
+
+describe("metrik media di tabel Riwayat Media", () => {
+  it("menampilkan thumbnail media dari thumb_url", () => {
+    // Tanpa thumbnail, admin harus membuka tiap baris ke Media Library hanya
+    // untuk tahu gambar apa yang diproses.
+    const teks = sumber()
+
+    expect(teks).toContain("row.thumb_url ? (")
+    expect(teks).toContain("<img src={row.thumb_url}")
+  })
+
+  it("menampilkan dimensi dan ukuran berkas dari data server", () => {
+    // Ukuran dan dimensi adalah inti audit pemrosesan: membuktikan hasil
+    // konversi WebP wajar, bukan berkas besar yang gagal dikompresi.
+    const teks = sumber()
+
+    expect(teks).toContain("{row.dimensions ?")
+    expect(teks).toContain("formatBytes(row.size_bytes)")
+  })
+
+  it("memakai formatBytes dari lib/format, bukan hitungan sendiri", () => {
+    // Satu formatter bersama supaya satuan tidak berbeda antar halaman.
+    expect(sumber()).toContain('import { formatBytes } from "@/lib/format"')
+  })
+
+  it("menampilkan kolom No dengan nomor menerus antar halaman", () => {
+    // Nomor harus melanjutkan dari halaman sebelumnya, bukan ulang dari 1.
+    const teks = sumber()
+
+    expect(teks).toContain(">No</th>")
+    expect(teks).toContain("pagination.current_page - 1")
+  })
+})
+
+describe("angka jumlah di tab Riwayat Media", () => {
+  it("tab menampilkan jumlah kejadian dari tabCounts", () => {
+    const teks = sumber()
+
+    expect(teks).toContain("tabCounts?: Record<string, number>")
+    expect(teks).toContain("tabCounts?.[tab.key]")
+  })
+
+  it("tab Gagal menonjol saat jumlahnya di atas nol", () => {
+    // Kegagalan itu yang menuntut tindakan, jadi angkanya tidak boleh sama rata
+    // dengan tab lain yang angkanya hanya informasi.
+    const teks = sumber()
+
+    expect(teks).toContain('tab.key === "failed" && count > 0')
+  })
+})
+
+describe("baris dengan media yang sudah dihapus", () => {
+  it("diberi keterangan apa adanya, bukan dibiarkan tampak biasa", () => {
+    // Tanpa keterangan, barisnya tampak seperti media biasa yang kebetulan tanpa
+    // pratinjau: thumbnail kosong dan tautan mati tanpa penjelasan. Barisnya sendiri
+    // tidak dihapus karena tabel ini jejak audit.
+    const teks = sumber()
+
+    expect(teks).toContain("media_missing?: boolean")
+    expect(teks).toContain("function MediaMissingNote()")
+    expect(teks).toContain("Media sudah dihapus")
+  })
+
+  it("ditampilkan di tabel desktop maupun kartu mobile", () => {
+    // Dua markup terpisah untuk hal yang sama gampang berbeda saat salah satunya
+    // disunting, jadi keduanya diperiksa.
+    const jumlah = sumber().split("<MediaMissingNote />").length - 1
+
+    expect(jumlah).toBe(2)
+  })
+})

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  formatBytes,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -136,5 +137,20 @@ describe("rentang waktu entitas berjadwal (beserta jam)", () => {
     // Dulu kolom periode bisa berbunyi "Tanpa batas" dua kali berturut-turut.
     expect(formatRentangWaktu("bukan tanggal", "juga bukan")).toBe("Tanpa batas")
     expect(formatRentangWaktu("2026-09-16T22:27:00+07:00", "rusak")).toMatch(/^Mulai /)
+  })
+})
+
+describe("formatBytes", () => {
+  it("formats B, KB, and MB cleanly", () => {
+    expect(formatBytes(500)).toBe("500 B")
+    expect(formatBytes(1024)).toBe("1 KB")
+    expect(formatBytes(135514)).toBe("132 KB")
+    expect(formatBytes(2500000)).toBe("2.4 MB")
+  })
+
+  it("handles empty or invalid values", () => {
+    expect(formatBytes(0)).toBe("-")
+    expect(formatBytes(null)).toBe("-")
+    expect(formatBytes(undefined)).toBe("-")
   })
 })

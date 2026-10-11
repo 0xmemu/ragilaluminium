@@ -13,6 +13,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { navigateFilter } from "@/lib/filter-url"
 import { routeUrl } from "@/lib/routes"
+import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -31,6 +32,12 @@ interface LogRow {
   media_href?: string | null
   /** Aset tujuan penggabungan duplikat; null bila kejadian ini bukan penggabungan. */
   merged_into?: { asset_id: number; label: string; href: string | null } | null
+  thumb_url?: string | null
+  media_kind?: "image" | "video" | null
+  size_bytes?: number | null
+  dimensions?: string | null
+  /** Asetnya sudah dihapus; barisnya tetap ada sebagai jejak audit. */
+  media_missing?: boolean
 }
 
 /**
@@ -40,6 +47,20 @@ interface LogRow {
  * hal yang sama gampang berbeda saat salah satunya disunting (lihat pengalaman
  * pada kartu ulasan yang punya dua implementasi).
  */
+/**
+ * Keterangan bahwa media di baris ini sudah tidak ada.
+ *
+ * Tanpa keterangan ini, barisnya tampak seperti media biasa yang kebetulan
+ * tidak punya pratinjau: thumbnail kosong, tautan mati, dan angka metrik hilang
+ * tanpa penjelasan. Menghapus barisnya bukan pilihan, karena tabel ini jejak
+ * audit yang memang harus bertahan setelah medianya dihapus.
+ */
+function MediaMissingNote() {
+  return (
+    <p className="mt-0.5 text-[11px] text-muted-foreground italic">Media sudah dihapus</p>
+  )
+}
+
 function MergedIntoNote({ merged }: { merged: LogRow["merged_into"] }) {
   if (!merged) return null
 
@@ -126,12 +147,14 @@ export default function MediaHistory({
   dateFrom: initialDateFrom,
   dateTo: initialDateTo,
   periodLabel,
+  tabCounts,
   prune,
   backUrl,
 }: {
   logs: LogRow[]
   pagination: PaginationData | null
   filters: { event: string; q: string }
+  tabCounts?: Record<string, number>
   activeDatePreset: string
   dateFrom: string
   dateTo: string
@@ -287,21 +310,36 @@ export default function MediaHistory({
         {[
           { key: "", label: "Semua" },
           ...EVENT_TABS.map((key) => ({ key, label: EVENT_META[key].label })),
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => visit({ event: tab.key })}
-            className={cn(
-              "shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-              filters.event === tab.key
-                ? "bg-surface text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+        ].map((tab) => {
+          const count = tabCounts?.[tab.key]
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => visit({ event: tab.key })}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
+                filters.event === tab.key
+                  ? "bg-surface text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span>{tab.label}</span>
+              {typeof count === "number" ? (
+                <span
+                  className={cn(
+                    "tabular-nums text-xs font-normal",
+                    tab.key === "failed" && count > 0
+                      ? "rounded-full bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  ({count})
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
         </div>
         {liveActive ? (
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -437,6 +475,7 @@ export default function MediaHistory({
               <table className="min-w-full text-sm">
                 <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
+                    <th className="w-12 px-3 py-3 text-center font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Waktu</th>
                     <th className="px-3 py-3 font-semibold">Media</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
@@ -445,29 +484,49 @@ export default function MediaHistory({
                   </tr>
                 </thead>
                 <tbody>
-                  {liveRows.map((row) => {
+                  {liveRows.map((row, index) => {
                     const meta = EVENT_META[row.event] ?? { label: row.event, tone: "neutral" }
+                    const rowNo = pagination ? (pagination.current_page - 1) * (pagination.per_page ?? 30) + index + 1 : index + 1
                     return (
                       <tr key={row.id} className="border-t border-border align-top">
+                        <td className="w-12 whitespace-nowrap px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
+                          {rowNo}
+                        </td>
                         <td className="whitespace-nowrap px-3 py-3 text-[12px] tabular-nums text-muted-foreground">
                           {formatDate(row.created_at)}
                         </td>
-                        <td className="max-w-[16rem] px-3 py-3">
-                          {row.media_href ? (
-                            <Link
-                              href={row.media_href}
-                              className="block truncate font-medium text-primary hover:underline"
-                              title={row.entity_label ?? undefined}
-                            >
-                              {row.entity_label ?? "-"}
-                            </Link>
-                          ) : (
-                            <p className="truncate font-medium text-foreground">{row.entity_label ?? "-"}</p>
-                          )}
-                          <p className="text-[11px] text-muted-foreground">
-                            {row.loggable_type.includes("ProductMedia") ? "Media produk" : "Aset"} #{row.loggable_id}
-                          </p>
-                          <MergedIntoNote merged={row.merged_into} />
+                        <td className="max-w-[20rem] px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                              {row.thumb_url ? (
+                                <img src={row.thumb_url} alt="" className="size-full object-cover" loading="lazy" />
+                              ) : (
+                                <Icon name={row.media_kind === "video" ? "video" : "image"} className="size-4 text-muted-foreground" aria-hidden="true" />
+                              )}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {row.media_href ? (
+                                <Link
+                                  href={row.media_href}
+                                  className="block truncate font-medium text-primary hover:underline"
+                                  title={row.entity_label ?? undefined}
+                                >
+                                  {row.entity_label ?? "-"}
+                                </Link>
+                              ) : (
+                                <p className="truncate font-medium text-foreground" title={row.entity_label ?? undefined}>
+                                  {row.entity_label ?? "-"}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                                <span>{row.loggable_type.includes("ProductMedia") ? "Media produk" : "Aset"} #{row.loggable_id}</span>
+                                {row.dimensions ? <span>· {row.dimensions}</span> : null}
+                                {row.size_bytes ? <span>· {formatBytes(row.size_bytes)}</span> : null}
+                              </div>
+                              {row.media_missing ? <MediaMissingNote /> : null}
+                              <MergedIntoNote merged={row.merged_into} />
+                            </div>
+                          </div>
                         </td>
                         <td className="px-3 py-3">
                           <StatusBadge status={meta.tone} label={meta.label} />
@@ -525,20 +584,37 @@ export default function MediaHistory({
                 const meta = EVENT_META[row.event] ?? { label: row.event, tone: "neutral" }
                 return (
                   <div key={row.id} className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      {row.media_href ? (
-                        <Link
-                          href={row.media_href}
-                          className="block truncate text-sm font-medium text-primary hover:underline"
-                        >
-                          {row.entity_label ?? "-"}
-                        </Link>
-                      ) : (
-                        <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "-"}</p>
-                      )}
-                      <StatusBadge status={meta.tone} label={meta.label} />
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                        {row.thumb_url ? (
+                          <img src={row.thumb_url} alt="" className="size-full object-cover" loading="lazy" />
+                        ) : (
+                          <Icon name={row.media_kind === "video" ? "video" : "image"} className="size-4 text-muted-foreground" aria-hidden="true" />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          {row.media_href ? (
+                            <Link
+                              href={row.media_href}
+                              className="block truncate text-sm font-medium text-primary hover:underline"
+                              title={row.entity_label ?? undefined}
+                            >
+                              {row.entity_label ?? "-"}
+                            </Link>
+                          ) : (
+                            <p className="truncate text-sm font-medium text-foreground">{row.entity_label ?? "-"}</p>
+                          )}
+                          <StatusBadge status={meta.tone} label={meta.label} />
+                        </div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                          <span>{formatDate(row.created_at)}</span>
+                          {row.dimensions ? <span>· {row.dimensions}</span> : null}
+                          {row.size_bytes ? <span>· {formatBytes(row.size_bytes)}</span> : null}
+                        </div>
+                        {row.media_missing ? <MediaMissingNote /> : null}
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDate(row.created_at)}</p>
                     {row.message ? (
                       <p className="mt-1 text-[13px] text-muted-foreground">{row.message}</p>
                     ) : null}

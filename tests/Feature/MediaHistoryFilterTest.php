@@ -185,6 +185,156 @@ class MediaHistoryFilterTest extends TestCase
                 ->where('logs.0.merged_into', null));
     }
 
+    public function test_baris_log_menyertakan_metrik_media_untuk_kartu_dan_tabel(): void
+    {
+        // Thumbnail dan metrik (dimensi, ukuran) dipakai tabel desktop maupun kartu
+        // mobile. Untuk aset dari media_assets, ketiganya diambil dari aset itu.
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'foto-metrik.png',
+            'object_key' => 'media/foto-metrik.png',
+            'mime_type' => 'image/webp',
+            'size_bytes' => 135514,
+            'width_px' => 1024,
+            'height_px' => 768,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::record($asset, 'success', 'Derivatif WebP siap.');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.media_kind', 'image')
+                ->where('logs.0.size_bytes', 135514)
+                ->where('logs.0.dimensions', '1024 × 768')
+                ->where('logs.0.thumb_url', fn ($v) => is_string($v) || $v === null));
+    }
+
+    public function test_metrik_media_video_memakai_durasi_bukan_dimensi(): void
+    {
+        // Video tidak punya pasangan lebar x tinggi yang bermakna bagi admin;
+        // durasi jauh lebih berguna dan itu yang menggantikan dimensi.
+        $asset = MediaAsset::create([
+            'kind' => 'video',
+            'label' => 'klip.mp4',
+            'object_key' => 'media/klip.mp4',
+            'mime_type' => 'video/mp4',
+            'size_bytes' => 2500000,
+            'duration_ms' => 95000,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::record($asset, 'success', 'Media berhasil diunduh dan derivatif WebP siap.');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.media_kind', 'video')
+                ->where('logs.0.dimensions', '01:35'));
+    }
+
+    public function test_baris_dengan_media_yang_sudah_dihapus_ditandai_dan_tidak_ditautkan(): void
+    {
+        // Tabel ini jejak audit, jadi barisnya TETAP ada setelah medianya dihapus.
+        // Yang tidak boleh: barisnya tampak seperti media biasa yang kebetulan tanpa
+        // pratinjau, dengan tautan yang menyesatkan seolah medianya masih bisa dibuka.
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'akan-dihapus.png',
+            'object_key' => 'media/akan-dihapus.png',
+            'mime_type' => 'image/png',
+            'size_bytes' => 100,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::record($asset, 'success', 'Derivatif WebP siap.');
+
+        // Hapus asetnya saja, seperti yang dilakukan panel; log sengaja dibiarkan
+        // untuk membuktikan tampilannya tetap jujur.
+        $assetId = (int) $asset->id;
+        $asset->delete();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.media_missing', true)
+                ->where('logs.0.media_href', null)
+                ->where('logs.0.thumb_url', null)
+                ->where('logs.0.entity_label', 'akan-dihapus.png'));
+
+        // Baris lognya sendiri tidak boleh ikut terhapus oleh penghapusan aset.
+        $this->assertSame(1, MediaProcessingLog::query()->where('loggable_id', $assetId)->count());
+    }
+
+    public function test_baris_dengan_media_yang_masih_ada_tidak_ditandai_hilang(): void
+    {
+        // Penanda tidak boleh muncul untuk media yang sehat, karena itu akan
+        // membuat semua baris tampak rusak.
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'masih-ada.png',
+            'object_key' => 'media/masih-ada.png',
+            'mime_type' => 'image/png',
+            'size_bytes' => 100,
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::record($asset, 'success', 'Derivatif WebP siap.');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('logs', 1)
+                ->where('logs.0.media_missing', false)
+                ->where('logs.0.media_href', route('admin.media.library', ['q' => 'masih-ada.png'])));
+    }
+
+    public function test_tab_menyertakan_jumlah_per_kejadian(): void
+    {
+        // Angka di tab membiarkan admin tahu ada kegagalan tanpa harus membuka
+        // tab Gagal lebih dulu. Kunci kosong berarti tab Semua.
+        $this->log('success');
+        $this->log('success');
+        $this->log('failed');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tabCounts', fn ($v) => (int) $v[''] === 3)
+                ->where('tabCounts.failed', 1)
+                ->where('tabCounts.success', 2));
+    }
+
+    public function test_jumlah_tab_mengikuti_penyaring_aktif(): void
+    {
+        // Angka itu dihitung dari himpunan terfilter yang sama dengan tabelnya,
+        // supaya tab tidak menjanjikan jumlah yang tidak akan ditemukan admin.
+        // Kegagalan lama harus ikut hilang dari angka saat periode menyempit.
+        $this->log('success', now()->toDateTimeString());
+        $this->log('failed', now()->subDays(10)->toDateTimeString());
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history', ['date_preset' => 'today']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tabCounts.failed', 0)
+                ->where('tabCounts.success', 1)
+                ->where('tabCounts', fn ($v) => (int) $v[''] === 1));
+    }
+
     public function test_baris_log_penggabungan_duplikat_menyertakan_tujuan_penggabungan(): void
     {
         $canonical = MediaAsset::create([
