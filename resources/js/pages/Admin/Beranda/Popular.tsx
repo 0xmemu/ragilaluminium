@@ -539,11 +539,11 @@ export default function BerandaPopular({
                               title="Pindahkan produk ini ke slot carousel terakhir atau ke urutan pertama di luar carousel"
                               className="inline-flex shrink-0 items-center gap-1 border-primary/30 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/10"
                             >
-                              Pindahkan ke
+                              Pindah ke
                               <Icon name="caret-down" weight="bold" className="size-4 text-primary" aria-hidden="true" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-[13rem]">
+                          <DropdownMenuContent align="end" className="min-w-[10rem]">
                             <DropdownMenuItem
                               disabled={!row.is_eligible}
                               onSelect={() => pindahkanKe(index, "carousel")}
