@@ -5,6 +5,7 @@ import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface SubsidySettings {
@@ -36,6 +37,21 @@ export default function ShippingSubsidyEdit({
     jnt_enabled: settings.jnt_enabled,
   })
 
+  // Kontrak halaman pengaturan: dibuka dalam keadaan terkunci. Isian baru bisa
+  // diubah setelah admin menekan Edit, supaya halaman tidak rawan tersunting
+  // tanpa sengaja saat hanya ingin membaca kondisi aktif.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): pada Inertia versi repo ini state komponen
+    // dipertahankan sehingga mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setSubsidyValue(String(settings.subsidy_value ?? 0))
+    setSubsidyTypeError("")
+    setMode("view")
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault()
     const numeric = Number(subsidyValue)
@@ -49,7 +65,14 @@ export default function ShippingSubsidyEdit({
     }
     setSubsidyTypeError("")
     form.setData("subsidy_value", numeric)
-    form.put(submitUrl)
+    form.put(submitUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        form.setDefaults()
+        setMode("view")
+      },
+    })
   }
 
   return (
@@ -59,9 +82,21 @@ export default function ShippingSubsidyEdit({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
-          <Button type="submit" form="subsidy-form" size="sm" className="h-8 px-4" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+          {mode === "view" ? (
+            <Button type="button" size="sm" className="h-8 px-4" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" className="h-8 px-4" onClick={batal}>
+                Batal
+              </Button>
+              <Button type="submit" form="subsidy-form" size="sm" className="h-8 px-4" disabled={form.processing}>
+                {form.processing ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -85,6 +120,7 @@ export default function ShippingSubsidyEdit({
                     onChange={(checked) => form.setData("enabled", checked)}
                     label="Subsidi ongkir aktif"
                     standalone
+                    disabled={terkunci}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
                     Aktifkan untuk memberikan potongan biaya pengiriman kepada pembeli.
@@ -110,6 +146,7 @@ export default function ShippingSubsidyEdit({
                         setSubsidyTypeError("")
                       }}
                       className={`h-8 w-28 text-xs ${subsidyTypeError ? "border-destructive" : ""}`}
+                      disabled={terkunci}
                       required
                     />
                     <span className="text-xs font-semibold text-muted-foreground">%</span>
@@ -135,6 +172,7 @@ export default function ShippingSubsidyEdit({
                     checked={form.data.jnt_enabled}
                     onChange={(checked) => form.setData("jnt_enabled", checked)}
                     standalone
+                    disabled={terkunci}
                     label={
                       <span>
                         J&T Cargo
@@ -151,6 +189,12 @@ export default function ShippingSubsidyEdit({
         </div>
 
       </form>
+
+      {terkunci ? (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Nilai di atas adalah kondisi yang sedang aktif. Tekan Edit untuk mengubah.
+        </p>
+      ) : null}
     </AdminLayout>
   )
 }

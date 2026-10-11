@@ -6,6 +6,7 @@ import { HintTip } from "@/components/admin/ui/hint-tip"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 
@@ -38,6 +39,19 @@ export default function CodSettingsEdit({
   const capabilities = useAdminCapabilities()
   const canManage = can("cod_settings.manage", capabilities)
 
+  // Kontrak halaman pengaturan: dibuka dalam keadaan terkunci. Isian baru bisa
+  // diubah setelah admin menekan Edit, supaya halaman tidak rawan tersunting
+  // tanpa sengaja saat hanya ingin membaca kondisi aktif.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): pada Inertia versi repo ini state komponen
+    // dipertahankan sehingga mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault()
     form.transform((data) => ({
@@ -50,7 +64,14 @@ export default function CodSettingsEdit({
             ? null
             : Number(data.max_order_amount),
       }))
-    form.put(submitUrl)
+    form.put(submitUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        form.setDefaults()
+        setMode("view")
+      },
+    })
   }
 
   return (
@@ -60,16 +81,35 @@ export default function CodSettingsEdit({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
-          <Button
-            type="submit"
-            form="cod-settings-form"
-            size="sm"
-            className="h-8 px-4"
-            disabled={form.processing || !canManage}
-            title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
-          >
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+          {mode === "view" ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 px-4"
+              onClick={() => setMode("edit")}
+              disabled={!canManage}
+              title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
+            >
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" className="h-8 px-4" onClick={batal}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                form="cod-settings-form"
+                size="sm"
+                className="h-8 px-4"
+                disabled={form.processing || !canManage}
+                title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
+              >
+                {form.processing ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -97,6 +137,7 @@ export default function CodSettingsEdit({
                     onChange={(checked) => form.setData("enabled", checked)}
                     label="Layanan COD aktif"
                     standalone
+                    disabled={terkunci}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
                     Aktifkan atau nonaktifkan Bayar di Tempat untuk seluruh pelanggan.
@@ -120,6 +161,7 @@ export default function CodSettingsEdit({
                     value={form.data.fee_value}
                     onChange={(event) => form.setData("fee_value", event.target.value)}
                     className="h-8 w-44 text-xs"
+                    disabled={terkunci}
                     required
                   />
                   {form.errors.fee_value ? (
@@ -144,6 +186,7 @@ export default function CodSettingsEdit({
                     value={form.data.max_order_amount}
                     onChange={(event) => form.setData("max_order_amount", event.target.value)}
                     className="h-8 w-44 text-xs"
+                    disabled={terkunci}
                     placeholder="Contoh: 5000000"
                   />
                   {form.errors.max_order_amount ? (
@@ -160,6 +203,12 @@ export default function CodSettingsEdit({
 
 
       </form>
+
+      {terkunci ? (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Nilai di atas adalah kondisi yang sedang aktif. Tekan Edit untuk mengubah.
+        </p>
+      ) : null}
     </AdminLayout>
   )
 }
