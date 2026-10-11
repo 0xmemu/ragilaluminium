@@ -3937,3 +3937,24 @@ Verifikasi koherensi HEAD: seluruh impor Promotions.tsx ada di HEAD (15 modul, t
 - Owner: "sesuaikan ukuran dropdown. pindah ke bukan pindahkan ke." Label pemicu menjadi "Pindah ke" dan lebar menu menyusut dari min-w-[13rem] (208px) ke min-w-[10rem] (terukur 140px) supaya proporsional dengan dua pilihannya. Fungsi tidak berubah.
 - Verifikasi: tsc + lint bersih, build sukses; live: pemicu "Pindah ke" 90px dengan data-reorder-allow tetap ada, menu terbuka 140px berisi "Carousel" dan "Halaman 1".
 Agent: zcode
+
+## 2026-10-12 02:20 UTC | zcode | Standard | selesai
+- Owner: "gunakan model tambah voucher seperti halaman tambah promo lain" (vouchers/create).
+### PERUBAHAN (commit 7b73d6c7)
+Form Voucher ditata ulang dari layout tabel (<tr><th w-64>) ke model section PromotionForm:
+"Informasi voucher" (FieldGrid: nama, kode uppercase monospace, diskon Select+angka, min pembelian,
+stackable CheckboxField), "Berlaku untuk" (radio pill Semua produk/Model/Produk tertentu; pilihan
+model memunculkan Select, pilihan produk memunculkan ProductPickerSheet), "Periode berlaku" (tombol
+Mulai Sekarang di kanan header, datetime Mulai/Selesai, preset +24 Jam/+3 Hari/+7 Hari/+30 Hari/Kosongkan).
+Checkbox publikasi dihapus; tombol header create menjadi "Simpan tanpa aktifkan" (sekunder) dan
+"Simpan & Aktifkan" (primer); edit tetap "Simpan". publish_now dikirim via form.transform.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- StoreVoucherTest 14 passed.
+- End-to-end live: "Simpan tanpa aktifkan" membuat voucher tersimpan published=0 (dicek DB),
+  "Simpan & Aktifkan" membuat published=1; keduanya kembali ke daftar dengan pesan sukses.
+  Dua voucher uji (UJIDRAFTUI, UJIAKTIFUI) dihapus dari DB setelah bukti diambil.
+### TINDAK LANJUT
+Form Voucher dan PromotionForm masih memakai UI periode masing-masing, belum migrasi ke PeriodeField
+bersama (menunggu arahan owner).
+Agent: zcode
