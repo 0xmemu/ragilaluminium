@@ -203,12 +203,6 @@ export default function CodSettingsEdit({
 
 
       </form>
-
-      {terkunci ? (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Nilai di atas adalah kondisi yang sedang aktif. Tekan Edit untuk mengubah.
-        </p>
-      ) : null}
     </AdminLayout>
   )
 }

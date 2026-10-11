@@ -3869,3 +3869,10 @@ Agent: zcode
 - KOREKSI KESALAHAN SAYA SENDIRI: commit sebelumnya (b137a6f7) membuang prop nextSortOrder dari payload create banner, padahal AdminSortOrderBaseOneTest baris 100 mematok prop itu, sehingga 1 test gagal (terdeteksi saat menjalankan test, bukan saat commit). Assertion diubah menjadi missing("nextSortOrder") dengan alasan field urutan memang sudah tidak ada di form; helper nextSortOrder() di controller tetap dipakai saat menyimpan supaya perilaku urutan tidak berubah.
 - Props mati dibuang: presignUrl (dikirim create+edit, tidak pernah dibaca form), _presignUrl (parameter form, tidak dipakai).
 - Verifikasi: typecheck 0, eslint 0, build sukses, php -l bersih; AdminSortOrderBaseOneTest+HomepagePopularTest+FrontendPageContractTest+AdminPromoPagesBackButtonTest 44 passed (1083 asersi); terukur di browser kolom kiri/kanan form center Y sama (496) dan tepi kanan kedua kolom 738/1230 lurus dengan kartu.
+
+## 2026-10-11 17:20 UTC | zcode-retur | Trivial | 2 berkas | selesai
+Lingkup: owner minta baris penutup di halaman pengaturan dihapus.
+Perubahan: hapus baris "Nilai di atas adalah kondisi yang sedang aktif. Tekan Edit untuk mengubah." dari CodSettings/Edit.tsx dan ShippingSubsidy/Edit.tsx (tambahan saya sendiri di commit sebelumnya, bukan permintaan owner).
+Dampak spec: tidak berubah.
+Verifikasi: eslint 0 warning, typecheck bersih, build sukses; di browser catatan tidak ada lagi di kedua halaman dan keadaan terkunci tetap berlaku (semua input disabled).
+Agent: zcode-retur
