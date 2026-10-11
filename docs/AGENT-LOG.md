@@ -3763,3 +3763,12 @@ Agent: zcode-retur
 - Verifikasi: tsc + lint bersih, HomepagePopularTest + BerandaPopularToolbarTest 26 lulus / 467 asersi, build sukses; live: halaman 1 baris 1-25 dengan garis batas, tombol halaman 1-8, halaman 2 baris 26-50 tanpa garis batas, "Ke atas" dari halaman 2 lompat ke halaman 1, "Urungkan" mengembalikan urutan tersimpan.
 - Catatan: saat menguji "Ke atas" lintas halaman, keadaan sisi klien berubah lalu dipulihkan dengan memuat ulang halaman (belum ada yang disimpan ke server); urutan tersimpan saat ini adalah kurasi owner sendiri (event cms.beranda_popular_updated 11 Okt 19:28 oleh user 13).
 Agent: zcode
+
+Urutan tab Riwayat Media dibalik jadi Berhasil dulu (/admin/media/history)
+Lingkup: permintaan owner 11 Okt 2026, 'berhasil dulu baru gagal'.
+Perubahan: EVENT_TABS (klien) dan HISTORY_EVENT_TABS (server) dibalik menjadi success lalu failed, sehingga tab tampil Semua, Berhasil, Gagal. Kedua daftar wajib sama urutannya karena penjaganya membandingkan keduanya secara langsung. Komentar blok EVENT_TABS juga diperbarui supaya tidak lagi menyebut alasan lama (yang perlu ditindak lebih dulu), dan alasan penggantinya ditulis di situ.
+Dampak spec: tidak ada. Murni urutan tampilan; tidak ada route, kolom, enum, atau bentuk JSON baru.
+Catatan yang dipertahankan: angka pada tab Gagal tetap diberi penekanan merah saat isinya di atas nol, jadi memindahkannya ke belakang tidak membuat kegagalan kurang terlihat.
+Penjaga: test klien 25 tes, dengan penjaga urutan dibalik mengikuti keputusan baru.
+Verifikasi: typecheck 0, eslint bersih, build sukses, Vitest 35 berkas 320 tes lulus, MediaHistoryFilterTest 16 tes 250 asersi lulus. Live di browser dalam aplikasi: urutan tab terbaca Semua (4), Berhasil (4), Gagal (0).
+Agent: gemini-3.8-flash-high
