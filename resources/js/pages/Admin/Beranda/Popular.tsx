@@ -214,7 +214,7 @@ export default function BerandaPopular({
   const [reorderMode, setReorderMode] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState("")
-  const [showAll, setShowAll] = React.useState(false)
+  const [page, setPage] = React.useState(1)
   const [movedId, setMovedId] = React.useState<number | null>(null)
   const tableRef = React.useRef<HTMLDivElement>(null)
   const form = useForm({ product_ids: initialProducts.map((row) => row.id) })
@@ -251,6 +251,10 @@ export default function BerandaPopular({
     const [item] = next.splice(targetIndex, 1)
     next.unshift(item)
     syncRows(next)
+    // Produk yang dinaikkan selalu mendarat di posisi 1, jadi pindahkan pandangan
+    // ke halaman 1 supaya admin melihat hasilnya, bukan halaman lama tempat
+    // tombol itu ditekan.
+    setPage(1)
     // Baris yang dipindah disorot sekilas lalu halaman digulir ke baris itu:
     // tanpa itu, admin yang menekan "Ke atas" pada produk di baris ke-150 tidak
     // melihat apa pun berubah karena hasilnya berada jauh di atas layar.
@@ -298,11 +302,14 @@ export default function BerandaPopular({
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => matches(row) && (statusFilter === "" || statusOf(row) === statusFilter))
 
-  const PREVIEW = carouselLimit + 15
-  // Mode Urutkan otomatis membuka seluruh daftar: admin yang menekan "Urutkan"
-  // pasti ingin menggeser, jadi jangan suruh dia membuka daftar dulu.
-  const visible = reorderMode || showAll ? filtered : filtered.slice(0, PREVIEW)
-  const hiddenCount = filtered.length - visible.length
+  // Daftar dipaginasi di sisi klien: seluruh baris tetap dimuat karena geser
+  // dan "Ke atas" menulis urutan global lewat indeks aslinya, tapi yang tampil
+  // per halaman dibatasi supaya 183 baris tidak menumpuk.
+  const PER_HALAMAN = 25
+  const totalHalaman = Math.max(1, Math.ceil(filtered.length / PER_HALAMAN))
+  const halamanKini = Math.min(page, totalHalaman)
+  const awalBaris = (halamanKini - 1) * PER_HALAMAN
+  const visible = filtered.slice(awalBaris, awalBaris + PER_HALAMAN)
 
   // Geser-urut dimatikan saat daftar tersaring: posisi target tidak mewakili
   // urutan global, jadi hasil geser bisa salah tempat.
@@ -385,7 +392,10 @@ export default function BerandaPopular({
       <ListToolbar
         search={{
           value: query,
-          onChange: setQuery,
+          onChange: (value) => {
+            setQuery(value)
+            setPage(1)
+          },
           placeholder: "Cari nama produk atau SKU",
           // Kotak cari sengaja tetap hidup saat mode Urutkan aktif: alur yang
           // dituju halaman ini adalah "cari produk lama, lalu pindahkan ke atas",
@@ -401,7 +411,10 @@ export default function BerandaPopular({
       >
         <Select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(event) => {
+            setStatusFilter(event.target.value)
+            setPage(1)
+          }}
           aria-label="Filter status tayang"
           className="w-44"
         >
@@ -530,12 +543,45 @@ export default function BerandaPopular({
             </tbody>
           </table>
         </div>
-        {hiddenCount > 0 && !reorderMode ? (
-          <div className="border-t border-border px-4 py-3">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowAll((value) => !value)}>
-              <Icon name={showAll ? "caret-up" : "caret-down"} className="size-4" aria-hidden="true" />
-              {showAll ? "Ringkas daftar" : `Tampilkan semua (${hiddenCount} lagi)`}
-            </Button>
+        {totalHalaman > 1 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Halaman <span className="font-semibold text-foreground">{halamanKini}</span> dari{" "}
+              <span className="font-semibold text-foreground">{totalHalaman}</span>
+            </p>
+            <div className="flex flex-wrap items-center gap-1">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={halamanKini <= 1}
+                onClick={() => setPage(halamanKini - 1)}
+              >
+                Sebelumnya
+              </Button>
+              {Array.from({ length: totalHalaman }, (_, nomor) => nomor + 1).map((nomor) => (
+                <Button
+                  key={nomor}
+                  type="button"
+                  variant={nomor === halamanKini ? "primary" : "secondary"}
+                  size="sm"
+                  className="min-w-8 px-2"
+                  aria-current={nomor === halamanKini ? "page" : undefined}
+                  onClick={() => setPage(nomor)}
+                >
+                  {nomor}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={halamanKini >= totalHalaman}
+                onClick={() => setPage(halamanKini + 1)}
+              >
+                Berikutnya
+              </Button>
+            </div>
           </div>
         ) : null}
       </Card>
