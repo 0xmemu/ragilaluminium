@@ -251,10 +251,15 @@ export default function CategoriesIndex({
                             trigger={
                               <button
                                 type="button"
-                                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
-                                disabled={busy === c.id}
+                                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                                disabled={busy === c.id || c.products_count > 0}
                               >
                                 Hapus
+                                {c.products_count > 0 ? (
+                                  <span className="mt-0.5 block text-[10px] font-normal leading-tight text-muted-foreground">
+                                    Dipakai {formatNumber(c.products_count)} produk
+                                  </span>
+                                ) : null}
                               </button>
                             }
                             title="Hapus kategori?"
