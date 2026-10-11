@@ -7,8 +7,8 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
-import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
-import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
+import type { PickerProduct } from "@/components/admin/ui/ProductPicker"
+import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
 import { routeUrl } from "@/lib/routes"
 import { addHoursLocalInput, nowLocalInput, toLocalInput } from "@/lib/period"
 
@@ -85,7 +85,6 @@ export default function PromotionForm({
       override_discount_percent: target.override_discount_percent ? String(target.override_discount_percent) : "",
     })) ?? [],
   })
-  const [pickerOpen, setPickerOpen] = React.useState(false)
 
 
   const [pickerProducts, setPickerProducts] = React.useState<PickerProduct[]>(() =>
@@ -283,10 +282,26 @@ export default function PromotionForm({
           <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
             <Field id="promotion-product" label="Produk tertentu">
               <div className="space-y-2">
-                <Button type="button" variant="outline" onClick={() => setPickerOpen(true)} className="w-full sm:w-auto">
-                  <Icon name="package" className="mr-2 size-4" aria-hidden="true" />
-                  {pickerProducts.length > 0 ? `Ubah pilihan (${pickerProducts.length} produk)` : "Pilih Produk"}
-                </Button>
+                <ProductPickerSheet
+                  title="Pilih Produk untuk Promo"
+                  description="Cari, filter, lalu centang produk. Maksimal 100 produk per promo."
+                  maxSelection={100}
+                  endpoint={routeUrl("admin.promotions.products")}
+                  initialSelection={pickerProducts}
+                  onSelect={applyPickerSelection}
+                  closeLabel="Batal"
+                  footer={(close) => (
+                    <Button type="button" onClick={close}>
+                      Selesai ({pickerProducts.length} produk)
+                    </Button>
+                  )}
+                  trigger={(open) => (
+                    <Button type="button" variant="outline" onClick={open} className="w-full sm:w-auto">
+                      <Icon name="package" className="mr-2 size-4" aria-hidden="true" />
+                      {pickerProducts.length > 0 ? `Ubah pilihan (${pickerProducts.length} produk)` : "Pilih Produk"}
+                    </Button>
+                  )}
+                />
                 {pickerProducts.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {pickerProducts.slice(0, 12).map((product) => (
@@ -535,35 +550,7 @@ export default function PromotionForm({
         </section>
 
         
-            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
-        <SheetContent
-          side="right"
-          title="Pilih Produk untuk Promo"
-          className="w-full overflow-y-auto sm:max-w-3xl"
-        >
-          <div className="flex flex-col gap-1">
-            <h2 className="text-base font-semibold">Pilih Produk untuk Promo</h2>
-            <p className="text-sm text-muted-foreground">Cari, filter, lalu centang produk. Maksimal 100 produk per promo.</p>
-          </div>
-          <div className="mt-4 space-y-4">
-            <ProductPicker
-              endpoint={routeUrl("admin.promotions.products")}
-              maxSelection={100}
-              initialSelection={pickerProducts}
-              onSelect={applyPickerSelection}
-            />
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)}>
-                Batal
-              </Button>
-              <Button type="button" onClick={() => setPickerOpen(false)}>
-                Selesai ({pickerProducts.length} produk)
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </form>
+</form>
     </AdminLayout>
   )
 }

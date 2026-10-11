@@ -4,8 +4,8 @@ import * as React from "react"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
-import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
-import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
+import type { PickerProduct } from "@/components/admin/ui/ProductPicker"
+import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { addHoursLocalInput, nowLocalInput, toLocalInput } from "@/lib/period"
@@ -73,7 +73,6 @@ export default function VoucherForm({
   // Satu voucher menyasar satu produk, dan pemilihannya memakai ProductPicker
   // yang sama dengan halaman admin lain, bukan dropdown bawaan halaman.
   const [produkPicked, setProdukPicked] = React.useState<PickerProduct | null>(initialProduct)
-  const [pickerTerbuka, setPickerTerbuka] = React.useState(false)
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -260,24 +259,37 @@ export default function VoucherForm({
                   ) : null}
                   {form.data.target_type === "product" ? (
                     <div className="mt-3 grid gap-2">
-                      <Button
-                        type="button"
-                        variant={produkPicked ? "outline" : "secondary"}
-                        size="sm"
-                        onClick={() => setPickerTerbuka(true)}
-                        className="w-fit max-w-full"
-                      >
-                        {produkPicked ? (
-                          <>
-                            <span className="min-w-0 truncate">{produkPicked.name}</span>
-                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                              {produkPicked.parent_sku}
-                            </span>
-                          </>
-                        ) : (
-                          "Pilih produk"
+                      <ProductPickerSheet
+                        title="Pilih produk voucher"
+                        description="Voucher hanya berlaku untuk produk yang dipilih di sini; satu voucher menyasar satu produk."
+                        maxSelection={1}
+                        initialSelection={produkPicked ? [produkPicked] : []}
+                        onSelect={(products) => {
+                          const produk = products[0] ?? null
+                          setProdukPicked(produk)
+                          form.setData("target_product_id", produk ? String(produk.id) : "")
+                        }}
+                        trigger={(open) => (
+                          <Button
+                            type="button"
+                            variant={produkPicked ? "outline" : "secondary"}
+                            size="sm"
+                            onClick={open}
+                            className="w-fit max-w-full"
+                          >
+                            {produkPicked ? (
+                              <>
+                                <span className="min-w-0 truncate">{produkPicked.name}</span>
+                                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                                  {produkPicked.parent_sku}
+                                </span>
+                              </>
+                            ) : (
+                              "Pilih produk"
+                            )}
+                          </Button>
                         )}
-                      </Button>
+                      />
                       {produkPicked ? (
                         <button
                           type="button"
@@ -404,36 +416,6 @@ export default function VoucherForm({
 
       </form>
 
-      <Sheet open={pickerTerbuka} onOpenChange={setPickerTerbuka}>
-        <SheetContent
-          side="right"
-          title="Pilih produk voucher"
-          className="w-full overflow-y-auto sm:max-w-3xl"
-        >
-          <div className="flex flex-col gap-1">
-            <h2 className="text-base font-semibold">Pilih produk voucher</h2>
-            <p className="text-sm text-muted-foreground">
-              Voucher hanya berlaku untuk produk yang dipilih di sini; satu voucher menyasar satu produk.
-            </p>
-          </div>
-          <div className="mt-4 space-y-4">
-            <ProductPicker
-              maxSelection={1}
-              initialSelection={produkPicked ? [produkPicked] : []}
-              onSelect={(products) => {
-                const produk = products[0] ?? null
-                setProdukPicked(produk)
-                form.setData("target_product_id", produk ? String(produk.id) : "")
-              }}
-            />
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setPickerTerbuka(false)}>
-                Tutup
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </AdminLayout>
+</AdminLayout>
   )
 }

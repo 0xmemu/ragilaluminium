@@ -4,8 +4,8 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
-import { ProductPicker, type PickerProduct } from "@/components/admin/ui/ProductPicker"
-import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
+import type { PickerProduct } from "@/components/admin/ui/ProductPicker"
+import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
 import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
@@ -136,7 +136,6 @@ export default function TestimonialForm({
   // Produk terkait (permintaan owner 2026-09-29: pakai produk picker reusable).
   // Satu ulasan menautkan satu produk; pilihannya live lewat onSelect.
   const [produkPicked, setProdukPicked] = React.useState<PickerProduct | null>(initialProduct)
-  const [produkPickerTerbuka, setProdukPickerTerbuka] = React.useState(false)
 
   const photosPenuh = photos.length >= maxPhotos
   // Galat foto datang dengan kunci yang dikirim server; `photos` dirakit saat
@@ -412,21 +411,30 @@ export default function TestimonialForm({
                   error={form.errors.product_id}
                   hint="Opsional. Ulasan tanpa produk tetap tampil di /reviews saja."
                 >
-                  <Button
-                    type="button"
-                    variant={produkPicked ? "outline" : "secondary"}
-                    onClick={() => setProdukPickerTerbuka(true)}
-                    className="max-w-full"
-                  >
-                    {produkPicked ? (
-                      <>
-                        <span className="min-w-0 truncate">{produkPicked.name}</span>
-                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{produkPicked.parent_sku}</span>
-                      </>
-                    ) : (
-                      "Pilih produk"
+                  <ProductPickerSheet
+                    title="Pilih produk terkait"
+                    description="Cari produk yang diulas. Satu ulasan hanya menautkan satu produk; kosongkan untuk ulasan umum."
+                    maxSelection={1}
+                    initialSelection={produkPicked ? [produkPicked] : []}
+                    onSelect={(products) => setProdukPicked(products[0] ?? null)}
+                    trigger={(open) => (
+                      <Button
+                        type="button"
+                        variant={produkPicked ? "outline" : "secondary"}
+                        onClick={open}
+                        className="max-w-full"
+                      >
+                        {produkPicked ? (
+                          <>
+                            <span className="min-w-0 truncate">{produkPicked.name}</span>
+                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{produkPicked.parent_sku}</span>
+                          </>
+                        ) : (
+                          "Pilih produk"
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  />
                   {produkPicked ? (
                     <button
                       type="button"
@@ -513,28 +521,6 @@ export default function TestimonialForm({
         multiple
         title="Pilih foto ulasan dari Media Library"
       />
-      <Sheet open={produkPickerTerbuka} onOpenChange={setProdukPickerTerbuka}>
-        <SheetContent side="right" title="Pilih produk terkait" className="w-full overflow-y-auto sm:max-w-3xl">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-base font-semibold">Pilih produk terkait</h2>
-            <p className="text-sm text-muted-foreground">
-              Cari produk yang diulas. Satu ulasan hanya menautkan satu produk; kosongkan untuk ulasan umum.
-            </p>
-          </div>
-          <div className="mt-4 space-y-4">
-            <ProductPicker
-              maxSelection={1}
-              initialSelection={produkPicked ? [produkPicked] : []}
-              onSelect={(products) => setProdukPicked(products[0] ?? null)}
-            />
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setProdukPickerTerbuka(false)}>
-                Tutup
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </AdminLayout>
+</AdminLayout>
   )
 }
