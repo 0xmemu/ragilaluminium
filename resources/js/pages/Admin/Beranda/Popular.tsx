@@ -1,6 +1,12 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/admin/ui/dropdown-menu"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { Button } from "@/components/admin/ui/button"
 import { ReorderActionButton } from "@/components/admin/reorder-action-button"
@@ -194,8 +200,9 @@ function taxonomy(row: PopularRow): string {
  * Kolom metrik sama untuk semua baris. Baris di dalam carousel menampilkan
  * sebelum → sesudah, baris di luar carousel menampilkan total yang tercatat.
  *
- * Tombol "Ke atas" memindahkan produk mana pun ke posisi 1, jadi produk lama atau
- * tidak populer bisa naik ke carousel tanpa menyeretnya dari baris ke-150.
+ * Menu "Pindahkan ke" menaruh produk langsung ke nomor 10 (slot carousel
+ * terakhir) atau nomor 11 (urutan pertama di luar carousel), jadi produk lama
+ * atau tidak populer bisa masuk carousel tanpa menyeretnya dari baris ke-150.
  */
 export default function BerandaPopular({
   title,
@@ -245,19 +252,24 @@ export default function BerandaPopular({
     )
   }
 
-  function moveToTop(targetIndex: number) {
-    if (targetIndex <= 0) return
+  function pindahkanKe(targetIndex: number, tujuan: "carousel" | "halaman-1") {
+    // Nomor tujuan memakai posisi 1-based: Carousel = nomor 10 (slot terakhir),
+    // Halaman 1 = nomor 11 (urutan pertama di luar carousel).
+    const nomorTujuan = tujuan === "carousel" ? 10 : 11
+    if (targetIndex < 0) return
     const next = [...rows]
     const [item] = next.splice(targetIndex, 1)
-    next.unshift(item)
+    // Menyisipkan pada indeks 0-based (nomorTujuan - 1) selalu menempatkan
+    // produk di posisi 1-based nomorTujuan, apa pun posisi asalnya.
+    next.splice(Math.min(Math.max(nomorTujuan - 1, 0), next.length), 0, item)
     syncRows(next)
-    // Produk yang dinaikkan selalu mendarat di posisi 1, jadi pindahkan pandangan
+    // Kedua tujuan ada di halaman 1 (nomor 10 dan 11), jadi pindahkan pandangan
     // ke halaman 1 supaya admin melihat hasilnya, bukan halaman lama tempat
     // tombol itu ditekan.
     setPage(1)
     // Baris yang dipindah disorot sekilas lalu halaman digulir ke baris itu:
-    // tanpa itu, admin yang menekan "Ke atas" pada produk di baris ke-150 tidak
-    // melihat apa pun berubah karena hasilnya berada jauh di atas layar.
+    // tanpa itu, admin yang memindahkan produk dari baris ke-150 tidak melihat
+    // apa pun berubah karena hasilnya berada jauh di atas layar.
     setMovedId(item.id)
     // Tombol simpan hanya dirender saat mode urut aktif (kontrak
     // ReorderActionButton), jadi memindahkan produk sekaligus menyalakan mode itu.
@@ -428,7 +440,7 @@ export default function BerandaPopular({
 
       {reorderMode ? (
         <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris atau tombol <span className="font-semibold text-foreground">Ke atas</span> untuk memindahkan produk, lalu tekan Simpan urutan.
+          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris atau menu <span className="font-semibold text-foreground">Pindahkan ke</span> untuk memindahkan produk, lalu tekan Simpan urutan.
           {!canReorder ? (
             <span className="font-semibold text-foreground"> Selagi daftar tersaring (pencarian atau filter status), hanya tombol Ke atas yang bisa memindahkan produk; kosongkan keduanya untuk menggeser bebas.</span>
           ) : null}
@@ -517,19 +529,32 @@ export default function BerandaPopular({
                         <MetricCell row={row} metric="clicks" inWindow={rowInWindow(row)} />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          data-reorder-allow
-                          disabled={index === 0}
-                          onClick={() => moveToTop(index)}
-                          title="Pindahkan produk ini ke urutan paling atas (masuk carousel)"
-                          className="inline-flex shrink-0 items-center gap-1 border-primary/30 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/10"
-                        >
-                          <Icon name="caret-up" weight="bold" className="size-4 text-primary" aria-hidden="true" />
-                          Ke atas
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="xs"
+                              data-reorder-allow
+                              title="Pindahkan produk ini ke slot carousel terakhir atau ke urutan pertama di luar carousel"
+                              className="inline-flex shrink-0 items-center gap-1 border-primary/30 text-xs font-semibold text-primary hover:border-primary hover:bg-primary/10"
+                            >
+                              Pindahkan ke
+                              <Icon name="caret-down" weight="bold" className="size-4 text-primary" aria-hidden="true" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[13rem]">
+                            <DropdownMenuItem
+                              disabled={!row.is_eligible}
+                              onSelect={() => pindahkanKe(index, "carousel")}
+                            >
+                              Carousel
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => pindahkanKe(index, "halaman-1")}>
+                              Halaman 1
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   </React.Fragment>
