@@ -85,7 +85,7 @@ export default function WhatsAppIndex({
       </div>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        <div className="hidden grid-cols-[minmax(0,1fr)_8rem_5rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[minmax(0,1fr)_7rem_9rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
           <span>Trigger event</span>
           <span>Status</span>
           <span className="text-right">Aksi</span>
@@ -102,7 +102,7 @@ export default function WhatsAppIndex({
               return (
                 <li
                   key={row.id}
-                  className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_8rem_5rem] sm:items-center sm:gap-4"
+                  className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_7rem_9rem] sm:items-center sm:gap-4"
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
@@ -117,17 +117,17 @@ export default function WhatsAppIndex({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 sm:justify-start">
+                  <div>
+                    <StatusBadge status={active ? "active" : "inactive"} />
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:justify-end">
                     <Switch
                       checked={active}
                       disabled={busy}
                       label={`${active ? "Nonaktifkan" : "Aktifkan"} ${row.label}`}
                       onCheckedChange={() => toggle(row)}
                     />
-                    <StatusBadge status={active ? "active" : "inactive"} />
-                  </div>
-
-                  <div className="flex sm:justify-end">
                     <Button asChild variant="secondary" className="h-9 px-3">
                       <Link href={row.editUrl} aria-label={`Edit ${row.label}`}>
                         <Icon name="pencil" className="size-4" aria-hidden="true" />

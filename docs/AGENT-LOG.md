@@ -3828,3 +3828,10 @@ Perubahan: whatsapp-connection-card.tsx memakai CopyButton bersama (compact) di 
 Dampak spec: tidak berubah.
 Verifikasi: typecheck dan lint bersih, build sukses; di browser tombol ada sebaris dengan nomor, title/aria-label menyebut 0881080733754 (tanpa pemisah, tanpa dash).
 Agent: zcode-retur
+
+## 2026-10-11 16:30 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner menilai saklar aktif/nonaktif template WhatsApp Otomatis seharusnya berada di kolom Aksi.
+Perubahan: Index.tsx (halaman Template Pesan) memindahkan Switch dari kolom Status ke kolom Aksi, sebaris dengan tombol Edit; kolom Status kini hanya badge Aktif/Nonaktif. Lebar kolom disesuaikan (Status 8rem ke 7rem, Aksi 5rem ke 9rem) karena kolom Aksi memuat dua kontrol.
+Dampak spec: tidak berubah.
+Verifikasi: typecheck dan lint bersih, build sukses; di browser saklar berada satu baris dengan Edit di kolom Aksi, kolom Status berisi badge.
+Agent: zcode-retur
