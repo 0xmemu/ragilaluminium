@@ -3803,3 +3803,10 @@ Perubahan: whatsapp-connection-card.tsx (komponen bersama, dipakai halaman Ringk
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint bersih, build sukses; di browser kalimat lama hilang, nomor tampil 21px tebal, kartu lebih ringkas.
 Agent: zcode-retur
+
+## 2026-10-11 15:55 UTC | zcode-retur | Trivial | 1 berkas | selesai
+Lingkup: owner menilai ukuran nomor pada kartu Status WhatsApp berlebihan.
+Perubahan: nomor diturunkan dari text-2xl (21px) ke text-xl (17.5px), sama persis dengan ukuran angka kartu KPI di halaman yang sama (diukur di browser, bukan ditebak).
+Dampak spec: tidak berubah.
+Verifikasi: build sukses; di browser nomor terbaca 17.5px font-weight 600.
+Agent: zcode-retur

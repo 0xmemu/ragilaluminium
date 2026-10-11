@@ -96,7 +96,7 @@ export function WhatsAppConnectionCard({
               <span className={TONE_ICON[tone].split(" ").pop()}>{label}</span>
             </span>
           </p>
-          <p className="mt-1.5 text-2xl font-semibold leading-none tracking-tight text-foreground tabular-nums">
+          <p className="mt-1 text-xl font-semibold leading-tight tracking-tight text-foreground tabular-nums">
             <span className="sr-only">Nomor WhatsApp: </span>
             {nomor}
           </p>
