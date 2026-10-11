@@ -3,9 +3,9 @@ import { usePage } from "@inertiajs/react"
 import type { SharedPageProps } from "@/types"
 import * as React from "react"
 
-import { ManagePromotionsTabs } from "@/components/admin/manage-promotions-tabs"
 import { Card } from "@/components/admin/ui/card"
-import { rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -19,11 +19,10 @@ import {
   TableRow,
 } from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber, formatRentangWaktu, formatWaktuRingkas } from "@/lib/format"
-import { cn } from "@/lib/utils"
-import { routeUrl } from "@/lib/routes"
 
 interface TargetRow {
   label: string
@@ -41,6 +40,7 @@ interface PromotionRow {
   items_count: number
   products_count: number
   targets: TargetRow[]
+  detail_href: string
   edit_href: string
   activate_url: string
   end_url: string
@@ -125,7 +125,7 @@ function ActivateAction({ row, busy, setBusy }: { row: PromotionRow; busy: boole
   return (
     <ConfirmAction
       trigger={
-        <button type="button" className={rowActionTextClass} disabled={busy} onClick={fetchImpact}>
+        <button type="button" className="w-full px-2 py-1.5 text-left text-xs hover:bg-muted" disabled={busy} onClick={fetchImpact}>
           {actionLabel}
         </button>
       }
@@ -149,8 +149,6 @@ export default function PromotionsIndex({
   title,
   backUrl,
   description,
-  activeType,
-  typeOptions,
   statusOptions,
   rows: initialRows = [],
   createHref,
@@ -159,8 +157,6 @@ export default function PromotionsIndex({
   /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
   backUrl?: string | null
   description: string
-  activeType: string
-  typeOptions: Array<{ value: string; label: string }>
   statusOptions: Array<{ value: string; label: string }>
   rows: PromotionRow[]
   createHref: string
@@ -175,6 +171,9 @@ export default function PromotionsIndex({
     const byStatus = statusFilter === "" || row.status === statusFilter
     return byName && byStatus
   })
+  // Dibedakan supaya keadaan kosong tidak menyalahkan admin: "belum ada kampanye"
+  // hanya saat daftarnya memang kosong, bukan saat filternya tidak menemukan apa pun.
+  const adaFilterAktif = search.trim() !== "" || statusFilter !== ""
 
   React.useEffect(() => {
     // Sync dari props saat Inertia me-render ulang (data tabel bisa berubah dari server).
@@ -192,54 +191,56 @@ export default function PromotionsIndex({
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah {activeType === "flash_sale" ? "Flash Sale" : "Promo"}
+              Tambah
             </Link>
           </Button>
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
-      <ManagePromotionsTabs active="promotions" />
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {typeOptions.map((option) => (
-              <Button key={option.value} asChild variant={option.value === activeType ? "primary" : "secondary"} size="sm">
-                <Link href={routeUrl("admin.promotions.index", { type: option.value })} preserveScroll>
-                  {option.label}
-                </Link>
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full max-w-xs">
-            <input
-              type="search"
-              className="h-9 w-full rounded-md border border-input bg-surface px-3 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
-              placeholder="Cari nama kampanye…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <Icon name="magnifying-glass" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          </div>
-          {search.trim() || statusFilter ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("") }}>
-              Reset filter
-            </Button>
-          ) : null}
-          <Select className="w-44" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <ListToolbar
+          className="mt-0"
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Cari nama kampanye",
+          }}
+        >
+          <Select
+            className="w-full sm:w-48"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            aria-label="Filter status"
+          >
             <option value="">Semua status</option>
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </Select>
-        </div>
+        </ListToolbar>
 
         <div>
           {filteredRows.length === 0 ? (
-            <EmptyState title="Belum ada kampanye" description="Buat kampanye pertama untuk mulai memberikan diskon." />
+            adaFilterAktif ? (
+              <EmptyState
+                title="Tidak ada kampanye yang cocok"
+                description="Ubah kata kunci atau pilih status lain untuk melihat kampanye yang ada."
+              />
+            ) : (
+              <EmptyState
+                title="Belum ada kampanye"
+                description="Buat kampanye pertama untuk mulai memberikan diskon."
+                action={
+                  <Button asChild size="sm">
+                    <Link href={createHref}>
+                      <Icon name="plus" className="size-4" aria-hidden="true" />
+                      Tambah
+                    </Link>
+                  </Button>
+                }
+              />
+            )
           ) : (
             <Card className="overflow-hidden border border-border bg-card">
               <div className="overflow-x-auto">
@@ -291,40 +292,51 @@ export default function PromotionsIndex({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{row.products_count}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-3">
+                      <RowActions>
                         {canEdit(row.status) ? (
-                          <Link className={rowActionTextClass} href={row.edit_href}>
-                            Edit
-                          </Link>
+                          <Button asChild variant="secondary" size="xs">
+                            <Link href={row.edit_href}>Edit</Link>
+                          </Button>
                         ) : (
-                          <span
-                            className={cn(rowActionTextClass, "cursor-not-allowed text-muted-foreground/60")}
-                            title="Kampanye yang selesai atau diakhiri tidak dapat diubah. Buat kampanye baru."
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            disabled
+                            title="Kampanye yang selesai atau diakhiri tidak dapat diubah."
                           >
                             Edit
-                          </span>
+                          </Button>
                         )}
-                        {canActivate(row.status) ? (
-                          <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
-                        ) : null}
-                        {canEnd(row.status) ? (
-                          <ConfirmAction
-                            trigger={
-                              <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busyId === row.id}>
-                                Akhiri
-                              </button>
-                            }
-                            title="Akhiri kampanye?"
-                            description={`"${row.name}" akan diakhiri dan diskon berhenti berlaku.`}
-                            confirmLabel="Akhiri"
-                            processing={busyId === row.id}
-                            onConfirm={() => {
-                              setBusyId(row.id)
-                              router.post(row.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-                            }}
-                          />
-                        ) : null}
-                      </div>
+                        <RowActionsMenu>
+                          <DropdownMenuItem asChild>
+                            <Link href={row.detail_href}>Detail promosi</Link>
+                          </DropdownMenuItem>
+                          {canActivate(row.status) ? (
+                            <ActivateAction row={row} busy={busyId === row.id} setBusy={(v) => setBusyId(v ? row.id : null)} />
+                          ) : null}
+                          {canEnd(row.status) ? (
+                            <ConfirmAction
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                                  disabled={busyId === row.id}
+                                >
+                                  Akhiri
+                                </button>
+                              }
+                              title="Akhiri kampanye?"
+                              description={`"${row.name}" akan diakhiri dan diskon berhenti berlaku.`}
+                              confirmLabel="Akhiri"
+                              processing={busyId === row.id}
+                              onConfirm={() => {
+                                setBusyId(row.id)
+                                router.post(row.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+                              }}
+                            />
+                          ) : null}
+                        </RowActionsMenu>
+                      </RowActions>
                     </TableCell>
                   </TableRow>
                 ))}
