@@ -3754,3 +3754,12 @@ Perubahan: ProductMediaController memakai peta asal (products ke daftar Produk, 
 Dampak spec: tidak berubah (hanya query string penanda asal).
 Verifikasi: php -l empat berkas bersih; test AdminMediaBackButtonTest 9 lulus, AdminDashboardTest dan MediaHistoryFilterTest lulus total 36; di browser dari halaman Produk tombol Kembali muncul dan bertahan walau filter dipakai, dari sidebar tidak muncul.
 Agent: zcode-retur
+
+## 2026-10-11 20:05 UTC | zcode | Trivial | ee83f6f8 | selesai
+
+- Owner: "pagination di /admin/beranda/paling-banyak-dipesan" — mengganti tombol "Tampilkan semua (158 lagi)" dengan paginasi sungguhan.
+- Perubahan: paginasi sisi klien 25 baris per halaman (8 halaman untuk 183 produk), pager di footer kartu memakai gaya yang sama dengan komponen Pagination bersama (Sebelumnya, nomor halaman, Berikutnya, "Halaman X dari Y"); menyaring (cari atau filter status) mengembalikan halaman ke 1; "Ke atas" dari halaman mana pun tetap menulis urutan global (indeks asli baris diteruskan ke hook geser) dan kini melompat ke halaman 1 supaya hasilnya terlihat; tombol "Tampilkan semua" dihapus. Geser di mode Urutkan bekerja per halaman (indeks asli diteruskan); pindah antar halaman tetap lewat "Ke atas". Garis "Batas carousel" tetap hanya di halaman 1.
+- Controller tidak tersentuh: seluruh 183 baris tetap dimuat sekaligus karena geser dan "Ke atas" menulis urutan global; paginasi murni memotong tampilan.
+- Verifikasi: tsc + lint bersih, HomepagePopularTest + BerandaPopularToolbarTest 26 lulus / 467 asersi, build sukses; live: halaman 1 baris 1-25 dengan garis batas, tombol halaman 1-8, halaman 2 baris 26-50 tanpa garis batas, "Ke atas" dari halaman 2 lompat ke halaman 1, "Urungkan" mengembalikan urutan tersimpan.
+- Catatan: saat menguji "Ke atas" lintas halaman, keadaan sisi klien berubah lalu dipulihkan dengan memuat ulang halaman (belum ada yang disimpan ke server); urutan tersimpan saat ini adalah kurasi owner sendiri (event cms.beranda_popular_updated 11 Okt 19:28 oleh user 13).
+Agent: zcode
