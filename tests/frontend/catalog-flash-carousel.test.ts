@@ -6,15 +6,28 @@ import { shouldShowFlashCarousel } from "@/lib/catalog-flash-carousel"
  * Kontrak 2026-10-11: carousel Flash Sale hanya tampil di halaman "Paling
  * Banyak Dipesan" dalam keadaan aslinya.
  *
- * Sebelumnya carousel tetap tampil setelah pembeli memilih urutan lain atau
- * mempersempit filter, padahal isinya diambil dari peringkat Flash Sale global
- * dan tidak mengikuti filter itu, sehingga sorotan tampil di luar konteks.
+ * Dua celah yang dijaga di sini:
+ * - carousel tetap tampil setelah pembeli memilih urutan lain atau
+ *   mempersempit filter, padahal isinya peringkat Flash Sale global yang tidak
+ *   mengikuti filter itu;
+ * - penanda `from` bisa ikut terbawa di URL halaman lain (kategori, model,
+ *   promo) yang memakai komponen halaman yang sama, sehingga carousel muncul
+ *   di halaman yang bukan miliknya.
  */
 describe("shouldShowFlashCarousel", () => {
-  const dasar = { fromTopSold: true, sort: "popular", activeFilterCount: 0 }
+  const dasar = {
+    isAllProducts: true,
+    fromTopSold: true,
+    sort: "popular",
+    activeFilterCount: 0,
+  }
 
   it("tampil di halaman Paling Banyak Dipesan tanpa filter dan urutan default", () => {
     expect(shouldShowFlashCarousel(dasar)).toBe(true)
+  })
+
+  it("sembunyi di halaman lain walau penandanya ikut di URL", () => {
+    expect(shouldShowFlashCarousel({ ...dasar, isAllProducts: false })).toBe(false)
   })
 
   it("sembunyi bila pembeli memilih urutan lain", () => {

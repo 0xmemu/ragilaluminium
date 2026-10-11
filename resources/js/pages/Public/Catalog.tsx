@@ -377,6 +377,7 @@ export default function Catalog({
   // mengikuti filter yang aktif, jadi ia disembunyikan begitu pembeli memilih
   // urutan lain atau mempersempit daftar dengan filter.
   const showFlashCarousel = shouldShowFlashCarousel({
+    isAllProducts: isAllProductsListing,
     fromTopSold,
     sort: resolvedSort,
     activeFilterCount,

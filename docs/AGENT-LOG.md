@@ -3772,3 +3772,11 @@ Catatan yang dipertahankan: angka pada tab Gagal tetap diberi penekanan merah sa
 Penjaga: test klien 25 tes, dengan penjaga urutan dibalik mengikuti keputusan baru.
 Verifikasi: typecheck 0, eslint bersih, build sukses, Vitest 35 berkas 320 tes lulus, MediaHistoryFilterTest 16 tes 250 asersi lulus. Live di browser dalam aplikasi: urutan tab terbaca Semua (4), Berhasil (4), Gagal (0).
 Agent: gemini-3.8-flash-high
+
+## 2026-10-11 13:24 UTC | zcode-storefront | Trivial | 3 berkas | selesai
+Lingkup: owner meminta dipastikan carousel Flash Sale hanya ada di halaman Paling Banyak Dipesan, tidak ditemukan di halaman lain.
+Temuan: gerbang sebelumnya hanya membaca parameter URL (penanda `from`, urutan, jumlah filter), tidak mengenali halaman mana yang sedang dirender. Komponen carousel dirender oleh halaman Public/Catalog yang dipakai TUJUH route (katalog, kategori, model, desain, promo, flash sale), jadi penanda itu bisa membuat carousel muncul di halaman lain. Terbukti live: /products/jendela?from=paling-banyak-dipesan&sort=popular memunculkan carousel di halaman kategori Jendela, dan /promo dengan parameter sama juga. Tidak terjangkau lewat klik normal karena tautan kategori dibangun tanpa query (categoryHrefFor), tetapi tetap bisa lewat URL yang dibagikan atau terindeks.
+Perubahan: gerbang `shouldShowFlashCarousel` kini juga mensyaratkan halaman itu memang daftar seluruh produk (prop isAllProducts = isAllProductsListing dari server), ditambah di Catalog.tsx dan test penjaganya (5 kasus, satu kasus baru untuk halaman lain).
+Dampak spec: tidak berubah, tidak ada route, URL, kolom, enum, atau bentuk JSON baru.
+Verifikasi: eslint bersih; typecheck nol error; 5 test gerbang lulus; diuji live lintas route setelah build (hasilnya di entri berikutnya bila perlu). Catalog.tsx sedang memuat pekerjaan agent lain yang belum di-commit (79 baris), jadi berkas itu di-commit sebagian lewat index (1 baris) dan working tree mereka dipastikan utuh.
+Agent: zcode-storefront
