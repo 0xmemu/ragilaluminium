@@ -212,7 +212,7 @@ export default function WhatsAppHub({ title, description, stats, connection, con
                         </td>
                         <td className="max-w-[280px] px-5 py-3">
                           {row.error ? (
-                            <p className="line-clamp-2 text-[11px] text-destructive">{row.error}</p>
+                            <p className="line-clamp-3 text-[11px] leading-snug text-destructive" title={row.error}>{row.error}</p>
                           ) : (
                             <span className="text-[11px] text-muted-foreground">Alasan tidak tercatat</span>
                           )}

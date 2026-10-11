@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\WhatsAppMessage;
 use App\Services\WhatsAppService;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppFailureReason;
 use Illuminate\Http\RedirectResponse;
 
 /**
@@ -82,11 +83,11 @@ class WhatsAppMessageController extends Controller
         $whatsapp->supersedeAttempts($whatsapp->siblingAttempts($message), $message);
 
         if ($hasil->status === 'failed') {
-            $sebab = trim((string) $hasil->error_reason);
+            $sebab = WhatsAppFailureReason::describe($hasil->error_reason);
 
             return back()->with(
                 'error',
-                'Kirim ulang gagal: '.($sebab !== '' ? $sebab : 'alasan tidak tercatat dari gateway'),
+                'Kirim ulang gagal: '.($sebab ?? 'alasan tidak tercatat dari gateway'),
             );
         }
 

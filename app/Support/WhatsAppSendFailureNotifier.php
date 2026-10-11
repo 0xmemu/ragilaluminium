@@ -23,19 +23,19 @@ class WhatsAppSendFailureNotifier
     /**
      * Catat kegagalan kirim satu pesan.
      *
-     * @param  string|null  $reason  Alasan dari gateway, apa adanya.
+     * @param  string|null  $reason  Alasan dari gateway, apa adanya (dinormalkan
+     *                               jadi kalimat Indonesia sebelum ditampilkan).
      */
     public static function notify(?string $reason): void
     {
-        $sebab = trim((string) $reason);
+        $sebab = WhatsAppFailureReason::describe($reason) ?? 'alasan tidak tercatat dari gateway';
         $menunggu = WhatsAppMessage::query()
             ->where('status', 'failed')
             ->whereNull('raw_payload->superseded_by')
             ->count();
 
         $title = 'Pesan WhatsApp gagal terkirim';
-        $body = $menunggu.' pesan menunggu dikirim ulang. Terakhir: '
-            .mb_substr($sebab !== '' ? $sebab : 'alasan tidak tercatat dari gateway', 0, 300);
+        $body = $menunggu.' pesan menunggu dikirim ulang. Terakhir: '.$sebab;
         $href = route('admin.whatsapp.dashboard', ['status' => 'failed']);
 
         $existing = AdminNotification::query()

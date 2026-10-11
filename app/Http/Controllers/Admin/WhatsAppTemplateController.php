@@ -9,6 +9,7 @@ use App\Models\WhatsAppTemplate;
 use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 use App\Support\WhatsAppAutomationCatalog;
+use App\Support\WhatsAppFailureReason;
 use App\Support\WhatsAppTemplateSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -135,7 +136,6 @@ class WhatsAppTemplateController extends Controller
             ->map(function (WhatsAppMessage $message): array {
                 $order = $message->order;
                 $text = trim((string) $message->content_text);
-                $error = trim((string) $message->error_reason);
 
                 // Pesan otomatis (ber-templat) kini tampil sebagai NAMA TEMPLAT
                 // saja, bukan isi pesannya (owner 2026-09-29: "kalau template
@@ -159,7 +159,9 @@ class WhatsAppTemplateController extends Controller
                     'order_number' => $order?->order_number,
                     'order_url' => $order ? route('admin.orders.show', $order->id) : null,
                     'message' => $pesan,
-                    'error' => $error === '' ? null : \Illuminate\Support\Str::limit($error, 160),
+                    // Alasan gateway dinormalkan jadi kalimat Indonesia; teks
+                    // JSON mentah tidak pernah ditampilkan ke admin.
+                    'error' => WhatsAppFailureReason::describe($message->error_reason),
                     // Baris yang naskahnya kosong atau bukan pesan keluar tidak
                     // bisa dikirim ulang; tombolnya dimatikan di tampilan.
                     'can_resend' => $message->direction === 'outbound'
