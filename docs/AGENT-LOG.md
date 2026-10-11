@@ -3901,3 +3901,33 @@ Agent: zcode-retur
 - Verifikasi: tsc + lint bersih, build sukses, BerandaPopularToolbarTest + HomepagePopularTest 26 lulus / 467 asersi; live: menu terbuka dengan dua pilihan, pilihan Carousel memindahkan produk Tayang pertama ke nomor 10 (badge Carousel), pilihan Halaman 1 memindahkannya ke nomor 11 (badge Tayang) dan nomor 10 diisi produk berikutnya; muat ulang mengembalikan urutan tersimpan milik owner (cms.beranda_popular_updated 11 Okt 19:28 oleh user 13 — klik uji saya hanya sisi klien, tidak pernah tersimpan).
 - Catatan: build sempat gagal karena impor agent lain ke berkas yang belum dibuat (manage-promotions-tabs); agent lain sendiri memperbaikinya (Promotions.tsx dikembalikan ke baseline lewat 173e7126) dan build ulang sukses.
 Agent: zcode
+
+## 2026-10-11 18:00 UTC | zcode | Standard | toolbar Promo Toko + perbaikan commit | selesai
+
+- Owner: "rapikan toolbar" di /admin/promotions?type=flash_sale, dan "cek juga semua halaman".
+
+### AUDIT TOOLBAR SELURUH PANEL (26 halaman ber-kotak cari)
+Hasil sapuan skrip: 22 halaman memakai ListToolbar bersama, 4 menyimpang. Yang menyimpang dan sebabnya:
+- Promotions.tsx: menulis toolbar sendiri (input mentah, ikon cari di KANAN bukan kiri, plus tombol Reset filter yang tidak ada di halaman lain). INI YANG DIPERBAIKI.
+- InstallationGallery/Index.tsx: toolbar sendiri, tetapi ikon sudah di kiri dan tombol silang hapus-pencarian memang fitur sah. DIBIARKAN.
+- Media/Library.tsx: toolbar sendiri dengan label terlihat per kontrol (Cari label/URL, Jenis, Status, Visibilitas). Tampilannya beda tetapi berfungsi; mengubahnya bukan permintaan dan berisiko, DIBIARKAN (dilaporkan ke owner).
+- Analytics/StorePerformance.tsx: kotak cari yang terdeteksi ada DI DALAM modal, bukan toolbar daftar. DIBIARKAN.
+
+### PERUBAHAN YANG DIMINTA (commit d3930114)
+Toolbar Promotions.tsx diganti memakai ListToolbar bersama: ikon cari pindah ke kiri, kotak cari mengisi ruang, filter status jadi Select ber-aria-label (sebelumnya tanpa label). Tombol Reset filter dihapus karena hanya ada di halaman ini dan pencarian sudah bisa dikosongkan langsung di kotaknya. Sekaligus: keadaan kosong dibedakan, "Belum ada kampanye" hanya saat daftarnya memang kosong, sedangkan saat filter tidak menemukan apa pun muncul "Tidak ada kampanye yang cocok" (dulu keduanya menyalahkan admin).
+
+### KESALAHAN SAYA DAN PERBAIKANNYA (be9ad6c5, 173e7126) — BACA INI
+Commit d3930114 TIDAK SENGAJA membawa pekerjaan agent lain, karena berkas di server sudah memuat WIP mereka (controller fitur ringkasan promo + halaman Promotions dengan RowActions/detail_href) dan saya menyunting di atas salinan itu. Akibatnya branch jadi RUSAK: controller yang ter-commit memanggil App\Services\PromotionOverviewService yang masih belum dilacak, sehingga clone/pull bersih akan fatal, dan halaman versi repo memakai detail_href/edit_href yang tidak dikirim controller baseline.
+Perbaikan: kedua berkas dikembalikan ke baseline b527632d lewat index saja (objek git, tanpa menyentuh berkas kerja), lalu perubahan toolbar saya dipasang ulang di atas baseline itu. Hasil akhir di repo: controller baseline + Promotions.tsx baseline + perubahan toolbar/keadaan-kosong saya. WIP agent lain TIDAK disentuh dan tetap utuh belum ter-commit di working tree (dibuktikan: md5 berkas setelah pemulihan sama dengan cadangan, git status tetap M).
+Verifikasi koherensi HEAD: seluruh impor Promotions.tsx ada di HEAD (15 modul, termasuk manage-promotions-tabs yang memang masih ada di HEAD), dan prop yang dibaca halaman (edit_href, activate_url, end_url, impact_url, targets, dst) semuanya dikirim controller baseline. Batas jujur: typecheck penuh TIDAK bisa dijalankan pada berkas baseline itu karena komponen manage-promotions-tabs sengaja dihapus agent lain di disk; yang saya pakai adalah pemeriksaan impor terhadap HEAD plus hunk toolbar yang sama sudah terbukti jalan live sebelumnya.
+
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses saat berkas perubahan masih terpasang (d3930114).
+- Live: toolbar halaman Flash Sale tampil seragam (ikon cari kiri, kotak cari lebar, filter status kanan), 5 baris kampanye terbaca normal.
+- Test: PromotionDetailTest + PromotionFlowFixTest + AdminPromoPagesBackButtonTest + PromotionProductPickerTest 16 passed (180 asersi).
+- Sapuan audit diulang setelah perbaikan; tidak ada halaman lain yang perlu diubah selain yang dilaporkan di atas.
+
+### PELAJARAN (jangan terulang)
+1. Berkas di repo VPS sering sudah memuat WIP agent lain. Sebelum commit satu berkas, WAJIB bandingkan `git diff --stat -- <berkas>` dengan perkiraan perubahan sendiri; lonjakan tak wajar = WIP orang lain ikut terbawa.
+2. `git commit -- <path>` meng-commit ISI WORKING TREE berkas itu, bukan isi index. Untuk commit selektif pakai plumbing: `git hash-object -w`, `git update-index --cacheinfo`, lalu `git commit` TANPA path.
+3. Sebelum push, pastikan HEAD tidak merujuk berkas yang belum dilacak: periksa rujukan kelas pada berkas yang di-commit, dan pastikan berkas pendukungnya ada di HEAD lewat git cat-file -e.
