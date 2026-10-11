@@ -3970,3 +3970,15 @@ di destroy() tetap sebagai lapis kedua. Verifikasi: tsc bersih, eslint 0
 warning, build sukses, cek live lewat browser dalam aplikasi: baris Jendela
 menunjukkan menu "Hapus Dipakai 120 produk" berstatus disabled. Berkas:
 resources/js/pages/Admin/Categories/Index.tsx.
+
+## 2026-10-12 03:10 UTC | zcode | Trivial | selesai
+- Owner: "ini selalu menyebalkan karena kadang 0 tidak bisa dihapus dan saat mengetik angka pun tidak bisa mereplace 0" (kolom Minimum pembelian form voucher).
+### AKAR MASALAH
+onChange memanggil Number(event.target.value); string kosong jadi 0, jadi setiap kali kolom dikosongkan React menulis 0 lagi dan mengetik tidak pernah benar-benar mengganti.
+### PERUBAHAN (commit b488fb3c)
+discount_value dan min_purchase di form voucher disimpan sebagai teks dan dikonversi ke angka di form.transform (kosong menjadi null; min_purchase kosong diterima server sebagai 0 lewat aturan nullable). Min pembelian pada form baru kini dimulai kosong.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- Live: kolom mulai kosong, ketik 50000 terisi, dikosongkan tetap kosong (dulu balik ke 0), ketik 75000 mengganti, submit dengan minimum kosong tersimpan min_purchase 0.00 dan published 1 (dicek DB).
+- Dua voucher uji (UJIANGKA, UJIANGKA2) dihapus dari DB setelah bukti diambil.
+Agent: zcode
