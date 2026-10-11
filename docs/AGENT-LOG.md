@@ -3852,3 +3852,10 @@ Perubahan: CodSettings/Edit.tsx dan ShippingSubsidy/Edit.tsx memakai state mode 
 Dampak spec: tidak berubah.
 Verifikasi: typecheck bersih, eslint kedua berkas 0 warning, build sukses; di browser ketiga keadaan terbukti per halaman (terkunci: 3 input disabled dan hanya tombol Edit; setelah Edit: input enabled, Batal+Simpan muncul; setelah Batal: kembali terkunci dan nilai tidak berubah); regresi backend 33 test lulus (CodSettingsTest, ShippingSubsidyTest, OperationalSettingsAuditTest, FrontendPageContractTest). Tangkapan layar gagal karena kendala permukaan peramban, bukti diambil dari keadaan DOM.
 Agent: zcode-retur
+
+## 2026-10-11 21:10 UTC | zcode | Trivial | selesai
+
+- Owner: "tiru juga 15 produk saja yang ada di /products/all?from=paling-banyak-dipesan" — jumlah kartu per halaman galeri storefront adalah 15 (config storefront.catalog_page_size), jadi halaman admin kurasi mengikutinya.
+- Perubahan satu baris: PER_HALAMAN 25 -> 15 di Beranda/Popular.tsx. 183 baris kini 13 halaman (sebelumnya 8 x 25); pembatas "Batas carousel" tetap di halaman 1.
+- Verifikasi: tsc + lint bersih, build sukses, BerandaPopularToolbarTest + HomepagePopularTest 26 lulus / 469 asersi; live: halaman 1 baris 1-15 plus pembatas, 13 tombol halaman.
+Agent: zcode
