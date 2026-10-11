@@ -3716,3 +3716,7 @@ Perubahan: flash-sale-carousel-section.tsx, pembungkus dari bg-primary/5 (sapuan
 Dampak spec: tidak berubah.
 Verifikasi: eslint bersih; typecheck nol error; vitest 318 test lulus (35 berkas, naik dari 244 karena agent lain menambah test); build sukses 27s; terukur dari DOM live: latar blok rgb(238,241,240), latar halaman rgb(255,255,255), radius 8px, label FLASH SALE tetap merah rgb(194,0,0). Screenshot pane gagal (surface preparation timeout) jadi bukti visual tidak diambil ronde ini; angka computed style dibaca langsung dari DOM.
 Agent: zcode-storefront
+
+## 2026-10-11 12:56 UTC | zcode | Trivial | resources/js/pages/Admin/Announcements/Form.tsx | selesai
+
+- Owner: hapus (menunjuk teks petunjuk di bawah kolom Link tujuan: "Kosongkan untuk arahkan ke katalog."). Hint dibuang, kolom Link tujuan kini polos. Verifikasi: typecheck 0, build sukses; halaman form memuat versi baru.
