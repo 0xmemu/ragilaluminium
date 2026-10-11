@@ -75,7 +75,7 @@ class PrunePendingUploads extends Command
             'type' => 'media_cleanup',
             'title' => 'Pembersihan upload pending selesai',
             'body' => $body,
-            'href' => route('admin.media.library'),
+            'href' => route('admin.media.library', ['origin' => 'dashboard']),
         ]);
 
         $this->info("Dihapus {$deleted}/{$count} objek pending/ (~{$freedMb} MB); notifikasi admin dibuat.");

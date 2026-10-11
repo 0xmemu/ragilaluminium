@@ -123,8 +123,11 @@ export function CatalogNav({
         />
       ) : null}
 
-      {/* Baris 2 -> Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis */}
-      <div className="border-y border-border bg-surface">
+      {/* Baris 2 -> Filter bar 5 Slim Pills: Teks selalu utuh tanpa ellipsis.
+          Garis atas hanya saat standalone (showHeader); di dalam ProductListingFrame
+          garis atas sudah disediakan section pembungkus, jadi cukup border-b agar
+          tidak ada dua garis bertumpuk di bawah judul halaman. */}
+      <div className={showHeader ? "border-y border-border bg-surface" : "border-b border-border bg-surface"}>
         <div className="container-page flex items-center justify-between gap-1 sm:gap-1.5 !px-2.5 md:!px-8 lg:!px-12 py-2">
           {/* Pill 1: Filter - mobile: sheet bottom; desktop: dropdown ringkas */}
           <DropdownMenu open={sheetOpen} onOpenChange={onSheetOpenChange}>
@@ -344,6 +347,7 @@ export function CatalogNav({
             type="button"
             onClick={onToggleFlash}
             aria-pressed={isFlash}
+            aria-label={isFlash ? "Matikan filter Flash Sale" : "Aktifkan filter Flash Sale"}
             className={cn(
               "inline-flex h-7 flex-1 min-w-0 cursor-pointer items-center justify-center gap-0.5 sm:gap-1 rounded border px-1 sm:px-1.5 text-[11px] sm:text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               isFlash
@@ -504,7 +508,7 @@ export function CatalogNav({
         <div className="flex items-center justify-between gap-2 text-xs font-normal">
           <span className="truncate font-medium text-foreground">{summaryFilterLabel}</span>
           <span className="shrink-0 text-right text-muted-foreground">
-            {formatNumber(total)} Barang ditemukan
+            {formatNumber(total)} Produk ditemukan
           </span>
         </div>
       </div>

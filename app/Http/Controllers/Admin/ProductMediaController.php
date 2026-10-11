@@ -26,6 +26,31 @@ use Inertia\Response;
 
 class ProductMediaController extends Controller
 {
+    /**
+     * Sumber klik yang dikenal, dipetakan ke nama route tujuan tombol Kembali.
+     * Hanya asal yang terdaftar di sini yang memunculkan tombol; masuk lewat
+     * sidebar (tanpa penanda) atau penanda asing tetap tanpa tombol, sesuai
+     * aturan owner 2026-10-11: tombol mengikuti sumber klik, bukan struktur menu.
+     */
+    private const BACK_ORIGINS = [
+        'products' => 'admin.products.index',
+        'dashboard' => 'admin.dashboard',
+        'testimonials' => 'admin.testimonials.index',
+    ];
+
+    /** URL tombol Kembali untuk penanda asal, null bila asal tidak dikenal. */
+    private function backUrlFor(string $origin): ?string
+    {
+        $route = self::BACK_ORIGINS[$origin] ?? null;
+
+        return $route !== null ? route($route) : null;
+    }
+
+    /** Penanda asal yang dikenal, null bila kosong atau asing. */
+    private function knownOrigin(string $origin): ?string
+    {
+        return isset(self::BACK_ORIGINS[$origin]) ? $origin : null;
+    }
 
     public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse
     {
@@ -72,18 +97,18 @@ class ProductMediaController extends Controller
 
         $folderTree = $this->folderTree();
 
-        // Media Library adalah item mandiri di grup menu Produk. Tombol
-        // Kembali hanya berguna bila halaman ini DIBUKA dari halaman Produk
-        // (tautan di sana membawa `origin=products`); saat dibuka langsung dari
-        // sidebar, tidak ada tujuan kembali yang wajar, jadi tombolnya tidak
-        // ditampilkan (koreksi owner 2026-09-30).
+        // Tombol Kembali mengikuti sumber klik: muncul hanya bila halaman ini
+        // dibuka dari tautan di dalam aplikasi yang membawa penanda asal.
+        // Masuk lewat sidebar tidak membawa penanda, jadi tanpa tombol.
         $origin = (string) $request->query('origin', '');
+        $knownOrigin = $this->knownOrigin($origin);
 
         return Inertia::render('Admin/Media/Library', [
-            'backUrl' => $origin === 'products' ? route('admin.products.index') : null,
+            'backUrl' => $this->backUrlFor($origin),
             // Penanda diteruskan ke halaman supaya ikut terbawa saat filter
-            // dipakai dan saat membuka Riwayat Media.
-            'origin' => $origin !== '' ? $origin : null,
+            // dipakai dan saat membuka Riwayat Media, jadi tombolnya tidak
+            // hilang di tengah kerja.
+            'origin' => $knownOrigin,
             'assets' => $assets->getCollection()->map(fn (MediaAsset $asset) => [
                 'id' => $asset->id,
                 'label' => $asset->label ?: 'Media #'.$asset->id,
@@ -107,7 +132,7 @@ class ProductMediaController extends Controller
                 'visibility' => (string) $request->query('visibility', ''),
                 'folder_id' => (string) $request->query('folder_id', ''),
             ],
-            'historyHref' => route('admin.media.history', array_filter(['origin' => $origin])),
+            'historyHref' => route('admin.media.history', array_filter(['origin' => $knownOrigin])),
         ]);
     }
 
@@ -563,7 +588,7 @@ class ProductMediaController extends Controller
         $origin = (string) $request->query('origin', '');
 
         return Inertia::render('Admin/Media/History', [
-            'backUrl' => route('admin.media.library', array_filter(['origin' => $origin])),
+            'backUrl' => route('admin.media.library', array_filter(['origin' => $this->knownOrigin($origin)])),
             'logs' => $logs,
             'pagination' => InertiaAdmin::pagination($paginator),
             'filters' => [

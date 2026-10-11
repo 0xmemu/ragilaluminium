@@ -89,7 +89,7 @@ class AdminDashboardTest extends TestCase
                 ->where('quickActions.1.label', 'Mulai Import')
                 ->where('quickActions.1.href', route('admin.imports.create'))
                 ->where('quickActions.2.label', 'Kelola Media')
-                ->where('quickActions.2.href', route('admin.media.library'))
+                ->where('quickActions.2.href', route('admin.media.library', ['origin' => 'dashboard']))
                 ->has('recentOrders')
             );
     }
@@ -357,7 +357,7 @@ class AdminDashboardTest extends TestCase
             'parent_sku' => 'WIN-DASH',
             'name' => 'Jendela dashboard',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -527,7 +527,7 @@ class AdminDashboardTest extends TestCase
             'parent_sku' => $sku,
             'name' => 'Produk '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => $status,

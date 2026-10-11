@@ -148,7 +148,7 @@ test("catalog discovery keeps filters and empty states usable", async ({ page })
   await page.goto("/products/jendela")
 
   await expect(page.getByRole("heading", { level: 1, name: "Jendela" })).toBeVisible()
-  await expect(page.getByText(/\d+ Barang ditemukan/)).toBeVisible()
+  await expect(page.getByText(/\d+ Produk ditemukan/)).toBeVisible()
   await expectNoHorizontalOverflow(page)
   await expectNoSeriousAccessibilityViolations(page)
 })

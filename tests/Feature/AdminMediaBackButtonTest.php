@@ -88,4 +88,35 @@ class AdminMediaBackButtonTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('backUrl', route('admin.media.library', ['origin' => 'products'])));
     }
+
+    public function test_media_library_dari_dashboard_punya_tombol_kembali(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.library', ['origin' => 'dashboard']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Media/Library')
+                ->where('backUrl', route('admin.dashboard'))
+                ->where('origin', 'dashboard'));
+    }
+
+    /** Penanda asing tidak boleh diam-diam memunculkan tombol ke tujuan salah. */
+    public function test_penanda_asal_asing_tidak_memunculkan_tombol_kembali(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.library', ['origin' => 'entah']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('backUrl', null)
+                ->where('origin', null));
+    }
+
+    public function test_kartu_dashboard_membawa_penanda_asal(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('quickActions.2.href', route('admin.media.library', ['origin' => 'dashboard'])));
+    }
 }

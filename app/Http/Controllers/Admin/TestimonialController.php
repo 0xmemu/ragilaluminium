@@ -607,7 +607,7 @@ class TestimonialController extends Controller
                         : null,
                     'edit_href' => $product
                         ? route('admin.products.media.byProduct', $product)
-                        : route('admin.media.library'),
+                        : route('admin.media.library', ['origin' => 'testimonials']),
                     'publish_url' => null,
                     'unpublish_url' => null,
                 ];

@@ -263,7 +263,7 @@ class DashboardController extends Controller
                     'failed' => (int) ($assetStatusCounts['failed'] ?? 0),
                     'archived' => (int) MediaAsset::where('visibility', 'archived')->count(),
                 ],
-                'href' => route('admin.media.library'),
+                'href' => route('admin.media.library', ['origin' => 'dashboard']),
             ],
         ];
 
@@ -272,7 +272,7 @@ class DashboardController extends Controller
                 'key' => 'failed_media_attachments',
                 'label' => 'Attachment Media Gagal Unduh',
                 'count' => $failedMedia,
-                'href' => route('admin.media.library', ['status' => 'failed']),
+                'href' => route('admin.media.library', ['status' => 'failed', 'origin' => 'dashboard']),
             ];
         }
         if ($failedMediaAssets > 0) {
@@ -280,7 +280,7 @@ class DashboardController extends Controller
                 'key' => 'failed_media_assets',
                 'label' => 'Shared Media Gagal Diproses',
                 'count' => $failedMediaAssets,
-                'href' => route('admin.media.library', ['status' => 'failed']),
+                'href' => route('admin.media.library', ['status' => 'failed', 'origin' => 'dashboard']),
             ];
         }
         if ($pendingMedia + $pendingMediaAssets > 0) {
@@ -288,7 +288,7 @@ class DashboardController extends Controller
                 'key' => 'pending_media',
                 'label' => 'Media Menunggu Diproses',
                 'count' => $pendingMedia + $pendingMediaAssets,
-                'href' => route('admin.media.library'),
+                'href' => route('admin.media.library', ['origin' => 'dashboard']),
             ];
         }
         if ($failedImports > 0) {
@@ -468,7 +468,7 @@ class DashboardController extends Controller
                         ? 'Konfigurasi ada, object storage belum diuji'
                         : 'Konfigurasi object storage belum lengkap',
                     'detail' => $mediaDriver === 's3' ? 'Object storage aktif' : 'Disk lokal development',
-                    'href' => route('admin.media.library'),
+                    'href' => route('admin.media.library', ['origin' => 'dashboard']),
                 ],
                 [
                     'key' => 'queue',
@@ -581,7 +581,7 @@ class DashboardController extends Controller
                 [
                     'label' => 'Kelola Media',
                     'description' => 'Cek foto produk dan shared asset',
-                    'href' => route('admin.media.library'),
+                    'href' => route('admin.media.library', ['origin' => 'dashboard']),
                     'icon' => 'images',
                 ],
             ],

@@ -91,7 +91,7 @@ class CatalogController extends Controller
         // Sub model opsional, dan filter desain hanya bermakna bila desain itu
         // benar-benar punya produk. Tanpa penjagaan ini tautan seperti
         // /products/boven/zigzag/polos menampilkan halaman kosong
-        // ("0 Barang ditemukan") yang membingungkan dan tetap terindeks.
+        // ("0 Produk ditemukan") yang membingungkan dan tetap terindeks.
         $effectiveModel = (string) $request->input('model', $modelCode);
         $effectiveDesign = (string) $request->input('design', $designCode);
         if (! $this->designHasProducts($categoryCode, $effectiveModel, $effectiveDesign)) {
