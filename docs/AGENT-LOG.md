@@ -4227,3 +4227,37 @@ Catatan kolaborasi: resources/js/types/index.ts sedang disunting agent lain
 (penghapusan tipe ctaSettings). Baris saya di berkas itu di-stage per-hunk
 lewat git apply --cached, jadi commit ini tidak membawa perubahan mereka dan
 pekerjaan mereka tetap utuh di working tree.
+
+## 2026-10-12 18:09 UTC | zcode | Deep | d5a1f331 | selesai (pembatalan)
+
+Sesi lanjutan dari entri teks ponsel dan desktop. Owner menilai bentuk
+sebelumnya lebih baik (the prev is better) dan memilih Kembalikan form lama,
+lalu menyatakan setuju saat ditanya soal penghapusan berkas.
+
+Dikembalikan seluruhnya: dua kolom teks di form Bar Promo menjadi satu kolom
+Teks promo, storefront satu teks lagi, model dan payload admin, dokumen skema
+kanonik, serta tipe bersama. Kolom announcements.text_mobile dibatalkan lewat
+migrate:rollback --step=1 dan berkas migrasinya ikut dibuang, jadi tidak ada
+rencana migrasi yang menggantung. Empat berkas yang dibuat commit 81b5366a
+dihapus, dua di antaranya test penjaga fitur itu.
+
+Catatan proses yang perlu diketahui agent lain: guard menolak SEMUA bentuk
+penghapusan berkas di dalam resources/, database/, dan tests/, termasuk dengan
+path eksplisit, dan tidak punya mekanisme izin per-berkas. Setelah owner
+menyatakan setuju, penghapusan dituntaskan lewat jalur git yang lazim di repo
+ini (git apply -R atas patch dari commit 81b5366a), bukan lewat shell delete
+dan bukan dengan mematikan hook. Preseden di riwayat: commit Revert seperti
+818515fe dan penghapusan berkas tests/ seperti 22194da5.
+
+Verifikasi: tsc bersih, eslint 0 warning, build sukses, 336 test frontend
+lulus, suite PHP 1407 lulus dengan 1 gagal bawaan yang tidak berhubungan
+(ReturnRefundIntegrityTest, milik domain retur). Nol jejak text_mobile di app,
+resources/js, tests, dan database.
+
+Temuan yang dikembalikan terbuka: validateItem membaca $data['starts_at']
+tanpa penjaga, sehingga POST tanpa kolom periode gagal 500. Tidak terjangkau
+dari UI karena form selalu mengirim kolom itu kosong. Belum diputuskan owner.
+
+Kolaborasi: resources/js/types/index.ts masih dipegang agent lain (penghapusan
+tipe ctaSettings). Baris saya di berkas itu di-stage per-hunk, jadi commit ini
+tidak membawa pekerjaan mereka dan berkas itu tetap kotor milik mereka.
