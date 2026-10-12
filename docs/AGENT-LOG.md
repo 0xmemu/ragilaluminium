@@ -4593,3 +4593,23 @@ terlipat dan halaman itu tidak menampilkan tombol submit saat dibuka.
 
 Verifikasi umum: tsc bersih, eslint 0 warning di tujuh berkas, build sukses.
 Berikutnya Tahap 4: penjaga test per-form.
+
+## 2026-10-12 23:48 UTC | zcode | Standard | 0c656051 | selesai (Tahap 4)
+
+Penjaga cakupan gerbang isi. Berkas ini menjaga sambungannya, sedangkan
+submit-gate.test.ts menjaga perilaku keputusannya. Empat asersi: berkas wajib
+memakai SubmitGateButton, berkas wajib menahan kiriman lewat jalur onSubmit,
+alasan terkunci selalu dirender, dan modul gerbang dilarang memanggil setError
+atau clearErrors supaya pesan error server tidak hilang.
+
+Daftar berkas wajibnya adalah 28 berkas hasil audit Tahap 0, dan komentar di
+berkas test mencatat apa yang sengaja TIDAK masuk daftar beserta alasannya
+(pencarian, filter, aksi satu tindakan, form yang sudah bergerbang, halaman
+tanpa aturan wajib, kode mati).
+
+Dibuktikan menangkap regresi: gerbang dilepas dari satu berkas dan modul
+gerbang dibuat menganggap teks kosong bukan kosong, keduanya membuat test
+gagal, lalu dipulihkan persis dan test lulus lagi.
+
+Verifikasi: seluruh 354 test frontend lulus (42 berkas), tsc bersih, build
+sukses. Dengan ini Tahap 0 sampai 4 dari rencana owner selesai.
