@@ -4069,3 +4069,12 @@ Spec tidak berubah: field, route, dan bentuk JSON sama. Yang berubah hanya atura
 ### CATATAN
 Fallback di frontend admin (announcementSlide?.interval ?? 5) masih beda dari DEFAULTS 2,5, tetapi prop itu selalu dikirim server sehingga tidak pernah terpakai. Dibiarkan, hanya dicatat.
 Agent: zcode
+
+## 2026-10-12 05:20 UTC | zcode | Trivial | selesai
+- Owner: "hapus" sambil menunjuk kartu "Cara kerja" di /admin/announcements.
+### PERUBAHAN
+Section penjelas "Cara kerja" dihapus dari resources/js/pages/Admin/Announcements/Index.tsx (12 baris). Tidak ada berkas lain yang menyentuh teks itu.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- Live: teks "Cara kerja" dan "promo dari sumber lain" tidak ada lagi; kartu "Slide bar promo" (kolom interval), toolbar pencarian, dan daftar bar promo tetap utuh. Satu section tersisa (Slide bar promo), tiga input (cari, aktifkan slide, interval).
+Agent: zcode
