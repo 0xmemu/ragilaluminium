@@ -298,18 +298,6 @@ export default function AnnouncementsIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-base font-bold">Cara kerja</h2>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Bar merah di atas header menampilkan{" "}
-          <span className="font-semibold text-foreground">satu promo teratas</span> yang berstatus aktif
-          dan masih dalam periode. Urutkan lewat kolom "Urutan": angka 1 tampil paling atas.
-          Saat Anda mengganti teks/link, bar muncul kembali untuk pengunjung yang sebelumnya menutupnya.
-          Jika daftar ini kosong, bar otomatis menampilkan promo dari sumber lain
-          (config/CMS) agar tidak pernah kosong.
-        </p>
-      </section>
-
       {/* Baris kontrol seragam: search | filter | actions */}
       <ListToolbar
         search={{
