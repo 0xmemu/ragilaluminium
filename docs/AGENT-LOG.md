@@ -4119,3 +4119,17 @@ Setelan ini saklar ROTASI, bukan saklar TAMPIL. Saat dimatikan, bar promo tetap 
 - typecheck 0, eslint 0, build sukses.
 - Live: label kini "Aktifkan rotasi bar promo", teks lama 0 kemunculan, keadaan terkunci tetap utuh (checkbox disabled, hanya tombol Edit).
 Agent: zcode
+
+## 2026-10-12 06:55 UTC | zcode | Standard | selesai
+- Owner: "logika fitur urutkan, coba lihat logs/memory harusnya ini saat aktif juga muncul nomor jg" (menunjuk kolom No halaman Bar Promo).
+### AKAR MASALAH
+Saat mode Urutkan aktif, kolom No di Bar Promo dan Banner Promo ditukar dengan pegangan geser: header No menjadi kosong dan sel nomornya menjadi ikon tarik, jadi nomor baris hilang. Kontrak tujuh halaman lain yang sudah punya fitur ini (Masalah & Solusi, Paling Banyak Dipesan, Model Produk, Sub Model, Hasil Pemasangan, Apa Kata, Ulasan) berbeda: pegangan mendapat kolom TERSENDIRI yang hanya dirender saat mode urut, dan kolom nomor selalu ada. Kedua berkas ini menyimpang sejak fitur dibuat (commit 298c909f, keduanya ditulis bersama).
+### PERUBAHAN (commit 13167eac)
+resources/js/pages/Admin/Announcements/Index.tsx dan resources/js/pages/Admin/Banners/Index.tsx: th pegangan jadi kondisional (sebelumnya if/else dengan th No), kolom No dirender selalu; sel pegangan jadi kondisional, sel nomor selalu dirender. Tanpa perubahan route, kolom, enum, atau bentuk JSON.
+### VERIFIKASI
+- typecheck 0, eslint 0, npx vitest run 336 lulus (39 berkas), build sukses.
+- Live Bar Promo: normal 7 kolom (No 1,2 | Promo | Periode | Urutan | Diperbarui | Status | Aksi); mode Urutkan 8 kolom (Seret | No | Promo | Periode | Urutan | Diperbarui | Status | Aksi) dengan No tetap 1,2 dan pegangan di kolom sendiri; setelah Urungkan kembali 7 kolom. Data tidak berubah (dibatalkan, bukan disimpan).
+- Live Banner Promo: sama, mode Urutkan menampilkan pegangan di kolom sendiri sementara No tetap 1.
+### CATATAN UNTUK OWNER
+Di kedua tabel ini kolom No dan kolom Urutan menampilkan angka yang sama (keduanya posisi tampil 1..N), sehingga muncul dua kali. Pengulangan itu sudah ada sejak sebelum perubahan ini dan juga terjadi saat mode urut mati, jadi sengaja TIDAK saya ubah. Kalau ingin kolom Urutan dibuang atau diganti isi lain, tunggu keputusan owner.
+Agent: zcode
