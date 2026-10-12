@@ -3982,3 +3982,19 @@ discount_value dan min_purchase di form voucher disimpan sebagai teks dan dikonv
 - Live: kolom mulai kosong, ketik 50000 terisi, dikosongkan tetap kosong (dulu balik ke 0), ketik 75000 mengganti, submit dengan minimum kosong tersimpan min_purchase 0.00 dan published 1 (dicek DB).
 - Dua voucher uji (UJIANGKA, UJIANGKA2) dihapus dari DB setelah bukti diambil.
 Agent: zcode
+
+## 2026-10-12 04:05 UTC | zcode | Standard | selesai
+- Owner: "cek juga di semua halaman yang ada fitur yang sama" (kolom angka yang menempel di 0 dan tidak bisa diganti).
+### SAPUAN
+Pola bug dicari di seluruh resources/js (bukan hanya halaman Admin): koersi Number()/parseInt() pada onChange. Ditemukan dan DIPERBAIKI (commit 75e0b61e):
+- QuantityInput (komponen bersama, dipakai 4 permukaan: OrderEditPanel, order-product-picker, order-return-create-form, order-return-case-dialog). Backspace kini benar-benar mengosongkan: saat diketik tampil teks mentah, saat tidak diketik tampil nilai resmi induk.
+- Categories/Form.tsx (sort_order), Testimonials/GalleryForm.tsx (sort_order), ResourceIndex.tsx (position), Announcements/Index.tsx (interval slide): nilai disimpan sebagai teks, dikonversi ke angka saat submit (kosong jadi null; server nullable menanganinya).
+Tidak perlu diubah (sudah aman): dialog retur (refund/shipping), CodSettings, ShippingSubsidy, PopularityBoosts, VariantEdit, PromotionForm, ProductForm, Media/Library, resource-context-panel, catalog-nav, catalog-listing-sidebar (semua menyimpan string atau uncontrolled defaultValue).
+### VERIFIKASI
+- typecheck 0, eslint 0 (nol warning), build sukses.
+- Live Announcements (Bar Promo): kolom interval mulai 2.5, dikosongkan tetap kosong (dulu menempel), ketik 8 mengganti, Simpan sukses, DB content.slide.interval = 8; lalu DIPULIHKAN ke nilai semula (2.5) lewat skrip.
+- Live OrderEditPanel (orders/100083 mode edit): dikosongkan jadi kosong, tombol tambah menaikkan ke 2, ketik langsung mengganti; perubahan DIBATALKAN tanpa menyimpan.
+### TEMUAN TERPISAH (belum diperbaiki, menunggu keputusan owner)
+Nilai bawaan interval slide 2.5 (desimal, AnnouncementSlideSettings::DEFAULTS) tidak lolos validasi: input number ber-step 1 menganggap 2.5 tidak valid ("nilai valid terdekat 2 dan 3") dan server menuntut integer 2 sampai 30. Akibatnya tombol Simpan diam saja pada nilai bawaan. Dua pilihan: bulatkan bawaan ke bilangan bulat (mengubah kecepatan slide storefront dari 2.5 jadi 3 detik), atau longgarkan validasi jadi numeric (menjaga 2.5). Saya tidak mengubah perilaku storefront tanpa keputusan.
+Sisa lain: resources/js/components/admin/product-edit/media-panel.tsx masih memakai Number() di 2 titik, tetapi berkas itu sedang dipegang agent lain (status M), jadi tidak disentuh.
+Agent: zcode
