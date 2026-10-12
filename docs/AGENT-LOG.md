@@ -4156,3 +4156,22 @@ Teks itu adalah cabang lain dari ternary yang tersisa dari penghapusan banner Mo
 - typecheck 0, eslint 0, build sukses. Teks itu 0 kemunculan di seluruh repo (tsx, ts, php).
 - Live: teks lama hilang di tiga keadaan (normal, mode urut, sesudah Urungkan); daftar 5 baris tetap tampil dan tombol Urutkan tetap bekerja.
 Agent: zcode
+
+## 2026-10-12 08:05 UTC | zcode | Standard | selesai
+- Owner: "relayouting lagi" sambil menunjuk bagian daftar FAQ di /admin/faq.
+### TEMUAN
+Halaman FAQ adalah SATU-SATUNYA halaman daftar di keluarga Pengaturan Website yang masih daftar kartu dengan akordeon buka-tutup. Sweep programatik 25 halaman daftar admin: 20 memakai tabel, dan kontrak docs/DOMAIN/panel-admin.md bagian 3 mewajibkan Table-First bukan Card-First. Saudara terdekatnya, Masalah & Solusi, bentuk datanya sama (pertanyaan + jawaban) dan sudah tabel.
+### PERUBAHAN (commit dfe421df)
+Tata letak saja, tanpa mengubah perilaku:
+- Kolom No | Pertanyaan | Jawaban | Aksi; kolom Seret hanya saat mode Urutkan (pola sama dengan Masalah & Solusi dan Apa Kata).
+- Jawaban pindah ke kolomnya sendiri; akordeon buka-tutup dihapus (menirukan kolom Solusi).
+- Label kategori tetap di atas pertanyaan seperti semula.
+- Edit tetap di tempat: baris yang diedit jadi satu sel selebar tabel berisi formnya (colspan).
+- Aksi baris tidak berubah: Edit + Arsipkan (tab Aktif), Aktifkan + Hapus permanen (tab Diarsipkan) beserta konfirmasinya. Panel tambah, pengaturan halaman, tab, pencarian, filter kategori, dan mode Urutkan tidak disentuh.
+State openId (akordeon) dihapus karena tidak terpakai lagi.
+### VERIFIKASI
+- typecheck 0, eslint 0, npx vitest run 336 lulus (39 berkas), FaqAdminTest 1 lulus (71 asersi), build sukses.
+- Live: tabel 4 kolom (No/Pertanyaan/Jawaban/Aksi) dengan 7 baris; mode Urutkan menambah kolom Seret jadi 5 kolom dengan pegangan di kolom sendiri; sesudah Urungkan kembali 4 kolom; tombol Edit mengubah baris jadi satu sel colspan=4 berisi form (label Pertanyaan, Kategori, Jawaban, tombol Simpan dan Batal) dan Batal mengembalikan tabel.
+### CATATAN KOLABORASI
+Berkas ini di working tree juga memuat WIP agent lain (buildItems sort_order index menjadi index + 1) yang TIDAK saya commit. Blob dibangun dari HEAD + relayout saya lewat plumbing (hash-object -w + update-index --cacheinfo + commit tanpa path); dibuktikan sesudah commit, sisa git diff pada berkas itu hanya baris WIP agent lain.
+Agent: zcode
