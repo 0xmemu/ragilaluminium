@@ -4439,3 +4439,39 @@ berkas pilot lain lolos eslint --max-warnings=0.
 
 Rollout Tahap 3 (per domain, satu domain satu commit) belum dimulai dan
 menunggu persetujuan owner atas hasil pilot ini.
+
+## 2026-10-12 22:38 UTC | zcode | Deep | 6f7f9931 | selesai (Tahap 3 domain Katalog)
+
+Owner menyetujui pilot dan meminta lanjut Tahap 3 domain Katalog, dengan
+verifikasi yang tertinggal diselesaikan lebih dulu.
+
+Verifikasi yang tertinggal, semuanya lulus live lewat admin-preview:
+Produk mode edit (terkunci tanpa perubahan, terbuka setelah diubah, tanpa
+menyimpan); error server di Produk (POST benar-benar terkirim dengan nama
+produk yang sudah ada, server menolak, ringkasan error tampil, tetap di form,
+dan jumlah produk tetap 183); error server di Profil Saya (PUT terkirim dengan
+username tidak sah, server menolak, ringkasan error tampil, dan akun dev.agent
+tidak berubah). Data diperiksa ulang sesudahnya: 183 produk, produk 51 utuh,
+username dan nama dev.agent utuh.
+
+Tahap 3 domain Katalog: Model Produk dan Sub Model memakai gerbang isi (Produk
+dan Kategori sudah sejak commit pilot). Catatan penting untuk Sub Model: kolom
+Kode TIDAK dikunci karena SubModelController::store mengisi kode dari nama
+sebelum validasi, jadi mengunci saat kode kosong akan menjadi penghalang yang
+tidak diminta server.
+
+Bukti live domain Katalog: Model Produk terkunci saat nama dan kategori masih
+kosong, tetap terkunci setelah nama diisi (kategori belum dipilih), lalu terbuka
+setelah kategori dipilih. Sub Model terkunci di awal, tetap terkunci setelah
+model dipilih (nama belum diisi), dan terbuka setelah nama diisi DENGAN KOLOM
+KODE MASIH KOSONG, yang membuktikan pengecualian kode berjalan. Jebakan probe
+yang dicatat: komponen Select dan SearchSelect di panel ini adalah combobox
+Radix kustom, bukan elemen select native, jadi harus digerakkan dengan pointer
+event, dan opsi pertama biasanya placeholder sehingga memilihnya tidak mengubah
+apa pun.
+
+Verifikasi: tsc bersih, eslint 0 warning pada berkas yang diubah, build sukses,
+350 test frontend lulus. Spec tidak berubah.
+
+Domain berikutnya di rencana (CMS, Pengaturan, Transaksi, Promo, Admin) belum
+dikerjakan, dan Tahap 4 (penjaga per-form) menyusul setelah rollout selesai.
