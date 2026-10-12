@@ -3998,3 +3998,25 @@ Tidak perlu diubah (sudah aman): dialog retur (refund/shipping), CodSettings, Sh
 Nilai bawaan interval slide 2.5 (desimal, AnnouncementSlideSettings::DEFAULTS) tidak lolos validasi: input number ber-step 1 menganggap 2.5 tidak valid ("nilai valid terdekat 2 dan 3") dan server menuntut integer 2 sampai 30. Akibatnya tombol Simpan diam saja pada nilai bawaan. Dua pilihan: bulatkan bawaan ke bilangan bulat (mengubah kecepatan slide storefront dari 2.5 jadi 3 detik), atau longgarkan validasi jadi numeric (menjaga 2.5). Saya tidak mengubah perilaku storefront tanpa keputusan.
 Sisa lain: resources/js/components/admin/product-edit/media-panel.tsx masih memakai Number() di 2 titik, tetapi berkas itu sedang dipegang agent lain (status M), jadi tidak disentuh.
 Agent: zcode
+
+## 2026-10-12 09:49 UTC | zcode | Standard | 6d3f0e93 | selesai
+
+Permintaan owner: perbaiki logika tombol seperti yang pernah dikatakan.
+Halaman Bar Promo (/admin/announcements) dan Banner (/admin/banners)
+menulis tombol mode urutnya sendiri, tanpa penanda sudah digeser, jadi
+tombol Simpan urutan tampil begitu mode urut menyala walau belum ada
+perubahan. Itu melanggar kontrak owner 2026-09-20 dan 2026-10-01 yang
+sudah dipatuhi sembilan halaman lain lewat komponen bersama. Kini
+keduanya menampilkan Urungkan saja sampai ada baris dipindah.
+
+Verifikasi: tsc bersih, eslint 0 warning pada berkas yang diubah, build
+sukses, 328 test frontend lulus. Bukti live lewat browser dalam aplikasi:
+mode urut aktif belum digeser di kedua halaman menampilkan tombol Hapus
+Simpan urutan berjumlah 0 dan Urungkan berjumlah 1. Penjaga baru
+tests/frontend/reorder-save-gate.test.ts dibuktikan menangkap perilaku
+lama dengan memasang perilaku itu sesaat lalu memulihkannya.
+
+Catatan: dua halaman ini masih menulis tombolnya sendiri, bukan memakai
+komponen bersama ReorderActionButton. Menyatukannya akan mengubah ikon
+tombol Urutkan dan perilaku saat daftar tersaring, jadi belum dikerjakan
+dan menunggu keputusan owner.
