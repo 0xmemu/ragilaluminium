@@ -4133,3 +4133,17 @@ resources/js/pages/Admin/Announcements/Index.tsx dan resources/js/pages/Admin/Ba
 ### CATATAN UNTUK OWNER
 Di kedua tabel ini kolom No dan kolom Urutan menampilkan angka yang sama (keduanya posisi tampil 1..N), sehingga muncul dua kali. Pengulangan itu sudah ada sejak sebelum perubahan ini dan juga terjadi saat mode urut mati, jadi sengaja TIDAK saya ubah. Kalau ingin kolom Urutan dibuang atau diganti isi lain, tunggu keputusan owner.
 Agent: zcode
+
+## 2026-10-12 07:20 UTC | zcode | Standard | selesai
+- Owner: "hapus" sambil menunjuk banner "Mode Urutkan aktif: pakai ikon tarik ..." di /admin/announcements.
+### LINGKUP
+Banner itu bukan satu halaman: teks yang sama ada di TUJUH halaman sebagai satu pola (SubModels, ModelProducts, Masalah & Solusi, Paling Banyak Dipesan, Banner Promo, Bar Promo, FAQ), jadi dibuang sekaligus mengikuti kontrak bahwa satu pola UI standar dikerjakan sekali jadi, bukan dikoreksi berulang per halaman.
+### PERUBAHAN (commit bc2a0bb7)
+Ketujuh blok `{reorderMode ? (<p>Mode Urutkan aktif...` dihapus, termasuk peringatan kondisional di dalamnya ("Kosongkan pencarian ... agar urutan bisa digeser"). PENGECUALIAN: di Masalah & Solusi blok itu ternary dengan cabang ELSE berisi teks lain ("Urutan baris di bawah ini sama dengan urutan bagian Masalah & Solusi di halaman publik."), jadi hanya cabang banner yang dikosongkan ({reorderMode ? null : ( ... )) dan teks lain dipertahankan; perilakunya sama, tersembunyi saat mode urut. Fragment <> di Bar Promo yang tinggal satu anak ikut dirapikan. Tidak ada route, kolom, enum, atau bentuk JSON yang berubah.
+### VERIFIKASI
+- typecheck 0, eslint 0 (tujuh berkas), build sukses.
+- Live Bar Promo: banner 0 kemunculan di tiga keadaan (normal, mode urut, sesudah Urungkan); mode urut tetap menampilkan pegangan dan kolom No tetap ada.
+- Live Masalah & Solusi: banner hilang; teks cabang else tetap tampil saat mode urut mati, tersembunyi saat mode urut menyala, dan muncul lagi sesudah dibatalkan (perilaku lama utuh).
+### CATATAN KOLABORASI (penting)
+Tiga berkas (SubModels, ModelProducts, Faq) di working tree juga memuat WIP agent lain yang belum di-commit, yaitu `buildItems sort_order index` menjadi `index + 1`. WIP itu TIDAK saya commit: ketiganya di-commit lewat plumbing (git show HEAD, hapus banner, git hash-object -w, git update-index --cacheinfo, commit TANPA path) sehingga hanya penghapusan banner yang masuk. Dibuktikan setelah commit: git diff pada ketiga berkas menyisakan HANYA baris WIP agent lain. Sisa working tree lain (169 berkas) tidak disentuh.
+Agent: zcode
