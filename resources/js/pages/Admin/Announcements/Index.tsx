@@ -172,6 +172,16 @@ export default function AnnouncementsIndex({
   const [rows, setRows] = React.useState(announcements)
   const canReorder = reorderMode && q === "" && activeStatus === "all"
   const daftar = canReorder ? rows : announcements
+  // Kontrak owner 2026-10-12: tombol Simpan urutan hanya relevan setelah
+  // ada geseran yang belum disimpan. Dibandingkan dengan urutan terakhir dari
+  // server, bukan bendera form, karena geseran ditahan di `rows` sampai tombol
+  // simpan urutan ditekan.
+  const dirty = React.useMemo(
+    () =>
+      rows.length !== announcements.length ||
+      rows.some((row, index) => row.id !== announcements[index]?.id),
+    [rows, announcements],
+  )
   const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
   const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
     rows: [],
@@ -255,15 +265,21 @@ export default function AnnouncementsIndex({
               >
                 Urungkan
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={simpanUrutan}
-                disabled={urutanForm.processing || !canReorder}
-                title={canReorder ? undefined : "Kosongkan pencarian dan pilih Semua status untuk menyimpan urutan"}
-              >
-                {urutanForm.processing ? "Menyimpan..." : "Simpan urutan"}
-              </Button>
+              {/* Kontrak owner 2026-10-12: Simpan urutan hanya muncul begitu ada
+                  urutan yang benar-benar digeser. Sebelumnya tombol ini sudah tampil
+                  sejak mode urut menyala, padahal belum ada yang perlu disimpan,
+                  sehingga terasa seperti tombol yang tidak melakukan apa pun. */}
+              {dirty ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={simpanUrutan}
+                  disabled={urutanForm.processing || !canReorder}
+                  title={canReorder ? undefined : "Kosongkan pencarian dan pilih Semua status untuk menyimpan urutan"}
+                >
+                  {urutanForm.processing ? "Menyimpan..." : "Simpan urutan"}
+                </Button>
+              ) : null}
             </>
           ) : (
             <Button type="button" variant="secondary" size="sm" onClick={mulaiUrutkan}>
