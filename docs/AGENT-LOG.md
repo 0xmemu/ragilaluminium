@@ -4020,3 +4020,29 @@ Catatan: dua halaman ini masih menulis tombolnya sendiri, bukan memakai
 komponen bersama ReorderActionButton. Menyatukannya akan mengubah ikon
 tombol Urutkan dan perilaku saat daftar tersaring, jadi belum dikerjakan
 dan menunggu keputusan owner.
+
+## 2026-10-12 10:03 UTC | zcode | Standard | 701bfd1a | selesai
+
+Permintaan owner: perbaiki logika tombol pada form Tambah Bar Promo
+(/admin/announcements/create). Tombol Tambah aktif walau kolom Teks promo
+kosong, sehingga tekanannya selalu ditolak server. Form Bar Promo dan
+Banner kini mengunci tombol simpan bila kolom wajib masih kosong, atau
+di form edit bila belum ada perubahan sama sekali. Alasan terkunci tampil
+sebagai hint pada tombol yang sama.
+
+Sebabnya sama seperti dua perbaikan sebelumnya: tombol hanya mengunci
+diri saat pengiriman berjalan (form.processing), tanpa memeriksa apakah
+permintaannya memang bisa diterima. Ini melanggar aturan aksi kondisional
+state-driven yang sudah disepakati owner 2026-09-20 dan belum masuk
+dokumen kanonik.
+
+Verifikasi: tsc bersih, eslint 0 warning, build sukses, 332 test frontend
+lulus. Bukti live di browser: form tambah dengan teks kosong menampilkan
+tombol disabled dan alasan Isi teks promo dulu sebelum disimpan; setelah
+teks diisi tombol hidup. Form edit terkunci saat belum diubah dan hidup
+setelah diubah. Form Banner terkunci tanpa gambar dengan alasan Pilih
+gambar banner dulu sebelum disimpan. Penjaga baru dibuktikan menangkap
+perilaku lama dengan memasangnya sesaat lalu memulihkannya.
+
+Berkas: announcements/Form.tsx, Banners/Form.tsx, dua berkas penjaga test.
+Spec tidak berubah.
