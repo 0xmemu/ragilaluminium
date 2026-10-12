@@ -9,7 +9,8 @@ import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
-import { EmptyState } from "@/components/admin/ui/empty-state"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -279,8 +280,56 @@ export default function ProductsIndex({
 }: ProductsIndexProps) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  // Galat muat ulang daftar: tampil sebagai ErrorState di area daftar, supaya
+  // admin punya tombol "Coba lagi" di tempat yang sama. Penanda muat ulang
+  // dipakai agar kegagalan aksi lain (mis. arsip produk) tidak ikut memicu panel.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  const [refreshing, setRefreshing] = React.useState(false)
+  const reloadInFlight = React.useRef(false)
   const capabilities = useAdminCapabilities()
   const canManage = can("products.manage", capabilities)
+
+  /**
+   * Tombol Tambah untuk kedua tempat di halaman ini (header dan keadaan kosong).
+   *
+   * `disabled` pada `<Button asChild>` jatuh ke elemen tautan, sedangkan atribut
+   * `disabled` tidak berlaku untuk tautan dan gaya visual mati memakai selektor
+   * `:disabled` yang juga tidak pernah cocok pada tautan. Akibatnya tombolnya
+   * tampil normal dan tetap bisa diklik. Karena itu saat izinnya tidak ada yang
+   * dirender adalah tombol sungguhan yang mati, bukan tautan.
+   */
+  function tombolTambah(
+    { ukuran = "md", ikon = false }: { ukuran?: "sm" | "md"; ikon?: boolean } = {},
+  ) {
+    const isi = (
+      <>
+        {ikon ? <Icon name="plus" className="size-4" aria-hidden="true" /> : null}
+        Tambah
+      </>
+    )
+
+    if (canManage) {
+      return (
+        <Button asChild size={ukuran}>
+          <Link href={createHref}>{isi}</Link>
+        </Button>
+      )
+    }
+
+    return (
+      <HintTip
+        label={
+          <Button size={ukuran} disabled>
+            {isi}
+          </Button>
+        }
+        hint="Kamu tidak punya izin menambah produk."
+        side="bottom"
+        align="right"
+        className="no-underline"
+      />
+    )
+  }
 
   const activeFilters = React.useMemo(() => {
     const chips: Array<{ label: string; clear: () => void }> = []
@@ -304,6 +353,37 @@ export default function ProductsIndex({
   }, [filters.product_category, filters.product_model, filters.status, searchQuery])
 
   const hasActiveFilters = activeFilters.length > 0
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshProducts() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Daftar produk belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
+    })
+  }
+
+  // Respons 500 atau koneksi putus tidak masuk ke onError, tetapi Inertia tetap
+  // memancarkan event. Keduanya dipetakan ke panel galat, hanya saat muat ulang
+  // memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Daftar produk belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
 
   function resetAllFilters() {
     router.get(routeUrl("admin.products.index"), {}, { preserveState: false, preserveScroll: true })
@@ -330,12 +410,7 @@ export default function ProductsIndex({
           <Button asChild variant="secondary" size="sm">
             <Link href={mediaHref}>Media Library</Link>
           </Button>
-          <Button asChild size="sm">
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah
-            </Link>
-          </Button>
+          {tombolTambah({ ukuran: "sm", ikon: true })}
         </div>
       }
     >
@@ -448,7 +523,18 @@ export default function ProductsIndex({
       ) : null}
 
       <Card className="mt-4 overflow-hidden border border-border bg-card">
-        {!products.length ? (
+        {refreshError ? (
+          <ErrorState
+            className="border-0"
+            title="Daftar produk gagal dimuat ulang"
+            description={refreshError}
+            action={
+              <Button variant="outline" size="sm" onClick={refreshProducts} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : !products.length ? (
           hasActiveFilters ? (
             <EmptyState
               className="p-8 border-0"
@@ -468,9 +554,7 @@ export default function ProductsIndex({
               description="Tambah produk baru atau impor katalog dari menu Produk → Import."
               action={
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild disabled={!canManage}>
-                    <Link href={createHref}>Tambah</Link>
-                  </Button>
+                  {tombolTambah()}
                   <Button asChild variant="secondary">
                     <Link href={importHref}>Import</Link>
                   </Button>

@@ -75,28 +75,20 @@ describe("gerbang tombol Simpan urutan", () => {
     expect(lupa).toEqual([])
   })
 
-  it("halaman yang menulis tombolnya sendiri tetap punya gerbang geseran", () => {
+  it("tidak ada halaman yang menulis tombol Simpan urutan sendiri lagi", () => {
     const halaman = halamanSimpanUrutan()
-    expect(halaman.length).toBeGreaterThanOrEqual(11)
+    expect(halaman.length).toBeGreaterThanOrEqual(9)
 
-    const lupa: string[] = []
-    for (const berkas of halaman) {
-      const kode = tanpaKomentar(readFileSync(berkas, "utf8"))
-      if (kode.includes("<ReorderActionButton")) continue
+    // Sembilan halaman memakai komponen bersama. Dulu Bar Promo dan Banner
+    // menulis tombolnya sendiri sehingga gerbang geserannya sempat hilang;
+    // keduanya sudah pindah ke komponen bersama 13 Oktober 2026, jadi daftar
+    // ini harus tetap kosong supaya tidak ada yang mengulanginya.
+    const menulisSendiri = halaman
+      .filter(
+        (berkas) => !tanpaKomentar(readFileSync(berkas, "utf8")).includes("<ReorderActionButton"),
+      )
+      .map((berkas) => berkas.slice(akar.length))
 
-      const iHitung = kode.indexOf("const dirty")
-      const iGerbang = kode.indexOf("{dirty ? (")
-      const iSimpan = kode.indexOf('"Simpan urutan"')
-
-      if (iHitung === -1 || iGerbang === -1 || iSimpan === -1) {
-        lupa.push(berkas.slice(akar.length) + " (penanda geseran tidak lengkap)")
-        continue
-      }
-      if (!(iHitung < iGerbang && iGerbang < iSimpan)) {
-        lupa.push(berkas.slice(akar.length) + " (gerbang tidak mendahului tombol)")
-      }
-    }
-
-    expect(lupa).toEqual([])
+    expect(menulisSendiri).toEqual([])
   })
 })

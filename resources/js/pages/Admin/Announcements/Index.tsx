@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
@@ -170,7 +171,11 @@ export default function AnnouncementsIndex({
   // Urutan lokal dipakai HANYA selama mode Urutkan; di luar itu daftar selalu
   // mengikuti props server supaya filter/pindah halaman tidak menampilkan data basi.
   const [rows, setRows] = React.useState(announcements)
-  const canReorder = reorderMode && q === "" && activeStatus === "all"
+  // Daftar tersaring tidak bisa diurutkan: posisi target tidak mewakili urutan
+  // global, jadi hasil geser bisa salah tempat. Seragam dengan halaman daftar
+  // lain, tombol Urutkan disembunyikan selagi daftar tersaring.
+  const listTersaring = q !== "" || activeStatus !== "all"
+  const canReorder = reorderMode && !listTersaring
   const daftar = canReorder ? rows : announcements
   // Kontrak owner 2026-10-12: tombol Simpan urutan hanya relevan setelah
   // ada geseran yang belum disimpan. Dibandingkan dengan urutan terakhir dari
@@ -278,41 +283,23 @@ export default function AnnouncementsIndex({
       title={title}
       description={description}
       backUrl={backUrl}
+      lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {reorderMode ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={batalkanUrutkan}
-                disabled={urutanForm.processing}
-              >
-                Urungkan
-              </Button>
-              {/* Kontrak owner 2026-10-12: Simpan urutan hanya muncul begitu ada
-                  urutan yang benar-benar digeser. Sebelumnya tombol ini sudah tampil
-                  sejak mode urut menyala, padahal belum ada yang perlu disimpan,
-                  sehingga terasa seperti tombol yang tidak melakukan apa pun. */}
-              {dirty ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={simpanUrutan}
-                  disabled={urutanForm.processing || !canReorder}
-                  title={canReorder ? undefined : "Kosongkan pencarian dan pilih Semua status untuk menyimpan urutan"}
-                >
-                  {urutanForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <Button type="button" variant="secondary" size="sm" onClick={mulaiUrutkan}>
-              <Icon name="list" className="size-3.5" aria-hidden="true" />
-              Urutkan
-            </Button>
-          )}
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner
+              2026-09-20): Urutkan, lalu Urungkan saat mode aktif, lalu Simpan
+              urutan begitu ada urutan yang benar-benar digeser. Kini memakai
+              komponen bersama, sama seperti halaman daftar lain. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={dirty}
+            processing={urutanForm.processing}
+            disabled={!announcements.length || listTersaring}
+            size="sm"
+            onToggle={mulaiUrutkan}
+            onCancel={batalkanUrutkan}
+            onSave={simpanUrutan}
+          />
           <Button asChild size="sm">
             <Link href={createHref}>
               <Icon name="plus" className="size-4" aria-hidden="true" />
