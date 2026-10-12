@@ -4099,3 +4099,12 @@ Mode view: CheckboxField dan Input interval disabled, yang tampil hanya tombol E
 ### UTANG YANG MASIH TERBUKA (dipaku di penjaga test)
 Tujuh halaman pengaturan belum terkunci: CaraPemesanan/Edit, CmsDocument/Edit, CmsPageForm, Profile/Edit, WhatsApp/Edit, Beranda/HowToOrderForm, Beranda/KontakForm. Belum dikerjakan karena pilihan varian A atau B per halaman perlu keputusan owner; daftarnya sengaja dipaku di test supaya tidak hilang dan tidak bertambah.
 Agent: zcode
+
+## 2026-10-12 06:15 UTC | zcode | Trivial | selesai
+- Owner menunjuk paragraf penjelas di bawah judul "Slide bar promo" dan menuliskan teksnya: "Aktifkan rotasi otomatis bar promo di header toko".
+### PERUBAHAN (commit 915b3668)
+Teks paragraf di resources/js/pages/Admin/Announcements/Index.tsx diganti persis: "Aktifkan rotasi otomatis antar beberapa bar promo aktif di header storefront." menjadi "Aktifkan rotasi otomatis bar promo di header toko." Satu baris, tanpa perubahan perilaku.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- Live: paragraf kini berbunyi "Aktifkan rotasi otomatis bar promo di header toko.", teks lama 0 kemunculan; keadaan terkunci tetap utuh (interval disabled, hanya tombol Edit).
+Agent: zcode
