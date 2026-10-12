@@ -4108,3 +4108,14 @@ Teks paragraf di resources/js/pages/Admin/Announcements/Index.tsx diganti persis
 - typecheck 0, eslint 0, build sukses.
 - Live: paragraf kini berbunyi "Aktifkan rotasi otomatis bar promo di header toko.", teks lama 0 kemunculan; keadaan terkunci tetap utuh (interval disabled, hanya tombol Edit).
 Agent: zcode
+
+## 2026-10-12 06:35 UTC | zcode | Trivial | selesai
+- Owner menunjuk label checkbox di setelan "Slide bar promo" dan menuliskan penggantinya: "aktifkan rotasi bar promo".
+### PERUBAHAN (commit 3e73b05a)
+Label checkbox di resources/js/pages/Admin/Announcements/Index.tsx diganti dari "Aktifkan slide" menjadi "Aktifkan rotasi bar promo". Satu baris, tanpa perubahan perilaku. Teks itu hanya muncul satu kali di seluruh repo.
+### KONTEKS PERILAKU (dari pertanyaan owner sebelumnya)
+Setelan ini saklar ROTASI, bukan saklar TAMPIL. Saat dimatikan, bar promo tetap tampil dan diam menampilkan satu promo teratas, bukan hilang. Dibaca di satu tempat saja: resources/js/components/public/announcement-bar.tsx penjaga rotasi. Bar baru benar-benar hilang kalau pengunjung menutupnya sendiri atau tidak ada promo aktif sama sekali.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- Live: label kini "Aktifkan rotasi bar promo", teks lama 0 kemunculan, keadaan terkunci tetap utuh (checkbox disabled, hanya tombol Edit).
+Agent: zcode
