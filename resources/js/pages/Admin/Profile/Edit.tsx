@@ -6,7 +6,9 @@ import { Button } from "@/components/admin/ui/button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { Icon } from "@/components/shared/icon"
+import { buatGerbang } from "@/lib/submit-gate"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface ProfileRecord {
@@ -35,6 +37,15 @@ export default function ProfileEdit({
   // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
   // menekan Edit, supaya data akun tidak rawan tersunting tanpa sengaja saat
   // halaman cuma dibuka untuk melihat.
+  // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
+  // `required` ProfileController. Halaman ini selalu dalam keadaan menyunting
+  // data yang sudah ada, jadi tombolnya juga menunggu sampai ada perubahan.
+  const gerbang = buatGerbang({
+    form,
+    fields: { name: "Nama", username: "Username" },
+    requireChange: true,
+  })
+
   const [mode, setMode] = React.useState<"view" | "edit">("view")
   const terkunci = mode === "view"
 
@@ -61,14 +72,13 @@ export default function ProfileEdit({
               <Button type="button" variant="secondary" size="sm" onClick={batal}>
                 Batal
               </Button>
-              <Button
-                type="submit"
-                form="profile-form"
+              <SubmitGateButton
+                gate={gerbang}
+                formId="profile-form"
+                label="Simpan"
                 size="sm"
-                disabled={form.processing}
-              >
-                {form.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+                processing={form.processing}
+              />
             </>
           )}
         </div>
@@ -77,7 +87,7 @@ export default function ProfileEdit({
       <Head title="Profil Saya | Admin" />
       <form
         id="profile-form"
-        onSubmit={(event) => {
+        onSubmit={gerbang.guard((event) => {
           event.preventDefault()
           form.put(submitUrl, {
             preserveScroll: true,
@@ -88,7 +98,7 @@ export default function ProfileEdit({
               setMode("view")
             },
           })
-        }}
+        })}
         className="w-full max-w-4xl space-y-6"
       >
         <FormErrorSummary errors={form.errors} />

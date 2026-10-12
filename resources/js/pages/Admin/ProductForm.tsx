@@ -1,4 +1,6 @@
 import { Head, router, useForm, usePage } from "@inertiajs/react"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { buatGerbang } from "@/lib/submit-gate"
 import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
@@ -137,6 +139,8 @@ export default function ProductForm({
   }
 }) {
   const editing = Boolean(product)
+
+
   const form = useForm<ProductFormData>({
     workflow: "wizard",
     wizard_step: null,
@@ -333,6 +337,21 @@ export default function ProductForm({
   // mengisi shared props. Digabung supaya kedua jalur tetap menampilkan pesan
   // di FormErrorSummary dan di bawah field terkait.
   const sharedErrors = (usePage<SharedPageProps>().props.errors ?? {}) as Record<string, string>
+  // Gerbang isi (kontrak "logika tombol"): empat kolom wajibnya mengikuti aturan
+  // `required` ProductController. Kolom lain (termasuk nama pendek dan desain)
+  // sengaja TIDAK ikut dikunci supaya tidak menciptakan penghalang yang tidak
+  // diminta server.
+  const gerbang = buatGerbang({
+    form,
+    fields: {
+      name: "Nama produk",
+      product_category: "Kategori",
+      product_model: "Model",
+      status: "Status",
+    },
+    requireChange: editing,
+  })
+
   const combinedErrors: Record<string, string> = { ...sharedErrors, ...form.errors }
 
   // Sub model bersifat opsional. Daftar berisi sub model milik model terpilih
@@ -518,17 +537,28 @@ export default function ProductForm({
         <div className="flex flex-wrap items-center gap-2">
           {!editing ? (
             <>
-              <Button type="submit" form="product-edit-form" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan"}
-              </Button>
-              <Button type="submit" form="product-edit-form" variant="secondary" disabled={saving}>
-                {saving ? "Menyimpan..." : "Simpan draf"}
-              </Button>
+              <SubmitGateButton
+                gate={gerbang}
+                formId="product-edit-form"
+                label="Simpan"
+                processing={saving}
+              />
+              <SubmitGateButton
+                gate={gerbang}
+                formId="product-edit-form"
+                label="Simpan draf"
+                processing={saving}
+                variant="secondary"
+              />
             </>
           ) : (
-            <Button type="submit" form="product-edit-form" variant="secondary" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan"}
-            </Button>
+            <SubmitGateButton
+              gate={gerbang}
+              formId="product-edit-form"
+              label="Simpan"
+              processing={saving}
+              variant="secondary"
+            />
           )}
           {publishUrl && !isActive ? (
             <Button type="button" disabled={publishing} onClick={publish}>
@@ -543,7 +573,7 @@ export default function ProductForm({
       <div className="w-full space-y-6">
         <FormErrorSummary errors={combinedErrors} />
 
-        <form id="product-edit-form" onSubmit={(event) => submit(preserveStatus, event)} className="space-y-6">
+        <form id="product-edit-form" onSubmit={gerbang.guard((event) => submit(preserveStatus, event))} className="space-y-6">
           {/* 1. IDENTITAS + TAKSONOMI + DIMENSI J&T (Table-First) */}
           <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">

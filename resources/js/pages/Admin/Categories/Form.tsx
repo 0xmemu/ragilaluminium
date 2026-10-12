@@ -5,11 +5,13 @@ import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { storeExampleUrl } from "@/lib/routes"
+import { buatGerbang } from "@/lib/submit-gate"
 
 interface CategoryData {
   id?: number
@@ -53,6 +55,15 @@ export default function CategoryForm({
     is_active: category?.is_active ?? true,
   })
 
+  // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
+  // `required` CategoryController, jadi tidak ada aturan baru di frontend. Di
+  // halaman edit tombolnya juga menunggu sampai ada perubahan.
+  const gerbang = buatGerbang({
+    form,
+    fields: { name: "Nama Kategori" },
+    requireChange: Boolean(category),
+  })
+
   function submit(e: React.FormEvent) {
     e.preventDefault()
     form.transform((data) => ({
@@ -76,15 +87,18 @@ export default function CategoryForm({
           <Button asChild variant="secondary">
             <Link href={backUrl}>Batal</Link>
           </Button>
-          <Button type="submit" form="category-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : category ? "Simpan" : "Tambah"}
-          </Button>
+          <SubmitGateButton
+            gate={gerbang}
+            formId="category-form"
+            label={category ? "Simpan" : "Tambah"}
+            processing={form.processing}
+          />
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="category-form" onSubmit={submit} className="w-full max-w-5xl space-y-6">
+      <form id="category-form" onSubmit={gerbang.guard(submit)} className="w-full max-w-5xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
