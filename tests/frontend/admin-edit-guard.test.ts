@@ -63,12 +63,21 @@ const UTANG: string[] = [
 /**
  * Ciri mode terkunci, sengaja longgar supaya tidak bergantung nama variabel:
  * ada state mode yang berdefault "view", ada jalur untuk masuk ke "edit", dan
- * ada kontrol yang benar-benar dimatikan lewat `disabled`.
+ * ada penguncian nyata pada salah satu dari dua varian ADR-023:
+ *
+ * - Varian B (`p-5 sm:p-6`, setelan ringkas): form tetap dirender, kontrolnya
+ *   dimatikan lewat atribut `disabled`.
+ * - Varian A (form panjang): mode ringkasan merender tampilan bacaan, kontrol
+ *   input-nya hanya ada di cabang `mode === "edit"`, jadi tidak perlu `disabled`.
+ *
+ * Keduanya sah. Yang dijamin penjaga ini adalah halaman tidak pernah membuka
+ * form yang langsung bisa disunting.
  */
 function terkunci(teks: string): boolean {
   const adaStateView = /useState<[^>\n]*>\(\s*"view"\s*\)/.test(teks)
   const adaJalurEdit = /set[A-Za-z]*Mode\(\s*"edit"\s*\)/.test(teks)
-  return adaStateView && adaJalurEdit && teks.includes("disabled=")
+  const adaKunci = teks.includes("disabled=") || /mode === "view"/.test(teks)
+  return adaStateView && adaJalurEdit && adaKunci
 }
 
 describe("kontrak mode terkunci halaman pengaturan", () => {

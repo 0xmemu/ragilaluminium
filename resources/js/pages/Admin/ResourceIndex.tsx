@@ -203,7 +203,7 @@ function MediaBulkAttachPanel({
               key={asset.id}
               type="button"
               onClick={() => setSelectedAssetId(asset.id)}
-              className={cn("rounded-lg border p-3 text-left transition-colors hover:bg-accent/50", selectedAssetId === asset.id ? "border-primary bg-primary/5" : "border-border")}
+              className={cn("rounded-lg border p-4 text-left transition-colors hover:bg-accent/50", selectedAssetId === asset.id ? "border-primary bg-primary/5" : "border-border")}
             >
               <div className="aspect-[4/3] overflow-hidden rounded-md border border-border bg-muted/30">
                 {asset.preview_url && asset.kind === "video" ? (
@@ -249,7 +249,7 @@ function MediaBulkAttachPanel({
             </div>
             <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
               {productOptions.map((product) => (
-                <label key={product.id} className="flex items-start gap-2 rounded-md border border-border bg-card p-2 text-sm">
+                <label key={product.id} className="flex items-start gap-2 rounded-md border border-border bg-card p-4 text-sm">
                   <input
                     type="checkbox"
                     checked={form.data.product_ids.includes(product.id)}

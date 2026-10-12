@@ -125,7 +125,7 @@ export default function CmsPageForm({
         }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] xl:items-start"
       >
-        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6">
           <FormErrorSummary errors={form.errors} />
           <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>

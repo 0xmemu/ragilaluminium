@@ -269,7 +269,7 @@ export default function Pairing({
             </div>
 
             {/* Banner Proteksi Sesi */}
-            <div className="mt-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-3.5 text-xs text-success">
+            <div className="mt-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-4 text-xs text-success">
               <Icon name="shield-check" className="size-4 shrink-0 text-success mt-0.5" />
               <div>
                 <span className="font-semibold block">Sesi Terlindungi</span>
@@ -332,7 +332,7 @@ export default function Pairing({
               </div>
 
               {showDisconnectConfirm ? (
-                <div className="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive border border-destructive/20 animate-in fade-in duration-200">
+                <div className="mt-3 rounded-md bg-destructive/10 p-4 text-xs text-destructive border border-destructive/20 animate-in fade-in duration-200">
                   <p className="font-semibold">Peringatan:</p>
                   <p className="mt-0.5">
                     Memutuskan sambungan akan menghapus sesi WhatsApp di server. Layanan pesan otomatis pesanan akan terhenti sampai Anda menghubungkan nomor baru melalui scan QR.

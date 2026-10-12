@@ -687,7 +687,7 @@ export default function TentangKamiEdit({
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {form.data.gallery_items.map((item, index) => (
-                      <div key={index} className="rounded-lg border border-border bg-surface p-2.5 space-y-2">
+                      <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-2">
                         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md border border-border bg-surface-muted">
                           <img src={item.url} alt="" className="size-full object-cover" />
                           <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
@@ -742,7 +742,7 @@ export default function TentangKamiEdit({
           >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {form.data.stats_items.map((stat, index) => (
-                <div key={index} className="rounded-lg border border-border bg-surface p-3.5 space-y-2">
+                <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-2">
                   <span className="text-[11px] font-bold text-primary">
                     Kartu {index + 1}
                   </span>
@@ -796,7 +796,7 @@ export default function TentangKamiEdit({
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {form.data.why_points.map((point, index) => (
-                  <div key={index} className="rounded-lg border border-border bg-surface p-3.5 space-y-2.5">
+                  <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="flex size-7 items-center justify-center rounded bg-primary/10 text-primary">
                         <Icon name={point.icon || "check-circle"} className="size-4" weight="bold" aria-hidden="true" />
@@ -841,7 +841,7 @@ export default function TentangKamiEdit({
                         className="text-xs"
                       />
                     </Field>
-                    <div className="rounded-md border border-dashed border-border bg-card p-2.5">
+                    <div className="rounded-md border border-dashed border-border bg-card p-4">
                       <p className="text-[9px] font-semibold text-muted-foreground">
                         Pratinjau kartu
                       </p>
@@ -876,7 +876,7 @@ export default function TentangKamiEdit({
             <div className="space-y-3">
               <div className="space-y-2">
                 {form.data.trust_rows.map((row, index) => (
-                  <div key={index} className="flex items-center gap-2 rounded-md border border-border bg-surface p-2">
+                  <div key={index} className="flex items-center gap-2 rounded-md border border-border bg-surface p-4">
                     <span className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
                       <Icon name="check-circle" className="size-4" weight="bold" aria-hidden="true" />
                     </span>
@@ -942,7 +942,7 @@ export default function TentangKamiEdit({
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-3">
                 {form.data.production_processes.map((proc, index) => (
-                  <div key={index} className="rounded-lg border border-border bg-surface p-3.5 space-y-2.5">
+                  <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-primary">
                         Tahap {index + 1}
@@ -1004,7 +1004,7 @@ export default function TentangKamiEdit({
                         className="text-xs"
                       />
                     </Field>
-                    <div className="rounded-md border border-dashed border-border bg-card p-2.5">
+                    <div className="rounded-md border border-dashed border-border bg-card p-4">
                       <p className="text-[9px] font-semibold text-muted-foreground">
                         Pratinjau kartu
                       </p>
@@ -1049,7 +1049,7 @@ export default function TentangKamiEdit({
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-3">
                 {form.data.work_steps.map((step, index) => (
-                  <div key={index} className="rounded-lg border border-border bg-surface p-3.5 space-y-2">
+                  <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-primary tabular-nums">
                         Langkah {String(index + 1).padStart(2, "0")}
@@ -1096,7 +1096,7 @@ export default function TentangKamiEdit({
                         className="text-xs"
                       />
                     </Field>
-                    <div className="rounded-md border border-dashed border-border bg-card p-2.5">
+                    <div className="rounded-md border border-dashed border-border bg-card p-4">
                       <p className="text-[9px] font-semibold text-muted-foreground">
                         Pratinjau langkah
                       </p>

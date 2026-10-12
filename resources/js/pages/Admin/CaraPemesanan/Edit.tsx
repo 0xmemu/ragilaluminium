@@ -172,7 +172,7 @@ export default function CaraPemesananEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
           <FieldGrid>
             <Field id="cmspage-title" label="Judul CMS" required error={form.errors.title}>
@@ -337,7 +337,7 @@ export default function CaraPemesananEdit({
           ))}
         </section>
 
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-7 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)]">
+        <section className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)]">
           <Field
             id="cp-body"
             label="Catatan tambahan (HTML/teks)"

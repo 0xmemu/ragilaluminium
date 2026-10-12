@@ -249,7 +249,7 @@ export default function CustomerDetail({
              satu, daftar ini tidak ditampilkan sama sekali. */
           <ul className="space-y-3">
             {daftarAlamat.map((alamat, index) => (
-              <li key={index} className="rounded-md border border-border p-3">
+              <li key={index} className="rounded-md border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
