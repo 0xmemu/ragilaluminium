@@ -4363,3 +4363,35 @@ Spec tidak berubah.
 Sisa yang belum dikerjakan dan menunggu keputusan owner: 39 tombol submit form
 yang belum punya gerbang isi (kontrak aksi yang pasti ditolak). Itu kontrak
 terpisah dari mode terkunci dan belum diperintahkan.
+
+## 2026-10-12 21:26 UTC | zcode | Standard | a8c4f034 | selesai
+
+Dua permintaan owner setelah pass mode terkunci selesai.
+
+Pertama, mendokumentasikan tiga pengecualian mode terkunci supaya tidak dibaca
+sebagai kelalaian: halaman yang merangkap alur tambah hanya terkunci saat
+menyunting (Halaman CMS); tombol aksi STATUS seperti Aktifkan/Nonaktifkan tidak
+ikut terkunci karena ia mengubah status bukan mengisi nilai (Template
+WhatsApp); dan posisi tombol Edit mengikuti bentuk bagiannya, boleh di baris
+tombol form bila header bagiannya sudah berupa tombol buka panel (Apa Kata
+Pelanggan). Ditulis di tiga tempat: klausa Pengecualian pada blok MODE
+TERKUNCI di AGENTS.md repo ini dan salinan lokalnya, bagian Pengecualian
+ADR-023 (lokal, docs/ADR hanya ada di workspace), plus penanda bahwa utang
+tujuh halaman di ADR-023 sudah selesai.
+
+Kedua, memutuskan apakah 39 gerbang isi form dikerjakan sebagai pass terpisah.
+KEPUTUSAN: dikerjakan, tetapi sebagai pass tersendiri, dan belum dimulai.
+Alasannya tiga: perlu satu hook bersama lebih dulu supaya polanya tidak
+bercabang di 22 halaman; alasannya wajib ikut, karena setengah kontraknya
+adalah alasan di dekat tombol; dan risiko regresinya beda, salah menaruh
+gerbang membuat admin tidak bisa menyimpan sama sekali. Ruang lingkup,
+prasyarat, dan cara mengulang auditnya ditulis di docs/DOMAIN/panel-admin.md
+bagian 14b.
+
+Verifikasi: penjaga admin-edit-guard tetap lulus (4 test) dan test nama
+parameter route admin lulus (2 test), jadi klausa baru di AGENTS.md tidak
+mengganggu penjaga yang membaca berkas itu. Nol em dash di ketiga berkas yang
+disunting.
+
+Catatan: berkas lokal (AGENTS.md workspace, ADR-023, panel-admin.md) tidak ikut
+commit karena bukan bagian repo VPS dan workspace lokal bukan repo git.
