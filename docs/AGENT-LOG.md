@@ -4078,3 +4078,24 @@ Section penjelas "Cara kerja" dihapus dari resources/js/pages/Admin/Announcement
 - typecheck 0, eslint 0, build sukses.
 - Live: teks "Cara kerja" dan "promo dari sumber lain" tidak ada lagi; kartu "Slide bar promo" (kolom interval), toolbar pencarian, dan daftar bar promo tetap utuh. Satu section tersisa (Slide bar promo), tiga input (cari, aktifkan slide, interval).
 Agent: zcode
+
+## 2026-10-12 05:55 UTC | zcode | Deep | selesai
+- Owner: "logika default form. sekali lagi berulang kali saya bilang, kalau form atau input atau checkbox harus di guard dengan tombol edit, secara default ini tidak bisa dirubah dan read only kecuali tombol edit ditekan. cari logs saya sudah sangat sering menyampaikan ini. ubah jadi logic contract".
+### AKAR MASALAH PENGULANGAN
+Aturan ini sudah ditetapkan 19 Sep 2026 dan ditulis di ADR-023, tetapi hanya hidup di log sesi dan berkas ADR. Berkas itu TIDAK dimuat otomatis setiap sesi; yang dimuat adalah AGENTS.md. Kontrak alignment ADR-022 justru ada di AGENTS.md, dan itu sebabnya ia tidak pernah terulang. Jadi masalahnya bukan halamannya, melainkan aturan yang tidak punya tempat tetap.
+### BUKTI PENGULANGAN (hasil pencarian log)
+Lima kali owner menegaskan hal yang sama: 16 Sep (log sesi, mode ringkasan Tentang Kami), 19 Sep ("kenapa form edit langsung aktif, ini sering terjadi"), 29 Sep ("jangan defaultnya aktif, tapi harus ada tombol edit/simpan"), 11 Okt ("form dan edit box harusnya disable/read only kalau belum menekan tombol edit", halaman Biaya COD dan Subsidi Ongkir), 12 Okt (pesan hari ini). Tabelnya kini dicatat di ADR-023.
+### PERUBAHAN (commit fd028052)
+1. AGENTS.md: aturan "MODE TERKUNCI HALAMAN PENGATURAN" menjadi non-negotiable, sejajar kontrak alignment ADR-022. Ini penutup akarnya.
+2. ADR-023: ditambah tabel bukti pengulangan + bagian penegakan.
+3. tests/frontend/admin-edit-guard.test.ts: penjaga baru memaku daftar halaman pengaturan wajib terkunci (WAJIB_TERKUNCI) dan daftar utang (UTANG). Halaman baru yang lupa terkunci gagal; halaman utang yang sudah diperbaiki wajib dipindah ke daftar wajib.
+4. resources/js/pages/Admin/Announcements/Index.tsx: bagian "Slide bar promo" (halaman yang sedang dilihat owner) kini terkunci varian B, mengikuti pola CodSettings/Subsidi Ongkir.
+### CARA KERJA VARIAN B DI SLIDE BAR PROMO
+Mode view: CheckboxField dan Input interval disabled, yang tampil hanya tombol Edit di kanan header. Mode edit: isian aktif, Batal + Simpan muncul di kanan header (Simpan memakai form="slide-form"). Batal memulihkan isian ke nilai tersimpan lalu mengunci; Simpan berhasil mengunci lagi dan menjadikan nilai baru acuan Batal. Tidak memakai router.reload().
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses, npx vitest run 336 lulus (39 berkas, termasuk 4 test penjaga baru).
+- Penjaga dibuktikan menangkap pelanggaran: mematikan jalur mode edit halaman Biaya COD sesaat membuat test gagal (EXIT 1 menunjuk berkas itu), lalu berkas dipulihkan dan git status bersih.
+- Live: halaman terbuka terkunci (interval 2,5 dan checkbox disabled, hanya Edit). Setelah Edit: isian aktif, Edit hilang, Batal + Simpan muncul. Setelah Batal: terkunci, nilai kembali 2,5 (perubahan tak tersimpan dibuang). Setelah Simpan dengan 4: terkunci, nilai 4, pesan "Pengaturan bar slide disimpan.". Nilai interval dipulihkan ke 2,5 sesudah uji.
+### UTANG YANG MASIH TERBUKA (dipaku di penjaga test)
+Tujuh halaman pengaturan belum terkunci: CaraPemesanan/Edit, CmsDocument/Edit, CmsPageForm, Profile/Edit, WhatsApp/Edit, Beranda/HowToOrderForm, Beranda/KontakForm. Belum dikerjakan karena pilihan varian A atau B per halaman perlu keputusan owner; daftarnya sengaja dipaku di test supaya tidak hilang dan tidak bertambah.
+Agent: zcode
