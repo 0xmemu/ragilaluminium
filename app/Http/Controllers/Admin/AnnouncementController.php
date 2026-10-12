@@ -187,12 +187,14 @@ class AnnouncementController extends Controller
     {
         $validated = $request->validate([
             'enabled' => ['boolean'],
-            'interval' => ['required', 'integer', 'min:2', 'max:30'],
+            // Satuan detik dan boleh pecahan: rotasi storefront punya lantai
+            // 2,5 detik (announcement-bar.tsx), dan nilai bawaan setelan ini 2,5.
+            'interval' => ['required', 'numeric', 'min:2.5', 'max:30'],
         ]);
 
         AnnouncementSlideSettings::save([
             'enabled' => (bool) ($validated['enabled'] ?? false),
-            'interval' => (int) $validated['interval'],
+            'interval' => (float) $validated['interval'],
         ]);
 
         return redirect()->route('admin.announcements.index')->with('success', 'Pengaturan bar slide disimpan.');

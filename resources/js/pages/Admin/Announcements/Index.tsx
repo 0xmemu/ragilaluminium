@@ -348,7 +348,8 @@ export default function AnnouncementsIndex({
           <Field id="slide-interval" label="Interval (detik)">
             <Input
               type="number"
-              min={2}
+              min={2.5}
+              step={0.5}
               max={30}
               value={slideInterval}
               onChange={(event) => setSlideInterval(event.target.value)}
