@@ -374,7 +374,7 @@ export default function AnnouncementsIndex({
             id="slide-enabled"
             checked={slideEnabled}
             onChange={(checked) => setSlideEnabled(checked)}
-            label="Aktifkan slide"
+            label="Aktifkan rotasi bar promo"
             disabled={slideTerkunci}
           />
           <Field id="slide-interval" label="Interval (detik)">
