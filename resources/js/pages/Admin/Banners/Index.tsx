@@ -361,7 +361,8 @@ export default function BannersIndex({
           <table className="min-w-full text-left">
             <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
               <tr>
-                {canReorder ? <th className="w-12 px-2 py-3" aria-label="Seret" /> : <th className="px-3 py-3">No</th>}
+                {canReorder ? <th className="w-12 px-2 py-3" aria-label="Seret" /> : null}
+                <th className="w-12 px-2 py-3">No</th>
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Urutan</th>
                 <th className="px-3 py-3">Diperbarui</th>
@@ -380,8 +381,13 @@ export default function BannersIndex({
                   )}
                   {...(canReorder ? dnd.rowProps(index) : {})}
                 >
+                  {canReorder ? (
+                    <td className="w-12 px-2 py-3 align-middle">
+                      <ReorderDragHandle enabled />
+                    </td>
+                  ) : null}
                   <td className="w-12 px-2 py-3 align-middle">
-                    {canReorder ? <ReorderDragHandle enabled /> : <span className="text-xs text-muted-foreground tabular-nums">{urutanDasar + index + 1}</span>}
+                    <span className="text-xs text-muted-foreground tabular-nums">{urutanDasar + index + 1}</span>
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
