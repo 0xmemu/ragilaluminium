@@ -298,7 +298,12 @@ export default function StorefrontPlatformsEdit({
         {/* 1. Marketplace & Media Sosial */}
         <div className="space-y-4">
           <FormErrorSummary errors={platformForm.errors} />
-          <div className="grid items-start gap-6 lg:grid-cols-2">
+          {/* Dua tabel tautan membentang penuh: URL marketplace/media sosial
+              sangat panjang (90-110 karakter), di lebar separuh kolom URL
+              hanya sisa ~300px sehingga membungkus 3 baris dan tinggi baris
+              jadi tidak rata. Semua tabel admin lain juga membentang penuh
+              (kontrak panel admin: Table-First). */}
+          <div className="grid items-start gap-6">
             {kartuPlatform(
               "Marketplace Resmi",
               "Tautan toko resmi di platform belanja online. Tampil di kartu informasi toko dan footer.",
