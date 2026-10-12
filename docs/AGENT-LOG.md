@@ -4147,3 +4147,12 @@ Ketujuh blok `{reorderMode ? (<p>Mode Urutkan aktif...` dihapus, termasuk pering
 ### CATATAN KOLABORASI (penting)
 Tiga berkas (SubModels, ModelProducts, Faq) di working tree juga memuat WIP agent lain yang belum di-commit, yaitu `buildItems sort_order index` menjadi `index + 1`. WIP itu TIDAK saya commit: ketiganya di-commit lewat plumbing (git show HEAD, hapus banner, git hash-object -w, git update-index --cacheinfo, commit TANPA path) sehingga hanya penghapusan banner yang masuk. Dibuktikan setelah commit: git diff pada ketiga berkas menyisakan HANYA baris WIP agent lain. Sisa working tree lain (169 berkas) tidak disentuh.
 Agent: zcode
+
+## 2026-10-12 07:35 UTC | zcode | Trivial | selesai
+- Owner: "haous" (hapus) sambil menunjuk <p> "Urutan baris di bawah ini sama dengan urutan bagian Masalah & Solusi di halaman publik." di /admin/masalah-solusi.
+### PERUBAHAN (commit eeaea786)
+Teks itu adalah cabang lain dari ternary yang tersisa dari penghapusan banner Mode Urutkan (commit bc2a0bb7), sengaja dipertahankan saat itu karena bukan yang ditunjuk. Kini seluruh ternary `{reorderMode ? null : ( ... )}` dihapus utuh karena sudah tak berguna. Enam baris, tanpa perubahan perilaku lain.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses. Teks itu 0 kemunculan di seluruh repo (tsx, ts, php).
+- Live: teks lama hilang di tiga keadaan (normal, mode urut, sesudah Urungkan); daftar 5 baris tetap tampil dan tombol Urutkan tetap bekerja.
+Agent: zcode
