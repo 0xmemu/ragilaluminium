@@ -4330,3 +4330,36 @@ tests/frontend/reorder-save-gate.test.ts. Spec tidak berubah.
 
 Sisa: mode terkunci halaman pengaturan (4 halaman belum terdaftar ditambah 7
 halaman utang) dikerjakan di tahap berikutnya.
+
+## 2026-10-12 20:59 UTC | zcode | Deep | a2e06256 | selesai (tahap 2 dari 2)
+
+Lanjutan permintaan owner: kerjakan semua temuan audit, termasuk yang dibahas
+sebelumnya soal mode terkunci halaman pengaturan.
+
+Sebelas halaman dikunci mengikuti ADR-023: tujuh halaman utang yang sudah
+tercatat penjaga (Cara Pemesanan, Dokumen Halaman, Halaman CMS, Profil Saya,
+Template WhatsApp, Form Cara Pesan, Form Kontak Toko) dan empat halaman yang
+sebelumnya belum masuk daftar mana pun (Tata Letak Beranda serta bagian
+setelan halaman di FAQ, Apa Kata Pelanggan, Masalah dan Solusi).
+
+Pola seragam dengan halaman yang sudah terkunci: state mode berdefault view,
+kontrol disabled selama view, tombol Edit di kanan header bagian, lalu Batal
+dan Simpan saat edit. Batal memakai resetAndClearErrors, bukan router.reload.
+Halaman CMS hanya terkunci saat menyunting karena alur tambah dikecualikan
+kontrak. Tombol Aktifkan/Nonaktifkan template WhatsApp sengaja TIDAK dikunci:
+itu aksi status, bukan isian, dan owner sudah memindahkan kontrol status ke
+kolom Aksi pada 11 Oktober.
+
+Verifikasi: tsc bersih, eslint 0 warning, build sukses, 336 test frontend
+lulus termasuk penjaga admin-edit-guard yang kini mencatat 16 halaman wajib
+dan daftar utang kosong. Bukti live lewat scripts/admin-preview.cjs: halaman
+Profil Saya menampilkan tombol Edit tanpa Simpan dan kelima isiannya mati;
+bagian meta Masalah dan Solusi dua isian mati; halaman Tata Letak Beranda
+menampilkan satu tombol Edit tanpa Simpan dan Batal, dan setelah Edit ditekan
+kunci terbuka (saklar hidup, Batal, Simpan, dan Urutkan muncul).
+
+Spec tidak berubah.
+
+Sisa yang belum dikerjakan dan menunggu keputusan owner: 39 tombol submit form
+yang belum punya gerbang isi (kontrak aksi yang pasti ditolak). Itu kontrak
+terpisah dari mode terkunci dan belum diperintahkan.
