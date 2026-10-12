@@ -152,7 +152,14 @@ class AnnouncementController extends Controller
             'published' => ['boolean'],
         ]);
 
-        if (filled($data['starts_at']) && filled($data['ends_at'])) {
+        // `?? null` wajib: validate() hanya mengembalikan kolom yang benar-benar
+        // dikirim, dan kolom periode boleh kosong, jadi permintaan yang tidak
+        // mengirim keduanya tetap lolos validasi tanpa kuncinya ikut ada. Membaca
+        // kunci yang tidak ada memicu peringatan PHP yang diubah Laravel menjadi
+        // error, sehingga jawabannya 500 alih-alih pesan validasi. Form admin
+        // selalu mengirim kedua kolom itu, jadi jalur ini hanya tersentuh
+        // permintaan yang dibuat langsung.
+        if (filled($data['starts_at'] ?? null) && filled($data['ends_at'] ?? null)) {
             $starts = Carbon::parse($data['starts_at']);
             $ends = Carbon::parse($data['ends_at']);
             if ($ends->lt($starts)) {
