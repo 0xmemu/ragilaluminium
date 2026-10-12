@@ -4303,3 +4303,30 @@ Lingkup: penguncian recognizedOrderIds pada IncomeDetailQuery::items(), penangan
 Dampak spec: tidak berubah
 Untuk agent berikutnya: items() wajib selalu menyaring whereIn('id', ); kasus retur yang di-void (voided_at) wajib dikecualikan dari akumulasi refund dan ongkir retur.
 Bukti: 37 tes ekspor dan kalkulasi lulus (341 asersi).
+
+## 2026-10-12 20:21 UTC | zcode | Standard | cbdbf7c5 | selesai (tahap 1 dari 2)
+
+Permintaan owner: kerjakan semua temuan audit tombol, dan juga yang dibahas
+sebelumnya (mode terkunci halaman pengaturan).
+
+Tahap ini menuntaskan dua temuan tombol. Pertama, halaman Produk memberi
+disabled pada Button asChild sehingga atributnya jatuh ke elemen tautan dan
+tidak berpengaruh; kini saat izin kelola tidak ada yang dirender tombol
+sungguhan yang mati plus alasan, dan kedua tombol Tambah di halaman itu
+diperlakukan sama. Kedua, Bar Promo dan Banner yang masih menulis tombol mode
+urutnya sendiri kini memakai komponen bersama dan mengikuti bentuk kanonik
+halaman lain: kunci halaman dinyalakan saat mode urut, tombol Urutkan
+disembunyikan selagi daftar tersaring.
+
+Verifikasi: tsc bersih, eslint 0 warning, build sukses, 336 test frontend
+lulus. Bukti live lewat scripts/admin-preview.cjs: halaman Bar Promo
+menampilkan tombol Urutkan tanpa Simpan urutan, setelah Urutkan ditekan yang
+muncul hanya Urungkan, kelas admin-reorder-lock terpasang di main dan tautan
+halaman jadi pointer-events none sementara pegangan geser tetap auto, dan pada
+URL tersaring tombol Urutkan hilang.
+
+Berkas: Products/Index.tsx, Announcements/Index.tsx, Banners/Index.tsx, dan
+tests/frontend/reorder-save-gate.test.ts. Spec tidak berubah.
+
+Sisa: mode terkunci halaman pengaturan (4 halaman belum terdaftar ditambah 7
+halaman utang) dikerjakan di tahap berikutnya.
