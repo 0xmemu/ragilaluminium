@@ -215,12 +215,6 @@ export default function MasalahSolusiIndex({
         </form>
       </section>
 
-      {reorderMode ? null : (
-        <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Urutan baris di bawah ini sama dengan urutan bagian Masalah &amp; Solusi di halaman publik.
-        </p>
-      )}
-
       <ListToolbar
         search={{
           value: q,
