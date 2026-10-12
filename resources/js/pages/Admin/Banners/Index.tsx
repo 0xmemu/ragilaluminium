@@ -338,12 +338,6 @@ export default function BannersIndex({
         </Select>
       </ListToolbar>
 
-      {reorderMode ? (
-        <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan slide, lalu tekan Simpan urutan.
-          {!canReorder ? <span className="font-semibold text-foreground"> Kosongkan pencarian dan pilih Semua status agar urutan bisa digeser.</span> : null}
-        </p>
-      ) : null}
 
       {!banners.length ? (
         <EmptyState

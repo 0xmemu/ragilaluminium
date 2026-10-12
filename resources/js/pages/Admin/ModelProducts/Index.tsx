@@ -349,11 +349,6 @@ export default function ModelProductsIndex({
       <Head title={`${title} | Admin`} />
       <ManageProductsTabs active="models" />
 
-      {reorderMode ? (
-        <div className="mb-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Mode Urutkan aktif: pakai ikon tarik di tepi kiri baris untuk memindahkan, lalu simpan.
-        </div>
-      ) : null}
 
       <ListToolbar
         search={{

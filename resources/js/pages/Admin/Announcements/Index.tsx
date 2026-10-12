@@ -404,13 +404,6 @@ export default function AnnouncementsIndex({
           }
         />
       ) : (
-        <>
-        {reorderMode ? (
-          <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris untuk memindahkan bar promo, lalu tekan Simpan urutan.
-            {!canReorder ? <span className="font-semibold text-foreground"> Kosongkan pencarian dan pilih Semua status agar urutan bisa digeser.</span> : null}
-          </p>
-        ) : null}
         <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left">
             <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
@@ -470,7 +463,6 @@ export default function AnnouncementsIndex({
             </tbody>
           </table>
         </div>
-        </>
       )}
 
       {pagination.last_page > 1 ? (

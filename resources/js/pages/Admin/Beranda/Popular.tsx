@@ -438,14 +438,6 @@ export default function BerandaPopular({
         </Select>
       </ListToolbar>
 
-      {reorderMode ? (
-        <p className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Mode Urutkan aktif: pakai <span className="font-semibold text-foreground">ikon tarik</span> di tepi kiri baris atau menu <span className="font-semibold text-foreground">Pindahkan ke</span> untuk memindahkan produk, lalu tekan Simpan urutan.
-          {!canReorder ? (
-            <span className="font-semibold text-foreground"> Selagi daftar tersaring (pencarian atau filter status), hanya tombol Ke atas yang bisa memindahkan produk; kosongkan keduanya untuk menggeser bebas.</span>
-          ) : null}
-        </p>
-      ) : null}
 
       <Card className="overflow-hidden border border-border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2.5">

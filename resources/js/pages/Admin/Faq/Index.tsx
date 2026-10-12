@@ -448,11 +448,6 @@ export default function FaqIndex({
         </section>
       ) : null}
 
-      {reorderMode ? (
-        <div className="mt-4 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Mode Urutkan aktif: pakai <span className="font-semibold">ikon tarik</span> di tepi kiri baris untuk memindahkan, lalu klik Simpan urutan.
-        </div>
-      ) : null}
 
       <ListToolbar
         search={{

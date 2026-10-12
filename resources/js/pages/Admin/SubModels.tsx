@@ -276,11 +276,6 @@ export default function SubModelsIndex({
       <Head title={title} />
       <ManageProductsTabs active="subModels" />
       <div className="space-y-4">
-        {reorderMode ? (
-          <div className="rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-            Mode Urutkan aktif: pakai ikon tarik di tepi kiri baris untuk memindahkan, lalu simpan.
-          </div>
-        ) : null}
 
         {/* Pencarian dan filter model / status (seragam dengan halaman produk) */}
         <ListToolbar
