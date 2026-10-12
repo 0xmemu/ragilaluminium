@@ -1,9 +1,12 @@
 import { Head, useForm } from "@inertiajs/react"
+import * as React from "react"
+
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface ProfileRecord {
@@ -28,14 +31,47 @@ export default function ProfileEdit({
     password_confirmation: "",
   })
 
+  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
+  // menekan Edit, supaya data akun tidak rawan tersunting tanpa sengaja saat
+  // halaman cuma dibuka untuk melihat.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   return (
     <AdminLayout
       title="Profil Saya"
       description="Perbarui nama, username, dan password akun yang sedang login."
       actions={
-        <Button type="submit" form="profile-form" disabled={form.processing}>
-          {form.processing ? "Menyimpan..." : "Simpan"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {mode === "view" ? (
+            <Button type="button" size="sm" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                form="profile-form"
+                size="sm"
+                disabled={form.processing}
+              >
+                {form.processing ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </>
+          )}
+        </div>
       }
     >
       <Head title="Profil Saya | Admin" />
@@ -44,7 +80,13 @@ export default function ProfileEdit({
         onSubmit={(event) => {
           event.preventDefault()
           form.put(submitUrl, {
-            onSuccess: () => form.reset("current_password", "password", "password_confirmation"),
+            preserveScroll: true,
+            onSuccess: () => {
+              form.reset("current_password", "password", "password_confirmation")
+              // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+              form.setDefaults()
+              setMode("view")
+            },
           })
         }}
         className="w-full max-w-4xl space-y-6"
@@ -64,6 +106,7 @@ export default function ProfileEdit({
           <FieldGrid>
             <Field id="profile-name" label="Nama" required error={form.errors.name}>
               <Input
+              disabled={terkunci}
                 value={form.data.name}
                 onChange={(event) => form.setData("name", event.target.value)}
                 autoComplete="name"
@@ -78,6 +121,7 @@ export default function ProfileEdit({
               hint="Username digunakan untuk masuk ke panel admin."
             >
               <Input
+              disabled={terkunci}
                 value={form.data.username}
                 onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
                 autoComplete="username"
@@ -93,6 +137,7 @@ export default function ProfileEdit({
           <div className="space-y-4">
             <Field id="profile-current-password" label="Password saat ini" error={form.errors.current_password}>
               <Input
+              disabled={terkunci}
                 type="password"
                 value={form.data.current_password}
                 onChange={(event) => form.setData("current_password", event.target.value)}
@@ -109,6 +154,7 @@ export default function ProfileEdit({
                 hint="Minimal 8 karakter."
               >
                 <Input
+                disabled={terkunci}
                   type="password"
                   value={form.data.password}
                   onChange={(event) => form.setData("password", event.target.value)}
@@ -123,6 +169,7 @@ export default function ProfileEdit({
                 error={form.errors.password_confirmation}
               >
                 <Input
+                disabled={terkunci}
                   type="password"
                   value={form.data.password_confirmation}
                   onChange={(event) => form.setData("password_confirmation", event.target.value)}

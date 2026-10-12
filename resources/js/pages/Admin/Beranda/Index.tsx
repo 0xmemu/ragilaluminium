@@ -89,11 +89,22 @@ export default function BerandaIndex({
     syncForm(next)
   }
 
+  // Ikon tarik hanya ada saat mode Urutkan aktif (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && sections.length > 1
+
   const dnd = useRowDragSort({
-    enabled: reorderMode,
+    enabled: dragAktif,
     count: sections.length,
     onReorder: reorderSections,
   })
+
+  // Perubahan urutan dihitung terhadap snapshot server, TERPISAH dari perubahan
+  // switch tampil. Form yang sama memuat urutan sekaligus status tampil, jadi
+  // form.isDirty ikut bernilai true saat switch dinyalakan dan tombol berubah
+  // jadi "Simpan urutan" padahal urutan baris tidak berubah.
+  const urutanBerubah =
+    sections.map((section) => section.key).join("|") !==
+    initialSections.map((section) => section.key).join("|")
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
   function cancelReorder() {
@@ -117,6 +128,21 @@ export default function BerandaIndex({
     setReorderMode(false)
   }
 
+  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci. Saklar tampil dan pengurutan baru bisa
+  // dipakai setelah admin menekan Edit, supaya tata letak beranda tidak rawan
+  // tersunting tanpa sengaja saat halaman cuma dibuka untuk melihat.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Kembalikan urutan dan switch ke snapshot server, lalu kunci lagi.
+    cancelReorder()
+    setSections(initialSections)
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   function toggleEnabled(index: number) {
     const next = sections.map((section, i) =>
       i === index ? { ...section, enabled: !section.enabled } : section,
@@ -131,31 +157,63 @@ export default function BerandaIndex({
       lockInteraction={reorderMode}
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" asChild>
-            <Link href={routeUrl("admin.beranda.index")}>Batal</Link>
-          </Button>
-          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20).
-              Saat mode urut aktif, tombol ini menggantikan Simpan: form yang sama
-              memuat urutan sekaligus status tampil tiap bagian, jadi satu tombol
-              simpan sudah mewakili seluruh perubahan. */}
-          <ReorderActionButton
-            active={reorderMode}
-            dirty={form.isDirty}
-            processing={form.processing}
-            disabled={sections.length < 2}
-            onToggle={() => setReorderMode(true)}
-            onCancel={cancelReorder}
-            onSave={() => form.put(submitUrl, { onSuccess: () => setReorderMode(false) })}
-          />
-          {!reorderMode ? (
-            <Button
-              type="button"
-              disabled={form.processing}
-              onClick={() => form.put(submitUrl)}
-            >
-              {form.processing ? "Menyimpan..." : "Simpan"}
+          {mode === "view" ? (
+            <Button type="button" variant="secondary" asChild>
+              <Link href={routeUrl("admin.beranda.index")}>Batal</Link>
             </Button>
-          ) : null}
+          ) : (
+            <Button type="button" variant="secondary" onClick={batal}>
+              Batal
+            </Button>
+          )}
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20).
+              Saat mode Urutkan aktif, tombol ini menggantikan Simpan: form yang sama
+              memuat urutan sekaligus status tampil tiap bagian, jadi satu tombol
+              simpan sudah mewakili seluruh perubahan. Label "Simpan urutan" hanya
+              muncul bila urutan baris benar-benar berubah. */}
+          {mode === "edit" ? (
+            <>
+              <ReorderActionButton
+                active={reorderMode}
+                dirty={urutanBerubah}
+                processing={form.processing}
+                disabled={sections.length < 2}
+                onToggle={() => setReorderMode(true)}
+                onCancel={cancelReorder}
+                onSave={() =>
+                  form.put(submitUrl, {
+                    onSuccess: () => {
+                      form.setDefaults()
+                      setReorderMode(false)
+                      setMode("view")
+                    },
+                  })
+                }
+              />
+              {!reorderMode ? (
+                <Button
+                  type="button"
+                  disabled={form.processing}
+                  onClick={() =>
+                    form.put(submitUrl, {
+                      onSuccess: () => {
+                        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+                        form.setDefaults()
+                        setMode("view")
+                      },
+                    })
+                  }
+                >
+                  {form.processing ? "Menyimpan..." : "Simpan"}
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <Button type="button" size="sm" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          )}
         </div>
       }
     >
@@ -167,10 +225,11 @@ export default function BerandaIndex({
           <li
             key={section.key}
             className={cn("flex flex-wrap items-center gap-3 p-4 sm:p-5", dnd.draggingIndex === index && "opacity-40")}
-            {...(reorderMode ? dnd.rowProps(index) : {})}
+            {...(dragAktif ? dnd.rowProps(index) : {})}
           >
-            {/* Geser hanya lewat ikon tarik di tepi kiri item (kontrak owner 2026-09-20). */}
-            <ReorderDragHandle enabled={reorderMode} />
+            {/* Ikon tarik hanya dirender saat mode Urutkan aktif, jadi tidak ada
+                ruang kosong di luar mode itu (kontrak owner 2026-09-20, direvisi). */}
+            {dragAktif ? <ReorderDragHandle enabled /> : null}
 
             <span className="inline-flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
               <Icon name={section.icon} className="size-5" aria-hidden="true" />
@@ -181,10 +240,16 @@ export default function BerandaIndex({
               <p className="mt-0.5 text-sm text-muted-foreground">{section.description}</p>
             </div>
 
+            {/* Switch status tampil dikunci selama mode Urutkan: tombol Simpan biasa
+                disembunyikan di mode itu, sedangkan "Simpan urutan" hanya menyala bila
+                urutan baris berubah. Tanpa dikunci, perubahan switch di mode Urutkan
+                tidak punya jalan simpan. Seragam dengan halaman lain yang mengunci
+                aksi non-urutan selama mode Urutkan aktif. */}
             <button
               type="button"
               onClick={() => toggleEnabled(index)}
-              className="inline-flex items-center gap-2 text-xs font-semibold"
+              disabled={reorderMode || terkunci}
+              className="inline-flex items-center gap-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
               <StatusBadge
                 status={section.enabled ? "active" : "inactive"}

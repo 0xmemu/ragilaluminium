@@ -83,6 +83,19 @@ export default function FaqIndex({
   const [busyId, setBusyId] = React.useState<number | null>(null)
   const [showCreate, setShowCreate] = React.useState(openCreate)
   const [showMeta, setShowMeta] = React.useState(openMeta)
+  // Kontrak halaman pengaturan (ADR-023): bagian yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci, seragam dengan bagian Slide bar promo di
+  // halaman Bar Promo. Isian baru hidup setelah admin menekan Edit.
+  const [metaMode, setMetaMode] = React.useState<"view" | "edit">("view")
+  const metaTerkunci = metaMode === "view"
+
+  function batalMeta() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    metaForm.resetAndClearErrors()
+    setMetaMode("view")
+  }
+
   const createPanelRef = React.useRef<HTMLElement | null>(null)
 
   const metaForm = useForm({
@@ -118,7 +131,7 @@ export default function FaqIndex({
     snapshot: initialRows,
     form: reorderForm,
     url: reorderUrl,
-    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
     numbering: true,
     beforeSave: () => reorderForm.setData("status", status),
     submitOptions: { preserveScroll: true },
@@ -332,36 +345,56 @@ export default function FaqIndex({
 
       {showMeta ? (
         <section className="mt-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Judul hero dan status terbit - jarang diubah. Tutup panel ini setelah selesai.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Judul hero dan status terbit - jarang diubah. Tutup panel ini setelah selesai.
+              </p>
+            </div>
+            {metaTerkunci ? (
+              <Button type="button" variant="secondary" size="sm" onClick={() => setMetaMode("edit")}>
+                <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                Edit
+              </Button>
+            ) : null}
+          </div>
           <form
             id="faq-meta-form"
             className="mt-4 space-y-4"
             onSubmit={(event) => {
               event.preventDefault()
-              metaForm.put(metaUrl)
+              metaForm.put(metaUrl, {
+              preserveScroll: true,
+              onSuccess: () => {
+                // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+                metaForm.setDefaults()
+                setMetaMode("view")
+              },
+            })
             }}
           >
             <FieldGrid>
               <Field id="faq-title" label="Judul CMS">
-                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+                <Input disabled={metaTerkunci} value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
               </Field>
               <CheckboxField
                 id="faq-published"
+                disabled={metaTerkunci}
                 checked={metaForm.data.published}
                 onChange={(checked) => metaForm.setData("published", checked)}
                 label="Terbitkan halaman"
               />
               <Field id="faq-heading" label="Judul hero" className="sm:col-span-2">
                 <Input
+                  disabled={metaTerkunci}
                   value={metaForm.data.heading}
                   onChange={(event) => metaForm.setData("heading", event.target.value)}
                 />
               </Field>
               <Field id="faq-subtitle" label="Subjudul" className="sm:col-span-2">
                 <Textarea
+                  disabled={metaTerkunci}
                   rows={2}
                   value={metaForm.data.subtitle}
                   onChange={(event) => metaForm.setData("subtitle", event.target.value)}
@@ -371,9 +404,16 @@ export default function FaqIndex({
             {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
                 bukan daftar FAQ di bawahnya. Ikut tersembunyi bersama formnya. */}
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
-              </Button>
+              {metaTerkunci ? null : (
+                <>
+                  <Button type="button" variant="secondary" onClick={batalMeta} disabled={metaForm.processing}>
+                    Batal
+                  </Button>
+                  <Button type="submit" disabled={metaForm.processing}>
+                    {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
+                  </Button>
+                </>
+              )}
               <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
                 Tutup
               </Button>

@@ -3,9 +3,10 @@ import DOMPurify from "dompurify"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 
@@ -35,6 +36,19 @@ export default function CmsPageForm({
     },
     published: page?.published ?? false,
   })
+  // Kontrak halaman pengaturan (ADR-023): nilai yang sudah ada dibuka terkunci.
+  // Halaman baru dikecualikan karena diisi dari nol, jadi kuncinya hanya
+  // berlaku saat menyunting halaman yang sudah ada.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = editing && mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   const preview = React.useMemo(
     () =>
       DOMPurify.sanitize(form.data.content.html, {
@@ -52,12 +66,25 @@ export default function CmsPageForm({
       description={editing ? page?.slug : "Konten publik disimpan sebagai HTML terstruktur."}
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="cms-page-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan halaman"}
-          </Button>
-          <Button asChild variant="secondary">
-            <Link href={routeUrl("admin.pages.index")}>Batal</Link>
-          </Button>
+          {editing && mode === "edit" ? (
+            <Button type="button" variant="secondary" size="sm" onClick={batal}>
+              Batal
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={routeUrl("admin.pages.index")}>Batal</Link>
+            </Button>
+          )}
+          {editing && mode === "view" ? (
+            <Button type="button" size="sm" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <Button type="submit" form="cms-page-form" size="sm" disabled={form.processing}>
+              {form.processing ? "Menyimpan..." : "Simpan halaman"}
+            </Button>
+          )}
         </div>
       }
     >
@@ -67,8 +94,18 @@ export default function CmsPageForm({
         id="cms-page-form"
         onSubmit={(event) => {
           event.preventDefault()
-          if (editing) form.put(submitUrl)
-          else form.post(submitUrl)
+          if (editing) {
+            form.put(submitUrl, {
+              preserveScroll: true,
+              onSuccess: () => {
+                // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+                form.setDefaults()
+                setMode("view")
+              },
+            })
+          } else {
+            form.post(submitUrl)
+          }
         }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] xl:items-start"
       >
@@ -76,7 +113,7 @@ export default function CmsPageForm({
           <FormErrorSummary errors={form.errors} />
           <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
-              <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+              <Input disabled={terkunci} value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
             <Field
               id="cms-slug"
@@ -100,21 +137,22 @@ export default function CmsPageForm({
               className="sm:col-span-2"
             >
               <Textarea
+                disabled={terkunci}
                 rows={18}
                 value={form.data.content.html}
                 onChange={(event) => form.setData("content", { html: event.target.value })}
                 className="font-mono text-xs"
               />
             </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Terbitkan halaman
-            </label>
+            <CheckboxField
+              id="cms-published"
+              disabled={terkunci}
+              checked={form.data.published}
+              onChange={(checked) => form.setData("published", checked)}
+              label="Terbitkan halaman"
+              standalone
+              className="sm:col-span-2"
+            />
           </div>
         </section>
 

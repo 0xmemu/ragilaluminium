@@ -6,6 +6,7 @@ import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface TemplatePayload {
@@ -53,6 +54,21 @@ export default function WhatsAppEdit({
   const statusForm = useForm({})
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
+
+  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
+  // menekan Edit, supaya setelan tidak rawan tersunting tanpa sengaja saat
+  // halaman cuma dibuka untuk melihat kondisi sekarang.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   function insertVariable(token: string) {
     const el = textareaRef.current
     const current = form.data.body_preview ?? ""
@@ -73,7 +89,14 @@ export default function WhatsAppEdit({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.put(submitUrl, { preserveScroll: true })
+    form.put(submitUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        form.setDefaults()
+        setMode("view")
+      },
+    })
   }
 
   return (
@@ -84,9 +107,25 @@ export default function WhatsAppEdit({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={template.status === "active" ? "active" : "inactive"} />
-          <Button type="submit" form="wa-template-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+          {mode === "view" ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setMode("edit")}
+            >
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+              <Button type="submit" form="wa-template-form" size="sm" disabled={form.processing}>
+                {form.processing ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -102,6 +141,7 @@ export default function WhatsAppEdit({
             <Field id="provider_template_name" label="Nama template provider (Meta/BSP)" required error={form.errors.provider_template_name}>
               <Input
                 id="provider_template_name"
+                disabled={terkunci}
                 value={form.data.provider_template_name}
                 onChange={(event) => form.setData("provider_template_name", event.target.value)}
                 className="font-mono"
@@ -111,6 +151,7 @@ export default function WhatsAppEdit({
             <Field id="language_code" label="Kode bahasa" required error={form.errors.language_code}>
               <Input
                 id="language_code"
+                disabled={terkunci}
                 value={form.data.language_code}
                 onChange={(event) => form.setData("language_code", event.target.value)}
                 required
@@ -126,6 +167,7 @@ export default function WhatsAppEdit({
           >
             <Textarea
               id="body_preview"
+              disabled={terkunci}
               ref={textareaRef}
               rows={16}
               value={form.data.body_preview}
@@ -176,8 +218,9 @@ export default function WhatsAppEdit({
               <button
                 key={variable.token}
                 type="button"
+                disabled={terkunci}
                 onClick={() => insertVariable(variable.token)}
-                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-semibold text-foreground hover:border-primary hover:text-primary"
+                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-semibold text-foreground hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
               >
                 <span className="font-mono">{variable.token}</span>
                 <span className="mt-0.5 block font-medium text-muted-foreground">{variable.label}</span>
