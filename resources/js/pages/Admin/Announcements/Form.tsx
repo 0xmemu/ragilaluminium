@@ -2,6 +2,7 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
+import { CharCount } from "@/components/admin/ui/char-count"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Input } from "@/components/admin/ui/input"
@@ -25,6 +26,7 @@ const MODE_PERIODE = [
 interface AnnouncementFormData {
   id?: number
   text: string
+  text_mobile?: string | null
   href?: string | null
   starts_at?: string | null
   ends_at?: string | null
@@ -54,6 +56,7 @@ export default function AnnouncementForm({
   // menyunting teks tidak mengubah urutan atau menonaktifkan baris.
   const form = useForm<{
     text: string
+    text_mobile: string
     href: string
     starts_at: string
     ends_at: string
@@ -61,6 +64,7 @@ export default function AnnouncementForm({
     published: boolean
   }>({
     text: announcement?.text ?? "",
+    text_mobile: announcement?.text_mobile ?? "",
     href: announcement?.href ?? "",
     starts_at: announcement?.starts_at ?? "",
     ends_at: announcement?.ends_at ?? "",
@@ -148,16 +152,31 @@ export default function AnnouncementForm({
           <FieldGrid className="p-5 sm:p-6">
             <Field
               id="text"
-              label="Teks promo"
+              label="Teks promo desktop"
               error={form.errors.text}
               required
-              hint="Rekomendasi maksimal 40 karakter agar utuh di ponsel; di desktop 64 karakter (batas kolom) masih tampil."
+              counter={<CharCount value={form.data.text} max={64} />}
+              hint="Untuk layar lebar, sampai 64 huruf (batas kolom teks)."
             >
               <Input
                 value={form.data.text}
                 onChange={(event) => form.setData("text", event.target.value)}
-                placeholder="Mis. Diskon sampai 30% untuk semua model"
+                placeholder="Mis. Diskon sampai 30% untuk semua model aluminium"
                 maxLength={64}
+              />
+            </Field>
+            <Field
+              id="text_mobile"
+              label="Teks promo ponsel"
+              error={form.errors.text_mobile}
+              counter={<CharCount value={form.data.text_mobile} max={40} />}
+              hint="Untuk layar sempit, sampai 40 huruf agar utuh di ponsel. Kosongkan untuk memakai teks desktop."
+            >
+              <Input
+                value={form.data.text_mobile}
+                onChange={(event) => form.setData("text_mobile", event.target.value)}
+                placeholder="Mis. Diskon s/d 30%"
+                maxLength={40}
               />
             </Field>
             <Field id="href" label="Link tujuan" error={form.errors.href}>

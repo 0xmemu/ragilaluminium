@@ -20,13 +20,16 @@ use Illuminate\Support\Str;
 class ActiveAnnouncements
 {
     private const MAX_TICKER_CHARACTERS = 64;
+
+    /** Batas teks ponsel: bar promo di layar sempit hanya muat sekitar segini. */
+    private const MAX_TICKER_CHARACTERS_MOBILE = 40;
     private const BANNED_PATTERN = '/\b(obral|stok\s+terbatas|kuota\s+habis|stok\s+menipis)\b/iu';
 
     /** Ticker umum tidak boleh teriak Flash Sale berulang; satu slot periode saja. */
     private const FLASH_SHOUT_PATTERN = '/flash\s*sale/iu';
 
     /**
-     * @return list<array{text: string, href: string}>
+     * @return list<array{text: string, text_mobile?: string|null, href: string}>
      */
     public static function items(): array
     {
@@ -111,7 +114,7 @@ class ActiveAnnouncements
      * Item bar promo dari tabel `announcements` (dikelola di dashboard admin).
      * Urutan tampil = urutan `sort_order`; hanya item aktif + dalam periode.
      *
-     * @return list<array{text: string, href: string}>
+     * @return list<array{text: string, text_mobile: string|null, href: string}>
      */
     private static function fromAdminAnnouncements(): array
     {
@@ -133,9 +136,16 @@ class ActiveAnnouncements
             if ($text === '' || self::isBannedCopy($text)) {
                 continue;
             }
+            // Teks ponsel boleh kosong; storefront yang memutuskan memakai
+            // teks desktop bila kolom ini kosong.
+            $textMobile = self::limitTickerText(
+                (string) $row->text_mobile,
+                self::MAX_TICKER_CHARACTERS_MOBILE,
+            );
             $href = trim((string) $row->href);
             $out[] = [
                 'text' => $text,
+                'text_mobile' => $textMobile === '' ? null : $textMobile,
                 'href' => $href !== '' ? $href : route('catalog.index'),
             ];
         }
@@ -334,11 +344,11 @@ class ActiveAnnouncements
         return (bool) preg_match(self::FLASH_SHOUT_PATTERN, $text);
     }
 
-    private static function limitTickerText(string $text): string
+    private static function limitTickerText(string $text, int $max = self::MAX_TICKER_CHARACTERS): string
     {
         $normalized = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
 
-        return Str::limit($normalized, self::MAX_TICKER_CHARACTERS, '...');
+        return Str::limit($normalized, $max, '...');
     }
 
     /**

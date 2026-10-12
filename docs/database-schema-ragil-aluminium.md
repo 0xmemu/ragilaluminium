@@ -770,6 +770,7 @@ Indexes:
 
 - `id` (`INTEGER`), PK, NN
 - `text` (`VARCHAR`), NN
+- `text_mobile` (`VARCHAR(40)`), nullable
 - `href` (`VARCHAR`), nullable
 - `starts_at` (`DATE`), nullable
 - `ends_at` (`DATE`), nullable

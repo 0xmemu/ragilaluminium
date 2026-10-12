@@ -30,6 +30,8 @@ export interface Brand {
 
 export interface Announcement {
   text: string
+  /** Teks khusus layar sempit; null berarti storefront memakai `text`. */
+  text_mobile?: string | null
   href: string
 }
 

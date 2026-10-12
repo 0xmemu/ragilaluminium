@@ -10,6 +10,7 @@ class Announcement extends Model
 {
     protected $fillable = [
         'text',
+        'text_mobile',
         'href',
         'starts_at',
         'ends_at',
