@@ -66,6 +66,8 @@ Ledger perubahan: `docs/AGENT-LOG.md`. Prosedur rinci: `docs/AGENT-COLLABORATION
   `config/admin-sitemap.php`) → then report `SPEC_CHANGED_AND_DOCS_UPDATED`.
 - UI changes must be wired to real routes/controllers/services - functional, responsive,
 - **ALIGNMENT FORM ADMIN (kontrak global, ADR-022, 2026-09-17):** semua baris form admin wajib lurus. Pakai primitif bersama di resources/js/components/admin/ui/field.tsx: Field (sudah content-start), FieldGrid untuk grid form, CheckboxField untuk checkbox yang sebaris dengan field (atau standalone bila satu baris penuh), FieldAction untuk tombol yang sebaris dengan field. Jangan pakai sm:self-end, items-end, atau sm:pt-* manual untuk menyejajarkan kontrol. Section/kartu dalam satu halaman form wajib memakai skala padding sama (p-5 sm:p-6) supaya tepi kiri/kanan lurus; baris media digabung ke grid field, bukan stripe dengan padding sendiri. Verifikasi: kontrol dalam satu baris harus punya center Y sama (toleransi pembulatan 1px).
+
+- **MODE TERKUNCI HALAMAN PENGATURAN (kontrak global keras, ADR-023, ditegaskan ulang 2026-10-12).** Halaman atau bagian yang tugasnya MENGUBAH NILAI YANG SUDAH ADA (pengaturan, setelan, konfigurasi) WAJIB dibuka TERKUNCI: isian, pilih, dan kotak centang diberi disabled, dan yang tampil hanya tombol Edit di kanan header. Isian baru bisa diubah setelah Edit ditekan; saat mode edit muncul Batal + Simpan di kanan header, dan setelah Simpan berhasil halaman kembali terkunci. Dua varian: (A) ringkasan read-only menggantikan form untuk form panjang (Tentang Kami, Profil & Kontak Toko), (B) form yang sama tetapi seluruh kontrol disabled untuk setelan ringkas (Biaya COD, Subsidi Ongkir, Slide bar promo). Batal TIDAK boleh memakai router.reload(): Inertia repo ini mempertahankan state sehingga mode edit bertahan; pulihkan isian ke nilai tersimpan lalu set mode view. Keadaan terkunci harus terbaca dari kontrolnya sendiri; JANGAN menambah kalimat penutup seperti tekan Edit untuk mengubah. Pengecualian: halaman daftar/beranda yang tugasnya menampilkan data, dan alur pembuatan entitas baru (create) yang memang mengisi dari nol. Penjaga: tests/frontend/admin-edit-guard.test.ts.
   accessible. Mockups or fake data are NOT completion (`frontend/skills/ragil-ui-functional-integration/SKILL.md`).
 - Do NOT port UI from `website_2.0/ui` (Next.js). `resources/` is a real folder, not a junction.
 - Archive instead of hard-delete. Guest-only checkout (no customer accounts).
@@ -83,6 +85,11 @@ Ledger perubahan: `docs/AGENT-LOG.md`. Prosedur rinci: `docs/AGENT-COLLABORATION
   label tombol yang dibaca mata. Storefront tidak terikat: "Tambah ke keranjang" tetap.
   Verifikasi: `grep -rn "Tambah [a-z]" resources/js/pages/Admin resources/js/components/admin`
   hanya boleh menyisakan judul, deskripsi, dan atribut title.
+- **NOMOR TEST WHATSAPP (kontrak keras, 2026-09-27):** Untuk setiap pengujian pesan WhatsApp,
+  pesanan uji coba (dummy order) yang menyentuh alur WhatsApp/lacak pesanan, atau simulasi
+  kirim pesan/notifikasi, **WAJIB menggunakan nomor `085725116817`** (format normal: `6285725116817`).
+  **DILARANG KERAS menggunakan nomor sembarang / acak / palsu** (seperti `081200000001`, `081234567890`, dll),
+  agar tidak menyasar orang lain dan pengujian selalu terarah ke perangkat uji owner.
 
 ---
 
@@ -174,7 +181,7 @@ su -s /bin/bash www-data -c 'php -r "echo is_writable(\"storage/logs\") ? \"OK\"
 |------|------|
 | Public storefront / checkout | `docs/logic/stage-10-*`, `docs/sitemap/public-*`, `frontend/skills/ragil-public-ui/SKILL.md`, `ragil-ui-functional-integration`, `docs/STANDAR-DESAIN-HALAMAN-PUBLIK.md` |
 | Admin UI | `docs/logic/stage-9a-*` / `9b-*`, `docs/sitemap/admin-*`, `frontend/skills/ragil-admin-ui/SKILL.md` |
-| Visual | `frontend/brand/BRAND-KIT.md`, `frontend/docs/DESIGN-SYSTEM.md`, `frontend/skills/ragil-visual-qa/SKILL.md` |
+| Visual | `frontend/brand/BRAND-KIT.md`, `frontend/docs/DESIGN-SYSTEM.md`, `frontend/docs/UI-CONSISTENCY-CONTRACT.md` (gerbang visual lintas halaman), `frontend/docs/ADMIN-DESIGN-LANGUAGE.md` (halaman admin), `frontend/skills/ragil-visual-qa/SKILL.md` |
 | Import & media | `skills/stage-5-import-and-media-pipeline.md` |
 | WhatsApp / order events | `skills/stage-8-*`, `skills/stage-4-*` |
 | Order / payment / shipping | `skills/stage-4-*`, `docs/jnt-cargo-integration.md` |
@@ -237,6 +244,23 @@ Yang masih berlaku dan sengaja tetap di berkas ini:
 - Lead with outcome; keep updates concise; preserve exact commands, paths, errors, and test evidence.
 - Ask questions only when genuinely blocking; otherwise make a safe assumption and state it.
 - Efficiency protocols (Caveman / Compound Engineering loop) are process helpers only - they never override the rules above.
+- **EXPLAIN SYSTEM TERMS BEFORE USING THEM** (contract 2026-09-21). Any time a report, document, or
+  explanation names an internal term (column name, table name, method name, flag, protocol
+  abbreviation), write what it means and what it does FIRST in human language, then use the term.
+  This applies even to terms the agent considers obvious.
+
+  | Do not write | Write instead |
+  |---|---|
+  | "`body_preview` is empty" | "the message body column (`body_preview`), the place the WhatsApp script is stored, is empty" |
+  | "`order_id` is null" | "the link to the order (`order_id`) is empty" |
+  | "`whatsapp_messages` was checked" | "the WhatsApp message history table (`whatsapp_messages`) was checked" |
+  | "the payload has `scope`" | "the data payload carries a coverage marker (`scope`)" |
+
+  Reason: the owner does not always know column names or protocol abbreviations, and a report that
+  uses technical terms without explanation forces him to guess or ask back. One explanatory clause
+  is enough; do not turn the report into a tutorial. A term explained once early in a report does
+  not need repeating later in that same report.
+
 ## WORKFLOW CONTRACT - TANPA KERJA LOKAL/TEMP (disepakati user 2026-08-12)
 
 Berlaku untuk SEMUA agent di repo ini, termasuk agent lain/sebelumnya.

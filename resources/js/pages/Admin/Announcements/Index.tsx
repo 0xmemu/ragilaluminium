@@ -6,7 +6,7 @@ import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
 import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldAction } from "@/components/admin/ui/field"
+import { CheckboxField, Field } from "@/components/admin/ui/field"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
@@ -229,13 +229,39 @@ export default function AnnouncementsIndex({
   const [slideInterval, setSlideInterval] = React.useState(String(announcementSlide?.interval ?? 5))
   const [savingSlide, setSavingSlide] = React.useState(false)
 
+  // Kontrak halaman pengaturan (ADR-023): setelan dibuka TERKUNCI. Isian baru
+  // bisa diubah setelah admin menekan Edit, supaya halaman tidak rawan
+  // tersunting tanpa sengaja saat hanya ingin membaca kondisi aktif.
+  const [slideMode, setSlideMode] = React.useState<"view" | "edit">("view")
+  const slideTerkunci = slideMode === "view"
+
+  /**
+   * Pulihkan isian ke kondisi tersimpan lalu kunci lagi. Jangan router.reload():
+   * pada Inertia versi repo ini state komponen dipertahankan sehingga mode edit
+   * bertahan walau sudah dibatalkan.
+   */
+  function batalSlide() {
+    setSlideEnabled(announcementSlide?.enabled ?? false)
+    setSlideInterval(String(announcementSlide?.interval ?? 5))
+    setSlideMode("view")
+  }
+
   function saveSlide(event: React.FormEvent) {
     event.preventDefault()
     setSavingSlide(true)
+    const interval = Number(slideInterval)
     router.post(
       slideHref,
-      { enabled: slideEnabled, interval: slideInterval === "" ? null : Number(slideInterval) },
-      { preserveScroll: true, onFinish: () => setSavingSlide(false) },
+      { enabled: slideEnabled, interval },
+      {
+        preserveScroll: true,
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        onSuccess: () => {
+          setSlideInterval(String(interval))
+          setSlideMode("view")
+        },
+        onFinish: () => setSavingSlide(false),
+      },
     )
   }
 
@@ -322,16 +348,34 @@ export default function AnnouncementsIndex({
       </ListToolbar>
 
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-base font-bold">Slide bar promo</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold">Slide bar promo</h2>
+          {slideTerkunci ? (
+            <Button type="button" variant="secondary" size="sm" onClick={() => setSlideMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={batalSlide} disabled={savingSlide}>
+                Batal
+              </Button>
+              <Button type="submit" form="slide-form" size="sm" disabled={savingSlide}>
+                {savingSlide ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </div>
+          )}
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Aktifkan rotasi otomatis antar beberapa bar promo aktif di header storefront.
         </p>
-        <form onSubmit={saveSlide} className="mt-4 grid gap-4 content-start sm:grid-cols-[auto_10rem_auto]">
+        <form id="slide-form" onSubmit={saveSlide} className="mt-4 grid gap-4 content-start sm:grid-cols-[auto_10rem]">
           <CheckboxField
             id="slide-enabled"
             checked={slideEnabled}
             onChange={(checked) => setSlideEnabled(checked)}
             label="Aktifkan slide"
+            disabled={slideTerkunci}
           />
           <Field id="slide-interval" label="Interval (detik)">
             <Input
@@ -339,15 +383,12 @@ export default function AnnouncementsIndex({
               min={2.5}
               step={0.5}
               max={30}
+              required
               value={slideInterval}
               onChange={(event) => setSlideInterval(event.target.value)}
+              disabled={slideTerkunci}
             />
           </Field>
-          <FieldAction>
-            <Button type="submit" variant="secondary" disabled={savingSlide}>
-              {savingSlide ? "Menyimpan..." : "Simpan"}
-            </Button>
-          </FieldAction>
         </form>
       </section>
 

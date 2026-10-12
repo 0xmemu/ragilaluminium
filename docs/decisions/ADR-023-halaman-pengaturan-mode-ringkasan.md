@@ -21,6 +21,10 @@ Kenapa terulang: aturan itu HANYA hidup di log sesi, tidak di kontrak desain. Ha
 sesudahnya (CTA Storefront dibuat 2026-09-18, dua hari setelah kontrak itu dicatat) tidak
 mewarisinya. Jadi masalahnya bukan halaman ini, tapi aturan yang tidak punya tempat tetap.
 
+Catatan 2026-09-20: halaman CTA Storefront yang disebut di paragraf ini sudah DIHAPUS
+bersama seluruh lapisan pengaturannya (lihat ADR-024 yang berstatus SUPERSEDED), jadi contoh
+halaman yang menunggu aturan ini tinggal Tentang Kami dan daftar utang di bagian Akibat.
+
 Keadaan sebelum ADR ini, dari 27 halaman admin ber-nama Form/Edit:
 Tentang Kami satu-satunya yang menerapkan mode ringkasan. Sisanya, termasuk CTA Storefront,
 Cod Settings, Shipping Subsidy, Cara Pemesanan, dan Storefront Platforms, membuka form langsung.
@@ -68,8 +72,11 @@ Tambahan yang berlaku:
 (`const [mode, setMode] = React.useState<"view" | "edit">("view")`, tombol header per mode,
 `onSuccess: () => setMode("view")`).
 
-`resources/js/pages/Admin/CtaStorefront/Edit.tsx` adalah penerapan kedua, dipakai sebagai
-contoh bentuk ringkasan untuk nilai berbentuk teks per halaman.
+`resources/js/pages/Admin/CtaStorefront/Edit.tsx` dulu adalah penerapan kedua, dipakai sebagai
+contoh bentuk ringkasan untuk nilai berbentuk teks per halaman. Halaman itu DIHAPUS 2026-09-20
+(lihat catatan di bagian Masalah dan ADR-024 yang berstatus SUPERSEDED); arsipnya ada di
+`_archive/cta-storefront/resources/js/pages/Admin/CtaStorefront/Edit.tsx`, jadi contoh bentuknya
+masih bisa dibaca dari arsip, bukan dari halaman yang aktif.
 
 ## Halaman yang menunggu diterapkan
 
@@ -82,3 +89,33 @@ Diurutkan dari yang paling mirip halaman pengaturan teks:
 5. `Admin/CmsDocument/Edit.tsx` (kebijakan privasi, ketentuan layanan)
 6. `Admin/Beranda/HowToOrderForm.tsx`, `Admin/Beranda/KontakForm.tsx`
 7. `Admin/CmsPageForm.tsx`
+
+## Penegakan dan bukti pengulangan (2026-10-12)
+
+Kontrak ini ditetapkan 2026-09-19, tetapi TERUS TERULANG karena hanya hidup di log sesi dan di
+berkas ADR ini, tidak di kontrak kerja yang dimuat setiap sesi. Bukti owner menyampaikan hal yang
+sama berkali-kali:
+
+| Tanggal | Sumber |
+|---|---|
+| 2026-09-16 | log sesi: "menu Tentang Kami dibuka dalam mode RINGKASAN read-only, form aktif setelah menekan Edit profil" |
+| 2026-09-19 | "kenapa form edit langsung aktif, ini sering terjadi, logika editing halaman atau membuat fitur baru harus di perbaiki untuk kontrak kerja atau aturan desain" |
+| 2026-09-29 | "kalau modelnya form, jangan defaultnya aktif, tapi harus ada tombol edit/simpan" |
+| 2026-10-11 | "form dan edit box harusnya disable/read only kalau belum menekan tombol edit" (Biaya COD, Subsidi Ongkir) |
+| 2026-10-12 | "sekali lagi berulang kali saya bilang, kalau form atau input atau checkbox harus di guard dengan tombol edit, secara default ini tidak bisa dirubah dan read only kecuali tombol edit ditekan" |
+
+Dua tindakan yang menutup akarnya:
+
+1. **Aturan ini dipromosikan menjadi non-negotiable di `AGENTS.md`**, sejajar dengan kontrak
+   alignment ADR-022. Akar masalahnya memang itu: aturan yang tidak punya tempat tetap tidak
+   diwarisi halaman baru, persis seperti yang sudah dicatat di bagian Masalah di atas.
+2. **Penjaga otomatis `tests/frontend/admin-edit-guard.test.ts`** memaku daftar halaman pengaturan
+   yang wajib terkunci (WAJIB_TERKUNCI) dan daftar utang (UTANG). Halaman baru yang lupa terkunci
+   gagal di test; halaman utang yang sudah diperbaiki wajib dipindahkan ke daftar wajib, karena
+   test menolak halaman utang yang ternyata sudah terkunci. Penjaga ini sudah dibuktikan menangkap
+   pelanggaran (mematikan jalur mode edit halaman Biaya COD sesaat membuat test gagal).
+
+Dikerjakan 2026-10-12: bagian "Slide bar promo" di `Admin/Announcements/Index.tsx` (setelan di
+dalam halaman daftar Bar Promo) kini terkunci varian B, jadi masuk daftar WAJIB_TERKUNCI.
+Tujuh halaman di bagian "Halaman yang menunggu diterapkan" di atas masih utang; itulah isi
+daftar UTANG di penjaga test.
