@@ -3,7 +3,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Admin table - hairline rows, header micro uppercase, hover halus.
+ * Admin table - hairline rows, header label Kapital Per Kata, hover halus.
  *
  * Konvensi bersama (kontrak tabel admin, audit F-06):
  * - Bungkus dengan <TableScroll> (overflow-x-auto) supaya kolom banyak tidak

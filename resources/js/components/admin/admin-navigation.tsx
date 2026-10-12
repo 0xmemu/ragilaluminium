@@ -142,7 +142,7 @@ export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
           return (
           <div key={key} className={cn(groupIndex > 0 && "mt-4")}>
             {group.title ? (
-              <p className="admin-sidebar-title px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em]">
+              <p className="admin-sidebar-title px-2.5 pb-1.5 text-[10px] font-bold tracking-tight">
                 {group.title}
               </p>
             ) : null}

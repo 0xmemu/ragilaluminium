@@ -1909,7 +1909,7 @@ export default function OrderShow({
             {detailDrawer === "riwayat" ? (
               <div className="space-y-5 text-[13px]">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-semibold tracking-tight text-muted-foreground">
                     Data Pesanan
                   </p>
                   <ol className="mt-2.5 space-y-2.5">
@@ -1942,7 +1942,7 @@ export default function OrderShow({
 
                 {order.payments?.length ? (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-semibold tracking-tight text-muted-foreground">
                       Pembayaran
                     </p>
                     <ol className="mt-2.5 space-y-2.5">
@@ -1963,7 +1963,7 @@ export default function OrderShow({
 
                 {order.shipping_records.length ? (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-semibold tracking-tight text-muted-foreground">
                       Pengiriman
                     </p>
                     <ol className="mt-2.5 space-y-2.5">

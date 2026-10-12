@@ -401,7 +401,7 @@ export default function SubModelsIndex({
                   <React.Fragment key={row.id}>
                     {row.groupHeader ? (
                       <TableRow className="bg-surface/60">
-                        <TableCell colSpan={dragAktif ? 8 : 7} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={dragAktif ? 8 : 7} className="py-2 text-[11px] font-semibold tracking-tight text-muted-foreground">
                           {row.model_label}
                         </TableCell>
                       </TableRow>

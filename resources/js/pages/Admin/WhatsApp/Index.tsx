@@ -85,7 +85,7 @@ export default function WhatsAppIndex({
       </div>
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        <div className="hidden grid-cols-[minmax(0,1fr)_7rem_9rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[minmax(0,1fr)_7rem_9rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold tracking-tight text-muted-foreground sm:grid">
           <span>Trigger event</span>
           <span>Status</span>
           <span className="text-right">Aksi</span>

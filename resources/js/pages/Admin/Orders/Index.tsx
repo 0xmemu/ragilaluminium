@@ -398,7 +398,7 @@ function OrderCardRow({
       <div className={cn(orderRowGridClass, "gap-y-3 divide-y divide-border p-4 xl:divide-y-0")}>
         {/* Kolom 1: Produk & Subtotal Per Item */}
         <div className="min-w-0 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Produk
           </p>
           <ul className="space-y-3">
@@ -473,7 +473,7 @@ function OrderCardRow({
 
         {/* Kolom 2: Status Pesanan (Rata Tengah) */}
         <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Status pesanan
           </p>
           <StatusBadge status={order.order_status} />
@@ -481,7 +481,7 @@ function OrderCardRow({
 
         {/* Kolom 3: Pembayaran (Rata Tengah) */}
         <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Pembayaran
           </p>
           <p className="text-xs font-medium text-foreground">
@@ -505,7 +505,7 @@ function OrderCardRow({
 
         {/* Kolom 4: Pengiriman (Rata Tengah) */}
         <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Pengiriman
           </p>
           <p className="text-xs font-medium text-foreground">
@@ -536,7 +536,7 @@ function OrderCardRow({
 
         {/* Kolom 5: Usia Pesanan / Update Terakhir (Rata Tengah) */}
         <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Update terakhir
           </p>
           <p className="text-xs font-medium leading-snug text-foreground">
@@ -549,7 +549,7 @@ function OrderCardRow({
 
         {/* Kolom 6: Catatan Admin (Rata Tengah) */}
         <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Catatan admin
           </p>
           {order.admin_notes?.trim() ? (
@@ -577,7 +577,7 @@ function OrderCardRow({
 
         {/* Kolom 7: Aksi */}
         <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 xl:items-end xl:pt-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:sr-only">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
             Aksi
           </p>
           {/* Balas ulasan pelanggan: hanya bila pesanan ini sudah diulas.

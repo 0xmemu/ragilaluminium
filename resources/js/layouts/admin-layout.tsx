@@ -203,7 +203,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="normal-case">
+                  <DropdownMenuLabel>
                     <span className="block truncate text-[13px] font-semibold text-foreground">
                       {userName}
                     </span>

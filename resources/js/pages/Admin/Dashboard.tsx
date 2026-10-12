@@ -252,7 +252,7 @@ function MetricTile({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="text-[11px] font-medium tracking-tight text-muted-foreground">
         {label}
       </p>
       <p className="tabular-nums mt-1 text-xl font-semibold tracking-tight text-foreground">
@@ -453,7 +453,7 @@ export default function Dashboard({
             <Card className="flex h-full flex-col p-6">
               <div className="flex h-full flex-col justify-between gap-6">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[11px] font-medium tracking-tight text-muted-foreground">
                     Mulai berjualan
                   </p>
                   <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
@@ -540,7 +540,7 @@ export default function Dashboard({
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">Tren Pengunjung Unik</p>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p>
+                  <p className="text-[10px] tracking-tight text-muted-foreground">Total</p>
                   <p className="text-lg font-bold tabular-nums tracking-tight text-foreground">
                     {formatNumber(performa.trend.total)}
                   </p>

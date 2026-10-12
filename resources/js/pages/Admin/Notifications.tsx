@@ -263,7 +263,7 @@ export default function Notifications({
               </div>
             ) : (
               <Table>
-              <TableHeader className="border-b border-border text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <TableHeader className="border-b border-border text-[10px] font-semibold tracking-tight text-muted-foreground">
                 <TableRow>
                   <TableHead className="w-12 px-3 py-1.5" aria-label="Jenis" />
                   <TableHead className="px-3 py-1.5">Notifikasi</TableHead>

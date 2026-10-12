@@ -52,6 +52,17 @@ database fields, or API payloads.
 - Headings use sentence case in Indonesian copy unless a brand or proper noun
   requires otherwise. Existing user-facing copy is the assertion source for
   E2E tests; tests must not invent title-case variants.
+- **Kapitalisasi teks: huruf besar semua HANYA untuk nilai sistem.** Keputusan
+  desain 13 Oktober 2026. Kelas `uppercase` dilarang untuk label UI; yang
+  tersisa huruf besar hanyalah (a) nilai yang memang identitas sistem apa adanya
+  (kode SKU, kode voucher, nomor pesanan, nomor resi, ID), (b) input yang
+  mengubah ketikan pengguna menjadi huruf besar (mis. isian kode voucher), dan
+  (c) dokumen cetak (label alamat/resi). Semua label lain, termasuk judul kolom
+  tabel, label grup baris, kategori, judul seksi, judul grup sidebar, label
+  dropdown, dan label metrik, memakai Kapital Per Kata tanpa paksaan CSS.
+  Alasan pemisahannya: huruf besar pada nilai sistem mengikuti data, sedangkan
+  pada label UI ia hanya hiasan yang membuat teks salah baca. Label micro
+  memakai `tracking-tight`, bukan `tracking-wide` (lihat BRAND-KIT).
 - Every interactive element has a visible focus state, a keyboard path, and a
   useful accessible name. Icon-only actions require `aria-label`.
 - Motion is restrained and respects `prefers-reduced-motion`. Do not use motion
