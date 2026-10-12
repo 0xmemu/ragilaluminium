@@ -224,11 +224,11 @@ export default function Pairing({
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-4">
                 {/* Avatar Icon WhatsApp Terhubung */}
-                <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                <div className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-success/15 text-success shadow-xs">
                   <Icon name="whatsapp" className="size-8" />
                   <span className="absolute -bottom-1 -right-1 flex size-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex size-4 rounded-full bg-emerald-500 ring-2 ring-card" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                    <span className="relative inline-flex size-4 rounded-full bg-success ring-2 ring-card" />
                   </span>
                 </div>
 
@@ -237,7 +237,7 @@ export default function Pairing({
                     <h2 className="text-lg font-bold text-foreground">
                       WhatsApp Terhubung & Aktif
                     </h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success border border-success/30">
                       <Icon name="check" className="size-3" />
                       <span>Online</span>
                     </span>
@@ -269,8 +269,8 @@ export default function Pairing({
             </div>
 
             {/* Banner Proteksi Sesi */}
-            <div className="mt-6 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3.5 text-xs text-emerald-800 dark:text-emerald-300">
-              <Icon name="shield-check" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+            <div className="mt-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-3.5 text-xs text-success">
+              <Icon name="shield-check" className="size-4 shrink-0 text-success mt-0.5" />
               <div>
                 <span className="font-semibold block">Sesi Terlindungi</span>
                 <span className="text-muted-foreground mt-0.5 block">
@@ -348,7 +348,7 @@ export default function Pairing({
         /* =================================================================== */
         <Card className="border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="flex items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
               <Icon name="refresh" className="size-6 animate-spin" />
             </div>
             <div className="space-y-1">

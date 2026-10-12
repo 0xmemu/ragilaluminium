@@ -1752,7 +1752,7 @@ export default function MediaLibrary({
                               <input type="checkbox" checked={attachInstallation} onChange={(e) => setAttachInstallation(e.target.checked)} /> Pemasangan
                             </label>
                             {attachExistingRow ? (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                              <p className="text-xs text-warning">
                                 Aset ini sudah terpasang pada lingkup ini di posisi {attachExistingRow.position}. Memasang lagi akan memperbarui baris itu.
                               </p>
                             ) : null}

@@ -615,11 +615,11 @@ function OrderEditPanel({
 const WA_MESSAGE_STATUS: Record<string, { icon: string; title: string; label: string; className: string }> = {
   pending: { icon: "clock", title: "Menunggu tanda kirim", label: "Menunggu", className: "text-muted-foreground" },
   queued: { icon: "clock", title: "Menunggu dikirim", label: "Antre", className: "text-muted-foreground" },
-  sent: { icon: "check", title: "Terkirim ke WhatsApp", label: "Terkirim", className: "text-emerald-500 font-medium" },
-  delivered: { icon: "checks", title: "Sampai di HP pelanggan", label: "Terkirim", className: "text-emerald-500 font-medium" },
-  read: { icon: "checks", title: "Dibaca pelanggan", label: "Dibaca", className: "text-sky-400 font-medium" },
+  sent: { icon: "check", title: "Terkirim ke WhatsApp", label: "Terkirim", className: "text-success font-medium" },
+  delivered: { icon: "checks", title: "Sampai di HP pelanggan", label: "Terkirim", className: "text-success font-medium" },
+  read: { icon: "checks", title: "Dibaca pelanggan", label: "Dibaca", className: "text-info font-medium" },
   failed: { icon: "x", title: "Gagal terkirim", label: "Gagal", className: "text-destructive font-medium" },
-  received: { icon: "arrow-down-left", title: "Diterima", label: "Diterima", className: "text-emerald-500 font-medium" },
+  received: { icon: "arrow-down-left", title: "Diterima", label: "Diterima", className: "text-success font-medium" },
 }
 
 function waMessageStatus(status: string) {
@@ -968,10 +968,10 @@ export default function OrderShow({
                     setNotesText(order.admin_notes ?? "")
                     setNotesModalOpen(true)
                   }}
-                  className="cursor-pointer rounded-md border border-amber-500/25 bg-amber-500/10 p-2 transition hover:bg-amber-500/15"
+                  className="cursor-pointer rounded-md border border-warning/25 bg-warning/10 p-2 transition hover:bg-warning/15"
                   title="Klik untuk melihat catatan lengkap"
                 >
-                  <p className="line-clamp-2 overflow-hidden text-xs leading-snug text-amber-900 dark:text-amber-200 break-all break-words">
+                  <p className="line-clamp-2 overflow-hidden text-xs leading-snug text-warning break-all break-words">
                     {order.admin_notes}
                   </p>
                 </div>
@@ -1718,9 +1718,9 @@ export default function OrderShow({
 
             {notesMode === "view" ? (
               <div className="p-5 space-y-4">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 overflow-hidden">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                    <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-warning" aria-hidden="true" />
                     <span>Isi Catatan Lengkap:</span>
                   </div>
                   <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">

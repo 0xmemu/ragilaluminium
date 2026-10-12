@@ -470,7 +470,7 @@ export default function InstallationGalleryIndex({
                             "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
                             group.kind === "model"
                               ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
-                              : "bg-purple-500/15 text-purple-800 dark:text-purple-300",
+                              : "bg-muted text-muted-foreground",
                           )}
                         >
                           {group.kind === "model" ? "Model produk" : "Mandiri"}
@@ -527,7 +527,7 @@ export default function InstallationGalleryIndex({
                         "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
                         group.kind === "model"
                           ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
-                          : "bg-purple-500/15 text-purple-800 dark:text-purple-300",
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
                       {group.kind === "model" ? "Model" : "Mandiri"}

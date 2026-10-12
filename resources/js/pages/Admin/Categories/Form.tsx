@@ -251,7 +251,7 @@ export default function CategoryForm({
                   <p className="text-[11px] font-semibold text-muted-foreground">
                     Pratinjau Hasil Pencarian Google
                   </p>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate font-mono">
+                  <p className="text-xs text-success truncate font-mono">
                     https://ragilaluminium.com/products/{form.data.slug || "kategori"}
                   </p>
                   <p className="text-sm font-semibold text-primary truncate hover:underline cursor-pointer">

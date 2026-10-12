@@ -465,7 +465,7 @@ export default function PromotionForm({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
                       <div className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="size-2 rounded-full bg-success animate-pulse" />
                         <span className="font-semibold">Mulai Sekarang</span>
                         <span className="text-[11px] opacity-80">(Langsung Aktif)</span>
                       </div>

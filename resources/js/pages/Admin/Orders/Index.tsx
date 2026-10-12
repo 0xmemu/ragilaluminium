@@ -556,10 +556,10 @@ function OrderCardRow({
             <button
               type="button"
               onClick={() => onEditNotes?.(order)}
-              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/25 dark:border-amber-500/40 dark:text-amber-300"
+              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-warning/50 bg-warning/15 px-2.5 py-1.5 text-xs font-semibold text-warning transition hover:bg-warning/25 "
               title="Klik untuk melihat catatan lengkap dan edit catatan"
             >
-              <Icon name="clipboard-text" className="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <Icon name="clipboard-text" className="size-3.5 text-warning" aria-hidden="true" />
               <span>Catatan Admin</span>
             </button>
           ) : (
@@ -1500,9 +1500,9 @@ export default function OrdersIndex({
 
             {notesMode === "view" ? (
               <div className="p-5 space-y-4">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 overflow-hidden">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                    <Icon name="clipboard-text" className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-warning ">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-warning" aria-hidden="true" />
                     <span>Isi Catatan Lengkap:</span>
                   </div>
                   <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">
