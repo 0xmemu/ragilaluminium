@@ -270,6 +270,17 @@
     color: hsl(215 16% 47%); /* #64748b slate 500, lebih tegas dari muted/80 */
   }
 
+  /* Kontrak 2026-10-13: tombol aksi di header halaman seragam 32px.
+     Halaman memakai size="sm" (28px) dan ukuran bawaan (31,5px) secara
+     bercampur, sehingga tinggi tombol berbeda saat berpindah halaman.
+     Normalisasi ditaruh di sini, bukan ditambal di 18 halaman, supaya halaman
+     baru ikut aturannya. Catatan: jangan menaruh tombol ikon persegi di area
+     ini, karena tinggi dipaksa sedangkan lebarnya tidak. */
+  html.admin-shell .admin-header-actions :is(button, a) {
+    height: 2.25rem;
+    min-height: 2.25rem;
+  }
+
   html.admin-shell .admin-main {
     background: hsl(var(--background));
   }

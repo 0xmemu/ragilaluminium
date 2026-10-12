@@ -141,7 +141,7 @@ export default function CaraPemesananEdit({
       <Head title={`${title} | Admin`} />
       <form
         id="cara-pemesanan-form"
-        className="mx-auto max-w-4xl space-y-6"
+        className="w-full max-w-4xl space-y-6"
         onSubmit={(event) => {
           event.preventDefault()
           form.put(submitUrl, {

@@ -554,12 +554,6 @@ export default function StorefrontPlatformsEdit({
           </div>
         </div>
 
-        {mode === "view" ? (
-          <p className="text-xs text-muted-foreground">
-            Isi di atas adalah kondisi yang sedang aktif di toko. Tekan{" "}
-            <strong className="font-semibold text-foreground">Edit</strong> untuk mengubah.
-          </p>
-        ) : null}
       </form>
 
       <MediaPicker

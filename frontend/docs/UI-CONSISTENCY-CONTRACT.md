@@ -52,6 +52,14 @@ database fields, or API payloads.
 - Headings use sentence case in Indonesian copy unless a brand or proper noun
   requires otherwise. Existing user-facing copy is the assertion source for
   E2E tests; tests must not invent title-case variants.
+- **Tinggi tombol aksi header seragam 32px.** Kontrak 13 Oktober 2026. Tombol di
+  area aksi header halaman admin (kelas `admin-header-actions` di
+  `resources/js/layouts/admin-layout.tsx`) dipatok `2.25rem` lewat
+  `resources/css/app.css`. Sebelumnya halaman bercampur: sebagian memakai
+  `size="sm"` (28px), sebagian ukuran bawaan (31,5px), sehingga tinggi tombol
+  berubah saat berpindah halaman. Normalisasi ada di layout + CSS, bukan ditambal
+  per halaman, supaya halaman baru ikut. Jangan menaruh tombol ikon persegi di
+  area ini: tinggi dipaksa sedangkan lebarnya tidak.
 - **Kapitalisasi teks: huruf besar semua HANYA untuk nilai sistem.** Keputusan
   desain 13 Oktober 2026. Kelas `uppercase` dilarang untuk label UI; yang
   tersisa huruf besar hanyalah (a) nilai yang memang identitas sistem apa adanya

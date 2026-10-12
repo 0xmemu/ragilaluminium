@@ -401,11 +401,6 @@ export default function TentangKamiEdit({
               ) : null}
             </div>
           </div>
-
-          <p className="text-xs text-muted-foreground">
-            Profil di atas adalah kondisi yang sedang aktif di toko. Tekan{" "}
-            <strong className="font-semibold text-foreground">Edit profil</strong> untuk mengubah.
-          </p>
         </div>
       ) : (
         <form id="about-profile-form" onSubmit={submit} className="w-full space-y-6">

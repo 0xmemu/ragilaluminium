@@ -327,7 +327,7 @@ function AdminPageFrame({
                 </p>
               ) : null}
             </div>
-            {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+            {actions ? <div className="admin-header-actions flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
           </div>
         </div>
       )}
