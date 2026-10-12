@@ -4503,3 +4503,30 @@ setelah Edit (tombol mati dengan alasan Belum ada perubahan, karena isinya
 sudah terisi).
 
 Domain tersisa: Pengaturan, Transaksi, Promo, Admin, lalu Tahap 4 penjaga.
+
+## 2026-10-12 23:21 UTC | zcode | Deep | 7b2d38a7 | selesai (Tahap 3 domain Pengaturan dan Transaksi)
+
+Lanjutan rollout. Pengaturan: Biaya COD, Subsidi Ongkir, Template WhatsApp,
+Profil dan Kontak Toko. Transaksi: form rekening halaman Pembayaran, form catat
+pembayaran di panel pembayaran pesanan, dan dua form resi.
+
+Dua catatan teknis yang perlu diketahui: Biaya COD punya syarat izin sendiri
+(canManage) yang tetap dipertahankan lewat extraDisabled beserta alasannya;
+dan Profil dan Kontak Toko memuat tiga form yang dikirim satu tombol, jadi
+keadaan ada-perubahan digabung dari ketiganya supaya gerbang tidak mengunci
+padahal admin sudah mengubah form lain.
+
+Verifikasi live: Biaya COD, Subsidi Ongkir, dan Profil dan Kontak Toko setelah
+Edit menampilkan tombol mati dengan alasan Belum ada perubahan (isinya sudah
+terisi); Biaya COD dengan kolom nilai dikosongkan berubah jadi alasan kolom
+masih kosong; halaman Pembayaran setelah Ubah menampilkan tombol Simpan
+Rekening mati dengan alasan Belum ada perubahan.
+
+BELUM diverifikasi live dan wajib disebut: dua form resi di halaman Pesanan
+(daftar dan detail). Pemicu popupnya tidak ketemu dari probe otomatis pada
+pesanan yang dicoba, jadi keduanya baru terverifikasi di tingkat sumber
+(typecheck, lint, dan komponen bersama yang sama). Kalau owner ingin bukti
+klik langsung, uji itu perlu dibuka manual di browsernya.
+
+Verifikasi umum: tsc bersih, eslint 0 warning di delapan berkas, build sukses.
+Domain tersisa: Promo dan Admin, lalu Tahap 4 penjaga.
