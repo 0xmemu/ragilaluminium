@@ -10,12 +10,6 @@ interface FieldProps {
   error?: string
   required?: boolean
   className?: string
-  /**
-   * Penghitung atau penanda batas lain, sebaris dengan hint di tepi kanan.
-   * Dipakai kolom berbatas panjang supaya admin melihat sisa ruangnya tanpa
-   * menambah baris baru yang merusak kelurusan form (ADR-022).
-   */
-  counter?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -26,7 +20,6 @@ export function Field({
   error,
   required,
   className,
-  counter,
   children,
 }: FieldProps) {
   const descriptionId = hint ? `${id}-hint` : undefined
@@ -47,19 +40,10 @@ export function Field({
             "aria-invalid": Boolean(error),
           })
         : children}
-      {hint || counter ? (
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          {hint ? (
-            <p id={descriptionId} className="min-w-0 text-xs leading-5 text-muted-foreground">
-              {hint}
-            </p>
-          ) : (
-            <span className="min-w-0" />
-          )}
-          {counter ? (
-            <span className="shrink-0 text-xs leading-5 text-muted-foreground">{counter}</span>
-          ) : null}
-        </div>
+      {hint ? (
+        <p id={descriptionId} className="text-xs leading-5 text-muted-foreground">
+          {hint}
+        </p>
       ) : null}
       {error ? (
         <p id={errorId} role="alert" className="text-xs font-medium leading-5 text-destructive">

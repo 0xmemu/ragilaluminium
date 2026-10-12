@@ -23,16 +23,11 @@ function AnnouncementMark({ text }: { text: string }) {
 }
 
 /** Emphasize discount chips / model keywords inside promo copy. */
-function AnnouncementText({ text, className }: { text: string; className?: string }) {
+function AnnouncementText({ text }: { text: string }) {
   const parts = text.split(/(-?\d{1,3}%)/g)
 
   return (
-    <span
-      className={cn(
-        "min-w-0 max-w-full truncate text-xs font-semibold leading-none tracking-tight",
-        className ?? "block",
-      )}
-    >
+    <span className="block min-w-0 max-w-full truncate text-xs font-semibold leading-none tracking-tight">
       {parts.map((part, index) =>
         /^-?\d{1,3}%$/.test(part) ? (
           <span
@@ -50,27 +45,13 @@ function AnnouncementText({ text, className }: { text: string; className?: strin
 }
 
 function AnnouncementLink({ announcement }: { announcement: Announcement }) {
-  // Teks ponsel dipakai di layar sempit. Kolomnya opsional, jadi bila kosong
-  // teks desktop dipakai untuk kedua ukuran layar dan bar promo lama tidak
-  // berubah tampilannya. Yang tersembunyi benar-benar display none, sehingga
-  // pembaca layar hanya membaca teks yang sedang tampil.
-  const mobileText = announcement.text_mobile?.trim() || announcement.text
-  const duaTeks = mobileText !== announcement.text
-
   return (
     <Link
       href={announcement.href}
       className="inline-flex min-w-0 max-w-full items-center gap-1.5 py-2 text-white transition hover:text-white/90 sm:gap-2"
     >
       <AnnouncementMark text={announcement.text} />
-      {duaTeks ? (
-        <>
-          <AnnouncementText text={mobileText} className="block sm:hidden" />
-          <AnnouncementText text={announcement.text} className="hidden sm:block" />
-        </>
-      ) : (
-        <AnnouncementText text={announcement.text} />
-      )}
+      <AnnouncementText text={announcement.text} />
     </Link>
   )
 }

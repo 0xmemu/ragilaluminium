@@ -128,7 +128,6 @@ class AnnouncementController extends Controller
     /**
      * @return array{
      *     text: string,
-     *     text_mobile?: string|null,
      *     href: string|null,
      *     starts_at: string|null,
      *     ends_at: string|null,
@@ -146,10 +145,6 @@ class AnnouncementController extends Controller
     {
         $data = $request->validate([
             'text' => ['required', 'string', 'max:64'],
-            // Teks khusus layar sempit. Batas 40 huruf sama dengan yang
-            // ditegakkan form, jadi isian yang lolos dari form tidak pernah
-            // ditolak server karena panjang.
-            'text_mobile' => ['nullable', 'string', 'max:40'],
             'href' => ['nullable', 'string', 'max:255', 'starts_with:/,http://,https://'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date'],
@@ -157,10 +152,7 @@ class AnnouncementController extends Controller
             'published' => ['boolean'],
         ]);
 
-        // `?? null`: kolom periode boleh tidak dikirim sama sekali. Tanpa
-        // penjaga ini, permintaan tanpa kolom itu gagal 500 (bukan pesan
-        // validasi), sedangkan form mengirimnya kosong sebagai null.
-        if (filled($data['starts_at'] ?? null) && filled($data['ends_at'] ?? null)) {
+        if (filled($data['starts_at']) && filled($data['ends_at'])) {
             $starts = Carbon::parse($data['starts_at']);
             $ends = Carbon::parse($data['ends_at']);
             if ($ends->lt($starts)) {
@@ -180,10 +172,6 @@ class AnnouncementController extends Controller
             }
         }
         $data['href'] = $href === '' ? null : $href;
-        // Kosong berarti "tidak dipakai", bukan teks kosong, supaya storefront
-        // tahu harus jatuh ke teks desktop.
-        $textMobile = trim((string) ($data['text_mobile'] ?? ''));
-        $data['text_mobile'] = $textMobile === '' ? null : $textMobile;
         $data['starts_at'] = filled($data['starts_at'] ?? null) ? $data['starts_at'] : null;
         $data['ends_at'] = filled($data['ends_at'] ?? null) ? $data['ends_at'] : null;
         // Nomor urut 1-based dan hanya bermakna saat dibandingkan, jadi baris baru
@@ -227,7 +215,6 @@ class AnnouncementController extends Controller
         return [
             'id' => $announcement->id,
             'text' => $announcement->text,
-            'text_mobile' => $announcement->text_mobile,
             'href' => $announcement->href,
             'starts_at' => $announcement->starts_at?->toDateString(),
             'ends_at' => $announcement->ends_at?->toDateString(),
