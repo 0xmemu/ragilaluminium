@@ -4189,3 +4189,41 @@ resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx: kelas grid pembungkus dua
 - Live terukur: baris pertama dari 489+489 menjadi satu kolom 998px; tujuh dari delapan URL kini satu baris (Shopee dan Lazada sebelumnya 3 baris); hanya URL Lazada masih dua baris karena panjangnya 122 karakter. Baris kontak dan logo tetap dua kolom 489+489.
 - Mode ringkasan, tombol Edit, Lihat di toko, dan dua pemilih aset brand tidak diubah.
 Agent: zcode
+
+## 2026-10-12 17:38 UTC | zcode | Deep | 81b5366a | selesai
+
+Permintaan owner: buat dua form teks bar promo, satu untuk ponsel dan satu
+untuk desktop, masing-masing dengan penghitung huruf dan batas paksa sesuai
+rekomendasi (40 huruf di ponsel, 64 di desktop).
+
+Perubahan: kolom baru text_mobile (VARCHAR(40), nullable) di tabel
+announcements lewat migrasi 2026_10_13_000001; model, validasi, dan payload
+form diperbarui; storefront merender dua teks dan menyembunyikan yang tidak
+sesuai ukuran layar dengan display none; komponen bersama CharCount baru dan
+prop counter pada Field untuk menaruh penghitung sebaris hint tanpa merusak
+kelurusan form (ADR-022). Kolom ponsel opsional: kosong berarti storefront
+memakai teks desktop, jadi bar promo lama tidak berubah dan tidak ada yang
+wajib diisi ulang.
+
+Temuan sampingan yang ikut diperbaiki: AnnouncementController::validateItem
+membaca $data['starts_at'] tanpa penjaga sehingga permintaan tanpa kolom
+periode gagal 500, bukan pesan validasi. Form selalu mengirim kolom itu
+kosong, jadi tidak pernah terlihat dari UI; ketahuan lewat test baru.
+
+Verifikasi: tsc bersih, eslint 0 warning, build sukses, 341 test frontend
+lulus, suite PHP 1415 lulus dengan 1 gagal bawaan yang tidak berhubungan
+(ReturnRefundIntegrityTest, kolom additional_shipping_amount ditambah ulang
+oleh migrasi 29 Sep, milik domain retur). Bukti live lewat scripts/
+admin-preview.cjs: form menampilkan dua kolom dengan maxlength 64 dan 40
+serta penghitung 0/64 dan 0/40, dan penghitung ikut berubah saat diisi
+(14/40). Storefront diuji dengan satu baris uji sementara: pada lebar 1418
+teks ponsel display none dan teks desktop block, pada lebar 512 sebaliknya.
+Baris uji sudah dikembalikan (semua text_mobile kosong lagi).
+
+Dokumen kanonik diperbarui: docs/database-schema-ragil-aluminium.md bagian
+5.8 announcements. SPEC_CHANGED_AND_DOCS_UPDATED.
+
+Catatan kolaborasi: resources/js/types/index.ts sedang disunting agent lain
+(penghapusan tipe ctaSettings). Baris saya di berkas itu di-stage per-hunk
+lewat git apply --cached, jadi commit ini tidak membawa perubahan mereka dan
+pekerjaan mereka tetap utuh di working tree.
