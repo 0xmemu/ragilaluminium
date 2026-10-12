@@ -146,7 +146,7 @@ class OrderExport implements WithMultipleSheets
                 'items:id,order_id,parent_sku,variant_sku,name,variation_1_name,variation_1_option,variation_2_name,variation_2_option,unit_price,quantity,line_discount,discount_source',
                 'payments:id,order_id,status,paid_at',
                 'shippingRecords:id,order_id,waybill_number,shipping_cost,shipping_freight,shipping_insured_fee,shipping_chargeable_weight_kg,status',
-                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,return_shipping_cost,additional_shipping_amount',
+                'returnCases:id,order_id,status,resolution_type,reason,refund_amount,return_shipping_cost,additional_shipping_amount,voided_at',
             ])
             ->latest('created_at')
             ->latest('id')
@@ -159,13 +159,14 @@ class OrderExport implements WithMultipleSheets
             $isBatal = $order->order_status === 'cancelled';
             $paidAt = $order->payments->firstWhere('status', 'completed')?->paid_at;
 
-            $completedCase = $order->returnCases->firstWhere('status', 'completed');
+            $completedCases = $order->returnCases->where('status', 'completed')->whereNull('voided_at');
+            $completedCase = $completedCases->last();
             $runningCase = $order->returnCases->firstWhere('status', 'open');
-            $refund = (float) $order->returnCases->where('status', 'completed')->sum('refund_amount');
-            $returOngkir = (float) $order->returnCases->where('status', 'completed')->sum('return_shipping_cost');
+            $refund = (float) $completedCases->sum('refund_amount');
+            $returOngkir = (float) $completedCases->sum('return_shipping_cost');
             // Ongkir perjalanan balik: tagihan pengembalian J&T yang diisi admin
             // saat retur selesai (keputusan owner 2026-09-29).
-            $ongkirBalik = (float) $order->returnCases->where('status', 'completed')->sum('additional_shipping_amount');
+            $ongkirBalik = (float) $completedCases->sum('additional_shipping_amount');
 
             $returnType = '-';
             if ($runningCase) {

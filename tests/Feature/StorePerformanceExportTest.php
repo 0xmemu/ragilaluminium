@@ -773,6 +773,13 @@ class StorePerformanceExportTest extends TestCase
             'created_at' => '2026-08-15 10:00:00',
             'updated_at' => '2026-08-15 10:00:00',
         ]);
+        \App\Models\EventLog::create([
+            'entity_type' => 'order',
+            'entity_id' => (string) $order->id,
+            'event_type' => 'order_status_changed',
+            'payload' => ['order_status' => 'processing'],
+            'created_at' => '2026-08-15 10:05:00',
+        ]);
 
         $response = $this->actingAs($admin)->get(route('admin.analytics.store-performance.export', [
             'period' => 'custom',

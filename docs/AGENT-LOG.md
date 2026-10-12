@@ -4297,3 +4297,9 @@ Lingkup: sinkronisasi formula dan query ekspor XLSX dengan antarmuka admin (Orde
 Dampak spec: tidak berubah
 Untuk agent berikutnya: Kas Bersih per Produk di OrderExport wajib membagi subtotal kolom T (bukan kuantitas R); TabelPesanan di StorePerformanceExport mencakup kolom AA; filter payment_status di OrderController::export mendukung cancelled.
 Bukti: php artisan test --filter="AdminExportSyncAuditTest|OrderExportContractTest|StorePerformanceExportTest|StorePerformanceGoldenTest" lulus (30 passed, 315 assertions).
+
+## 2026-10-12 19:40 UTC | zcode | Standard | - | selesai
+Lingkup: penguncian recognizedOrderIds pada IncomeDetailQuery::items(), penanganan voided_at dan multi-return-case pada OrderExport, serta penambahan suite tes regresi AdminExportSyncAuditTest
+Dampak spec: tidak berubah
+Untuk agent berikutnya: items() wajib selalu menyaring whereIn('id', ); kasus retur yang di-void (voided_at) wajib dikecualikan dari akumulasi refund dan ongkir retur.
+Bukti: 37 tes ekspor dan kalkulasi lulus (341 asersi).

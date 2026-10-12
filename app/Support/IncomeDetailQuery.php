@@ -66,7 +66,7 @@ class IncomeDetailQuery
 
         $orders = Order::query()
             ->with('payments')
-            ->with(['returnCases' => fn ($q) => $q->where('status', 'completed')->whereNotNull('completed_at')->whereBetween('completed_at', [$from, $to])])
+            ->with(['returnCases' => fn ($q) => $q->where('status', 'completed')->whereNull('voided_at')->whereNotNull('completed_at')->whereBetween('completed_at', [$from, $to])])
             ->with('items:order_id,parent_sku,quantity')
             ->withCount('items')
             ->whereIn('order_status', $statuses)
@@ -234,11 +234,13 @@ class IncomeDetailQuery
     {
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
+        $recognizedIds = app(StorePerformanceService::class)->recognizedOrderIds($from, $to);
         $statuses = StorePerformanceService::REVENUE_STATUSES;
 
         return Order::query()
             ->whereIn('order_status', $statuses)
             ->whereBetween('created_at', [$from, $to])
+            ->whereIn('id', $recognizedIds)
             ->with('items')
             ->get()
             ->flatMap(function (Order $order) {
