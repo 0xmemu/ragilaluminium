@@ -4175,3 +4175,17 @@ State openId (akordeon) dihapus karena tidak terpakai lagi.
 ### CATATAN KOLABORASI
 Berkas ini di working tree juga memuat WIP agent lain (buildItems sort_order index menjadi index + 1) yang TIDAK saya commit. Blob dibangun dari HEAD + relayout saya lewat plumbing (hash-object -w + update-index --cacheinfo + commit tanpa path); dibuktikan sesudah commit, sisa git diff pada berkas itu hanya baris WIP agent lain.
 Agent: zcode
+
+## 2026-10-12 08:40 UTC | zcode | Standard | selesai
+- Owner: "relayouting. samakan dengan model halaman lain" sambil menunjuk /admin/pengaturan-toko.
+### ANALISA (dilakukan sebelum mengubah)
+Halaman ini menaruh enam kartu dalam TIGA baris dua kolom; lebar kartu 489px dari kontainer 1055px (diukur live). Dua kartu pertama berisi tabel tautan dengan URL sangat panjang (Shopee ~95 karakter, Lazada ~122). Di lebar separuh, kolom URL tinggal ~300px sehingga URL membungkus sampai 3 baris dan tinggi baris tidak rata antar dua kartu berdampingan. Semua tabel admin lain (Masalah & Solusi, Bar Promo, Pengiriman, dst) membentang penuh sesuai kontrak panel admin Table-First membentang penuh. Jadi akar masalahnya lebar tabel, bukan jumlah kolom.
+### KEPUTUSAN
+Hanya baris berisi DUA TABEL TAUTAN yang dibuat membentang penuh (satu kolom, bertumpuk). Empat kartu lain (Informasi Kontak, Lokasi Workshop, Logo, Favicon) tetap berdampingan dua kolom karena isinya pendek dan memang berpasangan; kalau ikut ditumpuk penuh, isian seperti nomor WhatsApp melar ~1000px tanpa manfaat dan halaman jadi panjang. Tepi kiri/kanan kartu tetap lurus dengan kontainer sehingga alignment ADR-022 terjaga.
+### PERUBAHAN (commit 8807a9ff)
+resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx: kelas grid pembungkus dua tabel tautan dari grid items-start gap-6 lg:grid-cols-2 menjadi grid items-start gap-6 (satu kolom). Enam baris termasuk komentar alasan. Tidak ada route, kolom, enum, atau bentuk JSON yang berubah; mode view/edit dan seluruh fungsi tidak disentuh.
+### VERIFIKASI
+- typecheck 0, eslint 0, build sukses.
+- Live terukur: baris pertama dari 489+489 menjadi satu kolom 998px; tujuh dari delapan URL kini satu baris (Shopee dan Lazada sebelumnya 3 baris); hanya URL Lazada masih dua baris karena panjangnya 122 karakter. Baris kontak dan logo tetap dua kolom 489+489.
+- Mode ringkasan, tombol Edit, Lihat di toko, dan dua pemilih aset brand tidak diubah.
+Agent: zcode
