@@ -7,26 +7,12 @@ use App\Models\CmsPage;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 /**
  * Editor halaman publik "Kontak Kami" (cms_pages slug 'kontak').
  */
 class KontakController extends Controller
 {
-    public function edit(): Response
-    {
-        $page = CmsPage::where('slug', 'kontak')->first();
-
-        $fields = $page && is_array($page->content) ? $this->extractFields($page->content) : [];
-
-        return Inertia::render('Admin/Beranda/KontakForm', [
-            'title' => 'Kontak & Informasi',
-            'fields' => $fields,
-        ]);
-    }
-
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -65,33 +51,6 @@ class KontakController extends Controller
 
         return redirect()->route('admin.storefront-platforms.edit')
             ->with('success', 'Halaman kontak disimpan.');
-    }
-
-    /** @return array<string, string> */
-    private function extractFields(array $content): array
-    {
-        $blocks = $content['blocks'] ?? [];
-        $current = null;
-        $fields = ['address' => '', 'phone' => '', 'email' => '', 'hours' => '', 'problems_content' => ''];
-
-        foreach ($blocks as $block) {
-            $type = $block['type'] ?? '';
-            $text = (string) ($block['text'] ?? '');
-            if ($type === 'heading') {
-                $current = match (mb_strtolower($text)) {
-                    'alamat' => 'address',
-                    'telepon / whatsapp', 'telepon/wa', 'telepon', 'whatsapp' => 'phone',
-                    'email' => 'email',
-                    'jam operasional' => 'hours',
-                    'masalah & solusi' => 'problems_content',
-                    default => null,
-                };
-            } elseif ($type === 'paragraph' && $current !== null) {
-                $fields[$current] = $text;
-            }
-        }
-
-        return $fields;
     }
 
     /** @return array{type: string, text: string} */

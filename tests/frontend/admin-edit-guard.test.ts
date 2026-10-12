@@ -14,6 +14,10 @@ import { describe, expect, it } from "vitest"
  * selalu terulang karena tidak punya tempat tetap. Penjaga ini yang menutup
  * pengulangannya: halaman baru yang lupa terkunci gagal di sini.
  *
+ *
+ * Catatan 13 Oktober 2026: halaman Admin/Beranda/KontakForm.tsx sudah
+ * DIARSIPKAN (tidak dirender rute mana pun) ke folder
+ * _archive/halaman-yatim-20261013, jadi keluar dari daftar wajib ini.
  * Penjaga membaca SUMBER, bukan DOM, karena yang mudah terlupa adalah halaman
  * baru yang dibuat tanpa memikirkan kontrak ini.
  */
@@ -36,7 +40,6 @@ const WAJIB_TERKUNCI = [
   "resources/js/pages/Admin/Profile/Edit.tsx",
   "resources/js/pages/Admin/WhatsApp/Edit.tsx",
   "resources/js/pages/Admin/Beranda/HowToOrderForm.tsx",
-  "resources/js/pages/Admin/Beranda/KontakForm.tsx",
   // Empat halaman yang sebelumnya belum masuk daftar mana pun: satu halaman
   // setelan utuh dan tiga bagian setelan halaman di dalam halaman daftar.
   "resources/js/pages/Admin/Beranda/Index.tsx",
