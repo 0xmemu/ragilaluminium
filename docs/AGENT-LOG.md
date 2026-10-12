@@ -4475,3 +4475,31 @@ Verifikasi: tsc bersih, eslint 0 warning pada berkas yang diubah, build sukses,
 
 Domain berikutnya di rencana (CMS, Pengaturan, Transaksi, Promo, Admin) belum
 dikerjakan, dan Tahap 4 (penjaga per-form) menyusul setelah rollout selesai.
+
+## 2026-10-12 23:01 UTC | zcode | Deep | b98c22b4 | selesai (Tahap 3 domain CMS)
+
+Lanjutan permintaan owner: tuntaskan rollout. Domain CMS dikerjakan, sembilan
+halaman: FAQ (meta, form tambah, form ubah item), Apa Kata Pelanggan (meta),
+Masalah dan Solusi (meta dan form item), Halaman CMS, Dokumen Halaman, Cara
+Pemesanan, Cara Pesan beranda, dan Hasil Pemasangan form proyek.
+
+Bentuk API diseragamkan lebih dulu, termasuk memigrasikan lima berkas yang
+sudah ada, supaya di 23 berkas tersisa tidak ada dua cara. Gerbang kini
+dipegang satu objek opsi yang disebar ke tombol dan dipakai penjaga kiriman,
+sehingga tidak ada urutan deklarasi yang perlu dijaga. Ditambahkan
+gerbangBolehLanjut untuk handler onSubmit yang panjang di JSX.
+
+Dua kesalahan saya sendiri di putaran ini, keduanya ketahuan dan diperbaiki
+sebelum commit: (1) potongan blok gerbang di tiga berkas Katalog menghapus
+kurung penutup sehingga sintaks rusak; (2) pola pengambilan label tombol
+menghasilkan teks ber-tanda-kutip, jadi tombol tampil sebagai Simpan dengan
+kutipnya. Keduanya diperbaiki dan diverifikasi ulang di halaman live.
+
+Verifikasi: tsc bersih, eslint 0 warning di sembilan berkas itu, build sukses.
+Bukti live: Masalah dan Solusi (tombol Simpan mati, alasan kolom kosong
+tampil), Hasil Pemasangan tambah (tombol Tambah mati, alasan tampil), Halaman
+CMS tambah (tombol Simpan halaman mati, alasan tampil), dan Cara Pemesanan
+setelah Edit (tombol mati dengan alasan Belum ada perubahan, karena isinya
+sudah terisi).
+
+Domain tersisa: Pengaturan, Transaksi, Promo, Admin, lalu Tahap 4 penjaga.
