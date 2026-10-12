@@ -11,6 +11,8 @@ import type { PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
 import { routeUrl } from "@/lib/routes"
 import { addHoursLocalInput, nowLocalInput, toLocalInput } from "@/lib/period"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface TargetDraft {
   target_type: "model" | "sub_model" | "product"
@@ -192,6 +194,13 @@ export default function PromotionForm({
   const excluded = form.data.targets.filter((t) => t.excluded)
   const filteredExclude = options.productOptions
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: { name: "Nama kampanye", discount_percent: "Diskon (%)", targets: "Produk sasaran" },
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -207,33 +216,39 @@ export default function PromotionForm({
             <Link href={indexUrl}>Batal</Link>
           </Button>
           {editing ? (
-            <Button type="submit" form="promotion-form" disabled={form.processing}>
-              {form.processing ? "Menyimpan…" : "Simpan"}
-            </Button>
+            <SubmitGateButton
+              form={form}
+              {...gerbang}
+              formId="promotion-form"
+            >
+              Simpan
+            </SubmitGateButton>
           ) : (
             <>
-              <Button
+              <SubmitGateButton
                 type="button"
                 variant="secondary"
-                disabled={form.processing}
                 onClick={() => submitWith(false)}
+                form={form}
+                {...gerbang}
               >
-                {form.processing ? "Menyimpan…" : "Simpan sebagai draft"}
-              </Button>
-              <Button
+                Simpan sebagai draft
+              </SubmitGateButton>
+              <SubmitGateButton
                 type="button"
-                disabled={form.processing}
                 onClick={() => submitWith(true)}
+                form={form}
+                {...gerbang}
               >
-                {form.processing ? "Menyimpan…" : "Simpan & Aktifkan"}
-              </Button>
+                Simpan &amp; Aktifkan
+              </SubmitGateButton>
             </>
           )}
         </div>
       }
     >
       <Head title={title} />
-      <form id="promotion-form" onSubmit={submit} className="w-full space-y-5">
+      <form id="promotion-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         <section className="space-y-4 rounded-lg border border-border bg-card p-4">

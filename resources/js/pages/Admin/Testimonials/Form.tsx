@@ -11,6 +11,8 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface TestimonialRecord {
   id: number
@@ -193,6 +195,14 @@ export default function TestimonialForm({
     : `Edit ${isMarketplaceIntent ? "Screenshot" : "Ulasan"}`
 
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"source": "Sumber"},
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -204,9 +214,13 @@ export default function TestimonialForm({
       }
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="testimonial-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
-          </Button>
+                    <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="testimonial-form"
+          >
+            {isMarketplaceIntent ? "Simpan screenshot" : "Simpan ulasan"}
+          </SubmitGateButton>
           <Button asChild variant="secondary">
             <Link href={indexUrl}>Batal</Link>
           </Button>
@@ -217,6 +231,7 @@ export default function TestimonialForm({
       <form
         id="testimonial-form"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           form.transform((data) => ({
             ...data,

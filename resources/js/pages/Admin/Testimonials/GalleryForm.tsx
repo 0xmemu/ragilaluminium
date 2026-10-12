@@ -7,6 +7,8 @@ import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/fi
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface GalleryRecord {
   id: number
@@ -45,6 +47,14 @@ export default function GalleryForm({
   // baru, nilainya dari gambar tersimpan.
   const previewSrc = pickedPreview ?? form.data.image_url
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"media_asset_id": "Gambar"},
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -52,9 +62,13 @@ export default function GalleryForm({
       description="Foto hasil pemasangan untuk beranda dan halaman /reviews#hasil-pemasangan."
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" form="testimonial-gallery-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan ulasan foto"}
-          </Button>
+                    <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="testimonial-gallery-form"
+          >
+            Simpan ulasan foto
+          </SubmitGateButton>
           <Button asChild variant="secondary">
             <Link href={indexUrl}>Batal</Link>
           </Button>
@@ -65,6 +79,7 @@ export default function GalleryForm({
       <form
         id="testimonial-gallery-form"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           form.transform((data) => ({
       ...data,

@@ -32,6 +32,8 @@ export function SubmitGateButton({
   extraDisabled = false,
   extraDisabledReason,
   formId,
+  type = "submit",
+  onClick,
   label,
   children,
   processing = false,
@@ -57,6 +59,13 @@ export function SubmitGateButton({
   extraDisabledReason?: string
   /** Id form yang disubmit tombol ini, untuk tombol yang berada di luar form. */
   formId?: string
+  /**
+   * `"button"` untuk tombol simpan yang menyalurkan sendiri lewat onClick,
+   * mis. halaman yang memilih beberapa cara simpan (draf atau langsung aktif).
+   * Gerbangnya tetap sama, hanya jalurnya yang berbeda.
+   */
+  type?: "submit" | "button"
+  onClick?: () => void
   /** Label tombol; `children` menang bila keduanya diisi. */
   label?: React.ReactNode
   children?: React.ReactNode
@@ -72,8 +81,9 @@ export function SubmitGateButton({
 
   const tombol = (
     <Button
-      type="submit"
-      {...(formId ? { form: formId } : {})}
+      type={type}
+      {...(type === "submit" && formId ? { form: formId } : {})}
+      onClick={onClick}
       variant={variant}
       size={size}
       className={className}

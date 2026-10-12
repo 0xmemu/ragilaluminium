@@ -11,6 +11,8 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface UserRecord {
   id: number
@@ -39,6 +41,24 @@ export default function UserForm({
   })
   const statusForm = useForm({})
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  // Password wajib hanya saat membuat akun baru. Saat menyunting, kolom itu
+  // memang boleh dikosongkan (server tidak mewajibkannya), jadi tidak boleh ikut
+  // dikunci.
+  const fieldsWajib: Record<string, string> = {
+    name: "Nama",
+    username: "Username",
+    status: "Status",
+  }
+  if (!editing) fieldsWajib.password = "Password"
+
+  const gerbang = {
+    fields: fieldsWajib,
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       backUrl={routeUrl("admin.users.index")}
@@ -51,9 +71,13 @@ export default function UserForm({
           : "Buat username dan password untuk akun admin baru."
       }
       actions={
-        <Button type="submit" form="user-form" disabled={form.processing}>
-          {form.processing ? "Menyimpan..." : "Simpan akun"}
-        </Button>
+                <SubmitGateButton
+          form={form}
+          {...gerbang}
+          formId="user-form"
+        >
+          Simpan akun
+        </SubmitGateButton>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Admin | Admin`} />
@@ -61,6 +85,7 @@ export default function UserForm({
       <form
         id="user-form"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           if (editing) form.put(submitUrl)
           else form.post(submitUrl)

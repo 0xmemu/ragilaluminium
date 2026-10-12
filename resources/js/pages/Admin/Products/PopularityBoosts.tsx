@@ -1,20 +1,31 @@
 import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/admin/ui/dialog"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
+import { SectionCard } from "@/components/admin/section-card"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { Button } from "@/components/admin/ui/button"
-import { Card } from "@/components/admin/ui/card"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatNumber } from "@/lib/format"
+import { routeUrl } from "@/lib/routes"
+import type { Pagination as PaginationData } from "@/types"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface ProductOption {
   id: number
+  status: string
   label: string
 }
 
@@ -27,6 +38,8 @@ interface BoostRow {
   source_sold_count: number
   target_sold_count: number
   effective_score: number
+  source_review_count: number
+  source_avg_rating: number | null
   notification_threshold: number | null
   threshold_notified_at: string | null
   disabled_at: string | null
@@ -34,52 +47,126 @@ interface BoostRow {
   updated_at: string | null
   disable_url: string
   enable_url: string
+  delete_url: string
+  edit_url: string
 }
 
-function dateLabel(value: string | null): string {
-  if (!value) return "-"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  })
+interface PageFilters {
+  q: string
+  status: string
 }
 
 export default function PopularityBoosts({
   title,
   description,
+  backUrl,
   boosts,
   products,
   storeUrl,
+  filters,
+  summary,
+  pagination,
 }: {
   title: string
   description: string
+  backUrl: string
   boosts: BoostRow[]
   products: ProductOption[]
   storeUrl: string
+  filters: PageFilters
+  summary: { total: number; active: number }
+  pagination: PaginationData | null
 }) {
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [q, setQ] = React.useState(filters.q)
+  const [status, setStatus] = React.useState(filters.status)
+
   const form = useForm({
     source_product_id: "",
     target_product_id: "",
     notification_threshold: "",
   })
 
-  function submit(event: React.FormEvent) {
+  const [editBoost, setEditBoost] = React.useState<BoostRow | null>(null)
+  const editForm = useForm({
+    source_product_id: "",
+    target_product_id: "",
+    notification_threshold: "",
+  })
+
+  function openEdit(boost: BoostRow) {
+    editForm.setData({
+      source_product_id: boost.source ? String(boost.source.id) : "",
+      target_product_id: boost.target ? String(boost.target.id) : "",
+      notification_threshold: boost.notification_threshold ? String(boost.notification_threshold) : "",
+    })
+    editForm.clearErrors()
+    setEditBoost(boost)
+  }
+
+  function submitEdit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!editBoost) return
+    editForm.put(editBoost.edit_url, {
+      preserveScroll: true,
+      onSuccess: () => {
+        editForm.reset()
+        setEditBoost(null)
+      },
+    })
+  }
+
+  function visit(next: Record<string, string>) {
+    const params: Record<string, string> = {}
+    if (next.q?.trim()) params.q = next.q.trim()
+    if (next.status && next.status !== "all") params.status = next.status
+    router.get(routeUrl("admin.products.popularity-boosts.index"), params, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+    })
+  }
+
+  function submitSearch(event: React.FormEvent) {
+    event.preventDefault()
+    visit({ q, status })
+  }
+
+  function submitCreate(event: React.FormEvent) {
     event.preventDefault()
     form.post(storeUrl, {
       preserveScroll: true,
-      onSuccess: () => form.reset(),
+      onSuccess: () => {
+        form.reset()
+        setCreateOpen(false)
+      },
     })
+  }
+
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangBuat = {
+    fields: {"source_product_id": "Produk sumber", "target_product_id": "Produk tujuan"},
+    requireChange: false,
+  }
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangUbah = {
+    fields: {"source_product_id": "Produk sumber", "target_product_id": "Produk tujuan"},
+    requireChange: true,
   }
 
   return (
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" form="boost-create-form" size="sm" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Aktifkan"}
+          <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+            <Icon name="plus" className="size-4" aria-hidden="true" />
+            <span>Tambah</span>
           </Button>
         </div>
       }
@@ -257,7 +344,7 @@ export default function PopularityBoosts({
             dan ulasan website terpublikasi (tampil di PDP target dengan ratingnya).
             View, klik, dan riwayat order tidak ikut dipindahkan.
           </DialogDescription>
-          <form id="boost-create-form" onSubmit={submitCreate} className="grid gap-4">
+          <form id="boost-create-form" onSubmit={jagaGerbang(gerbangBuat, form, submitCreate)} className="grid gap-4">
             <Field id="source_product_id" label="Produk sumber (A)" hint="Penjualan produk sumber saat ini dipindahkan sebagai popularitas awal produk target." error={form.errors.source_product_id} required>
               <SearchSelect
                 id="source_product_id"
@@ -287,9 +374,12 @@ export default function PopularityBoosts({
             </Field>
             <FormErrorSummary errors={form.errors} />
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button type="submit" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : "Aktifkan Teruskan Popularitas"}
-              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbangBuat}
+              >
+                Aktifkan Teruskan Popularitas
+              </SubmitGateButton>
             </div>
           </form>
         </DialogContent>
@@ -303,7 +393,7 @@ export default function PopularityBoosts({
             terbaru; target lama dibersihkan bila pasangan berpindah. Ambang yang diubah memulai
             siklus notifikasi baru.
           </DialogDescription>
-          <form id="boost-edit-form" onSubmit={submitEdit} className="grid gap-4">
+          <form id="boost-edit-form" onSubmit={jagaGerbang(gerbangUbah, editForm, submitEdit)} className="grid gap-4">
             <Field id="edit_source_product_id" label="Produk sumber (A)" hint="Penjualan produk sumber saat ini dipindahkan sebagai popularitas awal produk target." error={editForm.errors.source_product_id} required>
               <SearchSelect
                 id="edit_source_product_id"
@@ -336,9 +426,12 @@ export default function PopularityBoosts({
               <Button type="button" variant="secondary" onClick={() => setEditBoost(null)}>
                 Batal
               </Button>
-              <Button type="submit" disabled={editForm.processing}>
-                {editForm.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+                            <SubmitGateButton
+                form={editForm}
+                {...gerbangUbah}
+              >
+                Simpan
+              </SubmitGateButton>
             </div>
           </form>
         </DialogContent>

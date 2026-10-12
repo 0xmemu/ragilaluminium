@@ -9,6 +9,7 @@ import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { addHoursLocalInput, nowLocalInput, toLocalInput } from "@/lib/period"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 
 interface VoucherFormData {
   id?: number
@@ -98,6 +99,18 @@ export default function VoucherForm({
     form.put(submitUrl)
   }
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {
+      name: "Nama voucher",
+      code: "Kode voucher",
+      discount_type: "Jenis diskon",
+      discount_value: "Nilai diskon",
+    },
+    requireChange: isEdit,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -113,26 +126,33 @@ export default function VoucherForm({
             <Link href={indexHref}>Batal</Link>
           </Button>
           {isEdit ? (
-            <Button type="submit" form="voucher-form" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan"}
-            </Button>
+            <SubmitGateButton
+              type="button"
+              onClick={() => submitWith(false)}
+              form={form}
+              {...gerbang}
+            >
+              Simpan
+            </SubmitGateButton>
           ) : (
             <>
-              <Button
+              <SubmitGateButton
                 type="button"
                 variant="secondary"
-                disabled={form.processing}
                 onClick={() => submitWith(false)}
+                form={form}
+                {...gerbang}
               >
-                {form.processing ? "Menyimpan..." : "Simpan tanpa aktifkan"}
-              </Button>
-              <Button
+                Simpan tanpa aktifkan
+              </SubmitGateButton>
+              <SubmitGateButton
                 type="button"
-                disabled={form.processing}
                 onClick={() => submitWith(true)}
+                form={form}
+                {...gerbang}
               >
-                {form.processing ? "Menyimpan..." : "Simpan & Aktifkan"}
-              </Button>
+                Simpan &amp; Aktifkan
+              </SubmitGateButton>
             </>
           )}
         </div>
