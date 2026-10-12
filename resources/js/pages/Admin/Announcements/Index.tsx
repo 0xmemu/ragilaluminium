@@ -216,7 +216,7 @@ export default function AnnouncementsIndex({
     })
   }
   const [slideEnabled, setSlideEnabled] = React.useState(announcementSlide?.enabled ?? false)
-  const [slideInterval, setSlideInterval] = React.useState(announcementSlide?.interval ?? 5)
+  const [slideInterval, setSlideInterval] = React.useState(String(announcementSlide?.interval ?? 5))
   const [savingSlide, setSavingSlide] = React.useState(false)
 
   function saveSlide(event: React.FormEvent) {
@@ -224,7 +224,7 @@ export default function AnnouncementsIndex({
     setSavingSlide(true)
     router.post(
       slideHref,
-      { enabled: slideEnabled, interval: slideInterval },
+      { enabled: slideEnabled, interval: slideInterval === "" ? null : Number(slideInterval) },
       { preserveScroll: true, onFinish: () => setSavingSlide(false) },
     )
   }
@@ -335,7 +335,7 @@ export default function AnnouncementsIndex({
               min={2}
               max={30}
               value={slideInterval}
-              onChange={(event) => setSlideInterval(Number(event.target.value))}
+              onChange={(event) => setSlideInterval(event.target.value)}
             />
           </Field>
           <FieldAction>

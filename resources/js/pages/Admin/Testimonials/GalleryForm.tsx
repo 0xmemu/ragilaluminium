@@ -12,7 +12,7 @@ interface GalleryRecord {
   id: number
   label?: string | null
   image_url: string
-  sort_order: number
+  sort_order: string
   published: boolean
 }
 
@@ -34,7 +34,7 @@ export default function GalleryForm({
   const form = useForm({
     label: item?.label ?? "",
     image_url: item?.image_url ?? "",
-    sort_order: item?.sort_order ?? nextSortOrder,
+    sort_order: String(item?.sort_order ?? nextSortOrder),
     published: item?.published ?? true,
     object_key: "",
     media_asset_id: "",
@@ -66,6 +66,10 @@ export default function GalleryForm({
         id="testimonial-gallery-form"
         onSubmit={(event) => {
           event.preventDefault()
+          form.transform((data) => ({
+      ...data,
+      sort_order: data.sort_order === "" ? null : Number(data.sort_order),
+    }))
           if (editing) form.put(submitUrl)
           else form.post(submitUrl)
         }}
@@ -121,7 +125,7 @@ export default function GalleryForm({
                     type="number"
                     min="1"
                     value={form.data.sort_order}
-                    onChange={(event) => form.setData("sort_order", Number(event.target.value))}
+                    onChange={(event) => form.setData("sort_order", event.target.value)}
                   />
                 </Field>
                 <CheckboxField

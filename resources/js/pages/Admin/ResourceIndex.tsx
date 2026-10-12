@@ -143,7 +143,7 @@ function MediaBulkAttachPanel({
   const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? null
   const form = useForm({
     product_ids: [] as number[],
-    position: 1,
+    position: "1",
     show_in_catalog: true,
     is_installation: false,
     is_main_image: false,
@@ -228,6 +228,10 @@ function MediaBulkAttachPanel({
           className="mt-4 grid gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:grid-cols-[minmax(0,1fr)_16rem]"
           onSubmit={(event) => {
             event.preventDefault()
+            form.transform((data) => ({
+              ...data,
+              position: data.position === "" ? null : Number(data.position),
+            }))
             form.post(selectedAsset.attach_url, { preserveScroll: true, onSuccess: () => form.reset("product_ids") })
           }}
         >
@@ -260,7 +264,7 @@ function MediaBulkAttachPanel({
           </div>
           <div className="space-y-3">
             <Field id="bulk-position" label="Posisi">
-              <Input type="number" min="1" max="109" value={form.data.position} onChange={(event) => form.setData("position", Number(event.target.value))} />
+              <Input type="number" min="1" max="109" value={form.data.position} onChange={(event) => form.setData("position", event.target.value)} />
             </Field>
             <Select value={form.data.visibility} onChange={(event) => form.setData("visibility", event.target.value)} aria-label="Visibilitas attachment">
               <option value="visible">Visible</option>

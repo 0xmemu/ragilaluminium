@@ -18,7 +18,7 @@ interface CategoryData {
   slug: string
   seo_title?: string | null
   seo_description?: string | null
-  sort_order: number
+  sort_order: string
   is_active: boolean
   products_count?: number
   public_url?: string
@@ -49,12 +49,16 @@ export default function CategoryForm({
     slug: category?.slug ?? "",
     seo_title: category?.seo_title ?? "",
     seo_description: category?.seo_description ?? "",
-    sort_order: category?.sort_order ?? nextSortOrder,
+    sort_order: String(category?.sort_order ?? nextSortOrder),
     is_active: category?.is_active ?? true,
   })
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
+    form.transform((data) => ({
+      ...data,
+      sort_order: data.sort_order === "" ? null : Number(data.sort_order),
+    }))
     if (category) {
       form.put(submitUrl)
     } else {
@@ -180,7 +184,7 @@ export default function CategoryForm({
                     type="number"
                     min={1}
                     value={form.data.sort_order}
-                    onChange={(e) => form.setData("sort_order", Number(e.target.value))}
+                    onChange={(e) => form.setData("sort_order", e.target.value)}
                     placeholder="1"
                   />
                 </Field>

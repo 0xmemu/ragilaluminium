@@ -52,6 +52,12 @@ export function QuantityInput({
   inputClassName?: string
   className?: string
 }) {
+  // Saat isian sedang diketik, tampilkan teks mentah (draft) supaya backspace
+  // bisa mengosongkan; saat tidak diketik, tampilkan nilai resmi dari induk
+  // supaya tombol kurang/tambah selalu terlihat sinkron.
+  const [draft, setDraft] = React.useState("")
+  const [sedangDiketik, setSedangDiketik] = React.useState(false)
+
   const kurangNonaktif = disabled || value <= min
   const tambahNonaktif = disabled || (max !== undefined && value >= max)
 
@@ -59,6 +65,19 @@ export function QuantityInput({
     if (!Number.isFinite(mentah)) return
     const batasAtas = max === undefined ? mentah : Math.min(max, mentah)
     onChange(Math.max(min, batasAtas))
+  }
+
+  /**
+   * Saat diketik langsung, isian kosong dibiarkan kosong supaya backspace
+   * benar-benar menghapus. Dulu nilai kosong dipaksa ke batas minimum, jadi
+   * menghapus angka terasa tidak berfungsi dan nilainya menempel kembali.
+   */
+  function ketik(teks: string) {
+    setDraft(teks)
+    if (teks.trim() === "") return
+    const angka = Number(teks)
+    if (!Number.isFinite(angka)) return
+    terapkan(angka)
   }
 
   return (
@@ -78,11 +97,16 @@ export function QuantityInput({
         type="number"
         min={min}
         max={max}
-        value={String(value)}
+        value={sedangDiketik ? draft : String(value)}
         disabled={disabled}
         aria-label={ariaLabel ?? "Jumlah"}
         className={cn("w-14 text-center", inputClassName)}
-        onChange={(event) => terapkan(Number(event.target.value))}
+        onChange={(event) => ketik(event.target.value)}
+        onFocus={() => {
+          setDraft(String(value))
+          setSedangDiketik(true)
+        }}
+        onBlur={() => setSedangDiketik(false)}
       />
       <Button
         type="button"
