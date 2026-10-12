@@ -161,11 +161,11 @@ class OrderExport implements WithMultipleSheets
 
             $completedCase = $order->returnCases->firstWhere('status', 'completed');
             $runningCase = $order->returnCases->firstWhere('status', 'open');
-            $refund = (float) ($completedCase->refund_amount ?? 0);
-            $returOngkir = (float) ($completedCase->return_shipping_cost ?? 0);
+            $refund = (float) $order->returnCases->where('status', 'completed')->sum('refund_amount');
+            $returOngkir = (float) $order->returnCases->where('status', 'completed')->sum('return_shipping_cost');
             // Ongkir perjalanan balik: tagihan pengembalian J&T yang diisi admin
             // saat retur selesai (keputusan owner 2026-09-29).
-            $ongkirBalik = (float) ($completedCase->additional_shipping_amount ?? 0);
+            $ongkirBalik = (float) $order->returnCases->where('status', 'completed')->sum('additional_shipping_amount');
 
             $returnType = '-';
             if ($runningCase) {
@@ -456,7 +456,7 @@ class OrderTxSheet extends RagilStyledExport implements FromArray
             // Net profit per baris produk = net profit pesanan dialokasikan
             // proporsional terhadap subtotal baris; bila total subtotal
             // pesanan 0, alokasi dibagi rata antar barisnya.
-            $share = "IFERROR(R{$r}/SUMIF({$rangeA}, A{$r}, {$rangeSubtotal}), 1/COUNTIF({$rangeA}, A{$r}))";
+            $share = "IFERROR(T{$r}/SUMIF({$rangeA}, A{$r}, {$rangeSubtotal}), 1/COUNTIF({$rangeA}, A{$r}))";
             $netOrder = "IF(D{$r}=\"Dibatalkan\", 0-AC{$r}-AD{$r}, Z{$r}-AA{$r}-AC{$r}-AD{$r})";
             // Pengurangan ke J&T memakai ongkir ASLI dari konsol J&T bila admin
             // sudah mencatatnya; kalau belum, asumsi checkout (ongkir pembeli +

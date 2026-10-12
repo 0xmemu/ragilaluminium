@@ -169,7 +169,9 @@ class OrderController extends Controller
 
         $summary = [
             'count' => (int) (clone $ordersQuery)->count(),
-            'total_value' => (float) (clone $ordersQuery)->sum('total_amount'),
+            'total_value' => (float) (clone $ordersQuery)
+                ->when($status === 'all', fn ($q) => $q->where('order_status', '!=', 'cancelled'))
+                ->sum('total_amount'),
         ];
 
         $orders = (clone $ordersQuery)
@@ -220,6 +222,8 @@ class OrderController extends Controller
             'date_preset' => $datePreset ?: null,
             'date_from' => $datePreset === 'range' && $dateFrom !== '' ? $dateFrom : null,
             'date_to' => $datePreset === 'range' && $dateTo !== '' ? $dateTo : null,
+            'payment_method' => $request->input('payment_method') ?: null,
+            'is_cod' => $request->has('is_cod') ? $request->input('is_cod') : null,
         ], fn ($v) => $v !== null && $v !== '');
 
         // Pelanggan yang perlu perhatian admin: riwayat penolakan paket yang
@@ -295,7 +299,7 @@ class OrderController extends Controller
             $olderThan = '';
         }
 
-        if (! in_array($paymentStatus, ['pending', 'paid', 'refunded'], true)) {
+        if (! in_array($paymentStatus, ['pending', 'paid', 'refunded', 'cancelled'], true)) {
             $paymentStatus = '';
         }
         if (! in_array($shippingStatus, ['pending_pickup', 'in_process', 'in_transit', 'delivered', 'cancelled'], true)) {
@@ -350,8 +354,12 @@ class OrderController extends Controller
             ->when(
                 $datePreset === 'range' && $dateTo !== '',
                 fn ($q) => $q->whereDate('created_at', '<=', $dateTo)
-            )
-            ->latest();
+            );
+
+        $sort = (string) $request->input('sort', 'newest');
+        $query = $query
+            ->when($sort === 'oldest', fn ($q) => $q->oldest())
+            ->when($sort !== 'oldest', fn ($q) => $q->latest());
 
 
         ExportSafety::assertQueryWithinLimit($query);

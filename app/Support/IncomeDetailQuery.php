@@ -232,12 +232,13 @@ class IncomeDetailQuery
     /** @return list<array<string, mixed>> */
     public static function items(string $fromDate, string $toDate): array
     {
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to = Carbon::parse($toDate)->endOfDay();
         $statuses = StorePerformanceService::REVENUE_STATUSES;
 
         return Order::query()
             ->whereIn('order_status', $statuses)
-            ->whereDate('created_at', '>=', $fromDate)
-            ->whereDate('created_at', '<=', $toDate)
+            ->whereBetween('created_at', [$from, $to])
             ->with('items')
             ->get()
             ->flatMap(function (Order $order) {

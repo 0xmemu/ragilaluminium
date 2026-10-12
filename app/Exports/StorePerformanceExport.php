@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\Column as TableColumn;
 
@@ -777,7 +778,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
 
         if ($count === 0) {
             parent::afterSheet($event);
-            $sheet->getStyle('A1:Z1')->applyFromArray([
+            $sheet->getStyle('A1:AA1')->applyFromArray([
                 'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
             ]);
@@ -793,7 +794,7 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
                 str_replace(
                     '{r}',
                     (string) $rowNum,
-                    '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}'
+                    '=N{r}-M{r}+O{r}+P{r}+Q{r}+Z{r}+AA{r}'
                 )
             );
         }
@@ -802,20 +803,21 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
         // lalu Excel Table membungkus seluruh rentang termasuk baris total.
         $totalRow = 2 + $count;
         $sheet->setCellValue('A'.$totalRow, 'JUMLAH');
-        $sumCols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'Z'];
+        $sumCols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'Z', 'AA'];
         foreach ($sumCols as $col) {
             $sheet->setCellValue($col.$totalRow, '=SUBTOTAL(109,'.$col.'2:'.$col.($totalRow - 1).')');
         }
-        foreach ($sumCols as $i => $col) {
-            $this->registerNumber($totalRow, $i + 7, '#,##0');
+        foreach ($sumCols as $col) {
+            $this->registerNumber($totalRow, Coordinate::columnIndexFromString($col), '#,##0');
         }
 
         // Excel Table: rentang A1:Z{totalRow}, Total Row dihidupkan lewat
         // XML (setShowTotalsRow). Kolom uang diberi totalsRowFunction=sum.
-        $table = new Table('A1:Z'.$totalRow, $this->tableName('TabelPesanan'));
+        $table = new Table('A1:AA'.$totalRow, $this->tableName('TabelPesanan'));
         $table->setShowTotalsRow(true);
 
-        foreach (range('A', 'Z') as $colLetter) {
+        $allTableCols = array_merge(range('A', 'Z'), ['AA']);
+        foreach ($allTableCols as $colLetter) {
             $c = new TableColumn($colLetter, $table);
             if (in_array($colLetter, $sumCols, true)) {
                 $c->setTotalsRowFunction('sum');
@@ -830,13 +832,13 @@ class StorePerformanceOrdersSheet extends StorePerformanceTableSheet
         parent::afterSheet($event);
 
         // Header Tabel dicat navy (gaya referensi); zebra manual per baris.
-        $sheet->getStyle('A1:Z1')->applyFromArray([
+        $sheet->getStyle('A1:AA1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B365D']],
         ]);
         for ($row = 2; $row < $totalRow; $row++) {
             if ($row % 2 === 0) {
-                $sheet->getStyle('A'.$row.':Z'.$row)->applyFromArray([
+                $sheet->getStyle('A'.$row.':AA'.$row)->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
                 ]);
             }

@@ -244,8 +244,14 @@ class CustomerController extends Controller
             ->when(
                 $periodFrom !== null || $periodTo !== null,
                 fn ($q) => $q->whereIn('phone', $this->customers->phonesWithOrdersIn($periodFrom, $periodTo))
-            )
-            ->latest('id');
+            );
+
+        $sort = (string) $request->input('sort', 'newest');
+        $query = match ($sort) {
+            'name' => $query->orderBy('name'),
+            'oldest' => $query->orderBy('id'),
+            default => $query->latest('id'),
+        };
 
         ExportSafety::assertQueryWithinLimit($query);
 

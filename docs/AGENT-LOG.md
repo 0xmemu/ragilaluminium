@@ -4291,3 +4291,9 @@ memasangnya sesaat (dua kasus gagal) lalu memulihkan berkas persis; suite PHP
 1411 lulus dengan 1 gagal bawaan yang tidak berhubungan (ReturnRefundIntegrityTest,
 domain retur). Tidak ada perubahan frontend, jadi typecheck, lint, dan build
 tidak perlu dijalankan. Spec tidak berubah.
+
+## 2026-10-12 19:07 UTC | zcode | Deep | - | selesai
+Lingkup: sinkronisasi formula dan query ekspor XLSX dengan antarmuka admin (OrderExport, StorePerformanceExport, IncomeDetailQuery, OrderController, CustomerController, ProductController)
+Dampak spec: tidak berubah
+Untuk agent berikutnya: Kas Bersih per Produk di OrderExport wajib membagi subtotal kolom T (bukan kuantitas R); TabelPesanan di StorePerformanceExport mencakup kolom AA; filter payment_status di OrderController::export mendukung cancelled.
+Bukti: php artisan test --filter="AdminExportSyncAuditTest|OrderExportContractTest|StorePerformanceExportTest|StorePerformanceGoldenTest" lulus (30 passed, 315 assertions).

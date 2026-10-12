@@ -58,7 +58,7 @@ class OrderExportContractTest extends TestCase
 
     private function makeItem(Order $order, string $ps, string $vs, string $name, float $price, int $qty, float $lineDiscount, string $source = 'reg'): OrderItem
     {
-        $prod = Product::create(['parent_sku' => $ps, 'name' => $name, 'category_id' => 1, 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'status' => 'archived']);
+        $prod = Product::create(['parent_sku' => $ps, 'name' => $name, 'category_id' => 1, 'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'status' => 'archived']);
         $var = ProductVariant::create(['product_id' => $prod->id, 'variant_sku' => $vs, 'price' => $price, 'stock' => 5, 'weight_kg' => 1.0, 'status' => 'active']);
 
         return OrderItem::create([
@@ -140,7 +140,7 @@ class OrderExportContractTest extends TestCase
         $this->assertSame('=150000.00+X3', $tx->getCell('AA3')->getValue());
         // Net profit per produk = net profit pesanan x porsi subtotal baris.
         $this->assertStringStartsWith('=IF(D3="Dibatalkan", 0-AC3-AD3, Z3-AA3-AC3-AD3)', (string) $tx->getCell('AE3')->getValue());
-        $this->assertStringContainsString('IFERROR(R3/SUMIF($A$3:$A$4, A3, $T$3:$T$4), 1/COUNTIF($A$3:$A$4, A3))', (string) $tx->getCell('AE3')->getValue());
+        $this->assertStringContainsString('IFERROR(T3/SUMIF($A$3:$A$4, A3, $T$3:$T$4), 1/COUNTIF($A$3:$A$4, A3))', (string) $tx->getCell('AE3')->getValue());
 
         // Kolom biaya level pesanan DIULANG per baris (header repeat) dengan
         // nilai pesanan penuh (bukan dibagi per unit lagi - aturan v3).

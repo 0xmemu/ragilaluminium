@@ -130,6 +130,7 @@ class ProductController extends Controller
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
+        $size = $q !== '' ? $this->parseSizeQuery($q) : null;
         $sort = $this->resolveListSort($request->input('sort'));
 
         $query = Product::query()
@@ -140,10 +141,17 @@ class ProductController extends Controller
             ->withMax('variants as max_price', 'price')
             ->withCount(['media as media_count' => fn ($b) => $b->where('show_in_catalog', true)])
             ->withCount(['media as installation_media_count' => fn ($b) => $b->where('is_installation', true)])
-            ->when($q !== '', function ($builder) use ($q) {
+            ->when($q !== '' && $size === null, function ($builder) use ($q) {
                 $builder->where(function ($inner) use ($q) {
                     LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'short_name', $q);
                     LikeSearch::orWhereLike($inner, 'parent_sku', $q);
+                });
+            })
+            ->when($size !== null, function ($builder) use ($size) {
+                $builder->whereHas('variants', function ($sub) use ($size) {
+                    $sub->where('width_cm', $size['width'])
+                        ->where('height_cm', $size['height']);
                 });
             })
             ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', CategoryUrl::codeToProductCode($category)))
