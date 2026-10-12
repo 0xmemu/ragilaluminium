@@ -18,6 +18,8 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 export interface PaymentItem {
   id: number
@@ -171,6 +173,17 @@ export default function PaymentsIndex({
   }
 
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {
+      bank_name: "Nama bank",
+      account_number: "Nomor rekening",
+      account_name: "Nama pemilik rekening",
+    },
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -255,6 +268,7 @@ export default function PaymentsIndex({
           <form
             className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, bankForm, gerbang)) return
               event.preventDefault()
               bankForm.put(bankUpdateUrl ?? "", {
                 preserveScroll: true,
@@ -299,9 +313,9 @@ export default function PaymentsIndex({
               />
             </Field>
             <div className="flex flex-wrap items-center gap-2 sm:col-span-2 xl:col-span-4">
-              <Button type="submit" disabled={bankForm.processing}>
-                {bankForm.processing ? "Menyimpan..." : "Simpan Rekening"}
-              </Button>
+              <SubmitGateButton form={bankForm} {...gerbang}>
+                Simpan Rekening
+              </SubmitGateButton>
               <Button
                 type="button"
                 variant="secondary"

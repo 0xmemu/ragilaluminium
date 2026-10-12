@@ -31,6 +31,8 @@ import { formatCurrency, formatDate, formatNumber, humanize } from "@/lib/format
 import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { routeUrl } from "@/lib/routes"
 import { navigateFilter } from "@/lib/filter-url"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 // import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -1008,6 +1010,15 @@ export default function OrdersIndex({
     ].filter(Boolean).join(", ")
   }
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangResi = { fields: { waybill_number: "Nomor resi" } }
+
+  // Isian resi memakai state biasa, bukan `useForm`, jadi bentuk yang dibutuhkan
+  // gerbang disusun di sini. `isDirty` selalu true karena resi memang diketik
+  // dari kosong setiap kali, sehingga yang relevan hanya syarat kolom wajib.
+  const gerbangFormResi = { processing: resiBusy, isDirty: true, data: resiForm }
+
   return (
     <AdminLayout
       title={title}
@@ -1423,7 +1434,7 @@ export default function OrdersIndex({
                   </div>
                 </section>
 
-                <form onSubmit={submitResi} className="space-y-4">
+                <form onSubmit={jagaGerbang(gerbangResi, gerbangFormResi, submitResi)} className="space-y-4">
                   {resiError ? (
                     <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{resiError}</p>
                   ) : null}
@@ -1452,13 +1463,14 @@ export default function OrdersIndex({
                     >
                       Batal
                     </Button>
-                    <Button
-                      type="submit"
+                    <SubmitGateButton
+                      form={gerbangFormResi}
+                      {...gerbangResi}
                       size="sm"
-                      disabled={resiBusy}
+                      processing={resiBusy}
                     >
-                      {resiBusy ? "Menyimpan..." : "Simpan Resi"}
-                    </Button>
+                      Simpan Resi
+                    </SubmitGateButton>
                   </div>
                 </form>
                 </>

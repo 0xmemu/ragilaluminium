@@ -9,6 +9,8 @@ import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 type PlatformRow = {
   key: string
@@ -244,6 +246,24 @@ export default function StorefrontPlatformsEdit({
     )
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  // Halaman ini memuat tiga form (platform, kontak, brand) yang dikirim bersama
+  // oleh satu tombol, jadi keadaan "ada perubahan" dan "sedang menyimpan"
+  // digabung. Kalau hanya salah satu form yang dibaca, gerbang akan mengunci
+  // padahal admin sudah mengubah form yang lain.
+  const gerbangForm = {
+    data: platformForm.data,
+    isDirty: platformForm.isDirty || kontakForm.isDirty || brandForm.isDirty,
+    processing: saving,
+  }
+
+  const gerbang = {
+    fields: {"links": "Tautan"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -275,16 +295,19 @@ export default function StorefrontPlatformsEdit({
               <Button type="button" variant="secondary" size="sm" onClick={batal}>
                 Batal
               </Button>
-              <Button
-                type="submit"
-                form="storefront-profile-form"
+                            <SubmitGateButton
+                form={gerbangForm}
+                {...gerbang}
+                formId="storefront-profile-form"
                 size="sm"
-                disabled={saving}
                 className="inline-flex items-center gap-1.5"
+                processing={saving}
               >
-                <Icon name="check" className="size-3.5" aria-hidden="true" />
-                <span>{saving ? "Menyimpan..." : "Simpan"}</span>
-              </Button>
+                <>
+                  <Icon name="check" className="size-3.5" aria-hidden="true" />
+                  <span>{saving ? "Menyimpan..." : "Simpan"}</span>
+                </>
+              </SubmitGateButton>
             </>
           )}
         </div>
@@ -294,7 +317,7 @@ export default function StorefrontPlatformsEdit({
 
       {/* Membentang penuh (kontrak panel admin: Table-First, bukan kartu sempit
           dengan ruang kosong di samping). */}
-      <form id="storefront-profile-form" onSubmit={submitAll} className="w-full space-y-6">
+      <form id="storefront-profile-form" onSubmit={jagaGerbang(gerbang, gerbangForm, submitAll)} className="w-full space-y-6">
         {/* 1. Marketplace & Media Sosial */}
         <div className="space-y-4">
           <FormErrorSummary errors={platformForm.errors} />

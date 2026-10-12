@@ -7,6 +7,8 @@ import { Select } from "@/components/admin/ui/select"
 import { StatusSelect } from "@/components/admin/ui/status-select"
 import { routeUrl } from "@/lib/routes"
 import type { ResourceRow } from "@/types"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 const PAYMENT_STATUSES = ["pending", "completed", "cancelled", "refunded"] as const
 
@@ -49,6 +51,13 @@ function PaymentManager({ orderId, rows }: { orderId: string; rows: ResourceRow[
     paid_at: "",
   })
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru. Ini form pencatatan
+  // baru, jadi tidak ada gerbang "belum ada perubahan".
+  const gerbang = {
+    fields: { payment_method: "Metode", amount: "Jumlah", status: "Status" },
+  }
+
   return (
     <section className="mb-6 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       {rows.length ? (
@@ -65,6 +74,7 @@ function PaymentManager({ orderId, rows }: { orderId: string; rows: ResourceRow[
         </summary>
         <form
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           form.post(routeUrl("admin.payments.store", { order: orderId }), {
             preserveScroll: true,
@@ -97,9 +107,9 @@ function PaymentManager({ orderId, rows }: { orderId: string; rows: ResourceRow[
           <Input type="datetime-local" value={form.data.paid_at} onChange={(event) => form.setData("paid_at", event.target.value)} />
         </Field>
         <div className="md:col-span-2 xl:col-span-3">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Catat pembayaran"}
-          </Button>
+          <SubmitGateButton form={form} {...gerbang}>
+            Catat pembayaran
+          </SubmitGateButton>
         </div>
         </form>
       </details>

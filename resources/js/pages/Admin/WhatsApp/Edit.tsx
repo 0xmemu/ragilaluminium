@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface TemplatePayload {
   id: number
@@ -99,6 +101,14 @@ export default function WhatsAppEdit({
     })
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"provider_template_name": "Nama template provider", "language_code": "Kode bahasa"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -121,9 +131,14 @@ export default function WhatsAppEdit({
               <Button type="button" variant="secondary" size="sm" onClick={batal}>
                 Batal
               </Button>
-              <Button type="submit" form="wa-template-form" size="sm" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="wa-template-form"
+                size="sm"
+              >
+                Simpan
+              </SubmitGateButton>
             </>
           )}
         </div>
@@ -133,7 +148,7 @@ export default function WhatsAppEdit({
 
 
 
-      <form id="wa-template-form" onSubmit={submit} className="w-full max-w-5xl grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+      <form id="wa-template-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full max-w-5xl grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
         <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 

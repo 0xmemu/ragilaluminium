@@ -31,6 +31,8 @@ import { routeUrl } from "@/lib/routes"
 import { statusMeta } from "@/lib/status"
 import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface OrderItemRow {
   id: number
@@ -903,6 +905,13 @@ export default function OrderShow({
     </div>
   )
 
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: { waybill_number: "Nomor Resi J&T Cargo" },
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={`Pesanan ${order.order_number}`}
@@ -1197,7 +1206,7 @@ export default function OrderShow({
                 </div>
               </section>
 
-              <form onSubmit={storeShipping} className="space-y-4">
+              <form onSubmit={jagaGerbang(gerbang, shippingForm, storeShipping)} className="space-y-4">
                 <FormErrorSummary errors={shippingForm.errors} />
 
                 <Field id="popup-waybill" label="Nomor Resi J&T Cargo" required error={shippingForm.errors.waybill_number}>
@@ -1225,13 +1234,13 @@ export default function OrderShow({
                   >
                     Batal
                   </Button>
-                  <Button
-                    type="submit"
+                  <SubmitGateButton
+                    form={shippingForm}
+                    {...gerbang}
                     size="sm"
-                    disabled={shippingForm.processing}
                   >
-                    {shippingForm.processing ? "Menyimpan..." : "Simpan Resi"}
-                  </Button>
+                    Simpan Resi
+                  </SubmitGateButton>
                 </div>
               </form>
             </div>

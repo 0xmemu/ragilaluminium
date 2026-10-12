@@ -9,6 +9,8 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface CodSettingsData {
   enabled: boolean
@@ -74,6 +76,14 @@ export default function CodSettingsEdit({
     })
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"fee_value": "Nilai biaya penanganan COD"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -98,16 +108,17 @@ export default function CodSettingsEdit({
               <Button type="button" variant="secondary" size="sm" className="h-8 px-4" onClick={batal}>
                 Batal
               </Button>
-              <Button
-                type="submit"
-                form="cod-settings-form"
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="cod-settings-form"
                 size="sm"
                 className="h-8 px-4"
-                disabled={form.processing || !canManage}
-                title={canManage ? undefined : "Kamu tidak punya akses mengubah biaya COD"}
+                extraDisabled={!canManage}
+                extraDisabledReason="Kamu tidak punya akses mengubah biaya COD"
               >
-                {form.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+                Simpan
+              </SubmitGateButton>
             </>
           )}
         </div>
@@ -115,7 +126,7 @@ export default function CodSettingsEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="cod-settings-form" onSubmit={submit} className="w-full space-y-5">
+      <form id="cod-settings-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per pengaturan */}
