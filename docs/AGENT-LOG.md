@@ -4046,3 +4046,26 @@ perilaku lama dengan memasangnya sesaat lalu memulihkannya.
 
 Berkas: announcements/Form.tsx, Banners/Form.tsx, dua berkas penjaga test.
 Spec tidak berubah.
+
+## 2026-10-12 04:50 UTC | zcode | Standard | selesai
+- Owner: "logic?????" sambil menunjuk form Slide bar promo di /admin/announcements.
+### AKAR MASALAH
+Rantai setelan interval slide tidak sepakat dalam satu domain:
+1. Nilai bawaan setelan 2,5 detik (desimal) di AnnouncementSlideSettings::DEFAULTS.
+2. Form admin memakai input number tanpa step (step bawaan 1), jadi 2,5 dianggap TIDAK VALID oleh browser; tombol Simpan diam tanpa pesan apa pun. Diverifikasi live: validationMessage "Please enter a valid value. The two nearest valid values are 2 and 3", valid=false.
+3. Server menuntut integer minimal 2 (AnnouncementController::saveSlide).
+4. Storefront memakai lantai 2,5 detik: Math.max(2500, interval*1000) di announcement-bar.tsx, jadi admin yang mengisi 2 detik akan diam-diam dijalankan 2,5 detik.
+### PERUBAHAN (commit 1cd9f16b)
+Satu domain untuk form, server, dan storefront: detik pecahan 2,5 sampai 30.
+- Form: min 2,5 dan step 0,5.
+- Server: numeric (bukan integer), min 2,5, max 30, cast float.
+- Test penjaga baru tests/Feature/AnnouncementSlideSettingsTest.php: bawaan 2,5 tersimpan, di luar rentang ditolak, bukan angka ditolak.
+### VERIFIKASI
+- php artisan test --filter=AnnouncementSlideSettingsTest: 3 passed (10 asersi).
+- typecheck 0, eslint 0, build sukses.
+- Live: kolom menampilkan 2,5 dengan min 2,5 step 0,5 dan valid=true tanpa pesan validasi; klik Simpan memunculkan "Pengaturan bar slide disimpan." dan DB content.slide tetap {"enabled":true,"interval":2.5}. Perilaku storefront TIDAK berubah karena nilainya tetap 2,5.
+### DAMPAK SPESIFIKASI
+Spec tidak berubah: field, route, dan bentuk JSON sama. Yang berubah hanya aturan validasi interval (integer 2 sampai 30 menjadi numeric 2,5 sampai 30) mengikuti lantai rotasi storefront yang sudah ada.
+### CATATAN
+Fallback di frontend admin (announcementSlide?.interval ?? 5) masih beda dari DEFAULTS 2,5, tetapi prop itu selalu dikirim server sehingga tidak pernah terpakai. Dibiarkan, hanya dicatat.
+Agent: zcode
