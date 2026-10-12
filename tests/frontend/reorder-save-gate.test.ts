@@ -43,7 +43,9 @@ function halamanSimpanUrutan(): string[] {
       if (isi.isDirectory()) {
         telusuri(penuh)
       } else if (isi.name.endsWith(".tsx")) {
-        if (readFileSync(penuh, "utf8").includes("Simpan urutan")) hasil.push(penuh)
+        // Dipilih dari kode, bukan komentar: berkas form yang sekadar menyebut
+        // frasa ini di komentar penjelas tidak boleh dianggap halaman mode urut.
+        if (tanpaKomentar(readFileSync(penuh, "utf8")).includes("Simpan urutan")) hasil.push(penuh)
       }
     }
   }

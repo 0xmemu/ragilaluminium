@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Input } from "@/components/admin/ui/input"
 import { PeriodeField, type PeriodeMode, type PeriodePreset } from "@/components/admin/ui/period-field"
 import AdminLayout from "@/layouts/admin-layout"
@@ -67,6 +68,23 @@ export default function AnnouncementForm({
     published: announcement?.published ?? true,
   })
 
+  // Kontrak owner 2026-10-12: tombol simpan hanya hidup saat memang ada yang
+  // bisa dikirim. Di form tambah syaratnya kolom wajib sudah terisi; di form
+  // edit syaratnya sudah ada perubahan. Membiarkan tombol tetap aktif padahal
+  // permintaannya pasti ditolak membuat admin menebak kenapa tidak terjadi apa
+  // apa, sama seperti tombol Hapus kategori dan Simpan urutan sebelumnya.
+  const teksKosong = form.data.text.trim() === ""
+  const belumBerubah = isEdit && !form.isDirty
+  const terkunci = teksKosong || belumBerubah
+  const alasanTerkunci = teksKosong
+    ? "Isi teks promo dulu sebelum disimpan."
+    : "Belum ada perubahan yang perlu disimpan."
+  const tombolSimpan = (
+    <Button type="submit" form="announcement-form" disabled={form.processing || terkunci}>
+      {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
+    </Button>
+  )
+
   // Periode dipilih lebih dulu; kotak tanggal baru muncul saat dijadwalkan.
   const [mode, setMode] = React.useState<PeriodeMode>(
     announcement?.starts_at || announcement?.ends_at ? "scheduled" : "always",
@@ -107,9 +125,17 @@ export default function AnnouncementForm({
           <Button asChild variant="secondary">
             <Link href={indexHref}>Batal</Link>
           </Button>
-          <Button type="submit" form="announcement-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
-          </Button>
+          {terkunci && !form.processing ? (
+            <HintTip
+              label={tombolSimpan}
+              hint={alasanTerkunci}
+              side="bottom"
+              align="right"
+              className="no-underline"
+            />
+          ) : (
+            tombolSimpan
+          )}
         </div>
       }
     >

@@ -4,6 +4,7 @@ import * as React from "react"
 import { MediaPicker } from "@/components/admin/media-picker"
 import { Button } from "@/components/admin/ui/button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -64,6 +65,22 @@ export default function BannerForm({
     form.post(submitUrl, { preserveScroll: true })
   }
 
+  // Kontrak owner 2026-10-12: tombol simpan hanya hidup saat memang ada yang
+  // bisa dikirim. Di form tambah syaratnya gambar sudah dipilih; di form edit
+  // syaratnya sudah ada perubahan. Gambar tidak wajib saat menyunting banner
+  // lama, jadi yang dihitung ada atau tidaknya gambar, bukan id asetnya.
+  const gambarKosong = !previewUrl
+  const belumBerubah = isEdit && !form.isDirty
+  const terkunci = gambarKosong || belumBerubah
+  const alasanTerkunci = gambarKosong
+    ? "Pilih gambar banner dulu sebelum disimpan."
+    : "Belum ada perubahan yang perlu disimpan."
+  const tombolSimpan = (
+    <Button type="submit" form="banner-form" disabled={form.processing || terkunci}>
+      {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
+    </Button>
+  )
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -74,9 +91,17 @@ export default function BannerForm({
           <Button asChild variant="secondary">
             <Link href={indexHref}>Batal</Link>
           </Button>
-          <Button type="submit" form="banner-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
-          </Button>
+          {terkunci && !form.processing ? (
+            <HintTip
+              label={tombolSimpan}
+              hint={alasanTerkunci}
+              side="bottom"
+              align="right"
+              className="no-underline"
+            />
+          ) : (
+            tombolSimpan
+          )}
         </div>
       }
     >
