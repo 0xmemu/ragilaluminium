@@ -367,7 +367,7 @@ export default function AnnouncementsIndex({
           )}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Aktifkan rotasi otomatis antar beberapa bar promo aktif di header storefront.
+          Aktifkan rotasi otomatis bar promo di header toko.
         </p>
         <form id="slide-form" onSubmit={saveSlide} className="mt-4 grid gap-4 content-start sm:grid-cols-[auto_10rem]">
           <CheckboxField
