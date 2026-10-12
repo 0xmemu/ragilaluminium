@@ -10,6 +10,8 @@ import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Textarea } from "@/components/admin/ui/textarea"
 
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { buatGerbang } from "@/lib/submit-gate"
 
 interface TemplateRow {
   attribute_name: string
@@ -63,6 +65,20 @@ export default function SubModelForm({
     })),
   })
 
+  // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
+  // `required` SubModelController. Kolom Kode SENGAJA tidak ikut dikunci, karena
+  // controller mengisinya otomatis dari nama sebelum validasi (store() melakukan
+  // Str::slug dari name), jadi mengunci tombolnya saat kode kosong akan menahan
+  // simpan yang sebenarnya diterima server.
+  const gerbang = buatGerbang({
+    form,
+    fields: {
+      product_model: "Model produk",
+      name: "Nama sub model",
+    },
+    requireChange: editing,
+  })
+
   function submit(event: React.FormEvent) {
     event.preventDefault()
     if (editing) {
@@ -89,14 +105,17 @@ export default function SubModelForm({
           <Button asChild variant="secondary">
             <Link href={indexUrl}>Batal</Link>
           </Button>
-          <Button type="submit" form="sub-model-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : editing ? "Simpan" : "Tambah"}
-          </Button>
+          <SubmitGateButton
+            gate={gerbang}
+            formId="sub-model-form"
+            label={editing ? "Simpan" : "Tambah"}
+            processing={form.processing}
+          />
         </div>
       }
     >
       <Head title={title} />
-      <form id="sub-model-form" onSubmit={submit} className="w-full space-y-5">
+      <form id="sub-model-form" onSubmit={gerbang.guard(submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per field */}
