@@ -4395,3 +4395,47 @@ disunting.
 
 Catatan: berkas lokal (AGENTS.md workspace, ADR-023, panel-admin.md) tidak ikut
 commit karena bukan bagian repo VPS dan workspace lokal bukan repo git.
+
+## 2026-10-12 22:16 UTC | zcode | Deep | 7e909881 | selesai (Tahap 0-2 dari rencana)
+
+Owner memberi rencana bertahap untuk gerbang isi tombol simpan, dengan
+instruksi tegas: jangan percaya angka 39, audit ulang dulu, buat modul
+bersama, pilot tiga form, baru rollout per domain setelah pilot disetujui.
+
+Tahap 0: audit ulang. Tiap tombol submit diklasifikasikan (form tambah, form
+edit, filter, pencarian, aksi status, aksi terminal, sudah bergerbang), lalu
+kolom wajibnya dicocokkan ke aturan required di controller. Hasilnya 28
+berkas, bukan 39: angka lama belum memisahkan tombol pencarian, filter, aksi
+status, dan aksi terminal, dan tiga form yang sudah bergerbang ikut terhitung.
+Daftar finalnya masuk docs/DOMAIN/panel-admin.md 14b beserta alasan tiap
+pengeluaran.
+
+Tahap 1: modul bersama lib/submit-gate.ts (hitungGerbang, jagaKiriman,
+buatGerbang) plus components/admin/ui/submit-gate-button.tsx. Syarat owner
+dipenuhi: memakai useForm yang ada, membaca isDirty, tidak menciptakan aturan
+validasi baru (kolom wajib diberikan halaman dari aturan controller), alasan
+selalu ada di dekat tombol, form.errors tidak pernah disentuh sehingga pesan
+error server tetap tampil, dan alasan terjangkau keyboard lewat pembungkus
+HintTip karena tombol disabled tidak bisa difokuskan. Bentuk hook diganti
+fungsi buatGerbang karena gerbang tidak menyimpan state, jadi hook hanya
+menambah upacara. Uji perilaku 11 kasus di tests/frontend/submit-gate.test.ts,
+bukan uji jumlah pemakaian.
+
+Tahap 2: tiga pilot. Kategori (form pendek), Produk (form kompleks termasuk
+Simpan draf), Profil Saya (form akun). Bukti live lewat admin-preview:
+Kategori terkunci saat nama kosong, requestSubmit saat terkunci menghasilkan
+NOL permintaan, tombol terbuka setelah nama diisi, dan kiriman dengan slug
+duplikat benar-benar terkirim ke server lalu pesan error server tampil
+(ringkasan Periksa kembali data berikut) tanpa membuat data baru. Produk:
+kedua tombol (Simpan dan Simpan draf) terkunci lalu terbuka bersama setelah
+nama diisi. Profil Saya: terkunci tanpa perubahan dengan alasan Belum ada
+perubahan, terbuka setelah diisi. Halaman edit Kategori juga diuji: terkunci
+tanpa perubahan, terbuka setelah diubah, tanpa menyimpan apa pun.
+
+Verifikasi: tsc bersih, seluruh 350 test frontend lulus (41 berkas), build
+sukses. Catatan: ProductForm punya 7 warning react-hooks/exhaustive-deps yang
+SUDAH ADA sebelumnya, dibuktikan diff perubahan ini menambah 0 useEffect;
+berkas pilot lain lolos eslint --max-warnings=0.
+
+Rollout Tahap 3 (per domain, satu domain satu commit) belum dimulai dan
+menunggu persetujuan owner atas hasil pilot ini.
