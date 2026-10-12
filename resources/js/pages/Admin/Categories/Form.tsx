@@ -11,7 +11,7 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { storeExampleUrl } from "@/lib/routes"
-import { buatGerbang } from "@/lib/submit-gate"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface CategoryData {
   id?: number
@@ -58,11 +58,10 @@ export default function CategoryForm({
   // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
   // `required` CategoryController, jadi tidak ada aturan baru di frontend. Di
   // halaman edit tombolnya juga menunggu sampai ada perubahan.
-  const gerbang = buatGerbang({
-    form,
+  const gerbang = {
     fields: { name: "Nama Kategori" },
     requireChange: Boolean(category),
-  })
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -88,7 +87,7 @@ export default function CategoryForm({
             <Link href={backUrl}>Batal</Link>
           </Button>
           <SubmitGateButton
-            gate={gerbang}
+            form={form} {...gerbang}
             formId="category-form"
             label={category ? "Simpan" : "Tambah"}
             processing={form.processing}
@@ -98,7 +97,7 @@ export default function CategoryForm({
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="category-form" onSubmit={gerbang.guard(submit)} className="w-full max-w-5xl space-y-6">
+      <form id="category-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full max-w-5xl space-y-6">
         <FormErrorSummary errors={form.errors} />
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">

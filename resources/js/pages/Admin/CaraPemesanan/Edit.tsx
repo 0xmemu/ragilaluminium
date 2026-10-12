@@ -10,6 +10,8 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { humanize } from "@/lib/format"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface StepItem {
   icon: string
@@ -109,6 +111,14 @@ export default function CaraPemesananEdit({
     )
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -130,9 +140,14 @@ export default function CaraPemesananEdit({
               <Button type="button" variant="secondary" size="sm" onClick={batal}>
                 Batal
               </Button>
-              <Button type="submit" form="cara-pemesanan-form" size="sm" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="cara-pemesanan-form"
+                size="sm"
+              >
+                Simpan
+              </SubmitGateButton>
             </>
           )}
         </div>
@@ -143,6 +158,7 @@ export default function CaraPemesananEdit({
         id="cara-pemesanan-form"
         className="w-full max-w-4xl space-y-6"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           form.put(submitUrl, {
             preserveScroll: true,

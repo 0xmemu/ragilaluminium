@@ -12,7 +12,7 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
-import { buatGerbang } from "@/lib/submit-gate"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface ModelRecord {
   id: number
@@ -151,15 +151,14 @@ export default function ModelProductForm({
   // Gerbang isi (kontrak "logika tombol"): tiga kolom wajibnya mengikuti aturan
   // `required` ModelProductController. Kolom lain (kata kunci, deskripsi, media)
   // tidak ikut dikunci karena server memang tidak mewajibkannya.
-  const gerbang = buatGerbang({
-    form,
+  const gerbang = {
     fields: {
       name: "Nama tampilan",
       product_category: "Kategori katalog",
       status: "Status",
     },
     requireChange: editing,
-  })
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -180,7 +179,7 @@ export default function ModelProductForm({
             <Link href={indexUrl}>Batal</Link>
           </Button>
           <SubmitGateButton
-            gate={gerbang}
+            form={form} {...gerbang}
             formId="model-product-form"
             label="Simpan model"
             processing={form.processing}
@@ -189,7 +188,7 @@ export default function ModelProductForm({
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Model Produk | Admin`} />
-      <form id="model-product-form" className="w-full space-y-5" onSubmit={gerbang.guard(submit)}>
+      <form id="model-product-form" className="w-full space-y-5" onSubmit={jagaGerbang(gerbang, form, submit)}>
         <FormErrorSummary errors={form.errors} />
 
         <div className="rounded-lg border border-border">

@@ -8,7 +8,7 @@ import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { Icon } from "@/components/shared/icon"
-import { buatGerbang } from "@/lib/submit-gate"
+import { jagaGerbang } from "@/lib/submit-gate"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface ProfileRecord {
@@ -40,11 +40,10 @@ export default function ProfileEdit({
   // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
   // `required` ProfileController. Halaman ini selalu dalam keadaan menyunting
   // data yang sudah ada, jadi tombolnya juga menunggu sampai ada perubahan.
-  const gerbang = buatGerbang({
-    form,
+  const gerbang = {
     fields: { name: "Nama", username: "Username" },
     requireChange: true,
-  })
+  }
 
   const [mode, setMode] = React.useState<"view" | "edit">("view")
   const terkunci = mode === "view"
@@ -73,7 +72,7 @@ export default function ProfileEdit({
                 Batal
               </Button>
               <SubmitGateButton
-                gate={gerbang}
+                form={form} {...gerbang}
                 formId="profile-form"
                 label="Simpan"
                 size="sm"
@@ -87,7 +86,7 @@ export default function ProfileEdit({
       <Head title="Profil Saya | Admin" />
       <form
         id="profile-form"
-        onSubmit={gerbang.guard((event) => {
+        onSubmit={jagaGerbang(gerbang, form, (event) => {
           event.preventDefault()
           form.put(submitUrl, {
             preserveScroll: true,

@@ -11,6 +11,8 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface ProductOption {
   id: number
@@ -133,6 +135,14 @@ export default function InstallationGalleryForm({
 
   const mainPreview = form.data.main_image_url || ""
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"title": "Judul"},
+    requireChange: false,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -143,14 +153,18 @@ export default function InstallationGalleryForm({
           <Button asChild variant="secondary">
             <Link href={backUrl}>Batal</Link>
           </Button>
-          <Button type="submit" form="installation-project-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Tambah"}
-          </Button>
+                    <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="installation-project-form"
+          >
+            Tambah
+          </SubmitGateButton>
         </div>
       }
     >
       <Head title={`Tambah Hasil Pemasangan | Admin`} />
-      <form id="installation-project-form" className="w-full space-y-5" onSubmit={submit}>
+      <form id="installation-project-form" className="w-full space-y-5" onSubmit={jagaGerbang(gerbang, form, submit)}>
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per field */}

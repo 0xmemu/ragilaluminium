@@ -27,6 +27,9 @@ export function kosong(nilai: unknown): boolean {
   if (typeof nilai === "string") return nilai.trim() === ""
   if (Array.isArray(nilai)) return nilai.length === 0
   // Angka 0 dan `false` BUKAN kosong: server menerima keduanya sebagai nilai.
+  // Boolean juga tidak pernah masuk daftar kolom wajib karena `required` di
+  // Laravel meloloskan false; yang diwajibkan hanya kolom teks, pilihan, dan
+  // daftar.
   return false
 }
 
@@ -57,26 +60,25 @@ export interface GerbangHasil {
   kolomKosong: string[]
 }
 
-const ALASAN_BAWAAN = "Lengkapi kolom wajib sebelum menyimpan."
-const ALASAN_TANPA_PERUBAHAN = "Belum ada perubahan yang perlu disimpan."
-
-/**
- * Hitung keadaan gerbang. Murni: hanya membaca data, tidak menyimpan apa pun.
- */
-export function hitungGerbang({
-  form,
-  fields,
-  reason = ALASAN_BAWAAN,
-  requireChange = false,
-}: {
-  form: GerbangForm
+export interface GerbangOpsi {
   /** Daftar nama kolom, atau peta nama ke label yang dibaca manusia. */
   fields: string[] | Record<string, string>
   /** Kalimat dasar; rincian kolom kosong ditambahkan di belakangnya. */
   reason?: string
   /** Form edit: terkunci selama belum ada perubahan sama sekali. */
   requireChange?: boolean
-}): GerbangHasil {
+}
+
+const ALASAN_BAWAAN = "Lengkapi kolom wajib sebelum menyimpan."
+const ALASAN_TANPA_PERUBAHAN = "Belum ada perubahan yang perlu disimpan."
+
+/** Hitung keadaan gerbang. Murni: hanya membaca data, tidak menyimpan apa pun. */
+export function hitungGerbang({
+  form,
+  fields,
+  reason = ALASAN_BAWAAN,
+  requireChange = false,
+}: GerbangOpsi & { form: GerbangForm }): GerbangHasil {
   const peta: Record<string, string> = Array.isArray(fields)
     ? Object.fromEntries(fields.map((jalur) => [jalur, jalur]))
     : fields
@@ -97,11 +99,11 @@ export function hitungGerbang({
 }
 
 /**
- * Bungkus handler submit halaman.
+ * Bungkus handler submit halaman dengan keadaan gerbang.
  *
  * Tombol mati saja tidak cukup: menekan Enter di dalam isian tetap mengirim form
- * walau tombolnya mati. Kalau penjaga di sini dan keadaan tombol dihitung dari
- * sumber yang sama, keduanya tidak bisa berbeda pendapat.
+ * walau tombolnya mati. Karena penjaga ini dan keadaan tombol dihitung dari
+ * fungsi yang sama, keduanya tidak bisa berbeda pendapat.
  */
 export function jagaKiriman<E extends { preventDefault: () => void }>(
   terkunci: boolean,
@@ -117,27 +119,71 @@ export function jagaKiriman<E extends { preventDefault: () => void }>(
 }
 
 /**
- * Gerbang siap pakai: keadaan tombol plus penjaga kiriman, dihitung dari sumber
- * yang sama supaya keduanya tidak bisa berbeda pendapat.
+ * Penjaga untuk handler onSubmit yang ditulis panjang di JSX: panggil sebagai
+ * baris pertama, dan bila gerbangnya terkunci kiriman dibatalkan.
  *
- * Sengaja BUKAN hook. Gerbang ini tidak menyimpan state apa pun, ia hanya
- * membaca `form.data` dan `form.isDirty` pada render yang sedang berjalan, jadi
- * bentuk hook hanya menambah upacara tanpa menambah kemampuan. Nama `buat`
- * dipakai supaya tidak berpura-pura jadi hook.
+ * ```tsx
+ * onSubmit={(event) => {
+ *   if (!gerbangBolehLanjut(event, form, gerbang)) return
+ *   ...
+ * }}
+ * ```
+ *
+ * Dipakai halaman yang handler-nya tidak bisa dengan mudah dibungkus dari luar.
  */
-export function buatGerbang(options: {
-  form: GerbangForm
-  fields: string[] | Record<string, string>
-  reason?: string
-  requireChange?: boolean
-}): GerbangHasil & {
-  guard: (handler: (event: FormEvent) => void) => (event: FormEvent) => void
-} {
-  const { form, fields, reason, requireChange } = options
-  const hasil = hitungGerbang({ form, fields, reason, requireChange })
-
-  return {
-    ...hasil,
-    guard: (handler) => jagaKiriman<FormEvent>(hasil.terkunci, handler),
+export function gerbangBolehLanjut(
+  event: { preventDefault: () => void },
+  form: GerbangForm,
+  opsi: GerbangOpsi,
+): boolean {
+  if (hitungGerbang({ form, ...opsi }).terkunci) {
+    event.preventDefault()
+    return false
   }
+  return true
+}
+
+/**
+ * Bentuk yang dipakai halaman: gerbangnya dipegang satu objek opsi, lalu objek
+ * yang sama dipakai tombol dan penjaga onSubmit, sehingga keduanya tidak bisa
+ * berbeda pendapat.
+ *
+ * ```tsx
+ * const gerbang = { fields: { name: "Nama Kategori" }, requireChange: isEdit }
+ *
+ * <form onSubmit={jagaGerbang(gerbang, form, submit)}>
+ *   <SubmitGateButton form={form} {...gerbang} formId="category-form" processing={form.processing}>
+ *     Tambah
+ *   </SubmitGateButton>
+ * ```
+ */
+export function jagaGerbang(
+  opsi: GerbangOpsi,
+  form: GerbangForm,
+  handler: (event: FormEvent) => void,
+): (event: FormEvent) => void {
+  const { terkunci } = hitungGerbang({ form, ...opsi })
+
+  return jagaKiriman<FormEvent>(terkunci, handler)
+}
+
+/**
+ * Bentuk siap pakai untuk atribut `onSubmit` milik form:
+ *
+ * ```tsx
+ * <form onSubmit={jagaSubmit(form, fields, submit)}>
+ * ```
+ *
+ * Panggil langsung di JSX, jangan disimpan di variabel di luar komponen, supaya
+ * keadaannya ikut render terakhir.
+ */
+export function jagaSubmit(
+  form: GerbangForm,
+  fields: string[] | Record<string, string>,
+  handler: (event: FormEvent) => void,
+  options: { reason?: string; requireChange?: boolean } = {},
+): (event: FormEvent) => void {
+  const { terkunci } = hitungGerbang({ form, fields, ...options })
+
+  return jagaKiriman<FormEvent>(terkunci, handler)
 }

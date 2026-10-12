@@ -9,6 +9,8 @@ import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface CmsPageRecord {
   id: number
@@ -59,6 +61,14 @@ export default function CmsPageForm({
     [form.data.content.html],
   )
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"slug": "Slug", "title": "Judul"},
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -81,9 +91,14 @@ export default function CmsPageForm({
               Edit
             </Button>
           ) : (
-            <Button type="submit" form="cms-page-form" size="sm" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan halaman"}
-            </Button>
+                        <SubmitGateButton
+              form={form}
+              {...gerbang}
+              formId="cms-page-form"
+              size="sm"
+            >
+              Simpan halaman
+            </SubmitGateButton>
           )}
         </div>
       }
@@ -93,6 +108,7 @@ export default function CmsPageForm({
       <form
         id="cms-page-form"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           if (editing) {
             form.put(submitUrl, {

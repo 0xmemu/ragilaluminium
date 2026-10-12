@@ -21,6 +21,8 @@ import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { useReorderMode } from "@/hooks/use-reorder-mode"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface ApaKataRow {
   id: number
@@ -235,6 +237,14 @@ export default function ApaKataIndex({
 
   const displayRows = reorderMode || canReorder ? orderedRows : rows
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangMeta = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -299,6 +309,7 @@ export default function ApaKataIndex({
             id="apk-meta-form"
             className="space-y-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
               event.preventDefault()
               metaForm.put(metaUrl, {
               preserveScroll: true,
@@ -346,9 +357,12 @@ export default function ApaKataIndex({
                   <Button type="button" variant="secondary" onClick={batalMeta} disabled={metaForm.processing}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={metaForm.processing}>
-                    {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-                  </Button>
+                                    <SubmitGateButton
+                    form={metaForm}
+                    {...gerbangMeta}
+                  >
+                    Simpan meta
+                  </SubmitGateButton>
                 </>
               )}
             </div>

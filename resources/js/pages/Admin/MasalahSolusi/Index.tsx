@@ -18,6 +18,8 @@ import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { useReorderMode } from "@/hooks/use-reorder-mode"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface Row {
   id: number
@@ -140,6 +142,14 @@ export default function MasalahSolusiIndex({
 
   /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangMeta = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -217,6 +227,7 @@ export default function MasalahSolusiIndex({
           id="ms-meta-form"
           className={showMeta ? "mt-4 grid gap-4" : "hidden"}
           onSubmit={(event) => {
+            if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
             event.preventDefault()
             metaForm.put(metaUrl, {
               preserveScroll: true,
@@ -249,9 +260,13 @@ export default function MasalahSolusiIndex({
               <Button type="button" variant="ghost" size="sm" onClick={batalMeta} disabled={metaForm.processing}>
                 Batal
               </Button>
-              <Button type="submit" size="sm" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-              </Button>
+                            <SubmitGateButton
+                form={metaForm}
+                {...gerbangMeta}
+                size="sm"
+              >
+                Simpan meta
+              </SubmitGateButton>
             </div>
           )}
         </form>

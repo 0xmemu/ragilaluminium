@@ -13,6 +13,8 @@ import {
   type MasalahSolusiMedia,
   type MasalahSolusiMediaKind,
 } from "@/lib/masalah-solusi-media"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 import AdminLayout from "@/layouts/admin-layout"
 
 interface SolutionOption {
@@ -200,6 +202,14 @@ export default function MasalahSolusiForm({
     form.post(submitUrl, { forceFormData: true, preserveScroll: true })
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"problem": "Deskripsi masalah"},
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
       backUrl={backUrl}
@@ -210,15 +220,19 @@ export default function MasalahSolusiForm({
           <Button asChild variant="secondary">
             <Link href={indexUrl}>Batal</Link>
           </Button>
-          <Button type="submit" form="masalah-solusi-form" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
+                    <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="masalah-solusi-form"
+          >
+            Simpan
+          </SubmitGateButton>
         </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Masalah & Solusi | Admin`} />
 
-      <form id="masalah-solusi-form" className="space-y-5" onSubmit={onSubmit}>
+      <form id="masalah-solusi-form" className="space-y-5" onSubmit={jagaGerbang(gerbang, form, onSubmit)}>
         <FormErrorSummary errors={form.errors} />
 
         <section className="overflow-hidden rounded-lg border border-border bg-card">

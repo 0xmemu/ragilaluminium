@@ -1,6 +1,6 @@
 import { Head, router, useForm, usePage } from "@inertiajs/react"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
-import { buatGerbang } from "@/lib/submit-gate"
+import { jagaGerbang } from "@/lib/submit-gate"
 import * as React from "react"
 
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
@@ -341,8 +341,7 @@ export default function ProductForm({
   // `required` ProductController. Kolom lain (termasuk nama pendek dan desain)
   // sengaja TIDAK ikut dikunci supaya tidak menciptakan penghalang yang tidak
   // diminta server.
-  const gerbang = buatGerbang({
-    form,
+  const gerbang = {
     fields: {
       name: "Nama produk",
       product_category: "Kategori",
@@ -350,7 +349,7 @@ export default function ProductForm({
       status: "Status",
     },
     requireChange: editing,
-  })
+  }
 
   const combinedErrors: Record<string, string> = { ...sharedErrors, ...form.errors }
 
@@ -538,13 +537,13 @@ export default function ProductForm({
           {!editing ? (
             <>
               <SubmitGateButton
-                gate={gerbang}
+                form={form} {...gerbang}
                 formId="product-edit-form"
                 label="Simpan"
                 processing={saving}
               />
               <SubmitGateButton
-                gate={gerbang}
+                form={form} {...gerbang}
                 formId="product-edit-form"
                 label="Simpan draf"
                 processing={saving}
@@ -553,7 +552,7 @@ export default function ProductForm({
             </>
           ) : (
             <SubmitGateButton
-              gate={gerbang}
+              form={form} {...gerbang}
               formId="product-edit-form"
               label="Simpan"
               processing={saving}
@@ -573,7 +572,7 @@ export default function ProductForm({
       <div className="w-full space-y-6">
         <FormErrorSummary errors={combinedErrors} />
 
-        <form id="product-edit-form" onSubmit={gerbang.guard((event) => submit(preserveStatus, event))} className="space-y-6">
+        <form id="product-edit-form" onSubmit={jagaGerbang(gerbang, form, (event) => submit(preserveStatus, event))} className="space-y-6">
           {/* 1. IDENTITAS + TAKSONOMI + DIMENSI J&T (Table-First) */}
           <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3">

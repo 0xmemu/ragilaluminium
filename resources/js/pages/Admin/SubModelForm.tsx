@@ -11,7 +11,7 @@ import { Textarea } from "@/components/admin/ui/textarea"
 
 import AdminLayout from "@/layouts/admin-layout"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
-import { buatGerbang } from "@/lib/submit-gate"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface TemplateRow {
   attribute_name: string
@@ -70,14 +70,13 @@ export default function SubModelForm({
   // controller mengisinya otomatis dari nama sebelum validasi (store() melakukan
   // Str::slug dari name), jadi mengunci tombolnya saat kode kosong akan menahan
   // simpan yang sebenarnya diterima server.
-  const gerbang = buatGerbang({
-    form,
+  const gerbang = {
     fields: {
       product_model: "Model produk",
       name: "Nama sub model",
     },
     requireChange: editing,
-  })
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -106,7 +105,7 @@ export default function SubModelForm({
             <Link href={indexUrl}>Batal</Link>
           </Button>
           <SubmitGateButton
-            gate={gerbang}
+            form={form} {...gerbang}
             formId="sub-model-form"
             label={editing ? "Simpan" : "Tambah"}
             processing={form.processing}
@@ -115,7 +114,7 @@ export default function SubModelForm({
       }
     >
       <Head title={title} />
-      <form id="sub-model-form" onSubmit={gerbang.guard(submit)} className="w-full space-y-5">
+      <form id="sub-model-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
         {/* Table-first: satu baris per field */}

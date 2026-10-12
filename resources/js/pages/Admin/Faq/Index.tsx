@@ -19,6 +19,8 @@ import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import { useReorderMode } from "@/hooks/use-reorder-mode"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface FaqRow {
   id: number
@@ -267,6 +269,26 @@ export default function FaqIndex({
     { key: "archived", label: "FAQ Diarsipkan", count: statusCounts.archived },
   ]
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangMeta = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangBuat = {
+    fields: {"question": "Pertanyaan", "answer": "Jawaban", "category": "Kategori"},
+    requireChange: false,
+  }
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangUbah = {
+    fields: {"question": "Pertanyaan", "answer": "Jawaban", "category": "Kategori"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -363,6 +385,7 @@ export default function FaqIndex({
             id="faq-meta-form"
             className="mt-4 space-y-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
               event.preventDefault()
               metaForm.put(metaUrl, {
               preserveScroll: true,
@@ -409,9 +432,12 @@ export default function FaqIndex({
                   <Button type="button" variant="secondary" onClick={batalMeta} disabled={metaForm.processing}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={metaForm.processing}>
-                    {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
-                  </Button>
+                                    <SubmitGateButton
+                    form={metaForm}
+                    {...gerbangMeta}
+                  >
+                    Simpan pengaturan
+                  </SubmitGateButton>
                 </>
               )}
               <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
@@ -441,6 +467,7 @@ export default function FaqIndex({
           <form
             className="mt-4 grid gap-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, createForm, gerbangBuat)) return
               event.preventDefault()
               createForm.post(storeUrl, { preserveScroll: true })
             }}
@@ -475,9 +502,14 @@ export default function FaqIndex({
               />
             </Field>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={createForm.processing || reorderMode}>
-                {createForm.processing ? "Menyimpan..." : "Simpan FAQ"}
-              </Button>
+                            <SubmitGateButton
+                form={createForm}
+                {...gerbangBuat}
+                extraDisabled={reorderMode}
+                extraDisabledReason="Selesaikan atau batalkan mode urut dulu."
+              >
+                Simpan FAQ
+              </SubmitGateButton>
               <Button type="button" variant="secondary" onClick={closeCreatePanel}>
                 Batal
               </Button>
@@ -540,6 +572,7 @@ export default function FaqIndex({
                           <form
                             className="grid gap-3"
                             onSubmit={(event) => {
+                              if (!gerbangBolehLanjut(event, editForm, gerbangUbah)) return
                               event.preventDefault()
                               editForm.put(routeUrl("admin.faq.update", { faq: row.id }), {
                                 preserveScroll: true,
@@ -574,9 +607,12 @@ export default function FaqIndex({
                               />
                             </Field>
                             <div className="flex flex-wrap gap-2">
-                              <Button type="submit" disabled={editForm.processing}>
-                                {editForm.processing ? "Menyimpan..." : "Simpan"}
-                              </Button>
+                                                            <SubmitGateButton
+                                form={editForm}
+                                {...gerbangUbah}
+                              >
+                                Simpan
+                              </SubmitGateButton>
                               <Button type="button" variant="secondary" onClick={cancelEdit}>
                                 Batal
                               </Button>

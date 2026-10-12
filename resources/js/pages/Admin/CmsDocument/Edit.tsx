@@ -9,6 +9,8 @@ import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface DocumentData {
   title: string
@@ -67,6 +69,14 @@ export default function CmsDocumentEdit({
     [form.data.body],
   )
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
@@ -87,9 +97,13 @@ export default function CmsDocumentEdit({
               <Button type="button" variant="secondary" size="sm" onClick={batal}>
                 Batal
               </Button>
-              <Button type="submit" form="cms-document-form" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : saveLabel}
-              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="cms-document-form"
+              >
+                {saveLabel}
+              </SubmitGateButton>
             </>
           )}
           <Button asChild variant="secondary">
@@ -108,6 +122,7 @@ export default function CmsDocumentEdit({
         id="cms-document-form"
         className="w-full max-w-5xl space-y-6"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
           form.put(submitUrl, {
             preserveScroll: true,
