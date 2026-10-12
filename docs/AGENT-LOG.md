@@ -4553,3 +4553,43 @@ Skala owner p-4/p-5/sm:p-6. sm:p-7 -> sm:p-6 (Cara Pemesanan x2, CmsPageForm), k
 ### CATATAN KOLABORASI (berulang di sesi ini)
 Banyak berkas yang disentuh ternyata sudah memuat WIP agent lain: Faq/Index, SubModels, ModelProducts/Index, media-panel, Categories/Form (submit-gate), InstallationGallery/Index (useRowDragSort), StorefrontPlatforms/Edit dan app.css (gerbang isi + badge product-card). Untuk berkas seperti itu, blob dibangun dari HEAD + suntingan sendiri lewat plumbing (git show HEAD, git hash-object -w, git update-index --cacheinfo, git commit tanpa path), lalu dibuktikan dengan git diff bahwa sisanya hanya WIP agent lain. Satu typecheck sempat merah karena MasalahSolusi/Form milik agent lain sedang setengah jadi; dibiarkan dan hilang sendiri setelah agent itu selesai.
 Agent: zcode
+
+## 2026-10-12 23:44 UTC | zcode | Deep | d33db567 | selesai (Tahap 3 domain Promo dan Admin)
+
+Lanjutan rollout. Promo: Voucher, Promo Toko, Ulasan form, Ulasan galeri,
+Teruskan Popularitas. Admin: Manajemen Admin. Dengan ini seluruh 28 berkas
+daftar final sudah bergerbang.
+
+TEMUAN BUG NYATA saat mengerjakan: tombol Simpan di halaman EDIT Voucher
+tidak mengirim apa pun. Formnya memakai onSubmit yang hanya preventDefault
+dan tombolnya tidak punya onClick, sedangkan cabang tambah menyimpan lewat
+submitWith. Dibuktikan live sebelum diperbaiki: tombol aktif, ditekan, nol
+permintaan keluar dan halaman tetap di edit. Ini kelas keluhan lama owner
+(tombol tidak melakukan apa apa). Diperbaiki dengan mengalirkan tombol itu
+lewat submitWith(false): simpan tanpa menerbitkan voucher, karena update()
+memakai publish_now untuk menerbitkan.
+
+Temuan kedua: kolom discount_value (nilai diskon) terlewat dari daftar kolom
+wajib Voucher; sudah ditambahkan.
+
+KESALAHAN SAYA saat verifikasi live, dilaporkan apa adanya: uji kiriman pada
+halaman edit Voucher menyasar isian yang salah (nama, bukan kode), sehingga
+penyimpanan itu BERHASIL dan mengubah nama voucher SEPTEMBEREND menjadi
+kalimat uji. Data sudah dipulihkan seluruhnya: nama kembali SEPTEMBEREND,
+code tetap SEPTEMBER, updated_by_user_id kembali 13, dan updated_at
+dikembalikan ke 2026-09-06 18:25:21 memakai waktu perubahan terakhir dari
+event_logs. Satu jejak TIDAK bisa dihapus dan sengaja dibiarkan: entri audit
+product.voucher.updated id 909 pada event_logs, karena menulis ulang jejak
+audit lebih buruk daripada membiarkannya. Pelajaran: uji simpan yang
+menyentuh data nyata harus memakai nilai yang PASTI ditolak server, dan
+isian harus dicari lewat label kolomnya, bukan lewat pola nilai.
+
+Verifikasi live domain ini: halaman edit Voucher terkunci tanpa perubahan
+dengan alasan Belum ada perubahan, terbuka setelah diubah, lalu kiriman
+benar benar keluar (PUT terkirim) sesudah perbaikan; halaman Manajemen Admin
+tambah menampilkan tombol Simpan akun mati dengan alasan kolom kosong.
+Teruskan Popularitas belum bisa diverifikasi live karena form tambahnya
+terlipat dan halaman itu tidak menampilkan tombol submit saat dibuka.
+
+Verifikasi umum: tsc bersih, eslint 0 warning di tujuh berkas, build sukses.
+Berikutnya Tahap 4: penjaga test per-form.
