@@ -4261,3 +4261,33 @@ dari UI karena form selalu mengirim kolom itu kosong. Belum diputuskan owner.
 Kolaborasi: resources/js/types/index.ts masih dipegang agent lain (penghapusan
 tipe ctaSettings). Baris saya di berkas itu di-stage per-hunk, jadi commit ini
 tidak membawa pekerjaan mereka dan berkas itu tetap kotor milik mereka.
+
+## 2026-10-12 18:48 UTC | zcode | Standard | 55800114 | selesai
+
+Permintaan owner: celah yang dilaporkan tadi dinilai masalah, jadi tolong
+diperbaiki.
+
+Akar masalah: AnnouncementController::validateItem membaca $data['starts_at']
+dan $data['ends_at'] tanpa penjaga. validate() hanya mengembalikan kolom yang
+benar-benar dikirim, dan kedua kolom itu nullable, sehingga permintaan tanpa
+keduanya tetap lolos validasi tanpa kuncinya ikut ada. Membaca kunci yang
+tidak ada memicu peringatan PHP yang diubah Laravel menjadi error, jadi
+jawabannya 500 alih-alih pesan validasi. Form selalu mengirim kedua kolom itu
+(kosong sebagai null), jadi celah ini tidak pernah muncul dari UI dan hanya
+tersentuh permintaan yang dibuat langsung.
+
+Perubahan: satu baris di controller, ?? null pada kedua kunci, plus test
+penjaga baru tests/Feature/AnnouncementDateKeyGuardTest.php (4 kasus).
+
+Sapuan menyeluruh: seluruh folder app/ diperiksa untuk pola akses kunci
+nullable tanpa penjaga setelah validate(). Ada 11 kandidat lain, semuanya aman
+(daftar yang dibentuk sendiri di InstallationGallery dan TestimonialController,
+penjaga array_key_exists di ReturnService dan CustomerService, serta bentuk
+tetap dari FlashSalePeriodSettings::publicState di ActiveAnnouncements). Jadi
+yang nyata hanya satu ini.
+
+Verifikasi: test penjaga 4 lulus; bukti penjaga menangkap perilaku lama dengan
+memasangnya sesaat (dua kasus gagal) lalu memulihkan berkas persis; suite PHP
+1411 lulus dengan 1 gagal bawaan yang tidak berhubungan (ReturnRefundIntegrityTest,
+domain retur). Tidak ada perubahan frontend, jadi typecheck, lint, dan build
+tidak perlu dijalankan. Spec tidak berubah.
