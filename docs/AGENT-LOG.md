@@ -4707,3 +4707,27 @@ SKIP_BUILD_CHECK=1 dipakai sesuai petunjuk hook setelah commit dipastikan
 lolos tsc, build, dan test pada keadaan yang sama sebelumnya.
 
 Spec tidak berubah.
+
+## 2026-10-13 00:42 UTC | zcode | Standard | 5160f484 | selesai
+
+Feedback owner: tombol Edit di header Beranda/Index dinilai friksi kosmetik yang
+tidak berguna (bego amat, untuk apa? kosmetik?).
+
+Halaman Pengaturan Tata Letak Beranda (/admin/beranda) adalah daftar kontrol
+langsung dengan saklar Aktif/Nonaktif per section dan fitur drag reorder.
+Memaksa admin mengklik Edit di header sebelum saklar atau urutan bisa diubah
+adalah kesalahan saya yang menerapkan aturan mode terkunci secara membabi buta.
+
+Perbaikan:
+1. Buang mode terkunci palsu (mode: view/edit, setMode, terkunci) dari
+   Beranda/Index.tsx.
+2. Saklar Aktif/Nonaktif pada setiap baris section aktif langsung. Begitu ada
+   saklar yang diubah (form.isDirty), tombol Simpan otomatis muncul di header.
+3. Tombol Urutkan selalu siap di header untuk menggeser susunan section.
+4. /admin/documents (Dokumen Halaman) tetap bersih tanpa tombol header
+   karena editable=false.
+5. Beranda/Index.tsx dikeluarkan dari WAJIB_TERKUNCI di admin-edit-guard.test.ts.
+
+Verifikasi live membuktikan: header /admin/beranda langsung menampilkan [Urutkan],
+saklar 0 disabled, begitu saklar diklik header langsung memunculkan [Simpan].
+Header /admin/documents bersih 0 tombol. Seluruh 354 vitest test lulus.
