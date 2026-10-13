@@ -143,6 +143,22 @@ export default function SubModelForm({
               </tr>
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Nama sub model <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.name}
+                    onChange={(event) => form.setData("name", event.target.value)}
+                    placeholder="contoh: Jalusi"
+                    className="h-8 w-72 text-xs"
+                  />
+                  {form.errors.name ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
                   Kode (dipakai di URL &amp; data produk) {editing ? null : <span className="text-muted-foreground font-normal text-[11px]">(opsional)</span>}
                 </th>
                 <td className="px-4 py-2.5">
@@ -161,22 +177,6 @@ export default function SubModelForm({
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">Dibuat otomatis dari nama jika dikosongkan.</p>
                   )}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama sub model <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.name}
-                    onChange={(event) => form.setData("name", event.target.value)}
-                    placeholder="contoh: Jalusi"
-                    className="h-8 w-72 text-xs"
-                  />
-                  {form.errors.name ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
-                  ) : null}
                 </td>
               </tr>
               <tr>
