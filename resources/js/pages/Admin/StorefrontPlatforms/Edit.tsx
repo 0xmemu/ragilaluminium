@@ -2,14 +2,15 @@ import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker } from "@/components/admin/media-picker"
-import { SectionCard } from "@/components/admin/section-card"
+import { Badge } from "@/components/admin/ui/badge"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CopyButton } from "@/components/admin/ui/copy-button"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
-import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { jagaGerbang } from "@/lib/submit-gate"
 
 type PlatformRow = {
@@ -48,9 +49,9 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`
 }
 
-/** Nilai kosong tetap ditampilkan sebagai keterangan, bukan ruang hampa. */
+/** Nilai kosong tetap ditampilkan sebagai penanda jelas, bukan ruang hampa. */
 function NilaiKosong() {
-  return <span className="text-xs text-muted-foreground">Belum diisi</span>
+  return <span className="text-xs text-muted-foreground italic">Belum diisi</span>
 }
 
 function tautanSah(value: string): boolean {
@@ -59,7 +60,7 @@ function tautanSah(value: string): boolean {
 
 export default function StorefrontPlatformsEdit({
   title = "Profil & Kontak Toko",
-  description = "Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.",
+  description = "Kelola identitas visual, kontak operasional, serta tautan akun resmi toko di marketplace dan media sosial.",
   platforms = [],
   submitUrl,
   kontakFields = { address: "", phone: "", email: "", hours: "" },
@@ -78,11 +79,8 @@ export default function StorefrontPlatformsEdit({
   brandAssets?: BrandAssets
   brandSubmitUrl: string
 }) {
-  // Kontrak UX: halaman dibuka dalam mode RINGKASAN (read-only). Isian baru
-  // aktif setelah admin menekan tombol Edit, dan disimpan lewat tombol Simpan.
   const [mode, setMode] = React.useState<Mode>("view")
   const [saving, setSaving] = React.useState(false)
-  // Slot aset mana yang sedang dibuka di MediaPicker (logo atau favicon).
   const [pickerTarget, setPickerTarget] = React.useState<"logo" | "favicon" | null>(null)
 
   const initialLinks = Object.fromEntries(platforms.map((p) => [p.key, p.href]))
@@ -98,31 +96,17 @@ export default function StorefrontPlatformsEdit({
     hours: kontakFields.hours ?? "",
   })
 
-  // Logo dan favicon hanya dikirim bila admin memilih berkas baru, supaya
-  // menyimpan isian lain tidak menimpa aset yang sudah pas.
   const brandForm = useForm<{ logo_asset_id: string; favicon_asset_id: string }>({
     logo_asset_id: "",
     favicon_asset_id: "",
   })
 
-  const marketplace = platforms.filter((p) => p.channel === "marketplace")
-  const social = platforms.filter((p) => p.channel === "social")
-
-  /**
-   * Simpan seluruh isian halaman. Tautan, kontak, dan aset brand punya
-   * endpoint sendiri-sendiri; permintaan dikirim berurutan dan berhenti pada
-   * kegagalan pertama supaya tidak ada bagian yang tersimpan diam-diam saat
-   * bagian lain gagal.
-   */
   function submitAll(event?: React.FormEvent) {
     event?.preventDefault()
     if (saving) return
     setSaving(true)
 
     const selesai = () => {
-      // Isian yang baru tersimpan dijadikan titik kembali, supaya tombol Batal
-      // pada sesi edit berikutnya mengembalikan ke kondisi tersimpan, bukan ke
-      // kondisi saat halaman pertama dimuat.
       platformForm.setDefaults()
       kontakForm.setDefaults()
       brandForm.setDefaults()
@@ -165,9 +149,6 @@ export default function StorefrontPlatformsEdit({
   }
 
   function batal() {
-    // Buang isian yang belum disimpan lalu tutup mode edit. router.reload()
-    // sengaja TIDAK dipakai: reload mempertahankan state komponen, sehingga
-    // mode edit ikut bertahan dan isian yang dibatalkan tetap tampil.
     platformForm.resetAndClearErrors()
     kontakForm.resetAndClearErrors()
     brandForm.resetAndClearErrors()
@@ -178,81 +159,6 @@ export default function StorefrontPlatformsEdit({
     platformForm.setData("links", { ...platformForm.data.links, [key]: value })
   }
 
-  /** Satu kartu tabel daftar platform (marketplace atau media sosial). */
-  function kartuPlatform(
-    heading: string,
-    hint: string,
-    rows: PlatformRow[],
-    icon: string,
-  ) {
-    if (rows.length === 0) return null
-
-    return (
-      <SectionCard title={heading} description={hint} icon={icon} contentClassName="p-0">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border bg-surface/80 text-left text-[11px] font-semibold text-muted-foreground">
-              <th className="w-44 px-4 py-3">Platform</th>
-              <th className="px-4 py-3">Tautan URL</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr key={row.key} className="transition-colors hover:bg-muted/40">
-                <td className="px-4 py-2.5 align-middle">
-                  <div className="flex items-center gap-2.5">
-                    {row.icon ? (
-                      <img src={row.icon} alt="" className="size-6 shrink-0 object-contain" width={24} height={24} />
-                    ) : (
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                        <Icon name="storefront" className="size-3.5" aria-hidden="true" />
-                      </span>
-                    )}
-                    <span className="font-medium text-foreground">{row.label}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5">
-                  {mode === "edit" ? (
-                    <Input
-                      type="url"
-                      inputMode="url"
-                      placeholder={`https://... (${row.label})`}
-                      value={platformForm.data.links[row.key] ?? ""}
-                      onChange={(event) => setLink(row.key, event.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  ) : (platformForm.data.links[row.key] ?? "").trim() === "" ? (
-                    <NilaiKosong />
-                  ) : tautanSah(platformForm.data.links[row.key] ?? "") ? (
-                    <a
-                      href={platformForm.data.links[row.key]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all font-mono text-xs text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
-                    >
-                      {platformForm.data.links[row.key]}
-                    </a>
-                  ) : (
-                    <span className="break-all font-mono text-xs text-foreground">
-                      {platformForm.data.links[row.key]}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </SectionCard>
-    )
-  }
-
-
-  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
-  // controller, jadi frontend tidak menciptakan aturan baru.
-  // Halaman ini memuat tiga form (platform, kontak, brand) yang dikirim bersama
-  // oleh satu tombol, jadi keadaan "ada perubahan" dan "sedang menyimpan"
-  // digabung. Kalau hanya salah satu form yang dibaca, gerbang akan mengunci
-  // padahal admin sudah mengubah form yang lain.
   const gerbangForm = {
     data: platformForm.data,
     isDirty: platformForm.isDirty || kontakForm.isDirty || brandForm.isDirty,
@@ -260,9 +166,12 @@ export default function StorefrontPlatformsEdit({
   }
 
   const gerbang = {
-    fields: {"links": "Tautan"},
+    fields: { links: "Tautan" },
     requireChange: true,
   }
+
+  const marketplaceRows = platforms.filter((p) => p.channel === "marketplace")
+  const socialRows = platforms.filter((p) => p.channel === "social")
 
   return (
     <AdminLayout
@@ -270,7 +179,6 @@ export default function StorefrontPlatformsEdit({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-
           {previewUrl ? (
             <Button asChild variant="secondary" size="sm">
               <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
@@ -292,10 +200,10 @@ export default function StorefrontPlatformsEdit({
             </Button>
           ) : (
             <>
-              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+              <Button type="button" variant="secondary" size="sm" onClick={batal} disabled={saving}>
                 Batal
               </Button>
-                            <SubmitGateButton
+              <SubmitGateButton
                 form={gerbangForm}
                 {...gerbang}
                 formId="storefront-profile-form"
@@ -315,70 +223,194 @@ export default function StorefrontPlatformsEdit({
     >
       <Head title={`${title} | Admin`} />
 
-      {/* Membentang penuh (kontrak panel admin: Table-First, bukan kartu sempit
-          dengan ruang kosong di samping). */}
-      <form id="storefront-profile-form" onSubmit={jagaGerbang(gerbang, gerbangForm, submitAll)} className="w-full space-y-6">
-        {/* 1. Marketplace & Media Sosial */}
-        <div className="space-y-4">
-          <FormErrorSummary errors={platformForm.errors} />
-          {/* Dua tabel tautan membentang penuh: URL marketplace/media sosial
-              sangat panjang (90-110 karakter), di lebar separuh kolom URL
-              hanya sisa ~300px sehingga membungkus 3 baris dan tinggi baris
-              jadi tidak rata. Semua tabel admin lain juga membentang penuh
-              (kontrak panel admin: Table-First). */}
-          <div className="grid items-start gap-6">
-            {kartuPlatform(
-              "Marketplace Resmi",
-              "Tautan toko resmi di platform belanja online. Tampil di kartu informasi toko dan footer.",
-              marketplace,
-              "storefront",
-            )}
-            {kartuPlatform(
-              "Media Sosial Resmi",
-              "Akun konten dan publikasi resmi toko (Instagram, TikTok, YouTube, Facebook).",
-              social,
-              "share",
-            )}
-          </div>
-        </div>
+      <form id="storefront-profile-form" onSubmit={jagaGerbang(gerbang, gerbangForm, submitAll)} className="w-full space-y-4">
+        <FormErrorSummary errors={{ ...platformForm.errors, ...kontakForm.errors, ...brandForm.errors }} />
 
-        {/* 2. Kontak & Jam Kerja */}
-        <div className="space-y-4">
-          <FormErrorSummary errors={kontakForm.errors} />
-          {/* Tanpa items-start supaya dua kartu berbagi tinggi sama dan tepi bawah rata. */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <SectionCard
-              title="Informasi Kontak & Komunikasi"
-              description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
-              icon="message-circle"
-            >
-              <div className="space-y-4">
-                <Field
-                  id="phone"
-                  label="Nomor Telepon / WhatsApp Konsultasi"
-                  error={kontakForm.errors.phone}
-                  hint="Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp."
-                >
-                  {mode === "edit" ? (
-                    <Input
-                      id="phone"
-                      value={kontakForm.data.phone}
-                      onChange={(e) => kontakForm.setData("phone", e.target.value)}
-                      placeholder="Terisi otomatis dari nomor WhatsApp yang tersambung"
-                      className="font-mono text-xs bg-muted text-muted-foreground"
-                      readOnly
-                    />
-                  ) : kontakForm.data.phone.trim() === "" ? (
-                    <div className="flex min-h-9 items-center">
-                      <NilaiKosong />
+        {/* Satu permukaan konten utama terpadu */}
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          
+          {/* =====================================================================
+              BAGIAN 1: IDENTITAS TOKO
+              ===================================================================== */}
+          <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Identitas Toko</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Logo dan favicon resmi untuk identitas visual etalase toko.
+            </p>
+          </div>
+
+          <table className="w-full text-xs">
+            <tbody className="divide-y divide-border">
+              {/* Baris Logo */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Logo Toko
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {brandAssets.logo ? (
+                      <div className="flex h-12 w-32 shrink-0 items-center justify-center rounded-md border border-border bg-surface p-1.5">
+                        <img
+                          src={brandAssets.logo.url}
+                          alt="Logo toko saat ini"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <span className="flex h-12 w-32 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted text-xs text-muted-foreground">
+                        Belum ada logo
+                      </span>
+                    )}
+
+                    <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+                      {brandAssets.logo ? (
+                        <>
+                          <p className="truncate font-mono text-xs text-foreground">{brandAssets.logo.path}</p>
+                          <p className="mt-0.5 text-[11px]">
+                            {formatBytes(brandAssets.logo.bytes)} · Diperbarui {brandAssets.logo.updated_at}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Disarankan format PNG transparan lebar minimal 300px.</p>
+                      )}
+                      {brandForm.data.logo_asset_id ? (
+                        <p className="mt-1 text-[11px] font-medium text-primary">
+                          Aset baru dipilih (ID: {brandForm.data.logo_asset_id}) · Belum disimpan
+                        </p>
+                      ) : null}
                     </div>
+
+                    {mode === "edit" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setPickerTarget("logo")}
+                        className="inline-flex shrink-0 items-center gap-1.5 text-xs"
+                      >
+                        <Icon name="image" className="size-3.5" aria-hidden="true" />
+                        <span>{brandAssets.logo || brandForm.data.logo_asset_id ? "Ganti logo" : "Pilih logo"}</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+
+              {/* Baris Favicon */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Favicon
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {brandAssets.favicon ? (
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface p-1">
+                        <img
+                          src={brandAssets.favicon.url}
+                          alt="Favicon saat ini"
+                          className="size-6 object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted text-xs text-muted-foreground">
+                        Kosong
+                      </span>
+                    )}
+
+                    <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+                      {brandAssets.faviconIco ? (
+                        <>
+                          <p className="truncate font-mono text-xs text-foreground">{brandAssets.faviconIco.path}</p>
+                          <p className="mt-0.5 text-[11px]">
+                            {formatBytes(brandAssets.faviconIco.bytes)} · Diperbarui {brandAssets.faviconIco.updated_at}
+                          </p>
+                        </>
+                      ) : brandAssets.favicon ? (
+                        <>
+                          <p className="truncate font-mono text-xs text-foreground">{brandAssets.favicon.path}</p>
+                          <p className="mt-0.5 text-[11px]">{formatBytes(brandAssets.favicon.bytes)}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Ikon tab browser (format ICO atau PNG persegi 32x32px).</p>
+                      )}
+                      {brandForm.data.favicon_asset_id ? (
+                        <p className="mt-1 text-[11px] font-medium text-primary">
+                          Aset baru dipilih (ID: {brandForm.data.favicon_asset_id}) · Belum disimpan
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {mode === "edit" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setPickerTarget("favicon")}
+                        className="inline-flex shrink-0 items-center gap-1.5 text-xs"
+                      >
+                        <Icon name="image" className="size-3.5" aria-hidden="true" />
+                        <span>{brandAssets.favicon || brandForm.data.favicon_asset_id ? "Ganti favicon" : "Pilih favicon"}</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* =====================================================================
+              BAGIAN 2: KONTAK & OPERASIONAL
+              ===================================================================== */}
+          <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Kontak & Operasional</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Saluran komunikasi pembeli, jadwal layanan, dan alamat workshop fisik.
+            </p>
+          </div>
+
+          <table className="w-full text-xs">
+            <tbody className="divide-y divide-border">
+              {/* Nomor Telepon / WA */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Telepon / WhatsApp
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
+                  {mode === "edit" ? (
+                    <div className="space-y-1.5">
+                      <Input
+                        id="phone"
+                        value={kontakForm.data.phone}
+                        onChange={(e) => kontakForm.setData("phone", e.target.value)}
+                        placeholder="Terisi otomatis dari nomor WhatsApp yang tersambung"
+                        className="font-mono text-xs bg-muted text-muted-foreground max-w-md"
+                        readOnly
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Dipakai otomatis dari nomor WhatsApp yang tersambung di menu WhatsApp.
+                      </p>
+                    </div>
+                  ) : kontakForm.data.phone.trim() === "" ? (
+                    <NilaiKosong />
                   ) : (
-                    <p className="flex min-h-9 items-center font-mono text-xs text-foreground">
-                      {kontakForm.data.phone}
-                    </p>
+                    <div>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {kontakForm.data.phone}
+                      </span>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Tersambung otomatis dari integrasi WhatsApp.
+                      </p>
+                    </div>
                   )}
-                </Field>
-                <Field id="email" label="Email Layanan Informasi (Opsional)" error={kontakForm.errors.email}>
+                </td>
+              </tr>
+
+              {/* Email Layanan */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Email Layanan Informasi
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
                     <Input
                       id="email"
@@ -386,28 +418,24 @@ export default function StorefrontPlatformsEdit({
                       value={kontakForm.data.email}
                       onChange={(e) => kontakForm.setData("email", e.target.value)}
                       placeholder="Contoh: info@ragilaluminium.com"
-                      className="font-mono text-xs"
+                      className="font-mono text-xs max-w-md"
                     />
                   ) : kontakForm.data.email.trim() === "" ? (
-                    <div className="flex min-h-9 items-center">
-                      <NilaiKosong />
-                    </div>
+                    <NilaiKosong />
                   ) : (
-                    <p className="flex min-h-9 items-center font-mono text-xs text-foreground">
+                    <span className="font-mono text-xs text-foreground">
                       {kontakForm.data.email}
-                    </p>
+                    </span>
                   )}
-                </Field>
-              </div>
-            </SectionCard>
+                </td>
+              </tr>
 
-            <SectionCard
-              title="Lokasi Workshop & Jam Operasional"
-              description="Alamat fisik workshop dan jadwal buka layanan pelanggan."
-              icon="map-pin"
-            >
-              <div className="space-y-4">
-                <Field id="address" label="Alamat Fisik Workshop / Toko" error={kontakForm.errors.address}>
+              {/* Alamat Fisik */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Alamat Workshop & Toko
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
                     <Textarea
                       id="address"
@@ -415,163 +443,229 @@ export default function StorefrontPlatformsEdit({
                       value={kontakForm.data.address}
                       onChange={(e) => kontakForm.setData("address", e.target.value)}
                       placeholder="Alamat lengkap workshop produksi dan kantor operasional"
-                      className="text-xs leading-relaxed"
+                      className="text-xs leading-relaxed max-w-2xl"
                     />
                   ) : kontakForm.data.address.trim() === "" ? (
                     <NilaiKosong />
                   ) : (
-                    <p className="whitespace-pre-line text-xs leading-relaxed text-foreground">
+                    <p className="whitespace-pre-line text-xs leading-relaxed text-foreground max-w-2xl">
                       {kontakForm.data.address}
                     </p>
                   )}
-                </Field>
-                <Field id="hours" label="Jam Operasional" error={kontakForm.errors.hours}>
+                </td>
+              </tr>
+
+              {/* Jam Operasional */}
+              <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
+                <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
+                  Jam Operasional
+                </th>
+                <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
                     <Input
                       id="hours"
                       value={kontakForm.data.hours}
                       onChange={(e) => kontakForm.setData("hours", e.target.value)}
                       placeholder="Contoh: Senin - Sabtu: 08.00 - 17.00 WIB (Minggu Libur)"
-                      className="text-xs"
+                      className="text-xs max-w-md"
                     />
                   ) : kontakForm.data.hours.trim() === "" ? (
-                    <div className="flex min-h-9 items-center">
-                      <NilaiKosong />
-                    </div>
+                    <NilaiKosong />
                   ) : (
-                    <p className="flex min-h-9 items-center text-xs text-foreground">{kontakForm.data.hours}</p>
-                  )}
-                </Field>
-              </div>
-            </SectionCard>
-          </div>
-        </div>
-
-        {/* 3. Aset Brand */}
-        <div className="space-y-4">
-          <FormErrorSummary errors={brandForm.errors} />
-
-          {/* Tanpa items-start supaya dua kartu berbagi tinggi sama dan tepi bawah rata. */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Logo */}
-            <SectionCard
-              title="Logo Toko"
-              description="Tampil di header situs (tema terang dan gelap) dan footer. PNG transparan lebar minimal 300px disarankan."
-              icon="image"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                  {brandAssets.logo ? (
-                    <img
-                      src={brandAssets.logo.url}
-                      alt="Logo toko saat ini"
-                      className="max-h-20 w-auto max-w-[180px] object-contain"
-                      width={180}
-                      height={80}
-                    />
-                  ) : (
-                    <span className="flex h-20 w-[180px] items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                      Belum ada logo
+                    <span className="text-xs text-foreground">
+                      {kontakForm.data.hours}
                     </span>
                   )}
-                  <div className="min-w-0 text-xs text-muted-foreground">
-                    {brandAssets.logo ? (
-                      <>
-                        <p className="truncate font-medium text-foreground">{brandAssets.logo.path}</p>
-                        <p className="mt-0.5">
-                          {formatBytes(brandAssets.logo.bytes)} · diubah {brandAssets.logo.updated_at}
-                        </p>
-                      </>
-                    ) : (
-                      <p>Belum ada berkas logo terunggah.</p>
-                    )}
-                  </div>
-                </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-                {mode === "edit" ? (
-                  <Field
-                    id="brand-logo"
-                    label="Ganti Logo dari Media Library"
-                    error={brandForm.errors.logo_asset_id}
-                    hint="Pilih aset logo (PNG transparan disarankan) dari Media Library, lalu tekan Simpan."
-                  >
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setPickerTarget("logo")}
-                      className="inline-flex w-fit items-center gap-1.5"
-                    >
-                      <Icon name="image" className="size-3.5" aria-hidden="true" />
-                      <span>{brandForm.data.logo_asset_id ? "Ganti logo" : "Pilih logo"}</span>
-                    </Button>
-                  </Field>
-                ) : null}
-              </div>
-            </SectionCard>
-
-            {/* Favicon */}
-            <SectionCard
-              title="Favicon"
-              description="Ikon di tab browser dan layar beranda ponsel. Disarankan PNG persegi minimal 180px."
-              icon="image"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
-                  {brandAssets.favicon ? (
-                    <img
-                      src={brandAssets.favicon.url}
-                      alt="Favicon saat ini"
-                      className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain p-1"
-                      width={64}
-                      height={64}
-                    />
-                  ) : (
-                    <span className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                      Kosong
-                    </span>
-                  )}
-                  <div className="min-w-0 text-xs text-muted-foreground">
-                    {brandAssets.faviconIco ? (
-                      <>
-                        <p className="truncate font-medium text-foreground">{brandAssets.faviconIco.path}</p>
-                        <p className="mt-0.5">
-                          {formatBytes(brandAssets.faviconIco.bytes)} · diubah {brandAssets.faviconIco.updated_at}
-                        </p>
-                        {brandAssets.favicon ? (
-                          <p className="mt-0.5">PNG 32px tersedia untuk browser modern.</p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p>Belum ada favicon terunggah.</p>
-                    )}
-                  </div>
-                </div>
-
-                {mode === "edit" ? (
-                  <Field
-                    id="brand-favicon"
-                    label="Ganti Favicon dari Media Library"
-                    error={brandForm.errors.favicon_asset_id}
-                    hint="Pilih aset favicon (ICO/PNG persegi) dari Media Library, lalu tekan Simpan."
-                  >
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setPickerTarget("favicon")}
-                      className="inline-flex w-fit items-center gap-1.5"
-                    >
-                      <Icon name="image" className="size-3.5" aria-hidden="true" />
-                      <span>{brandForm.data.favicon_asset_id ? "Ganti favicon" : "Pilih favicon"}</span>
-                    </Button>
-                  </Field>
-                ) : null}
-              </div>
-            </SectionCard>
+          {/* =====================================================================
+              BAGIAN 3: TAUTAN RESMI (MARKETPLACE & MEDIA SOSIAL DALAM SATU TABEL)
+              ===================================================================== */}
+          <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Tautan Resmi</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Tautan toko resmi di platform marketplace belanja online dan akun media sosial.
+            </p>
           </div>
-        </div>
 
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border bg-muted/20 text-left text-[11px] font-semibold text-muted-foreground">
+                  <th className="w-48 px-4 py-3 sm:px-6">Platform</th>
+                  <th className="w-32 px-4 py-3">Kanal</th>
+                  <th className="px-4 py-3">Tautan URL</th>
+                  {mode === "view" ? <th className="w-32 px-4 py-3 text-right sm:pr-6">Aksi</th> : null}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {/* Subjudul Kelompok Marketplace */}
+                {marketplaceRows.length > 0 ? (
+                  <tr className="bg-muted/30">
+                    <td colSpan={mode === "view" ? 4 : 3} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
+                      Marketplace Belanja Online
+                    </td>
+                  </tr>
+                ) : null}
+                {marketplaceRows.map((row) => {
+                  const urlValue = platformForm.data.links[row.key] ?? ""
+                  const hasUrl = urlValue.trim() !== ""
+                  const isTautan = tautanSah(urlValue)
+
+                  return (
+                    <tr key={row.key} className="transition-colors hover:bg-muted/20">
+                      <td className="px-4 py-3 sm:px-6 align-middle">
+                        <div className="flex items-center gap-2.5">
+                          {row.icon ? (
+                            <img src={row.icon} alt="" className="size-5 shrink-0 object-contain" width={20} height={20} />
+                          ) : (
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                              <Icon name="storefront" className="size-3" aria-hidden="true" />
+                            </span>
+                          )}
+                          <span className="font-medium text-foreground">{row.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <Badge variant="secondary" className="font-normal text-[11px] px-2 py-0.5">
+                          Marketplace
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        {mode === "edit" ? (
+                          <Input
+                            type="url"
+                            inputMode="url"
+                            placeholder={`https://... (${row.label})`}
+                            value={urlValue}
+                            onChange={(event) => setLink(row.key, event.target.value)}
+                            className="h-8 text-xs font-mono max-w-xl"
+                          />
+                        ) : !hasUrl ? (
+                          <NilaiKosong />
+                        ) : (
+                          <span
+                            className="inline-block max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-lg truncate font-mono text-xs text-foreground align-middle"
+                            title={urlValue}
+                          >
+                            {urlValue}
+                          </span>
+                        )}
+                      </td>
+                      {mode === "view" ? (
+                        <td className="px-4 py-3 text-right sm:pr-6 align-middle">
+                          {hasUrl ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {isTautan ? (
+                                <a
+                                  href={urlValue}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                  title={`Buka ${row.label}`}
+                                >
+                                  <Icon name="external-link" className="size-3" aria-hidden="true" />
+                                  <span>Buka</span>
+                                </a>
+                              ) : null}
+                              <CopyButton text={urlValue} label={`Salin URL ${row.label}`} compact />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/50">-</span>
+                          )}
+                        </td>
+                      ) : null}
+                    </tr>
+                  )
+                })}
+
+                {/* Subjudul Kelompok Media Sosial */}
+                {socialRows.length > 0 ? (
+                  <tr className="bg-muted/30">
+                    <td colSpan={mode === "view" ? 4 : 3} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
+                      Media Sosial Resmi
+                    </td>
+                  </tr>
+                ) : null}
+                {socialRows.map((row) => {
+                  const urlValue = platformForm.data.links[row.key] ?? ""
+                  const hasUrl = urlValue.trim() !== ""
+                  const isTautan = tautanSah(urlValue)
+
+                  return (
+                    <tr key={row.key} className="transition-colors hover:bg-muted/20">
+                      <td className="px-4 py-3 sm:px-6 align-middle">
+                        <div className="flex items-center gap-2.5">
+                          {row.icon ? (
+                            <img src={row.icon} alt="" className="size-5 shrink-0 object-contain" width={20} height={20} />
+                          ) : (
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                              <Icon name="share" className="size-3" aria-hidden="true" />
+                            </span>
+                          )}
+                          <span className="font-medium text-foreground">{row.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <Badge variant="outline" className="font-normal text-[11px] px-2 py-0.5 text-muted-foreground">
+                          Media Sosial
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        {mode === "edit" ? (
+                          <Input
+                            type="url"
+                            inputMode="url"
+                            placeholder={`https://... (${row.label})`}
+                            value={urlValue}
+                            onChange={(event) => setLink(row.key, event.target.value)}
+                            className="h-8 text-xs font-mono max-w-xl"
+                          />
+                        ) : !hasUrl ? (
+                          <NilaiKosong />
+                        ) : (
+                          <span
+                            className="inline-block max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-lg truncate font-mono text-xs text-foreground align-middle"
+                            title={urlValue}
+                          >
+                            {urlValue}
+                          </span>
+                        )}
+                      </td>
+                      {mode === "view" ? (
+                        <td className="px-4 py-3 text-right sm:pr-6 align-middle">
+                          {hasUrl ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {isTautan ? (
+                                <a
+                                  href={urlValue}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                  title={`Buka ${row.label}`}
+                                >
+                                  <Icon name="external-link" className="size-3" aria-hidden="true" />
+                                  <span>Buka</span>
+                                </a>
+                              ) : null}
+                              <CopyButton text={urlValue} label={`Salin URL ${row.label}`} compact />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/50">-</span>
+                          )}
+                        </td>
+                      ) : null}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
       </form>
 
       <MediaPicker
