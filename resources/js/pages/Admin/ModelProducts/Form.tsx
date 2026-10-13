@@ -386,7 +386,6 @@ export default function ModelProductForm({
 
         <SectionCard
           title="Media model"
-          description="Gambar utama dan galeri foto model. Ambil dari Media Library atau unggah langsung; file otomatis dikonversi WebP."
           icon="image"
         >
           <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
