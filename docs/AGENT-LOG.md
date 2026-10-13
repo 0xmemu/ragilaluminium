@@ -4642,3 +4642,38 @@ Lingkup: perbaikan anomali tombol kembali redundan dan fallback keterangan media
 Dampak spec: tidak berubah
 Untuk agent berikutnya: tombol Kembali di header ditangani otomatis oleh AdminLayout backUrl; caption media di InstallationGallery::installationMedia mengirim installation_caption asli (tanpa fallback nama produk).
 Bukti: InstallationProjectAdminTest lulus (14 passed, 162 assertions), typecheck lulus, build-assets sukses.
+
+## 2026-10-13 00:27 UTC | zcode | Standard | 4ca115f1 | selesai
+
+Perbaikan anomali UX atas pemeriksaan 9 elemen yang dipilih owner:
+
+1. /admin/documents & /admin/beranda:
+   - Hapus tombol Batal pada mode view di Beranda/Index.tsx (sebelumnya tampil
+     Batal yang me-redirect ke /admin/beranda saat mode view).
+   - DocumentPagesController.php mengirim editable: false sehingga header
+     /admin/documents bersih tanpa tombol Batal maupun Edit yang mubazir.
+   - /admin/beranda dalam mode view hanya menampilkan tombol Edit. Begitu Edit
+     ditekan, barulah saklar aktif dan muncul tombol Batal + Simpan.
+
+2. /admin/masalah-solusi:
+   - Hapus duplikasi tombol Edit dan Atur meta halaman. Cukup satu tombol toggle
+     Atur meta. Begitu dibuka, form langsung siap diedit dengan tombol Tutup dan
+     SubmitGateButton Simpan meta.
+
+3. /admin/faq & /admin/apa-kata:
+   - Hapus tombol Edit redundant di dalam panel. Begitu Pengaturan halaman di header
+     diklik (FAQ) atau details dibuka (Apa Kata), form langsung aktif.
+
+4. /admin/cara-pemesanan:
+   - Kembalikan halaman editor ini ke bentuk aslinya: input, textarea, dropdown ikon,
+     tombol Tambah/Hapus langkah dan kartu info tidak lagi di-disable. Header
+     dilengkapi SubmitGateButton Simpan yang tervalidasi.
+
+5. Penjaga tests/frontend/admin-edit-guard.test.ts diselaraskan: 11 halaman pengaturan
+   murni tetap terkunci, sedangkan editor konten dan accordion meta tidak dipaksa.
+
+Verifikasi: tsc bersih, eslint 0 warning pada berkas yang diubah, build sukses,
+354 test frontend lulus. Bukti live admin-preview membuktikan: FAQ panel terbuka
+tanpa tombol Edit ganda (0 disabled input), Masalah Solusi hanya 1 tombol Atur meta,
+Cara Pemesanan 0 disabled input dan tombol tambah/hapus langkah aktif, Dokumen
+Halaman 0 tombol di header (clean hub), dan Beranda mode view hanya tombol Edit.
