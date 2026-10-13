@@ -161,15 +161,6 @@ export default function ApaKataIndex({
   // Kontrak halaman pengaturan (ADR-023): bagian yang tugasnya mengubah nilai
   // yang sudah ada dibuka terkunci, seragam dengan bagian Slide bar promo di
   // halaman Bar Promo. Isian baru hidup setelah admin menekan Edit.
-  const [metaMode, setMetaMode] = React.useState<"view" | "edit">("view")
-  const metaTerkunci = metaMode === "view"
-
-  function batalMeta() {
-    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
-    // mode edit bertahan walau sudah dibatalkan.
-    metaForm.resetAndClearErrors()
-    setMetaMode("view")
-  }
 
   const metaForm = useForm({
     title: pageMeta?.title ?? "",
@@ -314,30 +305,26 @@ export default function ApaKataIndex({
               metaForm.put(metaUrl, {
               preserveScroll: true,
               onSuccess: () => {
-                // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
                 metaForm.setDefaults()
-                setMetaMode("view")
               },
             })
             }}
           >
             <FieldGrid>
               <Field id="apk-title" label="Judul CMS">
-                <Input disabled={metaTerkunci} value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
               </Field>
               <CheckboxField
                 id="apk-published"
-                disabled={metaTerkunci}
                 checked={metaForm.data.published}
                 onChange={(checked) => metaForm.setData("published", checked)}
                 label="Terbitkan halaman"
               />
               <Field id="apk-heading" label="Judul hero" className="sm:col-span-2">
-                <Input disabled={metaTerkunci} value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
+                <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
               </Field>
               <Field id="apk-subtitle" label="Subjudul" className="sm:col-span-2">
                 <Textarea
-                  disabled={metaTerkunci}
                   rows={2}
                   value={metaForm.data.subtitle}
                   onChange={(event) => metaForm.setData("subtitle", event.target.value)}
@@ -347,24 +334,12 @@ export default function ApaKataIndex({
             {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
                 bukan daftar item di bawahnya. */}
             <div className="flex flex-wrap gap-2">
-              {metaTerkunci ? (
-                <Button type="button" variant="secondary" onClick={() => setMetaMode("edit")}>
-                  <Icon name="pencil" className="size-4" aria-hidden="true" />
-                  Edit
-                </Button>
-              ) : (
-                <>
-                  <Button type="button" variant="secondary" onClick={batalMeta} disabled={metaForm.processing}>
-                    Batal
-                  </Button>
-                                    <SubmitGateButton
-                    form={metaForm}
-                    {...gerbangMeta}
-                  >
-                    Simpan meta
-                  </SubmitGateButton>
-                </>
-              )}
+              <SubmitGateButton
+                form={metaForm}
+                {...gerbangMeta}
+              >
+                Simpan meta
+              </SubmitGateButton>
             </div>
           </form>
           </div>

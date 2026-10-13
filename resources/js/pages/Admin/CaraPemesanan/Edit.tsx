@@ -8,7 +8,6 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
-import { Icon } from "@/components/shared/icon"
 import { humanize } from "@/lib/format"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { gerbangBolehLanjut } from "@/lib/submit-gate"
@@ -77,15 +76,6 @@ export default function CaraPemesananEdit({
   // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
   // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
   // menekan Edit, supaya konten publik tidak rawan tersunting tanpa sengaja.
-  const [mode, setMode] = React.useState<"view" | "edit">("view")
-  const terkunci = mode === "view"
-
-  function batal() {
-    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
-    // mode edit bertahan walau sudah dibatalkan.
-    form.resetAndClearErrors()
-    setMode("view")
-  }
 
   const bodyPreview = React.useMemo(
     () =>
@@ -130,26 +120,14 @@ export default function CaraPemesananEdit({
               Lihat halaman publik
             </a>
           </Button>
-          {mode === "view" ? (
-            <Button type="button" size="sm" onClick={() => setMode("edit")}>
-              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-              Edit
-            </Button>
-          ) : (
-            <>
-              <Button type="button" variant="secondary" size="sm" onClick={batal}>
-                Batal
-              </Button>
-                            <SubmitGateButton
-                form={form}
-                {...gerbang}
-                formId="cara-pemesanan-form"
-                size="sm"
-              >
-                Simpan
-              </SubmitGateButton>
-            </>
-          )}
+          <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="cara-pemesanan-form"
+            size="sm"
+          >
+            Simpan
+          </SubmitGateButton>
         </div>
       }
     >
@@ -163,9 +141,7 @@ export default function CaraPemesananEdit({
           form.put(submitUrl, {
             preserveScroll: true,
             onSuccess: () => {
-              // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
               form.setDefaults()
-              setMode("view")
             },
           })
         }}
@@ -176,22 +152,20 @@ export default function CaraPemesananEdit({
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
           <FieldGrid>
             <Field id="cmspage-title" label="Judul CMS" required error={form.errors.title}>
-              <Input disabled={terkunci} value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+              <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
             <CheckboxField
               id="cmspage-published"
-              disabled={terkunci}
-              checked={form.data.published}
+                            checked={form.data.published}
               onChange={(checked) => form.setData("published", checked)}
               label="Terbitkan halaman"
             />
             <Field id="cmspage-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
-              <Input disabled={terkunci} value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
+              <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
             </Field>
             <Field id="cmspage-subtitle" label="Subjudul hero" error={form.errors.subtitle} className="sm:col-span-2">
               <Textarea
-                disabled={terkunci}
-                rows={2}
+                                rows={2}
                 value={form.data.subtitle}
                 onChange={(event) => form.setData("subtitle", event.target.value)}
               />
@@ -205,7 +179,7 @@ export default function CaraPemesananEdit({
             <Button
               type="button"
               variant="secondary"
-              disabled={terkunci || form.data.steps.length >= 8}
+              disabled={form.data.steps.length >= 8}
               onClick={() =>
                 form.setData("steps", [
                   ...form.data.steps,
@@ -224,7 +198,7 @@ export default function CaraPemesananEdit({
                   type="button"
                   variant="secondary"
                   className="h-8 px-2 text-xs text-destructive"
-                  disabled={terkunci || form.data.steps.length <= 1}
+                  disabled={form.data.steps.length <= 1}
                   onClick={() =>
                     form.setData(
                       "steps",
@@ -237,7 +211,7 @@ export default function CaraPemesananEdit({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id={`step-icon-${index}`} label="Ikon">
-                  <Select disabled={terkunci} value={step.icon} onChange={(event) => updateStep(index, { icon: event.target.value })}>
+                  <Select value={step.icon} onChange={(event) => updateStep(index, { icon: event.target.value })}>
                     {iconOptions.map((icon) => (
                       <option key={icon} value={icon}>
                         {humanize(icon)}
@@ -246,12 +220,11 @@ export default function CaraPemesananEdit({
                   </Select>
                 </Field>
                 <Field id={`step-title-${index}`} label="Judul">
-                  <Input disabled={terkunci} value={step.title} onChange={(event) => updateStep(index, { title: event.target.value })} />
+                  <Input value={step.title} onChange={(event) => updateStep(index, { title: event.target.value })} />
                 </Field>
                 <Field id={`step-desc-${index}`} label="Deskripsi" className="sm:col-span-2">
                   <Textarea
-                    disabled={terkunci}
-                    rows={3}
+                                        rows={3}
                     value={step.description}
                     onChange={(event) => updateStep(index, { description: event.target.value })}
                   />
@@ -263,8 +236,7 @@ export default function CaraPemesananEdit({
                   className="sm:col-span-2"
                 >
                   <Textarea
-                    disabled={terkunci}
-                    rows={3}
+                                        rows={3}
                     value={pointsToText(step.points)}
                     onChange={(event) => updateStep(index, { points: textToPoints(event.target.value) })}
                     placeholder={"Filter berdasarkan kategori\nLihat detail produk"}
@@ -281,7 +253,7 @@ export default function CaraPemesananEdit({
             <Button
               type="button"
               variant="secondary"
-              disabled={terkunci || form.data.info_cards.length >= 6}
+              disabled={form.data.info_cards.length >= 6}
               onClick={() =>
                 form.setData("info_cards", [
                   ...form.data.info_cards,
@@ -300,8 +272,7 @@ export default function CaraPemesananEdit({
                   type="button"
                   variant="secondary"
                   className="h-8 px-2 text-xs text-destructive"
-                  disabled={terkunci}
-                  onClick={() =>
+                                    onClick={() =>
                     form.setData(
                       "info_cards",
                       form.data.info_cards.filter((_, i) => i !== index),
@@ -313,7 +284,7 @@ export default function CaraPemesananEdit({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id={`card-icon-${index}`} label="Ikon">
-                  <Select disabled={terkunci} value={card.icon} onChange={(event) => updateCard(index, { icon: event.target.value })}>
+                  <Select value={card.icon} onChange={(event) => updateCard(index, { icon: event.target.value })}>
                     {iconOptions.map((icon) => (
                       <option key={icon} value={icon}>
                         {humanize(icon)}
@@ -322,12 +293,11 @@ export default function CaraPemesananEdit({
                   </Select>
                 </Field>
                 <Field id={`card-title-${index}`} label="Judul">
-                  <Input disabled={terkunci} value={card.title} onChange={(event) => updateCard(index, { title: event.target.value })} />
+                  <Input value={card.title} onChange={(event) => updateCard(index, { title: event.target.value })} />
                 </Field>
                 <Field id={`card-desc-${index}`} label="Deskripsi" className="sm:col-span-2">
                   <Textarea
-                    disabled={terkunci}
-                    rows={3}
+                                        rows={3}
                     value={card.description}
                     onChange={(event) => updateCard(index, { description: event.target.value })}
                   />
@@ -345,8 +315,7 @@ export default function CaraPemesananEdit({
             error={form.errors.body}
           >
             <Textarea
-              disabled={terkunci}
-              rows={12}
+                            rows={12}
               value={form.data.body}
               onChange={(event) => form.setData("body", event.target.value)}
               className="font-mono text-xs"

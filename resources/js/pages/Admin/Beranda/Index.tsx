@@ -7,7 +7,6 @@ import { ReorderActionButton } from "@/components/admin/reorder-action-button"
 import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 
@@ -26,11 +25,13 @@ export default function BerandaIndex({
   description,
   sections: initialSections,
   submitUrl,
+  editable = true,
 }: {
   title: string
   description: string
   sections: SectionRow[]
   submitUrl: string
+  editable?: boolean
 }) {
   const [sections, setSections] = React.useState(initialSections)
   const [reorderMode, setReorderMode] = React.useState(false)
@@ -156,65 +157,57 @@ export default function BerandaIndex({
       description={description}
       lockInteraction={reorderMode}
       actions={
-        <div className="flex flex-wrap gap-2">
-          {mode === "view" ? (
-            <Button type="button" variant="secondary" asChild>
-              <Link href={routeUrl("admin.beranda.index")}>Batal</Link>
-            </Button>
-          ) : (
-            <Button type="button" variant="secondary" onClick={batal}>
-              Batal
-            </Button>
-          )}
-          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20).
-              Saat mode Urutkan aktif, tombol ini menggantikan Simpan: form yang sama
-              memuat urutan sekaligus status tampil tiap bagian, jadi satu tombol
-              simpan sudah mewakili seluruh perubahan. Label "Simpan urutan" hanya
-              muncul bila urutan baris benar-benar berubah. */}
-          {mode === "edit" ? (
-            <>
-              <ReorderActionButton
-                active={reorderMode}
-                dirty={urutanBerubah}
-                processing={form.processing}
-                disabled={sections.length < 2}
-                onToggle={() => setReorderMode(true)}
-                onCancel={cancelReorder}
-                onSave={() =>
-                  form.put(submitUrl, {
-                    onSuccess: () => {
-                      form.setDefaults()
-                      setReorderMode(false)
-                      setMode("view")
-                    },
-                  })
-                }
-              />
-              {!reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={form.processing}
-                  onClick={() =>
+        editable ? (
+          <div className="flex flex-wrap gap-2">
+            {mode === "edit" ? (
+              <>
+                <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                  Batal
+                </Button>
+                <ReorderActionButton
+                  active={reorderMode}
+                  dirty={urutanBerubah}
+                  processing={form.processing}
+                  disabled={sections.length < 2}
+                  onToggle={() => setReorderMode(true)}
+                  onCancel={cancelReorder}
+                  onSave={() =>
                     form.put(submitUrl, {
                       onSuccess: () => {
-                        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
                         form.setDefaults()
+                        setReorderMode(false)
                         setMode("view")
                       },
                     })
                   }
-                >
-                  {form.processing ? "Menyimpan..." : "Simpan"}
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <Button type="button" size="sm" onClick={() => setMode("edit")}>
-              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-              Edit
-            </Button>
-          )}
-        </div>
+                />
+                {!reorderMode ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={form.processing}
+                    onClick={() =>
+                      form.put(submitUrl, {
+                        onSuccess: () => {
+                          // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+                          form.setDefaults()
+                          setMode("view")
+                        },
+                      })
+                    }
+                  >
+                    {form.processing ? "Menyimpan..." : "Simpan"}
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <Button type="button" size="sm" onClick={() => setMode("edit")}>
+                <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                Edit
+              </Button>
+            )}
+          </div>
+        ) : null
       }
     >
       <Head title={`${title} | Admin`} />

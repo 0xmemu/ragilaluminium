@@ -106,15 +106,6 @@ export default function MasalahSolusiIndex({
   // Kontrak halaman pengaturan (ADR-023): bagian yang tugasnya mengubah nilai
   // yang sudah ada dibuka terkunci, seragam dengan bagian Slide bar promo di
   // halaman Bar Promo. Isian baru hidup setelah admin menekan Edit.
-  const [metaMode, setMetaMode] = React.useState<"view" | "edit">("view")
-  const metaTerkunci = metaMode === "view"
-
-  function batalMeta() {
-    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
-    // mode edit bertahan walau sudah dibatalkan.
-    metaForm.resetAndClearErrors()
-    setMetaMode("view")
-  }
 
 
   // Geser-urut dimatikan saat daftar sedang tersaring: posisi target tidak
@@ -191,29 +182,15 @@ export default function MasalahSolusiIndex({
       <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {metaTerkunci ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowMeta(true)
-                  setMetaMode("edit")
-                }}
-              >
-                <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-                Edit
-              </Button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setShowMeta((current) => !current)}
-              className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
-            >
-              {showMeta ? "Tutup" : "Atur meta halaman"}
-            </button>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowMeta((current) => !current)}
+          >
+            <Icon name={showMeta ? "x" : "pencil"} className="size-3.5" aria-hidden="true" />
+            {showMeta ? "Tutup" : "Atur meta"}
+          </Button>
         </div>
 
         {!showMeta ? (
@@ -232,22 +209,20 @@ export default function MasalahSolusiIndex({
             metaForm.put(metaUrl, {
               preserveScroll: true,
               onSuccess: () => {
-                // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
                 metaForm.setDefaults()
-                setMetaMode("view")
+                setShowMeta(false)
               },
             })
           }}
         >
           <Field id="ms-title" label="Judul CMS">
-            <Input disabled={metaTerkunci} value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+            <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
           </Field>
           <Field id="ms-heading" label="Judul hero">
-            <Input disabled={metaTerkunci} value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
+            <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
           </Field>
           <Field id="ms-subtitle" label="Subjudul">
             <Textarea
-              disabled={metaTerkunci}
               rows={2}
               value={metaForm.data.subtitle}
               onChange={(event) => metaForm.setData("subtitle", event.target.value)}
@@ -255,20 +230,18 @@ export default function MasalahSolusiIndex({
           </Field>
           {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
               bukan daftar item di bawahnya. Ikut tersembunyi bersama formnya. */}
-          {metaTerkunci ? null : (
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={batalMeta} disabled={metaForm.processing}>
-                Batal
-              </Button>
-                            <SubmitGateButton
-                form={metaForm}
-                {...gerbangMeta}
-                size="sm"
-              >
-                Simpan meta
-              </SubmitGateButton>
-            </div>
-          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowMeta(false)} disabled={metaForm.processing}>
+              Tutup
+            </Button>
+            <SubmitGateButton
+              form={metaForm}
+              {...gerbangMeta}
+              size="sm"
+            >
+              Simpan meta
+            </SubmitGateButton>
+          </div>
         </form>
       </section>
 

@@ -33,19 +33,13 @@ const WAJIB_TERKUNCI = [
   "resources/js/pages/Admin/ShippingSubsidy/Edit.tsx",
   // Bagian "Slide bar promo": setelan di dalam halaman daftar Bar Promo.
   "resources/js/pages/Admin/Announcements/Index.tsx",
-  // Tujuh halaman utang yang dituntaskan 13 Oktober 2026.
-  "resources/js/pages/Admin/CaraPemesanan/Edit.tsx",
+  // Halaman pengaturan murni yang wajib terkunci bawaan.
   "resources/js/pages/Admin/CmsDocument/Edit.tsx",
   "resources/js/pages/Admin/CmsPageForm.tsx",
   "resources/js/pages/Admin/Profile/Edit.tsx",
   "resources/js/pages/Admin/WhatsApp/Edit.tsx",
   "resources/js/pages/Admin/Beranda/HowToOrderForm.tsx",
-  // Empat halaman yang sebelumnya belum masuk daftar mana pun: satu halaman
-  // setelan utuh dan tiga bagian setelan halaman di dalam halaman daftar.
   "resources/js/pages/Admin/Beranda/Index.tsx",
-  "resources/js/pages/Admin/Faq/Index.tsx",
-  "resources/js/pages/Admin/ApaKata/Index.tsx",
-  "resources/js/pages/Admin/MasalahSolusi/Index.tsx",
 ]
 
 /**

@@ -20,6 +20,7 @@ class DocumentPagesController extends Controller
                 ['key' => 'kebijakan_privasi', 'enabled' => true, 'sort_order' => 1, 'label' => 'Kebijakan Privasi', 'description' => 'Kebijakan perlindungan data pelanggan.', 'icon' => 'lock', 'edit_href' => route('admin.kebijakan-privasi.edit')],
             ],
             'submitUrl' => route('admin.documents.update'),
+            'editable' => false,
         ]);
     }
 
