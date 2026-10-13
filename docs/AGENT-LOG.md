@@ -4910,3 +4910,26 @@ Verifikasi: tsc bersih, eslint bersih, build sukses. Live di tab uji: pilih
 1 foto menghasilkan "Media model (1 foto)", ubin plus tampil di kanan foto
 (x=378 vs x=256); klik ubin membuka panel; setelah dihapus kembali
 "(0 foto)" dan dropzone muncul. Tab uji ditutup setelah verifikasi.
+
+## 2026-10-13 03:02 UTC | zcode | Standard | 350cc188 | selesai
+
+Permintaan owner di halaman Ulasan, dua butir: (1) pemilih foto disamakan
+desainnya dengan pekerjaan sebelumnya (seksi Foto Produk) dan dijadikan
+reusable; (2) pemilih produk memakai pembungkus reusable.
+
+Hasil:
+1. Komponen bersama MediaGallerySection dibuat dan dipakai dua halaman:
+   Model Produk (menggantikan kode inline hasil f26f5d92 + 77b93b1c) dan
+   Ulasan (menggantikan seksi foto lama, hint panjang, dan tombol Tambah dari
+   Media Library). Skema simpan tiap halaman tidak berubah
+   (media_asset_id/gallery_asset_ids untuk model; media_asset_ids/image_urls
+   untuk ulasan, termasuk foto warisan bertanda URL).
+2. Pemilih produk di form Ulasan TERBUKTI sudah memakai ProductPickerSheet
+   sejak 29 Sep 2026 (diuji live, panel "Pilih produk terkait" terbuka).
+   Yang masih mentah: dialog "Terapkan ke produk" di halaman DAFTAR ulasan
+   (ProductPicker langsung di dalam dialog); dilaporkan dan menunggu
+   keputusan owner karena menggantinya berarti mengubah bentuk dialog.
+
+Verifikasi: tsc bersih, eslint bersih, build sukses; live Ulasan alur penuh
+(pilih 2 foto, badge Utama di ubin pertama, ubin plus, hapus semua, dropzone
+kembali); smoke check Model Produk dengan komponen yang sama.
