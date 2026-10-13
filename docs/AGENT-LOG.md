@@ -4731,3 +4731,23 @@ Perbaikan:
 Verifikasi live membuktikan: header /admin/beranda langsung menampilkan [Urutkan],
 saklar 0 disabled, begitu saklar diklik header langsung memunculkan [Simpan].
 Header /admin/documents bersih 0 tombol. Seluruh 354 vitest test lulus.
+
+## 2026-10-13 00:56 UTC | zcode | Standard | a87ffd7d | selesai
+
+Feedback owner: ketidakkonsistenan desain pada dua halaman dengan konteks yang
+sama persis (edit CMS meta).
+
+FAQ memakai tombol [Pengaturan halaman] di header action bar, sementara
+Masalah & Solusi memakai card permanen 'Meta halaman' di atas tabel, dan Apa Kata
+memakai tag <details>.
+
+Perbaikan:
+1. Masalah & Solusi dan Apa Kata disamakan 100% ke pola FAQ:
+   - Tombol toggle [Pengaturan halaman] diletakkan di header actions.
+   - Card permanen di bodi dihapus total saat panel ditutup (0px ruang terbuang).
+   - Saat dibuka, panel collapsible menampilkan FieldGrid isian, tombol
+     SubmitGateButton [Simpan pengaturan], dan tombol [Tutup].
+
+Verifikasi live dengan admin-preview membuktikan FAQ dan Masalah & Solusi kini
+memiliki header_actions yang sama persis (['Pengaturan halaman', 'Urutkan']),
+dan form terbuka dengan 0 input disabled. 354 vitest test lulus.
