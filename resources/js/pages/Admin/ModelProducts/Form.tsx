@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { MediaPickerSheet, type PickedMedia } from "@/components/admin/media-picker-sheet"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
@@ -111,7 +111,6 @@ export default function ModelProductForm({
   // menyimpan urutannya, sehingga urutan di sini = urutan hero storefront.
   const [mainMedia, setMainMedia] = React.useState<PickedMedia | null>(media ?? null)
   const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>(gallery ?? [])
-  const [picker, setPicker] = React.useState<"main" | "gallery" | null>(null)
 
   // Sinkron dari snapshot server HANYA saat isinya benar-benar berubah:
   // Inertia mengirim array baru pada setiap re-render (termasuk setelah
@@ -153,7 +152,7 @@ export default function ModelProductForm({
   // tidak ikut dikunci karena server memang tidak mewajibkannya.
   const gerbang = {
     fields: {
-      name: "Nama tampilan",
+      name: "Nama Model Produk",
       product_category: "Kategori katalog",
       status: "Status",
     },
@@ -196,7 +195,7 @@ export default function ModelProductForm({
             <tbody className="divide-y divide-border">
               <tr>
                 <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama tampilan <span className="text-destructive">*</span>
+                  Nama Model Produk <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
                   <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} className="h-8 text-xs" />
@@ -249,9 +248,6 @@ export default function ModelProductForm({
                   {form.errors.description ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Tampil di halaman detail model storefront. Kosongkan untuk memakai teks default sistem.
-                  </p>
                 </td>
               </tr>
 
@@ -379,10 +375,16 @@ export default function ModelProductForm({
           description="Gambar utama dan galeri foto model. Ambil dari Media Library atau unggah langsung; file otomatis dikonversi WebP."
           icon="image"
           action={
-            <Button type="button" variant="secondary" size="sm" onClick={() => setPicker("main")}>
-              <Icon name="upload" className="size-4" aria-hidden="true" />
-              {mainMedia ? "Ganti gambar utama" : "Pilih gambar utama"}
-            </Button>
+            <MediaPickerSheet
+              title="Gambar utama model"
+              onPick={(picked) => applyMain(picked[0] ?? null)}
+              trigger={(open) => (
+                <Button type="button" variant="secondary" size="sm" onClick={open}>
+                  <Icon name="upload" className="size-4" aria-hidden="true" />
+                  {mainMedia ? "Ganti gambar utama" : "Pilih gambar utama"}
+                </Button>
+              )}
+            />
           }
         >
           <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
@@ -423,16 +425,34 @@ export default function ModelProductForm({
                     {galleryMedia.length} dari {maxGallery} foto. Urutan menentukan tampilan di hero.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={galleryMedia.length >= maxGallery}
-                  onClick={() => setPicker("gallery")}
-                >
-                  <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah
-                </Button>
+                <MediaPickerSheet
+                  title="Galeri foto model"
+                  multiple
+                  onPick={(picked) => {
+                    // Galeri tidak boleh memuat gambar utama dua kali.
+                    const seen = new Set(galleryMedia.map((item) => item.assetId))
+                    const next = [...galleryMedia]
+                    for (const item of picked) {
+                      if (seen.has(item.assetId) || item.assetId === mainMedia?.assetId) continue
+                      if (next.length >= maxGallery) break
+                      seen.add(item.assetId)
+                      next.push(item)
+                    }
+                    applyGallery(next)
+                  }}
+                  trigger={(open) => (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={galleryMedia.length >= maxGallery}
+                      onClick={open}
+                    >
+                      <Icon name="plus" className="size-4" aria-hidden="true" />
+                      Tambah
+                    </Button>
+                  )}
+                />
               </div>
 
               {galleryMedia.length === 0 ? (
@@ -590,36 +610,6 @@ export default function ModelProductForm({
           </SectionCard>
         ) : null}
       </form>
-
-      <MediaPicker
-        open={picker === "main"}
-        onClose={() => setPicker(null)}
-        multiple={false}
-        title="Gambar utama model"
-        onPick={(picked) => {
-          applyMain(picked[0] ?? null)
-          setPicker(null)
-        }}
-      />
-      <MediaPicker
-        open={picker === "gallery"}
-        onClose={() => setPicker(null)}
-        multiple
-        title="Galeri foto model"
-        onPick={(picked) => {
-          // Galeri tidak boleh memuat gambar utama dua kali.
-          const seen = new Set(galleryMedia.map((item) => item.assetId))
-          const next = [...galleryMedia]
-          for (const item of picked) {
-            if (seen.has(item.assetId) || item.assetId === mainMedia?.assetId) continue
-            if (next.length >= maxGallery) break
-            seen.add(item.assetId)
-            next.push(item)
-          }
-          applyGallery(next)
-          setPicker(null)
-        }}
-      />
     </AdminLayout>
   )
 }
