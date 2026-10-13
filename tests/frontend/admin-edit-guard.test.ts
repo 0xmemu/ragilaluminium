@@ -39,7 +39,6 @@ const WAJIB_TERKUNCI = [
   "resources/js/pages/Admin/Profile/Edit.tsx",
   "resources/js/pages/Admin/WhatsApp/Edit.tsx",
   "resources/js/pages/Admin/Beranda/HowToOrderForm.tsx",
-  "resources/js/pages/Admin/Beranda/Index.tsx",
 ]
 
 /**

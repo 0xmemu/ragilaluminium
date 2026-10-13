@@ -129,21 +129,6 @@ export default function BerandaIndex({
     setReorderMode(false)
   }
 
-  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
-  // yang sudah ada dibuka terkunci. Saklar tampil dan pengurutan baru bisa
-  // dipakai setelah admin menekan Edit, supaya tata letak beranda tidak rawan
-  // tersunting tanpa sengaja saat halaman cuma dibuka untuk melihat.
-  const [mode, setMode] = React.useState<"view" | "edit">("view")
-  const terkunci = mode === "view"
-
-  function batal() {
-    // Kembalikan urutan dan switch ke snapshot server, lalu kunci lagi.
-    cancelReorder()
-    setSections(initialSections)
-    form.resetAndClearErrors()
-    setMode("view")
-  }
-
   function toggleEnabled(index: number) {
     const next = sections.map((section, i) =>
       i === index ? { ...section, enabled: !section.enabled } : section,
@@ -159,53 +144,38 @@ export default function BerandaIndex({
       actions={
         editable ? (
           <div className="flex flex-wrap gap-2">
-            {mode === "edit" ? (
-              <>
-                <Button type="button" variant="secondary" size="sm" onClick={batal}>
-                  Batal
-                </Button>
-                <ReorderActionButton
-                  active={reorderMode}
-                  dirty={urutanBerubah}
-                  processing={form.processing}
-                  disabled={sections.length < 2}
-                  onToggle={() => setReorderMode(true)}
-                  onCancel={cancelReorder}
-                  onSave={() =>
-                    form.put(submitUrl, {
-                      onSuccess: () => {
-                        form.setDefaults()
-                        setReorderMode(false)
-                        setMode("view")
-                      },
-                    })
-                  }
-                />
-                {!reorderMode ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={form.processing}
-                    onClick={() =>
-                      form.put(submitUrl, {
-                        onSuccess: () => {
-                          // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
-                          form.setDefaults()
-                          setMode("view")
-                        },
-                      })
-                    }
-                  >
-                    {form.processing ? "Menyimpan..." : "Simpan"}
-                  </Button>
-                ) : null}
-              </>
-            ) : (
-              <Button type="button" size="sm" onClick={() => setMode("edit")}>
-                <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-                Edit
+            <ReorderActionButton
+              active={reorderMode}
+              dirty={urutanBerubah}
+              processing={form.processing}
+              disabled={sections.length < 2}
+              onToggle={() => setReorderMode(true)}
+              onCancel={cancelReorder}
+              onSave={() =>
+                form.put(submitUrl, {
+                  onSuccess: () => {
+                    form.setDefaults()
+                    setReorderMode(false)
+                  },
+                })
+              }
+            />
+            {!reorderMode && form.isDirty ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={form.processing}
+                onClick={() =>
+                  form.put(submitUrl, {
+                    onSuccess: () => {
+                      form.setDefaults()
+                    },
+                  })
+                }
+              >
+                {form.processing ? "Menyimpan..." : "Simpan"}
               </Button>
-            )}
+            ) : null}
           </div>
         ) : null
       }
@@ -241,7 +211,7 @@ export default function BerandaIndex({
             <button
               type="button"
               onClick={() => toggleEnabled(index)}
-              disabled={reorderMode || terkunci}
+              disabled={reorderMode}
               className="inline-flex items-center gap-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
               <StatusBadge
