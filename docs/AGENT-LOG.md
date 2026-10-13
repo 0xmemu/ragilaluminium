@@ -4959,3 +4959,55 @@ Audit baca-saja VPS 202 terhadap instruksi persiapan produksi. Inventaris dan la
 ## 2026-10-13 06:20 UTC | zcode | Deep | release tertahan
 
 Instruksi finalisasi rilis diperiksa terhadap status aktual. Pada dua snapshot 06:18 dan 06:20 UTC status tetap 206 entri (165 modifikasi, 6 penghapusan, 35 untracked), diff 171 berkas; tidak ada proses penulis atau lock Git yang terdeteksi. Asal, pemilik, kelengkapan dan persetujuan perubahan tersebar itu tidak dapat dibuktikan hanya dari status diam; beberapa berkas source/migrasi dan skrip patch tidak dilacak. `git diff --check` gagal karena trailing whitespace di resources/js/components/shared/shipping-track-panel.tsx:132. Mengikuti stop condition: tidak commit perubahan orang lain, tidak quality gate final pada release yang belum terklasifikasi, tidak merge/tag/deploy. Infrastruktur 202 juga tercatat NO-GO pada docs/operations/PRODUCTION-READINESS-REPORT.md. Perubahan hanya entri ledger ini, mempertahankan entri agent lain yang sudah kotor; belum di-commit bersama.
+
+## 2026-10-13 07:30 UTC | zcode | Deep | cutover staging, belum live
+
+User meminta cutover awal lewat snapshot tanpa merge/tag. Branch release/initial-production-cutover di-push (6630f927), 200 entri source/test/docs di-snapshot; 6 kandidat sementara tetap tidak dilacak. Pada VPS 202 user deploy dan struktur releases/shared/repository disiapkan, key SSH dibuat tetapi belum terdaftar di GitHub, maka snapshot 6630f927 disalin dari arsip Git 209 ke releases/20261013-snapshot-6630f927 sebagai fallback lalu composer install dan npm build berhasil. Laravel belum diaktifkan, current tidak ada, database 202 masih kosong, sumber 209 berisi 60 tabel, 183 produk dan 30 pesanan; bot WhatsApp 202 tidak aktif, webhook J&T masih ACK statis. PHP test 1417 lulus/1 skip setelah test kontrak retur usang diselaraskan dengan migrasi 2026-09-29 (4f033dd0), Vitest 354 lulus; typecheck dan build lulus; lint masih 29 warning dan gagal sesuai zero-warning. Tidak ada migrasi, pemindahan data, penulisan .env, reload Nginx, atau perubahan trafik. Cutover dihentikan sebelum aktivasi agar tidak memasang aplikasi setengah jadi.
+
+## 2026-10-13 07:28 UTC | zcode | Standard | contoh XLSX impor produk
+
+Permintaan contoh berkas impor produk dipenuhi dengan berkas lokal D:/website_5.0/xlsx-review/contoh-import-produk-terisi.xlsx, salinan template V2 yang berisi 6 kombinasi warna dan kaca, harga/stok/dimensi numerik, foto internal yang tersedia, serta panduan. Repo VPS tidak diubah selain entri ledger ini; tidak ada impor atau perubahan database. Verifikasi: 25 header sesuai templat V2 dengan tambahan Gambar 3 yang didukung importer, enam kombinasi unik, pemeriksa CatalogImportVerifierV2 mengembalikan 0 kesalahan; audit, scan, validate XLSX lulus. Berkas hanya latihan; identitas dan media contoh harus diganti sebelum impor nyata.
+
+## 2026-10-13 07:40 UTC | zcode | Deep | seleksi data produksi
+
+Owner menegaskan DB 209 development, bukan sumber produksi. Tidak ada dump penuh/restore, tidak menyalin .env, APP_KEY, session/token/secret, akun, atau transaksi. Audit baca-saja menunjukkan skema 202 belum dimigrasikan dan belum ada environment production unik; 209 memiliki 135 produk aktif dan 73 kandidat testimoni disetujui tanpa kaitan pesanan, serta referensi media dengan ID impor/relasi. Inventaris kandidat dan daftar tabel terlarang dicatat di docs/operations/PRODUCTION-DATA-SELECTION.md (b70c9fb3). Seeder default terbukti membuat Test Admin dan tidak dijalankan. Pending: pilihan data final/stok/media dan akun production, konfigurasi provider unik, baru migrasi dan impor selektif. Tidak ada perubahan ke DB, data, atau trafik 202 pada task ini.
+
+## 2026-10-13 08:15 UTC | zcode | Deep | keputusan data awal
+
+Owner memilih tinjau per record untuk data awal produksi, jadi 135 produk aktif, 73 kandidat testimoni, dan 850 aset siap dari development masih kandidat, bukan izin impor. Login admin memakai username ragil; password yang sudah ditulis dalam percakapan tidak dimasukkan ke file, command, log, Git, atau database. Persyaratan email nullable diperiksa di skema, nama akun masih harus dipilih; password unik harus dibuat lewat saluran aman. Keputusan tercatat di docs/operations/PRODUCTION-DATA-SELECTION.md (977f1d3d). Migrasi, impor, dan cutover belum dilakukan; database 202 tetap kosong dan situs masih standby.
+
+## 2026-10-13 08:30 UTC | zcode | Deep | kurasi per record menunggu owner
+
+Dua daftar kandidat privat dibuat dari DB development untuk persetujuan per record: katalog 135 SKU aktif, konten 15 halaman + 20 model + 73 testimoni approved yang tidak mengacu order + 3 banner. Daftar hanya berisi nama/identifier/status/harga/stok/jumlah foto tanpa data transaksi, tanpa rahasia, izin 640 www-data, tidak di Git. Lokasi dicatat di docs/operations/PRODUCTION-DATA-SELECTION.md (3a9763c7). Owner memilih tinjau per record, maka belum ada izin impor daftar ini. VPS 202 tetap belum memiliki .env production unik, belum menjalankan migrasi atau impor, dan tidak ada alih trafik. Password yang diberikan melalui percakapan tidak ditulis ke log/DB/perintah.
+
+## 2026-10-13 08:40 UTC | zcode | Deep | data development dummy
+
+Owner mengoreksi bahwa seluruh data development 209 dummy dan production harus fresh tanpa produk, penjualan, pengunjung, atau pelanggan. Semua ekspor/impor kandidat sebelumnya dibatalkan, tidak pernah dipindah ke 202. Dokumen seleksi diperbarui (785d7432) dan tetap menahan daftar privat lama agar tidak dipakai sebagai sumber. Audit migrasi menunjukkan dua migration menanam tiga kategori dan 30 sub-model bawaan dari kode; ini metadata sistem, bukan produk dummy. Tidak ada perubahan database 202, akun admin, .env, konfigurasi provider atau trafik dalam langkah ini.
+
+## 2026-10-13 09:50 UTC | zcode | Deep | skema produksi kosong selesai
+
+VPS 202: .env production dibuat sendiri (APP_KEY acak berbeda, DB user ragil_app diberi password acak khusus, APP_DEBUG=false, HTTPS wajib, provider J&T dinonaktifkan dan media lokal), tidak mengambil .env atau token 209. Migrasi pertama gagal akibat urutan nama migrasi 20260810 yang mengubah products sebelum create products. Dilanjutkan aman dengan migration create products eksplisit lalu migrate --force forward-only. Hasil: 61 tabel, 0 Pending, 0 products/orders/customers/users/visitors, 3 kategori dan 30 sub-model bawaan dari migration. Storage/cache diubah menjadi writable www-data, route/view cache berhasil; config:cache tidak dapat dipakai karena Closure pada konfigurasi (kondisi dikenal), tidak ada config.php tersisa. Rilis masih staged, trafik tidak diubah. Laporan di docs/operations/PRODUCTION-DATA-SELECTION.md (4e4482e7).
+
+## 2026-10-13 10:30 UTC | zcode | Deep | cutover live terbatas
+
+VPS 202: migration selesai (61 tabel/0 Pending), hanya 3 kategori dan 30 sub-model default; admin ragil dibuat, password owner diterima melalui stdin dan di-hash. Katalog, orders, payments, customers masing-masing 0. Vhost lama dicadangkan, current symlink ditautkan ke release staged 6630f927, vhost Laravel diaktifkan dan Nginx lulus tes/reload. Domain utama dan www 200; /up, /login, /products, /cart, /about, /faq, /cara-pemesanan, policy privacy/terms dan aset build 200; /admin tanpa login 302; berkas internal 403/404; callback J&T POST tanpa signature 401. Redis, Nginx, PHP-FPM, MySQL, queue systemd aktif; cron Laravel www-data dipasang dan schedule:run lulus. Log operasional dan keterbatasan dicatat docs/operations/PRODUCTION-CUTOVER-20261013.md (0a8ff31b). WhatsApp production dan J&T belum siap transaksi nyata, login browser belum diverifikasi; jangan nyatakan toko siap menerima pesanan. Config cache gagal karena Closure, runtime normal tanpa config.php.
+
+## 2026-10-13 10:40 UTC | zcode | Deep | backup hasil cutover teruji
+
+Backup produksi pertama sesudah migration dilakukan memakai skrip yang sudah ada di 202 (bukan dump development): 24 KB gzip terverifikasi, R2 upload berhasil. Restore drill di DB uji terpisah menunjukkan 61 tabel sumber = 61 tabel hasil dan satu akun admin pada kedua sisi; produk tetap nol. Cron backup asli tidak diubah. Bukti ditambah docs/operations/PRODUCTION-CUTOVER-20261013.md (f19f59fd). Situs /up 200 dan worker/cron aplikasi tetap hidup.
+
+## 2026-10-13 10:50 UTC | zcode | Deep | production candidate baseline
+
+Mengikuti transisi ke release profesional, branch `release/production-candidate` dibuat dan dipush sebagai pointer tepat ke baseline `6630f927`; snapshot branch dipertahankan. Tidak checkout branch kandidat dan tidak menyentuh working tree 7 berkas agent lain. Audit candidate: tidak ada secret runtime ter-track selain contoh `.env.example`/`deploy/.env.production.example`, diff check bersih. Gerbang formal belum dilanjutkan: lint snapshot masih 29 warning, data production sengaja clean-start, deploy key GitHub belum terdaftar, WhatsApp belum dikonfigurasi, callback J&T nonaktif/401. VPS 202 sudah live sebagai etalase kosong dari snapshot cepat, bukan release formal dari main/tag.
+
+## 2026-10-13 11:40 UTC | zcode | Deep | dependency matrix
+
+Discovery menyeluruh dependency production selesai dan matriks terpusat ditambahkan di docs/operations/PRODUCTION-DEPENDENCY-MATRIX.md (df8269e8). Cakupan: runtime/framework, env, DB/session/cache/Redis, queue/scheduler/Reverb, media/R2/domain, Nginx/PHP-FPM/TLS/Cloudflare, WhatsApp, J&T/callback, payment/mail, postal, analytics, OAuth, backup/restore, deploy key, config cache, serta owner/verifikasi/rollback. Tidak ada runtime, database, secret, DNS, atau trafik yang diubah oleh discovery ini; matriks membedakan live empty-store baseline dari gerbang formal/future commerce.
+
+## 2026-10-13 12:10 UTC | zcode | Deep | canonical readiness crosswalk
+
+Dokumen canonical FULL-STACK-PRODUCTION-CHECKLIST, production-readiness-plan, production-vps-env-contract, DEPLOYMENT, WhatsApp setup dan runbook dibaca silang dengan kondisi live 202. Matriks dependency diperluas (c2ed67c9) dengan gap product/release authority, CI/E2E/runtime pinning, clone migration evidence, R2 production, provider decisions, security/IDOR/CORS/SSRF, observability/alerts, deployment key/tag, config cache Closure, incident/recovery drills, serta owner/rollback/verifikasi. Empty storefront tetap baseline live, bukan full commerce go; no runtime/data change.
+
+## 2026-10-13 13:20 UTC | zcode | Deep | quality gate hijau
+
+Config cache diperbaiki (integrations closure -> nilai env serializable, commit 122f2c6f). 29 warning lint react-hooks dibereskan dengan pola resmi React: sinkronisasi prop saat render, lazy initializer, fetch asinkron, dan clamp saat render; commit storefront a7c366b8 dan admin 65243893. Hasil gate: typecheck 0 error, lint 0 warning, Vitest 354 lulus, PHPUnit 1417 lulus/1 skip, build sukses, config:cache berhasil. Semua perubahan sudah dipush ke release/initial-production-cutover.
