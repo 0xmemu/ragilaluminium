@@ -1471,7 +1471,7 @@ final class SystemHealthService
                 ? ($now->diffInDays($bulanan['at']) <= 40 ? self::STATUS_HEALTHY : self::STATUS_WARNING)
                 : self::STATUS_WARNING,
             'last' => $bulanan !== null
-                ? $bulanan['at']->locale('id')->translatedFormat($format).$wib.' ('.$bulanan['label'].')'
+                ? $bulanan['at']->locale('id')->translatedFormat($format).$wib
                 : 'Belum pernah',
             'next' => \Illuminate\Support\Carbon::now('UTC')->startOfMonth()->addMonth()->setTime(5, 0, 0)->setTimezone(config('app.timezone', 'UTC'))->locale('id')->translatedFormat($format).$wib,
             'hint' => 'Salinan cadangan bulanan jangka panjang di penyimpanan awan.',
@@ -1517,12 +1517,12 @@ final class SystemHealthService
 
         $items[] = [
             'key' => 'backup-alert',
-            'label' => 'Kondisi sistem pendukung',
+            'label' => 'Sistem pendukung',
             'status' => $alertAktif === [] ? self::STATUS_HEALTHY : self::STATUS_WARNING,
             'last' => $alertAktif === []
-                ? 'Tidak ada masalah dalam 24 jam terakhir'
-                : 'Terakhir menandai masalah '.$now->setTimestamp($alertTerbaru)->locale('id')->translatedFormat($format).$wib,
-            'next' => 'Berjalan terus, tiap 5 menit',
+                ? 'Aman (24 jam terakhir)'
+                : \Illuminate\Support\Carbon::createFromTimestamp($alertTerbaru)->setTimezone(config('app.timezone', 'UTC'))->locale('id')->translatedFormat($format).$wib,
+            'next' => 'Tiap 5 menit',
             'hint' => 'Pemeriksaan otomatis server pendukung backup dan situs.',
             'scope' => $alertAktif === []
                 ? 'Semua pemeriksaan otomatis lulus.'

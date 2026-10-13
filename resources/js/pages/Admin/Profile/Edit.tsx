@@ -58,7 +58,6 @@ export default function ProfileEdit({
   return (
     <AdminLayout
       title="Profil Saya"
-      description="Perbarui nama, username, dan password akun yang sedang login."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {mode === "view" ? (
@@ -105,11 +104,8 @@ export default function ProfileEdit({
         {/* Table-First terpadu sesuai standar panel admin */}
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           {/* Seksi 1: Identitas Akun */}
-          <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+          <div className="border-b border-border bg-muted/40 px-4 py-2.5 sm:px-6">
             <h2 className="text-sm font-semibold text-foreground">Identitas Akun</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Nama dan username akun yang digunakan untuk masuk ke panel admin.
-            </p>
           </div>
 
           <table className="w-full">
@@ -122,7 +118,6 @@ export default function ProfileEdit({
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={profile.status} />
                     <span className="text-xs font-semibold text-foreground">{profile.role_label}</span>
-                    <span className="text-xs text-muted-foreground">· Seluruh admin memiliki hak akses setara</span>
                   </div>
                 </td>
               </tr>
@@ -159,22 +154,15 @@ export default function ProfileEdit({
                   />
                   {form.errors.username ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Username untuk masuk ke panel admin. Huruf kecil, angka, titik, strip, atau garis bawah.
-                    </p>
-                  )}
+                  ) : null}
                 </td>
               </tr>
             </tbody>
           </table>
 
-          {/* Seksi 2: Keamanan & Password */}
-          <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
-            <h2 className="text-sm font-semibold text-foreground">Keamanan &amp; Kata Sandi</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Kosongkan jika kata sandi tidak diubah. Wajib isi kata sandi saat ini bila ingin mengganti.
-            </p>
+          {/* Seksi 2: Ganti Kata Sandi */}
+          <div className="border-t border-b border-border bg-muted/40 px-4 py-2.5 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Ganti Kata Sandi</h2>
           </div>
 
           <table className="w-full">
@@ -191,7 +179,7 @@ export default function ProfileEdit({
                     value={form.data.current_password}
                     onChange={(event) => form.setData("current_password", event.target.value)}
                     autoComplete="current-password"
-                    placeholder={terkunci ? "••••••••" : "Masukkan kata sandi saat ini untuk konfirmasi"}
+                    placeholder={terkunci ? "••••••••" : "Kata sandi saat ini"}
                     className="h-8 max-w-md text-xs"
                   />
                   {form.errors.current_password ? (
@@ -257,11 +245,7 @@ export default function ProfileEdit({
                   </div>
                   {form.errors.password ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Minimal 8 karakter. Buat manual atau gunakan tombol Generate.
-                    </p>
-                  )}
+                  ) : null}
                 </td>
               </tr>
               <tr>

@@ -698,15 +698,17 @@ export default function SystemHealth({
               {backup.items.map((item) => (
                 <Card
                   key={item.key}
-                  className="flex flex-col border border-border bg-card p-4"
+                  className="flex flex-col border border-border bg-card p-3.5"
                   title={`${item.hint}${item.scope ? " Cakupan: " + item.scope : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-                    <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-xs font-semibold text-foreground" title={item.label}>
+                      {item.label}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <span
                         title={`${item.hint}${item.scope ? " Cakupan: " + item.scope : ""}`}
-                        className="cursor-help text-muted-foreground/70"
+                        className="cursor-help text-muted-foreground/70 hover:text-muted-foreground"
                         aria-label={`${item.hint} Cakupan: ${item.scope}`}
                       >
                         <Icon name="info" className="size-3.5" aria-hidden="true" />
@@ -714,14 +716,14 @@ export default function SystemHealth({
                       <StatusBadge status={item.status} />
                     </div>
                   </div>
-                  <dl className="mt-2 space-y-1.5 text-xs">
+                  <dl className="mt-auto space-y-1.5 pt-3 text-[11px]">
                     <div className="flex items-baseline justify-between gap-2">
                       <dt className="shrink-0 text-muted-foreground">Terakhir</dt>
-                      <dd className="text-right font-semibold tabular-nums text-foreground">{item.last}</dd>
+                      <dd className="text-right font-medium tabular-nums text-foreground">{item.last}</dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-2 border-t border-border/40 pt-1.5">
                       <dt className="shrink-0 text-muted-foreground">Berikutnya</dt>
-                      <dd className="text-right tabular-nums text-foreground/90">{item.next}</dd>
+                      <dd className="text-right tabular-nums text-muted-foreground">{item.next}</dd>
                     </div>
                   </dl>
                 </Card>
