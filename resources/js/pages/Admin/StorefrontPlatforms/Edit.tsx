@@ -234,9 +234,6 @@ export default function StorefrontPlatformsEdit({
               ===================================================================== */}
           <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
             <h2 className="text-sm font-semibold text-foreground">Identitas Toko</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Logo dan favicon resmi untuk identitas visual etalase toko.
-            </p>
           </div>
 
           <table className="w-full text-xs">
@@ -363,9 +360,6 @@ export default function StorefrontPlatformsEdit({
               ===================================================================== */}
           <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
             <h2 className="text-sm font-semibold text-foreground">Kontak & Operasional</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Saluran komunikasi pembeli, jadwal layanan, dan alamat workshop fisik.
-            </p>
           </div>
 
           <table className="w-full text-xs">
@@ -373,7 +367,7 @@ export default function StorefrontPlatformsEdit({
               {/* Nomor Telepon / WA */}
               <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
                 <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
-                  Telepon / WhatsApp
+                  no Whatsapp
                 </th>
                 <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
@@ -408,7 +402,7 @@ export default function StorefrontPlatformsEdit({
               {/* Email Layanan */}
               <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
                 <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
-                  Email Layanan Informasi
+                  email
                 </th>
                 <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
@@ -433,7 +427,7 @@ export default function StorefrontPlatformsEdit({
               {/* Alamat Fisik */}
               <tr className="flex flex-col sm:table-row transition-colors hover:bg-muted/20">
                 <th className="w-full sm:w-64 px-4 pt-3.5 pb-1 sm:py-4 sm:px-6 text-left align-top font-semibold text-foreground">
-                  Alamat Workshop & Toko
+                  alamat toko
                 </th>
                 <td className="w-full px-4 pb-3.5 pt-1 sm:py-4 sm:px-6 align-middle">
                   {mode === "edit" ? (
@@ -486,9 +480,6 @@ export default function StorefrontPlatformsEdit({
               ===================================================================== */}
           <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
             <h2 className="text-sm font-semibold text-foreground">Tautan Resmi</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Tautan toko resmi di platform marketplace belanja online dan akun media sosial.
-            </p>
           </div>
 
           <div className="overflow-x-auto">
