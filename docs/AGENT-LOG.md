@@ -4613,3 +4613,26 @@ gagal, lalu dipulihkan persis dan test lulus lagi.
 
 Verifikasi: seluruh 354 test frontend lulus (42 berkas), tsc bersih, build
 sukses. Dengan ini Tahap 0 sampai 4 dari rencana owner selesai.
+
+## 2026-10-13 00:13 UTC | zcode | Standard | 2bbb6079 | selesai
+
+Permintaan owner: hapus kartu teks di seksi Aset Brand halaman Profil & Kontak
+Toko, lalu samakan dimensi dua kartu di seksi yang ditandai (Kontak & Jam Kerja).
+
+Akar masalah tepi bawah tidak rata: grid dua kolom memakai items-start sehingga
+tiap kartu memakai tinggi kontennya sendiri; tanpa items-start keduanya berbagi
+tinggi baris yang sama. Pola yang sama juga ada di seksi Aset Brand (Logo 184
+vs Favicon 180 px), jadi pasangan itu ikut disamakan supaya tidak ada koreksi
+ketiga untuk pola yang sama di halaman yang sama.
+
+Catatan pada kartu teks yang dihapus (favicon baru terlihat setelah muat ulang
+karena cache browser) tidak dibuang: dipindah ke Panduan halaman, dan karena
+ada dua entri guide kembar (admin.store-settings.index dan
+admin.storefront-platforms.edit) keduanya diperbarui supaya tetap identik.
+
+Verifikasi: tsc bersih, eslint bersih, build aset sukses, 354 test frontend
+lulus, pengukuran live dari browser dalam aplikasi sebelum dan sesudah
+(244/229 menjadi 244/244 px untuk Kontak & Lokasi, 184/180 menjadi 180/180 px
+untuk Logo & Favicon, tepi bawah rata), catatan Panduan tampil.
+
+Spec tidak berubah.
