@@ -4779,3 +4779,18 @@ Lingkup: Redesain struktur informasi halaman Profil & Kontak Toko (`resources/js
 Dampak spec: tidak berubah
 Untuk agent berikutnya: Jaga struktur satu permukaan tabel, jangan kembalikan ke `SectionCard` per kategori, dan hindari kelas `uppercase` pada subheader pembagi tabel (dijaga `uppercase-guard.test.ts`).
 Bukti: `npx eslint resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx` (0 error/warning), `npm run typecheck` (lulus), `npx vitest run tests/frontend/platforms.test.ts tests/frontend/admin-edit-guard.test.ts tests/frontend/uppercase-guard.test.ts` (14 lulus), `php artisan test --filter=StorefrontPlatformsAdminTest` (2 lulus, 24 assertions), `npm run build` (selesai 19.61s).
+
+## 2026-10-13 01:22 UTC | zcode | Trivial | 9dbf60d5 | selesai
+
+Permintaan owner: hapus setting Optimasi Mesin Pencari (SEO) di form kategori
+karena tidak pernah diminta.
+
+Perbaikan di resources/js/pages/Admin/Categories/Form.tsx:
+- Hapus seksi 'Optimasi Mesin Pencari (SEO)' beserta input SEO Meta Title,
+  SEO Meta Description, dan kartu pratinjau pencarian Google.
+- Hapus state seo_title dan seo_description dari useForm.
+- Hapus import Textarea yang sudah tidak digunakan.
+
+Verifikasi live dengan admin-preview pada /admin/kelola/kategori/create
+membuktikan: sections hanya ['Identitas Kategori'], ada_seo_section=false,
+ada_google_preview=false. tsc bersih, build sukses.
