@@ -39,7 +39,6 @@ interface SubModelRow {
   model_label: string
   code: string
   name: string
-  description?: string | null
   sort_order: number
   is_active: boolean
   products_count: number
@@ -118,7 +117,7 @@ export default function SubModelsIndex({
     snapshot: initialRows,
     form: reorderForm,
     url: reorderUrl,
-    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
     method: "post",
     submitOptions: { preserveScroll: true },
   })
@@ -390,7 +389,6 @@ export default function SubModelsIndex({
                   <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead className="text-left">Kode</TableHead>
                   <TableHead className="text-left">Nama Sub Model</TableHead>
-                  <TableHead className="text-left">Deskripsi</TableHead>
                   <TableHead className="text-center">Produk Aktif</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="w-[1%] whitespace-nowrap text-right pr-4">Aksi</TableHead>
@@ -401,7 +399,7 @@ export default function SubModelsIndex({
                   <React.Fragment key={row.id}>
                     {row.groupHeader ? (
                       <TableRow className="bg-surface/60">
-                        <TableCell colSpan={dragAktif ? 8 : 7} className="py-2 text-[11px] font-semibold tracking-tight text-muted-foreground">
+                        <TableCell colSpan={dragAktif ? 7 : 6} className="py-2 text-[11px] font-semibold tracking-tight text-muted-foreground">
                           {row.model_label}
                         </TableCell>
                       </TableRow>
@@ -424,9 +422,6 @@ export default function SubModelsIndex({
                       </span>
                     </TableCell>
                     <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="max-w-64 truncate text-sm text-muted-foreground">
-                      {row.description ?? "-"}
-                    </TableCell>
                     <TableCell className="text-center tabular-nums">{row.products_count}</TableCell>
                     <TableCell className="text-center">
                       <StatusBadge status={row.is_active ? "active" : "inactive"} />

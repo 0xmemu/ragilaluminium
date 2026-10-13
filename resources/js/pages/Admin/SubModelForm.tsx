@@ -7,7 +7,6 @@ import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { SearchSelect } from "@/components/admin/ui/search-select"
-import { Textarea } from "@/components/admin/ui/textarea"
 
 import AdminLayout from "@/layouts/admin-layout"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
@@ -23,7 +22,6 @@ interface SubModelData {
   product_model: string
   code: string
   name: string
-  description?: string | null
   is_active: boolean
   templates?: TemplateRow[]
   model_templates?: TemplateRow[]
@@ -53,7 +51,6 @@ export default function SubModelForm({
     product_model: subModel?.product_model ?? "",
     code: subModel?.code ?? "",
     name: subModel?.name ?? "",
-    description: subModel?.description ?? "",
     is_active: subModel?.is_active ?? true,
     templates: attributeTemplates.map((row) => ({
       attribute_name: row.attribute_name,
@@ -177,20 +174,6 @@ export default function SubModelForm({
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">Dibuat otomatis dari nama jika dikosongkan.</p>
                   )}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Deskripsi</th>
-                <td className="px-4 py-2.5">
-                  <Textarea
-                    rows={2}
-                    value={form.data.description ?? ""}
-                    onChange={(event) => form.setData("description", event.target.value)}
-                    className="text-xs"
-                  />
-                  {form.errors.description ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
-                  ) : null}
                 </td>
               </tr>
               {editing ? (

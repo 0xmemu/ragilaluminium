@@ -42,8 +42,7 @@ class SubModelController extends Controller
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('code', 'like', "%{$q}%")
-                        ->orWhere('description', 'like', "%{$q}%");
+                        ->orWhere('code', 'like', "%{$q}%");
                 });
             })
             ->when($model, fn ($query) => $query->where('product_model', $model));
@@ -101,7 +100,6 @@ class SubModelController extends Controller
                 'model_label' => CatalogLabels::model($s->product_model) ?: $s->product_model,
                 'code' => $s->code,
                 'name' => $s->name,
-                'description' => $s->description,
                 'sort_order' => $s->sort_order,
                 'is_active' => $s->is_active,
                 'products_count' => (int) ($s->products_count ?? 0),
@@ -149,7 +147,6 @@ class SubModelController extends Controller
             'product_model' => ['required', 'in:'.implode(',', SubModel::MODELS)],
             'code' => ['required', 'string', 'max:100', 'regex:/^[A-Z0-9_]+$/', Rule::unique('sub_models', 'code')->where('product_model', $request->input('product_model'))],
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
         ], [
             'code.unique' => 'Kode sub model sudah dipakai untuk model ini.',
         ], ['product_model' => 'Model produk', 'code' => 'Kode', 'name' => 'Nama sub model']);
@@ -181,7 +178,6 @@ class SubModelController extends Controller
                 'product_model' => $subModel->product_model,
                 'code' => $subModel->code,
                 'name' => $subModel->name,
-                'description' => $subModel->description,
                 'is_active' => $subModel->is_active,
             ],
             'attributeTemplates' => $subModel->attributeTemplates()
@@ -206,7 +202,6 @@ class SubModelController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
             'templates' => ['nullable', 'array', 'max:30'],
             'templates.*.attribute_name' => ['required_with:templates', 'string', 'max:100'],
