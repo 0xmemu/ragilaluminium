@@ -40,3 +40,12 @@ Hash isi kode rilis 202 selaras dengan repo 209 (selisih yang tersisa hanya akhi
 - Reverb dipasang (laravel-reverb.service, port 8080, autostart) dengan kunci baru; proxy /app sudah ada di vhost sejak persiapan; frontend dibangun ulang agar kunci masuk bundel; handshake WebSocket 101 lewat origin maupun Cloudflare.
 - Aset media hasil uji unggah owner dipulihkan: tiga varian webp dinaikkan ke R2, URL publik 200, dan model media membangun ulang URL dari disk aktif sehingga tidak perlu ubah basis data.
 - Belum diport (butuh keputusan owner): cron health-check 5 menit dan agregator alert milik 209; kanal notifikasi harus dipilih lebih dulu.
+
+## Koreksi: media produksi memakai media.ragilaluminium.com (13 Okt 2026, lanjutan)
+
+Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah tersedia di 202 sejak 10 Sep (/etc/ragilaluminium/cloudflare.env dan /root/.config/ragilaluminium/cloudflare.env): kunci R2 akun 05b9 yang menunjuk bucket media ra-media-prod dengan URL publik https://media.ragilaluminium.com. Domain itu sudah hidup sejak 2 Sep (dibuat owner lewat dashboard). Produksi sekarang memakai bucket dan domain tersebut:
+
+- shared/.env 202: kunci R2 akun 05b9, AWS_ENDPOINT akun 05b9, AWS_BUCKET=ra-media-prod, AWS_URL dan MEDIA_PUBLIC_URL=https://media.ragilaluminium.com.
+- media:disk-check PASS dengan URL domain baru; tiga varian webp aset owner tersaji 200 lewat https://media.ragilaluminium.com; situs dan admin normal.
+- Sisa percobaan dibersihkan: bucket tiri di akun Febrianafik dihapus, duplikat dan objek uji dihapus. Dev 333labs.tech tidak disentuh.
+- Catatan operasional: token yang ada tidak dapat purge cache (lakukan dari dashboard bila perlu) dan tidak memiliki izin API R2 di akun 05b9; pengelolaan bucket/domain akun tersebut lewat dashboard owner.
