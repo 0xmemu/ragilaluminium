@@ -3,10 +3,9 @@ import { Head, Link, router, useForm } from "@inertiajs/react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Field, FieldAction, FormErrorSummary } from "@/components/admin/ui/field"
-import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
+import { MediaGallerySection, type MediaGalleryItem } from "@/components/admin/media-gallery-section"
 import type { PickerProduct } from "@/components/admin/ui/ProductPicker"
 import { ProductPickerSheet } from "@/components/admin/product-picker-sheet"
-import { Icon } from "@/components/shared/icon"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -122,71 +121,41 @@ export default function TestimonialForm({
   // tidak mengetik perubahan yang dibuang diam-diam.
   const ulasanTerkunci = editing && (testimonial?.author_type ?? "customer") === "customer"
 
-  // Foto ulasan (permintaan owner 2026-09-29). Skemanya SAMA dengan form admin
-  // lain (ProductForm, ModelProducts, MasalahSolusi): daftar `media_asset_ids`
-  // berurutan, foto pertama = gambar utama. URL tempelan tetap memakai skema
-  // lama `image_urls` supaya tautan luar dan foto warisan tidak hilang.
-  const nomorFoto = React.useRef(0)
+  // Foto ulasan: satu daftar berurutan, foto pertama = gambar utama. Skema
+  // simpan tetap `media_asset_ids` (aset Media Library, terurut) + `image_urls`
+  // (tautan luar/foto warisan) supaya tautan lama tidak hilang.
   const [photos, setPhotos] = React.useState<PhotoRow[]>(() =>
     (testimonial?.photos ?? [])
       .filter((url): url is string => Boolean(url))
-      // Penghitung lokal, bukan ref: mengubah ref saat render dilarang React.
       .map((url, index) => ({ key: `awal-${index + 1}`, url })),
   )
-  const [pickerOpen, setPickerOpen] = React.useState(false)
 
   // Produk terkait (permintaan owner 2026-09-29: pakai produk picker reusable).
   // Satu ulasan menautkan satu produk; pilihannya live lewat onSelect.
   const [produkPicked, setProdukPicked] = React.useState<PickerProduct | null>(initialProduct)
 
-  const photosPenuh = photos.length >= maxPhotos
   // Galat foto datang dengan kunci yang dikirim server; `photos` dirakit saat
   // submit sehingga bukan kunci data form.
   const galatForm = form.errors as Record<string, string | undefined>
   const galatFoto = galatForm.media_asset_ids ?? galatForm.image_urls ?? galatForm.image_url ?? galatForm.image
 
-  function tambahDariLibrary(media: PickedMedia[]) {
-    if (media.length === 0) return
-    setPhotos((current) => {
-      const adaId = new Set(current.map((row) => row.assetId).filter(Boolean))
-      const baru = media
-        .filter((asset) => !adaId.has(String(asset.assetId)))
-        .map((asset) => {
-          nomorFoto.current += 1
-          return {
-            key: `lib-${asset.assetId}-${nomorFoto.current}`,
-            url: asset.thumbUrl,
-            assetId: String(asset.assetId),
-            label: asset.label,
-          }
-        })
-      return [...current, ...baru].slice(0, maxPhotos)
-    })
-  }
+  // Pemetaan dua arah antara baris foto halaman ini dan item MediaGallerySection.
+  const itemFoto: MediaGalleryItem[] = photos.map((row) => ({
+    key: row.key,
+    assetId: row.assetId ? Number(row.assetId) : undefined,
+    url: row.url,
+    label: row.label,
+  }))
 
-  function hapusFoto(key: string) {
-    setPhotos((current) => current.filter((row) => row.key !== key))
-  }
-
-  /** Geser foto satu posisi ke kiri/kanan; urutan daftar = urutan tampil. */
-  function geserFoto(key: string, arah: -1 | 1) {
-    setPhotos((current) => {
-      const dari = current.findIndex((row) => row.key === key)
-      if (dari < 0) return current
-      // Geser hanya di dalam kelompoknya (Library atau URL). Skema simpan
-      // menaruh foto Library lebih dulu, jadi mengizinkan URL naik melewati
-      // foto Library akan membuat urutan di layar berbeda dari hasil simpan.
-      const row = current[dari]
-      let ke = dari + arah
-      while (ke >= 0 && ke < current.length && Boolean(current[ke].assetId) !== Boolean(row.assetId)) {
-        ke += arah
-      }
-      if (ke < 0 || ke >= current.length) return current
-      const next = [...current]
-      const [dipindah] = next.splice(dari, 1)
-      next.splice(ke, 0, dipindah)
-      return next
-    })
+  function gantiFoto(next: MediaGalleryItem[]) {
+    setPhotos(
+      next.map((item) => ({
+        key: item.key,
+        url: item.url,
+        assetId: item.assetId ? String(item.assetId) : undefined,
+        label: item.label,
+      })),
+    )
   }
 
   // Dua keadaan saja: tambah dan ubah. Keadaan baca pindah ke popup detail.
@@ -258,127 +227,16 @@ export default function TestimonialForm({
             pelanggan. Yang bisa diubah admin: lokasi, produk terkait, foto, dan status moderasi.
           </div>
         ) : null}
+        <MediaGallerySection
+          title="Foto ulasan"
+          items={itemFoto}
+          onChange={gantiFoto}
+          max={maxPhotos}
+          errors={[galatFoto]}
+        />
+
         <section className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-            <Field
-              id="testimonial-image-library"
-              label="Foto ulasan"
-              error={galatFoto}
-              hint={
-                // Foto hanya dari Media Library (koreksi owner 2026-09-29:
-                // "buang ini, media picker sudah cukup"). Isian URL tempelan
-                // dihapus; foto lama yang tersimpan sebagai tautan tetap
-                // tampil di grid ini dan bisa dihapus.
-                (isMarketplace
-                  ? "Wajib. Screenshot Shopee/WhatsApp dari Media Library."
-                  : "Opsional. Pilih dari Media Library.")
-                + ` Boleh lebih dari satu foto (maksimal ${maxPhotos}); foto pertama jadi gambar utama, dan di storefront semua foto bisa digeser saat diperbesar.`
-              }
-              required={isMarketplace}
-              className="sm:col-span-2"
-            >
-              <div className="space-y-3">
-                {photos.length ? (
-                  // Grid, badge, geser, dan hapus mengikuti pola galeri Model
-                  // Produk supaya cara kerjanya sama di seluruh panel admin.
-                  <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" aria-label="Daftar foto ulasan">
-                    {photos.map((row, index) => (
-                      <li key={row.key} className="group relative">
-                        <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
-                          <img
-                            src={row.url}
-                            alt={row.label ?? `Foto ulasan ${index + 1}`}
-                            className="size-full object-cover"
-                          />
-                          {index === 0 ? (
-                            <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
-                              Utama
-                            </span>
-                          ) : null}
-                          {!row.assetId ? (
-                            <span
-                              className="absolute right-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-semibold text-background"
-                              title="Foto lama dari tautan luar. Masih tampil di storefront; hapus lalu pilih ulang dari Media Library bila ingin menggantinya."
-                            >
-                              URL
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-1 flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => geserFoto(row.key, -1)}
-                              disabled={index === 0}
-                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                              aria-label={`Geser foto ${index + 1} ke kiri`}
-                            >
-                              <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => geserFoto(row.key, 1)}
-                              disabled={index === photos.length - 1}
-                              className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                              aria-label={`Geser foto ${index + 1} ke kanan`}
-                            >
-                              <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => hapusFoto(row.key)}
-                            className="rounded p-0.5 text-muted-foreground transition hover:text-destructive"
-                            aria-label={`Hapus foto ${index + 1}`}
-                          >
-                            <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
-                          </button>
-                        </div>
-                        {row.label ? (
-                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground" title={row.label}>
-                            {row.label}
-                          </p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  // Kotak kosong BISA DIKLIK untuk membuka Media Library. Bukan
-                  // zona drag&drop (catatan owner 2026-09-29: drag&drop harusnya
-                  // bisa di klik).
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="w-full rounded-md border border-dashed border-border py-8 text-center transition hover:border-foreground/40 hover:bg-muted/30"
-                  >
-                    <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
-                    <p className="mt-1.5 text-xs font-medium text-foreground">
-                      Klik untuk pilih foto dari Media Library
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Boleh pilih lebih dari satu foto.
-                    </p>
-                  </button>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setPickerOpen(true)}
-                    disabled={photosPenuh}
-                    title={photosPenuh ? `Maksimal ${maxPhotos} foto. Hapus satu foto dulu untuk menambah.` : undefined}
-                  >
-                    <Icon name="images" className="size-4" aria-hidden="true" />
-                    Tambah dari Media Library
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {photos.length} dari {maxPhotos} foto dipakai.
-                  {photos.length > 1 ? " Urutan tampil mengikuti urutan grid ini." : ""}
-                </p>
-              </div>
-            </Field>
             {/* Form isian setelah foto: DUA baris, dua kolom (revisi owner
                 2026-09-29 dari satu baris empat kolom). Intent marketplace
                 hanya punya dua isian, jadi cukup satu baris. */}
@@ -529,13 +387,6 @@ export default function TestimonialForm({
           </div>
         </section>
       </form>
-      <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onPick={tambahDariLibrary}
-        multiple
-        title="Pilih foto ulasan dari Media Library"
-      />
 </AdminLayout>
   )
 }

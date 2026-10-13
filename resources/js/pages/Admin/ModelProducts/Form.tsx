@@ -1,7 +1,8 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { MediaPickerSheet, type PickedMedia } from "@/components/admin/media-picker-sheet"
+import { MediaGallerySection, type MediaGalleryItem } from "@/components/admin/media-gallery-section"
+import type { PickedMedia } from "@/components/admin/media-picker"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
@@ -107,14 +108,20 @@ export default function ModelProductForm({
     status: modelProduct?.status ?? "draft",
   })
 
-  // Satu daftar berurutan, model sama dengan seksi Foto Produk di form produk:
-  // pilihan pertama jadi gambar utama, pilihan berikutnya mengisi galeri.
-  // Server menyimpan urutan galeri, jadi urutan di sini = urutan hero storefront.
-  const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>(() => [
-    ...(media ? [media] : []),
-    ...(gallery ?? []),
+  // Satu daftar berurutan (pola seksi Foto Produk): pilihan pertama jadi
+  // gambar utama, pilihan berikutnya mengisi galeri. Server menyimpan urutan
+  // galeri, jadi urutan di sini = urutan hero storefront.
+  const [pickedMedia, setPickedMedia] = React.useState<MediaGalleryItem[]>(() => [
+    ...(media
+      ? [{ key: `lib-${media.assetId}`, assetId: media.assetId, url: media.thumbUrl, label: media.label }]
+      : []),
+    ...(gallery ?? []).map((item) => ({
+      key: `lib-${item.assetId}`,
+      assetId: item.assetId,
+      url: item.thumbUrl,
+      label: item.label,
+    })),
   ])
-  const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
   const maxMedia = maxGallery + 1
 
   // Sinkron dari snapshot server HANYA saat isinya benar-benar berubah:
@@ -127,46 +134,27 @@ export default function ModelProductForm({
   React.useEffect(() => {
     if (appliedSignature.current === daftarSignature) return
     appliedSignature.current = daftarSignature
-    const awal = [...(media ? [media] : []), ...(gallery ?? [])]
+    const awal: MediaGalleryItem[] = [
+      ...(media
+        ? [{ key: `lib-${media.assetId}`, assetId: media.assetId, url: media.thumbUrl, label: media.label }]
+        : []),
+      ...(gallery ?? []).map((item) => ({
+        key: `lib-${item.assetId}`,
+        assetId: item.assetId,
+        url: item.thumbUrl,
+        label: item.label,
+      })),
+    ]
     setPickedMedia(awal)
     form.setData("media_asset_id", awal[0]?.assetId ?? null)
-    form.setData("gallery_asset_ids", awal.slice(1).map((item) => item.assetId))
+    form.setData("gallery_asset_ids", awal.slice(1).flatMap((item) => (item.assetId ? [item.assetId] : [])))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daftarSignature])
 
-  function terapkanMedia(next: PickedMedia[]) {
+  function terapkanMedia(next: MediaGalleryItem[]) {
     setPickedMedia(next)
     form.setData("media_asset_id", next[0]?.assetId ?? null)
-    form.setData("gallery_asset_ids", next.slice(1).map((item) => item.assetId))
-  }
-
-  // Dipakai pemicu Tambah dan dropzone: pilihan pertama jadi gambar utama,
-  // pilihan berikutnya mengisi galeri. Duplikat dilewati, kuota dipotong diam-diam.
-  function tambahMedia(picked: PickedMedia[]) {
-    const seen = new Set(pickedMedia.map((item) => item.assetId))
-    const next = [...pickedMedia]
-    for (const item of picked) {
-      if (seen.has(item.assetId)) continue
-      if (next.length >= maxMedia) break
-      seen.add(item.assetId)
-      next.push(item)
-    }
-    terapkanMedia(next)
-  }
-
-  function moveMedia(from: number, to: number) {
-    if (from === to || to < 0 || to >= pickedMedia.length) return
-    const next = [...pickedMedia]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    terapkanMedia(next)
-  }
-
-  function hapusMedia(assetId: number) {
-    const next = pickedMedia.filter((item) => item.assetId !== assetId)
-    // Menghapus semua foto juga melepas gambar utama lama berbasis URL.
-    if (next.length === 0) form.setData("image_url", "")
-    terapkanMedia(next)
+    form.setData("gallery_asset_ids", next.slice(1).flatMap((item) => (item.assetId ? [item.assetId] : [])))
   }
 
   // Gerbang isi (kontrak "logika tombol"): tiga kolom wajibnya mengikuti aturan
@@ -391,209 +379,18 @@ export default function ModelProductForm({
           })()}
         </SectionCard>
 
-        <SectionCard
-          title={`Media model (${pickedMedia.length} foto)`}
-          icon="image"
-          action={
-            pickedMedia.length < maxMedia ? (
-              <MediaPickerSheet
-                title="Media model"
-                multiple
-                onPick={tambahMedia}
-                trigger={(open) => (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    onClick={open}
-                    title="Tambah media dari Media Library"
-                  >
-                    <Icon name="plus" className="size-3.5" aria-hidden="true" />
-                    Tambah
-                  </Button>
-                )}
-              />
-            ) : null
+        <MediaGallerySection
+          title="Media model"
+          items={pickedMedia}
+          onChange={terapkanMedia}
+          max={maxMedia}
+          legacy={
+            form.data.image_url
+              ? { url: form.data.image_url, onClear: () => form.setData("image_url", "") }
+              : null
           }
-        >
-          {pickedMedia.length === 0 && form.data.image_url ? (
-            <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-              <li className="relative select-none">
-                <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
-                  <img
-                    src={form.data.image_url}
-                    alt="Gambar utama lama"
-                    className="pointer-events-none size-full object-cover select-none"
-                    draggable={false}
-                  />
-                  <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">
-                    Utama
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => form.setData("image_url", "")}
-                  className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
-                  aria-label="Hapus gambar utama lama"
-                  title="Hapus gambar utama lama"
-                >
-                  <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </button>
-              </li>
-              {pickedMedia.length < maxMedia ? (
-                <li>
-                  <MediaPickerSheet
-                    title="Media model"
-                    multiple
-                    onPick={tambahMedia}
-                    trigger={(open) => (
-                      <button
-                        type="button"
-                        onClick={open}
-                        aria-label="Tambah media dari Media Library"
-                        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
-                      >
-                        <Icon name="plus" className="size-5" aria-hidden="true" />
-                      </button>
-                    )}
-                  />
-                </li>
-              ) : null}
-            </ul>
-          ) : pickedMedia.length ? (
-            <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-              {pickedMedia.map((item, index) => (
-                <li
-                  key={item.assetId}
-                  className={cn(
-                    "group relative cursor-grab select-none transition-transform active:cursor-grabbing",
-                    dragMediaIndex === index ? "scale-95 opacity-40" : "opacity-100",
-                  )}
-                  draggable
-                  onDragStart={(event) => {
-                    setDragMediaIndex(index)
-                    event.dataTransfer.effectAllowed = "move"
-                    event.dataTransfer.setData("text/plain", String(index))
-                  }}
-                  onDragOver={(event) => {
-                    event.preventDefault()
-                    event.dataTransfer.dropEffect = "move"
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault()
-                    const dariTeks = event.dataTransfer?.getData("text/plain")
-                    const from = dragMediaIndex !== null ? dragMediaIndex : dariTeks ? parseInt(dariTeks, 10) : null
-                    if (from !== null && !isNaN(from)) moveMedia(from, index)
-                    setDragMediaIndex(null)
-                  }}
-                  onDragEnd={() => setDragMediaIndex(null)}
-                >
-                  <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
-                    {item.thumbUrl ? (
-                      <img
-                        src={item.thumbUrl}
-                        alt=""
-                        className="pointer-events-none size-full object-cover select-none"
-                        draggable={false}
-                      />
-                    ) : (
-                      <span className="flex size-full items-center justify-center text-muted-foreground">
-                        <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                      </span>
-                    )}
-                    {index === 0 ? (
-                      <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">
-                        Utama
-                      </span>
-                    ) : null}
-                  </span>
-
-                  {/* Tombol geser cepat kiri/kanan di hover */}
-                  <div className="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        moveMedia(index, index - 1)
-                      }}
-                      className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
-                      title="Geser ke kiri"
-                    >
-                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === pickedMedia.length - 1}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        moveMedia(index, index + 1)
-                      }}
-                      className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
-                      title="Geser ke kanan"
-                    >
-                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => hapusMedia(item.assetId)}
-                    className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
-                    aria-label={`Hapus ${item.label || "media"}`}
-                    title="Hapus foto"
-                  >
-                    <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  </button>
-                </li>
-              ))}
-              {pickedMedia.length < maxMedia ? (
-                <li>
-                  <MediaPickerSheet
-                    title="Media model"
-                    multiple
-                    onPick={tambahMedia}
-                    trigger={(open) => (
-                      <button
-                        type="button"
-                        onClick={open}
-                        aria-label="Tambah media dari Media Library"
-                        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
-                      >
-                        <Icon name="plus" className="size-5" aria-hidden="true" />
-                      </button>
-                    )}
-                  />
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <MediaPickerSheet
-              title="Media model"
-              multiple
-              onPick={tambahMedia}
-              trigger={(open) => (
-                <button
-                  type="button"
-                  onClick={open}
-                  className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-surface-muted/30 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                >
-                  <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                  <span className="text-xs font-medium">Unggah atau pilih media dari Media Library</span>
-                </button>
-              )}
-            />
-          )}
-          {form.errors.media_asset_id ? (
-            <p className="mt-2 text-xs text-destructive">{form.errors.media_asset_id}</p>
-          ) : null}
-          {form.errors.image_url ? (
-            <p className="mt-2 text-xs text-destructive">{form.errors.image_url}</p>
-          ) : null}
-          {form.errors.gallery_asset_ids ? (
-            <p className="mt-2 text-xs text-destructive">{form.errors.gallery_asset_ids}</p>
-          ) : null}
-        </SectionCard>
+          errors={[form.errors.media_asset_id, form.errors.image_url, form.errors.gallery_asset_ids]}
+        />
 
         <SectionCard
           title="Setelan tampilan media"
