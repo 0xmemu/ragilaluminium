@@ -4677,3 +4677,33 @@ Verifikasi: tsc bersih, eslint 0 warning pada berkas yang diubah, build sukses,
 tanpa tombol Edit ganda (0 disabled input), Masalah Solusi hanya 1 tombol Atur meta,
 Cara Pemesanan 0 disabled input dan tombol tambah/hapus langkah aktif, Dokumen
 Halaman 0 tombol di header (clean hub), dan Beranda mode view hanya tombol Edit.
+
+## 2026-10-13 00:39 UTC | zcode | Standard | d82e4098 | selesai
+
+Permintaan owner: "coba dilihat dengan seksama" pada halaman /admin/kelola/kategori/create.
+
+Temuan: kolom Slug menumpuk karena kelas pl-22 tidak ada di skala Tailwind
+v3.4.17, sehingga aturannya tidak pernah dibuat dan padding kiri tetap 10.5px
+padahal awalan /products/ memakai ruang 10.5 sampai 76.5px. Sisiran regex
+seluruh resources/js (tsx dan ts) menemukan satu lagi keluarga yang sama:
+size-18 di catatan produk checkout; thumbnail tetap 64px di layar lebar
+padahal maksudnya 72px. Keduanya diperbaiki (pl-24 dan size-[4.5rem]); tidak
+ada kelas mati lain di repo.
+
+Temuan sampingan yang TIDAK dikerjakan (di luar lingkup, terbuka):
+1. Primitif Field mengkloning id ke anak pertama, jadi kolom Slug punya dua
+   id cat-slug (pembungkus div dan input) dan label menunjuk ke div sehingga
+   klik label tidak memfokuskan kolom. Perbaikan menyentuh primitif bersama,
+   perlu keputusan owner.
+2. Peringatan eslint set-state-in-effect di checkout-item-notes.tsx baris 44
+   sudah ada sejak commit 4bc66d1c (15 Agu 2026); lint berkas itu memang sudah
+   merah sebelum perubahan ini.
+
+Verifikasi: tsc bersih, 354 test frontend lulus, build sukses, pengukuran
+live (padding 10.5 jadi 84px, jarak teks 8px, aturan size-[4.5rem] hidup
+63px di akar admin 14px). Push sempat ditolak hook karena typecheck menabrak
+WIP agent lain di Beranda/Index.tsx (belum di-commit, versi HEAD bersih);
+SKIP_BUILD_CHECK=1 dipakai sesuai petunjuk hook setelah commit dipastikan
+lolos tsc, build, dan test pada keadaan yang sama sebelumnya.
+
+Spec tidak berubah.
