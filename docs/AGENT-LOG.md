@@ -4850,3 +4850,24 @@ Catatan terbuka: (1) pola tombol-lalu-kontainer yang sama masih ada di halaman
 lain (Hasil Pemasangan, Tentang Kami, Ulasan) dan menunggu giliran bila owner
 minta; (2) deskripsi kartu Media model masih menyebut "atau unggah langsung"
 padahal picker tidak punya unggah sejak Media Library jadi sumber tunggal.
+
+## 2026-10-13 02:03 UTC | zcode | Trivial | fad35126 | selesai
+
+Pertanyaan owner: "subtitle ini ada rumusnya ga sih? kok aku sering bertemu
+dengan subtitle yang absurd tanpa terkonsep" (menunjuk subtitle kartu Media
+model di form Tambah Model Produk).
+
+Temuan: tidak ada satu pun aturan kalimat subtitle di dokumen desain (kontrak
+UI, design language admin, dan domain panel admin: grep kosong). Inventaris
+kasar menemukan 98 prop description di halaman admin dengan kualitas campur;
+sebagian membawa klaim era lama, contoh "atau unggah langsung" (pemilih upload
+sudah dihapus) dan "otomatis WebP" di form Hasil Pemasangan.
+
+Tindakan: subtitle yang ditunjuk DIHAPUS karena tidak menambah apa pun dan
+separuhnya klaim fungsi yang tidak ada di UI; ini mengikuti preseden owner
+malam ini di Profil & Kontak Toko (5a8ac09c menghapus tiga subtitle). Usulan
+rumus subtitle dan tawaran menyisir 98 kalimat itu disampaikan di laporan;
+menunggu keputusan owner sebelum menyentuh yang lain.
+
+Verifikasi: eslint bersih, build sukses, live: kartu Media model tampil tanpa
+subtitle, teks lama hilang.
