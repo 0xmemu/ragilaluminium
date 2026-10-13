@@ -2,7 +2,6 @@ import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { MediaPicker } from "@/components/admin/media-picker"
-import { Badge } from "@/components/admin/ui/badge"
 import { Button } from "@/components/admin/ui/button"
 import { CopyButton } from "@/components/admin/ui/copy-button"
 import { FormErrorSummary } from "@/components/admin/ui/field"
@@ -486,8 +485,7 @@ export default function StorefrontPlatformsEdit({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border bg-muted/20 text-left text-[11px] font-semibold text-muted-foreground">
-                  <th className="w-48 px-4 py-3 sm:px-6">Platform</th>
-                  <th className="w-32 px-4 py-3">Kanal</th>
+                  <th className="w-56 px-4 py-3 sm:px-6">Platform</th>
                   <th className="px-4 py-3">Tautan URL</th>
                   {mode === "view" ? <th className="w-32 px-4 py-3 text-right sm:pr-6">Aksi</th> : null}
                 </tr>
@@ -496,7 +494,7 @@ export default function StorefrontPlatformsEdit({
                 {/* Subjudul Kelompok Marketplace */}
                 {marketplaceRows.length > 0 ? (
                   <tr className="bg-muted/30">
-                    <td colSpan={mode === "view" ? 4 : 3} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
+                    <td colSpan={mode === "view" ? 3 : 2} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
                       Marketplace Belanja Online
                     </td>
                   </tr>
@@ -519,11 +517,6 @@ export default function StorefrontPlatformsEdit({
                           )}
                           <span className="font-medium text-foreground">{row.label}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <Badge variant="secondary" className="font-normal text-[11px] px-2 py-0.5">
-                          Marketplace
-                        </Badge>
                       </td>
                       <td className="px-4 py-3 align-middle">
                         {mode === "edit" ? (
@@ -576,7 +569,7 @@ export default function StorefrontPlatformsEdit({
                 {/* Subjudul Kelompok Media Sosial */}
                 {socialRows.length > 0 ? (
                   <tr className="bg-muted/30">
-                    <td colSpan={mode === "view" ? 4 : 3} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
+                    <td colSpan={mode === "view" ? 3 : 2} className="px-4 py-2 sm:px-6 text-xs font-semibold text-muted-foreground">
                       Media Sosial Resmi
                     </td>
                   </tr>
@@ -599,11 +592,6 @@ export default function StorefrontPlatformsEdit({
                           )}
                           <span className="font-medium text-foreground">{row.label}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <Badge variant="outline" className="font-normal text-[11px] px-2 py-0.5 text-muted-foreground">
-                          Media Sosial
-                        </Badge>
                       </td>
                       <td className="px-4 py-3 align-middle">
                         {mode === "edit" ? (
