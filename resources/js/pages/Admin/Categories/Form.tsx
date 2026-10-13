@@ -1,9 +1,8 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -56,8 +55,8 @@ export default function CategoryForm({
   })
 
   // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
-  // `required` CategoryController, jadi tidak ada aturan baru di frontend. Di
-  // halaman edit tombolnya juga menunggu sampai ada perubahan.
+  // `required` CategoryController. Pada halaman edit, tombol juga menunggu
+  // sampai ada perubahan sebelum bisa disimpan.
   const gerbang = {
     fields: { name: "Nama Kategori" },
     requireChange: Boolean(category),
@@ -76,6 +75,8 @@ export default function CategoryForm({
     }
   }
 
+  const publicProductExample = storeExampleUrl(`/products/${form.data.slug || "kategori"}`)
+
   return (
     <AdminLayout
       title={title}
@@ -87,7 +88,8 @@ export default function CategoryForm({
             <Link href={backUrl}>Batal</Link>
           </Button>
           <SubmitGateButton
-            form={form} {...gerbang}
+            form={form}
+            {...gerbang}
             formId="category-form"
             label={category ? "Simpan" : "Tambah"}
             processing={form.processing}
@@ -97,25 +99,28 @@ export default function CategoryForm({
     >
       <Head title={`${title} | Admin`} />
 
-      <form id="category-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full max-w-5xl space-y-6">
+      <form
+        id="category-form"
+        onSubmit={jagaGerbang(gerbang, form, submit)}
+        className="w-full space-y-6"
+      >
         <FormErrorSummary errors={form.errors} />
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-          {/* Kolom Kiri / Form Utama */}
-          <div className="min-w-0 space-y-6">
-            {/* 1. Identitas Kategori */}
-            <SectionCard
-              title="Identitas Kategori"
-              description="Informasi dasar, penamaan, dan struktur URL untuk kategori di katalog website."
-            >
-              <FieldGrid>
-                <Field
-                  id="cat-name"
-                  label="Nama Kategori"
-                  required
-                  error={form.errors.name}
-                  hint="Nama resmi yang tampil di menu navigasi toko."
-                >
+        {/* 1. Identitas Kategori (Table-First) */}
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="border-b border-border bg-muted/40 px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Identitas Kategori</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Informasi dasar, penamaan, dan struktur URL untuk kategori di katalog website.
+            </p>
+          </div>
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Nama Kategori <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-3">
                   <Input
                     id="cat-name"
                     value={form.data.name}
@@ -131,47 +136,62 @@ export default function CategoryForm({
                     }}
                     placeholder="contoh: Jendela Aluminium"
                     required
+                    className="max-w-md"
                   />
-                </Field>
+                  {form.errors.name ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Nama resmi yang tampil di menu navigasi toko.
+                    </p>
+                  )}
+                </td>
+              </tr>
 
-                <Field
-                  id="cat-code"
-                  label="Kode Kategori"
-                  hint={
-                    category
-                      ? (category.products_count ?? 0) > 0
-                        ? `Kode terkunci karena sudah dipakai ${category.products_count} produk. Kode ini menjadi awalan SKU produk di dalamnya.`
-                        : "Kode identifikasi internal kategori di sistem."
-                      : "Dihasilkan otomatis oleh sistem dari nama kategori (tidak perlu diisi manual)."
-                  }
-                >
-                  <Input
-                    id="cat-code"
-                    value={
-                      category
-                        ? form.data.code
-                        : form.data.name
-                        ? form.data.name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")
-                        : "(otomatis dibuat oleh sistem)"
-                    }
-                    readOnly
-                    disabled
-                    className="font-mono bg-muted text-muted-foreground cursor-not-allowed"
-                  />
-                </Field>
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Kode Kategori
+                </th>
+                <td className="px-4 py-3">
+                  {category ? (
+                    <div className="space-y-1">
+                      <p className="font-mono text-xs font-semibold text-foreground">
+                        {form.data.code}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(category.products_count ?? 0) > 0
+                          ? `Kode terkunci karena sudah dipakai ${category.products_count} produk. Menjadi awalan SKU produk di dalamnya.`
+                          : "Kode identifikasi internal kategori di sistem."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {form.data.name
+                          ? form.data.name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+                          : "(Dihasilkan otomatis oleh sistem dari nama kategori)"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Dihasilkan otomatis oleh sistem saat disimpan (tidak perlu diisi manual).
+                      </p>
+                    </div>
+                  )}
+                  {form.errors.code ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.code}</p>
+                  ) : null}
+                </td>
+              </tr>
 
-                <Field
-                  id="cat-slug"
-                  label="Slug URL"
-                  error={form.errors.slug}
-                  hint={`Alamat link publik toko: ${storeExampleUrl("/products/")}{slug}. Otomatis dibuat jika dikosongkan.`}
-                >
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Slug URL
+                </th>
+                <td className="px-4 py-3">
+                  <div className="flex max-w-md items-center rounded-md border border-border bg-surface px-3 shadow-xs focus-within:ring-1 focus-within:ring-ring">
+                    <span className="font-mono text-xs text-muted-foreground shrink-0">
                       /products/
                     </span>
-                    {/* Padding kiri harus melewati awalan /products/ (sekitar 66px) supaya ketikan tidak menumpuk di atasnya. */}
-                    <Input
+                    <input
                       id="cat-slug"
                       value={form.data.slug}
                       onChange={(e) =>
@@ -182,17 +202,24 @@ export default function CategoryForm({
                           ? form.data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
                           : "otomatis-dari-nama"
                       }
-                      className="pl-24 font-mono text-xs"
+                      className="w-full bg-transparent py-1.5 pl-1 font-mono text-xs text-foreground outline-none"
                     />
                   </div>
-                </Field>
+                  {form.errors.slug ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.slug}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Alamat link publik toko: {storeExampleUrl("/products/")}{form.data.slug || "{slug}"}. Otomatis dibuat jika dikosongkan.
+                    </p>
+                  )}
+                </td>
+              </tr>
 
-                <Field
-                  id="cat-order"
-                  label="Urutan Tampil"
-                  error={form.errors.sort_order}
-                  hint="Angka 1 tampil paling depan di menu katalog. Baris baru otomatis ditaruh paling belakang."
-                >
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Urutan Tampil
+                </th>
+                <td className="px-4 py-3">
                   <Input
                     id="cat-order"
                     type="number"
@@ -200,23 +227,61 @@ export default function CategoryForm({
                     value={form.data.sort_order}
                     onChange={(e) => form.setData("sort_order", e.target.value)}
                     placeholder="1"
+                    className="w-28 tabular-nums"
                   />
-                </Field>
-              </FieldGrid>
-            </SectionCard>
+                  {form.errors.sort_order ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.sort_order}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Angka 1 tampil paling depan di menu katalog. Baris baru otomatis ditaruh paling belakang.
+                    </p>
+                  )}
+                </td>
+              </tr>
 
-            {/* 2. SEO & Meta Search */}
-            <SectionCard
-              title="Optimasi Mesin Pencari (SEO)"
-              description="Kelola bagaimana halaman kategori ini tampil di hasil pencarian Google."
-            >
-              <div className="space-y-4">
-                <Field
-                  id="cat-seo-title"
-                  label="SEO Meta Title"
-                  error={form.errors.seo_title}
-                  hint="Judul yang dibaca bot mesin pencari (direkomendasikan 50–60 karakter)."
-                >
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Status Kategori
+                </th>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <CheckboxField
+                      id="cat-is-active"
+                      checked={form.data.is_active}
+                      onChange={(checked) => form.setData("is_active", checked)}
+                      label={
+                        <span className="font-semibold text-foreground text-xs">
+                          Kategori Aktif
+                        </span>
+                      }
+                      standalone
+                    />
+                    <StatusBadge status={form.data.is_active ? "active" : "inactive"} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik.
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 2. Optimasi Mesin Pencari (SEO) (Table-First) */}
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="border-b border-border bg-muted/40 px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Optimasi Mesin Pencari (SEO)</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Kelola bagaimana halaman kategori ini tampil di hasil pencarian Google.
+            </p>
+          </div>
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  SEO Meta Title
+                </th>
+                <td className="px-4 py-3">
                   <Input
                     id="cat-seo-title"
                     value={form.data.seo_title}
@@ -227,15 +292,23 @@ export default function CategoryForm({
                         : "Judul halaman kategori untuk SEO"
                     }
                     maxLength={100}
+                    className="max-w-xl"
                   />
-                </Field>
+                  {form.errors.seo_title ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.seo_title}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Judul yang dibaca bot mesin pencari (direkomendasikan 50-60 karakter).
+                    </p>
+                  )}
+                </td>
+              </tr>
 
-                <Field
-                  id="cat-seo-desc"
-                  label="SEO Meta Description"
-                  error={form.errors.seo_description}
-                  hint="Ringkasan isi kategori yang muncul di cuplikan Google (direkomendasikan 120–160 karakter)."
-                >
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  SEO Meta Description
+                </th>
+                <td className="px-4 py-3">
                   <Textarea
                     id="cat-seo-desc"
                     rows={3}
@@ -243,92 +316,101 @@ export default function CategoryForm({
                     onChange={(e) => form.setData("seo_description", e.target.value)}
                     placeholder="Deskripsi singkat mengenai produk-produk di kategori ini..."
                     maxLength={300}
+                    className="max-w-2xl"
                   />
-                </Field>
+                  {form.errors.seo_description ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.seo_description}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Ringkasan isi kategori yang muncul di cuplikan Google (direkomendasikan 120-160 karakter).
+                    </p>
+                  )}
+                </td>
+              </tr>
 
-                {/* Pratinjau SERP Google */}
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1.5">
-                  <p className="text-[11px] font-semibold text-muted-foreground">
-                    Pratinjau Hasil Pencarian Google
-                  </p>
-                  <p className="text-xs text-success truncate font-mono">
-                    https://ragilaluminium.com/products/{form.data.slug || "kategori"}
-                  </p>
-                  <p className="text-sm font-semibold text-primary truncate hover:underline cursor-pointer">
-                    {form.data.seo_title || form.data.name || "Kategori Produk"} · Ragil Aluminium
-                  </p>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {form.data.seo_description ||
-                      "Jual produk aluminium berkualitas tinggi langsung dari workshop Ragil Aluminium. Bergaransi resmi dan pengerjaan presisi."}
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* Kolom Kanan / Sidebar Info & Status */}
-          <aside className="space-y-6 xl:sticky xl:top-24">
-            {/* Status Card */}
-            <SectionCard
-              title="Status Kategori"
-              action={<StatusBadge status={form.data.is_active ? "active" : "inactive"} />}
-            >
-              <CheckboxField
-                id="cat-is-active"
-                checked={form.data.is_active}
-                onChange={(checked) => form.setData("is_active", checked)}
-                label={
-                  <div className="text-xs leading-5">
-                    <span className="font-semibold text-foreground">Kategori Aktif</span>
-                    <p className="text-muted-foreground">
-                      Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik.
+              <tr>
+                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                  Pratinjau Hasil Pencarian
+                </th>
+                <td className="px-4 py-3">
+                  <div className="max-w-2xl rounded-lg border border-border bg-muted/30 p-4 space-y-1.5">
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      Pratinjau Hasil Pencarian Google
+                    </p>
+                    <p className="text-xs text-success truncate font-mono">
+                      {publicProductExample}
+                    </p>
+                    <p className="text-sm font-semibold text-primary truncate">
+                      {form.data.seo_title || form.data.name || "Kategori Produk"} . Ragil Aluminium
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {form.data.seo_description ||
+                        "Jual produk aluminium berkualitas tinggi langsung dari workshop Ragil Aluminium. Bergaransi resmi dan pengerjaan presisi."}
                     </p>
                   </div>
-                }
-                standalone
-              />
-            </SectionCard>
-
-            {/* Hubungan Produk & Link Eksternal */}
-            {category ? (
-              <SectionCard title="Produk Terkait">
-                <div className="space-y-3">
-                  <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
-                    <p className="text-muted-foreground">Jumlah produk aktif:</p>
-                    <p className="text-lg font-bold text-foreground tabular-nums">
-                      {category.products_count ?? 0}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">produk</span>
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-2 pt-1">
-                    {category.products_url ? (
-                      <Button asChild variant="outline" size="sm" className="w-full justify-start text-xs">
-                        <Link href={category.products_url}>
-                          <Icon name="package" className="size-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" />
-                          Lihat produk di kategori ini
-                        </Link>
-                      </Button>
-                    ) : null}
-
-                    {category.public_url ? (
-                      <Button asChild variant="ghost" size="sm" className="w-full justify-start text-xs">
-                        <a href={category.public_url} target="_blank" rel="noreferrer">
-                          <Icon
-                            name="arrow-up-right"
-                            className="size-3.5 mr-1.5 text-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          Buka halaman publik
-                        </a>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </SectionCard>
-            ) : null}
-          </aside>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        {/* 3. Produk Terkait (Hanya tampil saat mode Edit) */}
+        {category ? (
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="border-b border-border bg-muted/40 px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">Produk Terkait</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Ringkasan produk yang tergabung di dalam kategori ini.
+              </p>
+            </div>
+            <table className="w-full">
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                    Jumlah Produk Aktif
+                  </th>
+                  <td className="px-4 py-3">
+                    <span className="text-base font-bold text-foreground tabular-nums">
+                      {category.products_count ?? 0}
+                    </span>{" "}
+                    <span className="text-xs text-muted-foreground">produk terhubung</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
+                    Aksi Terkait
+                  </th>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {category.products_url ? (
+                        <Button asChild variant="outline" size="sm" className="text-xs">
+                          <Link href={category.products_url}>
+                            <Icon name="package" className="size-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" />
+                            Lihat produk di kategori ini
+                          </Link>
+                        </Button>
+                      ) : null}
+
+                      {category.public_url ? (
+                        <Button asChild variant="ghost" size="sm" className="text-xs">
+                          <a href={category.public_url} target="_blank" rel="noreferrer">
+                            <Icon
+                              name="arrow-up-right"
+                              className="size-3.5 mr-1.5 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            Buka halaman publik
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </form>
     </AdminLayout>
   )

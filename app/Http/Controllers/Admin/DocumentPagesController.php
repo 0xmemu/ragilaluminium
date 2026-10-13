@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CmsPage;
+use App\Support\CmsDocumentSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,15 +14,34 @@ class DocumentPagesController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Admin/Beranda/Index', [
+        $ketentuan = CmsPage::query()->where('slug', CmsDocumentSettings::KEY_KETENTUAN)->first();
+        $privasi = CmsPage::query()->where('slug', CmsDocumentSettings::KEY_PRIVASI)->first();
+
+        return Inertia::render('Admin/Documents/Index', [
             'title' => 'Dokumen Halaman',
-            'description' => 'Kelola dokumen legal dan profil yang tampil di halaman publik. Klik "Edit konten" untuk membuka editor. ',
-            'sections' => [
-                ['key' => 'ketentuan_layanan', 'enabled' => true, 'sort_order' => 0, 'label' => 'Ketentuan Layanan', 'description' => 'Syarat dan ketentuan penggunaan toko.', 'icon' => 'gavel', 'edit_href' => route('admin.ketentuan-layanan.edit')],
-                ['key' => 'kebijakan_privasi', 'enabled' => true, 'sort_order' => 1, 'label' => 'Kebijakan Privasi', 'description' => 'Kebijakan perlindungan data pelanggan.', 'icon' => 'lock', 'edit_href' => route('admin.kebijakan-privasi.edit')],
+            'description' => 'Kelola dokumen legal dan kebijakan publik yang tampil di toko online.',
+            'documents' => [
+                [
+                    'key' => 'ketentuan_layanan',
+                    'title' => 'Ketentuan Layanan',
+                    'description' => 'Syarat dan ketentuan transaksi, pemesanan, dan layanan toko.',
+                    'slug' => 'terms',
+                    'public_url' => route('terms'),
+                    'edit_url' => route('admin.ketentuan-layanan.edit'),
+                    'updated_at' => optional($ketentuan?->updated_at)->toDateTimeString(),
+                    'published' => (bool) ($ketentuan?->published ?? true),
+                ],
+                [
+                    'key' => 'kebijakan_privasi',
+                    'title' => 'Kebijakan Privasi',
+                    'description' => 'Kebijakan perlindungan data pribadi dan privasi pelanggan.',
+                    'slug' => 'privacy',
+                    'public_url' => route('privacy'),
+                    'edit_url' => route('admin.kebijakan-privasi.edit'),
+                    'updated_at' => optional($privasi?->updated_at)->toDateTimeString(),
+                    'published' => (bool) ($privasi?->published ?? true),
+                ],
             ],
-            'submitUrl' => route('admin.documents.update'),
-            'editable' => false,
         ]);
     }
 

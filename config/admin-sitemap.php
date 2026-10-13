@@ -146,11 +146,6 @@ return [
                 ['label' => 'Cara Pemesanan', 'route' => 'admin.cara-pemesanan.edit', 'icon' => 'hand-coins', 'active' => ['admin.cara-pemesanan.*']],
                 ['label' => 'Tentang Kami', 'route' => 'admin.tentang-kami.edit', 'icon' => 'info', 'active' => ['admin.tentang-kami.*']],
                 ['label' => 'Dokumen Halaman', 'route' => 'admin.documents.index', 'icon' => 'file-text', 'active' => ['admin.documents.*', 'admin.ketentuan-layanan.*', 'admin.kebijakan-privasi.*']],
-                // Kedua halaman ini mengatur konten publik yang aktif namun tidak memiliki
-                // pintu masuk menu (temuan audit: halaman yatim). Kode kategori
-                // tidak terkait; entry point dikembalikan tanpa menghapus fungsi.
-                ['label' => 'Halaman CMS', 'route' => 'admin.pages.index', 'icon' => 'file', 'active' => ['admin.pages.*']],
-                ['label' => 'Tata Letak Beranda', 'route' => 'admin.beranda.index', 'icon' => 'home', 'active' => ['admin.beranda.index', 'admin.beranda.how-to-order.*']],
             ],
         ],
         'akun_sistem' => [
