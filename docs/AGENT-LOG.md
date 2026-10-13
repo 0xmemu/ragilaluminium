@@ -4751,3 +4751,25 @@ Perbaikan:
 Verifikasi live dengan admin-preview membuktikan FAQ dan Masalah & Solusi kini
 memiliki header_actions yang sama persis (['Pengaturan halaman', 'Urutkan']),
 dan form terbuka dengan 0 input disabled. 354 vitest test lulus.
+
+## 2026-10-13 01:03 UTC | zcode | Standard | verifikasi | selesai
+
+Permintaan owner di sesi ini: halaman Tambah Kategori bukan card-first, harus
+table-first mengikuti pola halaman tambah lain (Tambah Model Produk, dsb).
+
+Temuan sebelum bekerja: konversi itu ternyata sudah dikerjakan worker paralel
+dan sudah ter-commit di working tree yang sama (271b12ce redesain form
+kategori, belum di-push). Saya tidak mengubah kode dan tidak menduplikasi;
+yang saya lakukan verifikasi live.
+
+Hasil verifikasi (reload tab owner, halaman live): form kini dua tabel dengan
+header strip (Identitas Kategori, SEO), baris th w-64 + td kontrol; kolom aside
+status dihapus dan Status Kategori menjadi baris di tabel identitas; seluruh
+kolom ada (cat-name, cat-slug, cat-order, cat-seo-title, cat-seo-desc,
+cat-is-active tercentang); pratinjau Google memakai origin peramban. Build
+00:58:07 sudah memuat bentuk baru dan isi berkas tidak berubah sejak 00:43,
+jadi yang live sama dengan yang ter-commit.
+
+Catatan koordinasi: commit 271b12ce belum di-push oleh pemiliknya dan saya
+tidak mendorong push-nya; entri log ini di-commit tanpa push supaya tidak
+membawa commit orang lain ke origin lebih awal.
