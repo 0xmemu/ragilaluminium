@@ -71,9 +71,13 @@ export default function Cart({
     setSelectedIds(new Set())
   }
 
-  React.useEffect(() => {
+  // Keluar dari mode pilih (atau isi keranjang berubah dari server) berarti
+  // centang dibersihkan. Disesuaikan saat render, bukan lewat effect.
+  const [selectionSync, setSelectionSync] = React.useState({ items: initialItems, selectMode })
+  if (selectionSync.items !== initialItems || selectionSync.selectMode !== selectMode) {
+    setSelectionSync({ items: initialItems, selectMode })
     if (!selectMode) setSelectedIds(new Set())
-  }, [initialItems, selectMode])
+  }
 
   const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
   const someSelected = selectedIds.size > 0 && selectedIds.size < cartItems.length
@@ -108,14 +112,16 @@ export default function Cart({
   const submitForm = useForm({ line_ids: [] as string[] })
   const removeSelectedForm = useForm({ line_ids: [] as string[] })
   const undoForm = useForm({})
-  const [showUndoToast, setShowUndoToast] = React.useState(false)
+  const [showUndoToast, setShowUndoToast] = React.useState(initialUndoCount > 0)
+  const [syncedUndoCount, setSyncedUndoCount] = React.useState(initialUndoCount)
+  if (syncedUndoCount !== initialUndoCount) {
+    setSyncedUndoCount(initialUndoCount)
+    setShowUndoToast(initialUndoCount > 0)
+  }
 
+  // Sembunyikan otomatis setelah 5 detik sejak hitungan terakhir berubah.
   React.useEffect(() => {
-    if (initialUndoCount <= 0) {
-      setShowUndoToast(false)
-      return
-    }
-    setShowUndoToast(true)
+    if (initialUndoCount <= 0) return
     const timer = window.setTimeout(() => setShowUndoToast(false), 5000)
     return () => window.clearTimeout(timer)
   }, [initialUndoCount])

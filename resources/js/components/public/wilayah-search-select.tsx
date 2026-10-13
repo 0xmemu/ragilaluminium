@@ -78,12 +78,16 @@ export function WilayahSearchSelect({
     }
   }, [open])
 
-  React.useEffect(() => {
+  // Saat kontrol dinonaktifkan, dropdown ditutup dan kata kunci dibersihkan.
+  // Disesuaikan saat render, bukan lewat effect.
+  const [syncedDisabled, setSyncedDisabled] = React.useState(disabled)
+  if (syncedDisabled !== disabled) {
+    setSyncedDisabled(disabled)
     if (disabled) {
       setOpen(false)
       setQuery("")
     }
-  }, [disabled])
+  }
 
   const displayText = loading ? "Memuat…" : valueName || placeholder
   const showPlaceholder = !loading && !valueName
