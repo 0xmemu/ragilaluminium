@@ -1,4 +1,4 @@
-import { router, useForm, usePage } from "@inertiajs/react"
+import { router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
@@ -21,7 +21,6 @@ import type { MediaPanelUrls } from "@/components/admin/product-edit/types"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import { addReadyCount, playReadySound } from "@/lib/media-live"
-import type { SharedPageProps } from "@/types"
 
 export interface VariantOption {
   id: number
@@ -371,7 +370,6 @@ export function MediaRowsPanel({
   // otomatis mengikuti produk (kategori/model/dimensi), bukan 30 aset acak.
   const [suggestedFolder, setSuggestedFolder] = React.useState<{ id: number | null; name: string } | null>(null)
   const [liveLibrary, setLiveLibrary] = React.useState<LibraryAsset[]>([])
-  const [liveLoading, setLiveLoading] = React.useState(false)
   const liveStatusRef = React.useRef(liveStatus)
   const notifiedRef = React.useRef<number[]>([])
   const rowsRef = React.useRef(rows)
@@ -404,7 +402,6 @@ export function MediaRowsPanel({
     visibility: "visible",
     product_variant_id: "",
   })
-  const { csrf } = usePage<SharedPageProps>().props
 
   // Filter varian & pencarian library dilakukan di sisi klien terhadap rows
   // yang dikirim server (tanpa round-trip Inertia; rows statis per muat halaman).
@@ -413,10 +410,6 @@ export function MediaRowsPanel({
     if (variantFilter) return rows.filter((r) => r.product_variant_id === Number(variantFilter))
     return rows
   }, [rows, variantFilter])
-
-  const uploadContext = form.data.is_installation
-    ? `hasil-pemasangan-${product.parent_sku.toLowerCase()}`
-    : "media"
 
   // Saran folder: {kategori} {model-dasar}/{dimensi} milik produk ini.
   React.useEffect(() => {
@@ -441,7 +434,6 @@ export function MediaRowsPanel({
   // Daftar aset LIVE dari endpoint picker (filter status ready + folder saran).
   const fetchLiveLibrary = React.useCallback(
     (folderId: number | null) => {
-      setLiveLoading(true)
       const params = new URLSearchParams()
       if (folderId) params.set("folder_id", String(folderId))
       fetch(`${routeUrl("admin.media.picker")}?${params.toString()}`, {
@@ -463,7 +455,6 @@ export function MediaRowsPanel({
           )
         })
         .finally(() => {
-          if (!cancelledRef.current) setLiveLoading(false)
         })
     },
     [],

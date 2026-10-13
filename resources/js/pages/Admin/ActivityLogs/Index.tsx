@@ -7,7 +7,6 @@ import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { EmptyState } from "@/components/admin/ui/empty-state"
 import { Pagination } from "@/components/admin/ui/pagination"
-import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
@@ -81,8 +80,6 @@ export default function ActivityLogsIndex({
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
-  const capabilities = useAdminCapabilities()
-  const canView = can("activity_logs.view", capabilities)
 
   function apply(next?: Partial<{ q: string; sort: string }>) {
     // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.

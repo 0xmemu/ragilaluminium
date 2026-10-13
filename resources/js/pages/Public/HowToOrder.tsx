@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, usePage } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 

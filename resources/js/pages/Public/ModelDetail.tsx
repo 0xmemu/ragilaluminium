@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import {
@@ -18,13 +18,10 @@ import { Icon } from "@/components/shared/icon"
 import { PageTopBar } from "@/components/public/page-top-bar"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { ModelHero } from "@/components/public/model-hero"
-import { useDragScroll } from "@/hooks/use-drag-scroll"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
-import type { ModelCardData, ProductCardData, SharedPageProps } from "@/types"
+import type { ModelCardData, ProductCardData } from "@/types"
 
 export interface DesignVariantCard {
   value: string
@@ -36,9 +33,6 @@ export interface DesignVariantCard {
   href: string
   products?: Array<ProductCardData & { card_key?: string; variant_sku?: string }>
 }
-
-const carouselNavBtnClass =
-  "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground shadow-sm transition hover:scale-105 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:flex md:size-12"
 
 
 
@@ -157,9 +151,6 @@ export default function ModelDetail({
         ]
 
   const modelsHref = hubHref || routeUrl("catalog.index")
-
-  const { consultationWhatsApp } = usePage<SharedPageProps>().props
-  const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
   const rails = React.useMemo(() => {
     const source = designRails.length ? designRails : designVariants
