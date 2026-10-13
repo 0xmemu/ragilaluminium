@@ -4871,3 +4871,27 @@ menunggu keputusan owner sebelum menyentuh yang lain.
 
 Verifikasi: eslint bersih, build sukses, live: kartu Media model tampil tanpa
 subtitle, teks lama hilang.
+
+## 2026-10-13 02:18 UTC | zcode | Standard | f26f5d92 | selesai
+
+Permintaan owner: seksi media di form model produk diganti mengikuti model
+seksi Foto Produk di halaman Tambah Produk, dengan aturan pilihan pertama
+jadi gambar utama dan pilihan berikutnya jadi foto galeri.
+
+Perubahan di ModelProducts/Form.tsx:
+1. Dua state (mainMedia + galleryMedia) diganti satu daftar berurutan
+   pickedMedia; pilihan pertama dipetakan ke media_asset_id, sisanya ke
+   gallery_asset_ids (payload tersimpan tidak berubah).
+2. Tampilan mengikuti seksi Foto Produk form produk: header berhitungan
+   (N foto) + Tambah kompak (size xs), kisi 4/6/8 kolom, badge Utama di ubin
+   pertama, geser hover + seret-lepas untuk urutan, X per ubin, dropzone
+   besar saat kosong.
+3. Gambar utama warisan berbasis URL tetap tampil sebagai ubin Utama dengan
+   tombol lepas; terlepas otomatis saat daftar dikosongkan.
+4. Kuota total 9; tombol Tambah tersembunyi saat penuh.
+
+Verifikasi: tsc bersih, eslint bersih, build sukses. Live di tab uji: alur
+pilih dua foto dari dropzone, geser urutan (badge mengikuti), hapus semua,
+dropzone kembali. Catatan: hitungan badge "Utama" dua kali pada probe pertama
+adalah artefak query (span pembungkus ikut terhitung), markup ubin berisi
+tepat satu badge.
