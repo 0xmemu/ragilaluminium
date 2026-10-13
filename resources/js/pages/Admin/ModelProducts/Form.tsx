@@ -138,6 +138,20 @@ export default function ModelProductForm({
     form.setData("gallery_asset_ids", next.map((item) => item.assetId))
   }
 
+  // Dipakai dua pemicu galeri (kontainer kosong dan ubin tambah), jadi satu fungsi.
+  function tambahGaleri(picked: PickedMedia[]) {
+    // Galeri tidak boleh memuat gambar utama dua kali.
+    const seen = new Set(galleryMedia.map((item) => item.assetId))
+    const next = [...galleryMedia]
+    for (const item of picked) {
+      if (seen.has(item.assetId) || item.assetId === mainMedia?.assetId) continue
+      if (next.length >= maxGallery) break
+      seen.add(item.assetId)
+      next.push(item)
+    }
+    applyGallery(next)
+  }
+
   function moveGallery(index: number, direction: -1 | 1) {
     const target = index + direction
     if (target < 0 || target >= galleryMedia.length) return
@@ -374,31 +388,35 @@ export default function ModelProductForm({
           title="Media model"
           description="Gambar utama dan galeri foto model. Ambil dari Media Library atau unggah langsung; file otomatis dikonversi WebP."
           icon="image"
-          action={
-            <MediaPickerSheet
-              title="Gambar utama model"
-              onPick={(picked) => applyMain(picked[0] ?? null)}
-              trigger={(open) => (
-                <Button type="button" variant="secondary" size="sm" onClick={open}>
-                  <Icon name="upload" className="size-4" aria-hidden="true" />
-                  {mainMedia ? "Ganti gambar utama" : "Pilih gambar utama"}
-                </Button>
-              )}
-            />
-          }
         >
           <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
             <div className="space-y-2">
-              <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
-                {mainPreview ? (
-                  <img src={mainPreview} alt="Pratinjau gambar utama" className="size-full object-cover" />
-                ) : (
-                  <div className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
-                    <Icon name="image" className="size-7" aria-hidden="true" />
-                    <span className="text-[11px]">Belum ada gambar utama</span>
-                  </div>
+              <MediaPickerSheet
+                title="Gambar utama model"
+                onPick={(picked) => applyMain(picked[0] ?? null)}
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={open}
+                    aria-label={mainPreview ? "Ganti gambar utama" : "Pilih gambar utama"}
+                    className="group relative block aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border bg-surface-muted transition hover:border-primary"
+                  >
+                    {mainPreview ? (
+                      <>
+                        <img src={mainPreview} alt="Pratinjau gambar utama" className="size-full object-cover" />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs font-medium text-transparent transition group-hover:bg-black/40 group-hover:text-white">
+                          Ganti gambar
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                        <Icon name="image" className="size-7" aria-hidden="true" />
+                        <span className="text-[11px]">Klik untuk pilih gambar utama</span>
+                      </span>
+                    )}
+                  </button>
                 )}
-              </div>
+              />
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-[11px] text-muted-foreground">
                   {mainMedia?.label || (mainPreview ? "Gambar lama (URL)" : "Kosong")}
@@ -418,50 +436,32 @@ export default function ModelProductForm({
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-[13px] font-semibold text-foreground">Galeri foto model</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {galleryMedia.length} dari {maxGallery} foto. Urutan menentukan tampilan di hero.
-                  </p>
-                </div>
-                <MediaPickerSheet
-                  title="Galeri foto model"
-                  multiple
-                  onPick={(picked) => {
-                    // Galeri tidak boleh memuat gambar utama dua kali.
-                    const seen = new Set(galleryMedia.map((item) => item.assetId))
-                    const next = [...galleryMedia]
-                    for (const item of picked) {
-                      if (seen.has(item.assetId) || item.assetId === mainMedia?.assetId) continue
-                      if (next.length >= maxGallery) break
-                      seen.add(item.assetId)
-                      next.push(item)
-                    }
-                    applyGallery(next)
-                  }}
-                  trigger={(open) => (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={galleryMedia.length >= maxGallery}
-                      onClick={open}
-                    >
-                      <Icon name="plus" className="size-4" aria-hidden="true" />
-                      Tambah
-                    </Button>
-                  )}
-                />
+              <div>
+                <h3 className="text-[13px] font-semibold text-foreground">Galeri foto model</h3>
+                <p className="text-xs text-muted-foreground">
+                  {galleryMedia.length} dari {maxGallery} foto. Urutan menentukan tampilan di hero.
+                </p>
               </div>
 
               {galleryMedia.length === 0 ? (
-                <div className="rounded-md border border-dashed border-border py-8 text-center">
-                  <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Belum ada foto galeri. Hero memakai gambar utama dan foto produk.
-                  </p>
-                </div>
+                <MediaPickerSheet
+                  title="Galeri foto model"
+                  multiple
+                  onPick={tambahGaleri}
+                  trigger={(open) => (
+                    <button
+                      type="button"
+                      onClick={open}
+                      aria-label="Pilih foto galeri dari Media Library"
+                      className="w-full cursor-pointer rounded-md border border-dashed border-border py-8 text-center transition hover:border-primary"
+                    >
+                      <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
+                      <span className="mt-1.5 block text-xs text-muted-foreground">
+                        Belum ada foto galeri. Klik untuk memilih dari Media Library.
+                      </span>
+                    </button>
+                  )}
+                />
               ) : (
                 <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
                   {galleryMedia.map((item, index) => (
@@ -512,6 +512,25 @@ export default function ModelProductForm({
                       </div>
                     </li>
                   ))}
+                  {galleryMedia.length < maxGallery ? (
+                    <li>
+                      <MediaPickerSheet
+                        title="Galeri foto model"
+                        multiple
+                        onPick={tambahGaleri}
+                        trigger={(open) => (
+                          <button
+                            type="button"
+                            onClick={open}
+                            aria-label="Tambah foto galeri dari Media Library"
+                            className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
+                          >
+                            <Icon name="plus" className="size-5" aria-hidden="true" />
+                          </button>
+                        )}
+                      />
+                    </li>
+                  ) : null}
                 </ul>
               )}
               {form.errors.gallery_asset_ids ? (
