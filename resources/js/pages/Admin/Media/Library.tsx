@@ -129,9 +129,13 @@ function FolderTreeList({
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const [dragTarget, setDragTarget] = React.useState<number | null>(null)
 
-  React.useEffect(() => {
+  // Daftar folder dari server disalin ke urutan lokal saat props berubah.
+  // Disesuaikan saat render, bukan lewat effect.
+  const [syncedNodes, setSyncedNodes] = React.useState(nodes)
+  if (syncedNodes !== nodes) {
+    setSyncedNodes(nodes)
     setOrder(nodes)
-  }, [nodes])
+  }
 
   /**
    * Urutkan hanya ANTAR-SIBLING di level ini (folder tidak bisa pindah ke
@@ -390,9 +394,14 @@ function FolderNameDialog({
 }) {
   const [value, setValue] = React.useState(initialName)
 
-  React.useEffect(() => {
+  // Isian direset saat dialog dibuka atau nama awalnya berganti.
+  // Disesuaikan saat render, bukan lewat effect.
+  const dialogKey = open ? (initialName ?? "") : null
+  const [syncedDialogKey, setSyncedDialogKey] = React.useState<string | null>(dialogKey)
+  if (dialogKey !== syncedDialogKey) {
+    setSyncedDialogKey(dialogKey)
     if (open) setValue(initialName)
-  }, [open, initialName])
+  }
 
   const isCreate = mode === "create"
 
@@ -834,7 +843,9 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
               ref={fileInputRef}
               type="file"
               multiple={mode !== "file"}
-              {...(mode === "folder" ? { webkitdirectory: "" as any } : {})}
+              {...(mode === "folder"
+                ? ({ webkitdirectory: "" } as React.InputHTMLAttributes<HTMLInputElement>)
+                : {})}
               accept="image/*,video/*"
               className="sr-only"
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}

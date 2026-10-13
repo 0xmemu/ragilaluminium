@@ -74,9 +74,13 @@ export default function Checkout({
   const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
   const [checkoutItems, setCheckoutItems] = React.useState(items)
 
-  React.useEffect(() => {
+  // Daftar item dari server disalin ulang saat berubah.
+  // Disesuaikan saat render, bukan lewat effect.
+  const [syncedCheckoutItems, setSyncedCheckoutItems] = React.useState(items)
+  if (syncedCheckoutItems !== items) {
+    setSyncedCheckoutItems(items)
     setCheckoutItems(items)
-  }, [items])
+  }
 
   function updateCheckoutNote(lineId: string, note: string) {
     setCheckoutItems((current) => current.map((item) =>

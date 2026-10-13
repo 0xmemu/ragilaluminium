@@ -83,7 +83,11 @@ export function useAdminLiveOrders(handlers: AdminLiveOrderHandlers): {
 
   const seenEvents = React.useRef<Set<string>>(new Set())
   const handlersRef = React.useRef(handlers)
-  handlersRef.current = handlers
+  // Handler terbaru dipasang setelah commit; menulis ref saat render dilarang
+  // oleh lint React Compiler (react-hooks/refs).
+  React.useEffect(() => {
+    handlersRef.current = handlers
+  })
 
   const handleEvent = React.useCallback((event: AdminOrderLiveEvent) => {
     const key = event.event_id
@@ -101,7 +105,7 @@ export function useAdminLiveOrders(handlers: AdminLiveOrderHandlers): {
 
   React.useEffect(() => {
     if (!echoAvailable) {
-      setState("unavailable")
+      // State awal sudah "unavailable" (dihitung dari echoAvailable saat init).
       return
     }
 

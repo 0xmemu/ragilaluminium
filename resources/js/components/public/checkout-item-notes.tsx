@@ -40,9 +40,13 @@ function CheckoutItemNoteRow({
   const savedTimer = React.useRef<number | null>(null)
   const abortRef = React.useRef<AbortController | null>(null)
 
-  React.useEffect(() => {
+  // Catatan dari server disalin ke isian lokal saat nilainya berubah.
+  // Disesuaikan saat render (pola resmi React), bukan lewat effect.
+  const [syncedNote, setSyncedNote] = React.useState(item.note ?? "")
+  if (syncedNote !== (item.note ?? "")) {
+    setSyncedNote(item.note ?? "")
     setValue(item.note ?? "")
-  }, [item.note])
+  }
 
   React.useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current)

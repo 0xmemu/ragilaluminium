@@ -263,27 +263,24 @@ export function ProductGallery({
     onActiveMediaChange?.(activeMedia)
   }, [activeMedia, onActiveMediaChange])
 
-  React.useEffect(() => {
-    if (activeMediaIndex >= items.length) {
-      // Clamp saat varian terpilih punya lebih sedikit foto.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveMediaIndex(Math.max(0, items.length - 1))
-    }
-  }, [activeMediaIndex, items.length])
+  // Clamp saat varian terpilih punya lebih sedikit foto. Disesuaikan saat
+  // render (pola resmi React), bukan lewat effect.
+  if (items.length > 0 && activeMediaIndex > items.length - 1) {
+    setActiveMediaIndex(Math.max(0, items.length - 1))
+  }
 
   // Pindah foto saat highlightedMediaId berubah (opsional, sebagai pelengkap).
-  const prevHighlightedId = React.useRef<string | number | null | undefined>(undefined)
-  React.useEffect(() => {
-    if (highlightedMediaId !== prevHighlightedId.current) {
-      prevHighlightedId.current = highlightedMediaId
-      if (highlightedMediaId != null) {
-        const idx = items.findIndex((item) => item.id === highlightedMediaId)
-        if (idx !== -1) {
-          setActiveMediaIndex(idx)
-        }
+  // Disesuaikan saat render, bukan lewat effect.
+  const [prevHighlightedId, setPrevHighlightedId] = React.useState<string | number | null | undefined>(undefined)
+  if (highlightedMediaId !== prevHighlightedId) {
+    setPrevHighlightedId(highlightedMediaId)
+    if (highlightedMediaId != null) {
+      const idx = items.findIndex((item) => item.id === highlightedMediaId)
+      if (idx !== -1) {
+        setActiveMediaIndex(idx)
       }
     }
-  }, [highlightedMediaId, items])
+  }
 
   // Amati container galeri: video berhenti begitu galeri tergulir keluar layar.
   // Memakai IntersectionObserver, bukan event scroll, agar tidak membebani render.

@@ -23,18 +23,16 @@ export function categoryHrefFor(slug: string): string {
   return slug === "all" ? routeUrl("catalog.all") : routeUrl("catalog.category", { category: slug })
 }
 
-export function DesignFilterOptions({
-  name,
-  designs,
-  activeDesign,
-  onSelect,
+function FilterOptionItem({
+  selected,
+  onClick,
+  children,
 }: {
-  name: string
-  designs: SelectOption[]
-  activeDesign: string | null
-  onSelect: (value: string | null) => void
+  selected: boolean
+  onClick: () => void
+  children: React.ReactNode
 }) {
-  const Item = ({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) => (
+  return (
     <button
       type="button"
       onClick={onClick}
@@ -50,20 +48,32 @@ export function DesignFilterOptions({
       {selected ? <Icon name="check" className="size-3 shrink-0 text-primary" aria-hidden="true" /> : null}
     </button>
   )
+}
 
+export function DesignFilterOptions({
+  name,
+  designs,
+  activeDesign,
+  onSelect,
+}: {
+  name: string
+  designs: SelectOption[]
+  activeDesign: string | null
+  onSelect: (value: string | null) => void
+}) {
   return (
     <div className="flex flex-row flex-wrap gap-1.5" role="listbox" aria-label={name}>
-      <Item selected={!activeDesign} onClick={() => onSelect(null)}>
+      <FilterOptionItem selected={!activeDesign} onClick={() => onSelect(null)}>
         Semua Desain
-      </Item>
+      </FilterOptionItem>
       {designs.map((design) => (
-        <Item
+        <FilterOptionItem
           key={design.value}
           selected={activeDesign === design.value}
           onClick={() => onSelect(design.value)}
         >
           {design.label}
-        </Item>
+        </FilterOptionItem>
       ))}
     </div>
   )
@@ -80,36 +90,19 @@ export function ModelFilterOptions({
   activeModel: string | null
   onSelect: (value: string | null) => void
 }) {
-  const Item = ({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={cn(
-        "inline-flex min-h-8 w-full items-center justify-center gap-1 rounded border px-1.5 text-xs font-normal transition sm:min-h-7",
-        selected
-          ? "border-foreground/50 bg-surface-muted font-medium text-foreground"
-          : "border-border bg-background text-foreground/80 hover:text-foreground",
-      )}
-    >
-      <span className="truncate">{children}</span>
-      {selected ? <Icon name="check" className="size-3 shrink-0 text-primary" aria-hidden="true" /> : null}
-    </button>
-  )
-
   return (
     <div className="flex flex-row flex-wrap gap-1.5" role="listbox" aria-label={name}>
-      <Item selected={!activeModel} onClick={() => onSelect(null)}>
+      <FilterOptionItem selected={!activeModel} onClick={() => onSelect(null)}>
         Semua Model
-      </Item>
+      </FilterOptionItem>
       {models.map((model) => (
-        <Item
+        <FilterOptionItem
           key={model.value}
           selected={activeModel === model.value}
           onClick={() => onSelect(model.value)}
         >
           {model.label}
-        </Item>
+        </FilterOptionItem>
       ))}
     </div>
   )

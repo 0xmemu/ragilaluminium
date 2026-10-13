@@ -47,12 +47,16 @@ export function useProductPurchase({
     () => variantAxes(variants),
     [variants],
   )
+  // URL dibaca sekali saat mount (lazy initializer) supaya useMemo di bawah
+  // murni terhadap props dan memoization-nya tidak dibuang compiler.
+  const [urlVariantSku] = React.useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : new URL(window.location.href).searchParams.get("variant"),
+  )
   const initialSelections = React.useMemo(() => {
-    const fromUrl = typeof window !== "undefined"
-      ? new URL(window.location.href).searchParams.get("variant")
-      : null
-    if (fromUrl && variants.length) {
-      const match = variants.find((v) => v.variant_sku === fromUrl)
+    if (urlVariantSku && variants.length) {
+      const match = variants.find((v) => v.variant_sku === urlVariantSku)
       if (match) {
         const sel: VariantSelections = {}
         for (const [axisName, option] of variantPairs(match)) {
@@ -63,16 +67,18 @@ export function useProductPurchase({
       }
     }
     return firstAvailableSelections(variants)
-  }, [variants])
+  }, [variants, urlVariantSku])
   const [selections, setSelections] = React.useState<VariantSelections>(initialSelections)
   const [variantError, setVariantError] = React.useState(false)
   const variantSectionRef = React.useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
-    // Variant choices are server-derived when the product changes through Inertia.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Pilihan varian berasal dari server saat produk berganti lewat Inertia.
+  // Disesuaikan saat render (pola resmi React), bukan lewat effect.
+  const [syncedInitialSelections, setSyncedInitialSelections] = React.useState(initialSelections)
+  if (syncedInitialSelections !== initialSelections) {
+    setSyncedInitialSelections(initialSelections)
     setSelections(initialSelections)
-  }, [initialSelections])
+  }
 
   const selectedVariant = React.useMemo(
     () =>

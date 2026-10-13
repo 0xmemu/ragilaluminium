@@ -48,9 +48,13 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
     installation_caption: "",
   })
 
-  React.useEffect(() => {
+  // Baris dari server disalin ulang saat data grup berubah.
+  // Disesuaikan saat render, bukan lewat effect.
+  const [syncedGroupMedia, setSyncedGroupMedia] = React.useState(group.media)
+  if (syncedGroupMedia !== group.media) {
+    setSyncedGroupMedia(group.media)
     setRows(group.media ?? [])
-  }, [group.media])
+  }
 
   function startEdit(row: MediaRow) {
     setEditingId(row.media_id)

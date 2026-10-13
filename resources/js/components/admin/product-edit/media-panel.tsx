@@ -432,41 +432,38 @@ export function MediaRowsPanel({
   }, [product.id])
 
   // Daftar aset LIVE dari endpoint picker (filter status ready + folder saran).
-  const fetchLiveLibrary = React.useCallback(
-    (folderId: number | null) => {
-      const params = new URLSearchParams()
-      if (folderId) params.set("folder_id", String(folderId))
-      fetch(`${routeUrl("admin.media.picker")}?${params.toString()}`, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      })
-        .then((res) => res.json())
-        .then((data: { assets?: Array<{ id: number; label: string; kind: string; thumb_url: string | null; folder_name?: string | null }> }) => {
-          if (cancelledRef.current) return
-          setLiveLibrary(
-            (data.assets ?? []).map((a) => ({
-              id: a.id,
-              label: a.label,
-              kind: a.kind === "video" ? "video" : "image",
-              status: "ready",
-              usage_count: 0,
-              thumb_url: a.thumb_url,
-              media_url: null,
-            })),
-          )
-        })
-        .finally(() => {
-        })
-    },
-    [],
-  )
-  const cancelledRef = React.useRef(false)
+  // Fetch dijalankan di dalam effect; setState hanya terjadi di callback promise
+  // (asinkron), bukan sinkron di tengah commit.
   React.useEffect(() => {
-    cancelledRef.current = false
-    fetchLiveLibrary(suggestedFolder?.id ?? null)
+    const folderId = suggestedFolder?.id ?? null
+    const params = new URLSearchParams()
+    if (folderId) params.set("folder_id", String(folderId))
+    let cancelled = false
+    fetch(`${routeUrl("admin.media.picker")}?${params.toString()}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then((res) => res.json())
+      .then((data: { assets?: Array<{ id: number; label: string; kind: string; thumb_url: string | null; folder_name?: string | null }> }) => {
+        if (cancelled) return
+        setLiveLibrary(
+          (data.assets ?? []).map((a) => ({
+            id: a.id,
+            label: a.label,
+            kind: a.kind === "video" ? "video" : "image",
+            status: "ready",
+            usage_count: 0,
+            thumb_url: a.thumb_url,
+            media_url: null,
+          })),
+        )
+      })
+      .catch(() => {
+        // Diamkan; daftar berikutnya akan mencoba lagi saat folder berganti.
+      })
     return () => {
-      cancelledRef.current = true
+      cancelled = true
     }
-  }, [suggestedFolder?.id, fetchLiveLibrary])
+  }, [suggestedFolder?.id])
 
   const library = liveLibrary
 
@@ -555,7 +552,7 @@ export function MediaRowsPanel({
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [pendingKey])
+  }, [pendingKey, urls.statusUrl])
 
   return (
     <>

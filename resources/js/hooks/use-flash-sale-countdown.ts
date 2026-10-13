@@ -24,13 +24,12 @@ export function useFlashSaleCountdown(
   const [remaining, setRemaining] = React.useState<number | null>(null)
   const dailyEndsAt = period?.daily_ends_at ?? null
   const campaignEndsAt = period?.ends_at ?? null
+  // Server mematikan kampanye -> timer berhenti dan nilai balik dipaksa null,
+  // tanpa setState sinkron di dalam effect.
+  const live = period?.live === true && Boolean(dailyEndsAt)
 
   React.useEffect(() => {
-    if (period?.live !== true || !dailyEndsAt) {
-      // Server mematikan kampanye -> matikan timer juga.
-      setRemaining(null)
-      return
-    }
+    if (!live || !dailyEndsAt) return
 
     const tick = () => {
       const now = Date.now()
@@ -63,9 +62,9 @@ export function useFlashSaleCountdown(
     const id = window.setInterval(tick, 1000)
 
     return () => window.clearInterval(id)
-  }, [dailyEndsAt, campaignEndsAt, period?.live])
+  }, [dailyEndsAt, campaignEndsAt, live])
 
-  return remaining
+  return live ? remaining : null
 }
 
 /** Pecah sisa detik menjadi jam/menit/detik untuk tampilan countdown. */

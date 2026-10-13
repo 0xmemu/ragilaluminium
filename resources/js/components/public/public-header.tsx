@@ -211,17 +211,21 @@ export function PublicHeader() {
   const [cartPreviewOpen, setCartPreviewOpen] = React.useState(false)
   const [cartBump, setCartBump] = React.useState(false)
 
-  React.useEffect(() => {
-    // Inertia replaces shared props after cart mutations; local preview state must follow it.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    const next = typeof cartCount === "number" ? cartCount : 0
-    setVisibleCartCount(next)
+  // Inertia replaces shared props after cart mutations; local preview state must
+  // follow it. Pola resmi React "menyesuaikan state saat prop berubah": perbandingan
+  // dilakukan saat render, bukan di dalam effect, supaya tidak ada render berantai.
+  const [syncedCartProps, setSyncedCartProps] = React.useState({ cartCount, cartPreview })
+  if (syncedCartProps.cartCount !== cartCount || syncedCartProps.cartPreview !== cartPreview) {
+    setSyncedCartProps({ cartCount, cartPreview })
+    if (typeof cartCount === "number") {
+      setVisibleCartCount(cartCount)
+    } else {
+      console.warn("[PublicHeader] cartCount not a number:", cartCount)
+      setVisibleCartCount(0)
+    }
     setPreviewItems(cartPreview ?? [])
     setPreviewLoaded(Boolean(cartPreview))
-    if (typeof cartCount !== "number") {
-      console.warn("[PublicHeader] cartCount not a number:", cartCount)
-    }
-  }, [cartCount, cartPreview])
+  }
 
   React.useEffect(() => {
     // Animasi badge saat produk "mendarat" di keranjang (lihat FlyingCart).
