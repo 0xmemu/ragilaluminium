@@ -151,7 +151,10 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 $asset->update([
                     'checksum' => $checksum,
                     'object_key' => $stored['path'],
-                    'derivatives' => null,
+                    // Poster frame video disimpan agar Media Library dan halaman
+                    // produk bisa menampilkan thumbnail <img> (owner 2026-09-02,
+                    // referensi hilang saat refactor job).
+                    'derivatives' => isset($stored['poster']) ? ['poster' => $stored['poster']] : null,
                     'mime_type' => $stored['mime_type'],
                     'size_bytes' => $stored['size_bytes'],
                     'status' => 'ready',
