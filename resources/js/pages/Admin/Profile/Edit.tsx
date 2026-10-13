@@ -1,9 +1,8 @@
 import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
@@ -46,6 +45,7 @@ export default function ProfileEdit({
   }
 
   const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const [copied, setCopied] = React.useState(false)
   const terkunci = mode === "view"
 
   function batal() {
@@ -98,97 +98,195 @@ export default function ProfileEdit({
             },
           })
         })}
-        className="w-full max-w-4xl space-y-6"
+        className="w-full space-y-6"
       >
         <FormErrorSummary errors={form.errors} />
 
-        <SectionCard
-          title="Identitas Akun"
-          description="Semua admin setara; hak akses login diatur lewat status aktif/nonaktif."
-          action={
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">{profile.role_label}</span>
-              <StatusBadge status={profile.status} />
-            </div>
-          }
-        >
-          <FieldGrid>
-            <Field id="profile-name" label="Nama" required error={form.errors.name}>
-              <Input
-              disabled={terkunci}
-                value={form.data.name}
-                onChange={(event) => form.setData("name", event.target.value)}
-                autoComplete="name"
-              />
-            </Field>
-
-            <Field
-              id="profile-username"
-              label="Username"
-              required
-              error={form.errors.username}
-              hint="Username digunakan untuk masuk ke panel admin."
-            >
-              <Input
-              disabled={terkunci}
-                value={form.data.username}
-                onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
-                autoComplete="username"
-              />
-            </Field>
-          </FieldGrid>
-        </SectionCard>
-
-        <SectionCard
-          title="Ganti Password"
-          description="Kosongkan jika password tidak diubah. Wajib isi password saat ini bila mengganti."
-        >
-          <div className="space-y-4">
-            <Field id="profile-current-password" label="Password saat ini" error={form.errors.current_password}>
-              <Input
-              disabled={terkunci}
-                type="password"
-                value={form.data.current_password}
-                onChange={(event) => form.setData("current_password", event.target.value)}
-                autoComplete="current-password"
-                placeholder="Masukkan password saat ini untuk konfirmasi"
-              />
-            </Field>
-
-            <FieldGrid>
-              <Field
-                id="profile-password"
-                label="Password baru"
-                error={form.errors.password}
-                hint="Minimal 8 karakter."
-              >
-                <Input
-                disabled={terkunci}
-                  type="password"
-                  value={form.data.password}
-                  onChange={(event) => form.setData("password", event.target.value)}
-                  autoComplete="new-password"
-                  placeholder="Password baru"
-                />
-              </Field>
-
-              <Field
-                id="profile-password-confirmation"
-                label="Ulangi password baru"
-                error={form.errors.password_confirmation}
-              >
-                <Input
-                disabled={terkunci}
-                  type="password"
-                  value={form.data.password_confirmation}
-                  onChange={(event) => form.setData("password_confirmation", event.target.value)}
-                  autoComplete="new-password"
-                  placeholder="Ulangi password baru"
-                />
-              </Field>
-            </FieldGrid>
+        {/* Table-First terpadu sesuai standar panel admin */}
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          {/* Seksi 1: Identitas Akun */}
+          <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Identitas Akun</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Nama dan username akun yang digunakan untuk masuk ke panel admin.
+            </p>
           </div>
-        </SectionCard>
+
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Status &amp; peran
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={profile.status} />
+                    <span className="text-xs font-semibold text-foreground">{profile.role_label}</span>
+                    <span className="text-xs text-muted-foreground">· Seluruh admin memiliki hak akses setara</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Nama <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="profile-name"
+                    disabled={terkunci}
+                    value={form.data.name}
+                    onChange={(event) => form.setData("name", event.target.value)}
+                    autoComplete="name"
+                    className="h-8 max-w-md text-xs"
+                  />
+                  {form.errors.name ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Username <span className="text-destructive">*</span>
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="profile-username"
+                    disabled={terkunci}
+                    value={form.data.username}
+                    onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
+                    autoComplete="username"
+                    className="h-8 max-w-md text-xs font-mono"
+                  />
+                  {form.errors.username ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Username untuk masuk ke panel admin. Huruf kecil, angka, titik, strip, atau garis bawah.
+                    </p>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Seksi 2: Keamanan & Password */}
+          <div className="border-t border-b border-border bg-muted/40 px-4 py-3 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">Keamanan &amp; Kata Sandi</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Kosongkan jika kata sandi tidak diubah. Wajib isi kata sandi saat ini bila ingin mengganti.
+            </p>
+          </div>
+
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kata sandi saat ini
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="profile-current-password"
+                    disabled={terkunci}
+                    type="password"
+                    value={form.data.current_password}
+                    onChange={(event) => form.setData("current_password", event.target.value)}
+                    autoComplete="current-password"
+                    placeholder={terkunci ? "••••••••" : "Masukkan kata sandi saat ini untuk konfirmasi"}
+                    className="h-8 max-w-md text-xs"
+                  />
+                  {form.errors.current_password ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.current_password}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kata sandi baru
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex max-w-md items-center gap-1.5">
+                    <Input
+                      id="profile-password"
+                      disabled={terkunci}
+                      type={terkunci ? "password" : "text"}
+                      value={form.data.password}
+                      onChange={(event) => form.setData("password", event.target.value)}
+                      autoComplete="new-password"
+                      placeholder={terkunci ? "••••••••" : "Minimal 8 karakter"}
+                      className="h-8 flex-1 text-xs font-mono"
+                    />
+                    {!terkunci ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 shrink-0 text-xs"
+                          onClick={() => {
+                            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+                            const array = new Uint32Array(14)
+                            crypto.getRandomValues(array)
+                            const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
+                            form.setData("password", generated)
+                            form.setData("password_confirmation", generated)
+                          }}
+                        >
+                          <Icon name="sparkles" className="h-3.5 w-3.5" aria-hidden="true" />
+                          Generate
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 shrink-0 p-0"
+                          aria-label="Salin password"
+                          title="Salin password"
+                          onClick={async () => {
+                            if (!form.data.password) return
+                            try {
+                              await navigator.clipboard.writeText(form.data.password)
+                              setCopied(true)
+                              window.setTimeout(() => setCopied(false), 1500)
+                            } catch {
+                              // clipboard ditolak browser
+                            }
+                          }}
+                        >
+                          <Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                  {form.errors.password ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Minimal 8 karakter. Buat manual atau gunakan tombol Generate.
+                    </p>
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Ulangi kata sandi baru
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    id="profile-password-confirmation"
+                    disabled={terkunci}
+                    type={terkunci ? "password" : "text"}
+                    value={form.data.password_confirmation}
+                    onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                    autoComplete="new-password"
+                    placeholder={terkunci ? "••••••••" : "Ulangi kata sandi baru"}
+                    className="h-8 max-w-md text-xs font-mono"
+                  />
+                  {form.errors.password_confirmation ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.password_confirmation}</p>
+                  ) : null}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </form>
     </AdminLayout>
   )
