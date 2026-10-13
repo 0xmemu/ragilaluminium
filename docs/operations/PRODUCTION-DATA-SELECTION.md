@@ -25,3 +25,7 @@ Migrasi forward-only boleh dijalankan setelah file konfigurasi production unik (
 ## Target awal baru
 
 Produksi mulai tanpa produk, varian, harga, stok, media, konten dummy, transaksi, pelanggan, pengunjung, log, atau akun development. Jalankan migration forward-only untuk skema kosong, lalu hanya buat akun admin production yang aman. Perhatian: dua migration menanam tiga kategori sistem dan 30 sub-model default otomatis, dan satu migration membuat snapshot kategori. Itu metadata taksonomi dari kode, **bukan salinan data 209**; bila permintaan kosong berarti seluruh tabel katalog termasuk taksonomi harus nol, perlu keputusan terpisah tentang migrasi bawaan sebelum dijalankan. Tidak menjalankan seeder default `DatabaseSeeder`.
+
+## Status skema VPS 202, 13 Oktober 2026
+
+Konfigurasi baru khusus production dibuat tanpa mengambil `.env` atau kunci development; password basis data aplikasi `ragil_app` dibuat acak dan disimpan hanya di VPS 202. Migrasi pertama pada basis data kosong gagal karena nama berkas `20260810_100926_make_product_category_editable.php` diurutkan sebelum pembuat tabel `products`. Pemulihan aman: jalankan migration pembuat tabel `products` secara eksplisit, lalu lanjutkan migration forward-only; pada pemeriksaan akhir tidak ada migrasi Pending, 61 tabel tersedia, dan jumlah produk, pesanan, pelanggan, pengunjung, serta pengguna masih nol. Dua migration yang berasal dari kode menanam tiga kategori dan 30 sub-model bawaan; tidak ada seeder default, dump atau impor dari 209. Aplikasi belum diaktifkan.
