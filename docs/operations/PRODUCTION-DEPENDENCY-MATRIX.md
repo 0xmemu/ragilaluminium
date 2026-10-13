@@ -37,3 +37,27 @@ Status: REQUIRED = dibutuhkan alur runtime/operasi; OPTIONAL = fitur tambahan; D
 ## Current gate
 
 The empty storefront baseline is live. It is not full commerce readiness. Before adding media, configure a production R2 bucket/domain. Before real orders, configure and test shipping, payment, mail, and WhatsApp as selected. Before a formal main/tag release, register the deploy key, verify browser login, resolve lint warnings, and decide the config-cache Closure issue. No production record, media, token, session, or credential was copied from VPS 209.
+
+## Readiness crosswalk from canonical production documents
+
+The canonical full-stack checklist, production readiness plan, environment contract, deployment document, and operational runbooks add gates beyond the live empty-store baseline. These are not silently considered passed.
+
+| Document-derived gate | Evidence status on 13 October 2026 | Classification | Action, verification, rollback owner |
+|---|---|---|---|
+| Product and release authority | No signed release ticket, RPO/RTO owner, maintenance window, or rollback authority recorded | REQUIRED formal release | Record approval and owners; no tag/merge until signed; owner product/release |
+| Quality gates | Backend 1417 passed/1 skipped, Vitest 354 passed, typecheck/build passed; lint still 29 warnings; required CI checks/E2E protection not proven | REQUIRED formal release | Resolve warnings, add required CI and four viewport E2E; rerun; keep snapshot as rollback |
+| Runtime pinning | PHP/Node/Composer versions observed, but formal pin/review and immutable artifact from main/tag are not complete | REQUIRED formal release | Pin versions and record manifest; redeploy only from approved tag; owner release |
+| Database clone and recovery | Clean schema migrated on 202, production dump restored 61/61 into test DB; clone migration duration/locks and application smoke are not recorded | REQUIRED formal release | Capture clone/migration/row-count evidence; restore only test DB; owner database |
+| R2 production media | 209 has development media domain; 202 intentionally has local empty media and no production R2 bucket/domain | REQUIRED when media/content is enabled | Create isolated production bucket, new key, domain/TLS, disk-check, sample derivative, rollback env; owner infra/media |
+| WhatsApp | 202 provider is not production-ready | REQUIRED only for automation, otherwise DISABLED | Choose Meta or private Baileys, provide protected credentials, signed webhook and test; keep disabled until approved; owner integrations |
+| J&T | 202 disabled and invalid callback returns 401 | REQUIRED only for shipping, otherwise DISABLED | Complete account/signed callback/tariff/order/trace test; do not enable before sign-off; owner shipping |
+| Payment and mail | No production payment or mail provider configured | REQUIRED before real checkout/email flows; otherwise DISABLED | Configure new production provider credentials and sandbox test, or explicitly keep flows closed; owner payments/operations |
+| Security review | Basic headers, auth middleware, rate limits, dotfile blocking verified; IDOR, CORS, upload/SSRF, dependency scan, route matrix, PII/log review incomplete | REQUIRED formal release | Complete security evidence and rollback any unsafe rule; owner security |
+| Observability | Local logs, backup alerts, scheduler and queue are active; external error tracker, centralized logs, actionable alerts, synthetic checks and correlation IDs are not fully proven | REQUIRED formal release | Configure and test alerts/runbooks; owner operations |
+| VPS and ingress | Nginx, PHP-FPM, MySQL, Redis, queue, scheduler, TLS, domain and backup are live; deploy key registration and tag fetch are not proven | REQUIRED formal release | Register read-only key, fetch tag, verify artifact hash; restore previous vhost/current for rollback; owner infra/release |
+| Config cache | config:cache fails because a Closure is non-serializable; runtime works without config cache | REQUIRED if release policy requires cached config | Remove Closure or formally accept no config cache before tag; owner code/release |
+| Recovery and incident drills | Vhost rollback copy and DB restore drill exist; full deploy interruption, queue drain, provider outage, R2 restore, admin lockout and incident communication drills are not evidenced | REQUIRED formal release | Run non-production drills and record RPO/RTO; owner operations |
+
+### Interpretation
+
+The live empty storefront is a successful baseline cutover, not a full production-commerce go decision. A dependency marked disabled is safe only while its dependent flow is not offered. Before real catalog, media, checkout, shipping, WhatsApp, or payment traffic, the corresponding document gate must move to verified with evidence. No migration reset, full database copy, development secret, or dummy record is permitted.
