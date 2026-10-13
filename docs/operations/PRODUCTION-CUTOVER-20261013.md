@@ -64,3 +64,9 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - Tampil di /product/RAP7FG346AJA, /products/all, /products/jendela, dan /products/jendela/sliding-2-daun.
 - Skrip sekali pakai: /tmp/migrasi_produk418.php di 202 (resep lengkap dicatat di memori agent untuk impor katalog penuh nanti).
 - Catatan: aset 954 gagal (percobaan import dari URL ke host media.333labs.tech dari panel admin, host tidak diizinkan di produksi); dibiarkan sebagai jejak audit di Riwayat Media.
+
+## Poster video Media Library (13 Okt 2026, lanjutan)
+
+- Dua bug diperbaiki di kode: job media kini menyimpan referensi poster (derivatives) dan kutip filter ffmpeg diteruskan lewat escapeshellarg (commit 9400c3ad dan 0368883c, terpasang di rilis aktif 202).
+- ffmpeg dipasang di 202 sebagai dependency wajib untuk thumbnail video (checklist server baru: wajib ffmpeg).
+- Aset video 966 diproses ulang: poster 10.962 byte menjawab 200, tampil sebagai thumb video di halaman produk dan kartu Media Library.
