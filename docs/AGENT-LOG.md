@@ -4794,3 +4794,30 @@ Perbaikan di resources/js/pages/Admin/Categories/Form.tsx:
 Verifikasi live dengan admin-preview pada /admin/kelola/kategori/create
 membuktikan: sections hanya ['Identitas Kategori'], ada_seo_section=false,
 ada_google_preview=false. tsc bersih, build sukses.
+
+## 2026-10-13 01:29 UTC | zcode | Standard | 25e6dd90 | selesai
+
+Permintaan owner di halaman Tambah Model Produk (/admin/kelola/model-produk/create):
+1. Label kolom "Nama tampilan" diganti "Nama Model Produk".
+2. Teks bantuan deskripsi ("Tampil di halaman detail model storefront. Kosongkan
+   untuk memakai teks default sistem.") dihapus.
+3. "media picker belum menggunakan reusable".
+
+Untuk butir 3: inventaris menemukan 13 titik MediaPicker di 10 halaman, semuanya
+menulis ulang rangkaian pemicu + state + modal yang sama, nama state pun
+berbeda-beda per halaman (picker, pickerOpen, pickerMode, pickerTarget,
+mediaPickerOpen). Preseden penyelesaian sudah ada: ProductPickerSheet (ad2c482d,
+29 Sep 2026) untuk pemilih produk. Dibuat MediaPickerSheet (53 baris) yang
+mengemas pemicu (render prop) + modal MediaPicker + tutup otomatis setelah
+onPick; form model produk jadi pemakai pertama untuk gambar utama dan galeri.
+
+Adopsi ke delapan halaman pemakai MediaPicker lainnya SENGAJA ditahan dulu:
+worker paralel sedang menjalankan gelombang redesain table-first di halaman
+yang sama malam ini (kategori, dokumen, pengaturan-toko), jadi sweep adopsi
+ditunda supaya tidak bertabrakan.
+
+Verifikasi: tsc bersih, eslint bersih, build sukses, push lolos hook, live di
+tab owner: kolom pertama terbaca "Nama Model Produk", teks bantuan hilang,
+tombol "Pilih gambar utama" membuka panel MediaPicker. Uji klik tombol galeri
+tidak selesai karena tab owner berpindah halaman saat pengujian; wiring-nya
+identik dengan picker utama yang sudah terbukti.
