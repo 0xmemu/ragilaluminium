@@ -49,3 +49,11 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - media:disk-check PASS dengan URL domain baru; tiga varian webp aset owner tersaji 200 lewat https://media.ragilaluminium.com; situs dan admin normal.
 - Sisa percobaan dibersihkan: bucket tiri di akun Febrianafik dihapus, duplikat dan objek uji dihapus. Dev 333labs.tech tidak disentuh.
 - Catatan operasional: token yang ada tidak dapat purge cache (lakukan dari dashboard bila perlu) dan tidak memiliki izin API R2 di akun 05b9; pengelolaan bucket/domain akun tersebut lewat dashboard owner.
+
+## Konten storefront dan alarm Telegram (13 Okt 2026, lanjutan)
+
+- Konten semua diambil dari 209: 15 halaman CMS, 7 FAQ, 8 galeri, 78 testimoni, 3 banner, 20 model produk, 5 masalah-solusi, 7 pengumuman, 1 grup instalasi. Tautan pengguna/produk/pesanan yang tidak ada di produksi dinetralkan.
+- Gambar ikut dipindah: 29 objek R2 dari bucket dev ke bucket produksi ra-media-prod (kunci sama) dan 50 berkas kartu produk dari storage lokal 209; domain media dev ditulis ulang ke media.ragilaluminium.com.
+- Rekening bank checkout: BCA dengan nomor placeholder 9530977606 (wajib diganti sebelum transaksi sungguhan).
+- Alarm kesehatan 202 aktif memakai bot Telegram 209: skrip /root/ragil-backup/ragil-health-alert.sh + cron 5 menit, memeriksa layanan inti, situs, backup, sesi WhatsApp, disk; uji kirim sukses.
+- WhatsApp produksi sudah terpasang (status open, nomor 62881080733754). Bot dev 209 memakai nomor yang sama; pertimbangkan memutus sesi dev agar tidak dobel memproses pesan.
