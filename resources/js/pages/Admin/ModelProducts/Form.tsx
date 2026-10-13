@@ -440,6 +440,25 @@ export default function ModelProductForm({
                   <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </li>
+              {pickedMedia.length < maxMedia ? (
+                <li>
+                  <MediaPickerSheet
+                    title="Media model"
+                    multiple
+                    onPick={tambahMedia}
+                    trigger={(open) => (
+                      <button
+                        type="button"
+                        onClick={open}
+                        aria-label="Tambah media dari Media Library"
+                        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
+                      >
+                        <Icon name="plus" className="size-5" aria-hidden="true" />
+                      </button>
+                    )}
+                  />
+                </li>
+              ) : null}
             </ul>
           ) : pickedMedia.length ? (
             <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
@@ -528,6 +547,25 @@ export default function ModelProductForm({
                   </button>
                 </li>
               ))}
+              {pickedMedia.length < maxMedia ? (
+                <li>
+                  <MediaPickerSheet
+                    title="Media model"
+                    multiple
+                    onPick={tambahMedia}
+                    trigger={(open) => (
+                      <button
+                        type="button"
+                        onClick={open}
+                        aria-label="Tambah media dari Media Library"
+                        className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
+                      >
+                        <Icon name="plus" className="size-5" aria-hidden="true" />
+                      </button>
+                    )}
+                  />
+                </li>
+              ) : null}
             </ul>
           ) : (
             <MediaPickerSheet
