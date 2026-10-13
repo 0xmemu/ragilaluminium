@@ -390,13 +390,11 @@ class ReturnRefundIntegrityTest extends TestCase
 
     // -------------------------------------------------------------- model
 
-    public function test_tidak_ada_kolom_ongkir_retur_kedua_di_skema(): void
+    public function test_kolom_ongkir_retur_dan_perjalanan_balik_ada_di_skema(): void
     {
-        // Satu fakta bisnis satu kolom: kolom kedua yang tidak pernah diisi
-        // formulir admin membuat ekspor pesanan selalu membaca nol.
-        $this->assertFalse(
+        $this->assertTrue(
             \Illuminate\Support\Facades\Schema::hasColumn('order_return_cases', 'additional_shipping_amount'),
-            'kolom duplikat ongkir retur sudah dibuang',
+            'kolom ongkir perjalanan balik tersedia',
         );
         $this->assertTrue(
             \Illuminate\Support\Facades\Schema::hasColumn('order_return_cases', 'return_shipping_cost'),

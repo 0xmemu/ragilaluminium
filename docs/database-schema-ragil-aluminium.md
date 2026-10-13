@@ -423,7 +423,7 @@ Ledger internal retur yang diisi admin. issue pada orders.order_status bukan buk
 - late_return (BOOLEAN), NN, default false: kasus dibuat lewat jalur retur manual pesanan Selesai (migrasi 2026-09-28)
 - override_reason (TEXT), nullable: alasan pengecualian wajib untuk late_return
 - customer_notes, admin_notes (TEXT), nullable
-- refund_amount, replacement_amount, return_shipping_cost (NUMERIC), NN, default 0
+- refund_amount, replacement_amount, return_shipping_cost, additional_shipping_amount (NUMERIC), NN, default 0
 - completed_at (DATETIME), nullable, WAJIB terisi saat status completed; dijaga model (OrderReturnCase::booted()) dan data lama sudah diisi migrasi 2026-09-26
 - voided_at (DATETIME), nullable: penutupan administratif (void); kasus open beralih ke cancelled, kasus completed TETAP completed tetapi berhenti dihitung laporan (migrasi 2026-09-28)
 - voided_by_user_id (INTEGER), nullable, FK -> users.id
@@ -439,7 +439,7 @@ Indexes:
 - `idx_return_cases_completed_at` (IDX on `completed_at`)
 - `idx_return_cases_status_completed` (IDX on `status`, `completed_at`) - Performa Toko: retur selesai dalam rentang
 - `idx_return_cases_created_at` (IDX on `created_at`) - Performa Toko: retur diajukan dalam rentang
-Catatan 2026-09-26: kolom `additional_shipping_amount` DIBUANG karena formulir admin tidak pernah mengisinya (ekspor pesanan selalu membaca nol dan angkanya berbeda dari Performa Toko). Satu-satunya kolom ongkir retur yang ditanggung toko adalah `return_shipping_cost`.
+Kolom `additional_shipping_amount` dihapus 2026-09-26 lalu ditambahkan lagi 2026-09-29 untuk ongkir perjalanan balik J&T yang diisi admin. Kolom `return_shipping_cost` tetap ada untuk ongkir retur yang ditanggung toko; keduanya adalah biaya berbeda yang dipakai laporan dan ekspor.
 
 ### 3.2b order_return_items
 
