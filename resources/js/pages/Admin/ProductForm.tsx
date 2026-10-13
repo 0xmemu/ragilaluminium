@@ -171,9 +171,13 @@ export default function ProductForm({
   // lepas via endpoint arsip instan.
   const [pickerInstOpen, setPickerInstOpen] = React.useState(false)
   const [instRows, setInstRows] = React.useState(installationMedia)
-  React.useEffect(() => {
+  // Baris hasil pemasangan dari server disalin ulang saat props berubah.
+  // Disesuaikan saat render, bukan lewat effect.
+  const [syncedInstallationMedia, setSyncedInstallationMedia] = React.useState(installationMedia)
+  if (syncedInstallationMedia !== installationMedia) {
+    setSyncedInstallationMedia(installationMedia)
     setInstRows(installationMedia)
-  }, [installationMedia])
+  }
   // Mode create: hasil pemasangan dibuffer lokal dulu (produk belum ada),
   // ditempel ke database saat form disimpan via installation_media_asset_ids.
   const [pendingInst, setPendingInst] = React.useState<PickedMedia[]>([])
@@ -232,37 +236,9 @@ export default function ProductForm({
       { preserveScroll: true },
     )
   }
-  const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>([])
-  const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
-  const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
-
-  // ADR-021: definisi varian (nama bebas + opsi) diisi admin;
-  // harga & stok diisi per kombinasi setelah definisi selesai.
-  const [variantDefs, setVariantDefs] = React.useState<VariantDef[]>([])
-  const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>({})
-
-  React.useEffect(() => {
-    if (!editing) return
-    // Kontrak props terkini: variant_defs & variants dikirim sebagai props
-    // terpisah dari controller (bukan di dalam product).
-    const raw = (incomingVariantDefs && incomingVariantDefs.length)
-      ? incomingVariantDefs
-      : (product as unknown as { variant_defs?: Array<{ name?: string; options?: Array<{ value?: string; media_asset_id?: number | null; thumb_url?: string | null }> }> } | null)?.variant_defs
-    if (raw && raw.length) {
-      setVariantDefs(raw.map((def) => ({
-        name: def.name ?? "",
-        locked: Boolean(def.name && String(def.name).trim() !== ""),
-        options: (def.options ?? []).map((option) => ({
-          value: option.value ?? "",
-          media_asset_id: option.media_asset_id ?? null,
-          thumb_url: option.thumb_url ?? null,
-        })),
-      })))
-    }
-  }, [editing])
-  React.useEffect(() => {
-    if (!editing || !product?.media) return
-    setPickedMedia(product.media.map((m) => ({
+  const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>(() => {
+    if (!editing || !product?.media) return []
+    return product.media.map((m) => ({
       assetId: m.media_asset_id,
       label: m.media_asset_label ?? "",
       thumbUrl: m.url ?? "",
@@ -270,8 +246,56 @@ export default function ProductForm({
       videoUrl: m.video_url ?? null,
       variantLabel: m.variant_label ?? null,
       productVariantId: m.product_variant_id ?? null,
-    })))
-  }, [editing])
+    }))
+  })
+  const [optionPicker, setOptionPicker] = React.useState<{ defIndex: number; optionIndex: number } | null>(null)
+  const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
+
+  // ADR-021: definisi varian (nama bebas + opsi) diisi admin;
+  // harga & stok diisi per kombinasi setelah definisi selesai.
+  // Prefill definisi varian dari data server SEKALI saat halaman dimuat
+  // (lazy initializer), bukan lewat effect sesudah render.
+  // Kontrak props terkini: variant_defs & variants dikirim sebagai props
+  // terpisah dari controller (bukan di dalam product).
+  const [variantDefs, setVariantDefs] = React.useState<VariantDef[]>(() => {
+    if (!editing) return []
+    const raw = (incomingVariantDefs && incomingVariantDefs.length)
+      ? incomingVariantDefs
+      : (product as unknown as { variant_defs?: Array<{ name?: string; options?: Array<{ value?: string; media_asset_id?: number | null; thumb_url?: string | null }> }> } | null)?.variant_defs
+    if (!raw || !raw.length) return []
+    return raw.map((def) => ({
+      name: def.name ?? "",
+      locked: Boolean(def.name && String(def.name).trim() !== ""),
+      options: (def.options ?? []).map((option) => ({
+        value: option.value ?? "",
+        media_asset_id: option.media_asset_id ?? null,
+        thumb_url: option.thumb_url ?? null,
+      })),
+    }))
+  })
+  const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>(() => {
+    if (!editing || !incomingVariants?.length) return {}
+    const combosAwal = buildCombinations(variantDefs)
+    if (combosAwal.length === 0) return {}
+    const next: Record<string, { price: string; stock: string }> = {}
+    const byOptionSet = new Map<string, { price: number; stock: number }>()
+    for (const v of incomingVariants) {
+      const pair = [v.variation_1_option, v.variation_2_option]
+        .map((x) => (x ?? "").trim().toLowerCase())
+        .filter(Boolean)
+        .sort()
+        .join("|")
+      byOptionSet.set(pair, { price: v.price, stock: v.stock })
+    }
+    combosAwal.forEach((combo, index) => {
+      const pair = [...combo.options].map((x) => x.trim().toLowerCase()).sort().join("|")
+      const hit = byOptionSet.get(pair)
+      if (hit) {
+        next[String(index)] = { price: String(hit.price), stock: String(hit.stock) }
+      }
+    })
+    return next
+  })
 
   const combos = buildCombinations(variantDefs)
 
@@ -402,32 +426,8 @@ export default function ProductForm({
     applySlotOrder(next)
   }
 
-  // Prefill harga & stok dari varian eksisting (hasil import) berdasarkan
-  // pasangan opsi, sehingga step review menampilkan nilai tersimpan.
-  React.useEffect(() => {
-    if (!editing || !incomingVariants?.length || combos.length === 0) return
-    setCombinations((prev) => {
-      if (Object.keys(prev).length > 0) return prev
-      const next: Record<string, { price: string; stock: string }> = {}
-      const byOptionSet = new Map<string, { price: number; stock: number }>()
-      for (const v of incomingVariants) {
-        const pair = [v.variation_1_option, v.variation_2_option]
-          .map((x) => (x ?? "").trim().toLowerCase())
-          .filter(Boolean)
-          .sort()
-          .join("|")
-        byOptionSet.set(pair, { price: v.price, stock: v.stock })
-      }
-      combos.forEach((combo, index) => {
-        const pair = [...combo.options].map((x) => x.trim().toLowerCase()).sort().join("|")
-        const hit = byOptionSet.get(pair)
-        if (hit) {
-          next[String(index)] = { price: String(hit.price), stock: String(hit.stock) }
-        }
-      })
-      return next
-    })
-  }, [editing, incomingVariants, combos.length])
+  // Prefill harga & stok dari varian eksisting (hasil import) kini dilakukan
+  // lewat lazy initializer state di atas, bukan effect sesudah render.
 
   // Ketikan opsi mengubah key teks; simpan nilai harga/stok per INDEX kombinasi agar tidak hilang saat mengetik.
 

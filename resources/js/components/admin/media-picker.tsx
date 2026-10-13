@@ -428,8 +428,16 @@ export function MediaPicker({
   }, [kind])
 
   React.useEffect(() => {
-    if (open && tab === "library") {
-      searchAssets(query, selectedFolder)
+    if (!open || tab !== "library") return
+    let cancelled = false
+    // searchAssets() menyetel state; jalankan di microtask supaya setState
+    // tidak sinkron di tengah commit (react-hooks/set-state-in-effect).
+    const task = Promise.resolve().then(() => {
+      if (!cancelled) searchAssets(query, selectedFolder)
+    })
+    return () => {
+      cancelled = true
+      void task
     }
   }, [open, tab, query, selectedFolder, searchAssets])
 

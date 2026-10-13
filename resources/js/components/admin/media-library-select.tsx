@@ -72,7 +72,17 @@ export function MediaLibrarySelect({
   }, [kind])
 
   React.useEffect(() => {
-    if (open) load(query)
+    if (!open) return
+    let cancelled = false
+    // load() menyetel state; jalankan di microtask supaya setState tidak
+    // sinkron di tengah commit (react-hooks/set-state-in-effect).
+    const task = Promise.resolve().then(() => {
+      if (!cancelled) load(query)
+    })
+    return () => {
+      cancelled = true
+      void task
+    }
   }, [open, query, load])
 
   React.useEffect(() => {
