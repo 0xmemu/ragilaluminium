@@ -6,7 +6,6 @@ import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { storeExampleUrl } from "@/lib/routes"
@@ -48,8 +47,6 @@ export default function CategoryForm({
     code: category?.code ?? "",
     name: category?.name ?? "",
     slug: category?.slug ?? "",
-    seo_title: category?.seo_title ?? "",
-    seo_description: category?.seo_description ?? "",
     sort_order: String(category?.sort_order ?? nextSortOrder),
     is_active: category?.is_active ?? true,
   })
@@ -75,7 +72,6 @@ export default function CategoryForm({
     }
   }
 
-  const publicProductExample = storeExampleUrl(`/products/${form.data.slug || "kategori"}`)
 
   return (
     <AdminLayout
@@ -267,94 +263,7 @@ export default function CategoryForm({
           </table>
         </div>
 
-        {/* 2. Optimasi Mesin Pencari (SEO) (Table-First) */}
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <div className="border-b border-border bg-muted/40 px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">Optimasi Mesin Pencari (SEO)</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Kelola bagaimana halaman kategori ini tampil di hasil pencarian Google.
-            </p>
-          </div>
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  SEO Meta Title
-                </th>
-                <td className="px-4 py-3">
-                  <Input
-                    id="cat-seo-title"
-                    value={form.data.seo_title}
-                    onChange={(e) => form.setData("seo_title", e.target.value)}
-                    placeholder={
-                      form.data.name
-                        ? `${form.data.name} Terbaik | Ragil Aluminium`
-                        : "Judul halaman kategori untuk SEO"
-                    }
-                    maxLength={100}
-                    className="max-w-xl"
-                  />
-                  {form.errors.seo_title ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.seo_title}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Judul yang dibaca bot mesin pencari (direkomendasikan 50-60 karakter).
-                    </p>
-                  )}
-                </td>
-              </tr>
-
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  SEO Meta Description
-                </th>
-                <td className="px-4 py-3">
-                  <Textarea
-                    id="cat-seo-desc"
-                    rows={3}
-                    value={form.data.seo_description}
-                    onChange={(e) => form.setData("seo_description", e.target.value)}
-                    placeholder="Deskripsi singkat mengenai produk-produk di kategori ini..."
-                    maxLength={300}
-                    className="max-w-2xl"
-                  />
-                  {form.errors.seo_description ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.seo_description}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Ringkasan isi kategori yang muncul di cuplikan Google (direkomendasikan 120-160 karakter).
-                    </p>
-                  )}
-                </td>
-              </tr>
-
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  Pratinjau Hasil Pencarian
-                </th>
-                <td className="px-4 py-3">
-                  <div className="max-w-2xl rounded-lg border border-border bg-muted/30 p-4 space-y-1.5">
-                    <p className="text-[11px] font-semibold text-muted-foreground">
-                      Pratinjau Hasil Pencarian Google
-                    </p>
-                    <p className="text-xs text-success truncate font-mono">
-                      {publicProductExample}
-                    </p>
-                    <p className="text-sm font-semibold text-primary truncate">
-                      {form.data.seo_title || form.data.name || "Kategori Produk"} . Ragil Aluminium
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {form.data.seo_description ||
-                        "Jual produk aluminium berkualitas tinggi langsung dari workshop Ragil Aluminium. Bergaransi resmi dan pengerjaan presisi."}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* 3. Produk Terkait (Hanya tampil saat mode Edit) */}
+        {/* 2. Produk Terkait (Hanya tampil saat mode Edit) */}
         {category ? (
           <div className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="border-b border-border bg-muted/40 px-4 py-3">
