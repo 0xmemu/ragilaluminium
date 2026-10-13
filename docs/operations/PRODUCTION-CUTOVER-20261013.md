@@ -21,3 +21,13 @@
 - Tidak ada order, barang, atau pelanggan development; pengunjung baru di database setelah situs live merupakan trafik produksi dan tidak boleh dihapus hanya demi angka nol. Tetap verifikasi hasil penyimpanan dan notifikasi sebelum membuka pesanan nyata.
 
 Kesimpulan: etalase kosong live dan terlindung, bukan toko lengkap yang siap menerima pesanan, pengiriman J&T, atau WhatsApp. Persiapan provider, kunci deploy, uji login dan retensi storage masih terbuka.
+
+## Aktivasi lanjutan 13 Okt 2026 (sesi lanjutan)
+
+Rilis aktif tetap 20261013-v1.0.1 ditambah hotfix dua berkas dari commit e788b206 (config/jnt.php dan app/Console/Commands/JntJointDebug.php): perbaikan ini membuat nilai uji J&T dibaca lewat config sehingga tahan config:cache. Rilis penuh berikutnya memuat perbaikan ini lewat main.
+
+- J&T aktif: kredensial di-merge, master alamat (jnt_address_masters) 81.320 baris tersinkron dari API, balikan webhook diverifikasi dengan kunci asli (unsigned 401, signed ACK). Validasi formal lewat jnt:joint-debug: tariff 3/3 OK dan address 3/3 OK (http 200), tiap panggilan dengan ID permintaan.
+- Dataset referensi (bukan produk, media, data pelanggan) sudah di 202: tabel pemetaan kode pos 81.058 baris, empat berkas wilayah CSV di storage rilis dan shared/storage, sub model 51, template atribut sub model 107, template pesan WhatsApp 9, setelan operasional COD 4 persen dan subsidi ongkir 10 persen. Bukti hidup: /api/wilayah/provinces penuh dan cascade sampai kode pos desa.
+- Media: MEDIA_DISK=s3 memakai bucket ra-media dengan kredensial yang sudah ada di server, URL publik media.333labs.tech; media:disk-check PASS (tulis, baca, hapus).
+- WhatsApp: layanan baileys-bot aktif di port 3005 dengan program dan dependensi selaras dengan 209; menunggu pemindaian QR oleh owner di panel admin, satu-satunya langkah yang butuh pemilik.
+- Sisa langkah owner: pemindaian QR WhatsApp, rotasi kata sandi admin (sandi lama pernah tampil di percakapan), dan verifikasi login browser.

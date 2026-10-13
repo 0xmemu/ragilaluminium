@@ -5015,3 +5015,23 @@ Config cache diperbaiki (integrations closure -> nilai env serializable, commit 
 ## 2026-10-13 14:15 UTC | zcode | Deep | rilis formal v1.0.1 terpasang
 
 Kesalahan merge terdeteksi dan diperbaiki: merge pertama memakai branch kandidat lokal yang tertinggal (6630f927), sehingga v1.0.0 tidak memuat perbaikan config. Setelah fetch, main digabung ulang ke 2980cad6 yang memuat 122f2c6f; tag pengganti v1.0.1 dibuat dari main dan dipush. Rilis v1.0.1 diekstrak ke /var/www/ragilaluminium/releases/20261013-v1.0.1: composer dan npm build sukses, migrasi tidak ada yang tertunda, config:cache berhasil, switch symlink atomik dari snapshot 6630f927, reload nginx/php-fpm, restart ragil-queue. Smoke test: sepuluh halaman publik 200, admin 302 ke login, .env dan .git/config 403, JNT 401, produk/order/customer 0, tanpa error di log. Rollback path tetap rilis snapshot. Handover: docs/release/RELEASE-v1.0.1.md.
+
+## 2026-10-13 14:40 UTC | zcode | Deep | J&T diaktifkan di 202
+
+Blok kredensial J&T di shared/.env 202 diaktifkan (JNT_ENABLED=true) memakai kredensial yang distage dari 209. Nama pengirim dan tujuan uji dikoreksi agar sama persis dengan master J&T (Jawa Tengah, Kab Banjarnegara, Mandiraja; tujuan uji DKI Jakarta, Jakarta Pusat, Gambir), karena pencocokan alamat J&T peka huruf. Master alamat J&T (tabel jnt_address_masters, sumber dari API resmi) tersinkron 81.320 baris di 202. Endpoint balikan api.ragilaluminium.com/api/jnt memang sudah terdaftar di konsol Open J&T Cargo, jadi balikan kini diverifikasi dengan kunci privat asli: POST tanpa tanda tangan ditolak 401, POST bertanda tangan sah dijawab ACK code 1. Temuan: env() di dalam perintah artisan mengembalikan kosong saat config di-cache, sehingga nilai uji harus dibaca lewat config; perbaikan ada di commit e788b206.
+
+## 2026-10-13 15:10 UTC | zcode | Deep | dataset referensi diimpor ke 202
+
+Sesuai instruksi owner, dataset yang bukan produk, media, dan data pelanggan diimpor dari 209 ke 202: tabel pemetaan kode pos (postal_code_mappings) 81.058 baris beserta satu baris dataset induknya (postal_datasets); empat berkas wilayah CSV (provinsi, kabupaten/kota, kecamatan, desa termasuk kode pos tingkat desa) disalin ke storage rilis aktif dan disimpan juga di shared/storage/app/wilayah untuk rilis berikutnya; taksonomi sub model 51 baris (22 aktif, penanda aktif sama dengan 209) dengan metode replace; template atribut sub model 107 baris; template pesan WhatsApp 9 baris (tautan pelaku di tabel pengguna dikosongkan karena akun itu tidak ada di produksi); setelan operasional COD 4 persen dan subsidi ongkir 10 persen versi 1. Bukti: /api/wilayah/provinces mengembalikan daftar provinsi penuh (sebelumnya kosong), cascade regencies, districts, dan villages hidup sampai kode pos desa (contoh kecamatan MANDIRAJA). Tidak diimpor sesuai instruksi: produk, media, konten CMS, ulasan, banner, pesanan, pelanggan, pengunjung, dan nomor sesi perangkat WhatsApp.
+
+## 2026-10-13 15:20 UTC | zcode | Deep | media 202 pindah ke Cloudflare R2
+
+Penyimpanan media 202 disambungkan ke Cloudflare R2 memakai kredensial yang memang sudah ada di server (tersimpan di env ra-preview): bucket ra-media, URL publik media.333labs.tech, penunjuk MEDIA_DISK berubah dari local ke s3, fallback sumber dimatikan. Uji php artisan media:disk-check PASS: tulis, baca, dan hapus objek uji sukses, URL publik dapat diakses (https://media.333labs.tech/healthchecks/...).
+
+## 2026-10-13 15:35 UTC | zcode | Deep | bot WhatsApp dipasang di 202
+
+Bot WhatsApp 202 dipasang sebagai layanan sistem (baileys-bot.service, port 3005, autostart). Berkas program diselaraskan dengan 209 (sha256 36ae3147, memuat endpoint pra-kirim /api/on-whatsapp yang tidak ada di salinan lama 202); dependensi dipasang ulang dengan npm ci karena salinan node_modules 202 rusak (paket libsignal kehilangan berkas session_*). Env aplikasi diisi pasangan baru: WHATSAPP_PROVIDER=baileys, alamat bot, kunci API, dan kunci rahasia webhook, keduanya dibuat acak dan konsisten di dua sisi. Uji kunci API: POST /api/refresh-qr dijawab status refreshing dan /status hidup. Langkah tersisa hanya pemindaian QR oleh owner di panel admin, karena pairing menyentuh ponsel pemilik.
+
+## 2026-10-13 15:50 UTC | zcode | Deep | validasi formal J&T 3x di 202
+
+Validasi dijalankan lewat php artisan jnt:joint-debug di rilis 202. Hasil di lingkungan produksi (base openapi.jtcargo.co.id): tariff 3/3 OK (http 200, msg SUCCESS) dan address 3/3 OK (http 200, msg success), setiap panggilan mencatat ID permintaan. Perbaikan dua berkas (config/jnt.php dan JntJointDebug.php) dari commit e788b206 dipasang ke rilis 20261013-v1.0.1 sebagai hotfix; rilis penuh berikutnya memuatnya lewat main. Catatan kondisi: rilis aktif 20261013-v1.0.1 plus hotfix e788b206.
