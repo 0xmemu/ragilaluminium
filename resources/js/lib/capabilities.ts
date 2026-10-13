@@ -9,24 +9,23 @@ export interface AdminCapabilitiesPayload {
 }
 
 /**
- * Baca capability admin dari props Inertia (auth.capabilities).
- * Fail-closed: tidak ada data → semua capability false.
+ * Baca capability admin dari payload auth Inertia (auth.capabilities).
+ * Fungsi MURNI: menerima payload lewat argumen dan TIDAK memanggil hook apa pun,
+ * jadi aman dipanggil dari event handler, util, maupun test.
+ * Fail-closed: tidak ada data, semua capability false.
  */
-export function readAdminCapabilities(): AdminCapabilitiesPayload | null {
-  try {
-    const props = usePage<SharedPageProps>().props
-    const auth = props.auth as { capabilities?: AdminCapabilitiesPayload | null } | undefined
-    const payload = auth?.capabilities
-    if (!payload || typeof payload !== "object" || !payload.capabilities) return null
-    return payload
-  } catch {
-    return null
-  }
+export function readAdminCapabilities(
+  auth: { capabilities?: AdminCapabilitiesPayload | null } | undefined,
+): AdminCapabilitiesPayload | null {
+  const payload = auth?.capabilities
+  if (!payload || typeof payload !== "object" || !payload.capabilities) return null
+  return payload
 }
 
-/** Hook tunggal utk capability admin. */
+/** Hook tunggal utk capability admin: baca props Inertia, lalu teruskan ke pembaca murni. */
 export function useAdminCapabilities(): AdminCapabilitiesPayload | null {
-  return readAdminCapabilities()
+  const { auth } = usePage<SharedPageProps>().props
+  return readAdminCapabilities(auth as { capabilities?: AdminCapabilitiesPayload | null } | undefined)
 }
 
 /** True bila user memiliki capability; fail-closed false. */

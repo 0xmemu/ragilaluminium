@@ -9,6 +9,17 @@ namespace App\Support;
 class BankTransferInstructions
 {
     /**
+     * Sumber utama kini pengaturan admin (BankTransferSettings, editable di
+     * menu Pembayaran - owner 2026-09-16); config/env hanya fallback awal.
+     */
+    public static function forStorefront(): ?array
+    {
+        return BankTransferSettings::get() ?? self::fromConfig();
+    }
+
+    /**
+     * Nilai dari config/env saja (sumber lama).
+     *
      * @return array{
      *     bank_name: string,
      *     account_name: string,
@@ -16,7 +27,7 @@ class BankTransferInstructions
      *     notes: string
      * }|null
      */
-    public static function forStorefront(): ?array
+    public static function fromConfig(): ?array
     {
         $bank = config('sitemap.brand.bank', []);
         if (! is_array($bank)) {

@@ -1,11 +1,5 @@
 import type { OrderEta } from "@/types"
 
-const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-}
-
 export function displayEtaRangeLabel(eta: OrderEta): string {
   const start = new Date(eta.start_at)
   const end = new Date(eta.end_at)

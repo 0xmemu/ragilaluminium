@@ -36,8 +36,8 @@ class CatalogDynamicCategoryTest extends TestCase
 
         $this->assertSame('ATHAP', CatalogLabels::normalizeCategory('ATHAP'));
 
-        // Compatibility resolver: kategori Indonesia legacy tetap dipetakan ke
-        // kode internal produk lama WINDOW/PINTU/BOVEN.
+        // Kode kanonik Indonesia: kode kategori tabel `categories` sudah sama
+        // dengan kode internal products.product_category (identitas).
         $this->assertSame('JENDELA', CategoryUrl::codeToProductCode('JENDELA'));
         $this->assertSame('jendela', CategoryUrl::categoryToSlug('JENDELA'));
     }

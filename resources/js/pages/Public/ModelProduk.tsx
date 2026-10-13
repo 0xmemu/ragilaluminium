@@ -1,24 +1,13 @@
 import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { SortArrowsIcon } from "@/components/public/filter-berdasarkan-control"
-import { PageTopBar } from "@/components/public/page-top-bar"
 import { SortMenu } from "@/components/public/model-sort-menu"
-import { Icon } from "@/components/shared/icon"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ModelCategoryCard } from "@/components/public/model-category-card"
 import { ShowcaseListingFrame } from "@/components/public/showcase-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
 import type { ModelCardData } from "@/types"
 
 interface ModelProdukProps {

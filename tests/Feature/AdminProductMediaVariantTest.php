@@ -24,7 +24,7 @@ class AdminProductMediaVariantTest extends TestCase
             'parent_sku' => 'WIN-MEDIA-1',
             'name' => 'Window Media',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

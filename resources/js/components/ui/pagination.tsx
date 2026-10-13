@@ -1,59 +1,83 @@
 import { Link } from "@inertiajs/react"
 
 import { Icon } from "@/components/shared/icon"
+import {
+  buildVisiblePages,
+  PAGINATION_MIDDLE_DESKTOP,
+  PAGINATION_MIDDLE_MOBILE,
+  type PaginationItem,
+} from "@/lib/pagination"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
-type PaginationLinkKind = "previous" | "next" | "ellipsis" | "page"
+function PageNumbers({
+  items,
+  currentPage,
+  links,
+  className,
+  itemClassName,
+}: {
+  items: PaginationItem[]
+  currentPage: number
+  links: PaginationData["links"]
+  className?: string
+  itemClassName?: string
+}) {
+  return (
+    <div className={cn("items-center justify-center gap-1.5", className)}>
+      {items.map((item, index) => {
+        if (item === "gap") {
+          return (
+            <span
+              key={`gap-${index}`}
+              aria-hidden="true"
+              className={cn(
+                "inline-flex items-center justify-center text-xs font-medium text-muted-foreground",
+                itemClassName,
+              )}
+            >
+              …
+            </span>
+          )
+        }
 
-function parsePaginationLink(label: string): { kind: PaginationLinkKind; text: string } {
-  const cleaned = label.replace(/&[^;]+;/g, "").trim()
-  const lower = cleaned.toLowerCase()
+        const active = item === currentPage
+        const href = links.find((link) => link.label === String(item))?.url
+        const classes = cn(
+          "inline-flex size-9 min-w-9 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition",
+          active
+            ? "border-primary bg-primary text-primary-foreground shadow-sm"
+            : "border-border bg-surface text-foreground hover:border-foreground/30 hover:bg-muted",
+          itemClassName,
+        )
 
-  if (lower.includes("previous") || lower.includes("sebelum")) {
-    return { kind: "previous", text: "Sebelumnya" }
-  }
-
-  if (lower.includes("next") || lower.includes("berikut")) {
-    return { kind: "next", text: "Berikutnya" }
-  }
-
-  if (cleaned === "...") {
-    return { kind: "ellipsis", text: "..." }
-  }
-
-  return { kind: "page", text: cleaned }
+        return href && !active ? (
+          <Link
+            key={item}
+            href={href}
+            preserveScroll
+            className={classes}
+            aria-label={`Halaman ${item}`}
+          >
+            {item}
+          </Link>
+        ) : (
+          <span key={item} className={classes} aria-current={active ? "page" : undefined}>
+            {item}
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 
 /**
- * Hitung daftar nomor halaman yang tampil dengan ellipsis, adaptif terhadap slot.
- * Misal total=10, current=5, visible=5 -> [1, "...", 4, 5, 6, "...", 10].
- * Aturan: halaman pertama & terakhir SELALU tampil; jendela tengah mengikuti jumlah slot.
- */
-function buildVisiblePages(lastPage: number, current: number, visible: number): Array<number | "gap"> {
-  if (lastPage <= visible) {
-    return Array.from({ length: lastPage }, (_, i) => i + 1)
-  }
-
-  // Jumlah nomor halaman murni di antara dua ellipsis (first & last tak termasuk jatah)
-  const middleCount = Math.max(3, visible - 2)
-  let start = Math.max(2, current - Math.floor((middleCount - 1) / 2))
-  const end = Math.min(lastPage - 1, start + middleCount - 1)
-  // Geser balik bila mendekati akhir
-  start = Math.max(2, end - middleCount + 1)
-
-  const pages: Array<number | "gap"> = [1]
-  if (start > 2) pages.push("gap")
-  for (let p = start; p <= end; p++) pages.push(p)
-  if (end < lastPage - 1) pages.push("gap")
-  pages.push(lastPage)
-  return pages
-}
-
-/**
- * Satu komponen pagination reusable untuk semua halaman publik/admin.
- * Adaptif: jumlah dot menyusut mengikuti lebar layar (container query),
- * jika sempit tampil mis. < 1 ... 4 5 6 ... 10 >.
+ * Satu komponen pagination reusable untuk halaman publik.
+ *
+ * Nomor halaman tampil di SEMUA ukuran layar; yang menyesuaikan hanyalah
+ * cakupan nomornya (kontrak owner 2026-09-16): desktop `1 2 3 4 … 8`,
+ * mobile `1 2 3 … 8`. Dihitung dua varian sekaligus lalu dipilih lewat CSS
+ * agar tidak ada perhitungan ulang saat resize maupun masalah hidrasi.
  */
 export function Pagination({ pagination, className }: { pagination?: PaginationData | null; className?: string }) {
   if (!pagination || pagination.last_page <= 1) return null
@@ -63,7 +87,8 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
   const prevUrl = pagination.links.find((l) => l.label.toLowerCase().includes("previous") || l.label.toLowerCase().includes("sebelum"))
   const nextUrl = pagination.links.find((l) => l.label.toLowerCase().includes("next") || l.label.toLowerCase().includes("berikut"))
 
-  const pages = buildVisiblePages(lastPage, currentPage, 5)
+  const desktopPages = buildVisiblePages(lastPage, currentPage, PAGINATION_MIDDLE_DESKTOP)
+  const mobilePages = buildVisiblePages(lastPage, currentPage, PAGINATION_MIDDLE_MOBILE)
 
   const navButton = (kind: "previous" | "next", url: string | null | undefined) => {
     const label = kind === "previous" ? "Sebelumnya" : "Berikutnya"
@@ -101,41 +126,21 @@ export function Pagination({ pagination, className }: { pagination?: PaginationD
       <div className="mx-auto flex w-full max-w-fit items-center justify-center gap-2">
         {navButton("previous", prevUrl?.url)}
 
-        {/* Tablet & desktop: daftar halaman adaptif dengan ellipsis. */}
-        <div className="hidden items-center justify-center gap-1.5 sm:flex">
-          {pages.map((page, index) =>
-            page === "gap" ? (
-              <span key={`gap-${index}`} className="inline-flex size-9 items-center justify-center text-xs font-medium text-muted-foreground">
-                …
-              </span>
-            ) : (
-              (() => {
-                const active = page === currentPage
-                const href = pagination.links.find((l) => l.label === String(page))?.url
-                const classes = cn(
-                  "inline-flex size-9 min-w-9 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-surface text-foreground hover:border-foreground/30 hover:bg-muted",
-                )
-                return href && !active ? (
-                  <Link key={page} href={href} preserveScroll className={classes} aria-label={`Halaman ${page}`}>
-                    {page}
-                  </Link>
-                ) : (
-                  <span key={page} className={classes} aria-current={active ? "page" : undefined}>
-                    {page}
-                  </span>
-                )
-              })()
-            ),
-          )}
-        </div>
+        {/* Mobile (<640px): cakupan nomor lebih sedikit. */}
+        <PageNumbers
+          items={mobilePages}
+          currentPage={currentPage}
+          links={pagination.links}
+          className="flex sm:hidden"
+        />
 
-        {/* Mobile (<640px): indikator halaman aktif + total */}
-        <div className="flex h-9 items-center justify-center rounded-full border border-border bg-surface px-3.5 text-xs font-semibold tabular-nums text-foreground sm:hidden">
-          {currentPage} / {lastPage}
-        </div>
+        {/* Tablet & desktop: cakupan nomor lebih luas. */}
+        <PageNumbers
+          items={desktopPages}
+          currentPage={currentPage}
+          links={pagination.links}
+          className="hidden sm:flex"
+        />
 
         {navButton("next", nextUrl?.url)}
       </div>

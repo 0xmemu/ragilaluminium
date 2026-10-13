@@ -39,7 +39,7 @@ class StorePerformanceTest extends TestCase
             'parent_sku' => 'WIN-PERF-1',
             'name' => 'Jendela Perf',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',

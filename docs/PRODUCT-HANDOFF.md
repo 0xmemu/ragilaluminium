@@ -566,24 +566,10 @@ For each: purpose · consumes · key actions.
 - **Flash Sale (`admin.flash-sale.*`)** — manage per-product `promo_flash_sale` + `promo_compare_price` attributes (list/grid, enable/disable, create/edit) **and** global campaign window on `cms_pages.slug = flash-sale` → `content.period` (`enabled`, `starts_at`, `ends_at`). Storefront Flash Sale label / `/flash-sale` listing / promo spotlight only when period status is `live`. No separate campaign table.
 - **Voucher Toko (`admin.vouchers.*`)** — CRUD/status/duplikasi/akhiri `store_vouchers`; beberapa voucher dapat aktif; setiap voucher memilih nominal atau persen, minimum belanja opsional (default tanpa minimum), dan boleh/tidaknya stacking. Voucher dapat di-target-kan (keputusan owner 2026-08-20): **General** (seluruh keranjang, default), **Model Produk** (`target_model` = `product_model`), atau **Produk Tertentu** (`target_product_id`). Checkout menerapkan voucher setelah harga efektif Promo/Flash Sale; untuk voucher bertarget potongan hanya dihitung atas subtotal produk yang memenuhi target, dan minimum belanja dihitung dari subtotal eligible tersebut. Stacking dihitung berurutan atas sisa eligible (didistribusi proporsional); subsidi ongkir tetap dapat berjalan. Session menyimpan daftar kode; snapshot order memakai `orders.voucher_code` berisi kode dipisah koma dan `voucher_discount_amount` total. Voucher tidak mengubah harga dasar histori: `orders.subtotal_amount` & `order_items.unit_price` tetap harga efektif Promo/Flash Sale (tanpa potongan voucher); potongan voucher dicatat terpisah. UI admin (`admin.vouchers.*`) menampilkan alasan voucher tidak dapat dipakai (nonaktif / periode belum mulai / periode sudah berakhir / tanpa produk yang memenuhi target) dan label target pada kartu/daftar. Setiap perubahan voucher (buat/ubah/aktif/nonaktif/duplikat/akhiri) dicatat ke `event_logs` sebagai `product.voucher.*`.
 - **Biaya COD (`admin.cod-settings.*`)** — enable COD + handling fee (%) + optional max order; stored on `cms_pages.checkout.content.cod`; applied as `orders.cod_fee_amount` at place-order.
-- **CTA Storefront (`admin.cta-settings.*`)** - mengatur TEKS, TOMBOL, dan WARNA semua CTA
-  storefront lewat prop bersama `ctaSettings`. Dua jenis blok: (a) banner penutup per halaman
-  publik (kunci: home, model-detail, about, faq, cara-pemesanan, masalah-solusi), dan (b) kartu
-  reusable yang dipakai berulang di halaman transaksi: `trust` (kartu jaminan, dipakai di
-  keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan) dan `order-help` (blok
-  bantuan di halaman pelacakan). Setiap blok punya `eyebrow`, `heading`, dan `actions`
-  (maksimal 2 tombol, kontrak owner 2026-09-02). Tombol TIDAK memakai URL bebas: `destination`
-  dipilih dari `CtaSettings::DESTINATIONS` (whatsapp + route internal) supaya jalur konsultasi
-  dan checkout tidak bisa rusak. Blok tanpa tombol sah otomatis kembali ke tombol live
-  (`INITIAL_ACTIONS`), dan warna banner diatur sekali untuk semua blok via `color` (hex 6 digit,
-  bawaan `#C00000`).
-  Selain enam banner penutup dan dua kartu transaksi, ada EMPAT blok reusable lain yang
-  semuanya ditemukan saat penyisiran ulang: `home-help` (Beranda bagian Kami bantu),
-  `pdp-benefits` (poin alasan belanja di PDP), `catalog-empty` (keterangan + tombol saat
-  pencarian katalog kosong), dan `about-contact` (judul panel toko & workshop di Tentang
-  Kami beserta tombolnya). Blok berbentuk daftar memakai `items` (maksimal 6 baris) alih-alih
-  `actions`. Teks lencana hero SENGAJA tidak didaftarkan karena sumbernya (PromoSlider) sudah
-  tidak dirender, jadi blok itu tidak akan tampil di storefront.
+- **CTA Storefront: teks hidup di kode, bukan menu admin** - sejak 2026-09-20 TIDAK ADA halaman pengaturan CTA. Seluruh teks CTA storefront hidup di `resources/js/lib/cta-content.ts` sebagai konstanta TypeScript bertipe (`CTA_CONTENT` berisi `eyebrow`/`heading`/`actions`/`items` per kunci halaman, `CTA_DESTINATIONS` berisi tujuan tombol yang sah, helper `ctaBlock()` dan `ctaActionLabel()`), dibaca langsung komponen storefront. Mengubah teks CTA berarti mengubah berkas itu lalu build ulang, bukan mengisi form admin.
+  Komponen TETAP ADA dan tetap reusable lewat props: `ClosingCTASection` (banner penutup halaman informasi: beranda, detail model, tentang kami, FAQ, cara pemesanan, masalah & solusi), `TrustAssuranceCard` (kartu jaminan di keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan), dan helper `resolveCtaActions` di `resources/js/lib/cta-actions.ts` (menyelesaikan `destination` menjadi href, termasuk nomor WhatsApp toko yang aktif), jadi halaman baru bisa memakai ketiganya dengan kalimat sendiri.
+  `destination` pada tombol adalah KUNCI tujuan (whatsapp atau nama route internal), bukan URL bebas. Kontrak owner 2026-09-02 tetap berlaku: maksimal 2 tombol dan 6 baris `items` per blok.
+  Alasan penghapusan: lapisan admin itu tidak pernah dipakai (0 dari 23 blok terisi di database) dan menimbulkan duplikasi sumber teks, karena `resources/js/lib/cta-live.json` harus dijaga sinkron manual dengan kalimat yang sama di komponen. Arsip lengkap ada di `_archive/cta-storefront/`.
 - **Subsidi Ongkir (`admin.shipping-subsidy.*`)** — enable shipping subsidy (%/Rp) + J&T carrier toggle; stored on `cms_pages.checkout.content.shipping_subsidy`; checkout uses net shipping; snapshot `orders.shipping_subsidy_amount`.
 - **Users (`admin.users.*`)** — Manajemen Admin: list/filter + CRUD `users` + activate/deactivate; equal-admin (no role picker); guard self-deactivate & last active admin.
 - **Profil Saya (`admin.profile.*`)** — edit nama/email/password akun yang sedang login.

@@ -258,28 +258,20 @@ class InertiaCatalog
     }
 
     /**
+     * Carousel "Paling Banyak Dipesan": 10 produk TERATAS dari urutan yang sama
+     * dengan galeri /products/all?from=paling-banyak-dipesan (kurasi admin dulu,
+     * sisanya skor penjualan). Dengan begitu isi carousel selalu sama dengan
+     * barisan teratas galeri, dan halaman admin jadi satu-satunya pengatur urutan.
+     *
      * @return list<array<string, mixed>>
      */
     public static function popularProductCards(int $limit = 10): array
     {
-        $with = ['mainImage', 'media', 'activeVariants.attributes', 'attributes'];
-
         $products = Product::visible()
-            ->homepagePopular()
-            ->with($with)
-            ->withPopularityScore()
-            ->orderBy('homepage_popular_sort')
-            ->orderByDesc('id')
+            ->with(['mainImage', 'media', 'activeVariants.attributes', 'attributes'])
+            ->orderByPalingBanyakDipesan()
             ->limit($limit)
             ->get();
-
-        if ($products->isEmpty()) {
-            $products = Product::visible()
-                ->with($with)
-                ->orderByWebsiteSales()
-                ->limit($limit)
-                ->get();
-        }
 
         return self::productCards($products);
     }

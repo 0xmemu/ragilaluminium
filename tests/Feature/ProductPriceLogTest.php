@@ -19,7 +19,7 @@ class ProductPriceLogTest extends TestCase
     {
         $p = Product::create([
             'parent_sku' => 'WIN-PL-1', 'name' => 'Window PL', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
 

@@ -34,8 +34,6 @@ const WAJIB_TERKUNCI = [
   // Bagian "Slide bar promo": setelan di dalam halaman daftar Bar Promo.
   "resources/js/pages/Admin/Announcements/Index.tsx",
   // Halaman pengaturan murni yang wajib terkunci bawaan.
-  "resources/js/pages/Admin/CmsDocument/Edit.tsx",
-  "resources/js/pages/Admin/CmsPageForm.tsx",
   "resources/js/pages/Admin/Profile/Edit.tsx",
   "resources/js/pages/Admin/WhatsApp/Edit.tsx",
   "resources/js/pages/Admin/Beranda/HowToOrderForm.tsx",

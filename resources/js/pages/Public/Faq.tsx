@@ -109,6 +109,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
       </HelpPageFrame>
 
       <ClosingCTASection
+        pageKey="faq"
         eyebrow="Masih punya pertanyaan?"
         heading="Tim kami siap membantu lewat WhatsApp"
         compact

@@ -1,7 +1,6 @@
 import * as React from "react"
 
 import {
-  AppliedFiltersCard,
   FilterSidebar,
   FilterSidebarSection,
 } from "@/components/public/filter-sidebar"
@@ -120,7 +119,6 @@ export function ModelFilterOptions({
 export function CategoryFilterOptions({
   categoryLinks,
   activeCategory,
-  fieldSuffix,
 }: {
   categoryLinks: CatalogCategoryLink[]
   activeCategory?: string | null
@@ -184,7 +182,6 @@ export function CatalogProductListingSidebar({
   priceMax,
   variant = "live",
   onFiltersChange,
-  onClearAll,
   onApplyPrice,
   className,
   fieldSuffix = "sidebar",
@@ -224,20 +221,6 @@ export function CatalogProductListingSidebar({
       id: "price",
       label: formatPriceChip(priceMin?.toString() ?? "", priceMax?.toString() ?? ""),
     })
-  }
-
-  function removeChip(id: string) {
-    if (id === "model") onFiltersChange({ model: "" })
-    if (id === "design") onFiltersChange({ design: "" })
-    if (id === "price") onFiltersChange({ priceMin: "", priceMax: "" })
-  }
-
-  function selectModel(value: string | null) {
-    onFiltersChange({ model: value ?? "" })
-  }
-
-  function selectDesign(value: string | null) {
-    onFiltersChange({ design: value ?? "" })
   }
 
   return (

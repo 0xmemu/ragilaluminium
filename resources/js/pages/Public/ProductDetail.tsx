@@ -30,6 +30,8 @@ interface ProductDetailProps {
   installationMedia?: Array<{ id: number; url: string; thumb?: string | null }>
   reviews: Testimonial[]
   relatedProducts: ProductCardData[]
+  /** URL listing berfilter (kategori + model + sub model) untuk "Lihat Semua". */
+  relatedUrl?: string | null
   promo?: ProductPromoMetadata | null
 }
 
@@ -45,6 +47,7 @@ export default function ProductDetail({
   installationMedia = [],
   reviews = [],
   relatedProducts = [],
+  relatedUrl = null,
   promo = null,
 }: ProductDetailProps) {
   const purchase = useProductPurchase({ product, attributes, variants, media, reviews, promo })
@@ -149,7 +152,7 @@ export default function ProductDetail({
             <button
               type="button"
               onClick={handlePdpBack}
-              className="absolute left-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+              className="absolute left-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-full bg-foreground/70 text-background shadow-md backdrop-blur-sm transition hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />
@@ -212,7 +215,7 @@ export default function ProductDetail({
         </div>
       </section>
 
-      <ProductRelatedSection products={relatedProducts} />
+      <ProductRelatedSection products={relatedProducts} relatedUrl={relatedUrl} />
     </PublicLayout>
   )
 }

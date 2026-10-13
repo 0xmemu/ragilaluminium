@@ -30,7 +30,7 @@ class StorePerformanceRefusedReturnTest extends TestCase
             'parent_sku' => 'REF-'.$sku,
             'name' => 'Produk Retur Ditolak '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'price' => 100000,

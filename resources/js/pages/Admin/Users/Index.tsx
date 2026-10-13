@@ -1,7 +1,8 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/admin/ui/button"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
@@ -76,7 +77,7 @@ export default function UsersIndex({
         <Button asChild>
           <Link href={createHref}>
             <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah admin
+            Tambah
           </Link>
         </Button>
       }
@@ -161,39 +162,43 @@ export default function UsersIndex({
                           <Button asChild variant="secondary" size="xs">
                             <Link href={row.edit_href}>Edit</Link>
                           </Button>
-                          {row.status === "active" ? (
-                            row.is_self ? (
-                              <Button variant="secondary" size="xs" disabled>
-                                Nonaktifkan
-                              </Button>
+                          <RowActionsMenu>
+                            {row.status === "active" ? (
+                              row.is_self ? (
+                                <DropdownMenuItem disabled>
+                                  Nonaktifkan (Akun Sendiri)
+                                </DropdownMenuItem>
+                              ) : (
+                                <ConfirmAction
+                                  trigger={
+                                    <button
+                                      type="button"
+                                      className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                                      disabled={busyId === row.id}
+                                    >
+                                      Nonaktifkan
+                                    </button>
+                                  }
+                                  title="Nonaktifkan akun?"
+                                  description={`${row.name} tidak dapat login sampai diaktifkan kembali.`}
+                                  confirmLabel="Nonaktifkan"
+                                  processing={busyId === row.id}
+                                  onConfirm={() => postStatus(row.deactivate_url, row.id)}
+                                />
+                              )
                             ) : (
-                              <ConfirmAction
-                                trigger={
-                                  <Button
-                                    variant="destructive"
-                                    size="xs"
-                                    disabled={busyId === row.id}
-                                  >
-                                    Nonaktifkan
-                                  </Button>
-                                }
-                                title="Nonaktifkan akun?"
-                                description={`${row.name} tidak dapat login sampai diaktifkan kembali.`}
-                                confirmLabel="Nonaktifkan"
-                                processing={busyId === row.id}
-                                onConfirm={() => postStatus(row.deactivate_url, row.id)}
-                              />
-                            )
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              size="xs"
-                              disabled={busyId === row.id}
-                              onClick={() => postStatus(row.activate_url, row.id)}
-                            >
-                              Aktifkan
-                            </Button>
-                          )}
+                              <DropdownMenuItem asChild>
+                                <button
+                                  type="button"
+                                  className="w-full text-left"
+                                  disabled={busyId === row.id}
+                                  onClick={() => postStatus(row.activate_url, row.id)}
+                                >
+                                  Aktifkan
+                                </button>
+                              </DropdownMenuItem>
+                            )}
+                          </RowActionsMenu>
                         </RowActions>
                       </td>
                     </tr>

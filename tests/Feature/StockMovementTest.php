@@ -20,7 +20,7 @@ class StockMovementTest extends TestCase
     {
         $p = Product::create([
             'parent_sku' => 'WIN-SM-1', 'name' => 'Window SM', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
 

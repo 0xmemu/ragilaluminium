@@ -1,4 +1,4 @@
-import { Link, usePage } from "@inertiajs/react"
+import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"
@@ -8,9 +8,10 @@ import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { QuantityControl } from "@/components/ui/quantity-control"
 import { formatCurrency } from "@/lib/format"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
-import type { ProductDetailData, ProductMedia, SharedPageProps } from "@/types"
+import type { ProductDetailData, ProductMedia } from "@/types"
 
 import type { ProductPurchase } from "@/hooks/use-product-purchase"
 
@@ -56,12 +57,11 @@ export function ProductBuyBox({
     promo,
   } = purchase
 
-  // Alasan belanja diatur admin lewat CTA Storefront, blok
-  // "Detail Produk: alasan belanja". Daftar bawaannya dihitung per produk
-  // (label garansi ikut promo, baris COD bisa hilang), jadi daftar itu tetap
-  // dipakai sampai admin benar-benar menyimpan penggantinya. Ikon tetap dari
-  // kode dan dipakai bergiliran sesuai urutan, admin hanya mengurus kalimatnya.
-  const block = usePage<SharedPageProps>().props.ctaSettings?.pages?.["pdp-benefits"]
+  // Alasan belanja dibaca dari CTA_CONTENT, blok "pdp-benefits". Daftar bawaannya
+  // dihitung per produk (label garansi ikut promo, baris COD bisa hilang), dan
+  // itu tetap dipakai selama label di CTA_CONTENT belum disesuaikan per produk.
+  // Ikon tetap dari kode dan dipakai bergiliran sesuai urutan.
+  const block = CTA_CONTENT["pdp-benefits"]
   const configuredItems = block?.items ?? []
   const resolvedBenefits =
     configuredItems.length > 0

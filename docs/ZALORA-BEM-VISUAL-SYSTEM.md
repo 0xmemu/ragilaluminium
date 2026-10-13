@@ -91,8 +91,7 @@ product-grid
     ├── product-card__media
     │   ├── product-card__link
     │   ├── product-card__image
-    │   ├── product-card__favorite
-    │   └── product-card__badge
+    │   └── product-card__favorite
     ├── product-card__content
     │   ├── product-card__brand
     │   ├── product-card__title

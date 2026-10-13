@@ -57,7 +57,7 @@ export function PageTopBar({ breadcrumbs, title, className, singleLine, right }:
                 window.location.assign(fallback)
               }
             }}
-            className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Kembali"
           >
             <Icon name="arrow-left" className="size-5" aria-hidden="true" />

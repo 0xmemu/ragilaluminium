@@ -309,7 +309,7 @@ export default function CategoryForm({
                               className="size-3.5 mr-1.5 text-muted-foreground"
                               aria-hidden="true"
                             />
-                            Buka halaman publik
+                            Lihat di toko
                           </a>
                         </Button>
                       ) : null}

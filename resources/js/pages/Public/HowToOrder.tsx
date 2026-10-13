@@ -176,6 +176,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
 
       {/* Bagian 4: Call to Action (CTA) — pakai komponen dasar ClosingCTASection */}
       <ClosingCTASection
+        pageKey="cara-pemesanan"
         compact={false}
         eyebrow="Siap memesan?"
         heading="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu"

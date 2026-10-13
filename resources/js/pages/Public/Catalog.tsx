@@ -25,6 +25,7 @@ import { shouldShowFlashCarousel } from "@/lib/catalog-flash-carousel"
 import { catalogPageSizeParam, clampCatalogPage, resolveCatalogPageSize, type CatalogPageSizes } from "@/lib/catalog-page-size"
 import { useCatalogViewportWidth } from "@/hooks/use-catalog-viewport-width"
 import { resolveCtaActions } from "@/lib/cta-actions"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { routeUrl } from "@/lib/routes"
 import type {
   FlashSalePeriod,
@@ -80,57 +81,55 @@ function SearchFallbackEmpty({
   nearbySizes: ProductCardData[]
   relatedModels: Array<{ label: string; href: string }>
 }) {
-  const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
-  // Teks & tombol diatur admin lewat CTA Storefront, blok
-  // "Katalog: saat pencarian kosong". Judul pertama tetap memuat kata kunci
-  // pencarian, jadi hanya keterangan & tombolnya yang dapat diubah. Selama
-  // admin belum menyimpan, teks dan tombol bawaan di bawah ini yang dipakai.
-  const configured = ctaSettings?.pages?.["catalog-empty"]
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
+  // Teks & tombol dibaca dari CTA_CONTENT, blok "catalog-empty". Judul pertama
+  // tetap memuat kata kunci pencarian, jadi hanya keterangan & tombolnya yang
+  // diambil dari sana. Tombol kedua hanya tampil bila tidak ada ukuran terdekat
+  // maupun kategori terkait.
+  const content = CTA_CONTENT["catalog-empty"]
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
-  const configuredActions = resolveCtaActions(configured?.actions, whatsappUrl)
+  const contentActions = resolveCtaActions(content?.actions, whatsappUrl)
+  const primaryAction = contentActions[0]
+  const secondaryAction = contentActions[1]
+  const showSecondaryAction = nearbySizes.length === 0 && relatedModels.length === 0
 
   return (
     <div className="space-y-8">
       <div className="rounded-lg border border-border bg-surface p-5">
         <p className="text-sm font-bold text-foreground">Tidak ada hasil untuk “{query}”</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          {configured?.heading ||
+          {content?.heading ||
             "Tidak menemukan ukuran yang sesuai? Tim kami siap membantu memastikan produk pas dengan kebutuhan Anda."}
         </p>
-        {configuredActions.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {configuredActions.map((action) => (
-              <Button
-                key={action.label}
-                asChild
-                variant={action.variant === "secondary" ? "secondary" : undefined}
+        <>
+          {primaryAction || consultationWhatsApp?.directUrl ? (
+            <Button asChild className="mt-4">
+              <a
+                href={primaryAction ? primaryAction.href : (consultationWhatsApp?.directUrl as string)}
+                target="_blank"
+                rel="noreferrer"
               >
-                <a href={action.href} {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}>
-                  {action.whatsappIcon ? (
-                    <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                  ) : null}
-                  {action.label}
-                </a>
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <>
-            {consultationWhatsApp?.directUrl ? (
-              <Button asChild className="mt-4">
-                <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                  Konsultasi via WhatsApp
-                </a>
-              </Button>
-            ) : null}
-            {nearbySizes.length === 0 && relatedModels.length === 0 ? (
-              <Button asChild variant="secondary" className="mt-3">
+                <Icon name="whatsapp" className="size-4" aria-hidden="true" />
+                {primaryAction?.label ?? "Konsultasi via WhatsApp"}
+              </a>
+            </Button>
+          ) : null}
+          {showSecondaryAction ? (
+            <Button asChild variant="secondary" className="mt-3">
+              {secondaryAction ? (
+                secondaryAction.external ? (
+                  <a href={secondaryAction.href} target="_blank" rel="noreferrer">
+                    {secondaryAction.label}
+                  </a>
+                ) : (
+                  <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
+                )
+              ) : (
                 <Link href={routeUrl("catalog.all")}>Lihat semua model</Link>
-              </Button>
-            ) : null}
-          </>
-        )}
+              )}
+            </Button>
+          ) : null}
+        </>
       </div>
 
       {nearbySizes.length ? (

@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Kampanye Promo Toko & Flash Sale (SPESIFIKASI-FINAL §C).
+ * Kampanye Diskon Reguler (type store) & Flash Sale (SPESIFIKASI-FINAL §C).
  *
  * Aturan bisnis:
- * - 1 produk = 1 promo (Promo Toko) aktif.
+ * - 1 produk = 1 diskon reguler aktif.
  * - Hanya 1 Flash Sale aktif.
- * - Diskont Flash Sale wajib > Diskon Produk (Promo Toko aktif yang meliputi produk).
+ * - Diskon Flash Sale wajib > diskon reguler yang meliputi produk.
  * - Duplikat kampanye; akhiri manual; konfirmasi dampak; log aktivitas.
  */
 final class CampaignService
@@ -104,7 +104,7 @@ final class CampaignService
     }
 
     /**
-     * ID produk tercakup kampanye Promo Toko live.
+     * ID produk tercakup kampanye Diskon Reguler live.
      *
      * @return list<int>
      */
@@ -185,7 +185,7 @@ final class CampaignService
         return $result;
     }
 
-    /** Diskon Promo Toko efektif untuk produk (0 jika tidak ada). */
+    /** Diskon reguler efektif untuk produk (0 jika tidak ada). */
     public function storeDiscountForProduct(Product $product, ?ProductVariant $variant = null): int
     {
         return (int) ($this->forProduct($product, $variant)['store']['discount_percent'] ?? 0);
@@ -253,7 +253,7 @@ final class CampaignService
 
         $productIds = $this->resolveProductIds($included);
 
-        // 1 produk = 1 promo aktif (Promo Toko) saat aktif.
+        // 1 produk = 1 diskon reguler aktif saat aktif.
         if ($campaign->type === Promotion::TYPE_STORE && $mustCheckActiveConflicts) {
             $covered = $this->liveProductCoverage($productIds, Promotion::TYPE_STORE, $exceptPromotionId);
             if ($covered->isNotEmpty()) {
@@ -264,7 +264,7 @@ final class CampaignService
             }
         }
 
-        // Flash Sale wajib > Diskon Produk (Promo Toko aktif) saat aktif.
+        // Flash Sale wajib > diskon reguler aktif saat aktif.
         if ($campaign->isFlashSale() && $productIds->isNotEmpty() && $mustCheckActiveConflicts) {
             $promoCovered = $this->liveProductCoverage($productIds, Promotion::TYPE_STORE);
             if ($promoCovered->isNotEmpty()) {
@@ -272,7 +272,7 @@ final class CampaignService
                 $promoPercent = (int) $first['discount_percent'];
                 if ($campaign->discount_percent <= $promoPercent) {
                     $errors['discount_percent'] = 'Diskon Flash Sale harus lebih besar daripada Diskon Produk '
-                        .'(Promo Toko "'.$first['name'].'" aktif '.$promoPercent.'% pada produk '
+                        .'(Diskon Reguler "'.$first['name'].'" aktif '.$promoPercent.'% pada produk '
                         .($first['parent_sku'] ?? '#'.$first['product_id']).').';
                 }
             }

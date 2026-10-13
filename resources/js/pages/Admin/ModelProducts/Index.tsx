@@ -135,7 +135,7 @@ export default function ModelProductsIndex({
     snapshot: initialRows,
     form: reorderForm,
     url: reorderUrl,
-    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index })),
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
     numbering: true,
     submitOptions: { preserveState: true },
   })
@@ -348,7 +348,6 @@ export default function ModelProductsIndex({
     >
       <Head title={`${title} | Admin`} />
       <ManageProductsTabs active="models" />
-
 
       <ListToolbar
         search={{

@@ -1,8 +1,8 @@
 import * as React from "react"
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -56,7 +56,11 @@ export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
   return (
     <div className="h-full min-h-[140px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+        {/* ComposedChart, BUKAN AreaChart: Recharts membatasi anak yang dirender
+            lewat GraphicalChild, dan AreaChart hanya menerima <Area> sehingga
+            <Line dataKey="previous_value"> dibuang diam-diam (garis pembanding
+            periode lalu tidak pernah muncul). ComposedChart menerima Area + Line. */}
+        <ComposedChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
           <defs>
             <linearGradient id={`sales-full-grad-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
@@ -153,7 +157,7 @@ export default function SalesAreaChart({ series = [] }: SalesAreaChartProps) {
             isAnimationActive={true}
             animationDuration={600}
           />
-        </AreaChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

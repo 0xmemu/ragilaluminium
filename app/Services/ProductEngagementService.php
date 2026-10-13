@@ -135,6 +135,50 @@ class ProductEngagementService
         ];
     }
 
+    /**
+     * Views & clicks per produk untuk periode [from, to] (inklusif), dihitung
+     * dari performance_metrics. Dipakai halaman Paling Banyak Dipesan untuk
+     * membandingkan performa SEBELUM vs SESUDAH produk masuk carousel.
+     *
+     * @param  list<int>  $productIds
+     * @return array<int, array{views: int, clicks: int}>
+     */
+    public function viewsClicksFor(array $productIds, Carbon $from, Carbon $to): array
+    {
+        $wanted = array_fill_keys(array_map('intval', $productIds), true);
+        $out = [];
+        foreach ($wanted as $id => $_) {
+            $out[$id] = ['views' => 0, 'clicks' => 0];
+        }
+
+        if ($wanted === [] || $from->greaterThan($to)) {
+            return $out;
+        }
+
+        // Filter tanggal di SQL dulu supaya tidak memuat riwayat penuh.
+        $rows = PerformanceMetric::query()
+            ->whereIn('metric_name', [self::METRIC_VIEWS, self::METRIC_CLICKS])
+            ->whereDate('metric_date', '>=', $from->toDateString())
+            ->whereDate('metric_date', '<=', $to->toDateString())
+            ->get(['metric_name', 'metric_value', 'context']);
+
+        foreach ($rows as $row) {
+            $productId = (int) data_get($row->context, 'product_id', 0);
+            if (! isset($wanted[$productId])) {
+                continue;
+            }
+
+            $value = (int) round((float) $row->metric_value);
+            if ($row->metric_name === self::METRIC_VIEWS) {
+                $out[$productId]['views'] += $value;
+            } else {
+                $out[$productId]['clicks'] += $value;
+            }
+        }
+
+        return $out;
+    }
+
     protected function increment(int $productId, string $metricName): void
     {
         if ($productId <= 0) {

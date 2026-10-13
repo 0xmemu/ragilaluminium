@@ -38,6 +38,40 @@ type ShippingTrackPanelProps = {
   onCopyWaybill?: (waybill: string) => void
 }
 
+function parseCourierFromTimeline(timeline?: ShippingTrackTimelineEntry[]) {
+  if (!timeline || !timeline.length) return null
+
+  let pickupCourier: { name: string; phone?: string } | null = null
+  let deliveryCourier: { name: string; phone?: string } | null = null
+
+  const pickupRegex = /(?:kuri(?:r)?\s+j&t\s+cargo\s+anda\s+|kurir\s+penjemput\s+)([A-Za-z\s]+?)\s*(?:\((0\d+)\)|\s+(0\d+))?\s*(?:sudah|sedang)\s*mengambil/i
+  const deliveryRegex = /(?:kami\s+|kurir\s+pengantar\s+)([A-Za-z\s]+?)\s*(?:\((0\d+)\)|\s+(0\d+))?\s*(?:sedang|sudah)\s*mengantar/i
+
+  for (const entry of timeline) {
+    const text = `${entry.message ?? ""} ${entry.detail ?? ""}`
+    if (!deliveryCourier) {
+      const matchDelivery = text.match(deliveryRegex)
+      if (matchDelivery) {
+        deliveryCourier = {
+          name: matchDelivery[1].trim(),
+          phone: matchDelivery[2] || matchDelivery[3] || undefined,
+        }
+      }
+    }
+    if (!pickupCourier) {
+      const matchPickup = text.match(pickupRegex)
+      if (matchPickup) {
+        pickupCourier = {
+          name: matchPickup[1].trim(),
+          phone: matchPickup[2] || matchPickup[3] || undefined,
+        }
+      }
+    }
+  }
+
+  return { deliveryCourier, pickupCourier }
+}
+
 function CopyButton({ text, label = "Salin" }: { text: string; label?: string }) {
   const [copied, setCopied] = React.useState(false)
 
@@ -81,13 +115,20 @@ export function ShippingTrackPanel({
   refreshBusy = false,
   onCopyWaybill: _onCopyWaybill,
 }: ShippingTrackPanelProps) {
-  // Sinkron dgn checklist: badge pakai status kurir (J&T) saat ada timeline,
-  // selain itu (fallback alur pesanan) pakai status order supaya tidak beda-dua.
-  const hasTimeline = Array.isArray(timeline) && timeline.length > 0
+  // Bila belum ada resi / kurir:
+  // - Pesanan belum konfirmasi: tampilkan status pesanan ("Menunggu Konfirmasi")
+  // - Pesanan dibatalkan: tampilkan "Dibatalkan"
+  // - Pesanan diproses: tampilkan "Menunggu resi"
+  // Bila resi kurir (J&T) sudah ada: ikuti status aktual resi kurir.
+  const hasCourierRecord = Boolean(track.record_status || track.waybill_number)
   const activeStatus = (
-    hasTimeline
-      ? track.record_status || track.shipping_status || ""
-      : track.order_status || ""
+    hasCourierRecord
+      ? track.record_status || track.shipping_status || "tracking_pending"
+      : track.order_status === "awaiting_confirmation" || track.order_status === "pending"
+      ? track.order_status
+      : track.order_status === "cancelled"
+      ? "cancelled"
+      : "tracking_pending"
   ).trim() || "unknown"
   const normalizedStatus = activeStatus.toLowerCase()
   const knownStatuses = new Set([
@@ -107,6 +148,7 @@ export function ShippingTrackPanel({
   const isUnknown = !knownStatuses.has(normalizedStatus)
   const hasWaybill = Boolean(track.waybill_number)
   const orderMeta = statusMeta(track.order_status || "")
+  const couriers = React.useMemo(() => parseCourierFromTimeline(timeline), [timeline])
 
   if (compact) {
     return (
@@ -177,11 +219,49 @@ export function ShippingTrackPanel({
 
       <dl className="grid gap-2 text-sm">
         <div className="flex justify-between gap-3">
-          <dt className="text-xs text-muted-foreground">Kurir</dt>
+          <dt className="text-xs text-muted-foreground">Ekspedisi</dt>
           <dd className="text-right font-semibold">
             {track.carrier_name?.trim() || (hasWaybill ? "J&T Cargo" : "Belum ditetapkan")}
           </dd>
         </div>
+        {couriers?.deliveryCourier ? (
+          <div className="flex justify-between items-center gap-3">
+            <dt className="text-xs text-muted-foreground">Kurir Pengantar</dt>
+            <dd className="text-right">
+              <span className="font-semibold text-foreground">{couriers.deliveryCourier.name}</span>
+              {couriers.deliveryCourier.phone ? (
+                <a
+                  href={`https://wa.me/${couriers.deliveryCourier.phone.replace(/^0/, "62")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-1.5 font-mono text-xs text-primary hover:underline"
+                  title="Hubungi via WhatsApp"
+                >
+                  ({couriers.deliveryCourier.phone})
+                </a>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
+        {couriers?.pickupCourier ? (
+          <div className="flex justify-between items-center gap-3">
+            <dt className="text-xs text-muted-foreground">Kurir Penjemput</dt>
+            <dd className="text-right">
+              <span className="font-semibold text-foreground">{couriers.pickupCourier.name}</span>
+              {couriers.pickupCourier.phone ? (
+                <a
+                  href={`https://wa.me/${couriers.pickupCourier.phone.replace(/^0/, "62")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-1.5 font-mono text-xs text-primary hover:underline"
+                  title="Hubungi via WhatsApp"
+                >
+                  ({couriers.pickupCourier.phone})
+                </a>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
         <div className="flex justify-between items-center gap-3">
           <dt className="text-xs text-muted-foreground">Nomor resi</dt>
           <dd className="text-right">

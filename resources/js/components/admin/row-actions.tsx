@@ -20,7 +20,7 @@ export function RowActions({
   return (
     <div
       className={cn(
-        "inline-flex max-w-full flex-wrap items-center justify-end gap-1",
+        "inline-flex max-w-full flex-nowrap items-center justify-end gap-1",
         className,
       )}
     >

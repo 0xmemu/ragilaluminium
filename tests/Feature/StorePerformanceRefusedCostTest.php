@@ -33,7 +33,7 @@ class StorePerformanceRefusedCostTest extends TestCase
             'parent_sku' => 'RC-'.$sku,
             'name' => 'Produk Beban Ditolak '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'price' => 100000,

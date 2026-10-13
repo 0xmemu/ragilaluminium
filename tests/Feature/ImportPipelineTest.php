@@ -21,7 +21,7 @@ class ImportPipelineTest extends TestCase
     {
         Queue::fake([DownloadMediaAsset::class]);
         $rows = collect([
-            ['parent_sku' => 'WIN-IMP-1', 'name' => 'Window', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-IMP-1-V1', 'price' => 1000000, 'stock' => 5, 'image_1' => 'https://example.com/a.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
+            ['parent_sku' => 'WIN-IMP-1', 'name' => 'Window', 'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-IMP-1-V1', 'price' => 1000000, 'stock' => 5, 'image_1' => 'https://example.com/a.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {
@@ -67,7 +67,7 @@ class ImportPipelineTest extends TestCase
     public function test_import_manual_stock_used_when_file_stock_empty(): void
     {
         $rows = collect([
-            ['parent_sku' => 'WIN-STOCK-1', 'name' => 'Window stock', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-STOCK-1-V1', 'price' => 1000000, 'stock' => '', 'image_1' => 'https://example.com/b.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
+            ['parent_sku' => 'WIN-STOCK-1', 'name' => 'Window stock', 'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'variant_sku' => 'WIN-STOCK-1-V1', 'price' => 1000000, 'stock' => '', 'image_1' => 'https://example.com/b.jpg', 'weight_kg' => 10, 'height_cm' => 100, 'width_cm' => 50, 'depth_cm' => 20],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {
@@ -115,7 +115,7 @@ class ImportPipelineTest extends TestCase
             [
                 'parent_sku' => 'WIN-SPEC-1',
                 'name' => 'Window spec',
-                'product_category' => 'WINDOW',
+                'product_category' => 'JENDELA',
                 'product_model' => 'JUNGKIT',
                 'design_variant' => 'POLOS',
                 'variant_sku' => 'WIN-SPEC-1-V1',
@@ -178,7 +178,7 @@ class ImportPipelineTest extends TestCase
             [
                 'parent_sku' => 'WIN-SPEC-2',
                 'name' => 'Window spec lama',
-                'product_category' => 'WINDOW',
+                'product_category' => 'JENDELA',
                 'product_model' => 'JUNGKIT',
                 'design_variant' => 'POLOS',
                 'variant_sku' => 'WIN-SPEC-2-V1',

@@ -26,7 +26,7 @@ class CommerceWorkflowTest extends TestCase
             'name' => 'Produk '.$sku,
             'short_name' => $sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

@@ -8,18 +8,18 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
 
 ```
 ┌── section border-b bg-surface ────────┐
-│  py-4 (16px) — breadcrumb (desktop)   │  ← hidden di mobile
+│  py-2 (8px): breadcrumb (>= 768px)   │  ← sembunyi di bawah md, membawa tombol back
 │───────────────────────────────────────│
 │  pt-4 (16px)                          │
-│  [<] Judul Halaman (20px)             │  ← back button mobile only
+│  [<] Judul Halaman (20px)             │  ← back button hanya < md
 │  pb-4 (16px)                          │
 └───────────────────────────────────────┘
 ```
 
 | Elemen | Class | Nilai |
 |--------|-------|-------|
-| Breadcrumb padding | `py-4` | 16px |
-| Breadcrumb mobile | `hidden sm:block` | sembunyi |
+| Breadcrumb padding | `py-2` | 8px |
+| Breadcrumb | `hidden md:block` | tampil mulai 768px |
 | Heading atas | `pt-4` | 16px |
 | Heading bawah | `pb-4` | 16px |
 | Section konten | `py-4` | 16px |
@@ -30,7 +30,7 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
 |--------|-------|--------|
 | Judul halaman (h1) | `text-xl font-bold tracking-tight` | 20px |
 | Body text | `text-xs leading-5` | 12px |
-| Subtitle | **dibuang** | — |
+| Subtitle | **dibuang** | - |
 
 ## 3. Tombol Back (Mobile)
 
@@ -39,7 +39,7 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
   <button
     type="button"
     onClick={() => window.history.back()}
-    className="flex shrink-0 items-center justify-center sm:hidden"
+    className="flex shrink-0 items-center justify-center md:hidden"
     aria-label="Kembali"
   >
     <Icon name="caret-left" className="size-5" aria-hidden="true" />
@@ -53,12 +53,13 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
 - Icon: `caret-left` (bukan arrow-left)
 - Ukuran: `size-5` (20px)
 - Tanpa frame/border/wrapper
-- Hanya muncul di mobile (`sm:hidden`)
+- Hanya muncul di bawah `md` (`md:hidden`), karena mulai `md` breadcrumb sudah
+  tampil dan membawa tombol kembalinya sendiri. Lihat bagian 4.
 
 ## 4. Breadcrumb
 
 ```tsx
-<div className="container-page hidden py-4 sm:block">
+<div className="container-page hidden py-2 md:block">
   <Breadcrumbs
     items={[
       { label: "Beranda", href: routeUrl("home") },
@@ -68,6 +69,47 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
 </div>
 ```
 
+### Kontrak tombol kembali (keputusan owner 2026-09-18: opsi C)
+
+Breadcrumb tampil mulai `md` (768px). Tombol back milik halaman WAJIB disembunyikan
+mulai `md` (`md:hidden`) supaya tidak ada dua tombol kembali sekaligus, sebab
+komponen `Breadcrumbs` sudah merender tombol backnya sendiri
+(`components/ui/breadcrumbs.tsx`).
+
+| Lebar | Breadcrumb | Tombol back di samping judul |
+|---|---|---|
+| < 768px | sembunyi | tampil (`md:hidden`) |
+| >= 768px | tampil (membawa tombol backnya sendiri) | sembunyi |
+
+Halaman yang mengikuti kontrak ini: `components/public/page-top-bar.tsx` (dipakai
+semua halaman listing/statis lewat frame), `Public/Cart.tsx`, `Public/Checkout.tsx`,
+`Public/OrderConfirmation.tsx`, dan `Public/ProductDetail.tsx`.
+
+### Tombol kembali breadcrumb SELALU tampil (koreksi 2026-09-18)
+
+Sebelumnya tombol kembali di `components/ui/breadcrumbs.tsx` hanya dirender bila
+`window.history.length > 1`. Akibatnya di desktop tombol kembali bisa HILANG sama
+sekali, karena mulai `md` tombol di samping judul memang sengaja disembunyikan
+(tabel di atas). Laporan owner: "kok tombol back di breadcrumb (desktop mode) tidak
+selalu muncul di browser tertentu".
+
+Akar masalah: `window.history.length` bukan penanda yang bisa dipercaya. Buka tab
+baru, ketik alamat langsung, atau datang dari browser dalam aplikasi (Instagram,
+TikTok, Facebook) bisa melaporkan 1 walau pembeli sebenarnya datang dari halaman
+lain. Sebagian browser juga membatasi nilai itu demi privasi, sehingga hasilnya
+berbeda antar browser.
+
+Kontrak baru:
+
+| Keadaan | Perilaku tombol |
+|---|---|
+| Riwayat browser ada (`history.length > 1`) | `window.history.back()` |
+| Riwayat tidak ada | menuju href induk terdekat dari breadcrumb (mis. halaman model sebelum halaman produk), atau beranda bila tidak ada |
+
+Logikanya ada di `lib/breadcrumb-back.ts` (`shouldUseHistoryBack`, `backFallbackHref`)
+dan dikunci `tests/frontend/breadcrumb-back.test.ts`. Tombol TIDAK boleh
+disembunyikan lagi, karena di desktop tidak ada tombol kembali pengganti.
+
 ## 5. CTA Buttons
 
 - Container: `flex items-center justify-center gap-3` (horizontal, **tanpa** `flex-wrap`)
@@ -75,9 +117,9 @@ Berlaku untuk **semua halaman statis/konten** (kecuali Home, Catalog, Cart, Chec
 
 ## 6. Checklist Tambah Halaman Baru
 
-- [ ] Breadcrumb `py-4` + `hidden sm:block`
+- [ ] Breadcrumb `py-2` + `hidden md:block`
 - [ ] Heading `pt-4 pb-4`, rata kiri, `text-xl`
-- [ ] Back button mobile `<` (`caret-left`) tanpa frame
+- [ ] Back button `<` (`caret-left`) tanpa frame, `md:hidden` (lihat bagian 4)
 - [ ] **Tidak ada** subtitle di bawah heading
 - [ ] Body text `text-xs leading-5`
 - [ ] Section konten `py-4`
@@ -126,6 +168,21 @@ w-[calc((100%-1rem)*6/13)] shrink-0 snap-start sm:w-[calc((100%-1.5rem)/3.5)] md
 - Mobile: tidak ditampilkan (pakai swipe horizontal)
 
 ### File yang Wajib Sinkron
-- `pages/Public/Home.tsx` — **acuan utama**
+- `pages/Public/Home.tsx`: **acuan utama**
 - `components/public/flash-sale-stage.tsx`
 - `components/public/paling-banyak-dipesan-section.tsx`
+
+### Label & Countdown Flash Sale (satu sumber)
+
+`components/public/flash-sale-stage.tsx` menyediakan dua komponen bersama supaya
+tampilan Flash Sale tidak pernah berbeda antar tempat:
+
+- `FlashSaleLabel`: ikon petir + teks `FLASH SALE` miring warna primary. Dipakai di
+  headline carousel Flash Sale dan judul halaman `/flash-sale` (dibungkus `h1`/`h2`
+  oleh pemanggil agar hierarki heading tetap benar).
+- `FlashSaleCountdown`: hitung mundur kotak `hh:mm:ss` (sumber sama dengan countdown
+  nav: harian, bergulir tengah malam, berhenti di akhir kampanye). Tampil hanya saat
+  kampanye live.
+
+Halaman `/flash-sale` memakai keduanya di header: label di posisi judul, hitung mundur
+di kanan judul (lewat prop `titleRight` pada `ProductListingFrame` → `PageTopBar`).

@@ -28,7 +28,7 @@ class KebijakanPrivasiController extends Controller
             ],
             'submitUrl' => route('admin.kebijakan-privasi.update'),
             'previewUrl' => route('privacy'),
-            'hubUrl' => route('admin.dashboard'),
+            'hubUrl' => route('admin.documents.index'),
             'saveLabel' => 'Simpan Pembaruan Dokumen',
         ]);
     }
@@ -58,8 +58,9 @@ class KebijakanPrivasiController extends Controller
             $request->user()?->id,
         );
 
+        // Simpan sukses = keluar dari editor ke daftar Dokumen Halaman.
         return redirect()
-            ->route('admin.kebijakan-privasi.edit')
+            ->route('admin.documents.index')
             ->with('success', 'Dokumen Kebijakan Privasi disimpan.');
     }
 }

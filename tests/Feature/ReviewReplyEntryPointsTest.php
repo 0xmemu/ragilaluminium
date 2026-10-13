@@ -205,7 +205,7 @@ class ReviewReplyEntryPointsTest extends TestCase
             'parent_sku' => 'WIN-REPLY',
             'name' => 'Produk Ulasan',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

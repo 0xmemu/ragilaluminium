@@ -64,7 +64,7 @@ class WhatsAppAutomationTest extends TestCase
                 'language_code' => 'id',
                 'body_preview' => 'Halo {{order_number}}',
             ])
-            ->assertRedirect(route('admin.whatsapp.templates.edit', $template));
+            ->assertRedirect(route('admin.whatsapp.templates.index'));
 
         $this->assertDatabaseHas('whatsapp_templates', [
             'id' => $template->id,

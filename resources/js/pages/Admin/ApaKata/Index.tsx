@@ -247,7 +247,7 @@ export default function ApaKataIndex({
           {previewUrl ? (
             <Button asChild variant="secondary">
               <a href={previewUrl} target="_blank" rel="noreferrer">
-                Lihat halaman publik
+                Lihat di toko
               </a>
             </Button>
           ) : null}

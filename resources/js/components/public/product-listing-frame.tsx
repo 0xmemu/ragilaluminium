@@ -10,6 +10,7 @@ export function ProductListingFrame({
   beforeChildren,
   children,
   pagination,
+  titleRight,
 }: {
   title: ReactNode
   breadcrumbs: BreadcrumbItem[]
@@ -17,11 +18,13 @@ export function ProductListingFrame({
   beforeChildren?: ReactNode
   children: ReactNode
   pagination: ReactNode
+  /** Elemen di kanan judul halaman (mis. hitung mundur Flash Sale). */
+  titleRight?: ReactNode
 }) {
   return (
     <>
       <section className="border-b border-border bg-surface">
-        <PageTopBar title={title} breadcrumbs={breadcrumbs} />
+        <PageTopBar title={title} breadcrumbs={breadcrumbs} right={titleRight} />
       </section>
       {toolbar}
       {beforeChildren}

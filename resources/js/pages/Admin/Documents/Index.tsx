@@ -100,7 +100,7 @@ export default function DocumentsIndex({ title, description, documents }: Props)
                         <Button asChild variant="outline" size="sm" className="h-8 text-xs">
                           <a href={doc.public_url} target="_blank" rel="noreferrer">
                             <Icon name="arrow-up-right" className="size-3.5 mr-1" aria-hidden="true" />
-                            Lihat publik
+                            Lihat di toko
                           </a>
                         </Button>
                         <Button asChild size="sm" className="h-8 text-xs">

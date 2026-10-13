@@ -17,7 +17,7 @@ trait CreatesVisibleProducts
             'parent_sku' => 'VIS-' . strtoupper(uniqid()),
             'name' => 'Visible Sample',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

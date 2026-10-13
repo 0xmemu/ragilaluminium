@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { ORDER_STEPS, orderStepIndex, statusMeta } from "@/lib/status"
+import { hasIcon } from "@/components/shared/icon"
+import {
+  ORDER_STEPS,
+  STATUS_ICONS,
+  orderStepIndex,
+  statusIcon,
+  statusMeta,
+} from "@/lib/status"
 
 describe("status vocabulary", () => {
   it("maps contracted statuses to Indonesian labels and tones", () => {
@@ -21,6 +28,21 @@ describe("status vocabulary", () => {
       tone: "neutral",
     })
     expect(statusMeta(null).label).toBe("Belum tersedia")
+  })
+
+  it("gives every secondary status a meaningful icon instead of a bare circle", () => {
+    expect(statusIcon("draft")).toBe("pencil-simple")
+    expect(statusIcon("scheduled")).toBe("calendar")
+    expect(statusIcon("ended")).toBe("archive")
+    expect(statusIcon("finished")).toBe("check-circle")
+    expect(statusIcon("tidak_ada_di_peta")).toBeNull()
+
+    // Kontrak anti-regresi: lingkaran kosong tidak boleh kembali jadi ikon status.
+    for (const [status, icon] of Object.entries(STATUS_ICONS)) {
+      expect(statusIcon(status)).toBe(icon)
+      expect(icon).not.toBe("circle")
+      expect(hasIcon(icon)).toBe(true)
+    }
   })
 
   it("keeps the order timeline deterministic", () => {

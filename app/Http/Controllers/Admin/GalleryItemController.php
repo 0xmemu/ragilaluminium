@@ -25,11 +25,11 @@ class GalleryItemController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
-            'backUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'backUrl' => route('admin.hasil-pemasangan.index'),
             'item' => null,
             'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.gallery-items.store'),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'indexUrl' => route('admin.hasil-pemasangan.index'),
             'presignUrl' => route('admin.media.presign'),
         ]);
     }
@@ -44,14 +44,14 @@ class GalleryItemController extends Controller
         CmsGalleryItem::create($image + $validated);
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'foto'])
+            ->route('admin.hasil-pemasangan.index')
             ->with('success', 'Ulasan foto ditambahkan.');
     }
 
     public function edit(CmsGalleryItem $galleryItem): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
-            'backUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'backUrl' => route('admin.hasil-pemasangan.index'),
             'item' => [
                 'id' => $galleryItem->id,
                 'label' => $galleryItem->label,
@@ -60,7 +60,7 @@ class GalleryItemController extends Controller
                 'published' => $galleryItem->published,
             ],
             'submitUrl' => route('admin.gallery-items.update', $galleryItem),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'indexUrl' => route('admin.hasil-pemasangan.index'),
             'presignUrl' => route('admin.media.presign'),
         ]);
     }
@@ -69,12 +69,11 @@ class GalleryItemController extends Controller
     {
         $image = $this->resolveImage($request, existing: $galleryItem);
         $validated = $this->validated($request);
-        // Nomor lama dipertahankan bila kolomnya dikosongkan.
         $validated['sort_order'] ??= (int) $galleryItem->sort_order;
         $galleryItem->update($image + $validated);
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'foto'])
+            ->route('admin.hasil-pemasangan.index')
             ->with('success', 'Ulasan foto diperbarui.');
     }
 
@@ -99,6 +98,8 @@ class GalleryItemController extends Controller
             'label' => ['nullable', 'string', 'max:255'],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'object_key' => ['nullable', 'string', 'max:255'],
+            // Owner 2026-09-16: Media Library satu-satunya sumber gambar.
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'published' => ['boolean'],
         ]);
@@ -120,6 +121,19 @@ class GalleryItemController extends Controller
      */
     protected function resolveImage(Request $request, ?CmsGalleryItem $existing): array
     {
+        // Owner 2026-09-16: Media Library satu-satunya sumber gambar galeri.
+        if ($request->filled('media_asset_id')) {
+            $asset = MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('media_asset_id'));
+
+            return [
+                'image_url' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+                'media_asset_id' => $asset->id,
+            ];
+        }
+
         if ($request->filled('object_key')) {
             $key = (string) $request->input('object_key');
             $disk = Storage::disk(config('media.disk', 'media'));

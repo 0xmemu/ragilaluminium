@@ -29,60 +29,6 @@ class WhatsAppAutomationCatalog
     {
         return [
             [
-                'internal_key' => 'order_returned',
-                'label' => 'WA Retur Diproses',
-                'description' => "Dikirim saat admin menandai retur selesai (return_completed) atau tracking menyatakan paket kembali ke pengirim.",
-                'icon' => 'package-open',
-                'default_provider_name' => 'order_returned',
-                'default_body' => <<<'TXT'
-Halo Kak *{{1}}*,
-kami informasikan bahwa pesanan dengan nomor order : *{{2}}* sudah kami terima kembali / proses retur selesai kami lakukan.
-
-Nomor resi terkait : *{{3}}*
-
-Apabila ada hal lain yang perlu dibantu, silakan langsung balas chat ini ya Kak.
-
-Terima kasih sudah order di Ragil Aluminium 😊
-TXT,
-                'variables' => [
-                    ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
-                    ['token' => '{{2}}', 'label' => 'Nomor order'],
-                    ['token' => '{{3}}', 'label' => 'Nomor resi'],
-                ],
-            ],
-            [
-                'internal_key' => 'order_issue_followup',
-                'label' => 'WA Follow Up Masalah',
-                'description' => 'Dikirim saat admin menandai pesanan bermasalah / retur masuk (issue / return_in_process) sebagai konfirmasi tindak lanjut.',
-                'icon' => 'alert-triangle',
-                'default_provider_name' => 'order_issue_followup',
-                'default_body' => <<<'TXT'
-Halo Kak *{{1}}*,
-terima kasih atas informasinya terkait pesanan dengan nomor order : *{{2}}*
-
-Kami sudah menerima laporan Kakak dan akan segera menindaklanjuti. Mohon ditunggu ya Kak, kami akan mengabari perkembangannya di chat ini.
-
-Terima kasih sudah bersabar 🙏
-TXT,
-                'variables' => [
-                    ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
-                    ['token' => '{{2}}', 'label' => 'Nomor order'],
-                ],
-            ],
-            [
-                'internal_key' => 'consultation_request',
-                'label' => 'WA CTA Konsultasi',
-                'description' => 'Template untuk tombol/CTA konsultasi di storefront; berisi sapaan otomatis (variabel {{1}} = nama brand).',
-                'icon' => 'messages-square',
-                'default_provider_name' => 'consultation_request',
-                'default_body' => <<<'TXT'
-Halo, saya tertarik konsultasi produk aluminium dengan *{{1}}*.
-TXT,
-                'variables' => [
-                    ['token' => '{{1}}', 'label' => 'Nama brand'],
-                ],
-            ],
-            [
                 'internal_key' => 'order_created',
                 'label' => 'WA Order COD',
                 'description' => 'Dikirim saat pelanggan menyelesaikan pesanan COD. Tombol/balasan konfirmasi pelanggan otomatis memproses pesanan (pending → diproses).',
@@ -109,8 +55,8 @@ Total Tagihan : *Rp {{8}}*
 
 Mohon menyiapkan pembayaran *COD* saat barang diterima ya Kak.
 
-Untuk konfirmasi pesanan, tolong tekan tombol dibawah ya kak,
-agar pesanan kakak segera diproses
+Untuk konfirmasi pesanan, tolong balas pesan ini dengan "oke",
+agar pesanan kakak segera kami proses
 
 Terima kasih Kak 🙏
 TXT,
@@ -248,6 +194,84 @@ TXT,
                 'variables' => [
                     ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
                     ['token' => '{{2}}', 'label' => 'Nomor order'],
+                ],
+            ],
+            [
+                'internal_key' => 'order_issue_followup',
+                'label' => 'WA Follow Up Masalah',
+                'description' => 'Dikirim saat admin menandai pesanan bermasalah / retur masuk (issue / return_in_process) sebagai konfirmasi tindak lanjut.',
+                'icon' => 'alert-triangle',
+                'default_provider_name' => 'order_issue_followup',
+                'default_body' => <<<'TXT'
+Halo Kak *{{1}}*,
+terima kasih atas informasinya terkait pesanan dengan nomor order : *{{2}}*
+
+Kami sudah menerima laporan Kakak dan akan segera menindaklanjuti. Mohon ditunggu ya Kak, kami akan mengabari perkembangannya di chat ini.
+
+Terima kasih sudah bersabar 🙏
+TXT,
+                'variables' => [
+                    ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
+                    ['token' => '{{2}}', 'label' => 'Nomor order'],
+                ],
+            ],
+            [
+                'internal_key' => 'order_returned',
+                'label' => 'WA Retur Diproses',
+                'description' => "Dikirim saat admin menandai retur selesai (return_completed) atau tracking menyatakan paket kembali ke pengirim.",
+                'icon' => 'package',
+                'default_provider_name' => 'order_returned',
+                'default_body' => <<<'TXT'
+Halo Kak *{{1}}*,
+kami informasikan bahwa pesanan dengan nomor order : *{{2}}* sudah kami terima kembali / proses retur selesai kami lakukan.
+
+Nomor resi terkait : *{{3}}*
+
+Apabila ada hal lain yang perlu dibantu, silakan langsung balas chat ini ya Kak.
+
+Terima kasih sudah order di Ragil Aluminium 😊
+TXT,
+                'variables' => [
+                    ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
+                    ['token' => '{{2}}', 'label' => 'Nomor order'],
+                    ['token' => '{{3}}', 'label' => 'Nomor resi'],
+                ],
+            ],
+            [
+                'internal_key' => 'consultation_request',
+                'label' => 'WA CTA Konsultasi',
+                'description' => 'Naskah yang terisi otomatis di WhatsApp PELANGGAN saat menekan tombol konsultasi di halaman produk. Pelanggan sendiri yang mengirim ke nomor toko (bukan pesan otomatis dari server).',
+                'icon' => 'message-square',
+                'default_provider_name' => 'consultation_request',
+                'default_body' => <<<'TXT'
+Halo *{{1}}*, saya tertarik konsultasi produk aluminium.
+Produk yang saya lihat: {{2}}
+TXT,
+                'variables' => [
+                    ['token' => '{{1}}', 'label' => 'Nama brand'],
+                    ['token' => '{{2}}', 'label' => 'Produk yang dilihat'],
+                ],
+            ],
+            [
+                'internal_key' => 'review_replied',
+                'label' => 'WA Balasan Ulasan',
+                'description' => 'Dikirim otomatis ke pelanggan saat admin membalas ulasan pelanggan. Pesan hanya terkirim bila ulasan tertaut pesanan sehingga nomor WhatsApp-nya diketahui.',
+                'icon' => 'chat-circle',
+                'default_provider_name' => 'review_replied',
+                'default_body' => <<<'TXT'
+Halo Kak *{{1}}*,
+Terima kasih sudah menulis ulasan untuk pesanan *{{2}}* di ragilaluminium.com 🙏
+Kami sudah membalas ulasan kakak di website,
+
+*Balasan tim Ragil Aluminium*
+{{3}}
+
+Terima kasih sudah belanja di Ragil Aluminium, kami tunggu order selanjutnya ya kak 😊
+TXT,
+                'variables' => [
+                    ['token' => '{{1}}', 'label' => 'Nama pelanggan'],
+                    ['token' => '{{2}}', 'label' => 'Nomor order'],
+                    ['token' => '{{3}}', 'label' => 'Isi balasan admin'],
                 ],
             ],
         ];

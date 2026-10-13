@@ -2,7 +2,6 @@ import { Link } from "@inertiajs/react"
 import { SealCheck, ShieldCheck, Tag, Truck } from "@phosphor-icons/react"
 import * as React from "react"
 
-import { Icon } from "@/components/shared/icon"
 import { CarouselNavButton } from "@/components/public/carousel-controls"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
@@ -19,7 +18,7 @@ const PROMO_ITEMS: { icon: React.ElementType; text: string }[] = [
   { icon: Tag, text: "Harga Pabrik Langsung, Tanpa Perantara" },
 ]
 
-/** Banner promosi solid — persis contoh: 3 baris teks rata kiri (baris kecil di atas,
+/** Banner promosi solid, persis contoh: 3 baris teks rata kiri (baris kecil di atas,
     headline besar bold di tengah, subteks regular di bawah). Seluruh banner adalah
     link, tanpa tombol / chip / disclaimer. */
 function HeroPromoCard({ slide }: { slide: PromoSlide }) {
@@ -54,7 +53,7 @@ function HeroPromoCard({ slide }: { slide: PromoSlide }) {
 }
 
 /**
- * Strip promo merah di atas banner — full-width (edge-to-edge, tanpa rounded dan
+ * Strip promo merah di atas banner, full-width (edge-to-edge, tanpa rounded dan
  * tanpa padding horizontal). Desktop: semua promo tampil sekaligus dalam satu
  * baris (3–4 per slide). Mobile: maksimal 2 promo per slide, slide berganti
  * otomatis untuk menampilkan sisanya (tanpa pagination dots).
@@ -187,7 +186,7 @@ export function HomeHero({ slides }: { slides: PromoSlide[] }) {
   // Banner sepenuhnya dari backend (promoSlides = HomepagePromotions::slides():
   // banner CMS manual + slot placeholder sampai 10). Fallback polos hanya dipakai
   // bila backend tidak mengirim slide sama sekali.
-  // Rasio banner PATEN: 1024/426 (±2.4:1) — standar design system & hint form
+  // Rasio banner PATEN: 1024/426 (±2.4:1), standar design system & hint form
   // admin. Tinggi otomatis = lebar ÷ rasio, jadi proporsional di semua layar.
 
   const fallbackSlide: PromoSlide = {

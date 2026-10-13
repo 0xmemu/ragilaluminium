@@ -31,7 +31,7 @@ class ProductReviewsTest extends TestCase
             'parent_sku' => 'WIN-REV-1',
             'name' => 'Window With Reviews',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -41,7 +41,7 @@ class ProductReviewsTest extends TestCase
             'parent_sku' => 'WIN-REV-2',
             'name' => 'Other Window',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -111,7 +111,7 @@ class ProductReviewsTest extends TestCase
             'parent_sku' => 'WIN-REV-3',
             'name' => 'Linked',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -396,12 +396,12 @@ class ProductReviewsTest extends TestCase
             );
 
         // Filter model produk (web).
-        $this->get(route('reviews.website', ['model' => 'WINDOW|SLIDING']))
+        $this->get(route('reviews.website', ['model' => 'JENDELA|SLIDING']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Public/Reviews')
                 ->has('testimonials.data', 1)
-                ->where('activeModel', 'WINDOW|SLIDING')
+                ->where('activeModel', 'JENDELA|SLIDING')
             );
 
         // Slug lama /ulasan & /reviews di-redirect 301 ke /reviews/web.
@@ -541,7 +541,7 @@ class ProductReviewsTest extends TestCase
                 ->where('testimonials.data.0.variant_label', 'Warna: Putih · Kaca: Kaca Es')
                 // `name` tetap nama pendek demi konsumen lama; kartu ulasan
                 // memakai `line`, label kategori + model + sub-model. Produk ini
-                // dibuat tanpa override, jadi kategorinya WINDOW, model JUNGKIT,
+                // dibuat tanpa override, jadi kategorinya JENDELA, model JUNGKIT,
                 // dan sub-modelnya POLOS.
                 ->where('testimonials.data.0.product.name', '200x180')
                 ->where('testimonials.data.0.product.line', 'Jendela Jungkit Polos')

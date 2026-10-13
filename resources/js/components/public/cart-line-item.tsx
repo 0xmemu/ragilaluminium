@@ -3,8 +3,6 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { QuantityControl } from "@/components/ui/quantity-control"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { dispatchCartUpdated } from "@/lib/cart-events"
 import { formatCurrency, productName } from "@/lib/format"

@@ -2,41 +2,39 @@ import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 
 /**
- * Handle geser untuk mode urut admin (kontrak owner 2026-09-20).
+ * Ikon tarik untuk mode Urutkan admin (kontrak owner 2026-09-20, direvisi).
  *
- * Kontrak: geser-urut HANYA lewat ikon tarik di tepi kiri item. Tombol naik/turun
- * (panah atau caret) dilarang, karena memindahkan satu langkah per klik dan
- * membuat baris jadi tinggi. Ikon ini yang menjadi satu-satunya cara menggeser.
+ * Kontrak: memindahkan baris HANYA lewat ikon tarik di tepi paling kiri item.
+ * Tombol naik/turun (panah atau caret) dilarang, karena memindahkan satu langkah
+ * per klik dan membuat baris jadi tinggi. Ikon ini satu-satunya cara memindahkan.
  *
- * Saat mode urut nonaktif ikon tetap tampil (redup) supaya kolomnya tidak
- * berubah lebar dan baris tidak melompat ketika mode urut dinyalakan.
+ * Saat prop enabled bernilai false komponen mengembalikan null, sehingga halaman
+ * pemakainya tidak merender kolom sama sekali lewat th / td yang kondisional.
+ * Klausul lama kontrak 2026-09-20 yang menampilkan ikon redup saat mode Urutkan
+ * belum aktif sudah DIGANTIKAN dan tidak berlaku lagi: ikon redup terbaca sebagai
+ * kontrol rusak sekaligus menyisakan kolom kosong yang menganga.
  */
 export function ReorderDragHandle({
   enabled,
   className,
 }: {
-  /** Mode urut aktif dan daftar memang bisa digeser. */
+  /** Mode Urutkan aktif dan baris ini memang bisa dipindahkan. */
   enabled: boolean
   className?: string
 }) {
+  if (!enabled) return null
+
   return (
     <span
       className={cn(
-        "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground",
         // Kursor tarik duduk di handle, bukan di seluruh baris: di dalam baris ada
-        // tombol dan dropdown yang akan salah tampil kalau barisnya ikut "grab".
-        enabled
-          ? "cursor-grab bg-muted hover:text-foreground active:cursor-grabbing"
-          : "opacity-30",
+        // tombol dan dropdown yang akan salah tampil kalau barisnya ikut grab.
+        "inline-flex size-7 cursor-grab items-center justify-center rounded-md bg-muted text-muted-foreground hover:text-foreground active:cursor-grabbing",
         className,
       )}
       data-reorder-handle
       aria-hidden="true"
-      title={
-        enabled
-          ? "Tarik untuk memindahkan"
-          : "Aktifkan mode urutkan untuk memindahkan"
-      }
+      title="Tarik untuk memindahkan"
     >
       <Icon name="dots-six-vertical" className="size-4" />
     </span>

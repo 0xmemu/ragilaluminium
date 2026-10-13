@@ -17,17 +17,17 @@ class CatalogRuntimeSchemaTest extends TestCase
     {
         $this->createVisibleProduct([
             'parent_sku' => 'WIN-RUNTIME-1',
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
         ]);
         $this->createVisibleProduct([
             'parent_sku' => 'DOOR-RUNTIME-1',
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SLIDING',
         ]);
         $this->createVisibleProduct([
             'parent_sku' => 'BOUV-RUNTIME-1',
-            'product_category' => 'BOUVEN',
+            'product_category' => 'BOVEN',
             'product_model' => 'SLIDING',
         ]);
 
@@ -48,7 +48,7 @@ class CatalogRuntimeSchemaTest extends TestCase
     {
         $product = $this->createVisibleProduct([
             'parent_sku' => 'WIN-RUNTIME-FALLBACK',
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
         ]);
 

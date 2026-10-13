@@ -21,7 +21,7 @@ class ProductEngagementQueueTest extends TestCase
     {
         $p = Product::create([
             'parent_sku' => 'WIN-ENG-1', 'name' => 'Window', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
         ProductVariant::create([

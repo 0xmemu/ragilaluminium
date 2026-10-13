@@ -24,7 +24,7 @@ class StorePerformanceTask1Test extends TestCase
             'parent_sku' => 'TASK1-'.$sku,
             'name' => 'Produk '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',

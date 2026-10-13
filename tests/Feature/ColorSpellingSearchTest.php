@@ -32,7 +32,7 @@ class ColorSpellingSearchTest extends TestCase
             "name" => "Jendela Uji " . $sku,
             "short_name" => "Jendela Uji",
             "category_id" => 1,
-            "product_category" => "WINDOW",
+            'product_category' => 'JENDELA',
             "product_model" => "SLIDING",
             "design_variant" => "POLOS",
             "status" => "active",

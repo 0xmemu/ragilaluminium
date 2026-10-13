@@ -1,6 +1,16 @@
 # ADR-024: Pengaturan teks storefront adalah lapisan pembanding, bukan sumber teks
 
-- **Status:** diterima
+> **STATUS: SUPERSEDED (2026-09-20).** ADR ini DIGANTIKAN pada 2026-09-20 karena lapisan
+> pengaturan CTA storefront dihapus seluruhnya. Halaman `/admin/cta-storefront`, controller
+> `Admin\CtaSettingsController`, support `App\Support\CtaSettings`, dan berkas
+> `resources/js/lib/cta-live.json` diarsipkan ke `_archive/cta-storefront/`; shared prop
+> `ctaSettings` dilepas dari Inertia. Teks CTA sekarang hidup di kode, di
+> `resources/js/lib/cta-content.ts`, sebagai konstanta TypeScript bertipe dan dibaca langsung
+> komponen storefront. Isi ADR di bawah dipertahankan apa adanya sebagai catatan sejarah
+> keputusan, bukan keadaan yang berlaku.
+
+
+- **Status:** SUPERSEDED (digantikan 2026-09-20)
 - **Tanggal:** 2026-09-20
 - **Konteks:** halaman Pengaturan Website > CTA Storefront
 

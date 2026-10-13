@@ -101,175 +101,181 @@ export default function ProfileEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        {/* Table-First terpadu sesuai standar panel admin */}
+        {/* Satu container terpadu dengan 2 kolom sejajar */}
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          {/* Seksi 1: Identitas Akun */}
-          <div className="border-b border-border bg-muted/40 px-4 py-2.5 sm:px-6">
-            <h2 className="text-sm font-semibold text-foreground">Identitas Akun</h2>
+          <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+            {/* Kolom 1: Identitas Akun */}
+            <div>
+              <div className="border-b border-border bg-muted/40 px-4 py-2.5 sm:px-5">
+                <h2 className="text-sm font-semibold text-foreground">Identitas Akun</h2>
+              </div>
+
+              <table className="w-full">
+                <tbody className="divide-y divide-border">
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Status &amp; peran
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <div className="flex h-8 flex-wrap items-center gap-2">
+                        <StatusBadge status={profile.status} />
+                        <span className="text-xs font-semibold text-foreground">{profile.role_label}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Nama <span className="text-destructive">*</span>
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <Input
+                        id="profile-name"
+                        disabled={terkunci}
+                        value={form.data.name}
+                        onChange={(event) => form.setData("name", event.target.value)}
+                        autoComplete="name"
+                        className="h-8 w-full text-xs"
+                      />
+                      {form.errors.name ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Username <span className="text-destructive">*</span>
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <Input
+                        id="profile-username"
+                        disabled={terkunci}
+                        value={form.data.username}
+                        onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
+                        autoComplete="username"
+                        className="h-8 w-full text-xs font-mono"
+                      />
+                      {form.errors.username ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Kolom 2: Ganti Kata Sandi */}
+            <div>
+              <div className="border-b border-border bg-muted/40 px-4 py-2.5 sm:px-5">
+                <h2 className="text-sm font-semibold text-foreground">Ganti Kata Sandi</h2>
+              </div>
+
+              <table className="w-full">
+                <tbody className="divide-y divide-border">
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Kata sandi saat ini
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <Input
+                        id="profile-current-password"
+                        disabled={terkunci}
+                        type="password"
+                        value={form.data.current_password}
+                        onChange={(event) => form.setData("current_password", event.target.value)}
+                        autoComplete="current-password"
+                        placeholder={terkunci ? "••••••••" : "Kata sandi saat ini"}
+                        className="h-8 w-full text-xs"
+                      />
+                      {form.errors.current_password ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.current_password}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Kata sandi baru
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <div className="flex w-full items-center gap-1.5">
+                        <Input
+                          id="profile-password"
+                          disabled={terkunci}
+                          type={terkunci ? "password" : "text"}
+                          value={form.data.password}
+                          onChange={(event) => form.setData("password", event.target.value)}
+                          autoComplete="new-password"
+                          placeholder={terkunci ? "••••••••" : "Minimal 8 karakter"}
+                          className="h-8 flex-1 text-xs font-mono"
+                        />
+                        {!terkunci ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-8 shrink-0 text-xs"
+                              onClick={() => {
+                                const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+                                const array = new Uint32Array(14)
+                                crypto.getRandomValues(array)
+                                const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
+                                form.setData("password", generated)
+                                form.setData("password_confirmation", generated)
+                              }}
+                            >
+                              <Icon name="sparkles" className="h-3.5 w-3.5" aria-hidden="true" />
+                              Generate
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-8 w-8 shrink-0 p-0"
+                              aria-label="Salin password"
+                              title="Salin password"
+                              onClick={async () => {
+                                if (!form.data.password) return
+                                try {
+                                  await navigator.clipboard.writeText(form.data.password)
+                                  setCopied(true)
+                                  window.setTimeout(() => setCopied(false), 1500)
+                                } catch {
+                                  // clipboard ditolak browser
+                                }
+                              }}
+                            >
+                              <Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                      {form.errors.password ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="w-40 px-4 py-2.5 text-left align-top text-xs font-semibold sm:w-44">
+                      Ulangi kata sandi
+                    </th>
+                    <td className="px-4 py-2.5">
+                      <Input
+                        id="profile-password-confirmation"
+                        disabled={terkunci}
+                        type={terkunci ? "password" : "text"}
+                        value={form.data.password_confirmation}
+                        onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                        autoComplete="new-password"
+                        placeholder={terkunci ? "••••••••" : "Ulangi kata sandi baru"}
+                        className="h-8 w-full text-xs font-mono"
+                      />
+                      {form.errors.password_confirmation ? (
+                        <p className="mt-1 text-xs text-destructive">{form.errors.password_confirmation}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Status &amp; peran
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={profile.status} />
-                    <span className="text-xs font-semibold text-foreground">{profile.role_label}</span>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="profile-name"
-                    disabled={terkunci}
-                    value={form.data.name}
-                    onChange={(event) => form.setData("name", event.target.value)}
-                    autoComplete="name"
-                    className="h-8 max-w-md text-xs"
-                  />
-                  {form.errors.name ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Username <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="profile-username"
-                    disabled={terkunci}
-                    value={form.data.username}
-                    onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
-                    autoComplete="username"
-                    className="h-8 max-w-md text-xs font-mono"
-                  />
-                  {form.errors.username ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
-                  ) : null}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Seksi 2: Ganti Kata Sandi */}
-          <div className="border-t border-b border-border bg-muted/40 px-4 py-2.5 sm:px-6">
-            <h2 className="text-sm font-semibold text-foreground">Ganti Kata Sandi</h2>
-          </div>
-
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kata sandi saat ini
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="profile-current-password"
-                    disabled={terkunci}
-                    type="password"
-                    value={form.data.current_password}
-                    onChange={(event) => form.setData("current_password", event.target.value)}
-                    autoComplete="current-password"
-                    placeholder={terkunci ? "••••••••" : "Kata sandi saat ini"}
-                    className="h-8 max-w-md text-xs"
-                  />
-                  {form.errors.current_password ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.current_password}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kata sandi baru
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex max-w-md items-center gap-1.5">
-                    <Input
-                      id="profile-password"
-                      disabled={terkunci}
-                      type={terkunci ? "password" : "text"}
-                      value={form.data.password}
-                      onChange={(event) => form.setData("password", event.target.value)}
-                      autoComplete="new-password"
-                      placeholder={terkunci ? "••••••••" : "Minimal 8 karakter"}
-                      className="h-8 flex-1 text-xs font-mono"
-                    />
-                    {!terkunci ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8 shrink-0 text-xs"
-                          onClick={() => {
-                            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
-                            const array = new Uint32Array(14)
-                            crypto.getRandomValues(array)
-                            const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
-                            form.setData("password", generated)
-                            form.setData("password_confirmation", generated)
-                          }}
-                        >
-                          <Icon name="sparkles" className="h-3.5 w-3.5" aria-hidden="true" />
-                          Generate
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8 w-8 shrink-0 p-0"
-                          aria-label="Salin password"
-                          title="Salin password"
-                          onClick={async () => {
-                            if (!form.data.password) return
-                            try {
-                              await navigator.clipboard.writeText(form.data.password)
-                              setCopied(true)
-                              window.setTimeout(() => setCopied(false), 1500)
-                            } catch {
-                              // clipboard ditolak browser
-                            }
-                          }}
-                        >
-                          <Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                  {form.errors.password ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Ulangi kata sandi baru
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="profile-password-confirmation"
-                    disabled={terkunci}
-                    type={terkunci ? "password" : "text"}
-                    value={form.data.password_confirmation}
-                    onChange={(event) => form.setData("password_confirmation", event.target.value)}
-                    autoComplete="new-password"
-                    placeholder={terkunci ? "••••••••" : "Ulangi kata sandi baru"}
-                    className="h-8 max-w-md text-xs font-mono"
-                  />
-                  {form.errors.password_confirmation ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.password_confirmation}</p>
-                  ) : null}
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </form>
     </AdminLayout>

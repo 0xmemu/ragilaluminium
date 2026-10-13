@@ -22,7 +22,7 @@ class CatalogSearchBoundaryTest extends TestCase
             'name' => $name,
             'short_name' => $name,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -82,7 +82,7 @@ class CatalogSearchBoundaryTest extends TestCase
     public function test_plain_text_search_still_works(): void
     {
         $this->makeProduct('N1', 'Jendela Aluminium Sliding');
-        $this->makeProduct('N2', 'Pintu Minimalis', ['product_category' => 'DOOR']);
+        $this->makeProduct('N2', 'Pintu Minimalis', ['product_category' => 'PINTU']);
 
         $hits = $this->searchSkus('jendela');
 
@@ -139,7 +139,7 @@ class CatalogSearchBoundaryTest extends TestCase
         $this->makeProduct('C1', 'Sliding Kaca Mati', ['product_model' => 'SLIDING']);
         $this->makeProduct('C2', 'Jungkit Kaca Mati', ['product_model' => 'JUNGKIT']);
         $this->makeProduct('C3', 'Sliding Pintu', [
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SLIDING',
         ]);
 
@@ -186,7 +186,7 @@ class CatalogSearchBoundaryTest extends TestCase
     public function test_synonym_bouven_matches_boven(): void
     {
         $this->makeProduct('BY1', 'Boven Aluminium Jungkit Polos', [
-            'product_category' => 'BOUVEN',
+            'product_category' => 'BOVEN',
             'product_model' => 'JUNGKIT',
         ]);
         $this->makeProduct('BY2', 'Jendela Aluminium Jungkit Polos', ['product_model' => 'JUNGKIT']);
@@ -200,11 +200,11 @@ class CatalogSearchBoundaryTest extends TestCase
     public function test_synonym_geser_and_ayun_map_to_models(): void
     {
         $this->makeProduct('G1', 'Pintu Aluminium Sliding Polos', [
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SLIDING',
         ]);
         $this->makeProduct('G2', 'Pintu Aluminium Swing Polos', [
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SWING',
         ]);
 
@@ -250,9 +250,9 @@ class CatalogSearchBoundaryTest extends TestCase
 
     public function test_ambiguous_word_still_matches_real_named_product(): void
     {
-        $this->makeProduct('MN1', 'Pintu Minimalis Kaca Polos', ['product_category' => 'DOOR']);
+        $this->makeProduct('MN1', 'Pintu Minimalis Kaca Polos', ['product_category' => 'PINTU']);
         $this->makeProduct('MN2', 'Pintu Swing Polos', [
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SWING',
         ]);
 

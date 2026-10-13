@@ -249,9 +249,12 @@ class ProductController extends Controller
                 ->map(fn (CmsTestimonial $t) => $t->toPublicArray((int) $t->product_id === (int) $product->id))
                 ->values()
                 ->all(),
+            // Section "Anda mungkin juga suka" disembunyikan bila tidak ada isi
+            // (relatedUrl null -> frontend tidak merender section sama sekali).
             'relatedProducts' => InertiaCatalog::productCards(
-                $this->relatedProductsFor($product)
+                $relatedProducts = $this->relatedProductsFor($product)
             ),
+            'relatedUrl' => $relatedProducts->isEmpty() ? null : $this->relatedListingUrl($product),
             // Metadata promo yang sama dengan product card (compare price, flash sale, COD, garansi).
             'promo' => tap(ProductPromotionMetadata::forProduct($product), function (&$promo) use ($detailVariants, $product) {
                 $pricing = app(\App\Services\PriceService::class)->productCard($product);
@@ -275,72 +278,179 @@ class ProductController extends Controller
         ]);
     }
 
+    /** Batas kandidat rekomendasi; frontend menampilkan 8 di mobile, 10 di desktop. */
+    private const RELATED_PRODUCTS_LIMIT = 10;
+
     /**
-     * Same model → same category → homepage popular / website sales. Max 8.
+     * Bobot tinggi terhadap panjang saat mengurutkan kedekatan ukuran.
+     * Tinggi 2x lebih menentukan (unit harus muat di bukaan), tetapi selisih
+     * panjang yang ekstrem tetap dihitung sehingga tidak ada kandidat "sama
+     * tinggi tapi beda panjang jauh" yang menang hanya karena tingginya sama.
+     */
+    private const RELATED_SIZE_HEIGHT_WEIGHT = 2;
+
+    /**
+     * Rekomendasi "Anda mungkin juga suka" (maks 10 kandidat; frontend
+     * menampilkan 8 di mobile dan 10 di desktop).
+     *
+     * Prioritas (kontrak owner 2026-09-16, revisi): UKURAN menang atas
+     * kecocokan model/submodel, dengan urutan bertingkat:
+     *   1. MODEL SAMA - diurutkan JARAK UKURAN TERDEKAT, yaitu
+     *      (RELATED_SIZE_HEIGHT_WEIGHT x selisih tinggi) + selisih panjang,
+     *      baru desain setipe, baru penjualan.
+     *      Tinggi berbobot lebih besar karena unit harus muat di bukaan, tetapi
+     *      panjang tetap dihitung sehingga kandidat "tinggi sama namun panjang
+     *      beda jauh" (mis. 180x130 vs 180x220) TIDAK menang hanya karena
+     *      tingginya sama. "Model sama + ukuran sama" selalu di paling depan
+     *      karena jaraknya 0.
+     *   2. KATEGORI SAMA - urutan jarak ukuran yang sama.
+     *   3. UKURAN SAMA PERSIS lintas kategori/model.
+     *   4. Kurasi beranda ("Paling Banyak Dipesan").
+     *   5. Seluruh katalog.
+     *
+     * Bila produk tidak punya ukuran, pengurutan ukuran dilewati dan tinggal
+     * desain setipe lalu penjualan. Setiap tingkat hanya mengisi sisa slot dan
+     * tidak ada produk kembar.
      *
      * @return Collection<int, Product>
      */
     private function relatedProductsFor(Product $product): Collection
     {
+        $limit = self::RELATED_PRODUCTS_LIMIT;
         $exclude = collect([$product->id]);
         $related = collect();
 
-        $take = function (callable $query, int $limit) use (&$exclude, &$related): void {
-            if ($limit <= 0) {
+        $take = function (callable $query, int $slots) use (&$exclude, &$related): void {
+            if ($slots <= 0) {
                 return;
             }
+
             $batch = $query()
                 ->whereNotIn('id', $exclude->all())
                 ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
-                ->limit($limit)
+                ->limit($slots)
                 ->get();
-            foreach ($batch as $p) {
-                $related->push($p);
-                $exclude->push($p->id);
+
+            foreach ($batch as $item) {
+                $related->push($item);
+                $exclude->push($item->id);
             }
         };
 
+        $remaining = fn (): int => $limit - $related->count();
+
+        $height = $product->height_cm !== null ? (float) $product->height_cm : null;
+        $width = $product->width_cm !== null ? (float) $product->width_cm : null;
+        $design = CatalogLabels::normalizeDesign($product->design_variant);
+        $hasSize = $height !== null && $width !== null;
+
+        // Urutan standar semua tingkat: ukuran terdekat -> desain setipe -> penjualan.
+        $bySizeThenPopularity = function ($query) use ($hasSize, $height, $width, $design) {
+            if ($hasSize) {
+                // Produk tanpa ukuran jangan dianggap "terdekat" karena
+                // ABS(NULL) bernilai NULL dan bisa menyusup ke urutan depan.
+                $query->orderByRaw('CASE WHEN height_cm IS NULL OR width_cm IS NULL THEN 1 ELSE 0 END');
+                // Kedekatan ukuran = JARAK GABUNGAN berbobot (kontrak owner 2026-09-16):
+                // selisih TERDEKAT menang, dengan tinggi berbobot lebih besar
+                // daripada panjang. Tinggi saja tidak cukup: kandidat "tinggi sama
+                // tetapi panjang beda jauh" (mis. 180x130 vs 180x220) terlalu
+                // drastis, sehingga kandidat yang lebih dekat secara keseluruhan
+                // harus didahulukan.
+                $query->orderByRaw(
+                    '(? * ABS(height_cm - ?)) + ABS(width_cm - ?)',
+                    [self::RELATED_SIZE_HEIGHT_WEIGHT, $height, $width]
+                );
+            }
+
+            if ($design !== null) {
+                $query->orderByRaw('CASE WHEN design_variant = ? THEN 0 ELSE 1 END', [$design]);
+            }
+
+            return $query
+                ->withPopularityScore()
+                ->orderByRaw(Product::popularityScoreSql().' DESC')
+                ->orderByDesc('id');
+        };
+
+        // 1. Model sama (ukuran terdekat lebih dulu).
         if ($product->product_model) {
             $take(
-                fn () => Product::visible()
-                    ->where('product_model', $product->product_model)
-                    ->orderByWebsiteSales(),
-                8
+                fn () => $bySizeThenPopularity(
+                    Product::visible()->where('product_model', $product->product_model)
+                ),
+                $remaining()
             );
         }
 
-        if ($related->count() < 8 && $product->product_category) {
+        // 2. Kategori sama.
+        if ($remaining() > 0 && $product->product_category) {
+            $take(
+                fn () => $bySizeThenPopularity(
+                    Product::visible()->where('product_category', $product->product_category)
+                ),
+                $remaining()
+            );
+        }
+
+        // 3. Ukuran sama persis dari model/kategori lain (kecocokan paling kuat
+        //    setelah model, karena ukuran menentukan produk bisa dipasang).
+        if ($remaining() > 0 && $hasSize) {
+            $take(
+                fn () => $bySizeThenPopularity(
+                    Product::visible()
+                        ->where('height_cm', $height)
+                        ->where('width_cm', $width)
+                ),
+                $remaining()
+            );
+        }
+
+        // 4. Kurasi beranda - urutan kurasi admin dipertahankan.
+        if ($remaining() > 0) {
             $take(
                 fn () => Product::visible()
-                    ->where('product_category', $product->product_category)
-                    ->orderByWebsiteSales(),
-                8 - $related->count()
+                    ->homepagePopular()
+                    ->withPopularityScore()
+                    ->orderBy('homepage_popular_sort')
+                    ->orderByDesc('id'),
+                $remaining()
             );
         }
 
-        if ($related->count() < 8) {
-            $curated = Product::visible()
-                ->homepagePopular()
-                ->whereNotIn('id', $exclude->all())
-                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
-                ->withPopularityScore()
-                ->orderBy('homepage_popular_sort')
-                ->orderByDesc('id')
-                ->limit(8 - $related->count())
-                ->get();
-            foreach ($curated as $p) {
-                $related->push($p);
-                $exclude->push($p->id);
-            }
+        // 5. Seluruh katalog.
+        if ($remaining() > 0) {
+            $take(fn () => $bySizeThenPopularity(Product::visible()), $remaining());
         }
 
-        if ($related->count() < 8) {
-            $take(
-                fn () => Product::visible()->orderByWebsiteSales(),
-                8 - $related->count()
-            );
+        return $related->take($limit)->values();
+    }
+    /**
+     * URL "Lihat semua" untuk rekomendasi: halaman listing dengan filter aktif
+     * (kategori + model + sub model) supaya isi halaman tujuan sinkron dengan
+     * section yang diklik. Desain dihilangkan bila produk itu tidak punya
+     * sub model.
+     */
+    protected function relatedListingUrl(Product $product)
+    {
+        $category = (string) $product->product_category;
+        $model = (string) $product->product_model;
+        $design = CatalogLabels::normalizeDesign($product->design_variant);
+
+        if ($category === '' || $model === '') {
+            return route('catalog.all', absolute: false);
         }
 
-        return $related->take(8)->values();
+        $params = [
+            'category' => CategoryUrl::categoryToSlug($category),
+            'model' => strtolower(str_replace('_', '-', $model)),
+        ];
+
+        if ($design !== null) {
+            return route('catalog.design', $params + [
+                'design' => strtolower(str_replace('_', '-', $design)),
+            ], absolute: false);
+        }
+
+        return route('catalog.model', $params, absolute: false);
     }
 }

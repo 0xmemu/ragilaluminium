@@ -23,7 +23,8 @@ class ApaKataController extends Controller
         $published = $request->query('published');
 
         $query = CmsTestimonial::query()
-            ->marketplace()
+            ->published()
+            ->withScreenshot()
             ->with('product:id,parent_sku,name,short_name')
             ->orderBy('sort_order')
             ->orderByDesc('id');
@@ -56,7 +57,7 @@ class ApaKataController extends Controller
                 ['value' => '0', 'label' => 'Draft'],
             ],
             'createHref' => route('admin.testimonials.create', ['intent' => 'marketplace']),
-            'createLabel' => 'Tambah Screenshot',
+            'createLabel' => 'Tambah',
             'indexRoute' => 'admin.apa-kata-pelanggan.index',
             'pageMeta' => TestimonialPageSettings::pageMeta(),
             'metaUrl' => route('admin.apa-kata-pelanggan.meta.update'),
@@ -125,7 +126,7 @@ class ApaKataController extends Controller
         foreach ($validated['rows'] as $index => $row) {
             CmsTestimonial::query()
                 ->whereKey((int) $row['id'])
-                ->marketplace()
+                ->withScreenshot()
                 ->update([
                     'sort_order' => array_key_exists('sort_order', $row) && $row['sort_order'] !== null
                         ? (int) $row['sort_order']

@@ -585,13 +585,13 @@ export default function ProductShow({
         <Button asChild variant="secondary">
           <a href={product.product_href} target="_blank" rel="noreferrer">
             <Icon name="eye" className="h-4 w-4" aria-hidden="true" />
-            Lihat publik
+            Lihat di toko
           </a>
         </Button>
       ) : (
         <Button variant="secondary" disabled title="Produk arsip tidak tampil di toko">
           <Icon name="eye" className="h-4 w-4" aria-hidden="true" />
-          Lihat publik
+          Lihat di toko
         </Button>
       )}
       <Button asChild>

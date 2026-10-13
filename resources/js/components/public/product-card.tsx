@@ -74,9 +74,9 @@ function CodBadge() {
  * Product card - BEM visual system (Zalora-inspired guideline).
  *
  * Block: `.product-card` (+ modifier `--discounted/--flash/--unavailable/--model`)
- * Elements: `__media __link __image __badge __availability __favorite
+ * Elements: `__media __link __image __availability __favorite
  *           __content __title __pricing __price __empty-price __compare
- *           __original-price __discount __extras __cod __flash-label
+ *           __original-price __discount __cod __flash-label
  *           __meta __warranty __sold`
  *
  * Seluruh chrome visual hidup di `@layer components` (resources/css/app.css)
@@ -109,7 +109,6 @@ export function ProductCard({
   onWishlistChange?: (next: boolean) => void
 }) {
   const title = productName(product.name, product.short_name)
-  const sizeLabel = product.size_label?.trim() || null
   const priceValue =
     product.min_price !== null && product.min_price !== undefined
       ? Number(product.min_price)
@@ -168,10 +167,10 @@ export function ProductCard({
           />
         </PrefetchLink>
 
-        {flashEmphasis ? (
-          <span className="product-card__badge">
-            <Lightning weight="fill" className="size-3 shrink-0" aria-hidden />
-            Flash
+        {showFlash ? (
+          <span className="product-card__flash-label">
+            <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
+            FLASH SALE
           </span>
         ) : null}
         {!isAvailable ? (
@@ -211,12 +210,6 @@ export function ProductCard({
             {title}
           </h3>
 
-          {/* Ukuran varian sebagai metadata terpisah - nama produk dari admin
-              tidak pernah ditimpa oleh dimensi/bobot/model. */}
-          {sizeLabel ? (
-            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{sizeLabel}</p>
-          ) : null}
-
           {/* Harga bertumpuk: compare + diskon wajib satu baris (mengecil bila sempit). */}
           <div className="product-card__pricing">
             {priceValue !== null && Number.isFinite(priceValue) ? (
@@ -241,15 +234,6 @@ export function ProductCard({
               <span className="product-card__empty-price">Lihat harga</span>
             )}
           </div>
-
-          {showFlash ? (
-            <div className="product-card__extras">
-              <span className="product-card__flash-label">
-                <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
-                FLASH SALE
-              </span>
-            </div>
-          ) : null}
 
           <div className="product-card__meta">
             <span className="product-card__meta-start">

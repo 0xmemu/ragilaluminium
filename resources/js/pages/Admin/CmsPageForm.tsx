@@ -6,7 +6,6 @@ import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
-import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
@@ -38,17 +37,10 @@ export default function CmsPageForm({
     },
     published: page?.published ?? false,
   })
-  // Kontrak halaman pengaturan (ADR-023): nilai yang sudah ada dibuka terkunci.
-  // Halaman baru dikecualikan karena diisi dari nol, jadi kuncinya hanya
-  // berlaku saat menyunting halaman yang sudah ada.
-  const [mode, setMode] = React.useState<"view" | "edit">("view")
-  const terkunci = editing && mode === "view"
+
 
   function batal() {
-    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
-    // mode edit bertahan walau sudah dibatalkan.
     form.resetAndClearErrors()
-    setMode("view")
   }
 
   const preview = React.useMemo(
@@ -76,30 +68,23 @@ export default function CmsPageForm({
       description={editing ? page?.slug : "Konten publik disimpan sebagai HTML terstruktur."}
       actions={
         <div className="flex flex-wrap gap-2">
-          {editing && mode === "edit" ? (
+          {editing && form.isDirty ? (
             <Button type="button" variant="secondary" size="sm" onClick={batal}>
               Batal
             </Button>
           ) : (
             <Button asChild variant="secondary" size="sm">
-              <Link href={routeUrl("admin.pages.index")}>Batal</Link>
+              <Link href={routeUrl("admin.pages.index")}>Kembali</Link>
             </Button>
           )}
-          {editing && mode === "view" ? (
-            <Button type="button" size="sm" onClick={() => setMode("edit")}>
-              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-              Edit
-            </Button>
-          ) : (
-                        <SubmitGateButton
-              form={form}
-              {...gerbang}
-              formId="cms-page-form"
-              size="sm"
-            >
-              Simpan halaman
-            </SubmitGateButton>
-          )}
+          <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="cms-page-form"
+            size="sm"
+          >
+            Simpan halaman
+          </SubmitGateButton>
         </div>
       }
     >
@@ -116,7 +101,6 @@ export default function CmsPageForm({
               onSuccess: () => {
                 // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
                 form.setDefaults()
-                setMode("view")
               },
             })
           } else {
@@ -129,7 +113,7 @@ export default function CmsPageForm({
           <FormErrorSummary errors={form.errors} />
           <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
-              <Input disabled={terkunci} value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+              <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
             <Field
               id="cms-slug"
@@ -153,7 +137,6 @@ export default function CmsPageForm({
               className="sm:col-span-2"
             >
               <Textarea
-                disabled={terkunci}
                 rows={18}
                 value={form.data.content.html}
                 onChange={(event) => form.setData("content", { html: event.target.value })}
@@ -162,7 +145,6 @@ export default function CmsPageForm({
             </Field>
             <CheckboxField
               id="cms-published"
-              disabled={terkunci}
               checked={form.data.published}
               onChange={(checked) => form.setData("published", checked)}
               label="Terbitkan halaman"

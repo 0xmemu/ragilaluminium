@@ -34,6 +34,7 @@ class Product extends Model
         'status',
         'homepage_popular',
         'homepage_popular_sort',
+        'homepage_popular_since',
         'popularity_seed',
         'popularity_seed_source_product_id',
         'popularity_seed_applied_at',
@@ -45,6 +46,7 @@ class Product extends Model
     protected $casts = [
         'homepage_popular' => 'boolean',
         'homepage_popular_sort' => 'integer',
+        'homepage_popular_since' => 'datetime',
         'popularity_seed' => 'integer',
         'popularity_seed_applied_at' => 'datetime',
     ];
@@ -182,6 +184,35 @@ class Product extends Model
     public function scopeOrderByWebsiteSales(Builder $query): Builder
     {
         return $query->orderByPopularity()->orderByDesc('id');
+    }
+
+    /**
+     * Fragmen ORDER BY "Paling Banyak Dipesan" (satu sumber kebenaran).
+     *
+     * `homepage_popular_sort` = posisi kurasi 1-based; 0 berarti belum pernah
+     * dikurasi (default kolom), sehingga produk itu mengikuti skor penjualan.
+     * Dipakai bersama oleh galeri /products/all?from=paling-banyak-dipesan dan
+     * carousel beranda/katalog supaya 10 produk teratas galeri SELALU identik
+     * dengan isi carousel.
+     *
+     * Butuh withPopularityScore() + withSum('activeVariants as stock_sort','stock').
+     */
+    public static function palingBanyakDipesanOrderSql(): string
+    {
+        // Sengaja TIDAK memakai flag `homepage_popular` sebagai penanda: flag itu
+        // hanya "10 teratas" dan bisa tertinggal dari data lama, sedangkan kolom
+        // sort > 0 adalah bukti produk benar-benar pernah disusun admin.
+        return 'CASE WHEN products.homepage_popular_sort > 0 THEN products.homepage_popular_sort ELSE 2147483647 END ASC, '
+            .self::popularityScoreSql().' DESC, stock_sort DESC, id DESC';
+    }
+
+    /** Terapkan urutan "Paling Banyak Dipesan" lengkap dengan kolom pendukungnya. */
+    public function scopeOrderByPalingBanyakDipesan(Builder $query): Builder
+    {
+        return $query
+            ->withPopularityScore()
+            ->withSum('activeVariants as stock_sort', 'stock')
+            ->orderByRaw(self::palingBanyakDipesanOrderSql());
     }
 
     public function getMinPriceAttribute(): ?float

@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { Button } from "@/components/admin/ui/button"
 import { Card } from "@/components/admin/ui/card"
-import { EmptyState } from "@/components/admin/ui/empty-state"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
@@ -84,6 +84,42 @@ export default function ImportsIndex({
 }: ImportsIndexProps) {
   const [refreshing, setRefreshing] = React.useState(false)
   const [q, setQ] = React.useState(searchQuery)
+  // Galat muat ulang daftar: tampil sebagai ErrorState di area daftar, dengan
+  // tombol "Coba lagi" yang mengulang muat ulang. Penanda muat ulang dipakai
+  // agar kegagalan aksi lain tidak ikut memunculkan panel galat ini.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  const reloadInFlight = React.useRef(false)
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshJobs() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Riwayat import belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
+    })
+  }
+
+  // Respons 500 atau koneksi putus tidak masuk ke onError, tetapi Inertia tetap
+  // memancarkan event. Keduanya dipetakan ke panel galat, hanya saat muat ulang
+  // memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Riwayat import belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
 
   function visit(params: Record<string, string | undefined>) {
     navigateFilter(
@@ -199,7 +235,18 @@ export default function ImportsIndex({
 
       {/* Tabel Import Table-First Desktop */}
       <Card className="overflow-hidden border border-border bg-card">
-        {jobs.data.length ? (
+        {refreshError ? (
+          <ErrorState
+            className="border-0"
+            title="Riwayat import gagal dimuat ulang"
+            description={refreshError}
+            action={
+              <Button variant="outline" size="sm" onClick={refreshJobs} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : jobs.data.length ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>

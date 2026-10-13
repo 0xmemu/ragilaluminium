@@ -7,6 +7,7 @@ import { ClosingCTASection } from "@/components/public/closing-cta"
 import { Button } from "@/components/ui/button"
 import PublicLayout from "@/layouts/public-layout"
 import { resolveCtaActions } from "@/lib/cta-actions"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { channelOf, isLiveHref } from "@/lib/platforms"
 import { routeUrl } from "@/lib/routes"
 import { telephoneHref } from "@/lib/format"
@@ -142,11 +143,12 @@ function PlatformGroup({ title, items }: { title: string; items: SocialLink[] })
 }
 
 export default function About({ page, stats }: { page: PageData; stats?: AboutStats }) {
-  const { brand, consultationWhatsApp, platforms = [], ctaSettings } = usePage<SharedPageProps>().props
-  // Tombol panel kontak diatur admin lewat CTA Storefront,
+  const { brand, consultationWhatsApp, platforms = [] } = usePage<SharedPageProps>().props
+  // Tombol panel kontak dibaca dari CTA_CONTENT,
   // blok "Tentang Kami: panel toko & workshop".
+  const aboutContact = CTA_CONTENT["about-contact"]
   const aboutContactActions = resolveCtaActions(
-    ctaSettings?.pages?.["about-contact"]?.actions,
+    aboutContact?.actions,
     consultationWhatsApp?.directUrl ?? routeUrl("contact"),
   )
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
@@ -319,7 +321,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
           <div className="mt-3 grid gap-3 lg:grid-cols-1">
             <div className="surface-panel overflow-hidden p-5 sm:p-6">
               <p className="text-sm font-bold tracking-tight text-foreground">
-                {ctaSettings?.pages?.["about-contact"]?.heading || "Toko & Workshop Ragil Aluminium"}
+                {aboutContact?.heading || "Toko & Workshop Ragil Aluminium"}
               </p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{brand.address}</p>
 

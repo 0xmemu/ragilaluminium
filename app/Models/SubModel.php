@@ -28,7 +28,6 @@ class SubModel extends Model
         'code',
         'name',
         'description',
-        'image_url',
         'sort_order',
         'is_active',
     ];

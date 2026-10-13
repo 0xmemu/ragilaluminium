@@ -1,4 +1,3 @@
-import { Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { MobileStickyCta } from "@/components/public/mobile-sticky-cta"

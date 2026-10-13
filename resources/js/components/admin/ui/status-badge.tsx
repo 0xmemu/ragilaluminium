@@ -1,30 +1,35 @@
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { Icon } from "@/components/shared/icon"
-import { statusMeta } from "@/lib/status"
+import { statusIcon, statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
 /**
- * Admin status badge: pastel solid per tema (bukan tint transparan,
- * bukan solid pekat) dengan teks dan ikon seragam - gelap di light mode,
- * terang di dark mode. Arah owner 13-09: seimbang, tidak terlalu kontras,
- * tidak over saturate, tidak tak terlihat; warna menyesuaikan tema.
+ * Admin status badge (owner 16-09: bedakan light & dark mode):
+ * - Light mode: latar pastel lembut (100) dengan teks berwarna tua (800) yang elegan di kartu putih.
+ * - Dark mode: pil solid pekat/matang (400/500, non-pastel) dengan teks & ikon hitam pekat kontras tinggi.
+ */
+/**
+ * Admin status badge (gaya border + tint transparan, disamakan dengan Catatan Admin):
+ * - Border halus semi-transparan per warna status (border-*-500/50 dark:border-*-500/40)
+ * - Latar tint transparan lembut (bg-*-500/15)
+ * - Teks & ikon: gelap di light mode (text-*-800), terang/light di dark mode (dark:text-*-300)
  */
 const badgeVariants = cva(
-  "inline-flex min-h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold leading-none",
+  "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold leading-none",
   {
     variants: {
       tone: {
-        success: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-        danger: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-        warning: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-        info: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
-        neutral: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-        // Varian lembut lama dilebur ke pasangan warna yang sama.
-        "info-soft": "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
-        "warning-soft": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-        "success-soft": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-        "neutral-soft": "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+        success: "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300",
+        danger: "border-red-500/40 bg-red-500/15 text-red-800 dark:border-red-500/40 dark:text-red-300",
+        warning: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:border-amber-500/40 dark:text-amber-300",
+        info: "border-sky-500/40 bg-sky-500/15 text-sky-800 dark:border-sky-500/40 dark:text-sky-300",
+        neutral: "border-zinc-500/40 bg-zinc-500/15 text-zinc-700 dark:border-zinc-500/40 dark:text-zinc-300",
+        // Varian lembut
+        "info-soft": "border-sky-500/40 bg-sky-500/15 text-sky-800 dark:border-sky-500/40 dark:text-sky-300",
+        "warning-soft": "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:border-amber-500/40 dark:text-amber-300",
+        "success-soft": "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-300",
+        "neutral-soft": "border-zinc-500/40 bg-zinc-500/15 text-zinc-700 dark:border-zinc-500/40 dark:text-zinc-300",
       },
     },
     defaultVariants: {
@@ -33,14 +38,18 @@ const badgeVariants = cva(
   },
 )
 
-/** Ikon per nada, warnanya mewarisi teks (menyesuaikan tema). */
+/**
+ * Ikon per nada, warnanya mewarisi teks (menyesuaikan tema). Dipakai sebagai
+ * bawaan untuk status yang tidak punya ikon spesifik di lib/status.ts.
+ * Tidak ada nada yang memakai "circle": lingkaran kosong tidak bermakna.
+ */
 const toneIcon: Record<string, string> = {
   success: "check",
   danger: "x",
   warning: "warning",
   info: "info",
   neutral: "archive",
-  "neutral-soft": "circle",
+  "neutral-soft": "minus",
   "info-soft": "info",
   "warning-soft": "warning",
   "success-soft": "check",
@@ -73,7 +82,9 @@ export function StatusBadge({ status, label, tone, className }: StatusBadgeProps
   // selalu jatuh ke abu-abu netral meski statusnya sehat atau gagal.
   const statusIsTone = DIRECT_TONES.has(rawStatus)
   const resolvedTone = tone ?? (statusIsTone ? (rawStatus as typeof meta.tone) : meta.tone)
-  const iconName = toneIcon[resolvedTone ?? "neutral"] ?? toneIcon.neutral
+  // Ikon spesifik status menang; bila pemanggil mengirim nada langsung
+  // (bukan kunci status), statusIcon tidak cocok dan jatuh ke ikon nada.
+  const iconName = (!statusIsTone && statusIcon(status)) || toneIcon[resolvedTone ?? "neutral"] || toneIcon.neutral
 
   return (
     <span className={cn(badgeVariants({ tone: resolvedTone }), className)}>

@@ -8,6 +8,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 
 interface GroupRow {
   key: string
@@ -85,10 +86,6 @@ export default function InstallationGalleryIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects.data])
 
-  // Drag-and-drop grup (mode geser).
-  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
-  const [dragTarget, setDragTarget] = React.useState<number | null>(null)
-
   function moveRow(from: number, to: number) {
     if (to < 0 || to >= rows.length || from === to) return
     const next = [...rows]
@@ -98,7 +95,7 @@ export default function InstallationGalleryIndex({
     reorderForm.setData("rows", next.map((r) => ({ key: r.key })))
   }
 
-  // Geser-urut hanya sahih saat daftar memuat seluruh grup: payload simpan
+  // Urut-ubah hanya sahih saat daftar memuat seluruh grup: payload simpan
   // memakai indeks baris yang tampil, jadi daftar tersaring menulis urutan salah.
   // Pencarian dan sortir dibersihkan sendiri oleh tombol Urutkan, jadi hanya tab
   // status yang mengunci tombolnya.
@@ -116,7 +113,7 @@ export default function InstallationGalleryIndex({
     })
   }
 
-  /** Batalkan mode geser: kembalikan urutan ke snapshot server lalu keluar. */
+  /** Batalkan mode Urutkan: kembalikan urutan ke snapshot server lalu keluar. */
   function cancelReorder() {
     const snapshot = projects.data ?? []
     setRows(snapshot)
@@ -125,6 +122,16 @@ export default function InstallationGalleryIndex({
     setReorderMode(false)
   }
 
+
+  // Ikon tarik hanya ada saat mode Urutkan aktif dan daftar memuat seluruh grup
+  // (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && !listTersaring
+
+  const dnd = useRowDragSort({
+    enabled: dragAktif,
+    count: rows.length,
+    onReorder: moveRow,
+  })
 
   function handleFilter(newParams: Record<string, string | number | null | undefined>) {
     router.get(
@@ -167,8 +174,8 @@ export default function InstallationGalleryIndex({
             }
             onToggle={() => {
               setReorderMode(true)
-              // Urutan hanya bisa digeser saat daftar lengkap, jadi pencarian
-              // dan sortir dikosongkan sekaligus saat mode geser dinyalakan.
+              // Urutan hanya bisa diubah saat daftar lengkap, jadi pencarian
+              // dan sortir dikosongkan sekaligus saat mode Urutkan dinyalakan.
               if (listTersaring) handleFilter({ q: null, sort: null })
             }}
             onCancel={cancelReorder}
@@ -177,7 +184,7 @@ export default function InstallationGalleryIndex({
           <Button asChild variant="outline">
             <a href={previewUrl} target="_blank" rel="noopener noreferrer">
               <Icon name="external-link" className="size-4" aria-hidden="true" />
-              Lihat Publik
+              Lihat di toko
             </a>
           </Button>
           {!reorderMode ? (
@@ -265,6 +272,7 @@ export default function InstallationGalleryIndex({
               <select
                 value={sort}
                 onChange={(e) => handleFilter({ sort: e.target.value })}
+                aria-label="Urutkan hasil pemasangan"
                 className="h-8 rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="order">A-Z (Nama)</option>
@@ -352,7 +360,7 @@ export default function InstallationGalleryIndex({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] table-fixed text-left text-xs">
                 <colgroup>
-                  {reorderMode ? <col className="w-8" /> : null}
+                  {dragAktif ? <col className="w-8" /> : null}
                   <col className="w-12" />
                   <col className="w-20" />
                   <col />
@@ -363,7 +371,7 @@ export default function InstallationGalleryIndex({
                 </colgroup>
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
-                    <th className="w-12 px-3 py-3" aria-label="Seret" />
+                    {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                     <th className="px-3 py-3 text-center">No</th>
                     <th className="px-3 py-3">Cover</th>
                     <th className="px-3 py-3">Grup</th>
@@ -377,41 +385,21 @@ export default function InstallationGalleryIndex({
                   {rows.map((group, index) => (
                     <tr
                       key={group.key}
-                      draggable={reorderMode && !listTersaring}
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move"
-                        event.dataTransfer.setData("text/plain", String(index))
-                        setDragIndex(index)
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault()
-                        if (reorderMode && !listTersaring && dragIndex !== null && dragIndex !== index) setDragTarget(index)
-                      }}
-                      onDragLeave={() => setDragTarget((current) => (current === index ? null : current))}
-                      onDrop={(event) => {
-                        event.preventDefault()
-                        const from = dragIndex
-                        setDragIndex(null)
-                        setDragTarget(null)
-                        if (from === null) return
-                        moveRow(from, index)
-                      }}
-                      onDragEnd={() => {
-                        setDragIndex(null)
-                        setDragTarget(null)
-                      }}
+                      {...(dragAktif ? dnd.rowProps(index) : {})}
                       className={cn(
                         "transition-colors hover:bg-muted/30",
-                        dragIndex === index && "opacity-40",
-                        dragTarget === index && dragIndex !== index && "border-t-2 border-primary bg-primary/5",
+                        dnd.draggingIndex === index && "opacity-40",
+                        dnd.targetIndex === index && dnd.draggingIndex !== index && "border-t-2 border-primary bg-primary/5",
                       )}
                     >
-                      <td className="w-12 px-3 py-3">
-                        {/* Hanya grup yang masih tampil di toko yang bisa digeser:
-                            urutan tidak berarti untuk grup yang diarsipkan, dan
-                            grup arsip memang selalu ditampilkan di bawah. */}
-                        <ReorderDragHandle enabled={group.visibility === "visible"} />
-                      </td>
+                      {dragAktif ? (
+                        <td className="w-12 px-3 py-3">
+                          {/* Hanya grup yang masih tampil di toko yang bisa digeser:
+                              urutan tidak berarti untuk grup yang diarsipkan, dan
+                              grup arsip memang selalu ditampilkan di bawah. */}
+                          <ReorderDragHandle enabled={group.visibility === "visible"} />
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3 text-center tabular-nums text-muted-foreground">
                         {index + 1}
                       </td>
@@ -459,7 +447,7 @@ export default function InstallationGalleryIndex({
                         {group.kind === "model" ? (
                           <span className="tabular-nums text-foreground">{group.sku_count}</span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </td>
 
@@ -469,7 +457,7 @@ export default function InstallationGalleryIndex({
                           className={cn(
                             "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
                             group.kind === "model"
-                              ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
+                              ? "bg-info/15 text-info"
                               : "bg-muted text-muted-foreground",
                           )}
                         >
@@ -526,7 +514,7 @@ export default function InstallationGalleryIndex({
                       className={cn(
                         "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
                         group.kind === "model"
-                          ? "bg-sky-500/15 text-sky-800 dark:text-sky-300"
+                          ? "bg-info/15 text-info"
                           : "bg-muted text-muted-foreground",
                       )}
                     >

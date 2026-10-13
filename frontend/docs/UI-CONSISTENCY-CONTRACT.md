@@ -10,12 +10,26 @@ database fields, or API payloads.
 
 ## Foundations
 
-- Font: Apple system font (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`,
-  sans-serif) for body, headings, labels, and controls. Use the
-  existing `font-sans`/`font-display` mappings; do not introduce a second font.
-- Canvas: Mineral Canvas `#FFFFFF`; heading text `#333333`; action text
-  `#262626`; body/description text `#737373`; border Aluminium `#DDE2E0`;
-  action/promo Signal Red `#C00000`.
+- Font: **Inter self-hosted** (variable, weight 400 sampai 800) for body,
+  headings, labels, and controls. It is loaded by two `@font-face` rules in
+  `resources/css/app.css` from `public/fonts/inter/`. The `font-sans` and
+  `font-display` mappings in `tailwind.config.js` are
+  `['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif']`,
+  so the Apple system font is only a fallback. The switch to Inter was made
+  because the Apple system font does not exist on Windows and Android, which
+  made rendering differ across devices. Use the existing mappings; do not
+  introduce a second font family. The previous "Apple system font" claim is
+  recorded as superseded.
+- Canvas (storefront): Mineral Canvas `#FFFFFF`; heading text `#333333`; action
+  text `#282828`; body/description text `#666666`; border Aluminium `#DEE3E0`;
+  action/promo Signal Red `#C20000`; dark chrome and bands `#121212`. These are
+  `:root` values. Token values DIFFER per context (storefront, admin dark, admin
+  light), so never assume one value applies everywhere. The admin "Ink" layer is
+  documented in `frontend/docs/ADMIN-DESIGN-LANGUAGE.md`.
+- Superseded values from the earlier revision of this contract: action text
+  `#262626` (now `#282828`), body text `#737373` (now `#666666`), border
+  `#DDE2E0` (now `#DEE3E0`), Signal Red `#C00000` (now `#C20000`). All four moved
+  darker, so contrast increased.
 - Semantic colors (`success`, `warning`, `info`, `destructive`) are reserved
   for state communication. Red is not a decorative gradient or an all-page
   background.
@@ -38,6 +52,13 @@ database fields, or API payloads.
 - Admin dashboard, index, detail, and form pages use the same 12-column shell.
   Dense tables may span all columns; filters, summaries, and form sections
   should occupy explicit columns rather than arbitrary nested widths.
+- Admin pages additionally follow the "Ink" design language:
+  `frontend/docs/ADMIN-DESIGN-LANGUAGE.md`. Key differences from the storefront
+  that this contract must not accidentally override: admin is dark-first
+  (`<html class="admin-shell">`, mode terang lewat `admin-shell light`),
+  `--primary` is monochrome (white in dark mode, obsidian in light mode) rather
+  than Signal Red, and radius is tighter (`--radius` `0.5rem`,
+  `--radius-control` `0.375rem`).
 - Text-heavy content is capped at `68ch`; tables and product grids may use the
   full container.
 
@@ -47,19 +68,15 @@ database fields, or API payloads.
   content panels use the existing control/panel radius tokens; listing cards
   stay edge-led and do not gain random rounded corners.
 - Public navigation chrome (header, navbar, footer, and mobile bottom
-  navigation) uses action graphite `#262626` via `bg-action`; header search is
-  `36px` high via `h-9` at all breakpoints.
+  navigation) uses near-black `#121212` via `bg-header-bg` (`--header-bg`);
+  header search is `36px` high via `h-9` at all breakpoints. The previous claim
+  of action graphite `#262626` via `bg-action` is superseded: the class
+  `bg-action` is used nowhere in the codebase, while `bg-header-bg` appears in
+  `public-header.tsx` (lines 324 and 710), `public-footer.tsx` (line 77), and
+  `home-sections.tsx` (line 308).
 - Headings use sentence case in Indonesian copy unless a brand or proper noun
   requires otherwise. Existing user-facing copy is the assertion source for
   E2E tests; tests must not invent title-case variants.
-- **Tinggi tombol aksi header seragam 32px.** Kontrak 13 Oktober 2026. Tombol di
-  area aksi header halaman admin (kelas `admin-header-actions` di
-  `resources/js/layouts/admin-layout.tsx`) dipatok `2.25rem` lewat
-  `resources/css/app.css`. Sebelumnya halaman bercampur: sebagian memakai
-  `size="sm"` (28px), sebagian ukuran bawaan (31,5px), sehingga tinggi tombol
-  berubah saat berpindah halaman. Normalisasi ada di layout + CSS, bukan ditambal
-  per halaman, supaya halaman baru ikut. Jangan menaruh tombol ikon persegi di
-  area ini: tinggi dipaksa sedangkan lebarnya tidak.
 - **Kapitalisasi teks: huruf besar semua HANYA untuk nilai sistem.** Keputusan
   desain 13 Oktober 2026. Kelas `uppercase` dilarang untuk label UI; yang
   tersisa huruf besar hanyalah (a) nilai yang memang identitas sistem apa adanya
@@ -71,6 +88,12 @@ database fields, or API payloads.
   Alasan pemisahannya: huruf besar pada nilai sistem mengikuti data, sedangkan
   pada label UI ia hanya hiasan yang membuat teks salah baca. Label micro
   memakai `tracking-tight`, bukan `tracking-wide` (lihat BRAND-KIT).
+
+  Cakupan per 13 Oktober 2026: `uppercase` sudah nol di seluruh
+  `resources/js/pages/Admin`, `resources/js/components/admin`, dan
+  `resources/js/layouts`, kecuali satu isian kode voucher di
+  `resources/js/pages/Admin/Vouchers/Form.tsx` (kategori b). Penjaga:
+  `tests/frontend/uppercase-guard.test.ts`.
 - Every interactive element has a visible focus state, a keyboard path, and a
   useful accessible name. Icon-only actions require `aria-label`.
 - Motion is restrained and respects `prefers-reduced-motion`. Do not use motion
@@ -257,63 +280,48 @@ banner penutup sudah sesuai ketentuan di atas.
 
 ## CTA storefront (teks, tombol, warna)
 
-Semua CTA storefront diatur dari satu tempat: Pengaturan Website > CTA Storefront, dibaca lewat
-prop bersama `ctaSettings`. Mencakup banner penutup per halaman DAN kartu reusable.
+Teks CTA storefront hidup di KODE, bukan di panel admin. Sumber tunggalnya
+`resources/js/lib/cta-content.ts`: konstanta TypeScript bertipe `CTA_CONTENT` (peta kunci halaman
+ke `{ eyebrow, heading, actions, items }`) dan `CTA_DESTINATIONS` (daftar tujuan tombol yang
+sah). Komponen storefront membacanya langsung lewat helper `ctaBlock(key)` dan
+`ctaActionLabel(key, fallback)`.
 
-**ATURAN UTAMA (owner 2026-09-20): pengaturan ini LAPISAN PEMBANDING, bukan sumber teks.**
-Selama admin belum menyimpan sebuah kolom, `CtaSettings::get()` mengembalikan `null` (atau daftar
-kosong) untuk kolom itu, dan komponen storefront memakai teksnya sendiri. Konsekuensinya:
-memasang atau membuka halaman ini TIDAK PERNAH mengubah tampilan storefront, dan teks yang
-diperbarui di kode tidak ikut membeku di DB. DILARANG menyalin teks live ke `cms_pages` pada saat
-baca atau simpan.
+**Tidak ada halaman pengaturan CTA (dihapus 2026-09-20).** Halaman `/admin/cta-storefront`,
+controller `Admin\CtaSettingsController`, support `App\Support\CtaSettings`, berkas
+`resources/js/lib/cta-live.json`, dan shared prop `ctaSettings` sudah TIDAK ADA; arsipnya ada di
+`_archive/cta-storefront/`. Alasannya: lapisan admin itu tidak pernah dipakai (0 dari 23 blok
+terisi di database) dan menimbulkan duplikasi sumber teks, karena `cta-live.json` harus dijaga
+sinkron manual dengan kalimat yang sama di komponen. Mengubah teks CTA sekarang berarti
+mengubah `resources/js/lib/cta-content.ts` lalu build ulang.
 
-- **Sumber teks live:** `resources/js/lib/cta-live.json`, satu berkas yang dibaca PHP (untuk
-  halaman admin) DAN diimpor React. Ini satu-satunya tempat teks CTA storefront didefinisikan,
-  supaya halaman admin tidak mungkin menampilkan teks yang berbeda dari yang dirender storefront.
-  Menambah atau mengubah blok berarti mengubah berkas itu, bukan menulis konstanta baru di PHP.
-- **Tekstur data:** tiap blok punya `eyebrow`, `heading`, `actions`, dan `items`. Tombol berbentuk
-  `{ label, destination, variant }` dengan `destination` dari `CtaSettings::DESTINATIONS`
-  (kunci `whatsapp` atau nama route internal). DILARANG menyimpan URL bebas: jalur konsultasi dan
-  checkout harus tetap utuh walau admin salah mengisi. Baris daftar berbentuk
-  `{ label, description }`.
-- **Batas:** maksimal 2 tombol dan 6 baris per blok (kontrak owner 2026-09-02). Tombol tanpa label
-  atau bertujuan tidak dikenal dibuang server. Daftar kosong berarti blok itu memakai tombol atau
-  baris storefront, bukan berarti CTA tanpa tombol.
+- **Tombol memakai KUNCI tujuan, bukan URL.** `destination` dipilih dari `CTA_DESTINATIONS`
+  (kunci `whatsapp` atau nama route internal); href diselesaikan runtime oleh
+  `resolveCtaActions` di `resources/js/lib/cta-actions.ts`, sehingga `whatsapp` selalu memakai
+  nomor toko yang aktif tanpa disalin ke kode. DILARANG menulis URL bebas.
+- **Batas (kontrak owner 2026-09-02):** maksimal 2 tombol dan 6 baris `items` per blok.
 - **Blok `section` (tombol di samping judul section) hanya menyimpan LABEL.** Tautannya menempel
-  pada tata letak section, jadi server mengabaikan `destination` untuk jenis blok ini.
-- **Blok `dynamic` tidak boleh punya nilai awal yang dikarang.** Daftar alasan belanja PDP dihitung
-  per produk (label garansi ikut promo, baris COD bisa hilang saat produk tidak mendukung COD).
-  Daftar di registry hanya contoh; komponen tetap memakai hasil hitungannya sampai admin menyimpan.
-- **Warna:** `color` global hex 6 digit. `null` berarti banner memakai warna brand storefront
-  (`bg-primary`), bukan dipaksa ke satu nilai. Server memvalidasi format; nilai tidak sah ditolak.
-- **Jenis blok:** `banner` (banner penutup halaman), `card` (kartu reusable halaman transaksi),
-  `section` (tombol judul section beranda), `empty` (tampilan saat belum ada isi), `list` (blok
-  berisi beberapa baris). Halaman admin mengelompokkan blok menurut jenis ini.
-- **Hanya blok yang BENAR-BENAR tampil di storefront boleh didaftarkan.** Blok yang sumbernya
-  komponen mati (tidak dirender) tidak didaftarkan: mengatur teks yang tidak pernah tampil
-  hanya menyesatkan admin. Sebelum menambah kunci blok, buktikan komponennya dirender.
-- **Halaman admin menampilkan teks storefront sebagai acuan**, bukan kolom kosong, dan menandai
-  tiap blok "Teks storefront" atau "Diatur admin". Tombol "Salin teks storefront" mengisi form dari
-  keadaan nyata supaya admin menyunting dari nilai sebenarnya; "Pakai teks storefront" membatalkan
-  perubahan satu blok.
-- **Pratinjau admin wajib mencerminkan CTA asli:** pratinjau memakai WARNA dan TOMBOL yang sedang
-  diatur, dan jatuh ke teks storefront selama blok belum disimpan.
-
-Komponen yang dipakai BERULANG tidak boleh menyimpan copy-nya sendiri bila isinya kalimat yang
-mungkin berubah. Tambahkan blok di `resources/js/lib/cta-live.json`, lalu baca lewat helper
-`useCtaBlock`/`useCtaActions`/`ctaActionLabel` di `lib/cta-actions.ts` dengan teks kode sebagai
-cadangan.
+  pada tata letak section, jadi `destination` diabaikan untuk jenis blok ini.
+- **Blok dinamis tidak boleh dikunci dari kode.** Daftar alasan belanja PDP (`pdp-benefits`)
+  dihitung per produk (label garansi ikut promo, baris COD hilang saat produk tidak mendukung
+  COD); `CTA_CONTENT` hanya menyediakan nilai bawaan, komponen tetap memakai hasil hitungannya.
+- **Hanya blok yang BENAR-BENAR tampil di storefront boleh didaftarkan.** Sebelum menambah kunci
+  baru, buktikan komponennya dirender; teks yang tidak pernah tampil hanya menyesatkan.
+- **Warna tidak lagi dapat diatur admin.** Banner memakai token brand storefront (`bg-primary`);
+  kolom `color` hex sudah tidak ada.
+- **Jenis blok adalah penanda baca** di komentar `CTA_CONTENT`: `banner` (banner penutup
+  halaman), `card` (kartu reusable halaman transaksi), `section` (tombol judul section beranda),
+  `empty` (tampilan saat isi belum ada), `list` (daftar langkah/kartu).
 
 ## Teks komponen reusable storefront
 
-Komponen yang dipakai BERULANG di beberapa halaman tidak boleh menyimpan copy-nya sendiri di kode
-bila isinya kalimat yang mungkin berubah (jaminan, ajakan, bantuan). Copy seperti itu ditaruh di
-`CtaSettings` dan dibaca lewat prop `ctaSettings`, dengan teks kode sebagai CADANGAN bila
-pengaturan belum tersedia.
+Komponen yang dipakai BERULANG di beberapa halaman menyimpan kalimat bawaannya di
+`resources/js/lib/cta-content.ts`, dan tetap menerima props supaya halaman baru bisa memakai
+kalimatnya sendiri. Tidak ada lagi prop `ctaSettings`; props halaman menjadi CADANGAN bila
+kuncinya tidak ada di `CTA_CONTENT`.
 
 Pemakai saat ini:
 
-| Komponen | Kunci pengaturan | Dipakai di |
+| Komponen | Kunci `CTA_CONTENT` | Dipakai di |
 |---|---|---|
 | `TrustAssuranceCard` | `trust` | keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan |
 | `SupportAction` (pelacakan) | `order-help` | halaman pelacakan pesanan |
@@ -325,9 +333,9 @@ Pemakai saat ini:
 | `SearchFallbackEmpty` | `catalog-empty` | katalog |
 | daftar alasan belanja PDP | `pdp-benefits` (dinamis) | detail produk |
 
-Aturannya: menambah komponen reusable baru yang copy-nya berubah-ubah wajib menambah bloknya di
-`resources/js/lib/cta-live.json` dan memakainya lewat helper di `lib/cta-actions.ts`, bukan
-menulis kalimat baru di komponen.
+Aturannya: menambah komponen reusable baru yang copy-nya berubah-ubah wajib menambahkan
+bloknya di `resources/js/lib/cta-content.ts` dan memakainya lewat helper `ctaBlock` /
+`ctaActionLabel`, bukan menulis kalimat baru yang menyimpang di komponen.
 
 ## Mode ringkasan halaman pengaturan (ADR-023)
 
@@ -344,8 +352,8 @@ Halaman pengaturan TIDAK membuka form yang langsung aktif. Aturannya:
 Pengecualian: halaman dashboard/beranda yang tugasnya menampilkan data, dan alur pembuatan entitas
 baru (create) yang memang mengisi form dari nol.
 
-Acuan implementasi: `resources/js/pages/Admin/TentangKami/Edit.tsx` dan
-`resources/js/pages/Admin/CtaStorefront/Edit.tsx`.
+Acuan implementasi: `resources/js/pages/Admin/TentangKami/Edit.tsx` (halaman CTA Storefront
+dihapus 2026-09-20; arsipnya di `_archive/cta-storefront/`).
 
 ## QA gate
 
@@ -358,6 +366,7 @@ are evidence, not a substitute for route/controller integration.
 ## Change control
 
 Changes to tokens, grid breakpoints, icon family, or page-family structure must
-update this contract and the relevant frontend skill before implementation.
+update this contract, `frontend/docs/ADMIN-DESIGN-LANGUAGE.md` when the admin
+layer is affected, and the relevant frontend skill before implementation.
 Changes to routes, props, status enums, or API fields must also update the
 Product Handoff, sitemap, schema/API contract, and the role/status contract.

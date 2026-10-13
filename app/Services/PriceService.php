@@ -11,7 +11,7 @@ use App\Models\ProductVariant;
  *
  * Bandrol (harga asli) = product_variants.price, diisi admin manual.
  * Harga jual = Bandrol x (1 - diskon efektif), dibulatkan ke atas Rp1.000.
- * Diskon efektif: Flash Sale menggantikan Diskon Produk (Promo Toko) bila keduanya aktif.
+ * Diskon efektif: Flash Sale menggantikan Diskon Reguler bila keduanya aktif.
  * Atribut legacy promo_compare_price TIDAK dibaca di sini.
  */
 final class PriceService
@@ -49,7 +49,7 @@ final class PriceService
             if ($sale < $bandrol) {
                 $compare = $bandrol;
             } else {
-                // Pembulatan membuat harga tidak turun — jangan tampilkan diskon.
+                // Pembulatan membuat harga tidak turun, jangan tampilkan diskon.
                 $sale = $bandrol;
                 $percent = 0;
                 $source = null;

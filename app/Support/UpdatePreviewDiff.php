@@ -77,11 +77,28 @@ final class UpdatePreviewDiff
                 foreach ($productMedia as $m) {
                     $u = (string) ($m->urlFor('pdp') ?? $m->mediaAsset?->urlFor('pdp') ?? '');
                     if ($u === '') { continue; }
-                    if ($m->position === 1) { $byMain[1] = $u; continue; }
-                    if ($m->position >= 2 && $m->position <= 9) { $byMain[$m->position] = $u; continue; }
-                    if ($m->position >= 11 && $m->position <= 19) { $byShared[$m->position - 10] = $u; continue; }
-                    if ($m->position >= 50 && $m->position <= 79) { $byOpt[$m->position - 50] = $u; continue; }
-                    if ($m->position >= 101) { $byInst[$m->position - 100] = $u; }
+                    // Klasifikasi memakai penanda asli media, bukan band posisi:
+                    // urutan form kini murni 1..N sehingga band tidak lagi akurat.
+                    $isVariant = $m->product_variant_id !== null
+                        || ($m->position >= 50 && $m->position <= 79);
+                    $isInstallation = (bool) $m->is_installation || $m->position >= 101;
+
+                    // $byMain/$byShared/$byInst memakai indeks 1-based (dibaca
+                    // sebagai image_1..image_9, shared_media_1..4, installation_1..9),
+                    // sedangkan $byOpt 0-based (slot opsi = (slot-1)*4 + (opsi-1)).
+                    if ($isInstallation) {
+                        $byInst[count($byInst) + 1] = $u;
+                        continue;
+                    }
+                    if ($isVariant) {
+                        $byOpt[] = $u;
+                        continue;
+                    }
+                    if (count($byMain) < 9) {
+                        $byMain[count($byMain) + 1] = $u;
+                        continue;
+                    }
+                    $byShared[count($byShared) + 1] = $u;
                 }
                 $real = 0;
                 for ($n = 1; $n <= 9; $n++) {

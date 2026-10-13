@@ -115,7 +115,6 @@ class AttributeTemplateTest extends TestCase
         $this->actingAs($admin)->put(route('admin.sub-models.update', $subModel), [
             'name' => 'Ornamen',
             'description' => null,
-            'image_url' => null,
             'is_active' => 1,
             'templates' => [
                 ['attribute_name' => 'Material', 'attribute_value' => 'Aluminium'],

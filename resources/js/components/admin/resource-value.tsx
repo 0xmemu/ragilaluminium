@@ -18,6 +18,17 @@ export function ResourceValue({
     return <span className="tabular-nums">{formatDate(value as string, format !== "date")}</span>
   }
 
+  // Teks bebas ditampilkan apa adanya: humanize() mengubah tiap kata jadi
+  // Title Case sehingga "6,6 kg" tampil "6,6 Kg" dan "129.666 unit" jadi
+  // "129.666 Unit".
+  if (format === "text") {
+    if (value === null || value === undefined || value === "") {
+      return <span>Belum tersedia</span>
+    }
+
+    return <span>{typeof value === "boolean" ? (value ? "Ya" : "Tidak") : String(value)}</span>
+  }
+
   if (
     fieldKey?.includes("status") ||
     fieldKey === "visibility" ||

@@ -1,4 +1,4 @@
-import { Head, useForm } from "@inertiajs/react"
+import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
@@ -43,18 +43,10 @@ export default function CmsDocumentEdit({
     published: document.published,
   })
 
-  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
-  // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
-  // menekan Edit, supaya setelan tidak rawan tersunting tanpa sengaja saat
-  // halaman cuma dibuka untuk melihat kondisi sekarang.
-  const [mode, setMode] = React.useState<"view" | "edit">("view")
-  const terkunci = mode === "view"
+
 
   function batal() {
-    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
-    // mode edit bertahan walau sudah dibatalkan.
     form.resetAndClearErrors()
-    setMode("view")
   }
 
   const preview = React.useMemo(
@@ -84,35 +76,28 @@ export default function CmsDocumentEdit({
           <Button asChild variant="secondary" size="sm">
             <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">
               <Icon name="arrow-up-right" className="size-3.5" aria-hidden="true" />
-              <span>Lihat publik</span>
+              <span>Lihat di toko</span>
             </a>
           </Button>
 
-          {mode === "view" ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setMode("edit")}
-              className="inline-flex items-center gap-1.5"
-            >
-              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
-              <span>Edit</span>
+          {form.isDirty ? (
+            <Button type="button" variant="secondary" size="sm" onClick={batal}>
+              Batal
             </Button>
           ) : (
-            <>
-              <Button type="button" variant="secondary" size="sm" onClick={batal}>
-                Batal
-              </Button>
-              <SubmitGateButton
-                form={form}
-                {...gerbang}
-                formId="cms-document-form"
-                size="sm"
-              >
-                {saveLabel}
-              </SubmitGateButton>
-            </>
+            <Button asChild variant="secondary" size="sm">
+              <Link href={hubUrl}>Kembali</Link>
+            </Button>
           )}
+
+          <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="cms-document-form"
+            size="sm"
+          >
+            {saveLabel}
+          </SubmitGateButton>
         </div>
       }
     >
@@ -129,7 +114,6 @@ export default function CmsDocumentEdit({
             onSuccess: () => {
               // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
               form.setDefaults()
-              setMode("view")
             },
           })
         }}
@@ -152,7 +136,6 @@ export default function CmsDocumentEdit({
                 </th>
                 <td className="px-4 py-3">
                   <Input
-                    disabled={terkunci}
                     value={form.data.title}
                     onChange={(event) => form.setData("title", event.target.value)}
                     className="max-w-md"
@@ -173,7 +156,6 @@ export default function CmsDocumentEdit({
                 </th>
                 <td className="px-4 py-3">
                   <Input
-                    disabled={terkunci}
                     value={form.data.heading}
                     onChange={(event) => form.setData("heading", event.target.value)}
                     className="max-w-xl"
@@ -195,7 +177,6 @@ export default function CmsDocumentEdit({
                 <td className="px-4 py-3">
                   <CheckboxField
                     id="doc-published"
-                    disabled={terkunci}
                     checked={form.data.published}
                     onChange={(checked) => form.setData("published", checked)}
                     label={
@@ -224,7 +205,6 @@ export default function CmsDocumentEdit({
               error={form.errors.body}
             >
               <Textarea
-                disabled={terkunci}
                 rows={24}
                 value={form.data.body}
                 onChange={(event) => form.setData("body", event.target.value)}

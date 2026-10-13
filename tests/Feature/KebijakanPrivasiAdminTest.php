@@ -31,7 +31,7 @@ class KebijakanPrivasiAdminTest extends TestCase
                 'body' => '<p>Data hanya dipakai untuk memproses pesanan.</p>',
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.kebijakan-privasi.edit'));
+            ->assertRedirect(route('admin.documents.index'));
 
         $page = CmsPage::query()->where('slug', CmsDocumentSettings::KEY_PRIVASI)->first();
         $this->assertNotNull($page);

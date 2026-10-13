@@ -52,6 +52,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   pending_payment: { label: "Menunggu Konfirmasi", tone: "warning" },
   // Status kampanye/promo & import sekunder (nada lembut).
   scheduled: { label: "Terjadwal", tone: "info-soft" },
+  // Masa berlaku sudah lewat (voucher): perlu diperpanjang atau dinonaktifkan.
   expired: { label: "Berakhir", tone: "warning-soft" },
   ended: { label: "Diakhiri", tone: "neutral-soft" },
   finished: { label: "Selesai", tone: "success-soft" },
@@ -91,6 +92,38 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   order_created: { label: "Pesanan Dibuat", tone: "info" },
   order_confirmed: { label: "Pesanan Dikonfirmasi", tone: "info" },
   payment_verified: { label: "Pembayaran Dikonfirmasi", tone: "success" },
+}
+
+/**
+ * Ikon per status, dipakai StatusBadge supaya badge tidak menampilkan lingkaran
+ * kosong untuk status sekunder (Draft, Terjadwal, Diakhiri, Nonaktif, dan
+ * teman-temannya). Nama harus ada di registry `components/shared/icon.tsx`;
+ * bila status tidak terdaftar, badge jatuh ke ikon nadanya.
+ */
+export const STATUS_ICONS: Record<string, string> = {
+  draft: "pencil-simple",
+  scheduled: "calendar",
+  expired: "clock",
+  ended: "archive",
+  finished: "check-circle",
+  archived: "archive",
+  inactive: "eye-slash",
+  tidak_aktif: "eye-slash",
+  disabled: "eye-slash",
+  unpublished: "eye-slash",
+  hidden: "eye-slash",
+  return_completed: "check-circle",
+  refunded: "arrow-counter-clockwise",
+  tracking_pending: "clock",
+  queued: "clock",
+  antre: "clock",
+  unknown: "circle-help",
+  inbound: "arrow-down-left",
+}
+
+/** Ikon spesifik status, atau null bila harus memakai ikon nada. */
+export function statusIcon(status: unknown): string | null {
+  return STATUS_ICONS[String(status ?? "").toLowerCase()] ?? null
 }
 
 export function statusMeta(status: unknown): StatusMeta {

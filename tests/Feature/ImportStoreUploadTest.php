@@ -24,7 +24,7 @@ class ImportStoreUploadTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $rows = collect([
-            ['name' => 'Jendela Besi Test', 'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'price' => 1500000, 'stock' => 3],
+            ['name' => 'Jendela Besi Test', 'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'price' => 1500000, 'stock' => 3],
         ]);
         $export = new class($rows) implements FromCollection, WithHeadings
         {

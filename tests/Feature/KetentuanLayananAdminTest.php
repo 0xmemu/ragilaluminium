@@ -31,7 +31,7 @@ class KetentuanLayananAdminTest extends TestCase
                 'body' => '<p>Pesanan diproses setelah konfirmasi.</p>',
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.ketentuan-layanan.edit'));
+            ->assertRedirect(route('admin.documents.index'));
 
         $page = CmsPage::query()->where('slug', CmsDocumentSettings::KEY_KETENTUAN)->first();
         $this->assertNotNull($page);

@@ -4,7 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
+use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
+use App\Models\WhatsAppMessage;
+use App\Models\WhatsAppTemplate;
+use App\Support\PhoneNumber;
+use App\Support\WhatsAppAutomationCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -237,5 +243,167 @@ class TestimonialReplyTest extends TestCase
         ])->assertRedirect(route('login'));
 
         $this->assertNull($review->fresh()->admin_reply);
+    }
+
+    /**
+     * Template WA balasan ulasan dibuat dari katalog, sama seperti halaman
+     * WhatsApp Otomatis membuatnya (body_preview = naskah default).
+     */
+    private function reviewTemplate(): WhatsAppTemplate
+    {
+        $trigger = WhatsAppAutomationCatalog::find('review_replied');
+        $this->assertNotNull($trigger);
+
+        return WhatsAppTemplate::create([
+            'internal_key' => 'review_replied',
+            'provider_template_name' => $trigger['default_provider_name'],
+            'language_code' => 'id',
+            'category' => 'transactional',
+            'status' => 'active',
+            'description' => $trigger['description'],
+            'body_preview' => $trigger['default_body'],
+        ]);
+    }
+
+    /** Pesanan pelanggan yang dipakai sebagai sumber nomor WhatsApp. */
+    private function order(string $phone = '6285711122233'): Order
+    {
+        return Order::create([
+            'order_number' => 'RA-260921-'.substr(md5($phone.microtime(true)), 0, 6),
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => $phone,
+            'shipping_address_line1' => 'Jl Aluminium 1',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'completed',
+            'payment_status' => 'paid',
+            'shipping_status' => 'delivered',
+            'subtotal_amount' => 100000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000,
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+    }
+
+    private function product(): Product
+    {
+        return Product::create([
+            'parent_sku' => 'RV-REV-1',
+            'name' => 'Jendela Aluminium Sliding',
+            'short_name' => '200x180',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'description' => 'Produk uji WA balasan ulasan.',
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_reply_sends_review_replied_whatsapp_for_linked_review(): void
+    {
+        $this->reviewTemplate();
+
+        $admin = $this->admin();
+        $order = $this->order();
+        $product = $this->product();
+        $review = $this->review([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'customer_name' => 'Budi Santoso',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.reply', $review), [
+                'admin_reply' => 'Terima kasih Kak Budi, senang ulasannya membantu.',
+            ])
+            ->assertRedirect();
+
+        $message = WhatsAppMessage::query()
+            ->where('internal_template_key', 'review_replied')
+            ->where('order_id', $order->id)
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertSame(
+            PhoneNumber::normalize('6285711122233'),
+            $message->phone_number,
+        );
+        // Gateway tidak dikonfigurasi di lingkungan test (mode degradasi),
+        // jadi yang diuji adalah isi naskah tercatat, bukan status terkirim.
+        $this->assertContains($message->status, ['pending', 'sent', 'failed']);
+        $this->assertStringContainsString('Budi Santoso', $message->content_text);
+        // Owner 2026-09-21: naskah review_replied memakai nomor order, bukan
+        // nama produk; token varian dan nama produk dihapus dari naskah.
+        $this->assertStringContainsString((string) $order->order_number, $message->content_text);
+        $this->assertStringNotContainsString('Jendela Aluminium Sliding', $message->content_text);
+        $this->assertStringContainsString(
+            'Terima kasih Kak Budi, senang ulasannya membantu.',
+            $message->content_text,
+        );
+        $this->assertStringNotContainsString('{{1}}', $message->content_text);
+        $this->assertStringNotContainsString('{{2}}', $message->content_text);
+        $this->assertStringNotContainsString('{{3}}', $message->content_text);
+    }
+
+    public function test_reply_without_linked_order_sends_nothing_and_still_succeeds(): void
+    {
+        $this->reviewTemplate();
+
+        $admin = $this->admin();
+        $product = $this->product();
+        $review = $this->review([
+            'order_id' => null,
+            'product_id' => $product->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.reply', $review), [
+                'admin_reply' => 'Terima kasih atas ulasannya.',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Terima kasih atas ulasannya.', $review->fresh()->admin_reply);
+        $this->assertSame(
+            0,
+            WhatsAppMessage::query()->where('internal_template_key', 'review_replied')->count(),
+        );
+    }
+
+    public function test_editing_existing_reply_does_not_send_second_whatsapp(): void
+    {
+        $this->reviewTemplate();
+
+        $admin = $this->admin();
+        $order = $this->order();
+        $review = $this->review(['order_id' => $order->id]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.reply', $review), [
+                'admin_reply' => 'Balasan pertama.',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            1,
+            WhatsAppMessage::query()->where('internal_template_key', 'review_replied')->count(),
+        );
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.reply', $review), [
+                'admin_reply' => 'Balasan pertama yang sudah diperbaiki.',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Balasan pertama yang sudah diperbaiki.', $review->fresh()->admin_reply);
+        $this->assertSame(
+            1,
+            WhatsAppMessage::query()->where('internal_template_key', 'review_replied')->count(),
+        );
     }
 }

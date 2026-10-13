@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
@@ -29,15 +30,28 @@ export function OptionMenu({
 }: OptionMenuProps) {
   const [open, setOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  const popoverRef = React.useRef<HTMLUListElement>(null)
+  // Posisi awal WAJIB sudah fixed dan tersembunyi: kalau dibiarkan kosong ({}),
+  // render pertama portal menempel di akhir <body> sebagai elemen alir, jauh di
+  // bawah konten, sehingga buka dropdown bisa memicu lompatan scroll.
+  const [popoverStyle, setPopoverStyle] = React.useState<React.CSSProperties>({
+    position: "fixed",
+    top: 0,
+    left: 0,
+    visibility: "hidden",
+    zIndex: 60,
+  })
   const selected = options.find((option) => option.value === value) ?? options[0]
 
   React.useEffect(() => {
     if (!open) return
 
     function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
+      const target = event.target as Node
+      if (rootRef.current?.contains(target)) return
+      if (popoverRef.current?.contains(target)) return
+      setOpen(false)
     }
 
     function onKeyDown(event: KeyboardEvent) {
@@ -52,11 +66,44 @@ export function OptionMenu({
     }
   }, [open])
 
+  // Popover dirender lewat portal supaya tidak terpotong ancestor overflow-hidden.
+  const positionPopover = React.useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const preferUp = spaceBelow < 240 && rect.top > spaceBelow
+    setPopoverStyle({
+      position: "fixed",
+      left: align === "right" ? undefined : Math.round(rect.left),
+      right: align === "right" ? Math.round(window.innerWidth - rect.right) : undefined,
+      minWidth: Math.round(rect.width),
+      top: preferUp ? undefined : Math.round(rect.bottom + 4),
+      bottom: preferUp ? Math.round(window.innerHeight - rect.top + 4) : undefined,
+      visibility: "visible",
+      zIndex: 60,
+    })
+  }, [align])
+
+  // useLayoutEffect: posisi dihitung sebelum browser menggambar, jadi tidak ada
+  // satu frame pun saat portal masih berada di posisi alir.
+  React.useLayoutEffect(() => {
+    if (!open) return
+    positionPopover()
+    window.addEventListener("scroll", positionPopover, true)
+    window.addEventListener("resize", positionPopover)
+    return () => {
+      window.removeEventListener("scroll", positionPopover, true)
+      window.removeEventListener("resize", positionPopover)
+    }
+  }, [open, positionPopover])
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       <button
         id={id}
         type="button"
+        ref={triggerRef}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={label}
@@ -71,14 +118,13 @@ export function OptionMenu({
         />
       </button>
 
-      {open ? (
+      {open ? createPortal(
         <ul
+          ref={popoverRef}
           role="listbox"
           aria-label={label}
-          className={cn(
-            "absolute top-full z-50 mt-1 min-w-full overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md",
-            align === "right" ? "right-0" : "left-0",
-          )}
+          style={popoverStyle}
+          className="overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md"
         >
           {options.map((option) => {
             const active = option.value === value
@@ -102,7 +148,8 @@ export function OptionMenu({
               </li>
             )
           })}
-        </ul>
+        </ul>,
+        document.body,
       ) : null}
     </div>
   )

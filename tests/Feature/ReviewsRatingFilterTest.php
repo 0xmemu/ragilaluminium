@@ -39,7 +39,7 @@ class ReviewsRatingFilterTest extends TestCase
             'parent_sku' => $sku,
             'name' => 'Produk '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => $model,
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -152,13 +152,13 @@ class ReviewsRatingFilterTest extends TestCase
         $this->review($page, $jungkit->id, 'Jungkit Lima', 5);
         $this->review($page, $jungkit->id, 'Jungkit Empat', 4);
 
-        $this->get(route('reviews.website', ['rating' => 4, 'model' => 'WINDOW|JUNGKIT']))
+        $this->get(route('reviews.website', ['rating' => 4, 'model' => 'JENDELA|JUNGKIT']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $assert) => $assert
                 ->has('testimonials.data', 1)
                 ->where('testimonials.data.0.customer_name', 'Jungkit Empat')
                 ->where('activeRating', '4')
-                ->where('activeModel', 'WINDOW|JUNGKIT')
+                ->where('activeModel', 'JENDELA|JUNGKIT')
                 // Hitungan mengikuti filter model: model JUNGKIT punya rating
                 // 5 dan 4, model SLIDING tidak ikut terhitung. Daftar tetap
                 // lengkap 1 sampai 5, rating tanpa ulasan bernilai 0.

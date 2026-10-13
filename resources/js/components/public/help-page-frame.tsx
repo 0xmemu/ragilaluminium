@@ -6,7 +6,6 @@ import type { BreadcrumbItem } from "@/components/ui/breadcrumbs"
 export function HelpPageFrame({
   title,
   breadcrumbs,
-  subtitle,
   children,
   footer,
 }: {

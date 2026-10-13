@@ -152,7 +152,7 @@ export default function CaraPemesananEdit({
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
-              Lihat halaman publik
+              Lihat di toko
             </a>
           </Button>
           <Button

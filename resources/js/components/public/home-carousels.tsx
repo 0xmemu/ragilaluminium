@@ -6,7 +6,6 @@ import { ModelCategoryCard } from "@/components/public/model-category-card"
 import { ProductCard } from "@/components/public/product-card"
 import { TestimonialCard } from "@/components/public/testimonial-card"
 import { Icon } from "@/components/shared/icon"
-import { useDragScroll } from "@/hooks/use-drag-scroll"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type {

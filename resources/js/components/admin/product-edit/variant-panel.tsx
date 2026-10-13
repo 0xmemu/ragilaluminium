@@ -7,8 +7,6 @@ import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { formatCurrency } from "@/lib/format"
 
-const VARIANT_STATUSES = ["active", "inactive", "archived"] as const
-
 export interface VariantDetail {
   id: number
   variant_sku: string
@@ -24,38 +22,16 @@ export interface VariantDetail {
 }
 
 /**
- * Daftar varian dengan arsip instan per varian + form tambah varian.
+ * Daftar varian dengan arsip instan per varian.
  * Ekstraksi dari halaman Variants (penggabungan e2e).
  */
 export function VariantRowsPanel({
   variants,
-  storeUrl,
 }: {
   variants: VariantDetail[]
   storeUrl: string
 }) {
   const archiveForm = useForm({})
-  const form = useForm({
-    variation_1_name: "",
-    variation_1_option: "",
-    variation_2_name: "",
-    variation_2_option: "",
-    price: "",
-    stock: "0",
-    weight_kg: "",
-    width_cm: "",
-    height_cm: "",
-    depth_cm: "",
-    status: "active",
-  })
-
-  function submit(event: React.FormEvent) {
-    event.preventDefault()
-    form.post(storeUrl, {
-      preserveScroll: true,
-      onSuccess: () => form.reset(),
-    })
-  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">

@@ -175,10 +175,17 @@ export default function ModelDetail({
       out.push({ id: src, src, alt, href })
     }
     push(model.image, model.title, model.detail_href ?? undefined)
-    for (const rail of rails) {
-      for (const p of rail.products ?? []) push(p.image, p.name, p.href ?? undefined)
+    for (const item of model.gallery ?? []) {
+      push(item.url, item.label || model.title)
     }
-    for (const p of products) push(p.image, p.name, p.href ?? undefined)
+    // Setelan media model: foto produk bisa disembunyikan dari hero agar
+    // yang tampil hanya gambar utama + galeri kurasi admin.
+    if (model.show_product_photos !== false) {
+      for (const rail of rails) {
+        for (const p of rail.products ?? []) push(p.image, p.name, p.href ?? undefined)
+      }
+      for (const p of products) push(p.image, p.name, p.href ?? undefined)
+    }
     return out.slice(0, 12)
   }, [model, rails, products])
 
@@ -216,6 +223,9 @@ export default function ModelDetail({
               // Model tanpa sub model (mis. Boven Zigzag) tidak punya varian
               // desain, jadi statistiknya tidak ditampilkan daripada menulis 0.
               ...(rails.length > 0 ? [{ value: rails.length, label: "Varian Model" }] : []),
+              ...((model.gallery?.length ?? 0) > 0
+                ? [{ value: model.gallery?.length ?? 0, label: "Foto Model" }]
+                : []),
               { value: model.count ?? 0, label: "Produk" },
               { value: "100%", label: "Garansi" },
             ]}
@@ -281,7 +291,7 @@ export default function ModelDetail({
             )}
           </div>
       </section>
-      <ClosingCTASection />
+      <ClosingCTASection pageKey="model-detail" />
     </PublicLayout>
   )
 }

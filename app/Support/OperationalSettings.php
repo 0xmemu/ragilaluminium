@@ -18,6 +18,7 @@ final class OperationalSettings
     public const SHIPPING_SUBSIDY = 'shipping_subsidy';
     public const STOCK_RANDOMIZATION = 'stock_randomization';
     public const ETA = 'eta';
+    public const WHATSAPP_SESSION = 'whatsapp_session_phone';
 
     /** @return array<string, array<string, mixed>> */
     public static function defaults(): array
@@ -35,6 +36,13 @@ final class OperationalSettings
                 'delivery_min_days' => max(1, (int) config('shipping.eta.delivery_min_days', 2)),
                 'delivery_max_days' => max(1, (int) config('shipping.eta.delivery_max_days', 5)),
                 'display_buffer_days' => max(0, (int) config('shipping.eta.display_buffer_days', 1)),
+            ],
+            // Nomor WhatsApp yang tersambung ke Baileys (owner 2026-09-17).
+            // Nomor terakhir tetap dipakai walau perangkat terputus.
+            self::WHATSAPP_SESSION => [
+                'phone' => null,
+                'previous_phone' => null,
+                'synced_at' => null,
             ],
         ];
     }
@@ -160,8 +168,23 @@ final class OperationalSettings
             ],
             self::STOCK_RANDOMIZATION => self::normalizeStock($value),
             self::ETA => self::normalizeEta($value),
+            self::WHATSAPP_SESSION => self::normalizeWhatsAppSession($value),
             default => throw new \InvalidArgumentException("Unknown operational setting [{$key}]."),
         };
+    }
+
+    /** @return array{phone: string|null, previous_phone: string|null, synced_at: string|null} */
+    private static function normalizeWhatsAppSession(array $value): array
+    {
+        $phone = trim((string) ($value['phone'] ?? ''));
+        $previous = trim((string) ($value['previous_phone'] ?? ''));
+        $syncedAt = trim((string) ($value['synced_at'] ?? ''));
+
+        return [
+            'phone' => $phone !== '' ? $phone : null,
+            'previous_phone' => $previous !== '' ? $previous : null,
+            'synced_at' => $syncedAt !== '' ? $syncedAt : null,
+        ];
     }
 
     /** @return array{default_enabled: bool, min: int, max: int} */

@@ -229,10 +229,16 @@ final class MediaAssetResolver
             $query->whereNull('product_variant_id');
         }
 
+        // Pisahkan baris foto katalog vs hasil pemasangan: satu aset foto
+        // boleh sekaligus dipakai di Foto Produk dan di Hasil Pemasangan.
+        $isInstallation = (bool) ($attributes['is_installation'] ?? false);
+        $query->where('is_installation', $isInstallation);
+
         $media = $query->first() ?? new ProductMedia([
             'product_id' => $product->id,
             'media_asset_id' => $asset->id,
             'product_variant_id' => $attributes['product_variant_id'] ?? null,
+            'is_installation' => $isInstallation,
             'source_url' => $asset->source_url,
             'created_by_user_id' => $userId,
             'created_by_import_job_id' => $jobId,
@@ -245,9 +251,8 @@ final class MediaAssetResolver
         // storefront (bug 2026-09-17). Paksa media varian ke band 50-79.
         $isVariantMedia = ($attributes['product_variant_id'] ?? $media->product_variant_id) !== null;
         $rawPosition = (int) ($attributes['position'] ?? ($media->position ?: 1));
-        $position = $isVariantMedia && ($rawPosition < 50 || $rawPosition > 79)
-            ? 50
-            : $rawPosition;
+        // Posisi mengikuti nilai yang diberikan pemanggil (urutan form galeri).
+        $position = $rawPosition > 0 ? $rawPosition : 1;
 
         // Gambar utama produk hanya milik media katalog.
         $isMain = (bool) ($attributes['is_main_image'] ?? $media->is_main_image);

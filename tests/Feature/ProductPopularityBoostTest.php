@@ -13,6 +13,8 @@ use App\Models\ProductPopularityBoost;
 use App\Models\User;
 use App\Services\ProductPopularityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProductPopularityBoostTest extends TestCase
@@ -129,13 +131,191 @@ class ProductPopularityBoostTest extends TestCase
         $this->assertNotNull($result['boost']->fresh()->threshold_notified_at);
     }
 
+    public function test_edit_boost_aktif_menghitung_ulang_seed_dan_membersihkan_target_lama(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $sourceA = $this->product('BOOST-ED-A', 'MODEL-EDA');
+        $sourceB = $this->product('BOOST-ED-B', 'MODEL-EDB');
+        $targetOld = $this->product('BOOST-ED-T1', 'MODEL-EDT1');
+        $targetNew = $this->product('BOOST-ED-T2', 'MODEL-EDT2');
+
+        $this->orderItem($sourceA, 'completed', 3);
+        $this->orderItem($sourceB, 'completed', 9);
+
+        $service = app(ProductPopularityService::class);
+        $boost = $service->enable($sourceA->id, $targetOld->id, null, $admin->id)['boost'];
+        $this->assertSame(3, (int) $targetOld->fresh()->popularity_seed);
+
+        $this->actingAs($admin)
+            ->put(route('admin.products.popularity-boosts.update', $boost), [
+                'source_product_id' => $sourceB->id,
+                'target_product_id' => $targetNew->id,
+                'notification_threshold' => 50,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $fresh = $boost->fresh();
+        $this->assertSame($sourceB->id, (int) $fresh->source_product_id);
+        $this->assertSame($targetNew->id, (int) $fresh->target_product_id);
+        $this->assertSame(9, (int) $fresh->seed_sold_count);
+        $this->assertSame(50, (int) $fresh->notification_threshold);
+
+        $this->assertSame(0, (int) $targetOld->fresh()->popularity_seed);
+        $this->assertSame(9, (int) $targetNew->fresh()->popularity_seed);
+        $this->assertSame($sourceB->id, (int) $targetNew->fresh()->popularity_seed_source_product_id);
+        $this->assertDatabaseHas('event_logs', ['event_type' => ProductPopularityService::EVENT_UPDATED]);
+    }
+
+    public function test_edit_ke_pasangan_yang_sudah_ada_ditolak(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $a = $this->product('BOOST-ED2-A', 'MODEL-ED2A');
+        $b = $this->product('BOOST-ED2-B', 'MODEL-ED2B');
+        $c = $this->product('BOOST-ED2-C', 'MODEL-ED2C');
+
+        $service = app(ProductPopularityService::class);
+        $boost = $service->enable($a->id, $b->id, null, $admin->id)['boost'];
+        $service->enable($b->id, $c->id, null, $admin->id);
+
+        $this->actingAs($admin)
+            ->put(route('admin.products.popularity-boosts.update', $boost), [
+                'source_product_id' => $b->id,
+                'target_product_id' => $c->id,
+            ])
+            ->assertSessionHasErrors('target_product_id');
+
+        $this->assertSame($a->id, (int) $boost->fresh()->source_product_id);
+    }
+
+    public function test_hapus_boost_aktif_mengosongkan_seed_dan_menghapus_baris(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $source = $this->product('BOOST-DEL-S2', 'MODEL-DELS2');
+        $target = $this->product('BOOST-DEL-T2', 'MODEL-DELT2');
+        $this->orderItem($source, 'completed', 6);
+        $this->orderItem($target, 'completed', 2);
+
+        $service = app(ProductPopularityService::class);
+        $boost = $service->enable($source->id, $target->id, null, $admin->id)['boost'];
+
+        $this->assertSame(6, (int) $target->fresh()->popularity_seed);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.products.popularity-boosts.destroy', $boost))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('product_popularity_boosts', ['id' => $boost->id]);
+        $this->assertDatabaseHas('event_logs', ['event_type' => ProductPopularityService::EVENT_DELETED]);
+
+        $target->refresh();
+        $this->assertSame(0, (int) $target->popularity_seed);
+        $this->assertNull($target->popularity_seed_source_product_id);
+    }
+
+    public function test_index_menampilkan_metrik_ulasan_sumber_yang_diwaris(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $source = $this->product('BOOST-REV-S', 'MODEL-REVS');
+        $target = $this->product('BOOST-REV-T', 'MODEL-REVT');
+        $page = CmsPage::create(['slug' => 'testimonials-rev', 'title' => 'Ulasan', 'published' => true]);
+
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'product_id' => $source->id, 'customer_name' => 'Rina',
+            'message' => 'Bagus', 'rating' => 5, 'source' => 'website', 'published' => true,
+        ]);
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'product_id' => $source->id, 'customer_name' => 'Dodi',
+            'message' => 'Mantap', 'rating' => 4, 'source' => 'website', 'published' => true,
+        ]);
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'product_id' => $source->id, 'customer_name' => 'Eka',
+            'message' => 'Draft', 'rating' => 1, 'source' => 'website', 'published' => false,
+        ]);
+
+        app(ProductPopularityService::class)->enable($source->id, $target->id, null, $admin->id);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.popularity-boosts.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('boosts.0.source_review_count', 2)
+                ->where('boosts.0.source_avg_rating', 4.5));
+    }
+
+    public function test_index_tidak_menghasilkan_notifikasi_ambang(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $source = $this->product('BOOST-IDX-S', 'MODEL-IDXS');
+        $target = $this->product('BOOST-IDX-T', 'MODEL-IDXT');
+
+        // Ambang belum tercapai saat enable, lalu penjualan sumber bertambah.
+        app(ProductPopularityService::class)->enable($source->id, $target->id, 3, $admin->id);
+        $this->orderItem($source, 'completed', 3);
+        $this->assertDatabaseMissing('admin_notifications', ['type' => 'product_popularity_boost_threshold']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.popularity-boosts.index'))
+            ->assertOk();
+
+        $this->assertDatabaseMissing('admin_notifications', ['type' => 'product_popularity_boost_threshold']);
+
+        Artisan::call('popularity:evaluate-thresholds');
+
+        $this->assertDatabaseHas('admin_notifications', ['type' => 'product_popularity_boost_threshold']);
+    }
+
+    public function test_evaluate_threshold_hanya_mengirim_sekali_meski_dipanggil_ulang(): void
+    {
+        $source = $this->product('BOOST-RACE-S', 'MODEL-RACES');
+        $target = $this->product('BOOST-RACE-T', 'MODEL-RACET');
+        $this->orderItem($source, 'completed', 4);
+
+        $service = app(ProductPopularityService::class);
+        $this->orderItem($source, 'completed', 4);
+
+        $boost = $service->enable($source->id, $target->id, 4, null)['boost']->fresh();
+        // Ambang sudah tercapai, tapi notifikasi belum pernah terkirim
+        // (mensimulasikan boost lama sebelum evaluasi ada / job gagal tengah jalan).
+        // Bersihkan jejak evaluasi enable() agar mulai dari keadaan belum terkirim.
+        $boost->forceFill(['threshold_notified_at' => null])->save();
+        \App\Models\AdminNotification::query()->where('type', 'product_popularity_boost_threshold')->delete();
+        \App\Models\EventLog::query()->where('event_type', ProductPopularityService::EVENT_THRESHOLD)->delete();
+
+        $this->assertTrue($service->evaluateThreshold($boost->fresh()));
+        // Panggilan kedua harus no-op: klaim atomik mencegah notifikasi ganda.
+        $this->assertFalse($service->evaluateThreshold($boost->fresh()));
+        $this->assertSame(1, \App\Models\AdminNotification::query()
+            ->where('type', 'product_popularity_boost_threshold')->count());
+        $this->assertSame(1, \App\Models\EventLog::query()
+            ->where('event_type', ProductPopularityService::EVENT_THRESHOLD)->count());
+    }
+
+    public function test_hapus_permanen_produk_terikat_boost_ditolak(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $source = $this->product('BOOST-DEL-S', 'MODEL-DELS');
+        $target = $this->product('BOOST-DEL-T', 'MODEL-DELT');
+        app(ProductPopularityService::class)->enable($source->id, $target->id, null, $admin->id);
+
+        $source->update(['status' => 'archived']);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.products.destroy', $source))
+            ->assertRedirect()
+            ->assertSessionHas('error', fn ($error) => str_contains((string) $error, 'Teruskan Popularitas'));
+
+        $this->assertDatabaseHas('products', ['id' => $source->id]);
+    }
+
     private function product(string $sku, string $model): Product
     {
         return Product::create([
             'parent_sku' => $sku,
             'name' => 'Produk '.$sku,
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => $model,
             'design_variant' => 'POLOS',
             'status' => 'active',

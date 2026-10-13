@@ -3,35 +3,37 @@ import { Link, usePage } from "@inertiajs/react"
 import { Icon } from "@/components/shared/icon"
 import { Button } from "@/components/ui/button"
 import { resolveCtaActions } from "@/lib/cta-actions"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
 
 /**
- * ClosingCTASection — banner CTA seragam di akhir halaman publik.
+ * ClosingCTASection, banner CTA seragam di akhir halaman publik.
  *
  * Dasar = CTA homepage (bagian penutup hijau). Dipakai ulang lintas halaman agar markup
- * CTA tidak di-copy-paste; teks & tombol disesuaikan per konteks lewat props.
+ * CTA tidak di-copy-paste; teks dan tombol disesuaikan per konteks lewat props.
  *
  * Dua ukuran (jaga tampilan yang sudah oke):
- *   - `compact` (default)  : tombol kecil h-7, single — reproduksi persis CTA homepage.
+ *   - `compact` (default)  : tombol kecil h-7, single, reproduksi persis CTA homepage.
  *   - `compact={false}`    : tombol besar h-9, bisa multi-tombol (primary + secondary),
  *                            cocok untuk pola CTA HowToOrder.
+ *
+ * Sumber teks berlapis: CTA_CONTENT[pageKey] (hardcode di kode), lalu props halaman,
+ * lalu default di bawah. Urutan itu membuat komponen tetap reusable halaman mana pun
+ * sekaligus tidak bergantung pada pengaturan admin.
  *
  * Kontrak owner (2026-09-02): MAKSIMAL 2 tombol per CTA. Sisanya dipotong otomatis.
  */
 type CtaAction = {
   label: string
-  /** Tautan langsung; dipakai bila props lama dipakai tanpa pengaturan. */
+  /** Tautan langsung; dipakai bila props lama dipakai tanpa kunci CTA_CONTENT. */
   href?: string
-  /** Kunci tujuan dari CtaSettings::DESTINATIONS; `whatsapp` diselesaikan
-   *  runtime ke nomor toko. */
+  /** Kunci tujuan dari CTA_DESTINATIONS; `whatsapp` diselesaikan runtime. */
   destination?: string
   variant?: "primary" | "secondary"
   whatsappIcon?: boolean
   external?: boolean
 }
-
 
 export function ClosingCTASection({
   pageKey,
@@ -42,9 +44,8 @@ export function ClosingCTASection({
   id = "closing-cta",
 }: {
   /**
-   * Kunci halaman di CtaSettings (mis. "faq"). Bila diisi, kop & judul diambil
-   * dari pengaturan admin; props eyebrow/heading jadi cadangan saat settings
-   * belum tersedia.
+   * Kunci blok di CTA_CONTENT (mis. "faq"). Bila diisi, kop, judul, dan tombol
+   * diambil dari sana; props eyebrow/heading/actions menjadi cadangan.
    */
   pageKey?: string
   eyebrow?: string
@@ -53,34 +54,22 @@ export function ClosingCTASection({
   compact?: boolean
   id?: string
 }) {
-  const { consultationWhatsApp, ctaSettings } = usePage<SharedPageProps>().props
+  const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? routeUrl("contact")
 
-  // Warna banner: selama admin belum memilih warna, banner memakai token
-  // `bg-primary` bawaan storefront supaya memasang fitur ini tidak menggeser
-  // warna yang sudah live.
-  const bannerColor = ctaSettings?.color ?? null
-
-  // Teks & tombol dari pengaturan admin menang; props halaman dipakai sebagai
-  // cadangan bila pengaturan belum tersedia.
-  const configured = pageKey ? ctaSettings?.pages?.[pageKey] : undefined
-  const resolvedEyebrow = configured?.eyebrow || eyebrow || "Butuh bantuan pilih jendela?"
+  // Teks dan tombol dari CTA_CONTENT menang; props halaman dipakai sebagai
+  // cadangan bila bloknya belum ada di kode.
+  const content = pageKey ? CTA_CONTENT[pageKey] : undefined
+  const resolvedEyebrow = content?.eyebrow || eyebrow || "Butuh bantuan pilih jendela?"
   const resolvedHeading =
-    configured?.heading || heading || "Konsultasi gratis via WhatsApp, admin balas cepat"
+    content?.heading || heading || "Konsultasi gratis via WhatsApp, admin balas cepat"
 
-  // Tombol dari pengaturan (href hasil resolve destination); bila tidak ada,
-  // jatuh ke props halaman, lalu ke tombol default.
-  const settingsActions: CtaAction[] = resolveCtaActions(configured?.actions, whatsappUrl)
-
-  // Admin bisa mematikan seluruh CTA penutup dari pengaturan.
-  if (ctaSettings && ctaSettings.enabled === false) {
-    return null
-  }
+  const contentActions: CtaAction[] = resolveCtaActions(content?.actions, whatsappUrl)
 
   const MAX_ACTIONS = 2
   const effectiveActions: CtaAction[] =
-    settingsActions.length > 0
-      ? settingsActions
+    contentActions.length > 0
+      ? contentActions
       : actions && actions.length > 0
         ? actions.slice(0, MAX_ACTIONS)
         : [
@@ -96,13 +85,7 @@ export function ClosingCTASection({
   return (
     <section id={id} className="scroll-mt-20">
       <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
-        <div
-          className={cn(
-            "flex flex-col items-center gap-1 rounded-xl px-5 py-5 text-center shadow-sm sm:px-8",
-            bannerColor === null && "bg-primary",
-          )}
-          style={bannerColor === null ? undefined : { backgroundColor: bannerColor }}
-        >
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary px-5 py-5 text-center shadow-sm sm:px-8">
           <p className="text-xs font-semibold tracking-tight text-primary-foreground/90">
             {resolvedEyebrow}
           </p>
@@ -113,7 +96,7 @@ export function ClosingCTASection({
           <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2">
             {effectiveActions.map((action) => {
               const isExternal = action.external ?? false
-              const content = (
+              const label = (
                 <>
                   {action.whatsappIcon ? (
                     <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
@@ -132,11 +115,11 @@ export function ClosingCTASection({
                 <Button key={action.label} asChild className={base}>
                   {isExternal ? (
                     <a href={action.href} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-                      {content}
+                      {label}
                     </a>
                   ) : (
                     <Link href={action.href} className="flex items-center justify-center gap-2">
-                      {content}
+                      {label}
                     </Link>
                   )}
                 </Button>

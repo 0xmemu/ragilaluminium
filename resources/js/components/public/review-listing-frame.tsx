@@ -28,7 +28,7 @@ export function ReviewListingFrame({
           <div className="container-page !px-2.5 py-2 md:!px-8 lg:!px-12">{summary}</div>
         </section>
       ) : null}
-      <section className="container-page !px-2.5 py-4 pb-6 md:!px-8 lg:!px-12 lg:pb-8">
+      <section className="container-page !px-2.5 py-4 pb-2.5 md:!px-8 lg:!px-12">
         <div className="flex min-w-0 flex-col gap-8">
           {children}
           {pagination ? <Pagination pagination={pagination} className="mt-0" /> : null}

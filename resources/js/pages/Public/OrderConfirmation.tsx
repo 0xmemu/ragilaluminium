@@ -55,7 +55,7 @@ export default function OrderConfirmation({
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center lg:hidden"
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden"
               aria-label="Kembali"
             >
               <Icon name="arrow-left" className="size-5" aria-hidden="true" />

@@ -553,7 +553,7 @@
     font-size: 0.6875rem;
   }
   .product-card--model .product-card__title {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     line-height: 1.35;
   }
 
@@ -629,32 +629,6 @@
     transform: scale(1.03);
   }
 
-  /* Overlay: badge flash (kiri atas media). */
-  .product-card__badge {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    z-index: 10;
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 4px 8px;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    font-size: 10px;
-    font-style: italic;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-
-  @media (min-width: 40rem) {
-    .product-card__badge {
-      font-size: 11px;
-    }
-  }
-
   /* Overlay: label stok habis (bawah media). */
   .product-card__availability {
     position: absolute;
@@ -728,7 +702,7 @@
     min-width: 0;
     min-height: 0;
     color: hsl(var(--action-foreground));
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
     line-height: 1.35;
     text-wrap: pretty;
@@ -810,15 +784,6 @@
     line-height: 1rem;
   }
 
-  .product-card__extras {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    min-height: 1rem;
-    margin-top: 4px;
-  }
-
   .product-card__cod {
     display: inline-flex;
     flex-shrink: 0;
@@ -826,17 +791,30 @@
     font-size: 11px;
   }
 
+  /* Overlay: label FLASH SALE (kiri bawah media), sebahasa visual dengan badge.
+     pointer-events: none supaya area ini tetap menavigasi lewat link media di
+     bawahnya, seperti sebelum label dipindah ke gambar. Dirender sebelum overlay
+     stok habis, sehingga bar "Stok habis" menutupinya bila produk sekaligus
+     flash sale dan tidak tersedia. */
   .product-card__flash-label {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    z-index: 10;
+    pointer-events: none;
     display: inline-flex;
-    flex-shrink: 0;
     align-items: center;
-    white-space: nowrap;
-    color: hsl(var(--sale));
-    font-size: 11px;
+    gap: 2px;
+    padding: 4px 8px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-size: 10px;
     font-style: italic;
     font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
   @media (min-width: 40rem) {

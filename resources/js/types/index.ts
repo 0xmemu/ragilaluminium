@@ -153,35 +153,6 @@ export interface SharedPageProps extends Record<string, unknown> {
   cartPreview?: CartPreviewItem[]
   brand: Brand
   consultationWhatsApp: ConsultationWhatsAppConfig
-  /**
-   * CTA storefront dari Pengaturan Website > CTA Storefront. Null di halaman
-   * admin. Bila `enabled` false, seluruh CTA penutup disembunyikan.
-   *
-   * LAPISAN PEMBANDING, bukan sumber teks: kolom bernilai null (atau daftar
-   * kosong) selama admin belum menyimpan blok itu, dan komponen storefront
-   * memakai teksnya sendiri. Jadi memasang fitur ini tidak pernah mengubah
-   * tampilan storefront.
-   *
-   * `pages` memuat seluruh blok yang tampil di storefront: banner penutup,
-   * kartu reusable (trust, order-help), tombol judul section beranda, dan
-   * kondisi kosong. `actions` berisi tombol dengan `destination` berupa kunci
-   * CtaSettings::DESTINATIONS, bukan URL bebas.
-   */
-  ctaSettings?: {
-    enabled: boolean
-    /** null selama admin belum memilih warna, banner memakai warna brand. */
-    color: string | null
-    pages: Record<
-      string,
-      {
-        eyebrow: string | null
-        heading: string | null
-        actions: Array<{ label: string; destination: string; variant: string }>
-        /** Kartu/poin blok berbentuk daftar (mis. home-help, pdp-benefits). */
-        items: Array<{ label: string; description: string }>
-      }
-    >
-  } | null
   announcements: Announcement[]
   announcementSlide?: { enabled: boolean; interval: number }
   flashSalePeriod?: FlashSalePeriod | null

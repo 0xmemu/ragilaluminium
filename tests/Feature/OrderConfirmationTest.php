@@ -118,7 +118,7 @@ class OrderConfirmationTest extends TestCase
             'parent_sku' => 'WIN-CONF-1',
             'name' => 'Jendela Test',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',

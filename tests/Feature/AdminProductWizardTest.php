@@ -30,8 +30,8 @@ class AdminProductWizardTest extends TestCase
 
         $product = Product::where('name', 'Jendela wizard')->firstOrFail();
 
-        // ADR-020: satu halaman penuh, redirect tanpa step variants.
-        $response->assertRedirect(route('admin.products.edit', ['product' => $product]));
+        // Simpan sukses = keluar dari form ke daftar produk.
+        $response->assertRedirect(route('admin.products.index'));
         $this->assertSame('archived', $product->status);
     }
 
@@ -42,7 +42,7 @@ class AdminProductWizardTest extends TestCase
             'parent_sku' => 'WEB-WIZARD-1',
             'name' => 'Pintu wizard',
             'category_id' => 1,
-            'product_category' => 'DOOR',
+            'product_category' => 'PINTU',
             'product_model' => 'SWING',
             'design_variant' => 'POLOS',
             'status' => 'archived',
@@ -70,7 +70,7 @@ class AdminProductWizardTest extends TestCase
             'parent_sku' => 'WEB-WIZARD-2',
             'name' => 'Produk belum lengkap',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'archived',

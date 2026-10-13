@@ -2903,3 +2903,28 @@ Dipesan 183, Hasil Pemasangan 14, ModelProduk list 13 dan grid 13, SubModel 2), 
 bercursor `auto`. Tidak ada perubahan data: setiap uji dibatalkan tanpa disimpan.
 
 Spec tidak berubah.
+
+### 2026-09-20 - Lapisan pengaturan CTA Storefront DIHAPUS, teks CTA pindah ke kode
+Keputusan: halaman admin `/admin/cta-storefront` dan seluruh lapisan pengaturannya dihapus.
+Teks CTA storefront sekarang hidup di kode, bukan di database.
+
+- Alasan: lapisan admin itu tidak pernah dipakai (0 dari 23 blok terisi di database) dan
+  menimbulkan duplikasi sumber teks, karena `resources/js/lib/cta-live.json` harus dijaga
+  sinkron manual dengan kalimat yang sama di komponen storefront.
+- Yang DIARSIPKAN ke `_archive/cta-storefront/` (arsip, bukan hapus permanen):
+  `app/Http/Controllers/Admin/CtaSettingsController.php`, `app/Support/CtaSettings.php`,
+  `resources/js/pages/Admin/CtaStorefront/Edit.tsx`, `resources/js/lib/cta-live.json`, dan
+  `tests/Feature/CtaStorefrontTest.php`. Route `admin.cta-settings.edit` dan
+  `admin.cta-settings.update` dihapus dari `routes/web.php`, entri sidebar "CTA Storefront"
+  dihapus dari `config/admin-sitemap.php`, dan shared prop `ctaSettings` dilepas dari
+  `HandleInertiaRequests` serta `resources/js/types/index.ts`.
+- Sumber baru: `resources/js/lib/cta-content.ts` (`CTA_CONTENT`, `CTA_DESTINATIONS`, helper
+  `ctaBlock`/`ctaActionLabel`), konstanta TypeScript bertipe yang dibaca langsung komponen.
+  Mengubah teks CTA berarti mengubah berkas itu lalu build. Komponen `ClosingCTASection`,
+  `TrustAssuranceCard`, dan helper `resolveCtaActions` TETAP ADA dan tetap reusable lewat
+  props, jadi halaman baru bisa memakainya dengan kalimat sendiri.
+- Bukti verifikasi: typecheck 0 error, lint 0 warning, build sukses, 13 test halaman publik
+  PASS, 55 teks CTA terbukti utuh, dan `/admin/cta-storefront` sekarang 404.
+- Dokumen kanonik ikut diperbarui: `docs/api-and-routes-ragil-aluminium.md`,
+  `docs/admin-menu-functions.md`, `docs/PRODUCT-HANDOFF.md`,
+  `frontend/docs/UI-CONSISTENCY-CONTRACT.md`, dan ADR-024 ditandai SUPERSEDED.

@@ -29,7 +29,7 @@ class CatalogCardLinkContractTest extends \Tests\TestCase
             'name' => 'Uji Kartu Katalog',
             'short_name' => 'Uji',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',

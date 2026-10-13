@@ -22,7 +22,6 @@ import type { ProductMedia } from "@/types"
  */
 function GalleryVideoItem({
   item,
-  title,
   index,
   isActive,
   galleryInView,
@@ -133,7 +132,6 @@ export function ProductGallery({
   // thumb, main image = thumb yang baru masuk, chip +N dinamis dua arah.
   const VISIBLE_THUMBS = 5
   const STRIP_GAP = 8
-  const STRIP_PAD = 10
   const [leftVisibleIndex, setLeftVisibleIndex] = React.useState(0)
   const leftVisibleIndexRef = React.useRef(0)
   leftVisibleIndexRef.current = leftVisibleIndex
@@ -141,7 +139,6 @@ export function ProductGallery({
   const stripScrollProgrammatic = React.useRef(false)
   const stripProgrammaticTimer = React.useRef<number | undefined>(undefined)
   const userStripScrollAt = React.useRef(0)
-  const stripSnapTimer = React.useRef<number | undefined>(undefined)
 
   // Lebar thumbnail dihitung langsung via CSS calc((100% - 32px) / 5)
   // 100% di dalam kontainer flex dengan padding px-2.5 adalah inner width.

@@ -1,10 +1,8 @@
-import { usePage } from "@inertiajs/react"
-
 import { Icon } from "@/components/shared/icon"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { cn } from "@/lib/utils"
-import type { SharedPageProps } from "@/types"
 
-/** Teks bawaan, sama dengan INITIAL_TEXT['trust'] di CtaSettings. */
+/** Teks cadangan bila blok CTA_CONTENT tidak memuatnya. */
 const FALLBACK_TITLE = "Belanja Aman & Terpercaya"
 const FALLBACK_BODY = "Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik."
 
@@ -12,9 +10,9 @@ const FALLBACK_BODY = "Garansi jika produk rusak, pengiriman aman, dan pelayanan
  * Kartu jaminan belanja - dipakai berulang di halaman transaksi (keranjang,
  * checkout, konfirmasi pesanan, daftar pesanan, pelacakan).
  *
- * Teksnya diatur admin lewat Pengaturan Website > CTA Storefront, blok
- * "Kartu Jaminan (semua halaman)". Props title/body menjadi cadangan bila
- * pengaturan belum tersedia, supaya tampilan tidak pernah kosong.
+ * Teksnya dibaca dari CTA_CONTENT, blok "trust". Props title/body tetap
+ * diterima sebagai cadangan dan tetap ada demi reusable: halaman lain bisa
+ * memakai kartu ini dengan kalimatnya sendiri.
  */
 export function TrustAssuranceCard({
   className,
@@ -25,10 +23,9 @@ export function TrustAssuranceCard({
   title?: string
   body?: string
 }) {
-  const { ctaSettings } = usePage<SharedPageProps>().props
-  const configured = ctaSettings?.pages?.trust
-  const resolvedTitle = configured?.eyebrow || title || FALLBACK_TITLE
-  const resolvedBody = configured?.heading || body || FALLBACK_BODY
+  const content = CTA_CONTENT.trust
+  const resolvedTitle = content?.eyebrow || title || FALLBACK_TITLE
+  const resolvedBody = content?.heading || body || FALLBACK_BODY
 
   return (
     <div

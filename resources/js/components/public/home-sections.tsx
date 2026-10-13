@@ -12,7 +12,7 @@ import { SectionHeading } from "@/components/shared/section-heading"
 import { SectionHeadingAction } from "@/components/shared/section-heading-action"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { ctaActionLabel, useCtaActions, useCtaBlock } from "@/lib/cta-actions"
+import { CTA_CONTENT, ctaActionLabel } from "@/lib/cta-content"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type {
@@ -30,9 +30,7 @@ export interface HowToOrderData {
 
 export function PilihModelProdukSection({ models }: { models: ModelCardData[] }) {
   const seeMoreHref = routeUrl("catalog.index")
-  const block = useCtaBlock("home-model")
-  const emptyBlock = useCtaBlock("home-empty-model")
-  const emptyAction = useCtaActions("home-empty-model")[0]
+  const emptyBlock = CTA_CONTENT["home-empty-model"]
 
   return (
     <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
@@ -47,7 +45,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
           action={
             <SectionHeadingAction
               href={seeMoreHref}
-              label={ctaActionLabel(block, "Lihat Semua")}
+              label={ctaActionLabel("home-model", "Lihat Semua")}
             />
           }
         />
@@ -62,8 +60,8 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
             }
             action={
               <Button asChild>
-                <Link href={emptyAction?.href ?? seeMoreHref}>
-                  {emptyAction?.label ?? "Buka Katalog"}
+                <Link href={seeMoreHref}>
+                  {emptyBlock?.actions?.[0]?.label ?? "Buka Katalog"}
                 </Link>
               </Button>
             }
@@ -76,9 +74,7 @@ export function PilihModelProdukSection({ models }: { models: ModelCardData[] })
 
 export function PalingBanyakDipesanSection({ products }: { products: ProductCardData[] }) {
   const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular&from=paling-banyak-dipesan`
-  const block = useCtaBlock("home-popular")
-  const emptyBlock = useCtaBlock("home-empty-popular")
-  const emptyAction = useCtaActions("home-empty-popular")[0]
+  const emptyBlock = CTA_CONTENT["home-empty-popular"]
 
   return (
     <section id="paling-banyak-dipesan" className="scroll-mt-20">
@@ -93,7 +89,7 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
           action={
             <SectionHeadingAction
               href={seeMoreHref}
-              label={ctaActionLabel(block, "Lihat Semua")}
+              label={ctaActionLabel("home-popular", "Lihat Semua")}
             />
           }
         />
@@ -108,13 +104,8 @@ export function PalingBanyakDipesanSection({ products }: { products: ProductCard
             }
             action={
               <Button asChild>
-                <Link
-                  href={
-                    emptyAction?.href ??
-                    routeUrl("catalog.category", { category: "jendela" })
-                  }
-                >
-                  {emptyAction?.label ?? "Jelajahi Produk"}
+                <Link href={routeUrl("catalog.category", { category: "jendela" })}>
+                  {emptyBlock?.actions?.[0]?.label ?? "Jelajahi Produk"}
                 </Link>
               </Button>
             }
@@ -150,7 +141,6 @@ export function CaraPesanSection({
   data?: HowToOrderData
 }) {
   const title = data?.title || "cara pesan jendela impian anda"
-  const block = useCtaBlock("home-howto")
   const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
   const stepDescriptions: Record<string, string> = {
     "Pilih model": "telusuri katalog di website dan pilih model jendela favoritmu",
@@ -294,7 +284,7 @@ export function CaraPesanSection({
           action={
             <SectionHeadingAction
               href={routeUrl("cara-pemesanan")}
-              label={ctaActionLabel(block, "Lihat Panduan")}
+              label={ctaActionLabel("home-howto", "Lihat Panduan")}
             />
           }
         />
@@ -380,8 +370,7 @@ export function HasilPemasanganSection({
   meta?: { heading?: string; subtitle?: string } | null
 }) {
   const seeMoreHref = routeUrl("installation.index")
-  const block = useCtaBlock("home-installation")
-  const emptyBlock = useCtaBlock("home-empty-installation")
+  const emptyBlock = CTA_CONTENT["home-empty-installation"]
 
   return (
     <section id="hasil-pemasangan" className="scroll-mt-20">
@@ -396,7 +385,7 @@ export function HasilPemasanganSection({
           action={
             <SectionHeadingAction
               href={seeMoreHref}
-              label={ctaActionLabel(block, "Lihat Semua")}
+              label={ctaActionLabel("home-installation", "Lihat Semua")}
             />
           }
         />
@@ -419,8 +408,7 @@ export function HasilPemasanganSection({
 
 export function ApaKataPelangganSection({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews.screenshots")
-  const block = useCtaBlock("home-testimonial")
-  const emptyBlock = useCtaBlock("home-empty-testimonial")
+  const emptyBlock = CTA_CONTENT["home-empty-testimonial"]
 
   // Section screenshot: hanya ulasan ber-media (hindari kartu kosong tanpa media).
   const screenshots = testimonials.filter((t) => Boolean(t.image_url))
@@ -438,7 +426,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
           action={
             <SectionHeadingAction
               href={seeMoreHref}
-              label={ctaActionLabel(block, "Lihat Semua")}
+              label={ctaActionLabel("home-testimonial", "Lihat Semua")}
             />
           }
         />
@@ -466,8 +454,7 @@ export function ApaKataPelangganSection({ testimonials }: { testimonials: Testim
 
 export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: Testimonial[] }) {
   const seeMoreHref = routeUrl("reviews.website")
-  const block = useCtaBlock("home-review-website")
-  const emptyBlock = useCtaBlock("home-empty-review")
+  const emptyBlock = CTA_CONTENT["home-empty-review"]
 
   return (
     <section id="ulasan-website" className="scroll-mt-20 bg-surface">
@@ -482,7 +469,7 @@ export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: 
           action={
             <SectionHeadingAction
               href={seeMoreHref}
-              label={ctaActionLabel(block, "Lihat Semua")}
+              label={ctaActionLabel("home-review-website", "Lihat Semua")}
             />
           }
         />
@@ -539,11 +526,10 @@ const HELP_STEPS = [
 export { ClosingCTASection } from "./closing-cta"
 
 export function KamiBantuSection() {
-  // Kop, judul, dan kartu langkah diatur admin lewat CTA Storefront, blok
-  // "Beranda: bagian Kami bantu". Selama admin belum menyimpan, teks dan kartu
-  // di bawah ini yang dipakai. Ikon tetap milik komponen dan dipakai bergiliran
-  // sesuai urutan, jadi admin cukup mengurus kalimatnya.
-  const block = useCtaBlock("home-help")
+  // Kop, judul, dan kartu langkah dibaca dari CTA_CONTENT, blok "home-help".
+  // Bila bloknya kosong, teks dan kartu di bawah ini yang dipakai. Ikon tetap
+  // milik komponen dan dipakai bergiliran sesuai urutan.
+  const block = CTA_CONTENT["home-help"]
   const steps = block?.items?.length
     ? block.items.map((item, index) => ({
         icon: HELP_STEPS[index % HELP_STEPS.length].icon,

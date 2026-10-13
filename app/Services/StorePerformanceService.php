@@ -1669,7 +1669,8 @@ class StorePerformanceService
             ->whereBetween('completed_at', [$from, $to])
             ->where('status', 'completed')
             ->whereNull('voided_at')
-            ->where('return_shipping_cost', '>', 0)
+            ->where(fn ($q) => $q->where('return_shipping_cost', '>', 0)
+                ->orWhere('additional_shipping_amount', '>', 0))
             ->orderBy('completed_at')
             ->get();
 
@@ -1683,6 +1684,7 @@ class StorePerformanceService
                 'order_number' => $case->order?->order_number,
                 'completed_at' => $case->completed_at?->toIso8601String(),
                 'fault_party' => $case->fault_party,
+                'additional_shipping_amount' => (float) $case->additional_shipping_amount,
                 'reason' => $case->reason,
                 'return_shipping_cost' => (float) $case->return_shipping_cost,
             ])->all(),

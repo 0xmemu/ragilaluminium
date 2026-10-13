@@ -19,15 +19,9 @@ import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Textarea } from "@/components/admin/ui/textarea"
 import type { MediaPanelUrls } from "@/components/admin/product-edit/types"
 import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
 import { addReadyCount, playReadySound } from "@/lib/media-live"
 import type { SharedPageProps } from "@/types"
-
-const LIBRARY_CONTEXT_PRESETS = [
-  { label: "Semua", q: "" },
-  { label: "Hasil pemasangan", q: "hasil-pemasangan" },
-  { label: "Banner", q: "banner" },
-  { label: "Media", q: "media" },
-]
 
 export interface VariantOption {
   id: number
@@ -354,13 +348,11 @@ function MediaRowCard({
 export function MediaRowsPanel({
   product,
   variants = [],
-  library = [],
   urls,
   rows = [],
 }: {
   product: { id: number; parent_sku: string }
   variants: VariantOption[]
-  library?: LibraryAsset[]
   urls: MediaPanelUrls
   rows: MediaRow[]
 }) {
@@ -375,6 +367,11 @@ export function MediaRowsPanel({
   >({})
   const [readyNotice, setReadyNotice] = React.useState<string | null>(null)
   const [liveThumbs, setLiveThumbs] = React.useState<Record<number, string | null | undefined>>({})
+  // Owner 2026-09-16: daftar library LIVE dari endpoint picker + saran folder
+  // otomatis mengikuti produk (kategori/model/dimensi), bukan 30 aset acak.
+  const [suggestedFolder, setSuggestedFolder] = React.useState<{ id: number | null; name: string } | null>(null)
+  const [liveLibrary, setLiveLibrary] = React.useState<LibraryAsset[]>([])
+  const [liveLoading, setLiveLoading] = React.useState(false)
   const liveStatusRef = React.useRef(liveStatus)
   const notifiedRef = React.useRef<number[]>([])
   const rowsRef = React.useRef(rows)
@@ -395,7 +392,6 @@ export function MediaRowsPanel({
     installation_caption: string
     visibility: string
     product_variant_id: string
-    upload: File | null
   }>({
     kind: "image",
     media_asset_id: "",
@@ -407,12 +403,8 @@ export function MediaRowsPanel({
     installation_caption: "",
     visibility: "visible",
     product_variant_id: "",
-    upload: null,
   })
   const { csrf } = usePage<SharedPageProps>().props
-  const [uploading, setUploading] = React.useState(false)
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null)
-  const [directError, setDirectError] = React.useState<string | null>(null)
 
   // Filter varian & pencarian library dilakukan di sisi klien terhadap rows
   // yang dikirim server (tanpa round-trip Inertia; rows statis per muat halaman).
@@ -426,91 +418,66 @@ export function MediaRowsPanel({
     ? `hasil-pemasangan-${product.parent_sku.toLowerCase()}`
     : "media"
 
-  async function uploadDirect(file: File) {
-    setUploading(true)
-    setUploadProgress(0)
-    setDirectError(null)
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission()
-    }
-    try {
-      const presignRes = await fetch(urls.presignUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "X-CSRF-TOKEN": csrf,
-        },
-        body: JSON.stringify({
-          kind: form.data.kind,
-          filename: file.name,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-          context: uploadContext,
-        }),
+  // Saran folder: {kategori} {model-dasar}/{dimensi} milik produk ini.
+  React.useEffect(() => {
+    let cancelled = false
+    fetch(`${routeUrl("admin.media.suggest-folder")}?product_id=${product.id}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then((res) => res.json())
+      .then((data: { dimension_folder_id?: number | null; root_id?: number | null; dimension_folder_name?: string | null }) => {
+        if (cancelled) return
+        const folderId = data.dimension_folder_id ?? data.root_id ?? null
+        setSuggestedFolder(folderId ? { id: folderId, name: data.dimension_folder_name ?? "" } : null)
       })
-      if (!presignRes.ok) {
-        const body = await presignRes.json().catch(() => null)
-        throw new Error(body?.message ?? `Gagal menyiapkan upload (${presignRes.status})`)
-      }
-      const presigned = (await presignRes.json()) as { upload_url: string; object_key: string }
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        xhr.open("PUT", presigned.upload_url)
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            setUploadProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)))
-          }
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`Upload ke penyimpanan gagal (${xhr.status})`))
-        }
-        xhr.onerror = () => reject(new Error("Upload gagal - periksa koneksi internet."))
-        xhr.send(file)
+      .catch(() => {
+        if (!cancelled) setSuggestedFolder(null)
       })
-      setUploadProgress(100)
-
-      router.post(
-        urls.finalizeUrl,
-        {
-          product_id: product.id,
-          kind: form.data.kind,
-          object_key: presigned.object_key,
-          mime: file.type || "",
-          context: uploadContext,
-          position: form.data.position,
-          is_main_image: form.data.is_main_image ? 1 : 0,
-          show_in_catalog: form.data.show_in_catalog ? 1 : 0,
-          is_installation: form.data.is_installation ? 1 : 0,
-          installation_caption: form.data.installation_caption,
-          visibility: form.data.visibility,
-          product_variant_id:
-            form.data.product_variant_id === "" ? null : Number(form.data.product_variant_id),
-        },
-        {
-          preserveScroll: true,
-          onSuccess: () => {
-            form.reset("upload", "source_url", "is_main_image", "show_in_catalog", "is_installation", "installation_caption", "product_variant_id")
-            form.setData("position", 1)
-            form.setData("visibility", "visible")
-          },
-          onError: (errors) => {
-            Object.entries(errors).forEach(([key, message]) =>
-              form.setError(key as keyof typeof form.data, message))
-          },
-        },
-      )
-    } catch (error) {
-      setDirectError(error instanceof Error ? error.message : "Upload gagal - coba lagi.")
-    } finally {
-      setUploading(false)
-      setUploadProgress(null)
+    return () => {
+      cancelled = true
     }
-  }
+  }, [product.id])
+
+  // Daftar aset LIVE dari endpoint picker (filter status ready + folder saran).
+  const fetchLiveLibrary = React.useCallback(
+    (folderId: number | null) => {
+      setLiveLoading(true)
+      const params = new URLSearchParams()
+      if (folderId) params.set("folder_id", String(folderId))
+      fetch(`${routeUrl("admin.media.picker")}?${params.toString()}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then((res) => res.json())
+        .then((data: { assets?: Array<{ id: number; label: string; kind: string; thumb_url: string | null; folder_name?: string | null }> }) => {
+          if (cancelledRef.current) return
+          setLiveLibrary(
+            (data.assets ?? []).map((a) => ({
+              id: a.id,
+              label: a.label,
+              kind: a.kind === "video" ? "video" : "image",
+              status: "ready",
+              usage_count: 0,
+              thumb_url: a.thumb_url,
+              media_url: null,
+            })),
+          )
+        })
+        .finally(() => {
+          if (!cancelledRef.current) setLiveLoading(false)
+        })
+    },
+    [],
+  )
+  const cancelledRef = React.useRef(false)
+  React.useEffect(() => {
+    cancelledRef.current = false
+    fetchLiveLibrary(suggestedFolder?.id ?? null)
+    return () => {
+      cancelledRef.current = true
+    }
+  }, [suggestedFolder?.id, fetchLiveLibrary])
+
+  const library = liveLibrary
 
 
   function toggleSelected(id: number) {
@@ -703,10 +670,7 @@ export function MediaRowsPanel({
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            if (form.data.upload) {
-              void uploadDirect(form.data.upload)
-              return
-            }
+
             form.transform((data) => ({
                 ...data,
                 product_variant_id:
@@ -716,7 +680,7 @@ export function MediaRowsPanel({
               forceFormData: true,
               preserveScroll: true,
               onSuccess: () => {
-                form.reset("source_url", "upload", "is_main_image", "show_in_catalog", "is_installation", "installation_caption", "product_variant_id")
+                form.reset("source_url", "is_main_image", "show_in_catalog", "is_installation", "installation_caption", "product_variant_id")
                 form.setData("position", 1)
                 form.setData("visibility", "visible")
               },
@@ -726,20 +690,24 @@ export function MediaRowsPanel({
         >
           <h2 className="text-xl font-semibold">Tambah media</h2>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Untuk 4 warna × 3 kaca: pasang gambar/video per kombinasi varian, atau media umum tanpa tautan.
+            Pilih aset dari Media Library (upload file baru dilakukan di halaman Media Library).
           </p>
           <FormErrorSummary errors={form.errors} className="mt-4" />
           <div className="mt-4 space-y-4">
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">Media Library bersama</p>
+                <p className="text-sm font-semibold">
+                  Media Library{suggestedFolder ? ` - folder ${suggestedFolder.name}` : ""}
+                </p>
                 {form.data.media_asset_id ? (
                   <Button type="button" variant="ghost" size="sm" onClick={() => form.setData("media_asset_id", "")}>Batal pilih</Button>
                 ) : null}
               </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Pasang aset yang sudah ada tanpa upload ulang. Satu media bisa dipakai banyak produk.</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Aset dari folder terkait produk ini (kategori/model + dimensi). Pasang tanpa upload ulang; satu media bisa dipakai banyak produk.
+              </p>
               <div className="mt-3 flex gap-2">
-                <Input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Cari label / URL (mis. hasil-pemasangan…)" />
+                <Input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Cari label media di folder ini…" />
                 <Select value={libraryKind} onChange={(event) => setLibraryKind(event.target.value)} aria-label="Jenis media library">
                   <option value="">Semua</option>
                   <option value="image">Gambar</option>
@@ -752,26 +720,6 @@ export function MediaRowsPanel({
                   <option value="failed">Gagal</option>
                 </Select>
               </div>
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                {LIBRARY_CONTEXT_PRESETS.map((preset) => {
-                  const active = librarySearch === preset.q
-                  return (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => setLibrarySearch(preset.q)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                        active
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground",
-                      )}
-                    >
-                      {preset.label}
-                    </button>
-                  )
-                })}
-              </div>
               <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
                 {library.length ? library.map((asset) => (
                   <button
@@ -781,8 +729,7 @@ export function MediaRowsPanel({
                       form.setData("media_asset_id", String(asset.id))
                       form.setData("kind", asset.kind === "video" ? "video" : "image")
                       if (asset.kind === "video") form.setData("is_main_image", false)
-                      form.setData("upload", null)
-                      form.setData("source_url", "")
+                                            form.setData("source_url", "")
                     }}
                     className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors ${form.data.media_asset_id === String(asset.id) ? "border-primary bg-primary/10" : "border-border hover:bg-surface-muted"}`}
                   >
@@ -810,22 +757,6 @@ export function MediaRowsPanel({
                 <option value="image">Gambar</option>
                 <option value="video">Video (MP4/WebM/MOV)</option>
               </Select>
-            </Field>
-            <Field id="media-upload" label={form.data.kind === "video" ? "File video" : "File gambar"} error={form.errors.upload}>
-              <Input
-                type="file"
-                accept={form.data.kind === "video" ? "video/mp4,video/webm,video/quicktime" : "image/*"}
-                disabled={Boolean(form.data.media_asset_id)}
-                onChange={(event) => form.setData("upload", event.target.files?.[0] ?? null)}
-              />
-            </Field>
-            <Field id="media-source-url" label="URL sumber" error={form.errors.source_url}>
-              <Input
-                type="url"
-                value={form.data.source_url}
-                disabled={Boolean(form.data.media_asset_id)}
-                onChange={(event) => form.setData("source_url", event.target.value)}
-              />
             </Field>
             <Field
               id="media-variant"
@@ -898,36 +829,11 @@ export function MediaRowsPanel({
           <Button
             type="submit"
             className="mt-4 w-full"
-            disabled={uploading || form.processing || (!form.data.media_asset_id && !form.data.upload && !form.data.source_url)}
+            disabled={form.processing || !form.data.media_asset_id}
           >
-            <Icon name="upload" className="h-4 w-4" aria-hidden="true" />
-            {uploading
-              ? `Mengunggah ${uploadProgress ?? 0}%...`
-              : form.processing
-                ? "Menyimpan..."
-                : form.data.media_asset_id
-                  ? "Pasang tanpa upload ulang"
-                  : "Tambah media"}
+            <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
+            {form.processing ? "Menyimpan..." : "Tambah"}
           </Button>
-          {uploading ? (
-            <div className="mt-3" role="status" aria-live="polite">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Upload langsung ke penyimpanan (R2)…</span>
-                <span>{uploadProgress ?? 0}%</span>
-              </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-200"
-                  style={{ width: `${uploadProgress ?? 0}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
-          {directError ? (
-            <p role="alert" className="mt-3 text-xs leading-5 text-destructive">
-              {directError}
-            </p>
-          ) : null}
         </form>
       </div>
     </>

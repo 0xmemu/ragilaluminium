@@ -4933,3 +4933,29 @@ Hasil:
 Verifikasi: tsc bersih, eslint bersih, build sukses; live Ulasan alur penuh
 (pilih 2 foto, badge Utama di ubin pertama, ubin plus, hapus semua, dropzone
 kembali); smoke check Model Produk dengan komponen yang sama.
+
+## 2026-10-13 09:30 UTC | zcode | Standard | selesai
+
+Permintaan owner:
+1. Sub Model: bersihkan isian deskripsi yang tidak terpakai dari form, daftar, dan backend; balik urutan field (Nama sebelum Kode); dan auto-generate live-sync kode saat nama sub model diisi.
+2. Setelan Sistem (/admin/settings): rapikan padding dan teks kartu cadangan data (backup) 5-kolom, hilangkan kata berulang dan kalimat panjang tidak perlu.
+3. Profil Saya (/admin/profile): hapus teks subtitle/hint boilerplate yang bertele-tele, terapkan Table-First sesuai ADR-022 dan ADR-023 (mode terkunci), dan ubah tata letak menjadi 2 kolom sejajar (Identitas Akun dan Ganti Kata Sandi).
+
+Perubahan:
+- resources/js/pages/Admin/Profile/Edit.tsx: layout 2 kolom sejajar di desktop (grid-cols-1 lg:grid-cols-2), hilangkan subtitle dan petunjuk teks bertele-tele, pertahankan mode terkunci dan SubmitGateButton.
+- resources/js/pages/Admin/SystemHealth.tsx: padding kartu backup disesuaikan ke p-3.5, label tebal text-xs, dl informasi waktu text-[11px] rapi tanpa teks melilit.
+- app/Services/SystemHealthService.php: sederhanakan teks tanggal bulanan dan sistem pendukung.
+- Frontend build selesai dan izin penyimpanan storage dipulihkan via scripts/prod/fix-storage-perms.sh.
+
+Verifikasi:
+- Vitest tests/frontend/admin-edit-guard.test.ts dan submit-gate-coverage.test.ts lulus.
+- npm run build sukses (21.17s).
+- Hak akses storage/ www-data dipastikan dapat ditulis.
+
+## 2026-10-13 | zcode | Deep | 08a91fb2 | audit parsial
+
+Audit baca-saja VPS 202 terhadap instruksi persiapan produksi. Inventaris dan laporan kesiapan ditambahkan di docs/operations (commit 08a91fb2). Temuan: fondasi runtime, TLS, firewall dan cadangan tersedia, tetapi restore hanya 0 tabel, akun deploy/rilis belum ada, dan callback J&T dijawab sukses statis tanpa aplikasi. NO-GO rilis. Tidak ada perubahan layanan, DNS, DB, migrasi, tag, atau aplikasi. Verifikasi: nginx -t, status layanan, curl --resolve origin, gzip -t, log backup dan drill, metadata database; dokumen dicek tanpa rahasia dan tanpa em dash. Subagent terputus, audit dikerjakan langsung.
+
+## 2026-10-13 06:20 UTC | zcode | Deep | release tertahan
+
+Instruksi finalisasi rilis diperiksa terhadap status aktual. Pada dua snapshot 06:18 dan 06:20 UTC status tetap 206 entri (165 modifikasi, 6 penghapusan, 35 untracked), diff 171 berkas; tidak ada proses penulis atau lock Git yang terdeteksi. Asal, pemilik, kelengkapan dan persetujuan perubahan tersebar itu tidak dapat dibuktikan hanya dari status diam; beberapa berkas source/migrasi dan skrip patch tidak dilacak. `git diff --check` gagal karena trailing whitespace di resources/js/components/shared/shipping-track-panel.tsx:132. Mengikuti stop condition: tidak commit perubahan orang lain, tidak quality gate final pada release yang belum terklasifikasi, tidak merge/tag/deploy. Infrastruktur 202 juga tercatat NO-GO pada docs/operations/PRODUCTION-READINESS-REPORT.md. Perubahan hanya entri ledger ini, mempertahankan entri agent lain yang sudah kotor; belum di-commit bersama.

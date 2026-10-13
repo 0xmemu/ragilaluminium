@@ -69,7 +69,7 @@ class StorePerformanceChartAlignmentTest extends TestCase
             'parent_sku' => $sku,
             'name' => 'Jendela Sejajar Kontrak',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',

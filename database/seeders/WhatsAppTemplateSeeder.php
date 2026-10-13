@@ -2,30 +2,28 @@
 
 namespace Database\Seeders;
 
-use App\Models\WhatsAppTemplate;
-use App\Support\WhatsAppAutomationCatalog;
+use App\Support\WhatsAppTemplateSync;
 use Illuminate\Database\Seeder;
 
 /**
  * Sinkronisasi baris whatsapp_templates dengan WhatsAppAutomationCatalog.
- * Upsert by internal_key -> template lama tetap, tidak ada penghapusan.
+ *
+ * Mendelegasikan ke WhatsAppTemplateSync supaya seeder dan halaman admin
+ * memakai SATU jalur penulisan naskah: baris baru dibuat lengkap dengan naskah
+ * awal, naskah yang sudah terisi tidak pernah ditimpa (suntingan admin menang),
+ * dan tidak ada baris yang dihapus.
  */
 class WhatsAppTemplateSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (WhatsAppAutomationCatalog::all() as $trigger) {
-            WhatsAppTemplate::updateOrCreate(
-                ['internal_key' => $trigger['internal_key']],
-                [
-                    'provider_template_name' => $trigger['default_provider_name'],
-                    'language_code' => 'id',
-                    'category' => 'transactional',
-                    'status' => 'active',
-                    'description' => $trigger['description'],
-                ],
-            );
-        }
+        $summary = WhatsAppTemplateSync::sync();
+
+        $this->command?->info(sprintf(
+            'Template WhatsApp disinkronkan: dibuat %d, naskah dipulihkan %d, dilewati %d.',
+            $summary['created'],
+            $summary['healed'],
+            $summary['skipped'],
+        ));
     }
 }
-

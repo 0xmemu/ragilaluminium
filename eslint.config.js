@@ -22,8 +22,13 @@ export default tseslint.config(
       "public/build/**",
       "vendor/**",
       "resources/js/types/ziggy-routes.d.ts",
-      // File hasil generate (ziggy) — bukan kode tulisan tangan, jangan dilint.
+      // File hasil generate (ziggy), bukan kode tulisan tangan, jangan dilint.
       "resources/js/ziggy.js",
+      // Arsip kode lama, bukan sumber aktif (tidak di-build dan tidak dirutekan).
+      ".backup-frontend-20260810/**",
+      ".backup-printnote-20260810/**",
+      ".backup-storefix-20260810/**",
+      "_archive/**",
     ],
   },
   js.configs.recommended,

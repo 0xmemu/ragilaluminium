@@ -20,7 +20,7 @@ class StockReservationTest extends TestCase
     {
         $p = Product::create([
             'parent_sku' => 'WIN-RS-1', 'name' => 'Window RS', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
 

@@ -102,7 +102,7 @@ export default function Home({
         <UlasanPelangganWebsiteSection testimonials={websiteItems} />
       ) : null}
       <KamiBantuSection />
-      <ClosingCTASection />
+      <ClosingCTASection pageKey="home" />
     </PublicLayout>
   )
 }
