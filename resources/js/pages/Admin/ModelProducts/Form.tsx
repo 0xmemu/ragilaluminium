@@ -107,58 +107,66 @@ export default function ModelProductForm({
     status: modelProduct?.status ?? "draft",
   })
 
-  // Galeri dikelola lokal lalu dikirim sebagai daftar id terurut; server
-  // menyimpan urutannya, sehingga urutan di sini = urutan hero storefront.
-  const [mainMedia, setMainMedia] = React.useState<PickedMedia | null>(media ?? null)
-  const [galleryMedia, setGalleryMedia] = React.useState<PickedMedia[]>(gallery ?? [])
+  // Satu daftar berurutan, model sama dengan seksi Foto Produk di form produk:
+  // pilihan pertama jadi gambar utama, pilihan berikutnya mengisi galeri.
+  // Server menyimpan urutan galeri, jadi urutan di sini = urutan hero storefront.
+  const [pickedMedia, setPickedMedia] = React.useState<PickedMedia[]>(() => [
+    ...(media ? [media] : []),
+    ...(gallery ?? []),
+  ])
+  const [dragMediaIndex, setDragMediaIndex] = React.useState<number | null>(null)
+  const maxMedia = maxGallery + 1
 
   // Sinkron dari snapshot server HANYA saat isinya benar-benar berubah:
   // Inertia mengirim array baru pada setiap re-render (termasuk setelah
   // validasi gagal), jadi perbandingan identitas akan menghapus pilihan
-  // galeri yang baru saja dibuat admin.
-  const gallerySignature = (gallery ?? []).map((item) => item.assetId).join(",")
-  const appliedSignature = React.useRef(gallerySignature)
+  // yang baru saja dibuat admin.
+  const daftarSignature = [media?.assetId ?? "", ...(gallery ?? []).map((item) => item.assetId)].join(",")
+  const appliedSignature = React.useRef(daftarSignature)
 
   React.useEffect(() => {
-    if (appliedSignature.current === gallerySignature) return
-    appliedSignature.current = gallerySignature
-    setGalleryMedia(gallery ?? [])
-    form.setData("gallery_asset_ids", (gallery ?? []).map((item) => item.assetId))
+    if (appliedSignature.current === daftarSignature) return
+    appliedSignature.current = daftarSignature
+    const awal = [...(media ? [media] : []), ...(gallery ?? [])]
+    setPickedMedia(awal)
+    form.setData("media_asset_id", awal[0]?.assetId ?? null)
+    form.setData("gallery_asset_ids", awal.slice(1).map((item) => item.assetId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gallerySignature])
+  }, [daftarSignature])
 
-  function applyMain(picked: PickedMedia | null) {
-    setMainMedia(picked)
-    form.setData("media_asset_id", picked?.assetId ?? null)
-    if (!picked) form.setData("image_url", "")
+  function terapkanMedia(next: PickedMedia[]) {
+    setPickedMedia(next)
+    form.setData("media_asset_id", next[0]?.assetId ?? null)
+    form.setData("gallery_asset_ids", next.slice(1).map((item) => item.assetId))
   }
 
-  function applyGallery(next: PickedMedia[]) {
-    setGalleryMedia(next)
-    form.setData("gallery_asset_ids", next.map((item) => item.assetId))
-  }
-
-  // Dipakai dua pemicu galeri (kontainer kosong dan ubin tambah), jadi satu fungsi.
-  function tambahGaleri(picked: PickedMedia[]) {
-    // Galeri tidak boleh memuat gambar utama dua kali.
-    const seen = new Set(galleryMedia.map((item) => item.assetId))
-    const next = [...galleryMedia]
+  // Dipakai pemicu Tambah dan dropzone: pilihan pertama jadi gambar utama,
+  // pilihan berikutnya mengisi galeri. Duplikat dilewati, kuota dipotong diam-diam.
+  function tambahMedia(picked: PickedMedia[]) {
+    const seen = new Set(pickedMedia.map((item) => item.assetId))
+    const next = [...pickedMedia]
     for (const item of picked) {
-      if (seen.has(item.assetId) || item.assetId === mainMedia?.assetId) continue
-      if (next.length >= maxGallery) break
+      if (seen.has(item.assetId)) continue
+      if (next.length >= maxMedia) break
       seen.add(item.assetId)
       next.push(item)
     }
-    applyGallery(next)
+    terapkanMedia(next)
   }
 
-  function moveGallery(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= galleryMedia.length) return
-    const next = [...galleryMedia]
-    const [moved] = next.splice(index, 1)
-    next.splice(target, 0, moved)
-    applyGallery(next)
+  function moveMedia(from: number, to: number) {
+    if (from === to || to < 0 || to >= pickedMedia.length) return
+    const next = [...pickedMedia]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    terapkanMedia(next)
+  }
+
+  function hapusMedia(assetId: number) {
+    const next = pickedMedia.filter((item) => item.assetId !== assetId)
+    // Menghapus semua foto juga melepas gambar utama lama berbasis URL.
+    if (next.length === 0) form.setData("image_url", "")
+    terapkanMedia(next)
   }
 
   // Gerbang isi (kontrak "logika tombol"): tiga kolom wajibnya mengikuti aturan
@@ -179,7 +187,6 @@ export default function ModelProductForm({
     else form.post(submitUrl)
   }
 
-  const mainPreview = mainMedia?.thumbUrl || form.data.image_url || ""
 
   return (
     <AdminLayout
@@ -385,158 +392,169 @@ export default function ModelProductForm({
         </SectionCard>
 
         <SectionCard
-          title="Media model"
+          title={`Media model (${pickedMedia.length} foto)`}
           icon="image"
-        >
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
-            <div className="space-y-2">
+          action={
+            pickedMedia.length < maxMedia ? (
               <MediaPickerSheet
-                title="Gambar utama model"
-                onPick={(picked) => applyMain(picked[0] ?? null)}
+                title="Media model"
+                multiple
+                onPick={tambahMedia}
                 trigger={(open) => (
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="xs"
                     onClick={open}
-                    aria-label={mainPreview ? "Ganti gambar utama" : "Pilih gambar utama"}
-                    className="group relative block aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border bg-surface-muted transition hover:border-primary"
+                    title="Tambah media dari Media Library"
                   >
-                    {mainPreview ? (
-                      <>
-                        <img src={mainPreview} alt="Pratinjau gambar utama" className="size-full object-cover" />
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs font-medium text-transparent transition group-hover:bg-black/40 group-hover:text-white">
-                          Ganti gambar
-                        </span>
-                      </>
-                    ) : (
-                      <span className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
-                        <Icon name="image" className="size-7" aria-hidden="true" />
-                        <span className="text-[11px]">Klik untuk pilih gambar utama</span>
-                      </span>
-                    )}
-                  </button>
+                    <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                    Tambah
+                  </Button>
                 )}
               />
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[11px] text-muted-foreground">
-                  {mainMedia?.label || (mainPreview ? "Gambar lama (URL)" : "Kosong")}
+            ) : null
+          }
+        >
+          {pickedMedia.length === 0 && form.data.image_url ? (
+            <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+              <li className="relative select-none">
+                <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                  <img
+                    src={form.data.image_url}
+                    alt="Gambar utama lama"
+                    className="pointer-events-none size-full object-cover select-none"
+                    draggable={false}
+                  />
+                  <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">
+                    Utama
+                  </span>
                 </span>
-                {mainMedia || mainPreview ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => applyMain(null)}>
-                    Lepas
-                  </Button>
-                ) : null}
-              </div>
-              {form.errors.media_asset_id ? (
-                <p className="text-xs text-destructive">{form.errors.media_asset_id}</p>
-              ) : null}
-              {form.errors.image_url ? (
-                <p className="text-xs text-destructive">{form.errors.image_url}</p>
-              ) : null}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => form.setData("image_url", "")}
+                  className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                  aria-label="Hapus gambar utama lama"
+                  title="Hapus gambar utama lama"
+                >
+                  <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </button>
+              </li>
+            </ul>
+          ) : pickedMedia.length ? (
+            <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+              {pickedMedia.map((item, index) => (
+                <li
+                  key={item.assetId}
+                  className={cn(
+                    "group relative cursor-grab select-none transition-transform active:cursor-grabbing",
+                    dragMediaIndex === index ? "scale-95 opacity-40" : "opacity-100",
+                  )}
+                  draggable
+                  onDragStart={(event) => {
+                    setDragMediaIndex(index)
+                    event.dataTransfer.effectAllowed = "move"
+                    event.dataTransfer.setData("text/plain", String(index))
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = "move"
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    const dariTeks = event.dataTransfer?.getData("text/plain")
+                    const from = dragMediaIndex !== null ? dragMediaIndex : dariTeks ? parseInt(dariTeks, 10) : null
+                    if (from !== null && !isNaN(from)) moveMedia(from, index)
+                    setDragMediaIndex(null)
+                  }}
+                  onDragEnd={() => setDragMediaIndex(null)}
+                >
+                  <span className="pointer-events-none relative block aspect-square overflow-hidden rounded-md border border-border bg-surface-muted">
+                    {item.thumbUrl ? (
+                      <img
+                        src={item.thumbUrl}
+                        alt=""
+                        className="pointer-events-none size-full object-cover select-none"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="flex size-full items-center justify-center text-muted-foreground">
+                        <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                      </span>
+                    )}
+                    {index === 0 ? (
+                      <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[9px] font-bold text-background shadow">
+                        Utama
+                      </span>
+                    ) : null}
+                  </span>
 
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-[13px] font-semibold text-foreground">Galeri foto model</h3>
-                <p className="text-xs text-muted-foreground">
-                  {galleryMedia.length} dari {maxGallery} foto. Urutan menentukan tampilan di hero.
-                </p>
-              </div>
-
-              {galleryMedia.length === 0 ? (
-                <MediaPickerSheet
-                  title="Galeri foto model"
-                  multiple
-                  onPick={tambahGaleri}
-                  trigger={(open) => (
+                  {/* Tombol geser cepat kiri/kanan di hover */}
+                  <div className="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={open}
-                      aria-label="Pilih foto galeri dari Media Library"
-                      className="w-full cursor-pointer rounded-md border border-dashed border-border py-8 text-center transition hover:border-primary"
+                      disabled={index === 0}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        moveMedia(index, index - 1)
+                      }}
+                      className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                      title="Geser ke kiri"
                     >
-                      <Icon name="images" className="mx-auto size-6 text-muted-foreground/70" aria-hidden="true" />
-                      <span className="mt-1.5 block text-xs text-muted-foreground">
-                        Belum ada foto galeri. Klik untuk memilih dari Media Library.
-                      </span>
+                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
                     </button>
-                  )}
-                />
-              ) : (
-                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-                  {galleryMedia.map((item, index) => (
-                    <li key={item.assetId} className="group relative">
-                      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface-muted">
-                        {item.thumbUrl ? (
-                          <img src={item.thumbUrl} alt={item.label || `Foto ${index + 1}`} className="size-full object-cover" />
-                        ) : (
-                          <span className="flex size-full items-center justify-center text-muted-foreground">
-                            <Icon name="image" className="size-5" aria-hidden="true" />
-                          </span>
-                        )}
-                        {index === 0 ? (
-                          <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
-                            Pertama
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-1 flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => moveGallery(index, -1)}
-                            disabled={index === 0}
-                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                            aria-label={`Geser foto ${index + 1} ke kiri`}
-                          >
-                            <Icon name="caret-left" className="size-3.5" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveGallery(index, 1)}
-                            disabled={index === galleryMedia.length - 1}
-                            className="rounded p-0.5 text-muted-foreground transition hover:text-foreground disabled:opacity-30"
-                            aria-label={`Geser foto ${index + 1} ke kanan`}
-                          >
-                            <Icon name="caret-right" className="size-3.5" aria-hidden="true" />
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => applyGallery(galleryMedia.filter((_, i) => i !== index))}
-                          className="rounded p-0.5 text-muted-foreground transition hover:text-destructive"
-                          aria-label={`Hapus foto ${index + 1}`}
-                        >
-                          <Icon name="trash-2" className="size-3.5" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                  {galleryMedia.length < maxGallery ? (
-                    <li>
-                      <MediaPickerSheet
-                        title="Galeri foto model"
-                        multiple
-                        onPick={tambahGaleri}
-                        trigger={(open) => (
-                          <button
-                            type="button"
-                            onClick={open}
-                            aria-label="Tambah foto galeri dari Media Library"
-                            className="flex aspect-square w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-foreground"
-                          >
-                            <Icon name="plus" className="size-5" aria-hidden="true" />
-                          </button>
-                        )}
-                      />
-                    </li>
-                  ) : null}
-                </ul>
+                    <button
+                      type="button"
+                      disabled={index === pickedMedia.length - 1}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        moveMedia(index, index + 1)
+                      }}
+                      className="flex size-5 items-center justify-center rounded bg-background/90 text-foreground shadow hover:bg-background disabled:opacity-30"
+                      title="Geser ke kanan"
+                    >
+                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => hapusMedia(item.assetId)}
+                    className="absolute -right-1.5 -top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-destructive"
+                    aria-label={`Hapus ${item.label || "media"}`}
+                    title="Hapus foto"
+                  >
+                    <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <MediaPickerSheet
+              title="Media model"
+              multiple
+              onPick={tambahMedia}
+              trigger={(open) => (
+                <button
+                  type="button"
+                  onClick={open}
+                  className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-surface-muted/30 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                >
+                  <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                  <span className="text-xs font-medium">Unggah atau pilih media dari Media Library</span>
+                </button>
               )}
-              {form.errors.gallery_asset_ids ? (
-                <p className="text-xs text-destructive">{form.errors.gallery_asset_ids}</p>
-              ) : null}
-            </div>
-          </div>
+            />
+          )}
+          {form.errors.media_asset_id ? (
+            <p className="mt-2 text-xs text-destructive">{form.errors.media_asset_id}</p>
+          ) : null}
+          {form.errors.image_url ? (
+            <p className="mt-2 text-xs text-destructive">{form.errors.image_url}</p>
+          ) : null}
+          {form.errors.gallery_asset_ids ? (
+            <p className="mt-2 text-xs text-destructive">{form.errors.gallery_asset_ids}</p>
+          ) : null}
         </SectionCard>
 
         <SectionCard
