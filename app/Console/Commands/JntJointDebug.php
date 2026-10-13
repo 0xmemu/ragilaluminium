@@ -92,16 +92,16 @@ class JntJointDebug extends Command
         return match ($name) {
             'tariff' => $jnt->tariff($this->sampleTariff()),
             'address' => $jnt->address([
-                'provinceName' => env('JNT_TEST_DEST_PROV', 'DKI JAKARTA'),
-                'cityName' => env('JNT_TEST_DEST_CITY', 'JAKARTA'),
-                'areaName' => env('JNT_TEST_DEST_AREA', 'JAKARTA PUSAT'),
+                'provinceName' => config('jnt.test.dest_prov'),
+                'cityName' => config('jnt.test.dest_city'),
+                'areaName' => config('jnt.test.dest_area'),
             ]),
             'create' => $jnt->createOrder($this->sampleOrder()),
-            'track' => $jnt->track(['billCodes' => env('JNT_TEST_BILLCODE', 'JT0000000001')]),
+            'track' => $jnt->track(['billCodes' => config('jnt.test.billcode') ?: 'JT0000000001']),
             'cancel' => $jnt->cancelOrder([
-                'billCode' => env('JNT_TEST_BILLCODE', 'JT0000000001'),
+                'billCode' => config('jnt.test.billcode') ?: 'JT0000000001',
                 'orderType' => config('jnt.defaults.order_type'),
-                'txlogisticId' => env('JNT_TEST_ORDER_ID', 'RA-TEST0001'),
+                'txlogisticId' => config('jnt.test.order_id'),
                 'reason' => 'joint-debug cancel',
             ]),
             default => $jnt->tariff($this->sampleTariff()),
@@ -120,9 +120,9 @@ class JntJointDebug extends Command
             'sendProv' => config('jnt.sender.prov'),
             'sendCity' => config('jnt.sender.city'),
             'sendArea' => config('jnt.sender.area'),
-            'receiveProv' => env('JNT_TEST_DEST_PROV', 'DKI JAKARTA'),
-            'receiveCity' => env('JNT_TEST_DEST_CITY', 'JAKARTA'),
-            'receiveArea' => env('JNT_TEST_DEST_AREA', 'JAKARTA PUSAT'),
+            'receiveProv' => config('jnt.test.dest_prov'),
+            'receiveCity' => config('jnt.test.dest_city'),
+            'receiveArea' => config('jnt.test.dest_area'),
         ];
     }
 
@@ -152,14 +152,14 @@ class JntJointDebug extends Command
             ],
             'receiver' => [
                 'name' => 'Test Penerima',
-                'mobile' => env('JNT_TEST_RECEIVER_MOBILE', '08123456789'),
-                'phone' => env('JNT_TEST_RECEIVER_MOBILE', '08123456789'),
+                'mobile' => config('jnt.test.receiver_mobile'),
+                'phone' => config('jnt.test.receiver_mobile'),
                 'countryCode' => 'IDN',
-                'prov' => env('JNT_TEST_DEST_PROV', 'DKI JAKARTA'),
-                'city' => env('JNT_TEST_DEST_CITY', 'JAKARTA'),
-                'area' => env('JNT_TEST_DEST_AREA', 'JAKARTA PUSAT'),
+                'prov' => config('jnt.test.dest_prov'),
+                'city' => config('jnt.test.dest_city'),
+                'area' => config('jnt.test.dest_area'),
                 'address' => 'Jl. Test No. 1',
-                'postCode' => env('JNT_TEST_DEST_POSTCODE', '10110'),
+                'postCode' => config('jnt.test.dest_postcode'),
             ],
             'items' => [
                 ['itemName' => 'Test Item', 'number' => 1, 'itemValue' => '100000', 'priceCurrency' => config('jnt.defaults.price_currency')],

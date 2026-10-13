@@ -182,6 +182,19 @@ return [
         '101' => 'returned',  // Return Sign
     ],
 
+    // Nilai uji untuk `jnt:joint-debug`. Dibaca lewat config (bukan env()
+    // langsung) supaya tetap benar ketika config di-cache; env() di luar file
+    // config mengembalikan null saat cache aktif.
+    'test' => [
+        'dest_prov' => env('JNT_TEST_DEST_PROV', 'DKI Jakarta'),
+        'dest_city' => env('JNT_TEST_DEST_CITY', 'Jakarta Pusat'),
+        'dest_area' => env('JNT_TEST_DEST_AREA', 'Gambir'),
+        'dest_postcode' => env('JNT_TEST_DEST_POSTCODE', '10110'),
+        'receiver_mobile' => env('JNT_TEST_RECEIVER_MOBILE', '08123456789'),
+        'billcode' => env('JNT_TEST_BILLCODE'),
+        'order_id' => env('JNT_TEST_ORDER_ID', 'RA-TEST0001'),
+    ],
+
     // ACK yang diharapkan J&T saat kita menerima push (code "1"/success).
     'ack' => [
         'code' => env('JNT_ACK_CODE', '1'),
