@@ -57,3 +57,10 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - Rekening bank checkout: BCA dengan nomor placeholder 9530977606 (wajib diganti sebelum transaksi sungguhan).
 - Alarm kesehatan 202 aktif memakai bot Telegram 209: skrip /root/ragil-backup/ragil-health-alert.sh + cron 5 menit, memeriksa layanan inti, situs, backup, sesi WhatsApp, disk; uji kirim sukses.
 - WhatsApp produksi sudah terpasang (status open, nomor 62881080733754). Bot dev 209 memakai nomor yang sama; pertimbangkan memutus sesi dev agar tidak dobel memproses pesan.
+
+## Produk katalog pertama di produksi (13 Okt 2026, lanjutan)
+
+- Produk 418 dari 209 direplikasi ke produksi: SKU RAP7FG346AJA, 12 varian, 6 atribut, 12 media (11 gambar + 1 video). Media masuk lewat pipeline resmi aplikasi, 12 aset ready dengan turunan WebP di media.ragilaluminium.com.
+- Tampil di /product/RAP7FG346AJA, /products/all, /products/jendela, dan /products/jendela/sliding-2-daun.
+- Skrip sekali pakai: /tmp/migrasi_produk418.php di 202 (resep lengkap dicatat di memori agent untuk impor katalog penuh nanti).
+- Catatan: aset 954 gagal (percobaan import dari URL ke host media.333labs.tech dari panel admin, host tidak diizinkan di produksi); dibiarkan sebagai jejak audit di Riwayat Media.
