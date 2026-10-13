@@ -10,7 +10,7 @@ import { Card } from "@/components/admin/ui/card"
 import { ListToolbar } from "@/components/admin/ui/list-toolbar"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import { EmptyState } from "@/components/admin/ui/empty-state"
-import { Field } from "@/components/admin/ui/field"
+import { Field, FieldGrid } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
@@ -153,6 +153,9 @@ export default function MasalahSolusiIndex({
               Lihat halaman publik
             </a>
           </Button>
+          <Button type="button" variant="secondary" onClick={() => setShowMeta((v) => !v)}>
+            {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
+          </Button>
           {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
               yang benar-benar digeser. Tombol simpan tidak pernah muncul sebelum
@@ -179,71 +182,61 @@ export default function MasalahSolusiIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">Meta halaman</p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowMeta((current) => !current)}
-          >
-            <Icon name={showMeta ? "x" : "pencil"} className="size-3.5" aria-hidden="true" />
-            {showMeta ? "Tutup" : "Atur meta"}
-          </Button>
-        </div>
-
-        {!showMeta ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {metaForm.data.heading || metaForm.data.title || "Masalah & Solusi"}
-            {metaForm.data.subtitle ? " · " + metaForm.data.subtitle : ""}
-          </p>
-        ) : null}
-
-        <form
-          id="ms-meta-form"
-          className={showMeta ? "mt-4 grid gap-4" : "hidden"}
-          onSubmit={(event) => {
-            if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
-            event.preventDefault()
-            metaForm.put(metaUrl, {
-              preserveScroll: true,
-              onSuccess: () => {
-                metaForm.setDefaults()
-                setShowMeta(false)
-              },
-            })
-          }}
-        >
-          <Field id="ms-title" label="Judul CMS">
-            <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-          </Field>
-          <Field id="ms-heading" label="Judul hero">
-            <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
-          </Field>
-          <Field id="ms-subtitle" label="Subjudul">
-            <Textarea
-              rows={2}
-              value={metaForm.data.subtitle}
-              onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-            />
-          </Field>
-          {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
-              bukan daftar item di bawahnya. Ikut tersembunyi bersama formnya. */}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowMeta(false)} disabled={metaForm.processing}>
-              Tutup
-            </Button>
-            <SubmitGateButton
-              form={metaForm}
-              {...gerbangMeta}
-              size="sm"
-            >
-              Simpan meta
-            </SubmitGateButton>
+      {showMeta ? (
+        <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Judul hero dan subjudul yang tampil di halaman publik /masalah-dan-solusi.
+              </p>
+            </div>
           </div>
-        </form>
-      </section>
+
+          <form
+            id="ms-meta-form"
+            className="mt-4 space-y-4"
+            onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
+              event.preventDefault()
+              metaForm.put(metaUrl, {
+                preserveScroll: true,
+                onSuccess: () => {
+                  metaForm.setDefaults()
+                  setShowMeta(false)
+                },
+              })
+            }}
+          >
+            <FieldGrid>
+              <Field id="ms-title" label="Judul CMS">
+                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+              </Field>
+              <Field id="ms-heading" label="Judul hero">
+                <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
+              </Field>
+              <Field id="ms-subtitle" label="Subjudul" className="sm:col-span-2">
+                <Textarea
+                  rows={2}
+                  value={metaForm.data.subtitle}
+                  onChange={(event) => metaForm.setData("subtitle", event.target.value)}
+                />
+              </Field>
+            </FieldGrid>
+            <div className="flex flex-wrap gap-2">
+              <SubmitGateButton
+                form={metaForm}
+                {...gerbangMeta}
+              >
+                Simpan pengaturan
+              </SubmitGateButton>
+              <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
+                Tutup
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <ListToolbar
         search={{

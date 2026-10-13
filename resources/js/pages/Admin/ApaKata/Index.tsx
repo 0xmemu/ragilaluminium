@@ -162,6 +162,7 @@ export default function ApaKataIndex({
   // yang sudah ada dibuka terkunci, seragam dengan bagian Slide bar promo di
   // halaman Bar Promo. Isian baru hidup setelah admin menekan Edit.
 
+  const [showMeta, setShowMeta] = React.useState(false)
   const metaForm = useForm({
     title: pageMeta?.title ?? "",
     heading: pageMeta?.heading ?? "",
@@ -273,6 +274,11 @@ export default function ApaKataIndex({
               onSave={saveReorder}
             />
           ) : null}
+          {pageMeta && metaUrl ? (
+            <Button type="button" variant="secondary" onClick={() => setShowMeta((v) => !v)}>
+              {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
+            </Button>
+          ) : null}
           {!reorderMode ? (
             <Button asChild>
               <Link href={createHref}>
@@ -286,28 +292,30 @@ export default function ApaKataIndex({
     >
       <Head title={`${title} | Admin`} />
 
-      {pageMeta && metaUrl ? (
-        <details className="group mb-6 rounded-lg border border-border bg-card shadow-sm">
-          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5">
+      {pageMeta && metaUrl && showMeta ? (
+        <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-bold">Pengaturan tampilan (CMS)</p>
-              <p className="text-xs text-muted-foreground">{metaHint ?? "Meta halaman"}</p>
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {metaHint ?? "Judul hero dan status terbit yang tampil di halaman publik /apa-kata-mereka."}
+              </p>
             </div>
-            <Icon name="caret-down" className="size-4 text-muted-foreground transition group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <div className="border-t border-border p-5 sm:p-6">
+          </div>
+
           <form
             id="apk-meta-form"
-            className="space-y-4"
+            className="mt-4 space-y-4"
             onSubmit={(event) => {
               if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
               event.preventDefault()
               metaForm.put(metaUrl, {
-              preserveScroll: true,
-              onSuccess: () => {
-                metaForm.setDefaults()
-              },
-            })
+                preserveScroll: true,
+                onSuccess: () => {
+                  metaForm.setDefaults()
+                  setShowMeta(false)
+                },
+              })
             }}
           >
             <FieldGrid>
@@ -331,19 +339,19 @@ export default function ApaKataIndex({
                 />
               </Field>
             </FieldGrid>
-            {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
-                bukan daftar item di bawahnya. */}
             <div className="flex flex-wrap gap-2">
               <SubmitGateButton
                 form={metaForm}
                 {...gerbangMeta}
               >
-                Simpan meta
+                Simpan pengaturan
               </SubmitGateButton>
+              <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
+                Tutup
+              </Button>
             </div>
           </form>
-          </div>
-        </details>
+        </section>
       ) : null}
 
       <ListToolbar
