@@ -4895,3 +4895,18 @@ pilih dua foto dari dropzone, geser urutan (badge mengikuti), hapus semua,
 dropzone kembali. Catatan: hitungan badge "Utama" dua kali pada probe pertama
 adalah artefak query (span pembungkus ikut terhitung), markup ubin berisi
 tepat satu badge.
+
+## 2026-10-13 02:42 UTC | zcode | Trivial | 77b93b1c | selesai
+
+Permintaan owner: "harusnya ada ikon tambah disamping kanannya" pada kisi
+foto seksi media model produk (halaman Tambah Model Produk).
+
+Perubahan di ModelProducts/Form.tsx: ubin plus bergaris putus di ujung kisi
+foto terpilih, dan juga di sebelah ubin gambar utama lama; dirender hanya
+selama kuota belum penuh. Klik ubin membuka MediaPicker. Tombol Tambah di
+header dan dropzone saat kosong tidak berubah.
+
+Verifikasi: tsc bersih, eslint bersih, build sukses. Live di tab uji: pilih
+1 foto menghasilkan "Media model (1 foto)", ubin plus tampil di kanan foto
+(x=378 vs x=256); klik ubin membuka panel; setelah dihapus kembali
+"(0 foto)" dan dropzone muncul. Tab uji ditutup setelah verifikasi.
