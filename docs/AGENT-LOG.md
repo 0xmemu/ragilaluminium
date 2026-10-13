@@ -5011,3 +5011,7 @@ Dokumen canonical FULL-STACK-PRODUCTION-CHECKLIST, production-readiness-plan, pr
 ## 2026-10-13 13:20 UTC | zcode | Deep | quality gate hijau
 
 Config cache diperbaiki (integrations closure -> nilai env serializable, commit 122f2c6f). 29 warning lint react-hooks dibereskan dengan pola resmi React: sinkronisasi prop saat render, lazy initializer, fetch asinkron, dan clamp saat render; commit storefront a7c366b8 dan admin 65243893. Hasil gate: typecheck 0 error, lint 0 warning, Vitest 354 lulus, PHPUnit 1417 lulus/1 skip, build sukses, config:cache berhasil. Semua perubahan sudah dipush ke release/initial-production-cutover.
+
+## 2026-10-13 14:15 UTC | zcode | Deep | rilis formal v1.0.1 terpasang
+
+Kesalahan merge terdeteksi dan diperbaiki: merge pertama memakai branch kandidat lokal yang tertinggal (6630f927), sehingga v1.0.0 tidak memuat perbaikan config. Setelah fetch, main digabung ulang ke 2980cad6 yang memuat 122f2c6f; tag pengganti v1.0.1 dibuat dari main dan dipush. Rilis v1.0.1 diekstrak ke /var/www/ragilaluminium/releases/20261013-v1.0.1: composer dan npm build sukses, migrasi tidak ada yang tertunda, config:cache berhasil, switch symlink atomik dari snapshot 6630f927, reload nginx/php-fpm, restart ragil-queue. Smoke test: sepuluh halaman publik 200, admin 302 ke login, .env dan .git/config 403, JNT 401, produk/order/customer 0, tanpa error di log. Rollback path tetap rilis snapshot. Handover: docs/release/RELEASE-v1.0.1.md.
