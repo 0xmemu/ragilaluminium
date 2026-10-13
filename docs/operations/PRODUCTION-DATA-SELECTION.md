@@ -2,6 +2,8 @@
 
 Status: inventaris baca-saja dari basis data development pada VPS 209. Angka adalah kandidat audit, **bukan** persetujuan menyalin setiap baris ke produksi. Data transaksi dan identitas development tidak ikut. VPS 202 mempunyai basis data `ragil_aluminium` kosong tanpa tabel saat inventaris; source rilis kode staging ialah `6630f927`.
 
+**Keputusan owner:** semua data awal ditinjau per record sebelum impor; inventaris ini belum merupakan daftar record yang disetujui. Identitas login admin produksi memakai username `ragil`. Password yang disebut di percakapan tidak disalin ke berkas, log, perintah shell, atau Git; karena sudah pernah dikirim lewat percakapan, ganti dengan password unik lewat saluran aman sebelum akun dibuat. Email akun bersifat nullable, nama tampilan bisa diisi saat pembuatan setelah identitas production disahkan.
+
 | Kelompok | Tabel sumber dan jumlah | Kriteria seleksi serta relasi | Keputusan produksi |
 |---|---|---|---|
 | Kategori dan model | `categories` 3; `sub_models` 51; `sub_model_attribute_templates` 107 | Model mengacu model produk lewat kode, template mengacu kode model; migration sendiri menanam beberapa default sehingga impor harus update-or-create, bukan duplikasi ID. | Tinjau nama/kode final sebelum ekspor. |
