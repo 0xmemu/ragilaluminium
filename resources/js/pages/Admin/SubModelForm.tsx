@@ -27,6 +27,13 @@ interface SubModelData {
   model_templates?: TemplateRow[]
 }
 
+function toSubModelCode(text: string): string {
+  return text
+    .toUpperCase()
+    .replace(/[-\s]+/g, "_")
+    .replace(/[^A-Z0-9_]/g, "")
+}
+
 export default function SubModelForm({
   title,
   subModel,
@@ -47,6 +54,7 @@ export default function SubModelForm({
   backUrl?: string | null
 }) {
   const editing = Boolean(subModel)
+  const [codeManuallyEdited, setCodeManuallyEdited] = React.useState(false)
   const form = useForm<SubModelData>({
     product_model: subModel?.product_model ?? "",
     code: subModel?.code ?? "",
@@ -145,7 +153,14 @@ export default function SubModelForm({
                 <td className="px-4 py-2.5">
                   <Input
                     value={form.data.name}
-                    onChange={(event) => form.setData("name", event.target.value)}
+                    onChange={(event) => {
+                      const newName = event.target.value
+                      form.setData((prev) => ({
+                        ...prev,
+                        name: newName,
+                        ...(!editing && !codeManuallyEdited ? { code: toSubModelCode(newName) } : {}),
+                      }))
+                    }}
                     placeholder="contoh: Jalusi"
                     className="h-8 w-72 text-xs"
                   />
@@ -161,7 +176,11 @@ export default function SubModelForm({
                 <td className="px-4 py-2.5">
                   <Input
                     value={form.data.code}
-                    onChange={(event) => form.setData("code", event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "")
+                      setCodeManuallyEdited(val.trim() !== "")
+                      form.setData("code", val)
+                    }}
                     placeholder={editing ? "" : "Otomatis dibuat dari nama jika dikosongkan"}
                     className="h-8 w-72 text-xs font-mono"
                     disabled={editing}
