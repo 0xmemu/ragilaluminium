@@ -4821,3 +4821,32 @@ tab owner: kolom pertama terbaca "Nama Model Produk", teks bantuan hilang,
 tombol "Pilih gambar utama" membuka panel MediaPicker. Uji klik tombol galeri
 tidak selesai karena tab owner berpindah halaman saat pengujian; wiring-nya
 identik dengan picker utama yang sudah terbukti.
+
+## 2026-10-13 01:53 UTC | zcode | Standard | ea4f79f1 | selesai
+
+Permintaan owner di form Tambah Model Produk: "hapus 'pilih gambar utama'
+tombolnya. ganti dengan kontainer gambar yang bisa di klik dan bisa media
+picker. begitu pula".
+
+Perubahan di ModelProducts/Form.tsx:
+1. Tombol "Pilih gambar utama" di header kartu Media model dihapus; kontainer
+   pratinjau menjadi tombol pemicu sendiri (aria-label Pilih/Ganti, hover
+   "Ganti gambar" saat terisi, "Klik untuk pilih gambar utama" saat kosong),
+   meniru pola form Hasil Pemasangan.
+2. Tombol "Tambah" galeri dihapus; kontainer kosong galeri jadi pemicu klik;
+   saat galeri berisi muncul ubin tambah bergaris putus di ujung daftar
+   (hanya saat kuota belum penuh).
+3. Logika tambah galeri (dedupe gambar utama + kuota) jadi fungsi tambahGaleri
+   yang dipakai kedua pemicu.
+
+Verifikasi: tsc bersih, eslint bersih, build sukses, push lolos hook. Live di
+tab uji: tombol lama 0, kedua kontainer membuka panelnya, alur pilih foto
+end-to-end menghasilkan "1 dari 8 foto" + panel menutup sendiri + ubin tambah
+muncul, lalu foto dihapus kembali ke "0 dari 8 foto". Keadaan dua panel
+terbuka bersamaan hanya bisa dibuat lewat klik terprogram menembus backdrop,
+bukan jalur pengguna; tombol silang menutup panel dengan benar.
+
+Catatan terbuka: (1) pola tombol-lalu-kontainer yang sama masih ada di halaman
+lain (Hasil Pemasangan, Tentang Kami, Ulasan) dan menunggu giliran bila owner
+minta; (2) deskripsi kartu Media model masih menyebut "atau unggah langsung"
+padahal picker tidak punya unggah sejak Media Library jadi sumber tunggal.
