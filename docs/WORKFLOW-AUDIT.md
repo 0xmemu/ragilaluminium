@@ -3,6 +3,7 @@
 **Tanggal:** 2026-07-22  
 **Metode:** Simulasi journey end-to-end (kontrak SoT + routes/controllers/Inertia), bukan E2E browser.  
 **SoT acuan:** `PRODUCT-HANDOFF.md`, `config/sitemap.php`, `config/admin-sitemap.php`, Stage 2/9B/10.
+Continuation backlog: docs/STOREFRONT-AUDIT-TODO.md (audit storefront 2026-08-03 onward).
 
 Status: `COMPLETE` | `PARTIAL` | `MISSING` | `BROKEN`
 
@@ -61,7 +62,8 @@ Beranda → Model/Kategori → Filter → PDP → Pilih varian → Keranjang
 ### 1.3 Planned (MISSING dari nav — sesuai SoT)
 
 - Halaman Retur Diproses / Retur Selesai  
-- Detail galeri Hasil Pemasangan (saat ini section di `/reviews`)
+
+Status terkini: detail galeri Hasil Pemasangan sudah tersedia melalui `/hasil-pemasangan/{parent_sku}` dan sitemap publik; section ringkas tetap tampil di `/reviews`.
 
 ### 1.4 Temuan detail pelanggan
 

@@ -1,18 +1,6 @@
+import { channelOf, isLiveHref } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import type { SocialLink } from "@/types"
-
-function isLiveHref(href?: string | null): boolean {
-  return Boolean(href && href !== "#")
-}
-
-function channelOf(item: SocialLink): "marketplace" | "social" {
-  if (item.channel === "marketplace" || item.channel === "social") {
-    return item.channel
-  }
-  return ["shopee", "tokopedia", "lazada", "tiktok_shop"].includes(item.key)
-    ? "marketplace"
-    : "social"
-}
 
 /** Platform link: icon (+ optional label). Footer uses icons-only. */
 function PlatformChip({
@@ -56,7 +44,7 @@ function PlatformChip({
         <span
           className={cn(
             "text-xs font-semibold tracking-tight",
-            dark ? "text-background" : "text-foreground",
+            dark ? "text-white" : "text-foreground",
           )}
         >
           {item.label}
@@ -80,7 +68,7 @@ function PlatformChip({
   }
 
   return (
-    <span className={shell} title={item.label} aria-label={item.label}>
+    <span className={shell} title={item.label} role="img" aria-label={item.label}>
       {content}
     </span>
   )
@@ -89,6 +77,8 @@ function PlatformChip({
 export function StorefrontPlatforms({
   platforms,
   title = "Ikuti Kami",
+  titleClassName,
+  titleTag: TitleTag = "h2",
   className,
   variant = "light",
   layout = "grouped",
@@ -98,6 +88,9 @@ export function StorefrontPlatforms({
 }: {
   platforms: SocialLink[]
   title?: string
+  /** Override gaya judul (mis. footer: turun 12px + 12px). */
+  titleClassName?: string
+  titleTag?: "h2" | "h3"
   className?: string
   variant?: "light" | "dark"
   /** grouped = Marketplace + Media Sosial terpisah; inline = deretan ringkas */
@@ -122,7 +115,8 @@ export function StorefrontPlatforms({
           <p
             className={cn(
               "text-sm font-bold tracking-tight",
-              dark ? "text-background" : "text-muted-foreground",
+              dark ? "text-white" : "text-muted-foreground",
+              titleClassName,
             )}
           >
             {title}
@@ -148,23 +142,24 @@ export function StorefrontPlatforms({
   return (
     <div className={cn("space-y-6", className, centered && "text-center")}>
       {title ? (
-        <h2
+        <TitleTag
           className={cn(
             compact ? "text-sm font-bold" : "text-lg font-semibold",
             "tracking-tight",
-            dark ? "text-background" : "text-foreground",
+            dark ? "text-white" : "text-foreground",
+            titleClassName,
           )}
         >
           {title}
-        </h2>
+        </TitleTag>
       ) : null}
 
       {marketplaces.length ? (
         <div>
           <p
             className={cn(
-              "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-background/75" : "text-muted-foreground",
+              "text-xs font-semibold tracking-tight",
+              dark ? "text-white/80" : "text-muted-foreground",
             )}
           >
             Marketplace
@@ -183,8 +178,8 @@ export function StorefrontPlatforms({
         <div>
           <p
             className={cn(
-              "text-[11px] font-semibold uppercase tracking-tight",
-              dark ? "text-background/75" : "text-muted-foreground",
+              "text-xs font-semibold tracking-tight",
+              dark ? "text-white/80" : "text-muted-foreground",
             )}
           >
             Media Sosial

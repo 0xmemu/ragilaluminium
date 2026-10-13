@@ -3,7 +3,9 @@
 This document defines the **core routes and API endpoints** for the Ragil Aluminium website.  
 It connects the System Architecture, database schema, and UI flows (admin + public store) into a concrete map of URLs and controllers.
 
-All agents must use these routes and endpoints as the primary integration surface; do not add ad‑hoc endpoints that bypass the documented modules.
+This historical copy is not an active integration surface; use the canonical route contract referenced below.
+
+> **Status: HISTORICAL / NON-CANONICAL.** This duplicate logic document is retained for audit context only. Do not use its route, controller, taxonomy, or enum examples for implementation. The active contract is `docs/api-and-routes-ragil-aluminium.md`, supported by `docs/contracts/ROLE-AND-STATUS-CONTRACT.md` and the active sitemap files. In particular, the runtime uses `/products` and `/products/all`, redirects `/search` to `/products`, and uses `POLOS` rather than `PLAIN`.
 
 ---
 
@@ -38,16 +40,17 @@ All agents must use these routes and endpoints as the primary integration surfac
 
 ### 1.2 Catalog Browsing
 
-- `GET /windows`
-  - Controller: `CatalogController@windows`
-  - Purpose:
-    - List WINDOW products, with filters for model & design variant.
+- GET /products/{categorySlug}
+  - Controller: CatalogController
+  - Canonical examples: /products/jendela, /products/pintu, /products/boven
+  - Legacy /products/windows|doors|bouven redirect 301 to the Indonesian slug.
+  - Top-level /windows|doors|bouven routes do not exist and return 404.
 
-- `GET /doors`
-  - Controller: `CatalogController@doors`
+- GET /products/{categorySlug}/{modelSlug}
+  - Controller: CatalogController
 
-- `GET /bouven`
-  - Controller: `CatalogController@bouven`
+- GET /products/{categorySlug}/{modelSlug}/{designSlug}
+  - Controller: CatalogController
 
 Common query parameters for category pages:
 
@@ -58,7 +61,7 @@ Common query parameters for category pages:
 
 Example:
 
-- `/windows?model=SLIDING&design=PLAIN&sort=popular`
+- `/products/jendela/sliding/ornamen?sort=popular`
 
 - `GET /search`
   - Controller: `SearchController@index`
@@ -202,6 +205,21 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 - `POST /admin/products/{id}/unarchive`
   - Controller: `Admin\ProductController@unarchive`
 
+#### Teruskan Popularitas
+
+- `GET /admin/products/popularity-boosts`
+  - Controller: `Admin\ProductPopularityBoostController@index`
+  - Purpose: daftar konfigurasi sumber → target, seed, skor efektif, ambang notifikasi, dan status audit.
+- `POST /admin/products/popularity-boosts`
+  - Controller: `Admin\ProductPopularityBoostController@store`
+  - Purpose: snapshot penjualan valid produk A sebagai seed popularitas produk B.
+- `POST /admin/products/popularity-boosts/{boost}/disable`
+  - Controller: `Admin\ProductPopularityBoostController@disable`
+  - Purpose: menonaktifkan boost dengan alasan wajib; seed target dikosongkan, riwayat order tetap.
+- `POST /admin/products/popularity-boosts/{boost}/enable`
+  - Controller: `Admin\ProductPopularityBoostController@enable`
+  - Purpose: mengaktifkan kembali dengan snapshot penjualan sumber terbaru.
+
 #### Variants (per product)
 
 - `GET /admin/products/{id}/variants`
@@ -249,6 +267,12 @@ All admin routes are typically prefixed with `/admin` and protected by auth + ro
 
 - `POST /admin/media/{media_id}/archive`
   - Controller: `Admin\ProductMediaController@archive`
+
+- `POST /admin/media/{asset_id}/attach`
+  - Controller: `Admin\ProductMediaController@bulkAttach`
+  - Body: `product_ids[]`, `position`, `show_in_catalog`, `is_installation`, `is_main_image`, `visibility`.
+  - One shared asset can be attached idempotently to up to 100 products; this
+    does not duplicate bytes or delete a physical asset.
 
 ---
 

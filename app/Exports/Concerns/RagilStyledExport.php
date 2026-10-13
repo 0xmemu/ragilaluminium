@@ -1,0 +1,285 @@
+<?php
+
+namespace App\Exports\Concerns;
+
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Conditional;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+
+/**
+ * Base styling untuk seluruh export admin Ragil (brand DS v2).
+ *
+ * Header baris 1: bold, fill merah #c20000, font putih, border #dee3e0.
+ * Body: border #dee3e0, zebra #f7f8f7, freeze pane A2, autofilter pada header.
+ * Kolom numerik: rata kanan, format "Rp" #,##0 (mata uang) atau #,##0 (kuantitas).
+ *
+ * Exporter turunan cukup mengisi properti $sheetTitle, $columnWidths,
+ * $currencyColumns (huruf kolom) dan $quantityColumns, lalu mengimplementasikan
+ * FromQuery/FromCollection + WithMapping + WithHeadings.
+ */
+abstract class RagilStyledExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
+{
+    protected bool $skipSheetAutoFilter = false;
+
+    /**
+     * Sheet yang menggambar baris headernya sendiri (mis. laporan pesanan
+     * dengan 2 baris header: baris kelompok kolom + baris judul kolom)
+     * mematikan gaya header merah bawaan.
+     */
+    protected bool $skipDefaultHeaderStyle = false;
+
+    /**
+     * Sheet yang memakai pita warna per kelompok kolom mematikan zebra
+     * kondisional bawaan supaya tidak menimpa fill yang digambar sendiri.
+     */
+    protected bool $skipZebra = false;
+
+    /**
+     * Baris pertama data (bukan header). Sheet dengan 2 baris header
+     * menggeser ini ke 3 supaya format angka tidak kena baris judul.
+     */
+    protected int $firstBodyRow = 2;
+
+    use RegistersEventListeners;
+
+    protected string $sheetTitle = 'Laporan';
+
+    /** @var array<string, int> lebar kolom per huruf (A, B, ...) */
+    protected array $columnWidths = [];
+
+    /** @var list<string> kolom mata uang (format "Rp" #,##0) */
+    protected array $currencyColumns = [];
+
+    /**
+     * Format angka kolom mata uang. Default "Rp" #,##0; export yang mau
+     * angka polos (mis. laporan pesanan, pivot-friendly) set '#,##0'.
+     */
+    protected string $currencyFormat = '"Rp" #,##0';
+
+    /** @var list<string> kolom kuantitas (format #,##0) */
+    protected array $quantityColumns = [];
+
+    /**
+     * Kolom identitas (nomor resi, SKU, telepon, kode pos) yang WAJIB
+     * berformat teks. Tanpa ini, angka panjang seperti nomor resi J&T
+     * ditulis sebagai angka lalu Excel menampilkannya sebagai notasi
+     * ilmiah (2,01719E+11) dan bisa kehilangan digit.
+     *
+     * @var list<string>
+     */
+    protected array $textColumns = [];
+
+    /**
+     * Sel teks per baris+kolom: [nomor baris, indeks kolom 1-based].
+     *
+     * Dipakai laporan bertingkat (mis. blok "Pelanggan Terbaik" di sheet
+     * Analisis) yang hanya sebagian barisnya berisi identitas, sehingga
+     * tidak bisa memakai $textColumns yang berlaku satu kolom penuh.
+     *
+     * @var list<array{0:int, 1:int}>
+     */
+    protected array $textCells = [];
+
+    /**
+     * Sel bernilai 0.0 yang dibuang Maatwebsite (fromArray loose-null
+     * comparison: 0 == null). Dicatat oleh trackZeroCells() lalu ditulis
+     * ulang via setCellValue di afterSheet supaya 0 tetap tampil.
+     *
+     * @var list<array{row:int,col:string}>
+     */
+    protected array $zeroCells = [];
+
+    public function title(): string
+    {
+        return $this->sheetTitle;
+    }
+
+    public function columnWidths(): array
+    {
+        return $this->columnWidths;
+    }
+
+    public function styles(Worksheet $sheet): array
+    {
+        if ($this->skipDefaultHeaderStyle) {
+            return [];
+        }
+
+        return [
+            1 => [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['argb' => 'FFFFFFFF'],
+                    'size' => 11,
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'FFC20000'],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_LEFT,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['argb' => 'FFDEE3E0'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    public function afterSheet(AfterSheet $event): void
+    {
+        $sheet = $event->sheet->getDelegate();
+        $lastRow = $sheet->getHighestRow();
+        $lastCol = $sheet->getHighestColumn();
+
+        // Freeze header row supaya kolom tetap terbaca saat scroll.
+        $sheet->freezePane('A2');
+
+        // AutoFilter pada baris header. Sheet dengan Excel Table melewati
+        // ini: tabel membawa autofilter sendiri, dua-duanya sekaligus
+        // memicu dialog repair Excel (autofilter tumpang tindih).
+        if ($lastRow >= 1 && ! $this->skipSheetAutoFilter) {
+            $sheet->setAutoFilter("A1:{$lastCol}1");
+        }
+
+        // Border untuk seluruh area terpakai.
+        $usedRange = "A1:{$lastCol}{$lastRow}";
+        $sheet->getStyle($usedRange)->getBorders()->getAllBorders()->applyFromArray([
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['argb' => 'FFDEE3E0'],
+        ]);
+
+        // Zebra strip pada body (baris genap) supaya mudah dibaca.
+        if (! $this->skipZebra && $lastRow > 1) {
+            $bodyRange = "A2:{$lastCol}{$lastRow}";
+            $cond = new Conditional();
+            $cond->setConditionType(Conditional::CONDITION_EXPRESSION);
+            $cond->setConditions(['MOD(ROW(),2)=0']);
+            $cond->getStyle()->getFill()->setFillType(Fill::FILL_SOLID);
+            $cond->getStyle()->getFill()->getStartColor()->setARGB('FFF7F8F7');
+            $sheet->getStyle($bodyRange)->setConditionalStyles([$cond]);
+        }
+
+        // Format kolom mata uang: rata kanan + "Rp" #,##0.
+        foreach ($this->currencyColumns as $col) {
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode($this->currencyFormat);
+            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Format kolom kuantitas: rata kanan + #,##0.
+        foreach ($this->quantityColumns as $col) {
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Kolom identitas (nomor resi, HP, SKU, kode pos) wajib teks.
+        $this->applyTextCells($sheet, $lastRow);
+
+        // Tulis ulang sel 0.0 yang dibuang Maatwebsite (fromArray loose-null).
+        foreach ($this->zeroCells as $zc) {
+            $sheet->setCellValue($zc['col'].$zc['row'], 0.0);
+        }
+    }
+
+    /**
+     * Catat sel bernilai 0/0.0 pada baris export (nomor baris sheet, 1-based).
+     */
+    protected function trackZeroCells(array $row, int $rowNum): void
+    {
+        foreach ($row as $colIndex => $value) {
+            if ($value === 0 || $value === 0.0) {
+                $this->zeroCells[] = [
+                    'row' => $rowNum,
+                    'col' => Coordinate::stringFromColumnIndex($colIndex + 1),
+                ];
+            }
+        }
+    }
+
+    /**
+     * Tandai satu sel sebagai teks (identitas: nomor HP, SKU, resi).
+     */
+    protected function registerTextCell(int $row, int $colIndex): void
+    {
+        $this->textCells[] = [$row, $colIndex];
+    }
+
+    /**
+     * Terapkan format teks pada kolom identitas dan sel identitas.
+     *
+     * Tanpa ini, string angka seperti nomor resi atau nomor HP ditulis
+     * sebagai ANGKA oleh PhpSpreadsheet, lalu Excel menampilkannya sebagai
+     * notasi ilmiah (2,01719E+11); di atas 15 digit angkanya dibulatkan
+     * sehingga nomornya salah, bukan sekadar jelek tampilannya.
+     */
+    protected function applyTextCells(Worksheet $sheet, int $lastRow): void
+    {
+        foreach ($this->textColumns as $col) {
+            $range = "{$col}{$this->firstBodyRow}:{$col}{$lastRow}";
+            $sheet->getStyle($range)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+
+            for ($row = $this->firstBodyRow; $row <= $lastRow; $row++) {
+                $this->forceCellToText($sheet, $col.$row);
+            }
+        }
+
+        foreach ($this->textCells as [$row, $colIndex]) {
+            $coord = Coordinate::stringFromColumnIndex($colIndex).$row;
+            $sheet->getStyle($coord)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+            $this->forceCellToText($sheet, $coord);
+        }
+    }
+
+    /**
+     * Paksa satu sel jadi string asli supaya angka panjang tidak kehilangan
+     * digit karena disimpan sebagai pecahan biner.
+     */
+    protected function forceCellToText(Worksheet $sheet, string $coord): void
+    {
+        $cell = $sheet->getCell($coord);
+        if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
+            $sheet->setCellValueExplicit($coord, (string) $cell->getValue(), DataType::TYPE_STRING);
+        }
+    }
+
+    /**
+     * Bantu menjadikan koordinat (baris, indeks kolom 1-based) menjadi "A1".
+     */
+    protected function cellCoord(int $row, int $colIndex): string
+    {
+        return Coordinate::stringFromColumnIndex($colIndex).$row;
+    }
+
+    /**
+     * Format tanggal ke Bahasa Indonesia, timezone Asia/Jakarta.
+     */
+    protected function formatWib($value, string $format = 'd M Y H:i'): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        if ($value instanceof \DateTimeInterface) {
+            $dt = \Carbon\Carbon::instance($value);
+        } else {
+            $dt = \Carbon\Carbon::parse($value);
+        }
+        return $dt->setTimezone('Asia/Jakarta')->locale('id')->translatedFormat($format);
+    }
+}

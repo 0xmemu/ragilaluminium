@@ -16,27 +16,27 @@ class WilayahController extends Controller
     {
         return response()->json([
             'data' => $this->wilayah->provinces($request->query('q')),
-        ]);
+        ])->header("Cache-Control", "public, max-age=43200, stale-while-revalidate=86400");
     }
 
     public function regencies(Request $request, string $provinceId): JsonResponse
     {
         return response()->json([
             'data' => $this->wilayah->regencies($provinceId, $request->query('q')),
-        ]);
+        ])->header("Cache-Control", "public, max-age=43200, stale-while-revalidate=86400");
     }
 
     public function districts(Request $request, string $regencyId): JsonResponse
     {
         return response()->json([
             'data' => $this->wilayah->districts($regencyId, $request->query('q')),
-        ]);
+        ])->header("Cache-Control", "public, max-age=43200, stale-while-revalidate=86400");
     }
 
     public function villages(Request $request, string $districtId): JsonResponse
     {
         return response()->json([
             'data' => $this->wilayah->villages($districtId, $request->query('q')),
-        ]);
+        ])->header("Cache-Control", "public, max-age=43200, stale-while-revalidate=86400");
     }
 }

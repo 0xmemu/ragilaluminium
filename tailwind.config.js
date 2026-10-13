@@ -8,8 +8,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Noto Sans Variable', 'Noto Sans', 'Helvetica Neue', 'Arial', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                display: ['Noto Sans Variable', 'Noto Sans', 'Helvetica Neue', 'Arial', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+                display: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
                 mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'monospace'],
             },
             colors: {
@@ -18,6 +18,8 @@ export default {
                 ring: 'hsl(var(--ring))',
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
+                action: 'hsl(var(--action-foreground))',
+                body: 'hsl(var(--body-foreground))',
                 sale: 'hsl(var(--sale))',
                 surface: {
                     DEFAULT: 'hsl(var(--surface))',
@@ -60,6 +62,12 @@ export default {
                     DEFAULT: 'hsl(var(--warning))',
                     foreground: 'hsl(var(--warning-foreground))',
                 },
+                copper: {
+                    DEFAULT: 'hsl(var(--copper))',
+                    foreground: 'hsl(var(--copper-foreground))',
+                },
+                whatsapp: { DEFAULT: "hsl(var(--whatsapp))" },
+                "header-bg": "hsl(var(--header-bg))",
                 info: {
                     DEFAULT: 'hsl(var(--info))',
                     foreground: 'hsl(var(--info-foreground))',
@@ -84,6 +92,7 @@ export default {
                 reading: '68ch',
             },
             transitionTimingFunction: {
+                DEFAULT: "var(--ease-standard)",
                 standard: 'var(--ease-standard)',
                 emphasized: 'var(--ease-emphasized)',
             },

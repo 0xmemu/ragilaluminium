@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Models\MediaProcessingLog;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
 use App\Support\UrlGuard;
+use App\Support\MediaFailureNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
+class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -63,13 +65,14 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
                 $media->update($payload);
             } catch (\Throwable $e) {
                 $this->fail($media, $e->getMessage());
+                throw $e;
             }
 
             return;
         }
 
         $media->update(['status' => 'downloading']);
-
+        MediaProcessingLog::record($media, 'processing', 'Mengunduh media produk dari URL sumber.');
         $tmp = null;
 
         try {
@@ -77,10 +80,15 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
 
             $tmp = tempnam(sys_get_temp_dir(), 'media_');
             $response = Http::timeout((int) config('media.download_timeout', 60))
+                ->withoutRedirecting()
                 ->withOptions(['sink' => $tmp])
                 ->get($media->source_url);
 
             if (! $response->successful()) {
+                if ($response->status() === 429 || $response->serverError()) {
+                    throw new \RuntimeException('Sumber media sementara tidak tersedia (HTTP '.$response->status().').');
+                }
+
                 $this->fail($media, 'HTTP '.$response->status());
 
                 return;
@@ -141,8 +149,14 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
             }
 
             $media->update($payload);
+            MediaProcessingLog::record(
+                $media,
+                'success',
+                empty($built) ? 'Media tersimpan tanpa derivatif WebP (periksa format).' : 'Media berhasil diunduh dan derivatif WebP siap.',
+            );
         } catch (\Throwable $e) {
             $this->fail($media, $e->getMessage());
+            throw $e;
         } finally {
             if ($tmp && is_file($tmp)) {
                 @unlink($tmp);
@@ -153,6 +167,8 @@ class DownloadProductMedia implements ShouldQueue, ShouldBeUnique
     protected function fail(ProductMedia $media, string $reason): void
     {
         $media->update(['status' => 'failed', 'error_reason' => Str::limit($reason, 500)]);
+        MediaProcessingLog::record($media, 'failed', Str::limit($reason, 500));
+        MediaFailureNotifier::notify($media, $reason);
     }
 
     protected function extensionFor(string $url, ?string $mime): string

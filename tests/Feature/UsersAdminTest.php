@@ -17,11 +17,11 @@ class UsersAdminTest extends TestCase
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'email' => 'boss@example.com',
+            'username' => 'boss',
         ]);
         User::factory()->create([
             'name' => 'Staf Kudus',
-            'email' => 'staf@example.com',
+            'username' => 'staf.kudus',
             'role' => 'admin',
             'status' => 'active',
         ]);
@@ -40,12 +40,12 @@ class UsersAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('rows', 1)
-                ->where('rows.0.email', 'staf@example.com'));
+                ->where('rows.0.username', 'staf.kudus'));
 
         $this->actingAs($admin)
             ->post(route('admin.users.store'), [
                 'name' => 'Admin Baru',
-                'email' => 'baru@example.com',
+                'username' => 'admin.baru',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'role' => 'viewer', // ignored — Stage 2 equal-admin
@@ -54,10 +54,29 @@ class UsersAdminTest extends TestCase
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseHas('users', [
-            'email' => 'baru@example.com',
+            'username' => 'admin.baru',
             'role' => 'admin',
             'status' => 'active',
         ]);
+    }
+
+    public function test_payload_admin_tidak_memuat_email(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'username' => 'boss']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('rows', 1)
+                ->missing('rows.0.email'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.edit', $admin))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Users/Form')
+                ->missing('user.email'));
     }
 
     public function test_cannot_deactivate_self_or_last_active_admin(): void
@@ -65,7 +84,6 @@ class UsersAdminTest extends TestCase
         $only = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'email' => 'only@example.com',
             'password' => Hash::make('password123'),
         ]);
 
@@ -81,7 +99,7 @@ class UsersAdminTest extends TestCase
             ->from(route('admin.users.edit', $only))
             ->put(route('admin.users.update', $only), [
                 'name' => $only->name,
-                'email' => $only->email,
+                'username' => $only->username,
                 'status' => 'inactive',
             ])
             ->assertSessionHasErrors('status');

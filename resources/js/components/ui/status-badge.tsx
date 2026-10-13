@@ -13,6 +13,11 @@ const badgeVariants = cva(
         warning: "border-warning/25 bg-warning/10 text-warning-foreground",
         success: "border-success/20 bg-success/10 text-success",
         danger: "border-destructive/20 bg-destructive/10 text-destructive",
+        // Nada lembut untuk label status sekunder; visual identik dengan nada dasarnya.
+        "info-soft": "border-info/20 bg-info/10 text-info",
+        "success-soft": "border-success/20 bg-success/10 text-success",
+        "warning-soft": "border-warning/25 bg-warning/10 text-warning-foreground",
+        "neutral-soft": "border-border bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -27,11 +32,27 @@ interface StatusBadgeProps extends VariantProps<typeof badgeVariants> {
   className?: string
 }
 
+/** Nada yang sah dipakai apa adanya bila dikirim lewat prop `status`. */
+const DIRECT_TONES = new Set([
+  "neutral",
+  "info",
+  "warning",
+  "success",
+  "danger",
+  "info-soft",
+  "warning-soft",
+  "success-soft",
+  "neutral-soft",
+])
+
 export function StatusBadge({ status, label, tone, className }: StatusBadgeProps) {
+  const rawStatus = String(status ?? "")
   const meta = statusMeta(status)
+  const statusIsTone = DIRECT_TONES.has(rawStatus)
+  const resolvedTone = tone ?? (statusIsTone ? (rawStatus as typeof meta.tone) : meta.tone)
 
   return (
-    <span className={cn(badgeVariants({ tone: tone ?? meta.tone }), className)}>
+    <span className={cn(badgeVariants({ tone: resolvedTone }), className)}>
       {label ?? meta.label}
     </span>
   )

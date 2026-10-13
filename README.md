@@ -1,4 +1,4 @@
-# Ragil Aluminium — `website.4.0`
+# Ragil Aluminium
 
 Laravel modular monolith: **Inertia + React + shadcn** storefront & admin, plus domain services (catalog, order, import, WhatsApp, JNT).
 
@@ -23,6 +23,32 @@ npm run build   # or: npm run dev
 php artisan serve
 php artisan queue:work --queue=media,default
 ```
+
+## Admin Management
+
+Buat user admin via CLI (tidak ada UI pendaftaran admin):
+
+```bash
+# Interaktif (prompt nama, username, role, password)
+php artisan admin:create
+
+# Non-interaktif
+php artisan admin:create \
+  --name="Owner" \
+  --username="owner" \
+  --password="<min-8-karakter>" \
+  --role="admin"
+
+# Output sukses
+Admin user 'owner' created successfully!
+```
+
+- Validasi: username unik, role enum
+  (`admin`, `staff`, `viewer`), password min 8 karakter.
+- Akun admin tidak memakai email: login memakai username.
+- Password di-hash bcrypt; user dibuat dengan status `active`.
+- Best practice: password kuat, minimalkan jumlah `super_admin`.
+- Detail lanjutan: `docs/admin-management.md` (di repo lokal workspace).
 
 ## Docs
 

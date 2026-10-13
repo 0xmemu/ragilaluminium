@@ -11,14 +11,19 @@ class TestimonialPageSettings
 {
     public const PAGE_SLUG = 'testimoni';
 
-    public const DEFAULT_TITLE = 'Testimoni & Ulasan';
+    public const DEFAULT_TITLE = 'Ulasan Pelanggan';
 
-    public const DEFAULT_HEADING = 'Apa kata pelanggan kami.';
+    public const DEFAULT_HEADING = 'Apa kata pelanggan kami';
 
-    public const DEFAULT_SUBTITLE = 'Ulasan pelanggan dan dokumentasi pemasangan dari data publikasi toko.';
+    public const DEFAULT_SUBTITLE = 'Screenshot percakapan Shopee atau WhatsApp di luar transaksi website.';
 
     public static function ensurePage(): CmsPage
     {
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => self::PAGE_SLUG],
             [

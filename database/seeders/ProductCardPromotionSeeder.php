@@ -6,6 +6,7 @@ use App\Jobs\DownloadProductMedia;
 use App\Models\CmsBanner;
 use App\Models\Product;
 use App\Models\ProductAttribute;
+use App\Support\CategoryUrl;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
 
@@ -23,7 +24,7 @@ class ProductCardPromotionSeeder extends Seeder
 
         $picked = collect();
 
-        foreach (['WINDOW', 'DOOR', 'BOUVEN'] as $category) {
+        foreach (CategoryUrl::productCategoryCodes() as $category) {
             $batch = Product::visible()
                 ->where('product_category', $category)
                 ->whereHas('activeVariants', fn ($query) => $query->where('price', '>', 0))

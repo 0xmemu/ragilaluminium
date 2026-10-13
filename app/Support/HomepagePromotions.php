@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+
 use App\Models\CmsBanner;
 use App\Models\Product;
 use Illuminate\Support\Collection;
@@ -37,36 +39,50 @@ class HomepagePromotions
     }
 
     /**
-     * Landing slide always first, then manual published banners, then automatic
-     * promo product slides when enabled. Promo fallbacks only when both empty.
+     * Landing slide always first, then manual published banners.
+     * Promo fallbacks only when both empty.
      *
      * @return array<int, array<string, mixed>>
      */
     public static function slides(): array
     {
-        $manual = self::manualSlides();
-        $auto = HomepagePromotionSettings::enabled()
-            ? self::automaticSlides(
-                excludeSkus: self::skusFromSlides($manual),
-                limit: HomepagePromotionSettings::maxSlides(),
-            )
-            : [];
-
-        $promos = array_values([...$manual, ...$auto]);
-
-        if ($promos === []) {
-            return self::fallbackSlides();
-        }
-
-        return [self::landingSlide(), ...$promos];
+        return Cache::remember('home.promo_slides', 300, fn () => self::buildSlides());
     }
 
     /**
-     * Count of currently eligible automatic candidates (for admin UI).
+     * Buang cache slide beranda agar perubahan banner admin langsung terlihat
+     * tanpa menunggu TTL 5 menit habis.
      */
-    public static function automaticCandidateCount(): int
+    public static function flushCache(): void
     {
-        return self::eligibleProducts()->count();
+        Cache::forget('home.promo_slides');
+    }
+
+    protected static function buildSlides(): array
+    {
+        // 10 slot banner: banner manual dari admin (cms_banners) tampil lebih
+        // dulu, sisanya placeholder polos sampai total 10. Admin tinggal mengisi
+        // gambar banner sendiri untuk tiap slot.
+        $slides = self::manualSlides();
+        $count = count($slides);
+        for ($i = $count; $i < 10; $i++) {
+            $slides[] = [
+                'id' => -3000 - $i,
+                'source' => 'placeholder',
+                'layout' => 'placeholder',
+                'eyebrow' => null,
+                'headline' => '',
+                'subheadline' => null,
+                'accent' => null,
+                'image' => null,
+                'image_alt' => 'Banner promosi',
+                'href' => route('catalog.index', absolute: false),
+                'disclaimer' => null,
+                'sticker' => false,
+            ];
+        }
+
+        return array_slice($slides, 0, 10);
     }
 
     /**
@@ -75,7 +91,7 @@ class HomepagePromotions
     private static function manualSlides(): array
     {
         /** @var Collection<int, CmsBanner> $banners */
-        $banners = CmsBanner::published()->orderBy('sort_order')->orderBy('id')->get();
+        $banners = CmsBanner::published()->with('mediaAsset')->orderBy('sort_order')->orderBy('id')->get();
         if ($banners->isEmpty()) {
             return [];
         }
@@ -87,7 +103,7 @@ class HomepagePromotions
             ->values();
 
         $products = Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->whereIn('parent_sku', $skus)
             ->get()
             ->keyBy('parent_sku');
@@ -99,7 +115,10 @@ class HomepagePromotions
             $promo = $product ? ProductPromotionMetadata::forProduct($product) : null;
             $copy = self::copy($banner->title, $product, $promo);
 
-            $image = $product?->mainImage?->localUrlFor('pdp')
+            $image = $banner->mediaAsset?->localUrlFor('pdp')
+                ?: $banner->mediaAsset?->localUrlFor('card')
+                ?: $banner->mediaAsset?->localUrlFor('thumb')
+                ?: $product?->mainImage?->localUrlFor('pdp')
                 ?: $product?->mainImage?->localUrlFor('card')
                 ?: $product?->mainImage?->urlFor('pdp')
                 ?: $product?->mainImage?->urlFor('card')
@@ -113,92 +132,13 @@ class HomepagePromotions
                 'eyebrow' => $copy['eyebrow'],
                 'headline' => $copy['headline'],
                 'subheadline' => $copy['subheadline'],
-                'accent' => $copy['accent'] ?? ($promo['discount_percent'] ? '-'.$promo['discount_percent'].'%' : null),
+                'accent' => $copy['accent'] ?? ((($promo['discount_percent'] ?? 0) > 0) ? '-'.$promo['discount_percent'].'%' : null),
                 'image' => $image,
                 'image_alt' => $product?->name ?: ($banner->title ?: 'Promo Ragil Aluminium'),
                 'href' => $banner->link_url ?: ($product ? route('product.show', $product->parent_sku, absolute: false) : route('catalog.index', absolute: false)),
                 'disclaimer' => '*Untuk berbagai produk pilihan',
             ];
         })->values()->all();
-    }
-
-    /**
-     * @param  list<string>  $excludeSkus
-     * @return array<int, array<string, mixed>>
-     */
-    private static function automaticSlides(array $excludeSkus, int $limit): array
-    {
-        $exclude = array_fill_keys($excludeSkus, true);
-
-        return self::eligibleProducts()
-            ->filter(fn (Product $product) => ! isset($exclude[$product->parent_sku]))
-            ->take($limit)
-            ->values()
-            ->map(function (Product $product, int $index): array {
-                $promo = ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false);
-                $categoryLabel = self::categoryLabel($product->product_category);
-                $discount = $promo['discount_percent'];
-
-                return [
-                    'id' => -1000 - $index,
-                    'source' => 'automatic',
-                    'layout' => 'promo_card',
-                    'eyebrow' => $discount ? 'Promo Diskon' : 'Promo',
-                    'headline' => self::modelHeadline($product),
-                    'subheadline' => 'Harga miring, kualitas terjamin',
-                    'accent' => $discount ? '-'.$discount.'%' : null,
-                    'image' => self::productMediaUrl($product),
-                    'image_alt' => self::modelHeadline($product, multiline: false),
-                    'href' => self::modelListingHref($product),
-                    'disclaimer' => '*Promo model '.$categoryLabel.' pilihan',
-                    'sticker' => true,
-                ];
-            })
-            ->all();
-    }
-
-    /**
-     * @return Collection<int, Product>
-     */
-    private static function eligibleProducts(): Collection
-    {
-        return Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
-            ->withSum('orderItems as sold_count', 'quantity')
-            ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
-            ->whereHas('mainImage')
-            ->where(function ($query) {
-                $query->whereHas('attributes', function ($attr) {
-                    $attr->whereIn('attribute_name', [
-                        'promo_compare_price',
-                        'compare_price',
-                        'harga_asli',
-                        'harga_sebelum_diskon',
-                    ]);
-                })->orWhereHas('attributes', function ($attr) {
-                    $attr->whereIn('attribute_name', ['promo_flash_sale', 'flash_sale'])
-                        ->whereIn('attribute_value', ['1', 'true', 'TRUE', 'True', 'yes', 'YES', 'on', 'ON']);
-                });
-            })
-            ->orderByDesc('homepage_popular')
-            ->orderBy('homepage_popular_sort')
-            ->orderByDesc('sold_count')
-            ->orderByDesc('id')
-            ->limit(24)
-            ->get()
-            ->filter(fn (Product $product) => ProductPromotionMetadata::isEligibleForAutoBanner($product))
-            ->sortBy(function (Product $product) {
-                // Prefer newest BOUVEN for banner imagery, then curated/popular, then discount.
-                $bouvenRank = self::isBouven($product->product_category) ? '0' : '1';
-                $popularRank = $product->homepage_popular ? '0' : '1';
-                $sort = str_pad((string) (int) ($product->homepage_popular_sort ?? 9999), 6, '0', STR_PAD_LEFT);
-                $discount = str_pad((string) (1000 - (int) (ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false)['discount_percent'] ?? 0)), 4, '0', STR_PAD_LEFT);
-                $sold = str_pad((string) (1000000 - (int) ($product->sold_count ?? 0)), 7, '0', STR_PAD_LEFT);
-                $id = str_pad((string) (1000000000 - $product->id), 10, '0', STR_PAD_LEFT);
-
-                return $bouvenRank.$popularRank.$sort.$discount.$sold.$id;
-            })
-            ->values();
     }
 
     /**
@@ -226,19 +166,19 @@ class HomepagePromotions
             'id' => 0,
             'source' => 'fallback',
             'layout' => 'landing',
-            'eyebrow' => 'Jendela Aluminium',
-            'headline' => "Berbagai Ukuran Siap\nPilih & Bisa Custom",
-            'subheadline' => '1.000.000+ Unit Terpasang di Seluruh Indonesia',
+            'eyebrow' => 'PROMO BOVEN JUNGKIT',
+            'headline' => 'Diskon 20%',
+            'subheadline' => 'Hanya Hari Ini !',
             'accent' => null,
             'image' => '/images/home/model-casement.png',
-            'image_alt' => 'Jendela aluminium berbagai ukuran',
-            'href' => route('catalog.windows', absolute: false),
+            'image_alt' => 'Promo bouven jungkit',
+            'href' => PublicNavigation::canonicalHref('catalog.category', ['category' => 'boven'], false),
         ];
     }
 
     /**
      * Campaign slides when CMS + auto promos empty.
-     * Prefer real newest BOUVEN (then DOOR) product photos — never static dummy promo art.
+     * Prefer real newest BOVEN (then PINTU) product photos - never static dummy promo art.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -246,12 +186,12 @@ class HomepagePromotions
     {
         $slides = [self::landingSlide()];
 
-        $bouven = self::newestCategoryProduct('BOUVEN');
+        $bouven = self::newestCategoryProduct('BOVEN');
         if ($bouven !== null) {
             $slides[] = self::productShowcaseSlide($bouven, id: -1);
         }
 
-        $door = self::newestCategoryProduct('DOOR');
+        $door = self::newestCategoryProduct('PINTU');
         if ($door !== null) {
             $slides[] = self::productShowcaseSlide($door, id: -2);
         }
@@ -270,7 +210,7 @@ class HomepagePromotions
         };
 
         return Product::visible()
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->whereIn('product_category', $aliases)
             ->whereHas('mainImage')
             ->whereHas('activeVariants', fn ($q) => $q->where('price', '>', 0))
@@ -350,19 +290,19 @@ class HomepagePromotions
     private static function modelListingHref(Product $product): string
     {
         $model = CatalogLabels::normalizeModel($product->product_model);
-        $route = match (strtoupper((string) $product->product_category)) {
-            'WINDOW', 'WINDOWS' => 'catalog.windows',
-            'DOOR', 'DOORS' => 'catalog.doors',
-            'BOUVEN', 'BOVEN' => 'catalog.bouven',
-            default => null,
-        };
+        $category = filled($product->product_category)
+            ? CategoryUrl::categoryToSlug((string) $product->product_category)
+            : null;
 
-        if ($route && $model) {
-            return route($route, ['model' => $model], absolute: false);
+        if ($category && $model) {
+            return PublicNavigation::canonicalHref('catalog.model', [
+                'category' => $category,
+                'model' => strtolower(str_replace('_', '-', $model)),
+            ], false);
         }
 
-        if ($route) {
-            return route($route, absolute: false);
+        if ($category) {
+            return PublicNavigation::canonicalHref('catalog.category', ['category' => $category], false);
         }
 
         return route('product.show', $product->parent_sku, absolute: false);
@@ -414,13 +354,19 @@ class HomepagePromotions
         ];
     }
 
+    /**
+     * Label kategori untuk copy slide. Kode kategori sudah kanonik
+     * (JENDELA/PINTU/BOVEN), jadi resolusi dipusatkan ke CatalogLabels supaya
+     * kategori dinamis dari tabel `categories` ikut terbaca. Kode tak dikenal
+     * jatuh ke 'Produk' (bukan kode mentah) agar copy tidak bocor kode internal.
+     */
     private static function categoryLabel(?string $category): string
     {
-        return match (strtoupper((string) $category)) {
-            'WINDOW', 'WINDOWS' => 'Jendela',
-            'DOOR', 'DOORS' => 'Pintu',
-            'BOUVEN', 'BOVEN' => 'Boven',
-            default => 'Produk',
-        };
+        $code = CatalogLabels::normalizeCategory($category);
+        if ($code === null) {
+            return 'Produk';
+        }
+
+        return CatalogLabels::category($code) ?: 'Produk';
     }
 }

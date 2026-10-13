@@ -1,10 +1,11 @@
-# Orchestration — Ragil Aluminium (`website.4.0`)
+# Orchestration — Ragil Aluminium
 
 Cara berpikir agent (adaptasi LOOPKIT, **bukan** harness Claude):  
 **kontrak → SoT → skill track → code → report → (opsional) memory.**
 
 Baca file ini + [`AGENTS.md`](../AGENTS.md) sebelum implementasi.  
-**Pindah server / deploy production** hanya setelah produk final & matang — jangan mulai sekarang.
+**Pindah server / deploy production** hanya setelah produk final & matang — jangan mulai sekarang.  
+**DATABASE SAFETY:** jangan `migrate:fresh` / `db:wipe` / truncate / drop data pada DB app (MySQL `ragil` / `.env` aktif) kecuali user **eksplisit** meminta di query yang sama. Detail: [`AGENTS.md`](../AGENTS.md) § Agent Rules → DATABASE SAFETY.
 
 Tidak ada `.claude/`, hooks, atau `run.sh`. Loop agent = baca dokumen ini → skill relevan → ubah code → laporkan format AGENTS.
 
@@ -12,7 +13,7 @@ Tidak ada `.claude/`, hooks, atau `run.sh`. Loop agent = baca dokumen ini → sk
 AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
         →  skill tracks (domain + technique)
         →  code
-        →  SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS
+        →  laporan kontekstual (format fleksibel AGENTS.md)
         ⇢  docs/MEMORY.md (milestone saja)
 ```
 
@@ -25,6 +26,134 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | `MEMORY.md` | `docs/MEMORY.md` |
 | `run.sh` | Tidak — alur di §6 |
 
+### Agent efficiency protocol
+
+Ragil agents MUST use two complementary external techniques as process
+helpers, not as application contracts:
+
+1. **Caveman** — default compression for prose-like agent output. Preserve
+   code, commands, paths, error strings, JSON, test evidence, contracts, and
+   the exact report format. If the runtime does not support the plugin, apply
+   the rule manually by removing repetition without changing meaning.
+2. **Compound Engineering** — default task loop:
+   **brainstorm → plan → work → review → compound**. If plugin commands are
+   unavailable, perform equivalent local phases using this document, the
+   relevant domain skills, tests, and `docs/MEMORY.md`.
+
+The local Ragil hierarchy always wins: explicit user scope and safety rules,
+`AGENTS.md`, this orchestration contract, canonical product/schema/API/UI
+contracts, then external technique helpers. These repositories are therefore
+agent-process references, not permission to invent routes, fields, statuses,
+providers, or UI behavior. See
+[`ADR-002`](decisions/ADR-002-agent-efficiency-and-compound-workflow.md).
+
+### Tier kerja dan anggaran langkah (2026-09-21)
+
+Biaya satu task sama dengan jumlah perjalanan bolak balik ke model dikali
+latensi tiap perjalanan. Log runtime 2026-09-20 mengukur latensi satu
+permintaan model median 11,4 detik dan satu panggilan tool median 3,2 detik,
+sehingga satu panggilan tool memakan 13 sampai 24 detik ujung ke ujung
+setelah perjalanan model berikutnya ikut dihitung. Jumlah langkah, bukan
+pilihan model, adalah pengungkit utama waktu.
+
+| Tier | Kriteria | Yang dijalankan | Anggaran panggilan tool |
+|------|----------|-----------------|-------------------------|
+| Trivial | 1-2 berkas, tanpa perubahan perilaku | plan ringkas di chat, lalu work | 15 |
+| Standard | satu bidang, ada test, tanpa kontrak eksternal | plan ringkas di chat, lalu work | 60 |
+| Deep | lintas modul, atau menyentuh auth, pembayaran, migrasi, kontrak eksternal | ce-brainstorm, ce-plan, ce-work, review, ce-compound | 270 |
+
+Aturan tier:
+
+1. Tier ditetapkan di awal dan ditulis di laporan. Bila ragu, ambil tier yang lebih berat.
+2. **Skill ce-* hanya dipanggil penuh di tier Deep.** Pada Trivial dan Standard, agen TIDAK memanggil `ce-brainstorm`, `ce-plan`, `ce-compound`, maupun `ce-doc-review`. Alasannya aritmetika, bukan selera: ce-plan sendiri 40-70 panggilan tool dan ce-work 50-80, jadi invokasi utuh keduanya 90-150 panggilan, sudah di atas anggaran Standard 60.
+3. **"Plan ringkas" punya bentuk tetap**, supaya tidak berkembang jadi skill mini. Tulis di chat saja, isinya: tujuan satu paragraf, berkas yang akan disentuh, cara verifikasi, dan risiko bila ada. Tanpa berkas plan, tanpa membaca belasan rujukan, tanpa menu pertanyaan. Anggaran 15 dan 60 dihitung untuk bentuk ini.
+4. Pada Trivial dan Standard, fase review cukup berupa diff dan test evidence di laporan, bukan invokasi `ce-code-review`.
+5. Anggaran Deep 270 dipakai karena rantai lima fase penuh terukur 162-267 panggilan tool, sehingga 150 terlalu kecil untuk menampungnya.
+6. Track wajib A-E dan daftar baca di §4 tetap berlaku di semua tier. Tier memangkas fase, bukan bukti kontrak.
+7. Lewat anggaran berarti berhenti dan lapor, bukan lanjut diam diam.
+8. Deep tidak boleh diturunkan tiernya dengan alasan waktu.
+
+Tier tidak pernah melonggarkan Non-negotiables: larangan destruktif DB, format
+laporan wajib, pembaruan dokumen kanonik saat spec berubah, dan bukti verifikasi
+tetap berlaku di semua tier.
+
+### Efisiensi akses dan bukti (2026-09-21)
+
+Dua kebiasaan menyumbang waktu terbesar setelah jumlah fase.
+
+**1. Satu panggilan ssh, bukan banyak.** Satu panggilan `ssh` ke 209 berbiaya
+tetap sekitar **3,1 detik**, tidak tergantung besar payload; RTT ping hanya
+260 ms dan multiplexing ControlMaster tidak menolong. Menyambung lima kali
+untuk lima perintah kecil memakan sekitar 15 detik untuk kerja nyaris nol,
+sementara satu panggilan yang menjalankan semuanya memakan sekitar 3 detik.
+
+- Gabungkan inspeksi remote dalam SATU panggilan: banyak `echo` pemisah dan
+  `sed`/`grep` dalam satu perintah, bukan satu tool call per berkas.
+- Untuk inspeksi berulang pada berkas yang sama, pakai cermin lokal
+  (`docs/VPS`, `docs/TEKNIS`) dan `Read`/`Grep`. Read lokal p50 sekitar 25
+  milidetik, jadi sekitar 128 kali lebih cepat daripada Bash.
+- Cermin hanya untuk MEMBACA. Semua penulisan tetap langsung ke repo VPS
+  sesuai kontrak "tanpa kerja lokal" di bawah.
+
+**2. Bukti visual sekali jalan.** Verifikasi visual tetap wajib, tapi jangan
+per halaman. Render dan screenshot per halaman lalu mengirim tiap gambar
+kembali ke konteks membuat gambar terakumulasi: satu sesi pernah menyimpan
+61 pasang screenshot dan direktori artefak menampung 338 PNG (155 MB), dan
+setiap gambar memperbesar setiap perjalanan model berikutnya.
+
+- Kumpulkan screenshot untuk seluruh halaman yang diperiksa dalam SATU batch,
+  simpan ke berkas, lalu nilai bersama.
+- Baca tiap gambar sekali. Jangan kirim ulang gambar yang sudah dinilai.
+- Jangan loop screenshot/vision; lihat kontrak preferensi owner.
+- Verifikasi visual memakai render lokal (`scripts/admin-preview.cjs`), bukan
+  render jarak jauh, sesuai AGENTS.md.
+
+**3. Sekali ditolak, ganti pendekatan.** Bila satu tool call ditolak kebijakan
+(mode plan, guard, atau izin), JANGAN mengulanginya dengan variasi perintah.
+Sesi 2026-09-21 menghabiskan 27 dari 136 percobaan tool (20 persen) pada
+perintah yang ditolak berulang, sekitar 9 menit untuk kerja nol. Ditolak sekali
+berarti ganti cara, bukan ulangi: pakai tool yang diizinkan, gabungkan jadi satu
+panggilan, atau berhenti dan tanya user.
+
+**4. Setiap panggilan tool harus punya tujuan dan hasil.** Anggaran tier adalah
+batas atas, bukan target. Dua arah yang sama salahnya:
+
+- **Boros:** memanggil tool yang hasilnya tidak dipakai. Terukur: tool seremonial
+  (TodoWrite, ExitPlanMode, TaskOutput) mencapai 47 sampai 55 persen dari jumlah
+  Edit+Write pada 18-19 Sep, jadi overhead hampir separuh kerja nyata. Termasuk
+  juga screenshot yang tidak pernah dinilai, dan berkas yang dibaca padahal tidak
+  memengaruhi keputusan.
+- **Malas:** melewatkan tool yang dibutuhkan task, misalnya mengubah kode tanpa
+  membaca berkasnya dulu, atau mengklaim selesai tanpa menjalankan verifikasi.
+  Itu bukan penghematan, itu risiko.
+
+Uji sebelum memanggil: bisa sebutkan dalam satu kalimat apa yang dicari dan apa
+yang akan dilakukan dengan hasilnya. Kalau tidak bisa, jangan dipanggil. Uji
+sesudah memanggil: hasilnya mengubah keputusan atau isi laporan. Kalau tidak,
+panggilan itu tidak perlu.
+
+Larangan tegas: jangan baca berkas yang sama dua kali untuk tujuan yang sama,
+jangan ambil screenshot yang tidak akan dinilai, jangan panggil verifikasi hanya
+sebagai formalitas, dan jangan lewatkan verifikasi untuk menghemat anggaran.
+
+Sebutkan jumlah panggilan tool aktual di laporan, supaya anggaran bisa dinilai,
+bukan diasumsikan.
+
+**Catatan provider (terukur 2026-09-20).** Dalam satu hari tercatat 145
+permintaan model gagal, 109 di antaranya HTTP 503 `provider_overloaded`,
+dengan 113 retry terjadwal dan `maxAttempts` bernilai 11. Kegagalan menggerombol
+di jendela sekitar 13 menit (contoh 12:15-12:28), bukan tersebar merata. Akibatnya
+204 permintaan memakan lebih dari 100 detik dan menyumbang sekitar sepertiga
+waktu model hari itu meski hanya 2 persen dari jumlah permintaan.
+
+Saat gagal beruntun seperti itu, hentikan pengiriman permintaan baru dan tunggu
+jendela pulih, jangan mengirim ulang berkali-kali. Nilai `maxAttempts` berasal
+dari runtime CLI dan **tidak ada di file konfigurasi yang bisa diedit user**, jadi
+perbaikan di sisi kami adalah mengurangi jumlah panggilan tool (lihat anggaran
+tier) dan berhenti saat jalur gagal.
+- Verifikasi visual memakai render lokal (`scripts/admin-preview.cjs`), bukan
+  render jarak jauh, sesuai AGENTS.md.
+
 ---
 
 ## 1. Kontrak (selalu)
@@ -32,6 +161,7 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | File | Peran |
 |------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Operating rules, phase timeline, **format laporan wajib** |
+| [`AGENT-ARCHITECT-ORCHESTRATOR.md`](AGENT-ARCHITECT-ORCHESTRATOR.md) | Supplemental architecture, gap, ADR, CI/CD, and release-gate contract |
 | File ini | Hierarki SoT, inventaris skill, alur baca, verify, out-of-scope |
 | [`MEMORY.md`](MEMORY.md) | Shift log lintas sesi (isi hanya di milestone) |
 
@@ -42,12 +172,13 @@ AGENTS + ORCHESTRATION  →  DESIGN / schema / API / sitemap
 | Prioritas | Sumber | Dipakai untuk |
 |-----------|--------|----------------|
 | 1 | [`PRODUCT-HANDOFF.md`](PRODUCT-HANDOFF.md) + route/controller/schema/API | Perilaku, data, dan inventaris layar |
-| 2 | [`../frontend/brand/BRAND-KIT.md`](../frontend/brand/BRAND-KIT.md) + `frontend/docs/*` | Visual language, UX, dan quality gate |
-| 3 | `docs/sitemap/*` + `config/sitemap.php` (+ `admin-sitemap.php`) | URL, label menu, status implemented/planned |
-| 4 | `docs/logic/stage-9*.md`, `docs/logic/stage-10*.md`, `docs/logic/ui-*-flows-*.md` | Perilaku data & form UI |
-| 5 | [`STOREFRONT-HOME.md`](STOREFRONT-HOME.md) | Peta beranda / ulasan / logo platform (Figma = referensi) |
-| 6 | `skills/stage-1` … `stage-8` | Workflow domain |
-| 7 | `frontend/skills/*` | Workflow UI storefront/admin/visual QA |
+2 | [`FULL-STACK-PRODUCTION-CHECKLIST.md`](FULL-STACK-PRODUCTION-CHECKLIST.md) | Release gate, security, operations, recovery, and production evidence |
+3 | [`../frontend/brand/BRAND-KIT.md`](../frontend/brand/BRAND-KIT.md) + `frontend/docs/*` | Visual language, UX, dan quality gate |
+4 | `docs/sitemap/*` + `config/sitemap.php` (+ `admin-sitemap.php`) | URL, label menu, status implemented/planned |
+5 | `docs/logic/stage-9*.md`, `docs/logic/stage-10*.md`, `docs/logic/ui-*-flows-*.md` | Perilaku data & form UI |
+6 | [`STOREFRONT-HOME.md`](STOREFRONT-HOME.md) | Peta beranda / ulasan / logo platform (Figma = referensi) |
+7 | `skills/stage-1` … `stage-8` | Workflow domain |
+8 | `frontend/skills/*` | Workflow UI storefront/admin/visual QA |
 
 **Dilarang:** menyalin/port UI dari `website_2.0/ui` (Next.js). Sitemap/CTA/wireframe → `docs/sitemap/`.
 
@@ -72,7 +203,8 @@ Lokasi:
 |--------|-----|
 | `skills/*.md` | Domain Ragil stage 1–8 (**autoritatif**) |
 | `frontend/skills/*` | Workflow UI Ragil public, admin, dan visual QA |
-| `.agents/skills/*` | Marketplace / teknik: Laravel, Blade, Tailwind, Alpine, frontend, docs, `design-taste-frontend`, `laravel-testing` |
+| `.agents/skills/*` | Teknik aktif: Laravel, Blade, Tailwind, frontend, docs, `design-taste-frontend`, `laravel-testing` |
+| `.agents/skills-archive/*` | Teknik historis/nonaktif; dipakai hanya setelah scope eksplisit |
 | Cursor skills | Review, PR, loop — hanya jika user minta |
 | `docs/logic/*`, schema, API | Kontrak behaviour / data (bukan skill file) |
 
@@ -84,9 +216,11 @@ Marketplace **tidak** mengganti Product Handoff / frontend governance / schema /
 |-----------|--------|--------|
 | Operating rules + report | `AGENTS.md` | Ada |
 | SoT + peta skill | `docs/ORCHESTRATION.md` (file ini) | Ada |
-| Pola Agents.md | `.agents/skills/create-agentsmd` | Ada (jarang) |
+| Pola Agents.md | `.agents/skills-archive/create-agentsmd` | Arsip — tidak diperlukan runtime |
 | Disiplin docs / ADR | `.agents/skills/documentation-and-adrs` | Ada |
-| Cari skill baru | `.agents/skills/find-skills` | Ada |
+| Cari skill baru | `.agents/skills-archive/find-skills` | Arsip — install manual bila dibutuhkan |
+| Output efficiency | `JuliusBrussee/caveman` | Wajib sebagai teknik, plugin opsional |
+| Task execution loop | `EveryInc/compound-engineering-plugin` | Wajib sebagai teknik, plugin opsional |
 
 ### Track B — Domain backend (Ragil-only)
 
@@ -149,6 +283,7 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 - Rewrite penuh ke Next.js storefront
 - Skill React/shadcn sebagai SoT UI publik
 - Hard-delete data (pakai archive per schema)
+- **Reset DB / wipe data** (`migrate:fresh`, `migrate:refresh`, `db:wipe`, truncate massal) tanpa instruksi eksplisit user — lihat `AGENTS.md` DATABASE SAFETY
 - Menambah URL tanpa update `docs/sitemap/` + config sitemap + API routes doc
 
 **Dev remote OK:** VPS sebagai workstation Cursor Remote SSH (bukan toko live) — lihat [`docs/dev-vps-remote.md`](dev-vps-remote.md) + `scripts/dev-vps/`.
@@ -177,7 +312,8 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 |--------|-----|
 | `skills/*.md` | Domain stage 1–8 |
 | `frontend/skills/*` | Public/admin/visual QA lokal |
-| `.agents/skills/*` | Marketplace teknik (Laravel, Blade, Tailwind, Alpine, frontend, docs, design-taste, laravel-testing) |
+| `.agents/skills/*` | Teknik aktif (Laravel, Blade, Tailwind, frontend, docs, design-taste, laravel-testing) |
+| `.agents/skills-archive/*` | Teknik yang tidak dipakai oleh runtime saat ini |
 | Cursor skills | Review / PR / loop |
 | `docs/logic/stage-9*`, `stage-10*` | Kontrak UI (bukan marketplace) |
 
@@ -185,15 +321,22 @@ Visual mengikuti Brand Kit dan Design System di `frontend/`; route, props, dan p
 
 ## 6. Alur kerja agent (urutan)
 
-1. Baca `AGENTS.md` (format laporan).
-2. Baca file ini — pilih **track** dan skill wajib.
-3. Baca SoT yang relevan (Product Handoff / frontend / sitemap / schema / API / logic).
-4. Baca skill domain di `skills/` dan UI di `frontend/skills/`.
-5. Bila perlu teknik saja: skill di `.agents/skills/` (boleh; jangan override SoT).
-6. Ubah code; jangan invent field/route/JSON di luar schema & API docs.
+**Tier dulu, baru urutan.** Tetapkan tier (lihat "Tier kerja dan anggaran langkah")
+sebelum menjalankan urutan di bawah. Pada tier Trivial dan Standard, langkah 1
+(brainstorm) dan langkah 11 (compound) dilewati.
+
+1. Jalankan fase **brainstorm** Compound Engineering secara ringkas: pahami tujuan, risiko, dan batasan. Dilewati pada tier Trivial dan Standard.
+2. Baca `AGENTS.md` (format laporan) dan terapkan kompresi prose Caveman tanpa mengubah bukti teknis.
+3. Bila merencanakan, mengaudit, membuat ADR, atau menilai release: baca `AGENT-ARCHITECT-ORCHESTRATOR.md`.
+4. Jalankan fase **plan**: baca file ini, pilih **track**, skill wajib, SoT, dan strategi test.
+5. Baca SoT yang relevan (Product Handoff / frontend / sitemap / schema / API / logic).
+6. Baca skill domain di `skills/` dan UI di `frontend/skills/`.
+7. Bila perlu teknik saja: skill di `.agents/skills/` (boleh; jangan override SoT).
+8. Jalankan fase **work**: ubah code; jangan invent field/route/JSON di luar schema & API docs.
    - **UI/fitur:** analisis aksi di layar → sambungkan ke backend yang ada → verifikasi fungsional (lihat `ragil-ui-functional-integration`). Dilarang selesai sebagai mockup.
-7. Laporkan SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS.
-8. Milestone besar: satu entri singkat di `docs/MEMORY.md`.
+9. Jalankan fase **review**: cek diff, kontrak, keamanan, regression, dan test evidence.
+10. Laporkan dengan format kontekstual AGENTS.md (pilih seksi sesuai jenis pekerjaan).
+11. Jalankan fase **compound**: hanya catat keputusan, gotcha, atau milestone reusable di `docs/MEMORY.md`. Dilewati pada tier Trivial dan Standard.
 
 ---
 

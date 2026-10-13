@@ -1,0 +1,265 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\WhatsAppMessage;
+use App\Services\ActivityLogService;
+use App\Services\WhatsAppService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+
+class WhatsAppPairingController extends Controller
+{
+    protected function baseUrl(): string
+    {
+        return rtrim((string) config('services.whatsapp.baileys.base_url'), '/');
+    }
+
+    protected function headers(): array
+    {
+        return ['X-Api-Key' => (string) config('services.whatsapp.baileys.api_key')];
+    }
+
+    public function show(): Response
+    {
+        $service = app(WhatsAppService::class);
+
+        $outbound = WhatsAppMessage::query()->where('direction', 'outbound');
+        $stats = [
+            'sent' => (clone $outbound)->whereIn('status', ['sent', 'delivered', 'read'])->count(),
+            'failed' => (clone $outbound)->where('status', 'failed')->count(),
+            'total' => WhatsAppMessage::query()->count(),
+        ];
+
+        return Inertia::render('Admin/WhatsApp/Pairing', [
+            'title' => 'Sambungkan Nomor WhatsApp',
+            'description' => 'Hubungkan gateway WhatsApp ke nomor toko lewat scan QR atau kode pairing.',
+            'stats' => $stats,
+            'templatesUrl' => route('admin.whatsapp.templates.index'),
+            'statusUrl' => route('admin.whatsapp.pairing.status'),
+            'qrUrl' => route('admin.whatsapp.pairing.qr'),
+            'codeUrl' => route('admin.whatsapp.pairing.code'),
+            'refreshQrUrl' => route('admin.whatsapp.pairing.refresh-qr'),
+            'disconnectUrl' => route('admin.whatsapp.pairing.disconnect'),
+            'provider' => $service->connectionStatus()['default_provider'],
+            // Status awal dikirim sejak render pertama supaya halaman tidak
+            // sempat menampilkan section QR dan pairing code lalu berganti ke
+            // kartu terhubung (kedipan konten salah). Timeout diperpendek
+            // karena panggilan ini menahan render halaman.
+            'initialStatus' => $this->statusPayload(3),
+            'flash' => [
+                'success' => session('whatsapp_success'),
+                'error' => session('whatsapp_error'),
+                'code' => session('whatsapp_code'),
+            ],
+        ]);
+    }
+
+    protected function sessionInfo(bool $connected): array
+    {
+        // Only a truly connected (open) gateway has a linked device. A creds file
+        // with a `me.id` does NOT mean the device was linked : requestPairingCode
+        // writes it before pairing completes. So report the number only when open.
+        if (! $connected) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
+
+        $path = '/opt/baileys-bot/session/creds.json';
+        if (! is_file($path)) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
+
+        try {
+            $data = json_decode((string) file_get_contents($path), true);
+            $me = $data['me'] ?? null;
+            $id = is_array($me) ? ($me['id'] ?? null) : null;
+            $phone = $id ? (string) preg_replace('/@.+$/', '', (string) $id) : null;
+
+            return [
+                'has_session' => filled($phone),
+                'connected_phone' => $phone,
+                'session_name' => is_array($me) ? ($me['name'] ?? null) : null,
+            ];
+        } catch (\Throwable $e) {
+            return ['has_session' => false, 'connected_phone' => null, 'session_name' => null];
+        }
+    }
+
+    public function status(): JsonResponse
+    {
+        return response()->json($this->statusPayload());
+    }
+
+    /**
+     * Status gateway apa adanya, dipakai dua tempat: endpoint polling
+     * (status()) dan data awal halaman sambungkan nomor (show()).
+     *
+     * Satu pembangun dipakai bersama supaya keadaan yang dilihat admin pada
+     * render pertama identik dengan hasil polling berikutnya; kalau berbeda,
+     * halaman akan tampak berpindah sendiri tanpa sebab.
+     *
+     * Timeout diparamkan karena pemanggilan dari show() menahan render halaman,
+     * sedangkan pemanggilan dari polling tidak.
+     *
+     * @return array<string, mixed>
+     */
+    protected function statusPayload(int $timeoutSeconds = 5): array
+    {
+        try {
+            $response = Http::timeout($timeoutSeconds)->get($this->baseUrl().'/status');
+
+            if ($response->failed()) {
+                return [
+                    'status' => 'unreachable',
+                    'statusText' => 'Gateway tidak merespons ('.(string) $response->status().')',
+                    'phone' => '',
+                ];
+            }
+
+            $payload = $response->json() ?? [
+                'status' => 'unknown',
+                'statusText' => 'Balasan gateway tidak terbaca',
+                'phone' => '',
+            ];
+
+            $connected = (($payload['status'] ?? '') === 'open');
+            $sessionInfo = $this->sessionInfo($connected);
+
+            // Fallback: gunakan data connected_phone dan has_session dari gateway
+            if ($connected) {
+                $sessionInfo['has_session'] = true;
+                if (empty($sessionInfo['connected_phone'])) {
+                    $sessionInfo['connected_phone'] = (string) ($payload['connected_phone'] ?? ($payload['phone'] ?? ''));
+                }
+                if (empty($sessionInfo['session_name']) && ! empty($payload['session_name'])) {
+                    $sessionInfo['session_name'] = (string) $payload['session_name'];
+                }
+            }
+
+            $merged = array_merge($payload, $sessionInfo);
+            if (! empty($merged['connected_phone'])) {
+                $merged['connected_phone'] = preg_replace('/[:@].*$/', '', (string) $merged['connected_phone']);
+            }
+
+            return $merged;
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'unreachable',
+                'statusText' => 'Gateway tidak dapat dijangkau',
+                'phone' => '',
+            ];
+        }
+    }
+
+    public function qr(): SymfonyResponse
+    {
+        // Gateway yang tidak terjangkau harus memberi 404 yang rapi
+        // ("QR belum tersedia"), bukan 500: konsisten dengan method lain di
+        // controller ini yang semuanya memakai try/catch.
+        try {
+            $response = Http::timeout(5)->get($this->baseUrl().'/qr.png');
+        } catch (\Throwable) {
+            abort(404, 'QR belum tersedia');
+        }
+
+        if ($response->failed()) {
+            abort(404, 'QR belum tersedia');
+        }
+
+        return response($response->body(), 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function refreshQr(): RedirectResponse|JsonResponse
+    {
+        ActivityLogService::record(
+            'whatsapp.refresh_qr',
+            'whatsapp_gateway',
+            1,
+            ['reason' => 'Generate QR baru dari panel admin'],
+            request()->user()?->id,
+        );
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders($this->headers())
+                ->post($this->baseUrl().'/api/refresh-qr');
+
+            if ($response->failed()) {
+                return back()->with('whatsapp_error', $response->json('error') ?? 'Gagal membuat QR baru.');
+            }
+
+            return back()->with('whatsapp_success', 'Membuat QR baru... Scan dalam beberapa detik.');
+        } catch (\Throwable $e) {
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
+        }
+    }
+
+    public function code(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:20'],
+        ]);
+
+        $phone = preg_replace('/[^0-9]/', '', (string) $validated['phone']);
+        if ($phone === '') {
+            return response()->json(['error' => 'Nomor WhatsApp tidak valid.'], 422);
+        }
+
+        ActivityLogService::record(
+            'whatsapp.pairing_code',
+            'whatsapp_gateway',
+            1,
+            ['phone' => $phone],
+            $request->user()?->id,
+        );
+
+        try {
+            $response = Http::timeout(20)
+                ->withHeaders($this->headers())
+                ->post($this->baseUrl().'/pairing-code', ['phone' => $phone]);
+
+            if ($response->failed()) {
+                return back()->with('whatsapp_error', $response->json('error') ?? 'Gagal membuat pairing code.');
+            }
+
+            return back()->with('whatsapp_code', (string) $response->json('code'));
+        } catch (\Throwable $e) {
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
+        }
+    }
+
+    public function disconnect(): RedirectResponse
+    {
+        ActivityLogService::record(
+            'whatsapp.disconnect',
+            'whatsapp_gateway',
+            1,
+            ['reason' => 'Putuskan sesi WhatsApp dari panel admin'],
+            request()->user()?->id,
+        );
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders($this->headers())
+                ->post($this->baseUrl().'/disconnect');
+
+            if ($response->failed()) {
+                return back()->with('whatsapp_error', $response->json('message') ?? 'Gagal memutuskan sesi WhatsApp.');
+            }
+
+            return back()->with('whatsapp_success', 'Sesi WhatsApp berhasil diputuskan. Kartu scan QR dan pairing code kini dapat digunakan untuk menghubungkan nomor baru.');
+        } catch (\Throwable $e) {
+            return back()->with('whatsapp_error', 'Gateway tidak dapat dijangkau.');
+        }
+    }
+}

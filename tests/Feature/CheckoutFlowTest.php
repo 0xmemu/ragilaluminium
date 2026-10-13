@@ -6,16 +6,39 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FakesJntTariff;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
-class CheckoutFlowTest extends \Tests\TestCase
+class CheckoutFlowTest extends TestCase
 {
+    use FakesJntTariff;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
 
     public function test_checkout_creates_order_items_and_payment(): void
     {
         $product = Product::create([
             'parent_sku' => 'WIN-ORD-1', 'name' => 'Window', 'category_id' => 1,
-            'product_category' => 'WINDOW', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
         ]);
         $variant = ProductVariant::create([
             'product_id' => $product->id, 'variant_sku' => 'WIN-ORD-1-V1',
@@ -44,26 +67,78 @@ class CheckoutFlowTest extends \Tests\TestCase
             'postal_code' => '12190',
         ])->assertRedirect();
 
+        // J&T palsu: test tidak menyentuh API live, jadi biaya asuransi tetap
+        // keluar dan assertion di bawah terpenuhi tanpa kredensial J&T.
+        $this->fakeJntTariff();
+
         $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
-            ->assertRedirectContains('/order/RA-');
+            ->assertRedirectContains('/order/ORD');
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);
-        $this->assertEquals('pending_payment', $order->order_status);
+        $this->assertEquals('awaiting_confirmation', $order->order_status);
         $this->assertEquals('pending', $order->payment_status);
         $this->assertEquals('KEBAYORAN BARU', $order->shipping_district);
         $this->assertEquals('SENAYAN', $order->shipping_village);
         // Subtotal otoritatif dari harga DB (2 x 1.000.000).
         $this->assertEquals(2000000, (float) $order->subtotal_amount);
-        // Total = subtotal + ongkir (dihitung otomatis saat checkout).
+        // Total = subtotal + ongkir + asuransi. Sejak keputusan owner
+        // 2026-09-18 asuransi selalu ikut ke tagihan ongkir, jadi total
+        // memuatnya secara eksplisit.
+        $this->assertGreaterThan(0.0, (float) $order->shipping_insurance_amount);
         $this->assertEquals(
-            (float) $order->subtotal_amount + (float) $order->shipping_amount,
+            (float) $order->subtotal_amount
+                + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount,
             (float) $order->total_amount
         );
         // Stok berkurang setelah order dibuat.
         $this->assertEquals(3, $variant->fresh()->stock);
         $this->assertDatabaseHas('order_items', ['order_id' => $order->id, 'variant_sku' => 'WIN-ORD-1-V1', 'quantity' => 2]);
         $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'status' => 'pending']);
+    }
+
+    public function test_checkout_persists_address_line2_and_item_note_to_order(): void
+    {
+        $product = Product::create([
+            'parent_sku' => 'WIN-ORD-2', 'name' => 'Window', 'category_id' => 1,
+            'product_category' => 'JENDELA', 'product_model' => 'JUNGKIT', 'design_variant' => 'POLOS', 'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id, 'variant_sku' => 'WIN-ORD-2-V1',
+            'price' => 1000000, 'stock' => 5, 'status' => 'active',
+        ]);
+
+        $this->withSession(['ragil_cart' => [
+            'WIN-ORD-2-V1' => [
+                'line_id' => 'WIN-ORD-2-V1', 'parent_sku' => 'WIN-ORD-2', 'variant_sku' => 'WIN-ORD-2-V1',
+                'name' => 'Window', 'unit_price' => 1000000, 'quantity' => 1, 'note' => 'Hubungi sebelum pengiriman',
+            ],
+        ]]);
+
+        $this->post('/checkout/validate', [
+            'name' => 'Budi',
+            'phone' => '0812',
+            'address_line1' => 'Jl A No 1',
+            'address_line2' => 'Dekat gerbang utama',
+            'province' => 'JAWA BARAT',
+            'city' => 'KOTA BANDUNG',
+            'district' => 'COBLONG',
+            'village' => 'LEBAK GEDE',
+            'province_id' => '32',
+            'city_id' => '3273',
+            'district_id' => '3273010',
+            'village_id' => '3273010001',
+            'postal_code' => '40132',
+        ])->assertRedirect();
+
+        $this->post('/checkout/place-order', ['payment_method' => 'transfer'])
+            ->assertRedirectContains('/order/ORD');
+
+        $order = Order::latest()->first();
+        $this->assertNotNull($order);
+        $this->assertSame('Dekat gerbang utama', $order->shipping_address_line2);
+        $this->assertDatabaseHas('order_items', ['order_id' => $order->id]);
     }
 
     public function test_checkout_validate_requires_wilayah_fields(): void
@@ -83,7 +158,8 @@ class CheckoutFlowTest extends \Tests\TestCase
                 'postal_code' => '12345',
             ])
             ->assertRedirect('/checkout')
-            ->assertSessionHasErrors(['province', 'city', 'district', 'village', 'province_id', 'city_id', 'district_id', 'village_id']);
+            // Nama wilayah wajib; *_id hanya penanda dropdown (nullable).
+            ->assertSessionHasErrors(['province', 'city', 'district', 'village']);
     }
 
     public function test_checkout_validate_stores_wilayah_names_in_session(): void
@@ -114,5 +190,62 @@ class CheckoutFlowTest extends \Tests\TestCase
         $this->assertEquals('KOTA BANDUNG', session('checkout_details.city'));
         $this->assertEquals('COBLONG', session('checkout_details.district'));
         $this->assertEquals('LEBAK GEDE', session('checkout_details.village'));
+    }
+
+    public function test_checkout_retry_returns_same_order_and_decrements_stock_once(): void
+    {
+        $product = Product::create([
+            'parent_sku' => 'WIN-IDEMP-1',
+            'name' => 'Window',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-IDEMP-1-V1',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+
+        $this->withSession(['ragil_cart' => [
+            'WIN-IDEMP-1-V1' => [
+                'line_id' => 'WIN-IDEMP-1-V1',
+                'parent_sku' => 'WIN-IDEMP-1',
+                'variant_sku' => 'WIN-IDEMP-1-V1',
+                'name' => 'Window',
+                'unit_price' => 1000000,
+                'quantity' => 1,
+            ],
+        ]]);
+
+        $this->post('/checkout/validate', [
+            'name' => 'Budi',
+            'phone' => '0812',
+            'address_line1' => 'Jl A No 1',
+            'province' => 'JAWA BARAT',
+            'city' => 'KOTA BANDUNG',
+            'district' => 'COBLONG',
+            'village' => 'LEBAK GEDE',
+            'province_id' => '32',
+            'city_id' => '3273',
+            'district_id' => '3273010',
+            'village_id' => '3273010001',
+            'postal_code' => '40132',
+        ])->assertRedirect();
+
+        $first = $this->post('/checkout/place-order', ['payment_method' => 'transfer']);
+        $order = Order::sole();
+
+        $retry = $this->post('/checkout/place-order', ['payment_method' => 'transfer']);
+
+        $this->assertSame($first->headers->get('Location'), $retry->headers->get('Location'));
+        $this->assertNotNull($order->checkout_idempotency_key);
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame(4, $variant->fresh()->stock);
     }
 }

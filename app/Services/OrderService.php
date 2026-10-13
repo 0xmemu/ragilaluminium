@@ -2,15 +2,21 @@
 
 namespace App\Services;
 
+use App\Domain\Orders\OrderStateMachine;
+use App\Events\OrderCancelled;
 use App\Events\OrderCreated;
+use App\Events\OrderProcessingStarted;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\Shipping\ShipmentPackageCalculator;
 use App\Support\CodSettings;
 use App\Support\PhoneNumber;
+use App\Support\ShippingPalletSettings;
+use App\Support\StockLedger;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,15 +27,16 @@ class OrderService
         protected CartService $cart,
         protected VoucherService $vouchers,
         protected CustomerService $customers,
-    ) {
-    }
+        protected OrderStateMachine $states,
+        protected ShippingService $shipping,
+    ) {}
 
     /**
      * Buat order dari isi cart dengan revalidasi harga & stok TERHADAP DATABASE
      * (harga di session tidak dipercaya). Stok dikunci & dikurangi dalam
      * transaksi untuk mencegah race/oversell. FK product_id dijamin valid.
      *
-     * @param  array{code?: string, discount?: float}|null  $voucher
+     * @param  array{code?: string, codes?: list<string>, discount?: float}|null  $voucher
      */
     public function createFromCart(
         array $customer,
@@ -38,8 +45,21 @@ class OrderService
         ?float $shippingCost = 0,
         ?array $voucher = null,
         float $shippingSubsidy = 0,
+        float $shippingInsurance = 0,
+        ?string $idempotencyKey = null,
     ): Order {
-        $items = $this->cart->get();
+        $idempotencyKey = trim((string) $idempotencyKey);
+        if ($idempotencyKey === '' || ! Str::isUuid($idempotencyKey)) {
+            throw new \DomainException('Token checkout tidak valid. Muat ulang halaman checkout.');
+        }
+
+        $existingOrder = Order::where('checkout_idempotency_key', $idempotencyKey)->first();
+        if ($existingOrder) {
+            return $existingOrder;
+        }
+
+        $selected = $this->cart->getSelectedLines();
+        $items = $this->cart->get($selected ?: null);
 
         if (empty($items)) {
             throw new \DomainException('Keranjang kosong, tidak dapat membuat pesanan.');
@@ -47,193 +67,395 @@ class OrderService
 
         $shippingCost = (float) ($shippingCost ?? 0);
         $shippingSubsidy = max(0, (float) $shippingSubsidy);
+        $shippingInsurance = max(0, (float) $shippingInsurance);
 
-        return $this->createWithRetryOnDuplicateNumber(function (string $orderNumber) use ($customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy) {
-            return DB::transaction(function () use ($orderNumber, $customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy) {
-                $subtotal = 0.0;
-                $discountTotal = 0.0;
-                $resolved = [];
+        try {
+            return $this->createWithRetryOnDuplicateNumber(function (string $orderNumber) use ($customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $shippingInsurance, $idempotencyKey) {
+                return DB::transaction(function () use ($orderNumber, $customer, $shipping, $paymentMethod, $shippingCost, $items, $voucher, $shippingSubsidy, $shippingInsurance, $idempotencyKey) {
+                    $subtotal = 0.0;
+                    $discountTotal = 0.0;
+                    $resolved = [];
 
-                foreach ($items as $item) {
-                    $product = Product::where('parent_sku', $item['parent_sku'])
-                        ->with(['attributes', 'activeVariants'])
-                        ->first();
-                    if (! $product || $product->status !== 'active') {
-                        throw new \DomainException("Produk {$item['parent_sku']} tidak tersedia.");
-                    }
-
-                    $variant = null;
-                    if (! empty($item['variant_sku'])) {
-                        $variant = ProductVariant::where('variant_sku', $item['variant_sku'])
-                            ->where('product_id', $product->id)
-                            ->lockForUpdate()
+                    foreach ($items as $item) {
+                        $product = Product::where('parent_sku', $item['parent_sku'])
+                            ->with(['attributes', 'activeVariants.attributes'])
                             ->first();
-
-                        if (! $variant || $variant->status !== 'active') {
-                            throw new \DomainException("Varian {$item['variant_sku']} tidak tersedia.");
+                        if (! $product || $product->status !== 'active') {
+                            throw new \DomainException("Produk {$item['parent_sku']} tidak tersedia.");
                         }
-                    }
 
-                    $qty = max(1, (int) $item['quantity']);
+                        $variant = null;
+                        if (! empty($item['variant_sku'])) {
+                            $variant = ProductVariant::where('variant_sku', $item['variant_sku'])
+                                ->where('product_id', $product->id)
+                                ->lockForUpdate()
+                                ->first();
 
-                    // Harga otoritatif dari DB + metadata promo (bukan session).
-                    $pricing = $this->cart->priceFor($product, $variant);
-                    $unitPrice = $pricing['unit_price'];
-
-                    if ($unitPrice <= 0) {
-                        throw new \DomainException("Harga produk {$product->parent_sku} tidak valid.");
-                    }
-
-                    if ($variant) {
-                        if ($variant->stock < $qty) {
-                            throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
+                            if (! $variant || $variant->status !== 'active') {
+                                throw new \DomainException("Varian {$item['variant_sku']} tidak tersedia.");
+                            }
                         }
-                        $variant->decrement('stock', $qty);
+
+                        $qty = max(1, (int) $item['quantity']);
+
+                        // Harga otoritatif dari DB + metadata promo (bukan session).
+                        $pricing = $this->cart->priceFor($product, $variant);
+                        $unitPrice = $pricing['unit_price'];
+
+                        if ($unitPrice <= 0) {
+                            throw new \DomainException("Harga produk {$product->parent_sku} tidak valid.");
+                        }
+
+                        if ($variant) {
+                            if ($variant->stock < $qty) {
+                                throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
+                            }
+                            StockLedger::apply(
+                                $variant,
+                                -$qty,
+                                'order_out',
+                                'checkout',
+                                null,
+                                'stok dikunci saat order dibuat (id pesanan belum terbit)',
+                            );
+                        }
+
+                        $lineSubtotal = $unitPrice * $qty;
+                        $compareUnit = $pricing['compare_price'];
+                        $lineDiscount = $compareUnit !== null && $compareUnit > $unitPrice
+                            ? ($compareUnit - $unitPrice) * $qty
+                            : 0.0;
+                        $flashSale = (bool) ($pricing['flash_sale'] ?? false);
+                        $subtotal += $lineSubtotal;
+                        $discountTotal += $lineDiscount;
+
+                        $resolved[] = compact(
+                            'product',
+                            'variant',
+                            'item',
+                            'qty',
+                            'unitPrice',
+                            'lineSubtotal',
+                            'lineDiscount',
+                            'flashSale',
+                        );
                     }
 
-                    $lineSubtotal = $unitPrice * $qty;
-                    $compareUnit = $pricing['compare_price'];
-                    $lineDiscount = $compareUnit !== null && $compareUnit > $unitPrice
-                        ? ($compareUnit - $unitPrice) * $qty
-                        : 0.0;
-                    $subtotal += $lineSubtotal;
-                    $discountTotal += $lineDiscount;
+                    $voucherCode = null;
+                    $voucherDiscount = 0.0;
+                    $voucherCodes = $this->vouchers->codesFromPayload($voucher);
+                    if ($voucherCodes !== []) {
+                        $voucherLines = collect($resolved)->map(fn (array $r): array => [
+                            'product_id' => $r['product']->id,
+                            'product_model' => $r['product']->product_model,
+                            'amount' => (float) $r['lineSubtotal'],
+                        ])->all();
+                        $applied = $this->vouchers->applyCodesToLines($voucherCodes, $voucherLines);
+                        $voucherCode = $applied['code'];
+                        $voucherDiscount = $applied['discount'];
+                    }
 
-                    $resolved[] = compact(
-                        'product',
-                        'variant',
-                        'item',
-                        'qty',
-                        'unitPrice',
-                        'lineSubtotal',
-                        'lineDiscount',
-                    );
-                }
+                    $subtotalAfterVoucher = max(0, $subtotal - $voucherDiscount);
+                    $codFee = 0.0;
+                    if ($paymentMethod === 'cod') {
+                        CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
+                        // Basis COD = TOTAL PEMBAYARAN sebelum biaya COD:
+                        // subtotal setelah voucher + ongkos kirim yang dibayar
+                        // pembeli (memuat asuransi bila J&T menagihnya).
+                        // Perlakuannya sama dengan atau tanpa asuransi.
+                        $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost + $shippingInsurance);
+                    }
 
-                $voucherCode = null;
-                $voucherDiscount = 0.0;
-                if (! empty($voucher['code'])) {
-                    $applied = $this->vouchers->applyCode((string) $voucher['code'], $subtotal);
-                    $voucherCode = $applied['code'];
-                    $voucherDiscount = $applied['discount'];
-                }
+                    $package = $this->packageForResolvedLines($resolved);
+                    $packageWeight = (float) ($package['chargeable_weight_kg'] ?? 0);
+                    if ($packageWeight <= 0) {
+                        $fallbackWeight = $this->cartWeightForLines($resolved);
+                        $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
+                        $package['chargeable_weight_kg'] = $packageWeight;
+                    }
+                    $total = max(0, $subtotal + $shippingCost + $shippingInsurance - $voucherDiscount + $codFee);
 
-                $subtotalAfterVoucher = max(0, $subtotal - $voucherDiscount);
-                $codFee = 0.0;
-                if ($paymentMethod === 'cod') {
-                    CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
-                    $codFee = CodSettings::calculateFee($subtotalAfterVoucher);
-                }
-
-                $total = max(0, $subtotal + $shippingCost - $voucherDiscount + $codFee);
-
-                $customerRecord = $this->customers->upsertFromCheckout([
-                    'name' => $customer['name'],
-                    'phone' => $customer['phone'],
-                    'email' => $customer['email'] ?? null,
-                    'address_line1' => $shipping['address_line1'],
-                    'address_line2' => $shipping['address_line2'] ?? null,
-                    'city' => $shipping['city'],
-                    'province' => $shipping['province'],
-                    'postal_code' => $shipping['postal_code'],
-                    'country' => $shipping['country'] ?? 'Indonesia',
-                ]);
-
-                $order = Order::create([
-                    'order_number' => $orderNumber,
-                    'customer_id' => $customerRecord->id,
-                    'customer_name' => $customer['name'],
-                    'customer_phone' => PhoneNumber::normalize($customer['phone']) ?? $customer['phone'],
-                    'customer_email' => $customer['email'] ?? null,
-                    'shipping_address_line1' => $shipping['address_line1'],
-                    'shipping_address_line2' => $shipping['address_line2'] ?? null,
-                    'shipping_city' => $shipping['city'],
-                    'shipping_province' => $shipping['province'],
-                    'shipping_district' => $shipping['district'] ?? null,
-                    'shipping_village' => $shipping['village'] ?? null,
-                    'shipping_postal_code' => $shipping['postal_code'],
-                    'shipping_country' => $shipping['country'] ?? 'Indonesia',
-                    'order_status' => 'pending_payment',
-                    'payment_status' => 'pending',
-                    'shipping_status' => 'pending_pickup',
-                    'subtotal_amount' => $subtotal,
-                    'shipping_amount' => $shippingCost,
-                    'shipping_subsidy_amount' => round($shippingSubsidy, 2),
-                    'discount_amount' => round($discountTotal, 2),
-                    'voucher_code' => $voucherCode,
-                    'voucher_discount_amount' => round($voucherDiscount, 2),
-                    'cod_fee_amount' => round($codFee, 2),
-                    'total_amount' => $total,
-                    'payment_method' => $paymentMethod,
-                    'cod_flag' => $paymentMethod === 'cod',
-                    'notes' => $customer['notes'] ?? null,
-                ]);
-
-                foreach ($resolved as $r) {
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $r['product']->id,
-                        'product_variant_id' => $r['variant']?->id,
-                        'parent_sku' => $r['product']->parent_sku,
-                        'variant_sku' => $r['variant']?->variant_sku,
-                        'name' => $r['product']->name,
-                        'variation_1_name' => $r['variant']?->variation_1_name,
-                        'variation_1_option' => $r['variant']?->variation_1_option,
-                        'variation_2_name' => $r['variant']?->variation_2_name,
-                        'variation_2_option' => $r['variant']?->variation_2_option,
-                        'unit_price' => $r['unitPrice'],
-                        'quantity' => $r['qty'],
-                        'line_subtotal' => $r['lineSubtotal'],
-                        'line_discount' => round($r['lineDiscount'], 2),
-                        'line_total' => $r['lineSubtotal'],
+                    $customerRecord = $this->customers->upsertFromCheckout([
+                        'name' => $customer['name'],
+                        'phone' => $customer['phone'],
+                        'email' => $customer['email'] ?? null,
+                        'address_line1' => $shipping['address_line1'],
+                        'address_line2' => $shipping['address_line2'] ?? null,
+                        'city' => $shipping['city'],
+                        'province' => $shipping['province'],
+                        'postal_code' => $shipping['postal_code'],
+                        'country' => $shipping['country'] ?? 'Indonesia',
                     ]);
-                }
 
-                Payment::create([
-                    'order_id' => $order->id,
-                    'payment_method' => $paymentMethod === 'cod' ? 'cod' : 'transfer',
-                    'amount' => $total,
-                    'status' => 'pending',
-                ]);
-
-                EventLog::create([
-                    'event_type' => 'order.created',
-                    'entity_type' => 'order',
-                    'entity_id' => $order->id,
-                    'payload' => [
-                        'order_number' => $order->order_number,
-                        'total' => $total,
-                        'payment_method' => $paymentMethod,
+                    $order = Order::create([
+                        'order_number' => $orderNumber,
+                        'checkout_idempotency_key' => $idempotencyKey,
+                        'customer_id' => $customerRecord->id,
+                        'customer_name' => $customer['name'],
+                        'customer_phone' => PhoneNumber::normalize($customer['phone']) ?? $customer['phone'],
+                        'customer_email' => $customer['email'] ?? null,
+                        'shipping_address_line1' => $shipping['address_line1'],
+                        'shipping_address_line2' => $shipping['address_line2'] ?? null,
+                        'shipping_city' => $shipping['city'],
+                        'shipping_province' => $shipping['province'],
+                        'shipping_district' => $shipping['district'] ?? null,
+                        'shipping_village' => $shipping['village'] ?? null,
+                        'shipping_province_id' => $shipping['province_id'] ?? null,
+                        'shipping_city_id' => $shipping['city_id'] ?? null,
+                        'shipping_district_id' => $shipping['district_id'] ?? null,
+                        'shipping_village_id' => $shipping['village_id'] ?? null,
+                        'shipping_postal_code' => $shipping['postal_code'],
+                        'shipping_country' => $shipping['country'] ?? 'Indonesia',
+                        // COD bayar di tempat: langsung antrean produksi, bukan menunggu pembayaran.
+                        'order_status' => 'awaiting_confirmation',
+                        'payment_status' => 'pending',
+                        // Pengiriman belum dimulai / resi belum ada (owner 2026-09-16: bukan pending_pickup).
+                        'shipping_status' => 'tracking_pending',
+                        'subtotal_amount' => $subtotal,
+                        'shipping_amount' => $shippingCost,
+                        'shipping_subsidy_amount' => round($shippingSubsidy, 2),
+                        'shipping_insurance_amount' => round($shippingInsurance, 2),
+                        'shipping_chargeable_weight_kg' => $package['chargeable_weight_kg'],
+                        'shipping_package_snapshot' => $package,
+                        'discount_amount' => round($discountTotal, 2),
                         'voucher_code' => $voucherCode,
-                        'voucher_discount' => $voucherDiscount,
-                        'cod_fee' => $codFee,
-                        'shipping_subsidy' => $shippingSubsidy,
-                    ],
-                    'created_at' => now(),
-                ]);
+                        'voucher_discount_amount' => round($voucherDiscount, 2),
+                        'cod_fee_amount' => round($codFee, 2),
+                        'total_amount' => $total,
+                        'payment_method' => $paymentMethod,
+                        'cod_flag' => $paymentMethod === 'cod',
+                        'notes' => $customer['notes'] ?? null,
+                    ]);
 
-                OrderCreated::dispatch($order);
+                    foreach ($resolved as $r) {
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $r['product']->id,
+                            'product_variant_id' => $r['variant']?->id,
+                            'parent_sku' => $r['product']->parent_sku,
+                            'variant_sku' => $r['variant']?->variant_sku,
+                            'name' => $r['product']->name,
+                            'product_category' => $r['product']->product_category,
+                            'product_model' => $r['product']->product_model,
+                            'design_variant' => $r['product']->design_variant,
+                            'variation_1_name' => $r['variant']?->variation_1_name,
+                            'variation_1_option' => $r['variant']?->variation_1_option,
+                            'variation_2_name' => $r['variant']?->variation_2_name,
+                            'variation_2_option' => $r['variant']?->variation_2_option,
+                            'unit_price' => $r['unitPrice'],
+                            'quantity' => $r['qty'],
+                            'line_subtotal' => $r['lineSubtotal'],
+                            'line_discount' => round($r['lineDiscount'], 2),
+                            'line_total' => $r['lineSubtotal'],
+                            'note' => $r['item']['note'] ?? null,
+                        ]);
+                    }
 
-                return $order;
+                    Payment::create([
+                        'order_id' => $order->id,
+                        'payment_method' => $paymentMethod === 'cod' ? 'cod' : 'transfer',
+                        'amount' => $total,
+                        'status' => 'pending',
+                    ]);
+
+                    EventLog::create([
+                        'event_type' => 'order.created',
+                        'entity_type' => 'order',
+                        'entity_id' => $order->id,
+                        'payload' => [
+                            'order_number' => $order->order_number,
+                            'total' => $total,
+                            'payment_method' => $paymentMethod,
+                            'voucher_code' => $voucherCode,
+                            'voucher_discount' => $voucherDiscount,
+                            'cod_fee' => $codFee,
+                            'shipping_subsidy' => $shippingSubsidy,
+                        ],
+                        'created_at' => now(),
+                    ]);
+
+                    OrderCreated::dispatch($order);
+
+                    return $order;
+                });
             });
-        });
+        } catch (QueryException $e) {
+            if ($this->isDuplicateForColumn($e, 'checkout_idempotency_key')) {
+                $existingOrder = Order::where('checkout_idempotency_key', $idempotencyKey)->first();
+                if ($existingOrder) {
+                    return $existingOrder;
+                }
+            }
+
+            throw $e;
+        }
     }
 
-    /** Hitung total berat cart (kg) untuk estimasi/booking ongkir. */
-    public function cartWeightKg(): float
+    /**
+     * Mulai fulfillment: pending → processing (tanpa menandai lunas).
+     * Dipakai COD (admin "Proses" atau konfirmasi tombol WhatsApp pelanggan).
+     *
+     * @return bool true jika status berubah ke processing
+     */
+    public function beginProcessing(Order $order, ?int $actorUserId = null, string $source = 'admin'): bool
     {
-        $default = (float) config('shipping.default_item_weight_kg', 1.0);
-        $total = 0.0;
+        $order = $order->fresh() ?? $order;
 
-        foreach ($this->cart->get() as $item) {
-            $variant = ! empty($item['variant_sku'])
-                ? ProductVariant::where('variant_sku', $item['variant_sku'])->first()
-                : null;
-            $weight = $variant && $variant->weight_kg ? (float) $variant->weight_kg : $default;
-            $total += $weight * max(1, (int) $item['quantity']);
+        if ($order->order_status !== 'awaiting_confirmation') {
+            return false;
         }
 
-        return max($total, $default);
+        $isCod = $order->cod_flag || $order->payment_method === 'cod';
+
+        // Konfirmasi otomatis via WA dinonaktifkan (mode fully manual oleh admin).
+        if ($source === 'whatsapp_customer') {
+            return false;
+        }
+
+        $changed = $this->states->transition(
+            $order,
+            'processing',
+            $actorUserId,
+            $source,
+            ['flow' => $isCod ? 'cod' : 'transfer'],
+        );
+
+        if (! $changed) {
+            return false;
+        }
+
+        OrderProcessingStarted::dispatch($order->fresh(), $source);
+
+        return true;
+    }
+
+    /**
+     * Batalkan order dan kembalikan stok varian tepat satu kali.
+     *
+     * Lock order menjadi guard idempotensi untuk request admin paralel/retry.
+     */
+    public function cancel(Order $order, ?int $actorUserId = null, ?string $reason = null): bool
+    {
+        $cancelled = $this->states->transition(
+            $order,
+            'cancelled',
+            $actorUserId,
+            'admin_cancel',
+            ['reason' => $reason],
+            function (Order $lockedOrder): void {
+                $variantQuantities = OrderItem::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->whereNotNull('product_variant_id')
+                    ->selectRaw('product_variant_id, SUM(quantity) as quantity')
+                    ->groupBy('product_variant_id')
+                    ->orderBy('product_variant_id')
+                    ->pluck('quantity', 'product_variant_id');
+
+                foreach ($variantQuantities as $variantId => $quantity) {
+                    $variant = ProductVariant::query()
+                        ->lockForUpdate()
+                        ->find((int) $variantId);
+
+                    if ($variant) {
+                        StockLedger::apply(
+                            $variant,
+                            (int) $quantity,
+                            'order_cancel_in',
+                            'order',
+                            $lockedOrder->id,
+                        );
+                    }
+                }
+
+                // Payment sinkron saat order dibatalkan (ADR-006: batal hanya valid
+                // sebelum shipment). Payment yang belum lunas -> cancelled; yang sudah
+                // dibayar -> refunded (perlu pengembalian ke pelanggan).
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'completed')
+                    ->update(['status' => 'refunded']);
+
+                // Item 6 antrean: pesanan batal tidak boleh menggantung
+                // dengan status pembayaran lama. Yang pernah dibayar berarti
+                // uangnya dikembalikan (refunded); yang belum dibayar,
+                // pembatalannya juga tercatat.
+                $lockedOrder->payment_status = $lockedOrder->payment_status === 'paid'
+                    ? 'refunded'
+                    : 'cancelled';
+                $lockedOrder->shipping_status = 'cancelled';
+                $lockedOrder->save();
+            },
+        );
+
+        if ($cancelled) {
+            OrderCancelled::dispatch($order->fresh(), $reason);
+        }
+
+        return $cancelled;
+    }
+
+    public function canTransition(Order $order, string $to, string $source = 'admin'): bool
+    {
+        return $this->states->canTransition($order, $to, $source);
+    }
+
+    /**
+     * @param  array<string, bool|float|int|string|null>  $context
+     */
+    public function transition(
+        Order $order,
+        string $to,
+        ?int $actorUserId,
+        string $source = 'admin',
+        array $context = [],
+    ): bool {
+        return $this->states->transition($order, $to, $actorUserId, $source, $context);
+    }
+
+    /** Berat tagih provisional cart, termasuk pallet dan volumetrik. */
+    public function cartWeightKg(?array $lineIds = null): float
+    {
+        return $this->cartPackage($lineIds)['chargeable_weight_kg'];
+    }
+
+    /**
+     * Berat paket dari isi keranjang. `$lineIds` membatasi ke baris yang
+     * benar-benar checkout; tanpa itu seluruh keranjang dihitung (dipakai
+     * admin/laporan). Checkout WAJIB mengirim daftar baris terpilih supaya
+     * sisa item di keranjang tidak menambah berat dan tarif J&T.
+     *
+     * @param  list<string>|null  $lineIds
+     * @return array<string, float|string>
+     */
+    public function cartPackage(?array $lineIds = null): array
+    {
+        $default = (float) config('shipping.default_item_weight_kg', 1.0);
+        $items = [];
+        foreach ($this->cart->get($lineIds) as $item) {
+            $variant = ! empty($item['variant_sku'])
+                ? ProductVariant::with('product')->where('variant_sku', $item['variant_sku'])->first()
+                : null;
+            $product = $variant?->product;
+            $weight = $product?->weight_kg ?? ($variant?->weight_kg ?: $default);
+            $items[] = [
+                'weight_kg' => (float) $weight,
+                'height_cm' => (float) ($product?->height_cm ?? $variant?->height_cm ?? 0),
+                'length_cm' => (float) ($product?->width_cm ?? $variant?->width_cm ?? 0),
+                'width_cm' => (float) ($product?->depth_cm ?? $variant?->depth_cm ?? 0),
+                'quantity' => max(1, (int) $item['quantity']),
+            ];
+        }
+        $calculator = new ShipmentPackageCalculator(
+            ShippingPalletSettings::allowancePerSideCm(),
+            (float) config('shipping.volumetric_divisor'),
+        );
+
+        return $calculator->calculate($items);
     }
 
     protected function createWithRetryOnDuplicateNumber(callable $callback, int $attempts = 5): Order
@@ -243,7 +465,7 @@ class OrderService
                 return $callback($this->generateOrderNumber());
             } catch (QueryException $e) {
                 // 23000 = integrity constraint violation (nomor order bentrok)
-                if (! Str::contains($e->getMessage(), ['order_number', 'UNIQUE', 'Duplicate']) || $i === $attempts - 1) {
+                if (! $this->isDuplicateForColumn($e, 'order_number') || $i === $attempts - 1) {
                     throw $e;
                 }
             }
@@ -252,8 +474,399 @@ class OrderService
         throw new \RuntimeException('Gagal membuat nomor order unik.');
     }
 
+    protected function isDuplicateForColumn(QueryException $exception, string $column): bool
+    {
+        $message = Str::lower($exception->getMessage());
+
+        return Str::contains($message, Str::lower($column))
+            && Str::contains($message, ['unique', 'duplicate', '23000']);
+    }
+
     protected function generateOrderNumber(): string
     {
-        return 'RA-'.now()->format('ymd').'-'.strtoupper(Str::random(6));
+        $seq = app(SequenceService::class)->next('order-'.now()->format('ym'));
+
+        return 'ORD'.now()->format('ym').str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Aturan edit pesanan (keputusan #7/#23): MK bebas, Diproses boleh dengan
+     * catatan, terkunci setelah resi masuk.
+     *
+     * @return array{allowed: bool, require_note: bool, reason: string|null}
+     */
+    public function editPolicy(Order $order): array
+    {
+        if ($order->order_status !== 'awaiting_confirmation') {
+            return ['allowed' => false, 'require_note' => false, 'reason' => 'Pesanan hanya dapat diedit saat Menunggu Konfirmasi.'];
+        }
+
+        return [
+            'allowed' => true,
+            'require_note' => false,
+            'reason' => null,
+        ];
+    }
+
+    protected function hasWaybill(Order $order): bool
+    {
+        if (! $order->relationLoaded('shippingRecords')) {
+            $order->load('shippingRecords');
+        }
+
+        return $order->shippingRecords->contains(
+            fn ($record) => filled($record->waybill_number) && $record->status !== 'cancelled'
+        );
+    }
+
+    /**
+     * Ubah isi pesanan + penerima + alamat. Hitung ulang harga, ongkir, total;
+     * sesuaikan stok; catat log order.edited. Nomor order tetap.
+     *
+     * @param  array{
+     *     customer_name: string,
+     *     customer_phone: string,
+     *     customer_email?: string|null,
+     *     address_line1: string,
+     *     address_line2?: string|null,
+     *     village?: string|null,
+     *     district?: string|null,
+     *     city: string,
+     *     province: string,
+     *     postal_code: string,
+     *     notes?: string|null,
+     *     items: list<array{item_id?: int|null, parent_sku?: string, variant_sku?: string|null, qty: int}>
+     * }  $data
+     */
+    public function editOrder(Order $order, array $data, ?int $actorUserId, string $note = ''): Order
+    {
+        $policy = $this->editPolicy($order);
+        if (! $policy['allowed']) {
+            throw new \DomainException($policy['reason']);
+        }
+        if ($policy['require_note'] && trim($note) === '') {
+            throw new \DomainException('Pesanan Diproses memerlukan catatan perubahan.');
+        }
+
+        return DB::transaction(function () use ($order, $data, $actorUserId, $note) {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $locked->load(['items.product', 'items.productVariant']);
+
+            $oldItems = $locked->items->keyBy('id');
+            $lines = [];
+            $subtotal = 0.0;
+            $discountTotal = 0.0;
+
+            foreach ($data['items'] as $raw) {
+                $qty = max(1, (int) ($raw['qty'] ?? 1));
+                $itemId = isset($raw['item_id']) ? (int) $raw['item_id'] : null;
+                $oldItem = $itemId !== null ? ($oldItems[$itemId] ?? null) : null;
+
+                if ($oldItem !== null) {
+                    $product = $oldItem->product;
+                    $variant = $oldItem->productVariant;
+                } else {
+                    $product = Product::where('parent_sku', trim((string) ($raw['parent_sku'] ?? '')))
+                        ->with(['attributes', 'activeVariants.attributes'])
+                        ->first();
+                    if (! $product || $product->status !== 'active') {
+                        throw new \DomainException("Produk {$raw['parent_sku']} tidak tersedia.");
+                    }
+
+                    $variant = null;
+                    if (filled(trim((string) ($raw['variant_sku'] ?? '')))) {
+                        $variant = ProductVariant::where('variant_sku', trim((string) $raw['variant_sku']))
+                            ->where('product_id', $product->id)
+                            ->first();
+                        if (! $variant || $variant->status !== 'active') {
+                            throw new \DomainException("Varian {$raw['variant_sku']} tidak tersedia.");
+                        }
+                    }
+                }
+
+                $pricing = $this->cart->priceFor($product, $variant);
+                $unitPrice = $pricing['unit_price'];
+                if ($unitPrice <= 0) {
+                    throw new \DomainException("Harga produk {$product->parent_sku} tidak valid.");
+                }
+
+                $lineSubtotal = $unitPrice * $qty;
+                $compareUnit = $pricing['compare_price'];
+                $lineDiscount = $compareUnit !== null && $compareUnit > $unitPrice
+                    ? ($compareUnit - $unitPrice) * $qty
+                    : 0.0;
+
+                $subtotal += $lineSubtotal;
+                $discountTotal += $lineDiscount;
+
+                $flashSale = (bool) ($pricing['flash_sale'] ?? false);
+                $lines[] = compact('itemId', 'oldItem', 'product', 'variant', 'qty', 'unitPrice', 'lineSubtotal', 'lineDiscount', 'flashSale');
+            }
+
+            if (empty($lines)) {
+                throw new \DomainException('Pesanan harus memiliki minimal 1 produk.');
+            }
+
+            // Stok: selisih qty baris lama, kembalikan stok baris yang dihapus.
+            foreach ($lines as $line) {
+                $variant = $line['variant'];
+                if ($variant === null) {
+                    continue;
+                }
+                $oldQty = $line['oldItem'] !== null ? (int) $line['oldItem']->quantity : 0;
+                $delta = $line['qty'] - $oldQty;
+                if ($delta > 0 && $variant->stock < $delta) {
+                    throw new \DomainException("Stok {$variant->variant_sku} tidak cukup (tersisa {$variant->stock}).");
+                }
+                if ($delta !== 0) {
+                    StockLedger::apply(
+                        $variant,
+                        -$delta,
+                        'order_adjust',
+                        'order',
+                        $locked->id,
+                    );
+                }
+            }
+            foreach ($oldItems as $oldId => $oldItem) {
+                $kept = collect($lines)->contains(fn ($line) => $line['itemId'] === $oldId);
+                if ($kept || $oldItem->productVariant === null) {
+                    continue;
+                }
+                StockLedger::apply(
+                    $oldItem->productVariant,
+                    (int) $oldItem->quantity,
+                    'order_item_removed_in',
+                    'order',
+                    $locked->id,
+                );
+            }
+
+            // Voucher: terapkan ulang bila masih valid pada subtotal baru.
+            $voucherCode = null;
+            $voucherDiscount = 0.0;
+            if (filled($locked->voucher_code)) {
+                try {
+                    $voucherCodes = $this->vouchers->normalizeCodes(
+                        preg_split('/\s*,\s*/', (string) $locked->voucher_code) ?: [],
+                    );
+                    $voucherLines = collect($lines)->map(fn (array $line): array => [
+                        'product_id' => $line['product']->id,
+                        'product_model' => $line['product']->product_model,
+                        'amount' => (float) $line['lineSubtotal'],
+                    ])->all();
+                    $applied = $this->vouchers->applyCodesToLines($voucherCodes, $voucherLines);
+                    $voucherCode = $applied['code'];
+                    $voucherDiscount = $applied['discount'];
+                } catch (\DomainException $e) {
+                    // Voucher tidak lagi berlaku -> dilepas; tercatat di log order.edited.
+                }
+            }
+
+            $subtotalAfterVoucher = max(0, $subtotal - $voucherDiscount);
+
+            $isCod = (bool) $locked->cod_flag || $locked->payment_method === 'cod';
+            $codFee = 0.0;
+
+            // PENTING: argumen harus lengkap dan berurutan. Sebelumnya baris
+            // ini hanya mengirim 6 argumen sehingga kecamatan terkirim sebagai
+            // area tujuan dan nilai subtotal terbaca sebagai flag asuransi.
+            $breakdown = $this->shipping->estimateBreakdown(
+                $this->cartWeightForLines($lines),
+                (string) $data['city'],
+                $data['province'] ?? null,
+                $data['postal_code'] ?? null,
+                $data['district'] ?? null,
+                $subtotalAfterVoucher,
+            );
+            $shippingCost = (float) ($breakdown['net_ongkir'] ?? $breakdown['net']);
+            $shippingSubsidy = $breakdown['subsidy'];
+            // Biaya asuransi diambil dari hasil quote (bukan nilai lama),
+            // supaya pertanggungan mengikuti nilai pesanan setelah diubah.
+            $shippingInsurance = (float) ($breakdown['insurance_charged'] ?? 0);
+            if ($isCod) {
+                CodSettings::assertAllowedForSubtotal($subtotalAfterVoucher);
+                // Basis COD = TOTAL PEMBAYARAN sebelum biaya COD (subtotal
+                // setelah voucher + ongkos kirim dibayar, memuat asuransi bila
+                // ada), sama dengan jalur createFromCart.
+                $codFee = CodSettings::calculateFee($subtotalAfterVoucher, $shippingCost + $shippingInsurance);
+            }
+            $package = $this->packageForResolvedLines(array_map(static fn (array $line): array => [
+                'product' => $line['product'],
+                'variant' => $line['variant'],
+                'qty' => $line['qty'],
+            ], $lines));
+            $packageWeight = (float) ($package['chargeable_weight_kg'] ?? 0);
+            if ($packageWeight <= 0) {
+                $fallbackWeight = $this->cartWeightForLines($lines);
+                $packageWeight = $fallbackWeight > 0 ? $fallbackWeight : (float) config('shipping.default_item_weight_kg', 1.0);
+                $package['chargeable_weight_kg'] = $packageWeight;
+            }
+            $total = max(0, $subtotal + $shippingCost + $shippingInsurance - $voucherDiscount + $codFee);
+
+            // Persist baris.
+            $changes = [];
+            $lineIds = [];
+            foreach ($lines as $line) {
+                if ($line['oldItem'] !== null) {
+                    $oldItem = $line['oldItem'];
+                    $changes[] = [
+                        'id' => $oldItem->id,
+                        'name' => $oldItem->name,
+                        'from' => $oldItem->quantity.'x'.$oldItem->unit_price,
+                        'to' => $line['qty'].'x'.$line['unitPrice'],
+                    ];
+                    $oldItem->update([
+                        'quantity' => $line['qty'],
+                        'unit_price' => $line['unitPrice'],
+                        'line_subtotal' => $line['lineSubtotal'],
+                        'line_discount' => $line['lineDiscount'],
+                        'discount_source' => ($line['flashSale'] ? 'flashsale' : 'reg'),
+                        'line_total' => $line['lineSubtotal'],
+                    ]);
+                    $lineIds[] = $oldItem->id;
+
+                    continue;
+                }
+
+                $item = $locked->items()->create([
+                    'product_id' => $line['product']->id,
+                    'product_variant_id' => $line['variant']?->id,
+                    'parent_sku' => $line['product']->parent_sku,
+                    'variant_sku' => $line['variant']?->variant_sku,
+                    'name' => $line['product']->name,
+                    // Snapshot taksonomi baris, sama seperti createFromCart():
+                    // kategori, model, dan sub model produk dicatat saat baris
+                    // dibuat, supaya laporan per kategori/model/sub model tidak
+                    // kehilangan baris pesanan yang ditambahkan admin lewat edit
+                    // pesanan (audit admin 2026-09-23, B13). Baris histori lama
+                    // sengaja tidak disentuh.
+                    'product_category' => $line['product']->product_category,
+                    'product_model' => $line['product']->product_model,
+                    'design_variant' => $line['product']->design_variant,
+                    'variation_1_name' => $line['variant']?->variation_1_name,
+                    'variation_1_option' => $line['variant']?->variation_1_option,
+                    'variation_2_name' => $line['variant']?->variation_2_name,
+                    'variation_2_option' => $line['variant']?->variation_2_option,
+                    'unit_price' => $line['unitPrice'],
+                    'quantity' => $line['qty'],
+                    'line_subtotal' => $line['lineSubtotal'],
+                    'line_discount' => $line['lineDiscount'],
+                    'discount_source' => ($line['flashSale'] ? 'flashsale' : 'reg'),
+                    'line_total' => $line['lineSubtotal'],
+                ]);
+                $changes[] = [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'from' => null,
+                    'to' => $line['qty'].'x'.$line['unitPrice'],
+                ];
+                $lineIds[] = $item->id;
+            }
+            foreach ($oldItems as $oldId => $oldItem) {
+                if (in_array($oldId, $lineIds, true)) {
+                    continue;
+                }
+                $changes[] = [
+                    'id' => $oldId,
+                    'name' => $oldItem->name,
+                    'from' => $oldItem->quantity.'x'.$oldItem->unit_price,
+                    'to' => null,
+                ];
+                $oldItem->delete();
+            }
+
+            // Persist order.
+            $locked->update([
+                'customer_name' => trim((string) $data['customer_name']),
+                'customer_phone' => PhoneNumber::normalize((string) $data['customer_phone']) ?? (string) $data['customer_phone'],
+                'customer_email' => $data['customer_email'] ?? null,
+                'shipping_address_line1' => $data['address_line1'],
+                'shipping_address_line2' => $data['address_line2'] ?? null,
+                'shipping_village' => $data['village'] ?? null,
+                'shipping_district' => $data['district'] ?? null,
+                'shipping_city' => $data['city'],
+                'shipping_province' => $data['province'],
+                'shipping_province_id' => $data['province_id'] ?? null,
+                'shipping_city_id' => $data['city_id'] ?? null,
+                'shipping_district_id' => $data['district_id'] ?? null,
+                'shipping_village_id' => $data['village_id'] ?? null,
+                'shipping_postal_code' => $data['postal_code'],
+                'notes' => $data['notes'] ?? null,
+                'subtotal_amount' => $subtotal,
+                'shipping_amount' => $shippingCost,
+                'shipping_subsidy_amount' => $shippingSubsidy,
+                'shipping_insurance_amount' => $shippingInsurance,
+                'shipping_chargeable_weight_kg' => $package['chargeable_weight_kg'],
+                'shipping_package_snapshot' => $package,
+                'discount_amount' => $discountTotal,
+                'voucher_code' => $voucherCode,
+                'voucher_discount_amount' => $voucherDiscount,
+                'cod_fee_amount' => $codFee,
+                'total_amount' => $total,
+                'updated_by_user_id' => $actorUserId,
+            ]);
+
+            EventLog::create([
+                'event_type' => 'order.edited',
+                'entity_type' => 'order',
+                'entity_id' => $locked->id,
+                'created_by_user_id' => $actorUserId,
+                'payload' => array_filter([
+                    'order_number' => $locked->order_number,
+                    'note' => $note !== '' ? $note : null,
+                    'changes' => $changes,
+                    'subtotal' => $subtotal,
+                    'shipping' => $shippingCost,
+                    'voucher' => $voucherCode,
+                    'voucher_discount' => $voucherDiscount,
+                    'cod_fee' => $codFee,
+                    'total' => $total,
+                    'voucher_dropped' => filled($locked->voucher_code) && $voucherCode === null ? true : null,
+                ]),
+                'created_at' => now(),
+            ]);
+
+            return $locked->fresh();
+        });
+    }
+
+    /** @param list<array<string, mixed>> $lines */
+    protected function packageForResolvedLines(array $lines): array
+    {
+        $items = array_map(static function (array $line): array {
+            $product = $line['product'];
+            $variant = $line['variant'] ?? null;
+
+            return [
+                'weight_kg' => (float) ($product->weight_kg ?? $variant?->weight_kg ?? 0),
+                'height_cm' => (float) ($product->height_cm ?? $variant?->height_cm ?? 0),
+                'length_cm' => (float) ($product->width_cm ?? $variant?->width_cm ?? 0),
+                'width_cm' => (float) ($product->depth_cm ?? $variant?->depth_cm ?? 0),
+                'quantity' => max(1, (int) $line['qty']),
+            ];
+        }, $lines);
+
+        return (new ShipmentPackageCalculator(
+            ShippingPalletSettings::allowancePerSideCm(),
+            (float) config('shipping.volumetric_divisor'),
+        ))->calculate($items);
+    }
+
+    /**
+     * Berat kiriman pesanan dari baris terpilih, memakai calculator yang sama
+     * dengan cart dan order snapshot.
+     *
+     * @param  list<array{product: Product, variant: ProductVariant|null, qty: int}>  $lines
+     */
+    protected function cartWeightForLines(array $lines): float
+    {
+        $package = $this->packageForResolvedLines(array_map(static fn (array $line): array => [
+            'product' => $line['product'],
+            'variant' => $line['variant'],
+            'qty' => $line['qty'],
+        ], $lines));
+
+        return (float) $package['chargeable_weight_kg'];
     }
 }

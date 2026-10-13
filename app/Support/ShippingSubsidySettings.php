@@ -7,92 +7,70 @@ use App\Models\CmsPage;
 /**
  * Store-wide shipping subsidy on cms_pages.slug = checkout.
  *
- * content.shipping_subsidy = {
- *   enabled: bool,
- *   subsidy_type: percent|fixed,
- *   subsidy_value: number,
- *   carriers: { jnt: bool }
- * }
+ * Skema HANYA persentase dari tarif kurir (keputusan owner 2026-09-18).
+ * Opsi nominal tetap DIHAPUS: subsidi nominal tidak dapat ditampilkan sebagai
+ * persentase di checkout, sehingga labelnya menyesatkan pembeli. Kunci
+ * `subsidy_type` dipertahankan bernilai 'percent' agar bentuk data tersimpan
+ * dan ledger lama tetap valid, tetapi nilai 'fixed' tidak lagi dihormati.
  */
 class ShippingSubsidySettings
 {
     public const PAGE_SLUG = 'checkout';
+    public const SETTING_KEY = OperationalSettings::SHIPPING_SUBSIDY;
 
     public const DEFAULTS = [
         'enabled' => false,
         'subsidy_type' => 'percent',
         'subsidy_value' => 0,
-        'carriers' => [
-            'jnt' => true,
-        ],
+        'carriers' => ['jnt' => true],
     ];
 
-    /**
-     * @return array{enabled: bool, subsidy_type: string, subsidy_value: float, carriers: array{jnt: bool}}
-     */
+    /** @return array{enabled: bool, subsidy_type: string, subsidy_value: float, carriers: array{jnt: bool}} */
     public static function get(): array
     {
-        $page = self::page();
-        $stored = is_array($page?->content['shipping_subsidy'] ?? null)
-            ? $page->content['shipping_subsidy']
-            : [];
+        $versioned = OperationalSettings::current(self::SETTING_KEY);
 
-        $type = ($stored['subsidy_type'] ?? self::DEFAULTS['subsidy_type']) === 'fixed'
-            ? 'fixed'
-            : 'percent';
+        return is_array($versioned)
+            ? OperationalSettings::normalize(self::SETTING_KEY, $versioned)
+            : self::readCms();
+    }
+
+    /** @return array{enabled: bool, subsidy_type: string, subsidy_value: float, carriers: array{jnt: bool}} */
+    private static function readCms(): array
+    {
+        $page = self::page();
+        $stored = is_array($page?->content['shipping_subsidy'] ?? null) ? $page->content['shipping_subsidy'] : [];
         $carriers = is_array($stored['carriers'] ?? null) ? $stored['carriers'] : [];
 
         return [
-            'enabled' => (bool) ($stored['enabled'] ?? self::DEFAULTS['enabled']),
-            'subsidy_type' => $type,
-            'subsidy_value' => max(0, (float) ($stored['subsidy_value'] ?? self::DEFAULTS['subsidy_value'])),
-            'carriers' => [
-                'jnt' => (bool) ($carriers['jnt'] ?? self::DEFAULTS['carriers']['jnt']),
-            ],
+            'enabled' => (bool) ($stored['enabled'] ?? false),
+            'subsidy_type' => 'percent',
+            'subsidy_value' => min(100, max(0, (float) ($stored['subsidy_value'] ?? 0))),
+            'carriers' => ['jnt' => (bool) ($carriers['jnt'] ?? true)],
         ];
     }
 
-    public static function enabled(): bool
-    {
-        return self::get()['enabled'];
-    }
-
-    /**
-     * @param  array{enabled?: bool, subsidy_type?: string, subsidy_value?: float|int|string, jnt_enabled?: bool}  $settings
-     * @return array{enabled: bool, subsidy_type: string, subsidy_value: float, carriers: array{jnt: bool}}
-     */
-    public static function update(array $settings, ?int $adminId = null): array
+    /** @param array{source?: string, reason?: string|null, reference_type?: string|null, reference_id?: string|null} $audit */
+    public static function update(array $settings, ?int $adminId = null, array $audit = []): array
     {
         $page = self::page(create: true);
         $content = is_array($page->content) ? $page->content : [];
-        $merged = array_merge(
-            self::DEFAULTS,
-            is_array($content['shipping_subsidy'] ?? null) ? $content['shipping_subsidy'] : []
-        );
-        $merged['carriers'] = array_merge(
-            self::DEFAULTS['carriers'],
-            is_array($merged['carriers'] ?? null) ? $merged['carriers'] : []
-        );
+        $merged = array_merge(self::DEFAULTS, is_array($content['shipping_subsidy'] ?? null) ? $content['shipping_subsidy'] : []);
+        $merged['carriers'] = array_merge(self::DEFAULTS['carriers'], is_array($merged['carriers'] ?? null) ? $merged['carriers'] : []);
 
         if (array_key_exists('enabled', $settings)) {
             $merged['enabled'] = (bool) $settings['enabled'];
         }
-        if (array_key_exists('subsidy_type', $settings)) {
-            $merged['subsidy_type'] = $settings['subsidy_type'] === 'fixed' ? 'fixed' : 'percent';
-        }
+        // `subsidy_type` dari pemanggil DIABAIKAN: skema selalu persentase.
+        $merged['subsidy_type'] = 'percent';
         if (array_key_exists('subsidy_value', $settings)) {
-            $value = max(0, (float) $settings['subsidy_value']);
-            if (($merged['subsidy_type'] ?? 'percent') === 'percent') {
-                $value = min(100, $value);
-            }
-            $merged['subsidy_value'] = $value;
+            $merged['subsidy_value'] = min(100, max(0, (float) $settings['subsidy_value']));
         }
         if (array_key_exists('jnt_enabled', $settings)) {
             $merged['carriers']['jnt'] = (bool) $settings['jnt_enabled'];
         }
 
         $content['shipping_subsidy'] = $merged;
-        // Preserve sibling checkout keys (cod, etc.).
         $page->content = $content;
         $page->published = true;
         if ($adminId) {
@@ -100,46 +78,51 @@ class ShippingSubsidySettings
         }
         $page->save();
 
-        return self::get();
+        $after = self::readCms();
+        if (OperationalSettings::available()) {
+            OperationalSettings::record(
+                self::SETTING_KEY,
+                $after,
+                $adminId,
+            (string) ($audit['source'] ?? 'admin'),
+            $audit['reason'] ?? null,
+            $audit['reference_type'] ?? CmsPage::class,
+            $audit['reference_id'] ?? (string) $page->id,
+            );
+
+        }
+        return $after;
     }
 
     /**
-     * @return array{gross: float, subsidy: float, net: float, applied: bool}
+     * @return array{gross: float, subsidy: float, subsidy_percent: float, net: float, applied: bool}
      */
     public static function apply(float $grossShipping, string $carrier = 'jnt'): array
     {
         $gross = max(0, round($grossShipping, 2));
         $settings = self::get();
         $carrierOk = (bool) ($settings['carriers'][$carrier] ?? false);
+        $percent = min(100, max(0, (float) $settings['subsidy_value']));
 
-        if (! $settings['enabled'] || ! $carrierOk || $settings['subsidy_value'] <= 0 || $gross <= 0) {
-            return [
-                'gross' => $gross,
-                'subsidy' => 0.0,
-                'net' => $gross,
-                'applied' => false,
-            ];
+        if (! $settings['enabled'] || ! $carrierOk || $percent <= 0 || $gross <= 0) {
+            return ['gross' => $gross, 'subsidy' => 0.0, 'subsidy_percent' => 0.0, 'net' => $gross, 'applied' => false];
         }
 
-        if ($settings['subsidy_type'] === 'fixed') {
-            $subsidy = min($gross, round((float) $settings['subsidy_value'], 2));
-        } else {
-            $percent = max(0, min(100, (float) $settings['subsidy_value']));
-            $subsidy = round($gross * ($percent / 100), 2);
-        }
+        $subsidy = round($gross * ($percent / 100), 2);
 
         return [
             'gross' => $gross,
             'subsidy' => $subsidy,
+            // Persentase ASLI dari setelan dikirim apa adanya. Frontend tidak
+            // lagi menghitung balik dari nominal, supaya persentase pecahan
+            // (mis. 9,5%) tidak tampil sebagai 10%.
+            'subsidy_percent' => $percent,
             'net' => max(0, round($gross - $subsidy, 2)),
             'applied' => $subsidy > 0,
         ];
     }
 
-    /**
-     * @param  array<string, mixed>|null  $incoming
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed>|null $incoming */
     public static function mergePreserving(?array $incoming, ?CmsPage $page): array
     {
         $content = is_array($incoming) ? $incoming : [];
@@ -147,9 +130,7 @@ class ShippingSubsidySettings
             return $content;
         }
 
-        $existing = is_array($page?->content['shipping_subsidy'] ?? null)
-            ? $page->content['shipping_subsidy']
-            : null;
+        $existing = is_array($page?->content['shipping_subsidy'] ?? null) ? $page->content['shipping_subsidy'] : null;
         if ($existing !== null && ! array_key_exists('shipping_subsidy', $content)) {
             $content['shipping_subsidy'] = $existing;
         }
@@ -159,7 +140,7 @@ class ShippingSubsidySettings
 
     private static function page(bool $create = false): ?CmsPage
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         if ($page || ! $create) {
             return $page;
         }
@@ -168,7 +149,7 @@ class ShippingSubsidySettings
             'slug' => self::PAGE_SLUG,
             'title' => 'Checkout',
             'content' => [
-                'cod' => \App\Support\CodSettings::DEFAULTS,
+                'cod' => CodSettings::DEFAULTS,
                 'shipping_subsidy' => self::DEFAULTS,
             ],
             'published' => true,

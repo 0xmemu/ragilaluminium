@@ -4,13 +4,15 @@ namespace Tests\Feature;
 
 use App\Jobs\DownloadProductMedia;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-class MediaDerivativesTest extends \Tests\TestCase
+class MediaDerivativesTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -25,15 +27,15 @@ class MediaDerivativesTest extends \Tests\TestCase
 
         $png = $this->makePngBytes(120, 80);
         Http::fake([
-            'https://cdn.example.test/product.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+            'https://93.184.216.34/product.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
         ]);
-        config(['media.allowed_source_hosts' => ['cdn.example.test']]);
+        config(['media.allowed_source_hosts' => ['93.184.216.34']]);
 
         $product = Product::create([
             'parent_sku' => 'WIN-MED-1',
             'name' => 'Media Test',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -44,7 +46,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/product.png',
+            'source_url' => 'https://93.184.216.34/product.png',
             'status' => 'pending',
         ]);
 
@@ -89,15 +91,15 @@ class MediaDerivativesTest extends \Tests\TestCase
 
         $png = $this->makePngBytes(80, 60);
         Http::fake([
-            'https://cdn.example.test/keep.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+            'https://93.184.216.34/keep.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
         ]);
-        config(['media.allowed_source_hosts' => ['cdn.example.test']]);
+        config(['media.allowed_source_hosts' => ['93.184.216.34']]);
 
         $product = Product::create([
             'parent_sku' => 'WIN-MED-KEEP',
             'name' => 'Keep Original',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -108,7 +110,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/keep.png',
+            'source_url' => 'https://93.184.216.34/keep.png',
             'status' => 'pending',
         ]);
 
@@ -129,7 +131,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'parent_sku' => 'WIN-MED-2',
             'name' => 'Media Host Test',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -143,7 +145,7 @@ class MediaDerivativesTest extends \Tests\TestCase
             'position' => 1,
             'is_main_image' => true,
             'visibility' => 'visible',
-            'source_url' => 'https://cdn.example.test/product.png',
+            'source_url' => 'https://93.184.216.34/product.png',
             'stored_path' => "products/{$product->id}/sample.jpg",
             'stored_url' => 'http://172.24.0.182:8200/storage/media/products/1/sample.jpg',
             'derivatives' => [
@@ -163,24 +165,31 @@ class MediaDerivativesTest extends \Tests\TestCase
         $this->assertStringContainsString('sample-card.webp', $url);
     }
 
-    public function test_catalog_paginates_twenty_four(): void
+    public function test_catalog_paginates_fourteen(): void
     {
         for ($i = 1; $i <= 30; $i++) {
-            Product::create([
+            $product = Product::create([
                 'parent_sku' => "WIN-P-{$i}",
                 'name' => "Product {$i}",
                 'category_id' => 1,
-                'product_category' => 'WINDOW',
+                'product_category' => 'JENDELA',
                 'product_model' => 'JUNGKIT',
                 'design_variant' => 'POLOS',
+                'status' => 'active',
+            ]);
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'variant_sku' => "WIN-P-{$i}-V1",
+                'price' => 1000000,
+                'stock' => 5,
                 'status' => 'active',
             ]);
         }
 
         $response = $this->getJson('/api/catalog/windows');
         $response->assertOk();
-        $this->assertCount(24, $response->json('products'));
-        $this->assertSame(24, $response->json('pagination.per_page'));
+        $this->assertCount(15, $response->json('products'));
+        $this->assertSame(15, $response->json('pagination.per_page'));
     }
 
     protected function makePngBytes(int $w, int $h): string

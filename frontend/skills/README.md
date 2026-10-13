@@ -13,8 +13,8 @@ skill tersebut.
 
 - `.agents/skills/design-taste-frontend`: primary anti-slop guardrails untuk marketing/public page.
 - `.agents/skills/frontend-design`: grounding desain pada material, audience, dan subject.
-- `high-end-visual-design`: hanya prinsip spacing, material restraint, dan motion performance yang
-  tidak bertentangan dengan usability.
+- Teknik visual eksternal tidak menjadi SoT. Gunakan `frontend/docs/UI-CONSISTENCY-CONTRACT.md`
+  bersama `frontend/docs/DESIGN-SYSTEM.md`; teknik marketplace hanya membantu implementasi.
 - `.agents/skills/tailwind-design-system`: hierarchy token/component; contoh v4 harus diadaptasi
   ke Tailwind v3 yang digunakan repo.
 - `.agents/skills/web-design-guidelines`: final interface review dengan guideline terbaru.

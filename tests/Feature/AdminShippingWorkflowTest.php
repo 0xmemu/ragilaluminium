@@ -1,0 +1,317 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Order;
+use App\Models\ShippingRecord;
+use App\Models\ShippingTrackingEvent;
+use App\Models\User;
+use App\Services\Shipping\JntCargoClient;
+use App\Services\Shipping\JntResponse;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class AdminShippingWorkflowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function admin(): User
+    {
+        return User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+    }
+
+    private function order(): Order
+    {
+        return Order::create([
+            'order_number' => 'RA-SHIP-1',
+            'customer_name' => 'Budi',
+            'customer_phone' => '628123456789',
+            'shipping_address_line1' => 'Jl A',
+            'shipping_city' => 'Jakarta',
+            'shipping_province' => 'DKI',
+            'shipping_postal_code' => '12345',
+            'order_status' => 'processing',
+            'payment_status' => 'paid',
+            'shipping_status' => 'pending_pickup',
+            'subtotal_amount' => 100000,
+            'total_amount' => 100000,
+            'payment_method' => 'transfer',
+        ]);
+    }
+
+    public function test_old_shipping_detail_url_redirects_to_order_tracking_drawer(): void
+    {
+        // Halaman detail resi DIHAPUS (owner 2026-09-28) karena isinya duplikat
+        // drawer Lacak Pesanan. URL lama wajib tetap hidup sebagai pengalih ke
+        // detail pesanan dengan penanda `lacak`, supaya tautan dan bookmark
+        // lama tidak mati dan drawer-nya langsung terbuka.
+        $admin = $this->admin();
+        $order = $this->order();
+        $record = ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'service_name' => 'FTAIR',
+            'waybill_number' => 'JT-SHIP-1',
+            'shipping_cost' => 0,
+            'status' => 'in_transit',
+            'status_raw' => 'On the way',
+            'last_status_at' => now(),
+            'tracking_url' => 'https://tracking.example.test/JT-SHIP-1',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.shipping.show', $record))
+            ->assertRedirect(route('admin.orders.show', ['order' => $order->id, 'lacak' => 1]));
+
+        // Penanda itu memang membuka drawer di halaman tujuan.
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', ['order' => $order->id, 'lacak' => 1]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Orders/Show')
+                ->where('openTracking', true));
+    }
+
+    public function test_order_detail_does_not_open_tracking_drawer_without_flag(): void
+    {
+        // Tanpa penanda, drawer tetap tertutup seperti sebelumnya.
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Orders/Show')
+                ->where('openTracking', false));
+    }
+
+    public function test_simpan_resi_selalu_memindahkan_status_ke_dikirim(): void
+    {
+        // Kontrak owner 2026-09-28: checkbox "Tandai langsung dikirim" dihapus,
+        // jadi menyimpan resi pada pesanan Diproses selalu memindahkan status
+        // ke Dikirim tanpa opsi tambahan.
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-SELALU-KIRIM',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertSame('shipped', $order->fresh()->order_status);
+        $this->assertDatabaseHas('shipping_records', [
+            'order_id' => $order->id,
+            'waybill_number' => 'JT-SELALU-KIRIM',
+        ]);
+    }
+
+    public function test_simpan_resi_ulang_pada_pesanan_sudah_dikirim_tidak_gagal(): void
+    {
+        // Menyimpan resi lagi (mis. koreksi nomor) pada pesanan yang sudah
+        // Dikirim hanya memperbarui resi: tidak melempar galat transisi dan
+        // status tetap Dikirim.
+        $admin = $this->admin();
+        $order = $this->order();
+        $order->update(['order_status' => 'shipped']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-KOREKSI',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('shipped', $order->fresh()->order_status);
+        $this->assertDatabaseHas('shipping_records', [
+            'order_id' => $order->id,
+            'waybill_number' => 'JT-KOREKSI',
+        ]);
+    }
+
+    public function test_order_shipping_accepts_manual_waybill_and_rejects_jnt_creation_mode(): void
+    {
+        config(['jnt.enabled' => false]);
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'mode' => 'jnt',
+                'weight_kg' => 1,
+            ])
+            ->assertSessionHasErrors('mode');
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-MANUAL-1',
+                // Ongkir asli dari konsol J&T (sekarang wajib saat input resi).
+                'shipping_cost' => 70000,
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertDatabaseHas('shipping_records', [
+            'order_id' => $order->id,
+            'waybill_number' => 'JT-MANUAL-1',
+        ]);
+    }
+
+    public function test_manual_waybill_attach_pulls_real_carrier_events_and_advances_status(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: [
+                    'code' => '1',
+                    'msg' => 'success',
+                    'data' => [[
+                        'billCode' => 'JT-MANUAL-LIVE',
+                        'details' => [
+                            ['scanCode' => 1, 'scanType' => 'pengambilan paket', 'desc' => 'Kurir mengambil paket', 'scanTime' => '2026-08-21 13:38:24'],
+                            ['scanCode' => 3, 'scanType' => 'Scan Kirim', 'desc' => 'Paket meninggalkan outlet', 'scanTime' => '2026-08-21 17:28:48'],
+                            ['scanCode' => 4, 'scanType' => 'Scan Sampai', 'desc' => 'Paket tiba di gateway', 'scanTime' => '2026-08-21 18:53:58'],
+                        ],
+                    ]],
+                ],
+                requestId: 'req-manual-live',
+                elapsedMs: 12,
+            ));
+        });
+
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-MANUAL-LIVE',
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = ShippingRecord::where('waybill_number', 'JT-MANUAL-LIVE')->first();
+        $this->assertNotNull($record);
+        $this->assertSame('in_transit', $record->status);
+        $this->assertSame('2026-08-21 18:53:58', $record->last_status_at->format('Y-m-d H:i:s'));
+        $this->assertSame(3, ShippingTrackingEvent::where('shipping_record_id', $record->id)->count());
+        $this->assertSame('in_transit', $order->fresh()->shipping_status);
+        // cascadeOrderStatus: in_transit -> order_status shipped
+        $this->assertSame('shipped', $order->fresh()->order_status);
+    }
+
+    public function test_refresh_reports_unavailable_integration_as_stale_status(): void
+    {
+        config(['jnt.enabled' => false]);
+        $admin = $this->admin();
+        $order = $this->order();
+        $record = ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JT-STALE-1',
+            'shipping_cost' => 0,
+            'status' => 'pending_pickup',
+            'last_status_at' => now()->subHour(),
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.shipping.refresh', $record))
+            ->assertSessionHas('status', fn (string $message): bool => str_contains($message, 'belum diperbarui'))
+            ->assertSessionMissing('success');
+    }
+    /**
+     * Biaya J&T diambil OTOMATIS dari pelacakan resi (field totalFreight),
+     * bukan diketik admin. Rincian ongkir/asuransi/berat ikut tersimpan.
+     */
+    public function test_biaya_jnt_diambil_otomatis_dari_pelacakan(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: [
+                    'code' => '1',
+                    'msg' => 'success',
+                    'data' => [[
+                        'billCode' => 'JT-AUTO-COST',
+                        'details' => [[
+                            'scanCode' => 10,
+                            'scanType' => 'Tanda Terima',
+                            'desc' => 'Paket diterima penerima',
+                            'scanTime' => '2026-08-25 19:35:49',
+                            'totalFreight' => 57500,
+                            'freight' => 52500,
+                            'insuredFee' => 5000,
+                            'weight' => 14.4,
+                        ]],
+                    ]],
+                ],
+                requestId: 'req-auto-cost',
+                elapsedMs: 10,
+            ));
+        });
+
+        $admin = $this->admin();
+        $order = $this->order();
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-AUTO-COST',
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = ShippingRecord::where('waybill_number', 'JT-AUTO-COST')->first();
+        $this->assertNotNull($record);
+        $this->assertSame(57500.0, (float) $record->shipping_cost, 'total tagihan J&T tersimpan otomatis');
+        $this->assertSame(52500.0, (float) $record->shipping_freight, 'ongkir saja');
+        $this->assertSame(5000.0, (float) $record->shipping_insured_fee, 'asuransi dari J&T');
+        $this->assertSame(14.4, (float) $record->shipping_chargeable_weight_kg, 'berat tagih versi J&T');
+        $this->assertNotNull($record->shipping_cost_synced_at, 'waktu sinkron biaya tercatat');
+    }
+
+    /**
+     * Harga yang DITAGIH KE PEMBELI tidak boleh dipakai sebagai biaya J&T.
+     * Kalau J&T belum melaporkan angkanya, kolom biaya harus tetap kosong
+     * supaya pembukuan memakai asumsi checkout, bukan angka yang salah arti.
+     */
+    public function test_biaya_jnt_tidak_diisi_harga_tagihan_pembeli(): void
+    {
+        $this->mock(JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('track')->andReturn(new JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: ['code' => '1', 'msg' => 'success', 'data' => []],
+                requestId: 'req-tanpa-biaya',
+                elapsedMs: 8,
+            ));
+        });
+
+        $admin = $this->admin();
+        $order = $this->order();
+        // Ongkir yang ditagih ke pembeli; bukan biaya J&T.
+        $order->update(['shipping_amount' => 150000]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.shipping.store', $order), [
+                'waybill_number' => 'JT-TANPA-BIAYA',
+                'mark_shipped' => false,
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $record = ShippingRecord::where('waybill_number', 'JT-TANPA-BIAYA')->first();
+        $this->assertNotNull($record);
+        $this->assertNull(
+            $record->shipping_cost,
+            'biaya J&T dibiarkan kosong sampai J&T melaporkan angkanya'
+        );
+    }
+}

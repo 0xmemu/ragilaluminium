@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DownloadMediaAsset;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -16,12 +18,13 @@ class AdminProductMediaVariantTest extends TestCase
 
     public function test_admin_can_attach_media_to_variant_and_reassign(): void
     {
+        Queue::fake([DownloadMediaAsset::class]);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $product = Product::create([
             'parent_sku' => 'WIN-MEDIA-1',
             'name' => 'Window Media',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -49,12 +52,10 @@ class AdminProductMediaVariantTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Penggabungan e2e: GET media kini dialihkan ke tab Media di halaman edit.
         $this->actingAs($admin)
             ->get(route('admin.products.media.byProduct', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Products/Media')
-                ->has('variants', 2));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'media']));
 
         $this->actingAs($admin)
             ->post(route('admin.products.media.store', $product), [
@@ -66,6 +67,7 @@ class AdminProductMediaVariantTest extends TestCase
             ])
             ->assertRedirect();
 
+        Queue::assertPushed(DownloadMediaAsset::class);
         $media = ProductMedia::query()->where('product_id', $product->id)->first();
         $this->assertNotNull($media);
         $this->assertSame($putih->id, $media->product_variant_id);
@@ -83,10 +85,6 @@ class AdminProductMediaVariantTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.variants.edit', $hitam))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/VariantEdit')
-                ->has('media', 1)
-                ->where('media.0.id', $media->id));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product->id, 'tab' => 'varian']));
     }
 }

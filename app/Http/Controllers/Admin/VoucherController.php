@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\StoreVoucher;
+use App\Models\SubModel;
 use App\Services\VoucherService;
+use App\Support\CatalogLabels;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -26,30 +30,37 @@ class VoucherController extends Controller
         $q = trim((string) $request->input('q', ''));
 
         $vouchers = StoreVoucher::query()
+            ->with(['targetProduct'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('code', 'like', "%{$q}%");
+                    LikeSearch::whereLike($inner, 'name', $q);
+                    LikeSearch::orWhereLike($inner, 'code', $q);
                 });
             })
-            ->when($status === 'active', fn ($query) => $query->where('published', true))
-            ->when($status === 'inactive', fn ($query) => $query->where('published', false))
+            ->when(
+                in_array($status, StoreVoucher::DISPLAY_STATUSES, true),
+                fn ($query) => $query->withDisplayStatus($status)
+            )
             ->orderByDesc('published')
             ->orderByDesc('updated_at')
             ->paginate(20)
             ->withQueryString();
 
         return Inertia::render('Admin/Vouchers/Index', [
+            'backUrl' => route('admin.promotions.index'),
             'title' => 'Voucher Toko',
-            'description' => 'Kelola kode voucher checkout. Hanya satu voucher yang boleh aktif (published) dalam satu waktu.',
+            'description' => 'Kelola kode voucher checkout. Voucher aktif dapat dipakai bersama sesuai pengaturan stacking.',
             'viewMode' => $view,
             'searchQuery' => $q,
-            'activeStatus' => in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'all',
+            'activeStatus' => in_array($status, [...StoreVoucher::DISPLAY_STATUSES, 'all'], true) ? $status : 'all',
             'vouchers' => $vouchers->getCollection()->map(fn (StoreVoucher $v) => $this->card($v))->values()->all(),
             'pagination' => InertiaAdmin::pagination($vouchers),
             'createHref' => route('admin.vouchers.create'),
             'summary' => [
-                'active_count' => StoreVoucher::query()->where('published', true)->count(),
+                // "Aktif" dihitung dari voucher yang benar-benar bisa dipakai
+                // (published DAN dalam masa berlaku), bukan sekadar published,
+                // supaya angkanya sejalan dengan badge status di daftar.
+                'active_count' => StoreVoucher::query()->withDisplayStatus(StoreVoucher::STATUS_ACTIVE)->count(),
                 'total_count' => StoreVoucher::query()->count(),
             ],
         ]);
@@ -58,17 +69,20 @@ class VoucherController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/Vouchers/Form', [
+            'backUrl' => route('admin.vouchers.index'),
             'voucher' => null,
             'submitUrl' => route('admin.vouchers.store'),
             'method' => 'post',
             'indexHref' => route('admin.vouchers.index'),
+            'targetOptions' => $this->targetOptions(),
+            'initialProduct' => null,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateVoucher($request);
-        $userId = (int) $request->user()->id;
+        $userId = $request->user() ? (int) $request->user()->id : null;
 
         $voucher = StoreVoucher::create([
             ...$validated,
@@ -78,8 +92,23 @@ class VoucherController extends Controller
             'published' => false,
         ]);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.created',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code, 'name' => $voucher->name],
+            $userId,
+        );
+
         if ($request->boolean('publish_now')) {
             $this->vouchers->publishExclusive($voucher);
+            \App\Services\ActivityLogService::record(
+                'product.voucher.published',
+                'voucher',
+                $voucher->id,
+                ['code' => $voucher->code],
+                $userId,
+            );
         }
 
         return redirect()->route('admin.vouchers.index')
@@ -89,10 +118,13 @@ class VoucherController extends Controller
     public function edit(StoreVoucher $voucher): Response
     {
         return Inertia::render('Admin/Vouchers/Form', [
+            'backUrl' => route('admin.vouchers.index'),
             'voucher' => $this->card($voucher),
             'submitUrl' => route('admin.vouchers.update', $voucher),
             'method' => 'put',
             'indexHref' => route('admin.vouchers.index'),
+            'targetOptions' => $this->targetOptions(),
+            'initialProduct' => $this->initialProductFor($voucher),
         ]);
     }
 
@@ -103,8 +135,16 @@ class VoucherController extends Controller
         $voucher->update([
             ...$validated,
             'code' => Str::upper($validated['code']),
-            'updated_by_user_id' => (int) $request->user()->id,
+            'updated_by_user_id' => $request->user() ? (int) $request->user()->id : null,
         ]);
+
+        \App\Services\ActivityLogService::record(
+            'product.voucher.updated',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            $request->user() ? (int) $request->user()->id : null,
+        );
 
         if ($request->boolean('publish_now')) {
             $this->vouchers->publishExclusive($voucher->fresh());
@@ -118,19 +158,92 @@ class VoucherController extends Controller
     {
         $this->vouchers->publishExclusive($voucher);
 
-        return redirect()->back()->with('success', 'Voucher diaktifkan. Voucher lain dinonaktifkan.');
+        \App\Services\ActivityLogService::record(
+            'product.voucher.published',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            auth()->id() ? (int) auth()->id() : null,
+        );
+
+        return redirect()->back()->with('success', 'Voucher diaktifkan.');
     }
 
     public function unpublish(StoreVoucher $voucher): RedirectResponse
     {
         $this->vouchers->unpublish($voucher);
 
+        \App\Services\ActivityLogService::record(
+            'product.voucher.unpublished',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            auth()->id() ? (int) auth()->id() : null,
+        );
+
         return redirect()->back()->with('success', 'Voucher dinonaktifkan.');
+    }
+
+    public function duplicate(Request $request, StoreVoucher $voucher): RedirectResponse
+    {
+        $baseCode = Str::upper($voucher->code).'_COPY';
+        $code = $baseCode;
+        $suffix = 2;
+        while (StoreVoucher::query()->where('code', $code)->exists()) {
+            $code = $baseCode.'_'.$suffix++;
+        }
+
+        $copy = StoreVoucher::create([
+            'name' => $voucher->name.' (Salinan)',
+            'code' => $code,
+            'discount_type' => $voucher->discount_type,
+            'discount_value' => $voucher->discount_value,
+            'min_purchase' => $voucher->min_purchase,
+            'stackable' => $voucher->stackable,
+            'target_type' => $voucher->target_type,
+            'target_model' => $voucher->target_model,
+            'target_product_id' => $voucher->target_product_id,
+            'starts_at' => $voucher->starts_at,
+            'ends_at' => $voucher->ends_at,
+            'published' => false,
+            'created_by_user_id' => $request->user()->id,
+            'updated_by_user_id' => $request->user()->id,
+        ]);
+
+        \App\Services\ActivityLogService::record(
+            'product.voucher.duplicated',
+            'voucher',
+            $copy->id,
+            ['code' => $copy->code, 'from' => $voucher->id],
+            $request->user() ? (int) $request->user()->id : null,
+        );
+
+        return redirect()->back()->with('success', 'Voucher diduplikasi sebagai '.$code.'.');
+    }
+
+    public function end(StoreVoucher $voucher): RedirectResponse
+    {
+        $voucher->update([
+            'published' => false,
+            'ends_at' => now(),
+        ]);
+
+        \App\Services\ActivityLogService::record(
+            'product.voucher.ended',
+            'voucher',
+            $voucher->id,
+            ['code' => $voucher->code],
+            auth()->id() ? (int) auth()->id() : null,
+        );
+
+        return redirect()->back()->with('success', 'Voucher diakhiri dan dinonaktifkan.');
     }
 
     /** @return array<string, mixed> */
     private function validateVoucher(Request $request, ?StoreVoucher $existing = null): array
     {
+        $targetType = (string) $request->input('target_type', StoreVoucher::TARGET_GENERAL);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => [
@@ -148,6 +261,20 @@ class VoucherController extends Controller
                 Rule::when($request->input('discount_type') === 'percent', ['max:100']),
             ],
             'min_purchase' => ['nullable', 'numeric', 'min:0'],
+            'stackable' => ['sometimes', 'boolean'],
+            'target_type' => ['sometimes', 'in:'.implode(',', StoreVoucher::TARGET_TYPES)],
+            'target_model' => [
+                'nullable',
+                'string',
+                Rule::requiredIf($targetType === StoreVoucher::TARGET_MODEL),
+                Rule::in(SubModel::MODELS),
+            ],
+            'target_product_id' => [
+                'nullable',
+                'integer',
+                Rule::requiredIf($targetType === StoreVoucher::TARGET_PRODUCT),
+                Rule::exists('products', 'id'),
+            ],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'publish_now' => ['sometimes', 'boolean'],
@@ -155,6 +282,14 @@ class VoucherController extends Controller
 
         unset($validated['publish_now']);
         $validated['min_purchase'] = (float) ($validated['min_purchase'] ?? 0);
+        $validated['stackable'] = $request->boolean('stackable');
+        $validated['target_type'] = $targetType;
+        if ($targetType !== StoreVoucher::TARGET_MODEL) {
+            $validated['target_model'] = null;
+        }
+        if ($targetType !== StoreVoucher::TARGET_PRODUCT) {
+            $validated['target_product_id'] = null;
+        }
 
         return $validated;
     }
@@ -169,14 +304,61 @@ class VoucherController extends Controller
             'discount_type' => $voucher->discount_type,
             'discount_value' => (float) $voucher->discount_value,
             'min_purchase' => (float) $voucher->min_purchase,
+            'target_type' => $voucher->target_type ?? StoreVoucher::TARGET_GENERAL,
+            'target_label' => $voucher->targetLabel(),
             'starts_at' => optional($voucher->starts_at)?->toIso8601String(),
             'ends_at' => optional($voucher->ends_at)?->toIso8601String(),
             'published' => (bool) $voucher->published,
+            'stackable' => (bool) $voucher->stackable,
             'runnable' => $voucher->isCurrentlyRunnable(),
+            'status' => $voucher->displayStatus(),
+            'reason' => $voucher->unusableReason(),
+            'duplicate_url' => route('admin.vouchers.duplicate', $voucher),
+            'end_url' => route('admin.vouchers.end', $voucher),
             'updated_at' => optional($voucher->updated_at)?->toIso8601String(),
             'edit_href' => route('admin.vouchers.edit', $voucher),
             'publish_url' => route('admin.vouchers.publish', $voucher),
             'unpublish_url' => route('admin.vouchers.unpublish', $voucher),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function targetOptions(): array
+    {
+        return [
+            'modelOptions' => collect(SubModel::MODELS)
+                ->map(fn (string $m): array => ['value' => $m, 'label' => CatalogLabels::model($m)])
+                ->all(),
+        ];
+    }
+
+    /**
+     * Pratinjau produk yang sudah tertaut, untuk pemilih produk reusable
+     * (ProductPicker). Bentuknya sama dengan yang dipakai pemilih itu, supaya
+     * pilihan tersimpan langsung tampil tanpa mengirim seluruh katalog ke
+     * halaman.
+     */
+    private function initialProductFor(?StoreVoucher $voucher): ?array
+    {
+        $productId = $voucher?->target_product_id;
+        if (! $productId) {
+            return null;
+        }
+
+        $product = Product::query()->find($productId);
+        if (! $product) {
+            return null;
+        }
+
+        return [
+            'id' => $product->id,
+            'parent_sku' => $product->parent_sku,
+            'name' => $product->short_name ?: $product->name,
+            'category' => (string) $product->product_category,
+            'model' => (string) $product->product_model,
+            'sub_model' => (string) $product->design_variant,
+            'price' => 0.0,
+            'dimensions' => '',
         ];
     }
 }

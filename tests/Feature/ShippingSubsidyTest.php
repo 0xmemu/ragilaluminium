@@ -9,11 +9,33 @@ use App\Models\User;
 use App\Support\ShippingSubsidySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\FakesJntTariff;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ShippingSubsidyTest extends TestCase
 {
+    use FakesJntTariff;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
 
     public function test_admin_can_save_shipping_subsidy_settings(): void
     {
@@ -29,7 +51,6 @@ class ShippingSubsidyTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.shipping-subsidy.update'), [
                 'enabled' => true,
-                'subsidy_type' => 'percent',
                 'subsidy_value' => 50,
                 'jnt_enabled' => true,
             ])
@@ -37,9 +58,53 @@ class ShippingSubsidyTest extends TestCase
 
         $settings = ShippingSubsidySettings::get();
         $this->assertTrue($settings['enabled']);
+        // Skema selalu persentase (keputusan owner 2026-09-18).
         $this->assertSame('percent', $settings['subsidy_type']);
         $this->assertEquals(50.0, $settings['subsidy_value']);
         $this->assertTrue($settings['carriers']['jnt']);
+    }
+
+    /**
+     * Penjaga kontrak: skema subsidi ongkir HANYA persentase.
+     *
+     * Opsi nominal tetap dihapus karena tidak dapat ditampilkan sebagai
+     * persentase di checkout, sehingga labelnya menyesatkan pembeli. Nilai
+     * yang dikirim admin sebagai 'fixed' harus diabaikan dan tetap dihitung
+     * sebagai persentase.
+     */
+    public function test_subsidi_ongkir_hanya_persentase(): void
+    {
+        // Kirim 'fixed' beserta nilai besar: harus dianggap persen, bukan rupiah.
+        // Sengaja TIDAK memakai tipe 'percent' di sini supaya test ini benar
+        // benar membuktikan tipe 'fixed' diabaikan.
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'fixed',
+            'subsidy_value' => 25000,
+            'jnt_enabled' => true,
+        ]);
+
+        $settings = ShippingSubsidySettings::get();
+        $this->assertSame('percent', $settings['subsidy_type'], "'fixed' harus diabaikan");
+        $this->assertEquals(100.0, $settings['subsidy_value'], 'nilai di atas 100 dijepit ke 100');
+
+        // 25.000 dianggap 100 persen, bukan Rp 25.000.
+        $applied = ShippingSubsidySettings::apply(60000, 'jnt');
+        $this->assertEquals(60000.0, $applied['subsidy'], '100 persen dari 60.000');
+        $this->assertEquals(0.0, $applied['net'], 'ongkir gratis');
+        $this->assertEquals(100.0, $applied['subsidy_percent'], 'persentase asli ikut dikirim');
+
+        // Persentase pecahan dikirim apa adanya, bukan dibulatkan.
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 9.5,
+            'jnt_enabled' => true,
+        ]);
+
+        $pecahan = ShippingSubsidySettings::apply(100000, 'jnt');
+        $this->assertEquals(9.5, $pecahan['subsidy_percent'], 'persen pecahan tidak dibulatkan di backend');
+        $this->assertEquals(9500.0, $pecahan['subsidy']);
     }
 
     public function test_checkout_applies_percent_subsidy_to_shipping(): void
@@ -56,7 +121,7 @@ class ShippingSubsidyTest extends TestCase
             'name' => 'Jendela Subsidi',
             'short_name' => 'SUB',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -96,6 +161,10 @@ class ShippingSubsidyTest extends TestCase
             'postal_code' => '50254',
         ])->assertRedirect();
 
+        // J&T palsu: test tidak menyentuh API live, jadi tarif + asuransi tetap
+        // keluar dan subsidi 50 persen dari total ongkir teruji tanpa kredensial.
+        $this->fakeJntTariff();
+
         $this->post(route('checkout.place-order'), [
             'payment_method' => 'transfer',
         ])->assertRedirect();
@@ -103,22 +172,116 @@ class ShippingSubsidyTest extends TestCase
         $order = Order::query()->latest('id')->first();
         $this->assertNotNull($order);
 
-        $gross = (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount;
+        // Gross = tarif kurir DITAMBAH asuransi. Subsidi dihitung dari total
+        // ini (keputusan owner 2026-09-18), bukan dari tarif dasar saja.
+        $gross = (float) $order->shipping_amount
+            + (float) $order->shipping_subsidy_amount
+            + (float) $order->shipping_insurance_amount;
         $this->assertGreaterThan(0, $gross);
         $this->assertEquals(
             round($gross * 0.5, 2),
-            (float) $order->shipping_subsidy_amount
+            (float) $order->shipping_subsidy_amount,
+            'subsidi 50 persen dari TOTAL ongkir termasuk asuransi'
         );
         $this->assertEquals(
-            round($gross - (float) $order->shipping_subsidy_amount, 2),
-            (float) $order->shipping_amount
+            round(
+                $gross
+                    - (float) $order->shipping_subsidy_amount
+                    - (float) $order->shipping_insurance_amount,
+                2
+            ),
+            (float) $order->shipping_amount,
+            'ongkir net = gross - subsidi - asuransi (asuransi ditagihkan penuh)'
         );
+        // Asuransi selalu ikut (keputusan owner 2026-09-18): biaya dari J&T
+        // di-snapshot ke order, dan total pesanan memuatnya secara eksplisit.
+        $this->assertGreaterThan(0.0, (float) $order->shipping_insurance_amount);
         $this->assertEquals(
             (float) $order->subtotal_amount
                 + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount
                 - (float) $order->voucher_discount_amount
                 + (float) $order->cod_fee_amount,
             (float) $order->total_amount
+        );
+    }
+
+    /**
+     * Penjaga: persentase subsidi dan persentase biaya COD harus dapat
+     * diverifikasi pembeli dari angka yang tampil di ringkasan.
+     *
+     * Sebelumnya subsidi dihitung dari tarif dasar saja sementara angka yang
+     * tampil sudah termasuk asuransi, sehingga 10 persen dari angka yang
+     * terlihat tidak sama dengan selisih yang terlihat (7.500 vs 7.000).
+     * Biaya COD pun sama: basisnya ongkir tanpa asuransi, padahal yang tampil
+     * termasuk asuransi.
+     */
+    public function test_persentase_subsidi_dan_biaya_cod_dapat_diverifikasi(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 10,
+            'jnt_enabled' => true,
+        ]);
+        \App\Support\CodSettings::update([
+            'enabled' => true,
+            'fee_type' => 'percent',
+            'fee_value' => 4,
+            'max_order_amount' => null,
+        ]);
+
+        // J&T palsu meniru bentuk balasan nyata: ongkir standar 70.000,
+        // asuransi 5.000, total 75.000.
+        $this->mock(\App\Services\Shipping\JntCargoClient::class, function ($mock) {
+            $mock->shouldReceive('isEnabled')->andReturn(true);
+            $mock->shouldReceive('tariff')->andReturn(new \App\Services\Shipping\JntResponse(
+                ok: true,
+                httpStatus: 200,
+                data: ['data' => [
+                    'estimateCustomerCost' => 70000,
+                    'estimateInsuranceCost' => 5000,
+                    'estimateSumFreight' => 75000,
+                ]],
+                requestId: 'verifikasi-persen',
+                elapsedMs: 1,
+            ));
+        });
+
+        $subtotal = 580000.0;
+        $q = app(\App\Services\ShippingService::class)
+            ->quote(20.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', $subtotal);
+
+        // 10 persen dari Total Ongkir = selisih angka yang dicoret.
+        $this->assertEquals(7500.0, (float) $q['subsidy'], '10 persen dari 75.000');
+        $this->assertEquals(67500.0, (float) $q['net'], 'total ongkir setelah subsidi');
+        $this->assertEqualsWithDelta(
+            round((float) $q['gross'] * 0.10, 2),
+            (float) $q['gross'] - (float) $q['net'],
+            0.01,
+            'persen subsidi harus cocok dengan selisih yang terlihat pembeli'
+        );
+
+        // 4 persen dari (subtotal setelah voucher + TOTAL ongkir dibayar).
+        $codFee = \App\Support\CodSettings::calculateFee($subtotal, (float) $q['net']);
+        $this->assertEqualsWithDelta(
+            round(($subtotal + 67500.0) * 0.04, 2),
+            $codFee,
+            0.01,
+            'basis COD memakai total ongkir yang dibayar pembeli'
+        );
+        $this->assertNotEquals(
+            round(($subtotal + (float) $q['net_ongkir']) * 0.04, 2),
+            $codFee,
+            'basis COD bukan ongkir tanpa asuransi'
+        );
+
+        // Invariant pembukuan: tagihan J&T (asumsi) harus tetap sama dengan gross.
+        $this->assertEqualsWithDelta(
+            (float) $q['gross'],
+            (float) $q['net_ongkir'] + (float) $q['subsidy'] + (float) $q['insurance'],
+            0.01,
+            'net_ongkir + subsidi + asuransi = total ongkir'
         );
     }
 
@@ -126,8 +289,8 @@ class ShippingSubsidyTest extends TestCase
     {
         ShippingSubsidySettings::update([
             'enabled' => true,
-            'subsidy_type' => 'fixed',
-            'subsidy_value' => 25000,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 25,
             'jnt_enabled' => false,
         ]);
 
@@ -136,4 +299,206 @@ class ShippingSubsidyTest extends TestCase
         $this->assertEquals(0.0, $applied['subsidy']);
         $this->assertEquals(50000.0, $applied['net']);
     }
+
+    /**
+     * Asuransi pengiriman menyatu ke tarif ongkir (keputusan owner 2026-09-18):
+     * pengiriman toko selalu diasuransikan, pembeli tidak memilih. Quote
+     * memisahkan freight & insurance untuk pembukuan; subsidi dihitung dari
+     * TOTAL ongkir (tarif + asuransi); net = gross - subsidi. Order menyimpan
+     * snapshot.
+     */
+    public function test_checkout_with_insurance_snapshot_and_total_consistency(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => true,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 50,
+            'jnt_enabled' => true,
+        ]);
+
+        // Struktur quote: insurance >= 0 dan net konsisten tanpa argumen pilihan.
+        $breakdown = app(\App\Services\ShippingService::class)->quote(1.0, 'KOTA SEMARANG', 'JAWA TENGAH', '50254', 'Candisari');
+        $this->assertArrayHasKey('insurance', $breakdown);
+        $this->assertArrayHasKey('freight', $breakdown);
+        $this->assertGreaterThanOrEqual(0.0, (float) $breakdown['insurance']);
+        $this->assertEqualsWithDelta(
+            (float) $breakdown['gross'] - (float) $breakdown['subsidy'],
+            (float) $breakdown['net'],
+            0.01,
+            'net = total ongkir - subsidi',
+        );
+
+        $product = Product::create([
+            'parent_sku' => 'WIN-INS-1',
+            'name' => 'Jendela Asuransi',
+            'short_name' => 'INS',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => 'WIN-INS-1-100',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+
+        $this->withSession(['ragil_cart' => [
+            'WIN-INS-1-100' => [
+                'line_id' => 'WIN-INS-1-100',
+                'parent_sku' => 'WIN-INS-1',
+                'variant_sku' => 'WIN-INS-1-100',
+                'name' => 'Jendela Asuransi',
+                'unit_price' => 1000000,
+                'quantity' => 1,
+            ],
+        ]]);
+
+        $this->post(route('checkout.validate'), [
+            'name' => 'Budi',
+            'phone' => '081234567890',
+            'email' => 'budi@example.com',
+            'province' => 'Jawa Tengah',
+            'city' => 'Semarang',
+            'district' => 'Candisari',
+            'village' => 'Jatingaleh',
+            'province_id' => '33',
+            'city_id' => '3374',
+            'district_id' => '337401',
+            'village_id' => '3374011001',
+            'address_line1' => 'Jl. Contoh 1',
+            'postal_code' => '50254',
+        ])->assertRedirect();
+
+        $this->post(route('checkout.place-order'), [
+            'payment_method' => 'transfer',
+        ])->assertRedirect();
+
+        $order = Order::query()->latest('id')->first();
+        $this->assertNotNull($order);
+        $this->assertGreaterThanOrEqual(0.0, (float) $order->shipping_insurance_amount);
+        $this->assertEquals(
+            (float) $order->subtotal_amount
+                + (float) $order->shipping_amount
+                + (float) $order->shipping_insurance_amount
+                - (float) $order->voucher_discount_amount
+                + (float) $order->cod_fee_amount,
+            (float) $order->total_amount
+        );
+    }
+    /**
+     * Kontrak BARU (keputusan owner 2026-09-18): asuransi TIDAK lagi pilihan
+     * pembeli. Pengiriman toko selalu diasuransikan, biayanya selalu ikut ke
+     * tagihan ongkir, dan tidak ada flag pilihan yang bisa mematikannya.
+     */
+    public function test_asuransi_selalu_ditagihkan_tanpa_pilihan_pembeli(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        // J&T disimulasikan mengikuti perilaku nyata (terbukti 2026-09-12):
+        // biaya asuransi hanya keluar bila offerFee dikirim, dan besarnya
+        // sekitar 0,2% nilai barang dengan minimum Rp 5.000.
+        $this->fakeJntTariff();
+        $svc = app(\App\Services\ShippingService::class);
+
+        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
+
+        $this->assertEquals(10000.0, (float) $q['insurance'], 'biaya 0,2% dari nilai barang');
+        $this->assertEquals(10000.0, (float) $q['insurance_charged'], 'SELALU ditagihkan, tanpa pilihan');
+        $this->assertEquals(5000000.0, (float) $q['insured_value']);
+        $this->assertEquals(130000.0, (float) $q['net'], 'net = ongkir + asuransi (selalu)');
+        $this->assertEquals(120000.0, (float) $q['freight'], 'ongkir tidak berubah karena asuransi');
+        $this->assertArrayNotHasKey('insurance_selected', $q, 'tidak ada lagi flag pilihan');
+        $this->assertArrayNotHasKey('insurance_available', $q, 'tidak ada lagi flag ketersediaan opsi');
+
+        // Nilai pertanggungan mengikuti nilai barang, bukan angka tetap.
+        $besar = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 10283000);
+        $this->assertEquals(20566.0, (float) $besar['insurance'], 'biaya ikut nilai barang');
+
+        // Keranjang kosong: tidak ada nilai barang, jadi tidak ada biaya asuransi.
+        $kosong = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 0);
+        $this->assertEquals(0.0, (float) $kosong['insurance']);
+        $this->assertEquals(0.0, (float) $kosong['insurance_charged']);
+        $this->assertEquals(120000.0, (float) $kosong['net'], 'net = ongkir saja tanpa asuransi');
+    }
+    /**
+     * Penjaga: ongkir HANYA dari estimateCustomerCost (ongkos standar J&T).
+     *
+     * Saat offerFee dikirim, estimateSumFreight SUDAH memuat asuransi. Kalau
+     * angka itu dipakai sebagai ongkir lalu asuransi ditambahkan lagi,
+     * asuransi tertagih dua kali (ongkir membengkak). Test ini mengunci
+     * kontraknya dengan J&T palsu yang meniru perilaku nyata.
+     */
+    public function test_ongkir_hanya_dari_estimatecustomercost(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        $this->fakeJntTariff();
+        $svc = app(\App\Services\ShippingService::class);
+
+        // Tanpa nilai barang: ongkir = 120.000 dan tidak ada asuransi.
+        // sumFreight TIDAK BOLEH bocor jadi ongkir.
+        $tanpa = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 0);
+        $this->assertEquals(120000.0, (float) $tanpa['freight'], 'ongkir dari estimateCustomerCost');
+        $this->assertEquals(120000.0, (float) $tanpa['gross'], 'gross tanpa asuransi');
+        $this->assertEquals(120000.0, (float) $tanpa['net'], 'net tanpa asuransi');
+        $this->assertEquals(0.0, (float) $tanpa['insurance_charged']);
+
+        // Dengan nilai barang: net = 120.000 + 10.000 = 130.000.
+        // Kalau sumFreight dipakai sebagai ongkir, hasilnya 140.000 (dobel).
+        $dengan = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
+        $this->assertEquals(120000.0, (float) $dengan['freight'], 'ongkir tetap ongkos standar');
+        $this->assertEquals(10000.0, (float) $dengan['insurance_charged']);
+        $this->assertEquals(130000.0, (float) $dengan['net'], 'net = ongkir + asuransi (sekali)');
+        $this->assertNotEquals(140000.0, (float) $dengan['net'], 'asuransi tidak boleh terhitung dua kali');
+        $this->assertEquals(130000.0, (float) $dengan['gross'], 'gross memakai total J&T apa adanya');
+    }
+
+    /**
+     * Penjaga: kalau J&T hanya memberi TOTAL (tanpa ongkos standar), ongkir
+     * diturunkan dari angka J&T SENDIRI (total dikurangi asuransi yang ikut
+     * di dalamnya) - bukan dari rumus tarif lokal, dan bukan dengan memakai
+     * total mentah-mentah lalu menambah asuransi lagi.
+     */
+    public function test_jnt_tanpa_ongkos_standar_diturunkan_dari_angka_jnt(): void
+    {
+        ShippingSubsidySettings::update([
+            'enabled' => false,
+            'subsidy_type' => 'percent',
+            'subsidy_value' => 0,
+            'jnt_enabled' => true,
+        ]);
+
+        $this->fakeJntTariff(customerCost: null, sumFreight: 130000, insurance: 10000);
+        $svc = app(\App\Services\ShippingService::class);
+
+        $q = $svc->quote(30.0, 'KOTA BOGOR', 'JAWA BARAT', null, 'Bogor Barat', 5000000);
+
+        // Ongkir diturunkan: 130.000 (total J&T) - 10.000 (asuransi J&T).
+        $this->assertSame('ready', $q['state'], 'tarif J&T tetap dianggap final');
+        $this->assertEquals(120000.0, (float) $q['freight'], 'ongkir = total J&T - asuransi');
+        $this->assertEquals(10000.0, (float) $q['insurance_charged']);
+        $this->assertEquals(130000.0, (float) $q['net'], 'net = ongkir + asuransi (sekali)');
+        $this->assertNotEquals(140000.0, (float) $q['net'], 'asuransi tidak boleh terhitung dua kali');
+        // Rumus tarif lokal TIDAK dipakai selama J&T memberi angka.
+        $this->assertNotEquals(
+            (float) config('shipping.local_base_rate', 15000) + 30.0 * (float) config('shipping.local_per_kg', 2000),
+            (float) $q['freight'],
+            'rumus tarif lokal tidak boleh dipakai'
+        );
+    }
+
 }

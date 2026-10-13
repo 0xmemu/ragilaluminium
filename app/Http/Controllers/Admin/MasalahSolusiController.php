@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CmsProblemSolution;
+use App\Models\MediaAsset;
 use App\Services\ActivityLogService;
 use App\Support\ProblemsSolutionsSettings;
 use Illuminate\Http\RedirectResponse;
@@ -36,9 +37,7 @@ class MasalahSolusiController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'heading' => ['required', 'string', 'max:120'],
             'subtitle' => ['nullable', 'string', 'max:320'],
-            'published' => ['boolean'],
         ]);
-        $validated['published'] = $validated['published'] ?? false;
 
         ProblemsSolutionsSettings::updatePageMeta($validated, $request->user()?->id);
 
@@ -58,15 +57,17 @@ class MasalahSolusiController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/MasalahSolusi/Form', [
+            'backUrl' => route('admin.masalah-solusi.index'),
             'item' => null,
             'submitUrl' => route('admin.masalah-solusi.store'),
             'indexUrl' => route('admin.masalah-solusi.index'),
+            'method' => 'post',
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $this->validated($request);
+        $validated = $this->validated($request, null);
         $validated['cms_page_id'] = ProblemsSolutionsSettings::pageId();
         $validated['sort_order'] = $validated['sort_order']
             ?? ((int) CmsProblemSolution::query()->where('cms_page_id', $validated['cms_page_id'])->max('sort_order') + 1);
@@ -88,21 +89,31 @@ class MasalahSolusiController extends Controller
 
     public function edit(CmsProblemSolution $masalahSolusi): Response
     {
+        $parsed = ProblemsSolutionsSettings::parseForAdmin($masalahSolusi->solution);
+
         return Inertia::render('Admin/MasalahSolusi/Form', [
-            'item' => [
-                'id' => $masalahSolusi->id,
-                'problem' => $masalahSolusi->problem,
-                'solution' => $masalahSolusi->solution,
-                'sort_order' => $masalahSolusi->sort_order,
-            ],
+            'backUrl' => route('admin.masalah-solusi.index'),
+            'item' => array_merge(
+                [
+                    'id' => $masalahSolusi->id,
+                    'problem' => $masalahSolusi->problem,
+                    'sort_order' => $masalahSolusi->sort_order,
+                ],
+                $parsed,
+            ),
             'submitUrl' => route('admin.masalah-solusi.update', $masalahSolusi),
             'indexUrl' => route('admin.masalah-solusi.index'),
+            'method' => 'put',
         ]);
     }
 
     public function update(Request $request, CmsProblemSolution $masalahSolusi): RedirectResponse
     {
-        $masalahSolusi->update($this->validated($request));
+        $validated = $this->validated($request, $masalahSolusi->solution);
+        // Nomor lama dipertahankan bila kolomnya dikosongkan, supaya baris tidak
+        // kehilangan posisinya hanya karena form tidak mengirim angka.
+        $validated['sort_order'] ??= (int) $masalahSolusi->sort_order;
+        $masalahSolusi->update($validated);
 
         ActivityLogService::record(
             'cms.masalah_solusi_updated',
@@ -141,7 +152,7 @@ class MasalahSolusiController extends Controller
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['required', 'integer', 'exists:cms_problems_solutions,id'],
-            'rows.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'rows.*.sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         ProblemsSolutionsSettings::reorder($validated['rows']);
@@ -160,16 +171,40 @@ class MasalahSolusiController extends Controller
     }
 
     /** @return array<string, mixed> */
-    protected function validated(Request $request): array
+    protected function validated(Request $request, ?string $existingSolution = null): array
     {
-        $validated = $request->validate([
+        $request->validate([
             'problem' => ['required', 'string', 'max:2000'],
-            'solution' => ['required', 'string', 'max:5000'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'solution_body' => ['nullable', 'string', 'max:10000'],
+            'examples_label' => ['nullable', 'string', 'max:120'],
+            'examples_hint' => ['nullable', 'string', 'max:500'],
+            // Owner 2026-09-16: Media Library satu-satunya sumber foto dan video.
+            // Kontrak owner 2026-09-30: satu daftar media berurutan tanpa memisah
+            // foto dan video; jumlahnya dijaga di
+            // ProblemsSolutionsSettings (MAX_MEDIA_PER_ITEM).
+            // Tidak ada batas ukuran atau rasio: admin memakai banner memanjang
+            // maupun pasangan media 1:1, jadi rasionya dibiarkan bebas.
+            'media' => ['nullable', 'string'],
+            // Bentuk lama tetap diterima supaya tab admin yang sudah terbuka
+            // sebelum deploy tidak kehilangan medianya.
+            'existing_photos' => ['nullable', 'string'],
+            'media_asset_ids' => ['nullable', 'array'],
+            'media_asset_ids.*' => ['integer', 'exists:media_assets,id'],
+            'media_video_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'photo_alts' => ['nullable', 'array'],
+            'photo_alts.*' => ['nullable', 'string', 'max:200'],
+            'solutions_label' => ['nullable', 'string', 'max:120'],
+            'solution_lead' => ['nullable', 'string', 'max:500'],
+            'use_options' => ['boolean'],
+            'solution_options' => ['nullable', 'string'],
+            'whatsapp_note' => ['nullable', 'string', 'max:500'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
-        $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
-
-        return $validated;
+        return [
+            'problem' => trim((string) $request->input('problem')),
+            'solution' => ProblemsSolutionsSettings::buildSolutionFromRequest($request, $existingSolution),
+            'sort_order' => $request->filled('sort_order') ? (int) $request->input('sort_order') : null,
+        ];
     }
 }

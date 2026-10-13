@@ -4,23 +4,33 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Support\ProductPromotionMetadata;
 use Illuminate\Session\Store;
 
 class CartService
 {
     protected const SESSION_KEY = 'ragil_cart';
 
-    public function __construct(protected Store $session)
+    protected const PENDING_KEY = 'ragil_cart_pending';
+
+    protected const PENDING_UNTIL = 'ragil_cart_pending_until';
+
+    protected const UNDO_TTL = 5;
+
+    public function __construct(protected Store $session) {}
+
+    public function get(?array $onlyLineIds = null): array
     {
+        $cart = $this->session->get(self::SESSION_KEY, []);
+
+        if ($onlyLineIds !== null) {
+            $ids = array_flip($onlyLineIds);
+            $cart = array_intersect_key($cart, $ids);
+        }
+
+        return $cart;
     }
 
-    public function get(): array
-    {
-        return $this->session->get(self::SESSION_KEY, []);
-    }
-
-    public function add(string $parentSku, ?string $variantSku, int $quantity): array
+    public function add(string $parentSku, ?string $variantSku, int $quantity, ?string $note = null): array
     {
         $cart = $this->get();
         $lineId = $variantSku ?: $parentSku;
@@ -28,13 +38,16 @@ class CartService
 
         $variant = $variantSku ? ProductVariant::where('variant_sku', $variantSku)->first() : null;
         $product = Product::where('parent_sku', $parentSku)
-            ->with(['attributes', 'activeVariants', 'mainImage'])
+            ->with(['attributes', 'activeVariants.attributes', 'mainImage'])
             ->firstOrFail();
         $stock = $this->stockFor($product, $variant);
 
         if (isset($cart[$lineId])) {
             $cart[$lineId]['quantity'] = min($stock, (int) $cart[$lineId]['quantity'] + $quantity);
             $cart[$lineId]['stock'] = $stock;
+            if ($note !== null && trim($note) !== '') {
+                $cart[$lineId]['note'] = trim($note);
+            }
         } else {
             $pricing = $this->priceFor($product, $variant);
 
@@ -43,6 +56,7 @@ class CartService
                 'parent_sku' => $parentSku,
                 'variant_sku' => $variantSku,
                 'name' => $product->name,
+                'short_name' => $product->short_name,
                 'variation_1_name' => $variant?->variation_1_name,
                 'variation_1_option' => $variant?->variation_1_option,
                 'variation_2_name' => $variant?->variation_2_name,
@@ -53,6 +67,7 @@ class CartService
                 'flash_sale' => $pricing['flash_sale'],
                 'stock' => $stock,
                 'quantity' => min($stock, $quantity),
+                'note' => $note !== null && trim($note) !== '' ? trim($note) : null,
             ];
         }
 
@@ -65,7 +80,7 @@ class CartService
         return $cart;
     }
 
-    public function update(string $lineId, int $quantity): array
+    public function update(string $lineId, int $quantity, ?string $note = null): array
     {
         $cart = $this->get();
 
@@ -82,6 +97,9 @@ class CartService
                 $stock = $product ? $this->stockFor($product, $variant) : max(0, (int) ($cart[$lineId]['stock'] ?? 0));
                 $cart[$lineId]['stock'] = $stock;
                 $cart[$lineId]['quantity'] = min($stock, $quantity);
+                if ($note !== null) {
+                    $cart[$lineId]['note'] = trim($note) !== '' ? trim($note) : null;
+                }
                 if ($cart[$lineId]['quantity'] < 1) {
                     unset($cart[$lineId]);
                 }
@@ -94,32 +112,169 @@ class CartService
 
     public function remove(string $lineId): array
     {
+        // Undo untuk hapus per-item ikut batch (konsisten dengan hapus banyak).
+        return $this->removeBatch([$lineId]);
+    }
+
+    /**
+     * Hapus beberapa line sekaligus. Snapshot item yang dihapus disimpan di session
+     * selama 5 detik (window "Urungkan"); lewat dari itu dianggap destroy permanen.
+     *
+     * @param  list<string>  $lineIds
+     */
+    public function removeBatch(array $lineIds): array
+    {
         $cart = $this->get();
-        unset($cart[$lineId]);
+        $removed = [];
+        foreach (array_values(array_unique($lineIds)) as $lineId) {
+            if (isset($cart[$lineId])) {
+                $removed[] = $cart[$lineId];
+                unset($cart[$lineId]);
+            }
+        }
         $this->session->put(self::SESSION_KEY, $cart);
 
+        if ($removed !== []) {
+            $existing = $this->session->get(self::PENDING_KEY, []);
+            $merged = array_merge(is_array($existing) ? $existing : [], $removed);
+            $this->session->put(self::PENDING_KEY, $merged);
+            $this->session->put(self::PENDING_UNTIL, time() + self::UNDO_TTL);
+        }
+
         return $cart;
+    }
+
+    /**
+     * Item yang masih dalam window undo (5 dtk). Snapshot kedaluwarsa dibuang.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getPendingRemovals(): array
+    {
+        $until = (int) $this->session->get(self::PENDING_UNTIL, 0);
+        if ($until <= 0 || time() > $until) {
+            $this->clearPendingRemovals();
+
+            return [];
+        }
+        $items = $this->session->get(self::PENDING_KEY, []);
+
+        return is_array($items) ? $items : [];
+    }
+
+    /** Kembalikan semua item yang masih bisa diurungkan. */
+    public function restorePendingRemovals(): bool
+    {
+        $items = $this->getPendingRemovals();
+        if ($items === []) {
+            return false;
+        }
+
+        $cart = $this->get();
+        foreach ($items as $item) {
+            if (! is_array($item) || empty($item['parent_sku'])) {
+                continue;
+            }
+            $lineId = $item['line_id'] ?? ($item['variant_sku'] ?: $item['parent_sku']);
+            if (! $lineId) {
+                continue;
+            }
+            $cart[$lineId] = $item;
+        }
+        $this->session->put(self::SESSION_KEY, $cart);
+        $this->clearPendingRemovals();
+
+        return true;
+    }
+
+    protected function clearPendingRemovals(): void
+    {
+        $this->session->forget(self::PENDING_KEY);
+        $this->session->forget(self::PENDING_UNTIL);
+    }
+
+    public function selectLines(array $lineIds): void
+    {
+        $cartKeys = array_keys($this->get());
+        $selected = array_values(array_intersect($cartKeys, array_values(array_unique(array_map(
+            static fn ($lineId): string => (string) $lineId,
+            $lineIds,
+        )))));
+
+        $this->session->put(self::SESSION_KEY.'_selected', $selected);
+    }
+
+    public function getSelectedLines(): array
+    {
+        $selected = $this->session->get(self::SESSION_KEY.'_selected', []);
+
+        if (! is_array($selected)) {
+            return [];
+        }
+
+        return array_values(array_intersect(array_keys($this->get()), $selected));
+    }
+
+    public function clearSelectedLines(): void
+    {
+        $this->session->forget(self::SESSION_KEY.'_selected');
+    }
+
+    /**
+     * Keluarkan baris yang baru dipesan dari keranjang, sisakan baris lain.
+     *
+     * Dipakai setelah order dibuat: pembeli bisa memesan sebagian baris
+     * (mis. "Beli Sekarang" hanya memilih satu baris) dan baris sisanya harus
+     * tetap ada di keranjang. Tidak memakai removeBatch supaya baris yang sudah
+     * dipesan tidak masuk jendela "Urungkan" (order sudah tersimpan).
+     *
+     * @param  list<string>  $lineIds
+     */
+    public function removeOrderedLines(array $lineIds): void
+    {
+        $cart = $this->get();
+        foreach (array_values(array_unique(array_map(
+            static fn ($lineId): string => (string) $lineId,
+            $lineIds,
+        ))) as $lineId) {
+            unset($cart[$lineId]);
+        }
+
+        $this->session->put(self::SESSION_KEY, $cart);
+        $this->clearSelectedLines();
+        $this->clearPendingRemovals();
     }
 
     public function clear(): void
     {
         $this->session->forget(self::SESSION_KEY);
+        $this->clearSelectedLines();
+        $this->clearPendingRemovals();
     }
 
     public function count(): int
     {
-        return collect($this->get())->sum('quantity');
+        // Badge navbar menghitung JENIS produk (jumlah baris), bukan total unit,
+        // sesuai keputusan owner 2026-09-06: 1 kartu produk = 1 walau qty-nya 2.
+        return count($this->get());
     }
 
-    public function subtotal(): float
+    /**
+     * Subtotal keranjang. `$onlyLineIds` membatasi ke baris tertentu supaya
+     * nilai pertanggungan asuransi & ringkasan checkout mengikuti baris yang
+     * benar-benar dipesan, bukan seluruh isi keranjang.
+     *
+     * @param  list<string>|null  $onlyLineIds
+     */
+    public function subtotal(?array $onlyLineIds = null): float
     {
-        return (float) $this->pricedLines()['subtotal'];
+        return (float) $this->pricedLines($onlyLineIds)['subtotal'];
     }
 
     /**
      * Resolve live selling prices + promo discounts for every cart line.
      * Selling price = variant.price (already the promo/flash-sale price).
-     * Compare / discount come from ProductPromotionMetadata so the cart
+     * Compare / discount come from PriceService so the cart
      * summary can show potongan explicitly and stay aligned with PDP cards.
      *
      * @return array{
@@ -129,9 +284,13 @@ class CartService
      *     discount_total: float
      * }
      */
-    public function pricedLines(): array
+    public function pricedLines(?array $onlyLineIds = null): array
     {
         $raw = collect($this->get())->values();
+        if ($onlyLineIds !== null) {
+            $ids = array_flip($onlyLineIds);
+            $raw = $raw->filter(fn (array $item) => isset($ids[$item['line_id'] ?? '']));
+        }
         if ($raw->isEmpty()) {
             return [
                 'items' => [],
@@ -143,7 +302,7 @@ class CartService
 
         $products = Product::query()
             ->whereIn('parent_sku', $raw->pluck('parent_sku')->unique()->all())
-            ->with(['attributes', 'activeVariants', 'mainImage'])
+            ->with(['attributes', 'activeVariants.attributes', 'mainImage'])
             ->get()
             ->keyBy('parent_sku');
 
@@ -205,6 +364,8 @@ class CartService
 
             $items[] = [
                 ...$item,
+                'product_id' => $product?->id,
+                'product_model' => $product?->product_model,
                 'quantity' => $qty,
                 'unit_price' => $unit,
                 'compare_price' => $compare,
@@ -249,28 +410,25 @@ class CartService
             $product->load('mainImage');
         }
 
-        $unitPrice = $variant
-            ? (float) $variant->price
-            : (float) ($product->activeVariants->min('price') ?? 0);
+        $priceService = app(PriceService::class);
 
-        $promo = ProductPromotionMetadata::forProduct($product);
-        $compare = $promo['compare_price'];
-
-        // When a specific variant is selected, keep compare only if it still
-        // sits above that variant's selling price (same rule as PDP).
-        if ($compare !== null && $compare <= $unitPrice) {
-            $compare = null;
+        if ($variant) {
+            $priced = $priceService->forVariant($variant, $product);
+        } else {
+            $card = $priceService->productCard($product);
+            $priced = [
+                'sale' => $card['min_sale'],
+                'compare' => $card['compare'],
+                'discount_percent' => $card['discount_percent'],
+                'flash_sale' => $card['flash_sale'],
+            ];
         }
 
-        $discountPercent = $compare !== null && $unitPrice > 0
-            ? (int) round((($compare - $unitPrice) / $compare) * 100)
-            : null;
-
         return [
-            'unit_price' => $unitPrice,
-            'compare_price' => $compare,
-            'discount_percent' => $discountPercent,
-            'flash_sale' => (bool) $promo['flash_sale'],
+            'unit_price' => (float) $priced['sale'],
+            'compare_price' => $priced['compare'],
+            'discount_percent' => $priced['discount_percent'] > 0 ? $priced['discount_percent'] : null,
+            'flash_sale' => (bool) $priced['flash_sale'],
             'image' => $product->mainImage?->urlFor('card') ?? $product->mainImage?->urlFor('thumb'),
         ];
     }

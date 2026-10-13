@@ -17,13 +17,13 @@ The website is **not a standalone store** — it is the **transaction engine** a
 | **Shopee** | Upstream source of the official catalog and SKUs. Catalog enters the website via Shopee "Mass Upload/Update" Excel exports. | Shopee → Website (website never writes back to Shopee) |
 | **Website** | Primary transaction engine: catalog display, cart, checkout, order of record, order-status tracking. | — |
 | **WhatsApp Business** | Post-order notifications and customer communication (payment proof, shipping updates, support). Orders are **not** created here. | Website ↔ Customer |
-| **J&T Cargo** | Shipping cost estimation, waybill creation, and authoritative shipping status (via API + webhook). | Website ↔ J&T |
+| **J&T Cargo** | Shipping cost estimation and authoritative shipping status (via API + webhook). Waybill dibuat di J&T di luar website; admin memasukkan nomor resi manual. | Website ↔ J&T |
 | **Cloud storage (Cloudflare R2 / local)** | Product image CDN after images are downloaded from Shopee URLs. | — |
 
 **Guiding principles baked into the product:**
 - **Product public IDs** live in columns `parent_sku` / `variant_sku` (opaque URL keys). **Never show these codes on the storefront** (cards, PDP, cart, model pages). Customers see name + options only. Admin/import/orders may show them as **Kode produk**.
 - **Shopee import** maps `SP{product_id}` (and variant suffixes) into those columns — Shopee remains upstream for imported rows. Website never writes back to Shopee.
-- **Website-created products** get a **random opaque** public ID with configurable prefix (`storefront.manual_sku_prefix`, default `WEB`) via `ShopeeStyleSku::nextParentSku()` — not a sequential catalog number and not a customer-facing “SKU label”.
+- **Website-created products** get a **random opaque** public ID with configurable prefix (`storefront.manual_sku_prefix`, default `RA`) via `ShopeeStyleSku::nextParentSku()` (Fase 4, no dash; distinct dari import Shopee `SP{id}`) — not a sequential catalog number and not a customer-facing “SKU label”.
 - **Product name (Shopee / admin)** follows the live Shopee title pattern, e.g.  
   `Jendela Aluminium 3 Daun Swing Casement Ornamen Tinggi 200 cm x Panjang 160 cm (200x160)`.  
   Older sample XLSX title layouts are **not** the naming SoT. Import stores `name` as-is; taxonomy/dimensions are parsed from the title.
@@ -79,6 +79,11 @@ flowchart TD
 | Category | `product_category` | `WINDOW` (Jendela), `DOOR` (Pintu), `BOUVEN` |
 | Model | `product_model` | `JUNGKIT` (awning/tilt), `SLIDING`, `SWING`, `KACA_MATI` (fixed glass), `ZIGZAG` (folding) |
 | Design | `design_variant` | `POLOS`, `ORNAMEN`, `KOMBINASI`, `SERIES_A`, `SERIES_B`, `SERIES_C` |
+
+- **Category vs model:** tidak ada “jendela boven”. Kategori saling eksklusif (`WINDOW` | `DOOR` | `BOUVEN`). Model (mis. `JUNGKIT`) boleh ada di jendela **dan** boven sebagai dua baris produk berbeda.
+- **Shopee Excel** tidak punya kolom kategori terisi; import (`ShopeeCatalogTaxonomy::fromProductName`) baca judul: kata `Boven`/`Bouven` → `BOUVEN` (meski diawali “Jendela …”); `Pintu` → `DOOR`; `Jendela` tanpa Boven → `WINDOW`. Model/desain dari kata Jungkit/Sliding/… dan Polos/Ornamen/….
+- **Media:** cover storefront dari `mass_update_media_info` (`ShopeeMediaExport`). Re-import **mengganti** foto utama sesuai cover file dan menyembunyikan URL katalog lama yang tidak ada di file (cegah foto boven nempel di jendela). Perbaiki data existing: `php artisan catalog:resync-shopee-media --download`.
+- Reparse taxonomy tanpa re-upload: `php artisan catalog:reparse-taxonomy` (`--dry-run` tersedia).
 
 - A **Product** (`products.parent_sku`) is the parent item; it holds category/model/design and marketing fields.
 - A **Variant** (`product_variants.variant_sku`) is the sellable unit with `price`, `stock`, `weight_kg`, and dimensions (`width_cm`, `height_cm`, `depth_cm`), plus up to two variation axes (e.g. "Ukuran" / "Warna").
@@ -207,7 +212,7 @@ flowchart TB
   - **UI rule:** display images via `urlFor()`/`display_url` (derivatives). Never hotlink `source_url` in production.
 
 ### 6.3 Orders & commerce
-- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `RA-YYMMDD-XXXXXX`), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
+- **`Order`** — lifecycle master with customer/shipping snapshot. `order_number` (unique, format `ORD`+`YYMM`+sequence 4-digit, mis. `ORD26080001`), `checkout_idempotency_key` (nullable unique UUID for session retry/double-submit protection), customer contact/address fields (`shipping_address_line1/2`, `shipping_city`, `shipping_province`, `shipping_district`, `shipping_village`, `shipping_postal_code`, `shipping_country`), tri-status:
   - `order_status`: `pending_payment`, `processing`, `shipped`, `delivered`, `completed`, `issue`, `return_in_process`, `cancelled`
   - `payment_status`: `pending`, `paid`, `refunded`
   - `shipping_status`: `pending_pickup`, `in_process`, `in_transit`, `delivered`, `cancelled`
@@ -250,7 +255,7 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 |-----------|----------------|
 | `HomeController` | Homepage: banners, popular products, promotions, testimonials |
 | `PageController` | `/about`, `/faq`, `/contact`, `/cara-pemesanan`, `/policy/*`, `/reviews` (CMS/static) |
-| `CatalogController` | `/products` (model hub or listing), `/windows`, `/doors`, `/bouven` |
+| `CatalogController` | `/products` (model hub), `/products/{category}`, `/products/{category}/{model}`, `/products/{category}/{model}/{design}` |
 | `ProductController` | `/product/{parent_sku}` PDP with variants, media, attributes, testimonials |
 | `SearchController` | `GET /api/search` — JSON SKU/name search (storefront memakai `/products?q=`) |
 | `CartController` | Session cart CRUD; `count` returns JSON |
@@ -267,8 +272,9 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | Service | Role |
 |---------|------|
 | `CartService` | Session cart (`ragil_cart` key): add/update/remove, subtotal, count |
-| `OrderService` | `createFromCart()` — DB revalidation, stock lock/decrement, create order+items+payment, `EventLog`, dispatch `OrderCreated`; generates `RA-YYMMDD-XXXXXX` numbers |
-| `ShippingService` | J&T tariff estimate (local fallback formula), `createShipment`, `refreshStatus`, `cancelShipment`, `applyCarrierUpdate` (idempotent; cascades order status; dispatches `ShippingStatusUpdated`) |
+| `OrderService` | `createFromCart()` — DB revalidation, unique checkout idempotency key, stock lock/decrement, create order+items+payment; `cancel()` restores variant stock exactly once under order lock |
+| `PaymentService` | Locks order/payments, requires positive amounts and full completed settlement before `paid`; reconciles failed/refunded rows back to order payment status |
+| `ShippingService` | J&T tariff estimate (local fallback formula), manual waybill attachment, `refreshStatus`, `cancelShipment`, `applyCarrierUpdate` (idempotent; cascades order status; dispatches `ShippingStatusUpdated`) |
 | `WhatsAppService` | Template send via Meta Graph API, webhook handling, order/payment/shipping notification handlers; degrades safely without token |
 | `MediaDerivativeService` | GD-based WebP derivatives (thumb ~400 / card ~800 / pdp ~1400 px longest edge) |
 | `Shipping\JntCargoClient`, `Shipping\JntResponse` | Signed J&T API client + response wrapper |
@@ -276,7 +282,7 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 ### 7.3 Jobs (`app/Jobs/`)
 | Job | Queue | Role |
 |-----|-------|------|
-| `ProcessCatalogImport` | `imports` | Load Excel, detect Shopee vs internal format, upsert products/variants, create media stubs, dispatch downloads; 30-min timeout |
+| `ProcessCatalogImport` | `imports` | Load Excel, detect Shopee vs internal format, upsert products/variants, create media stubs, dispatch downloads; 30-min timeout, unique dispatch, overlap lock |
 | `DownloadProductMedia` | `media` | Download image (URL guard + size/MIME checks), store original + derivatives; unique per media ID; 3 retries |
 
 ### 7.4 Imports (`app/Imports/`)
@@ -310,9 +316,9 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 | `GET /policy/privacy` | `privacy` | Privacy policy |
 | `GET /policy/terms` | `terms` | Terms |
 | `GET /products` | `catalog.index` | Model hub (no listing query) or SKU listing (with `sort`/`q`/`model`/`price_*`) |
-| `GET /windows` | `catalog.windows` | Window category |
-| `GET /doors` | `catalog.doors` | Door category |
-| `GET /bouven` | `catalog.bouven` | Bouven category |
+| `GET /products/jendela` | `catalog.category` | Jendela category (canonical Indonesian slug); legacy `/products/windows` → 301, top-level `/windows` → 404 |
+| `GET /products/pintu` | `catalog.category` | Pintu category (canonical Indonesian slug); legacy `/products/doors` → 301, top-level `/doors` → 404 |
+| `GET /products/boven` | `catalog.category` | Boven category (canonical Indonesian slug); legacy `/products/bouven` → 301, top-level `/bouven` → 404 |
 | `GET /search` | `search` | Redirect → `/products` (query `q` dll. diteruskan) |
 | `GET /product/{parent_sku}` | `product.show` | Product detail (PDP) |
 | `GET /cart` | `cart.index` | Cart page |
@@ -337,6 +343,19 @@ All page controllers return **Inertia** responses unless noted; public catalog/p
 |----------|---------|
 | `GET /api/catalog/{category}` | Category list (`WINDOWS`/`WINDOW`, `DOORS`/`DOOR`, `BOUVEN`) |
 | `GET /api/search?q=` | Search results |
+
+`GET /api/search?q=` (Fase 6 — pencarian deterministik) response additions:
+  - `query` — query ASLI (debrief/telemetri; tidak pernah diganti diam-diam).
+  - `search` — `{ original, normalized, changed, replacements }` normalisasi typo/sinonim
+    (slidding→sliding, bouven→boven, geser→sliding, ayun→swing); `changed` true bila berubah.
+  - `dimension` — null, atau `{ kind:'exact', height, width }` / `{ kind:'range',
+    height_min, height_max, width_min, width_max }` — orientasi Tinggi × Panjang dipertahankan.
+  - `nearest_sizes` — bila ukuran eksak tak ada hasil: varian terdekat (jarak Manhattan
+    |ΔT|+|ΔP|) sebagai rekomendasi ukuran terdekat yang relevan (tidak memaksa balik orientasi).
+  - `suggestions` — bila tak ada hasil: kata kunci katalog yang benar-benar tersedia
+    (model/desain/kategori/warna dari DB) untuk saran "Mungkin yang Anda maksud".
+  - `products`, `pagination` — seperti sebelumnya.
+
 | `GET /api/products/{parent_sku}` | Product detail (`Product::toApiArray()`) |
 | `GET /api/orders/{order_number}/status` | Order status JSON |
 
@@ -397,8 +416,8 @@ sequenceDiagram
     OS-->>CO: order_number
     CO-->>C: redirect /order/{order_number}/confirmation
 ```
-- Order number format: `RA-260717-ABCDEF`.
-- Payment confirmation (admin) sets `payment_status: paid`, `order_status: processing`, fires `PaymentConfirmed` → WhatsApp.
+- Order number format: `ORD`+`YYMM`+4-digit sequence (mis. `ORD26080001`), dialokasikan via `order_number_sequences`; legacy `RA-{Ymd}-{seq}` tetap di-resolve.
+- Payment confirmation (admin) sets `payment_status: paid` and `order_status: processing` only when completed payments cover the full order total, then fires `PaymentConfirmed` → WhatsApp. Untuk COD, pembayaran tidak dilunasi saat delivered; saat order berstatus completed sistem otomatis membuat/menyelesaikan payment sebesar total_amount dan mencatat audit system/cod_completion.
 
 ### D. WhatsApp notifications
 ```
@@ -406,12 +425,32 @@ OrderCreated       → template key order_created
 PaymentConfirmed   → template key payment_confirmed
 ShippingStatusUpdated → order_shipped | order_delivered | order_returned
 
+Pemetaan status -> template juga dipakai TOMBOL CHAT MANUAL admin
+(WhatsAppService::templateKeyForOrderStatus + statusMessageUrl, kontrak owner
+2026-09-19). Tautannya adalah wa.me ke nomor pelanggan dengan naskah template
+yang sudah dirender, sehingga admin tidak menulis ulang pesan baku:
+  awaiting_confirmation + COD  → order_created
+  awaiting_confirmation + transfer → payment_instructions
+  processing                   → payment_confirmed
+  shipped                      → order_shipped (butuh nomor resi; tanpa resi
+                                 tautan naskah kosong)
+  delivered                    → order_delivered
+  issue | return_in_process    → order_issue_followup
+  return_completed             → order_returned
+  completed | cancelled        → tanpa naskah (tombol memakai tautan WhatsApp
+                                 biasa tanpa isi pesan)
+
+Halaman daftar dan detail pesanan mengirim prop `whatsapp_status_url` (naskah
+siap kirim) di samping `whatsapp_url` (tautan polos). Tombol Chat WA memakai
+`whatsapp_status_url` bila ada, jika tidak jatuh ke `whatsapp_url`.
+
 WhatsAppService::sendTemplateMessage
   → look up active WhatsAppTemplate by internal_key
   → create WhatsAppMessage (pending)
   → no WHATSAPP_API_TOKEN → mark sent (dev degrade); else POST Meta Graph API → update status
 
 Inbound: POST /webhook/whatsapp → handleWebhook → log inbound + delivery status (idempotent by provider_message_id)
+  → bila tombol/teks konfirmasi COD (Oke / Proses Pesanan / confirm_*) → OrderService::beginProcessing → OrderProcessingStarted → WA `payment_confirmed`
 ```
 
 ### E. Shipping (J&T Cargo)
@@ -436,7 +475,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 ### 10.1 Public storefront
 
 **Home (`GET /`)**
-- Consumes: homepage promo slides (permanent landing slide first, then manual `cms_banners` published, then automatic product promos when `cms_pages.beranda.content.auto_promotions.enabled`; when both promo sources empty, fallback memakai **foto produk asli** — prefer BOUVEN terbaru, lalu DOOR terbaru; tidak memakai aset dummy `hero-boven-jungkit.png`), popular products (`homepage_popular` picks or website-sales fallback), published testimonials, category entry points.
+- Consumes: homepage promo slides (permanent landing slide first, then manual `cms_banners` published, then automatic product promos when `cms_pages.beranda.content.auto_promotions.enabled`; when automatic mode is disabled, only manual banners follow the landing slide; when both promo sources are empty while automatic mode is enabled, fallback memakai **foto produk asli** — prefer BOUVEN terbaru, lalu DOOR terbaru; tidak memakai aset dummy `hero-boven-jungkit.png`), popular products (`homepage_popular` picks or website-sales fallback), published testimonials, category entry points.
 - Automatic slides: products with explicit compare price or Flash Sale attribute + active variant + main image; **prefer kategori BOUVEN terbaru** lalu kandidat lain; headline = kategori+model (bukan ukuran); copy banner memakai "Promo Diskon" (bukan "Flash Sale"); CTA ke listing model; max `auto_promotions.max_slides` (default 3); layout kartu promo 3:4; not duplicated if already linked by a manual banner; excluded from announcement ticker.
 - Actions: navigate to categories, PDPs, add-to-cart shortcuts (where present).
 - States: Empty (no banners/popular → still render category nav + fallback hero), Loading, Error.
@@ -449,9 +488,18 @@ This is the **functional contract** for each page — its purpose, the data it c
 - Two modes on one route: **model hub** (no listing query) showing model/design entry cards; **SKU listing** when query params present (`sort`, `q`, `model`, `price_min`/`price_max`, etc.).
 - Consumes: paginated product cards (main image via derivatives, name, price range, category/model), filter/sort options.
 - Actions: filter, sort (`sort=popular` = website order volume), paginate, open PDP.
+- Ukuran halaman mengikuti perangkat (kontrak owner 2026-09-18): desktop 15 kartu
+  (`storefront.catalog_page_size`, pas untuk grid 3 kolom sm/md dan 5 kolom xl), telepon 16 kartu
+  (`storefront.catalog_page_size_mobile`, 8 baris penuh pada grid 2 kolom). Server memilih ukuran
+  dari query `per_page` bila ada (klien mengukur viewport sendiri, paling akurat), lalu dari
+  User-Agent telepon supaya pelanggan HP menerima 16 kartu sejak render pertama tanpa URL berisi
+  parameter, lalu default desktop. Tablet dan iPad tetap 15 karena lebarnya masuk grid 3 kolom.
+  Server hanya menerima dua nilai resmi, mengabaikan nilai lain, dan menyajikan angka resminya
+  lewat prop `catalogPageSize`. Klien menyimpan jaring pengaman untuk kasus yang tidak terlihat
+  User-Agent (jendela desktop dipersempit, telepon diputar ke lanskap).
 - States: Empty (no matches), Loading, Error.
 
-**Category pages (`GET /windows`, `/doors`, `/bouven`)**
+**Category pages (`GET /products/{category}`; legacy category paths redirect 301)**
 - Consumes: products filtered by `product_category` + query params (`model`, `design`, `sort`, price range), pagination.
 - Actions: same as listing, scoped to the category.
 - States: Empty/Loading/Error.
@@ -475,7 +523,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 
 **Checkout (`GET /checkout`)**
 - Consumes: cart summary, prior validated details (session `checkout_details`), shipping estimate.
-- Fields: `name`, `phone`, `email` (optional), `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (manual), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin), `notes` (optional). Order snapshot also stores `shipping_district` / `shipping_village`.
+- Fields: `name`, `phone`, `province`, `city`, `district`, `village` (selected wilayah names), `province_id` / `city_id` / `district_id` / `village_id` (session helpers), `address_line1` (alamat lengkap, manual), `address_line2` (patokan, optional manual), `postal_code` (server auto-fill readonly; blank jika mapping belum terverifikasi), per-item `note` (optional), `payment_method` (`cod` / `transfer` only on public checkout; opsi lain diproses manual via WhatsApp/admin). Order snapshot also stores `shipping_district` / `shipping_village`.
 - Actions: `POST /checkout/validate` (validate + shipping estimate), `POST /checkout/place-order` (throttled). Wilayah options: `GET /api/wilayah/provinces|regencies/{id}|districts/{id}|villages/{id}` (`?q=` filter). On success → redirect to confirmation.
 - States: validation errors per field, shipping-estimate failure fallback, Loading, empty-cart guard.
 
@@ -485,7 +533,7 @@ This is the **functional contract** for each page — its purpose, the data it c
 
 **Order status (`GET /order/status`, `POST /order/status`)**
 - Session first: if `confirmed_orders` exists, show those orders + J&T status (no form).
-- Fallback form fields: `order_number` + `customer_phone` or `customer_email` (only when session empty).
+- Fallback form fields: `order_number` + `customer_phone` (only when session empty).
 - Consumes: order tri-status (order/payment/shipping), tracking info (waybill/tracking_url if any).
 - Actions: open session orders; submit lookup when session hilang (throttled 15/min); successful lookup re-seeds session.
 - States: not found / mismatch, Loading, Error.
@@ -508,16 +556,20 @@ For each: purpose · consumes · key actions.
 - **Media (`admin.media.*`, `admin.products.media.*`)** — under sidebar **Produk → Media**; global media index + per-product manager; upload, set-main, archive, redownload. Shows download `status` and `error_reason`.
 - **Imports (`admin.imports.*`)** — under sidebar **Produk → Import**; upload Shopee Excel; job list; job detail with counters and status; failed-rows view; download correction file; retry.
 - **Orders (`admin.orders.*`)** — order list (filter by statuses) + detail; manual `updateStatus`. Detail shows items, amounts, customer/shipping snapshot, linked payments/shipping/WhatsApp.
-- **Payments (`admin.payments.*`)** — payment list; per-order payments; record/update payment (marking completed drives order to processing + fires WhatsApp).
-- **Shipping (`admin.shipping.*`)** — shipping record list + detail; manual J&T status refresh.
+- **Payments (`admin.payments.*`)** — payment list; per-order payments; record/update payment (marking completed drives order to processing + fires WhatsApp).; COD settlement otomatis saat completed dan tercatat sebagai system/cod_completion.
+- **Shipping (`admin.shipping.*`) -- shipping record list + detail; admin inputs a waybill created externally at J&T, sees tracking URL/event timeline, and receives honest success/stale/failure feedback on refresh.
 - **WhatsApp (`admin.whatsapp.*`)** — WhatsApp Otomatis hub (5 Stage-8 triggers: toggle/edit/`body_preview`); Cloud API connection status; message log; per-order thread.
 - **Customers (`admin.customers.*`)** — Kelola Pelanggan (guest): list/search/CSV, detail/edit, order history; checkout upserts `customers` + `orders.customer_id`.
 - **Analytics (`admin.analytics.*`)** — Performa Toko as store bookkeeping (period KPIs, product sales, customers, charts, CSV export); import performance report.
 - **Log Aktivitas (`admin.activity-logs.*`)** — Monitoring audit trail from `event_logs` (category tabs, search, CSV). Append-only; Detail links to order/import/WA entity. Writers: order/payment/shipping, import start/retry, WhatsApp template changes, admin login/logout.
 - **CMS (`admin.beranda.*`, `admin.model-products.*`, `admin.cara-pemesanan.*`, `admin.faq.*`, `admin.masalah-solusi.*`, `admin.tentang-kami.*`, `admin.storefront-platforms.*`, `admin.ketentuan-layanan.*`, `admin.kebijakan-privasi.*`, `admin.apa-kata-pelanggan.*`, `admin.hasil-pemasangan.*`, `admin.pages.*`, `admin.banners.*`, `admin.testimonials.*`, `admin.gallery-items.*`)** — Beranda Pembeli layout + Sorotan Layanan / Cara Pesan editors on `cms_pages.beranda`; Model Produk showcase (`cms_model_products` + catalog link/stats, sync/reorder); Cara Pemesanan panduan (`cms_pages.cara-pemesanan` steps/info/body); FAQ (`cms_faq_items` + `cms_pages.faq`); Masalah & Solusi (`cms_problems_solutions` + `cms_pages.masalah-solusi`); dokumen Informasi Toko / Ketentuan / Privasi (`cms_pages.tentang-kami`, `ketentuan-layanan`, `kebijakan-privasi`); tautan Marketplace & Media Sosial (`cms_pages.storefront-platforms` → `content.links`, catalog di `config/sitemap.platforms`); Apa Kata Pelanggan (`cms_pages.testimoni` meta + `cms_testimonials`); Hasil Pemasangan (`cms_pages.hasil-pemasangan` meta + `cms_gallery_items`); pages CRUD + branding update; Promo Toko (`cms_banners`) list/create/edit + publish/unpublish + auto-promotions toggle; Monitoring → Ulasan dual tabs (website `cms_testimonials` + foto `cms_gallery_items` / hasil pemasangan) with optional product link on testimonials.
 - **Flash Sale (`admin.flash-sale.*`)** — manage per-product `promo_flash_sale` + `promo_compare_price` attributes (list/grid, enable/disable, create/edit) **and** global campaign window on `cms_pages.slug = flash-sale` → `content.period` (`enabled`, `starts_at`, `ends_at`). Storefront Flash Sale label / `/flash-sale` listing / promo spotlight only when period status is `live`. No separate campaign table.
-- **Voucher Toko (`admin.vouchers.*`)** — CRUD `store_vouchers`; exclusive publish; checkout apply/remove via session → `orders.voucher_code` + `voucher_discount_amount`.
-- **Biaya COD (`admin.cod-settings.*`)** — enable COD + handling fee (%/Rp) + optional max order; stored on `cms_pages.checkout.content.cod`; applied as `orders.cod_fee_amount` at place-order.
+- **Voucher Toko (`admin.vouchers.*`)** — CRUD/status/duplikasi/akhiri `store_vouchers`; beberapa voucher dapat aktif; setiap voucher memilih nominal atau persen, minimum belanja opsional (default tanpa minimum), dan boleh/tidaknya stacking. Voucher dapat di-target-kan (keputusan owner 2026-08-20): **General** (seluruh keranjang, default), **Model Produk** (`target_model` = `product_model`), atau **Produk Tertentu** (`target_product_id`). Checkout menerapkan voucher setelah harga efektif Promo/Flash Sale; untuk voucher bertarget potongan hanya dihitung atas subtotal produk yang memenuhi target, dan minimum belanja dihitung dari subtotal eligible tersebut. Stacking dihitung berurutan atas sisa eligible (didistribusi proporsional); subsidi ongkir tetap dapat berjalan. Session menyimpan daftar kode; snapshot order memakai `orders.voucher_code` berisi kode dipisah koma dan `voucher_discount_amount` total. Voucher tidak mengubah harga dasar histori: `orders.subtotal_amount` & `order_items.unit_price` tetap harga efektif Promo/Flash Sale (tanpa potongan voucher); potongan voucher dicatat terpisah. UI admin (`admin.vouchers.*`) menampilkan alasan voucher tidak dapat dipakai (nonaktif / periode belum mulai / periode sudah berakhir / tanpa produk yang memenuhi target) dan label target pada kartu/daftar. Setiap perubahan voucher (buat/ubah/aktif/nonaktif/duplikat/akhiri) dicatat ke `event_logs` sebagai `product.voucher.*`.
+- **Biaya COD (`admin.cod-settings.*`)** — enable COD + handling fee (%) + optional max order; stored on `cms_pages.checkout.content.cod`; applied as `orders.cod_fee_amount` at place-order.
+- **CTA Storefront: teks hidup di kode, bukan menu admin** - sejak 2026-09-20 TIDAK ADA halaman pengaturan CTA. Seluruh teks CTA storefront hidup di `resources/js/lib/cta-content.ts` sebagai konstanta TypeScript bertipe (`CTA_CONTENT` berisi `eyebrow`/`heading`/`actions`/`items` per kunci halaman, `CTA_DESTINATIONS` berisi tujuan tombol yang sah, helper `ctaBlock()` dan `ctaActionLabel()`), dibaca langsung komponen storefront. Mengubah teks CTA berarti mengubah berkas itu lalu build ulang, bukan mengisi form admin.
+  Komponen TETAP ADA dan tetap reusable lewat props: `ClosingCTASection` (banner penutup halaman informasi: beranda, detail model, tentang kami, FAQ, cara pemesanan, masalah & solusi), `TrustAssuranceCard` (kartu jaminan di keranjang, checkout, konfirmasi pesanan, daftar pesanan, pelacakan), dan helper `resolveCtaActions` di `resources/js/lib/cta-actions.ts` (menyelesaikan `destination` menjadi href, termasuk nomor WhatsApp toko yang aktif), jadi halaman baru bisa memakai ketiganya dengan kalimat sendiri.
+  `destination` pada tombol adalah KUNCI tujuan (whatsapp atau nama route internal), bukan URL bebas. Kontrak owner 2026-09-02 tetap berlaku: maksimal 2 tombol dan 6 baris `items` per blok.
+  Alasan penghapusan: lapisan admin itu tidak pernah dipakai (0 dari 23 blok terisi di database) dan menimbulkan duplikasi sumber teks, karena `resources/js/lib/cta-live.json` harus dijaga sinkron manual dengan kalimat yang sama di komponen. Arsip lengkap ada di `_archive/cta-storefront/`.
 - **Subsidi Ongkir (`admin.shipping-subsidy.*`)** — enable shipping subsidy (%/Rp) + J&T carrier toggle; stored on `cms_pages.checkout.content.shipping_subsidy`; checkout uses net shipping; snapshot `orders.shipping_subsidy_amount`.
 - **Users (`admin.users.*`)** — Manajemen Admin: list/filter + CRUD `users` + activate/deactivate; equal-admin (no role picker); guard self-deactivate & last active admin.
 - **Profil Saya (`admin.profile.*`)** — edit nama/email/password akun yang sedang login.
@@ -557,7 +609,7 @@ Admin sidebar structure/labels: `config/admin-sitemap.php` + `docs/sitemap/admin
 
 ## 13. Explicit exclusions & constraints for the UI agent
 
-**You have full freedom over:** visual design, color, typography, spacing, layout, component library choice, motion/interaction, and overall look and feel. Nothing in the old `docs/DESIGN.md`, Relume, or Figma references binds the new UI.
+**Visual governance:** active UI follows `frontend/docs/UI-CONSISTENCY-CONTRACT.md`, Brand Kit, and Design System. Legacy `docs/DESIGN.md`, Relume, Figma, and Blade references are historical only and do not bind runtime UI.
 
 **You must NOT change:**
 - Routes, URL paths, or **route names** (§8). The Inertia/`route()` bindings depend on them.
@@ -572,7 +624,7 @@ Admin sidebar structure/labels: `config/admin-sitemap.php` + `docs/sitemap/admin
 - Expose navigation to `planned` pages (Retur publik). Detail galeri Hasil Pemasangan sudah live (`installation.show`). **Masalah & Solusi sudah live** (`/masalah-dan-solusi` + admin editor).
 - Switch customer-facing copy away from Bahasa Indonesia.
 
-**Follow the report format** in `AGENTS.md` (SCOPE / ROOT_CAUSE / CHANGE / SPEC_IMPACT / TEST_STATUS) when you make changes.
+**Follow the report format** in `AGENTS.md` (flexible & contextual — pick the sections that fit the work type) when you make changes.
 
 ---
 
@@ -600,4 +652,4 @@ Canonical sources for deeper detail (this doc summarizes them; they win on confl
 | Domain workflows (stages 1–8) | `skills/stage-1-foundation.md` … `skills/stage-8-whatsapp-business-integration.md` |
 
 **Active UI governance:** `frontend/README.md`, `frontend/brand/*`, `frontend/docs/*`, and
-`frontend/skills/*`. Removed legacy UI skills and visual docs are not references for this build.
+`frontend/skills/*`. Removed legacy UI skills and visual docs are not references for this build; see `docs/RECOMMENDED-SKILLS-AND-CONTRACTS.md`.

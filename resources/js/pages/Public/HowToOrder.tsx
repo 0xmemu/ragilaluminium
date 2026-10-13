@@ -1,10 +1,11 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, usePage } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { Button } from "@/components/ui/button"
+import { ClosingCTASection } from "@/components/public/closing-cta"
+import { SectionHeading } from "@/components/shared/section-heading"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
@@ -52,61 +53,59 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         />
       </Head>
 
+      {/* Baris Navigasi Breadcrumbs & Judul Halaman */}
       <section className="border-b border-border bg-surface">
-        <div className="container-page py-6">
-          <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Cara pemesanan", href: null },
-            ]}
-          />
-        </div>
-        <div className="container-page flex flex-col items-center pb-12 pt-6 text-center lg:pb-16">
-          <h1 className="max-w-2xl text-2xl font-bold leading-snug tracking-tight sm:text-3xl md:text-4xl">
-            {guide.heading}
-          </h1>
-          {guide.subtitle ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              {guide.subtitle}
-            </p>
-          ) : null}
-        </div>
+        <PageTopBar
+          breadcrumbs={[
+            { label: "Beranda", href: routeUrl("home") },
+            { label: "Cara pemesanan", href: null },
+          ]}
+
+          title={guide.heading}
+        />
       </section>
 
-      <section className="section-space">
-        <div className="container-page">
-          <ol className="mx-auto grid max-w-3xl gap-4">
+      {/* Bagian 1: 4 Langkah Pemesanan (Mobile-optimized Horizontal Cards) */}
+      <section className="py-4 sm:py-6 bg-surface">
+        <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+          {/* Timeline alur pemesanan — titik ikon + garis penghubung kontinyu */}
+          <ol className="relative mx-auto max-w-2xl">
             {guide.steps.map((step, index) => (
               <li
                 key={`${step.title}-${index}`}
-                className="flex flex-col gap-4 border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(10,0,0,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
+                className="relative flex gap-3.5 pb-6 last:pb-0 sm:gap-5 sm:pb-8
+                  after:absolute after:left-[22px] after:top-12 after:bottom-0 after:w-px after:bg-border
+                  last:after:hidden sm:after:left-[24px] sm:after:top-[52px]"
               >
-                <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground sm:size-16">
-                  <Icon name={step.icon} className="size-6 sm:size-7" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="tabular-nums flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
-                      {index + 1}
-                    </span>
-                    <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-base">
-                      {step.title}
-                    </h2>
-                  </div>
+                {/* Titik ikon di garis */}
+                <div className="relative z-10 flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-primary shadow-xs sm:size-12">
+                  <Icon name={step.icon} className="size-5 sm:size-6" aria-hidden="true" />
+                </div>
+
+                {/* Content */}
+                <div className="min-w-0 flex-1 rounded-xl border border-border/80 bg-background p-4 shadow-xs transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md sm:p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Langkah {index + 1}
+                  </p>
+                  <h2 className="mt-0.5 text-sm font-bold tracking-tight text-foreground sm:text-base">
+                    {step.title}
+                  </h2>
                   {step.description ? (
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                      {step.description}
+                    </p>
                   ) : null}
                   {step.points?.length ? (
-                    <ul className="mt-3 grid gap-1.5">
+                    <ul className="mt-2.5 grid gap-1 border-t border-border/40 pt-2">
                       {step.points.map((point) => (
-                        <li key={point} className="flex items-start gap-2 text-sm text-foreground">
+                        <li key={point} className="flex items-start gap-1.5 text-xs text-foreground sm:text-sm">
                           <Icon
                             name="check-circle"
                             weight="fill"
-                            className="mt-0.5 size-4 shrink-0 text-primary"
+                            className="mt-0.5 size-3.5 shrink-0 text-primary"
                             aria-hidden="true"
                           />
-                          {point}
+                          <span>{point}</span>
                         </li>
                       ))}
                     </ul>
@@ -115,32 +114,34 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
               </li>
             ))}
           </ol>
-
-          {bodyHtml ? (
-            <article
-              className="cms-content mx-auto mt-10 max-w-3xl text-sm leading-6 text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
-            />
-          ) : null}
         </div>
       </section>
 
+      {/* Bagian 2: Pembayaran, Pengiriman & Bantuan (Compact on Mobile) */}
       {guide.info_cards.length ? (
-        <section className="border-t border-border bg-surface section-space">
-          <div className="container-page">
-            <div className="mx-auto mb-8 max-w-xl text-center md:mb-10">
-              <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-                Pembayaran, pengiriman & bantuan
-              </h2>
+        <section className="border-t border-border bg-surface py-5 sm:py-8">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+            <div className="mx-auto mb-4 sm:mb-5 max-w-xl text-center">
+              <SectionHeading
+                title="Pembayaran, Pengiriman & Bantuan"
+                description="Informasi pendukung untuk menjamin kenyamanan dan keamanan pemesanan Anda."
+              />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {guide.info_cards.map((card) => (
-                <article key={card.title} className="border border-border bg-white p-5 sm:p-6">
-                  <span className="flex size-11 items-center justify-center rounded-md bg-accent text-primary">
-                    <Icon name={card.icon} className="size-5" aria-hidden="true" />
+                <article
+                  key={card.title}
+                  className="flex items-start gap-3 rounded-xl border border-border/80 bg-background p-4 shadow-xs transition hover:border-foreground/20 hover:shadow-sm sm:flex-col sm:p-5"
+                >
+                  <span className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon name={card.icon} className="size-4.5 sm:size-5" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-4 text-sm font-bold tracking-tight text-foreground">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{card.description}</p>
+                  <div className="min-w-0 flex-1 sm:mt-2">
+                    <h3 className="text-sm font-bold tracking-tight text-foreground">{card.title}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                      {card.description}
+                    </p>
+                  </div>
                 </article>
               ))}
             </div>
@@ -148,36 +149,49 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       ) : null}
 
-      <section className="section-space border-t border-border bg-foreground text-background">
-        <div className="container-page flex flex-col items-center text-center">
-          <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">Siap memesan?</h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-background/80">
-            Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild className="bg-white text-primary hover:bg-white/90">
-              <Link href={routeUrl("catalog.index")}>Pilih model produk</Link>
-            </Button>
-            <Button
-              asChild
-              variant="secondary"
-              className="border-background/30 bg-transparent text-background hover:bg-background/10"
-            >
-              {whatsappUrl ? (
-                <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                  Konsultasi via WhatsApp
-                </a>
-              ) : (
-                <Link href={routeUrl("contact")}>
-                  <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                  Konsultasi via WhatsApp
-                </Link>
-              )}
-            </Button>
+      {/* Bagian 3: Catatan Ukuran Kustom */}
+      {bodyHtml ? (
+        <section className="border-t border-border bg-surface/50 py-3 sm:py-4">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+            <article
+              className="cms-content mx-auto max-w-3xl rounded-xl border border-border/80 bg-background p-3.5 text-xs leading-relaxed text-muted-foreground sm:p-4"
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="border-t border-border bg-surface/50 py-3 sm:py-4">
+          <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
+            <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl border border-border/80 bg-background p-3.5 sm:p-4 text-xs leading-relaxed text-muted-foreground shadow-xs">
+              <Icon name="info" weight="fill" className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <span className="font-bold text-foreground">Catatan Ukuran Custom: </span>
+                Kami melayani ukuran custom. Sertakan model dan ukuran (Tinggi &times; Panjang, cm) saat chat
+                admin agar spesifikasi sesuai dan tidak terjadi kesalahan produksi.
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Bagian 4: Call to Action (CTA) — pakai komponen dasar ClosingCTASection */}
+      <ClosingCTASection
+        pageKey="cara-pemesanan"
+        compact={false}
+        eyebrow="Siap memesan?"
+        heading="Pilih model aluminium yang tepat, atau konsultasikan kebutuhan Anda lebih dulu"
+        actions={[
+          { label: "Pilih Model Produk", href: routeUrl("catalog.index"), variant: "primary" },
+          {
+            label: "Konsultasi Sekarang",
+            href: whatsappUrl ?? routeUrl("contact"),
+            variant: "secondary",
+            whatsappIcon: true,
+            external: true,
+          },
+        ]}
+      />
     </PublicLayout>
   )
 }
+

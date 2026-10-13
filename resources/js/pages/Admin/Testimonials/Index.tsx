@@ -1,21 +1,35 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
+import { TestimonialDetailDialog } from "@/components/admin/testimonial-detail-dialog"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/admin/ui/dialog"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Field } from "@/components/admin/ui/field"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { ProductPicker } from "@/components/admin/ui/ProductPicker"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 import type { Pagination as PaginationData } from "@/types"
 
 interface TabItem {
@@ -28,17 +42,35 @@ interface WebsiteRow {
   id: number
   no: number
   customer_name: string
-  message: string
+  message?: string | null
   rating?: number | null
   source: string
+  source_label?: string
   location?: string | null
   product?: string | null
   image_url?: string | null
+  /** Jumlah semua media ulasan ini (foto dan video), termasuk sampul. */
+  media_count?: number
+  /** Rincian produk untuk popup detail: nama LENGKAP katalog, SKU, foto utama. */
+  product_name?: string | null
+  product_sku?: string | null
+  product_image?: string | null
+  /** Seluruh media ulasan berurutan, untuk grid di popup detail. */
+  photos?: string[]
+  sort_order?: number
   published: boolean
   created_at?: string | null
   edit_href: string
   publish_url: string
   unpublish_url: string
+  /** Balasan admin atas ulasan (owner 2026-09-18). */
+  admin_reply?: string | null
+  admin_replied_at?: string | null
+  has_reply?: boolean
+  /** Kartu marketplace murni screenshot, tidak punya teks untuk dibalas. */
+  can_reply?: boolean
+  reply_url?: string
+  destroy_reply_url?: string
 }
 
 interface FotoRow {
@@ -54,6 +86,30 @@ interface FotoRow {
   edit_href: string
   publish_url?: string | null
   unpublish_url?: string | null
+  media_asset_id?: number | null
+  attach_url?: string | null
+}
+
+/**
+ * Penanda jumlah media pada ubin pratinjau daftar.
+ *
+ * Kolom daftar hanya memuat satu ubin (sampul), padahal satu ulasan bisa memuat
+ * beberapa foto/video. Angka yang tampil adalah TAMBAHAN di luar sampul, sama
+ * seperti penanda pada kartu ulasan storefront. Tidak muncul apa-apa bila
+ * medianya cuma satu, supaya ulasan biasa tidak berisik.
+ */
+function PenandaJumlahMedia({ jumlah }: { jumlah: number }) {
+  const tambahan = jumlah - 1
+  if (tambahan < 1) return null
+
+  return (
+    <span
+      className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-foreground/85 px-1 text-[10px] font-semibold leading-4 tabular-nums text-background"
+      title={`${jumlah} media pada ulasan ini`}
+    >
+      +{tambahan}
+    </span>
+  )
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -70,14 +126,15 @@ function formatDateTime(iso: string | null | undefined): string {
 }
 
 function RatingStars({ rating }: { rating?: number | null }) {
-  if (!rating) return <span className="text-muted-foreground">—</span>
+  if (!rating) return <span className="text-muted-foreground">-</span>
   return (
-    <span className="inline-flex items-center gap-0.5 text-warning-foreground" aria-label={`${rating} dari 5 bintang`}>
+    <span className="inline-flex items-center gap-0.5 text-warning" aria-label={`${rating} dari 5 bintang`}>
       {Array.from({ length: 5 }, (_, index) => (
         <Icon
           key={index}
           name="star"
-          className={cn("size-3.5", index < rating ? "fill-current" : "opacity-25")}
+          weight="fill"
+          className={cn("size-3.5", index < rating ? "text-warning" : "text-muted/30")}
           aria-hidden="true"
         />
       ))}
@@ -88,58 +145,180 @@ function RatingStars({ rating }: { rating?: number | null }) {
 function PublishActions({
   published,
   editHref,
+  onDetail,
   publishUrl,
   unpublishUrl,
   busy,
   onBusy,
   kind,
   readonly = false,
+  canReply = false,
+  hasReply = false,
+  onReply,
 }: {
   published: boolean
   editHref: string
+  /**
+   * Bila diisi, tombol utama baris menjadi "Detail" yang membuka popup, dan
+   * halaman edit pindah ke menu. Dipakai daftar ulasan; baris galeri foto
+   * tetap memakai tautan halaman seperti semula.
+   */
+  onDetail?: () => void
   publishUrl?: string | null
   unpublishUrl?: string | null
   busy: boolean
   onBusy: (value: boolean) => void
   kind: string
   readonly?: boolean
+  /** Buka dialog balasan; hanya untuk ulasan website yang punya teks. */
+  canReply?: boolean
+  hasReply?: boolean
+  onReply?: () => void
 }) {
+  const showMenu = (!readonly && (published || publishUrl)) || canReply
+  // Baris ulasan memakai tombol Detail + menu, jadi menunya selalu ada
+  // supaya jalan masuk "Edit ulasan" tidak hilang.
+  const adaMenu = showMenu || Boolean(onDetail)
+
   return (
     <RowActions>
-      <Button asChild variant="secondary" size="xs">
-        <Link href={editHref}>{readonly ? "Kelola media" : "Edit"}</Link>
-      </Button>
-      {readonly ? null : published ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Sembunyikan
-            </button>
-          }
-          title={`Sembunyikan ${kind}?`}
-          description="Item tidak akan tampil di storefront."
-          confirmLabel="Sembunyikan"
-          processing={busy}
-          onConfirm={() => {
-            if (!unpublishUrl) return
-            onBusy(true)
-            router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        />
+      {onDetail ? (
+        <Button type="button" variant="secondary" size="xs" onClick={onDetail}>
+          Detail
+        </Button>
       ) : (
-        <Button
-          size="xs"
-          disabled={busy || !publishUrl}
-          onClick={() => {
-            if (!publishUrl) return
-            onBusy(true)
-            router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
-          }}
-        >
-          Publikasikan
+        <Button asChild variant="secondary" size="xs">
+          <Link href={editHref}>{readonly ? "Kelola media" : "Edit"}</Link>
         </Button>
       )}
+      {adaMenu ? (
+        <RowActionsMenu>
+          {onDetail ? (
+            <DropdownMenuItem asChild>
+              <Link href={editHref} className="w-full text-left">
+                Edit ulasan
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
+          {canReply && onReply ? (
+            <DropdownMenuItem asChild>
+              <button type="button" className="w-full text-left" onClick={onReply}>
+                {hasReply ? "Edit balasan" : "Balas ulasan"}
+              </button>
+            </DropdownMenuItem>
+          ) : null}
+          {!readonly && (published || publishUrl) ? (
+            published ? (
+              <ConfirmAction
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                    disabled={busy}
+                  >
+                    Sembunyikan
+                  </button>
+                }
+                title={`Sembunyikan ${kind}?`}
+                description="Item tidak akan tampil di storefront."
+                confirmLabel="Sembunyikan"
+                processing={busy}
+                onConfirm={() => {
+                  if (!unpublishUrl) return
+                  onBusy(true)
+                  router.post(unpublishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+                }}
+              />
+            ) : (
+              <DropdownMenuItem asChild>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  disabled={busy || !publishUrl}
+                  onClick={() => {
+                    if (!publishUrl) return
+                    onBusy(true)
+                    router.post(publishUrl, {}, { preserveScroll: true, onFinish: () => onBusy(false) })
+                  }}
+                >
+                  Publikasikan
+                </button>
+              </DropdownMenuItem>
+            )
+          ) : null}
+        </RowActionsMenu>
+      ) : null}
     </RowActions>
+  )
+}
+
+function AttachProductsDialog({ row }: { row: FotoRow }) {
+  const [open, setOpen] = React.useState(false)
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([])
+  const [verified, setVerified] = React.useState(false)
+  const attachForm = useForm({
+    product_ids: [] as number[],
+    position: Math.max(1, row.sort_order || 1),
+    show_in_catalog: false,
+    is_installation: true,
+    is_main_image: false,
+    visibility: "visible",
+  })
+
+  function close() {
+    setOpen(false)
+    setSelectedIds([])
+    setVerified(false)
+    attachForm.clearErrors()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      <DialogTrigger asChild>
+        <Button type="button" size="xs" variant="secondary">
+          Pasang ke produk lain
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogTitle>Verifikasi dan pasang ke produk lain</DialogTitle>
+        <DialogDescription>
+          Media ini tetap satu asset, tetapi dapat dipakai sebagai hasil pemasangan di beberapa produk.
+          Pastikan kecocokan foto sebelum mengonfirmasi.
+        </DialogDescription>
+        <div className="space-y-4">
+          <Field
+            id={`installation-product-search-${row.id}`}
+            label="Produk tujuan"
+            hint="Cari lewat nama atau SKU. Pemilih ini sama dengan yang dipakai halaman admin lain."
+          >
+            <ProductPicker onSelect={(products) => setSelectedIds(products.map((product) => product.id))} />
+          </Field>
+          <label className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={verified}
+              onChange={(event) => setVerified(event.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>Saya sudah memverifikasi bahwa foto ini benar-benar relevan untuk semua produk yang dipilih.</span>
+          </label>
+          {attachForm.errors.product_ids ? <p className="text-xs text-destructive">{attachForm.errors.product_ids}</p> : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={close}>Batal</Button>
+            <Button
+              type="button"
+              disabled={!verified || selectedIds.length === 0 || attachForm.processing}
+              onClick={() => {
+                attachForm.transform((data) => ({ ...data, product_ids: selectedIds }))
+                attachForm.post(row.attach_url!, { preserveScroll: true, onSuccess: close })
+              }}
+            >
+              {attachForm.processing ? "Memasang..." : `Pasang ke ${selectedIds.length || "produk"}`}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -149,6 +328,7 @@ export default function TestimonialsIndex({
   tab,
   tabs,
   filters,
+  channelOptions = [],
   sortOptions,
   publishedOptions,
   createHref,
@@ -157,16 +337,20 @@ export default function TestimonialsIndex({
   importedRows = [],
   pagination,
   indexRoute = "admin.testimonials.index",
-  pageMeta = null,
-  metaUrl = null,
-  metaHint = null,
+  pageMeta: _pageMeta = null,
+  metaUrl: _metaUrl = null,
+  metaHint: _metaHint = null,
   previewUrl = null,
+  reorderUrl = null,
+  canReorder = false,
+  replyOptions = [],
 }: {
   title: string
   description: string
-  tab: "website" | "foto"
+  tab: "website" | "foto" | "eksternal"
   tabs: TabItem[]
-  filters: { q: string; sort: string; published: string }
+  filters: { q: string; sort: string; published: string; channel?: string; reply?: string }
+  channelOptions?: Array<{ value: string; label: string }>
   sortOptions: Array<{ value: string; label: string }>
   publishedOptions: Array<{ value: string; label: string }>
   createHref: string
@@ -179,35 +363,68 @@ export default function TestimonialsIndex({
   metaUrl?: string | null
   metaHint?: string | null
   previewUrl?: string | null
+  reorderUrl?: string | null
+  canReorder?: boolean
+  replyOptions?: Array<{ value: string; label: string }>
 }) {
   const [q, setQ] = React.useState(filters.q)
   const [sort, setSort] = React.useState(filters.sort)
   const [published, setPublished] = React.useState(filters.published)
+  const [channel, setChannel] = React.useState(filters.channel ?? "all")
+  const [reply, setReply] = React.useState(filters.reply ?? "all")
+  const [replyTarget, setReplyTarget] = React.useState<WebsiteRow | null>(null)
+  const [detailTarget, setDetailTarget] = React.useState<WebsiteRow | null>(null)
   const [busyId, setBusyId] = React.useState<number | string | null>(null)
   const isPengaturanSurface =
     indexRoute === "admin.apa-kata-pelanggan.index" || indexRoute === "admin.hasil-pemasangan.index"
-  const metaForm = useForm({
-    title: pageMeta?.title ?? "",
-    heading: pageMeta?.heading ?? "",
-    subtitle: pageMeta?.subtitle ?? "",
-    published: pageMeta?.published ?? true,
+  const isApaKata = indexRoute === "admin.apa-kata-pelanggan.index" || tab === "eksternal"
+  // Tabel testimoni (Pelanggan/Sumber/Screenshot) dipakai tab website dan eksternal;
+  // tabel galeri (Label/Sumber) hanya untuk surface foto hasil pemasangan.
+  const isTestimonialTable = tab === "website" || tab === "eksternal"
+
+  const reorderForm = useForm({
+    rows: (rows as WebsiteRow[]).map((row, index) => ({
+      id: row.id,
+      sort_order: row.sort_order ?? index,
+    })),
+  })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah. Sinkronisasi hanya berlaku di tab
+  // yang menyusun daftar website, karena tab lain tidak memakai urutan ini.
+  const snapshotRows = rows as WebsiteRow[]
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: snapshotRows,
+    form: reorderForm,
+    url: reorderUrl as string,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
+    numbering: true,
+    submitOptions: { preserveScroll: true },
+    syncEnabled: tab === "website" || tab === "eksternal",
   })
 
-  React.useEffect(() => {
-    if (!pageMeta) return
-    metaForm.setData({
-      title: pageMeta.title,
-      heading: pageMeta.heading,
-      subtitle: pageMeta.subtitle,
-      published: pageMeta.published,
-    })
-  }, [pageMeta])
 
-  function apply(next?: Partial<{ q: string; sort: string; published: string }>) {
+
+
+  function apply(next?: Partial<{ q: string; sort: string; published: string; channel: string; reply: string }>) {
     const params: Record<string, string> = {
       q: next?.q ?? q,
-      sort: next?.sort ?? sort,
       published: next?.published ?? published,
+    }
+    if (next?.reply !== undefined || reply !== "all") {
+      params.reply = next?.reply ?? reply
+    }
+    if (sortOptions.length > 0) {
+      params.sort = next?.sort ?? sort
+    }
+    if (tab === "website" && (channelOptions?.length ?? 0) > 0) {
+      params.channel = next?.channel ?? channel
     }
     if (!isPengaturanSurface) {
       params.tab = tab
@@ -215,103 +432,157 @@ export default function TestimonialsIndex({
     router.get(routeUrl(indexRoute), params, { preserveState: true, preserveScroll: true })
   }
 
+  const hasActiveFilters =
+    Boolean(q?.trim()) || (published && published !== "all") || (reply && reply !== "all")
+
+  function resetAllFilters() {
+    router.get(routeUrl(indexRoute), {}, { preserveState: false, preserveScroll: true })
+  }
+
+
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+
+  React.useEffect(() => {
+    // Pindah tab berarti daftar dan endpoint urutannya berganti, jadi mode urut
+    // dibatalkan supaya tidak menyimpan ke daftar yang salah.
+    setReorderMode(false)
+  }, [tab, indexRoute, setReorderMode])
+
+  const channelOptionsList = channelOptions ?? []
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris: payload simpan hanya
+  // berisi baris yang tampil, jadi daftar tersaring menulis sort_order parsial.
+  const filterKunci =
+    filters.published !== "" ||
+    (channelOptionsList.length > 0 && channel !== "all") ||
+    (replyOptions.length > 0 && reply !== "all")
+  const listTersaring = filters.q.trim() !== "" || filterKunci
+
+  // Halaman ini punya mode Urutkan atau tidak (ada tab tanpa reorder).
+  const reorderTersedia = Boolean(canReorder && reorderUrl)
+  // Kolom ikon tarik hanya dirender saat mode Urutkan aktif dan daftar tidak
+  // tersaring: di luar itu kolomnya disembunyikan total supaya tidak menganga.
+  const dragAktif = reorderTersedia && reorderMode && !listTersaring
+
+  const dnd = useRowDragSort({
+    enabled: dragAktif,
+    count: orderedRows.length,
+    onReorder: reorderRows,
+  })
+
+  const websiteRows = reorderMode || canReorder ? orderedRows : (rows as WebsiteRow[])
+  const showTabs = tabs.length > 0
+
   return (
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {previewUrl ? (
-            <Button asChild variant="secondary">
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                Lihat halaman publik
+            <Button asChild variant="secondary" size="sm">
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">
+                <Icon name="storefront" className="size-3.5" aria-hidden="true" />
+                <span>Lihat di toko</span>
               </a>
             </Button>
           ) : null}
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              {createLabel}
-            </Link>
-          </Button>
+          {canReorder && reorderUrl ? (
+            /* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+               Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+               yang benar-benar digeser. */
+            <ReorderActionButton
+              active={reorderMode}
+              dirty={reorderForm.isDirty}
+              processing={reorderForm.processing}
+              size="sm"
+              disabled={!orderedRows.length || filterKunci}
+              disabledReason="Kosongkan filter status dulu supaya tombol Urutkan bisa dipakai."
+              onToggle={() => {
+                setReorderMode(true)
+                // Pencarian dibersihkan sekaligus supaya urutan bisa diubah
+                // (kontrak owner 2026-09-20).
+                if (filters.q) {
+                  setQ("")
+                  apply({ q: "" })
+                }
+              }}
+              onCancel={cancelReorder}
+              onSave={saveReorder}
+            />
+          ) : null}
+
+          {!reorderMode ? (
+            <Button asChild size="sm">
+              <Link href={createHref} className="inline-flex items-center gap-1.5">
+                <Icon name="plus" className="size-3.5" aria-hidden="true" />
+                <span>{createLabel}</span>
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      {pageMeta && metaUrl ? (
-        <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">
-            {metaHint ?? "Meta halaman"}
-          </p>
-          <form
-            className="mt-4 grid gap-4 sm:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              metaForm.put(metaUrl)
-            }}
-          >
-            <Field id="apk-title" label="Judul CMS">
-              <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
-                checked={metaForm.data.published}
-                onChange={(event) => metaForm.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Terbitkan halaman
-            </label>
-            <Field id="apk-heading" label="Judul hero" className="sm:col-span-2">
-              <Input value={metaForm.data.heading} onChange={(event) => metaForm.setData("heading", event.target.value)} />
-            </Field>
-            <Field id="apk-subtitle" label="Subjudul" className="sm:col-span-2">
-              <Textarea
-                rows={2}
-                value={metaForm.data.subtitle}
-                onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan meta"}
-              </Button>
-            </div>
-          </form>
-        </section>
+
+
+      {showTabs ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-lg border border-border bg-muted/60 p-1">
+            {tabs.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={cn(
+                  "rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all",
+                  tab === item.key
+                    ? "bg-card text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
-          {tabs.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                tab === item.key ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: isApaKata
+            ? "Cari nama atau sumber Shopee/WhatsApp"
+            : tab === "website"
+              ? "Cari nama, komentar, atau sumber"
+              : "Cari label atau URL foto",
         }}
+
+        sort={
+          sortOptions.length > 0 ? (
+            <Select
+              value={sort}
+              onChange={(event) => {
+                const value = event.target.value
+                setSort(value)
+                apply({ sort: value })
+              }}
+              className="w-44"
+              disabled={reorderMode}
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          ) : null
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder={tab === "website" ? "Cari nama, komentar, atau sumber" : "Cari label atau URL foto"}
-          className="min-w-[16rem] flex-1"
-        />
         <Select
           value={published}
           onChange={(event) => {
@@ -320,6 +591,7 @@ export default function TestimonialsIndex({
             apply({ published: value })
           }}
           className="w-40"
+          disabled={reorderMode}
         >
           {publishedOptions.map((option) => (
             <option key={option.value || "all"} value={option.value}>
@@ -327,93 +599,214 @@ export default function TestimonialsIndex({
             </option>
           ))}
         </Select>
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-44"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+        {tab === "website" && channelOptionsList.length > 0 ? (
+          <Select
+            value={channel}
+            onChange={(event) => {
+              const value = event.target.value
+              setChannel(value)
+              apply({ channel: value })
+            }}
+            className="w-56"
+            disabled={reorderMode}
+          >
+            {channelOptionsList.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        {tab === "website" && replyOptions.length > 0 ? (
+          <Select
+            value={reply}
+            onChange={(event) => {
+              const value = event.target.value
+              setReply(value)
+              apply({ reply: value })
+            }}
+            className="w-44"
+            disabled={reorderMode}
+            aria-label="Filter status balasan"
+          >
+            {replyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+      </ListToolbar>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        {(tab === "website" ? rows.length > 0 : rows.length + importedRows.length > 0) ? (
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+        {(isTestimonialTable ? websiteRows.length > 0 : rows.length + importedRows.length > 0) ? (
           <div className="overflow-x-auto">
-            {tab === "website" ? (
+            {isTestimonialTable ? (
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
+                    {dragAktif ? <th className="w-12 px-3 py-3" aria-label="Seret" /> : null}
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Pelanggan</th>
-                    <th className="px-3 py-3 font-semibold">Rating</th>
-                    <th className="px-3 py-3 font-semibold">Komentar</th>
-                    <th className="px-3 py-3 font-semibold">Foto</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Sumber" : "Rating"}</th>
+                    <th className="px-3 py-3 font-semibold">{isApaKata ? "Media" : "Komentar"}</th>
+                    {!isApaKata ? <th className="px-3 py-3 font-semibold">Foto</th> : null}
+                    {/* Kolom Balasan hanya di tab Ulasan Website, tempat ulasan
+                        pelanggan bertaut pesanan. Di tab Apa Kata Pelanggan
+                        kolomnya tidak dirender sama sekali, karena tab itu
+                        berisi screenshot dan balasan memang tidak berlaku untuk
+                        sumber marketplace sehingga selnya akan selalu kosong. */}
+                    {!isApaKata ? <th className="px-3 py-3 font-semibold">Balasan</th> : null}
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold">Tanggal</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(rows as WebsiteRow[]).map((row) => (
-                    <tr key={row.id} className="border-t border-border align-top">
+                  {websiteRows.map((row, index) => (
+                    <tr key={row.id} className={cn("border-t border-border align-top", dnd.draggingIndex === index && "opacity-40")} {...(dragAktif ? dnd.rowProps(index) : {})}>
+                      {/* Ikon tarik hanya ada saat mode Urutkan aktif, jadi kolomnya
+                          tidak dirender di luar mode itu (kontrak owner 2026-09-20, direvisi). */}
+                      {dragAktif ? (
+                        <td className="w-12 px-3 py-3">
+                          <ReorderDragHandle enabled />
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3 tabular-nums text-muted-foreground">{row.no}</td>
                       <td className="px-3 py-3">
-                        <Link href={row.edit_href} className="font-semibold hover:text-primary hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => setDetailTarget(row)}
+                          className="text-left font-semibold hover:text-primary hover:underline"
+                        >
                           {row.customer_name}
-                        </Link>
+                        </button>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {humanize(row.source)}
+                          {row.source_label ?? humanize(row.source)}
                           {row.location ? ` · ${row.location}` : ""}
                         </p>
                         {row.product ? (
                           <p className="mt-0.5 text-[11px] text-muted-foreground">{row.product}</p>
-                        ) : (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">Ulasan umum</p>
-                        )}
+                        ) : null}
+                        {!row.image_url && isApaKata ? (
+                          <p className="mt-0.5 text-[11px] font-semibold text-destructive">Belum ada screenshot</p>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3">
-                        <RatingStars rating={row.rating} />
-                      </td>
-                      <td className="max-w-[18rem] px-3 py-3 text-muted-foreground">
-                        <p className="line-clamp-3">{row.message}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        {row.image_url ? (
-                          <img
-                            src={row.image_url}
-                            alt=""
-                            className="size-12 rounded-md border border-border object-cover"
-                          />
+                        {/* Sumber ditampilkan sebagai TEKS, bukan dropdown.
+                            Sebelumnya ada dropdown yang langsung menyimpan ke
+                            endpoint ubah sumber. Pada tab ini isinya hampir
+                            seluruhnya ulasan website (62 dari 63 baris), dan
+                            mengubah sumber ulasan website membuatnya KELUAR dari
+                            halaman ulasan publik (/reviews/web memakai
+                            published()->website()). Satu klik tanpa konfirmasi
+                            bisa menghilangkan ulasan terverifikasi dari storefront;
+                            itu benar-benar terjadi pada ulasan #129 (Sari Dewi)
+                            yang terset "other" lalu dipulihkan. Sumber adalah
+                            FAKTA asal ulasan (ditetapkan saat dibuat lewat form),
+                            bukan preferensi yang diubah cepat dari daftar. */}
+                        {isApaKata ? (
+                          <span className="text-muted-foreground">{row.source_label ?? humanize(row.source)}</span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <RatingStars rating={row.rating} />
                         )}
                       </td>
+                      <td className={cn("px-3 py-3", isApaKata ? "" : "max-w-[18rem] text-muted-foreground")}>
+                        {isApaKata ? (
+                          row.image_url ? (
+                            <div className="relative h-20 w-16 shrink-0">
+                              <img
+                                src={row.image_url}
+                                alt={`Screenshot ${row.customer_name}`}
+                                className="h-20 w-16 rounded-md border border-border object-cover"
+                              />
+                              <PenandaJumlahMedia jumlah={row.media_count ?? 0} />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )
+                        ) : (
+                          <div className="min-w-0">
+                            <p className="line-clamp-3">{row.message?.trim() || (row.image_url ? "(screenshot)" : "-")}</p>
+                          </div>
+                        )}
+                      </td>
+                      {!isApaKata ? (
+                        <td className="px-3 py-3">
+                          {row.image_url ? (
+                            <div className="relative size-12 shrink-0">
+                              <img
+                                src={row.image_url}
+                                alt=""
+                                className="size-12 rounded-md border border-border object-cover"
+                              />
+                              <PenandaJumlahMedia jumlah={row.media_count ?? 0} />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      ) : null}
+                      {/* Jalan masuk balas dari daftar, dibuka sebagai popup
+                          (owner 2026-09-21). Hanya di tab Ulasan Website. */}
+                      {!isApaKata ? (
+                      <td className="px-3 py-3 align-top">
+                        <div className="min-w-0 max-w-[16rem]">
+                          {row.has_reply ? (
+                            <>
+                              <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                                {row.admin_reply}
+                              </p>
+                              {row.can_reply ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="xs"
+                                  className="mt-0.5 h-auto px-0 text-xs"
+                                  onClick={() => setReplyTarget(row)}
+                                >
+                                  Edit balasan
+                                </Button>
+                              ) : null}
+                            </>
+                          ) : row.can_reply ? (
+                            // Ukuran sm (28px), sama dengan tombol header halaman
+                            // lain. Sebelumnya xs (25px) sehingga terlihat lebih
+                            // kecil daripada kontrol di sekitarnya.
+                            <Button type="button" variant="secondary" size="sm" onClick={() => setReplyTarget(row)}>
+                              Balas
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      </td>
+                      ) : null}
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
-                          label={row.published ? "Published" : "Draft"}
+                          label={row.published ? "Tampil" : "Tersembunyi"}
                         />
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
                       <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                        <PublishActions
-                          published={row.published}
-                          editHref={row.edit_href}
-                          publishUrl={row.publish_url}
-                          unpublishUrl={row.unpublish_url}
-                          busy={busyId === row.id}
-                          onBusy={(value) => setBusyId(value ? row.id : null)}
-                          kind="ulasan"
-                        />
+                        {reorderMode ? (
+                          <span className="text-xs text-muted-foreground">Mode Urutkan</span>
+                        ) : (
+                          <PublishActions
+                            published={row.published}
+                            editHref={row.edit_href}
+                            publishUrl={row.publish_url}
+                            unpublishUrl={row.unpublish_url}
+                            busy={busyId === row.id}
+                            onBusy={(value) => setBusyId(value ? row.id : null)}
+                            kind={isApaKata ? "screenshot" : "ulasan"}
+                            canReply={Boolean(row.can_reply)}
+                            hasReply={Boolean(row.has_reply)}
+                            onReply={() => setReplyTarget(row)}
+                            onDetail={() => setDetailTarget(row)}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -421,7 +814,7 @@ export default function TestimonialsIndex({
               </table>
             ) : (
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Foto</th>
@@ -445,7 +838,7 @@ export default function TestimonialsIndex({
                             className="h-16 w-24 rounded-md border border-border object-cover"
                           />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </td>
                       <td className="px-3 py-3">
@@ -460,7 +853,7 @@ export default function TestimonialsIndex({
                       <td className="px-3 py-3">
                         <StatusBadge
                           status={row.published ? "active" : "inactive"}
-                          label={row.published ? "Published" : "Draft"}
+                          label={row.published ? "Tampil" : "Tersembunyi"}
                         />
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{formatDateTime(row.created_at)}</td>
@@ -475,6 +868,7 @@ export default function TestimonialsIndex({
                           kind="foto"
                           readonly={Boolean(row.readonly)}
                         />
+                        {row.attach_url ? <AttachProductsDialog row={row} /> : null}
                       </td>
                     </tr>
                   ))}
@@ -482,13 +876,31 @@ export default function TestimonialsIndex({
               </table>
             )}
           </div>
+        ) : hasActiveFilters ? (
+          <EmptyState
+            title="Tidak ada ulasan yang cocok"
+            description="Coba ubah atau hapus filter untuk melihat ulasan lain."
+            action={
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Reset Filter
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
-            title={tab === "website" ? "Belum ada ulasan website" : "Belum ada ulasan foto"}
+            title={
+              isApaKata
+                ? "Belum ada screenshot"
+                : tab === "website"
+                  ? "Belum ada ulasan website"
+                  : "Belum ada foto hasil pemasangan"
+            }
             description={
-              tab === "website"
-                ? "Tambahkan ulasan manual dari Shopee, WhatsApp, atau website."
-                : "Tambahkan foto hasil pemasangan untuk halaman /reviews."
+              isApaKata
+                ? "Tambahkan screenshot percakapan Shopee atau WhatsApp (bukan ulasan transaksi website)."
+                : tab === "website"
+                  ? "Tambahkan ulasan manual dari Shopee, WhatsApp, atau website."
+                  : "Tambahkan foto hasil pemasangan untuk halaman /hasil-pemasangan."
             }
             className="border-0"
           />
@@ -499,6 +911,22 @@ export default function TestimonialsIndex({
           </div>
         ) : null}
       </section>
+
+      {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman. */}
+      {/* Satu dialog balasan untuk seluruh daftar, dikontrol state halaman.
+          Komponennya dipakai bersama halaman detail pesanan admin. */}
+      <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
+
+      {/* Popup detail ulasan (owner 2026-10-06) menggantikan halaman detail.
+          Tombol balas di dalamnya membuka dialog balasan bersama yang sama. */}
+      <TestimonialDetailDialog
+        row={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onReply={(row) => {
+          setDetailTarget(null)
+          setReplyTarget(row as WebsiteRow)
+        }}
+      />
     </AdminLayout>
   )
 }

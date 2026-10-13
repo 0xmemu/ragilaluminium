@@ -51,15 +51,15 @@ export default function ErrorPage({ status }: { status: number }) {
   return (
     <PublicLayout>
       <Head title={`${status} · Ragil Aluminium`} />
-      <section className="container-page flex min-h-[55dvh] flex-col items-center justify-center py-16 text-center sm:py-20">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 flex min-h-[55dvh] flex-col items-center justify-center py-16 text-center sm:py-20">
         <BrandWordmark className="mx-auto w-fit" />
         <p className="mt-8 font-display text-6xl font-bold tracking-tight text-foreground/15 sm:text-7xl">
           {status}
         </p>
-        <h1 className="mt-4 max-w-xl font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="mt-4 max-w-xl font-display text-lg font-bold tracking-tight text-foreground">
           {copy.title}
         </h1>
-        <p className="mt-3 max-w-lg text-base leading-7 text-muted-foreground">{copy.body}</p>
+        <p className="mt-3 max-w-lg text-lg leading-7 text-muted-foreground">{copy.body}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild className="rounded-full px-7">
             <Link href={primary}>{copy.primaryLabel}</Link>

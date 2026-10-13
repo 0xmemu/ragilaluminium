@@ -2,11 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LookupOrderStatusApiRequest;
+use App\Http\Requests\LookupOrderStatusRequest;
+use App\Models\CmsTestimonial;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingRecord;
+use App\Services\OrderService;
+use App\Services\ReturnService;
 use App\Services\ShippingService;
+use App\Support\BankTransferInstructions;
+use App\Support\ConsultationWhatsApp;
+use App\Support\OrderEta;
+use App\Support\OrderTrackingPresenter;
+use App\Support\OrderTrackingViewModel;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppMessageDrafts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,31 +27,50 @@ use Inertia\Response;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly ShippingService $shipping) {}
+    public function __construct(
+        private readonly ShippingService $shipping,
+        private readonly OrderService $orders,
+    ) {}
 
     public function confirmation(Request $request, string $order_number): Response|RedirectResponse
     {
-        $confirmed = $request->session()->get('confirmed_orders', []);
-
-        if (! in_array($order_number, $confirmed, true)) {
-            return redirect()->route('order.status')
-                ->with('success', 'Masukkan nomor order dan nomor HP untuk melihat status pesanan.');
-        }
-
         $order = Order::where('order_number', $order_number)
             ->with('items')
-            ->firstOrFail();
+            ->first();
+
+        if (! $order) {
+            abort(404);
+        }
+
+        // Halaman konfirmasi = halaman PASCA-CHECKOUT sekali lihat.
+        //
+        // Desain sebelumnya memakai jendela waktu 24 jam: order yang masih
+        // "muda" tetap bisa dibuka berkali-kali, dan pesan yang muncul di
+        // halaman status ("hanya berlaku sesaat setelah pesanan dibuat")
+        // bertentangan dengan kenyataan itu. Sekarang aturannya deterministik:
+        // order hanya boleh masuk halaman konfirmasi SEKALI, lalu tautannya
+        // mengarahkan pembeli ke detail/lacak pesanan.
+        $pending = $request->session()->get('confirmation_pending', []);
+        $pending = is_array($pending) ? array_values(array_filter($pending, 'is_string')) : [];
+
+        if (! in_array($order_number, $pending, true)) {
+            // Sudah pernah dibuka, atau bukan order dari sesi ini: langsung ke
+            // detail/lacak pesanan tanpa pesan naratif yang bisa salah tafsir.
+            return redirect()->route('order.status', ['order_number' => $order_number]);
+        }
+
+        // Tandai sudah dilihat: bukaan berikutnya langsung ke detail pesanan.
+        $request->session()->put(
+            'confirmation_pending',
+            array_values(array_diff($pending, [$order_number])),
+        );
 
         $whatsappUrl = null;
-        $phone = \App\Support\PhoneNumber::normalize(
-            config('services.whatsapp.business_phone') ?: config('sitemap.brand.phone')
-        );
+        $phone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
         if ($phone) {
-            $message = sprintf(
-                'Halo Ragil Aluminium, saya sudah order %s. Mohon bantuannya.',
-                $order->order_number,
+            $whatsappUrl = 'https://wa.me/'.$phone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_confirmation', [':order' => (string) $order->order_number]),
             );
-            $whatsappUrl = 'https://wa.me/'.$phone.'?text='.rawurlencode($message);
         }
 
         $paymentMethod = (string) $order->payment_method;
@@ -54,18 +84,83 @@ class OrderController extends Controller
                 'payment_method' => $paymentMethod,
                 'shipping_status' => $order->shipping_status,
                 'total_amount' => (float) $order->total_amount,
+                'billing' => [
+                    'subtotal' => (float) $order->subtotal_amount,
+                    'discount' => (float) $order->discount_amount,
+                    'voucher_discount' => (float) $order->voucher_discount_amount,
+                    'shipping_gross' => (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount,
+                    'shipping_subsidy' => (float) $order->shipping_subsidy_amount,
+                    'shipping_net' => (float) $order->shipping_amount,
+                    'cod_fee' => (float) ($order->cod_fee_amount ?? 0),
+                    'insurance' => (float) ($order->shipping_insurance_amount ?? 0),
+                    'total' => (float) $order->total_amount,
+                ],
                 'customer_name' => $order->customer_name,
-                'customer_phone' => $order->customer_phone,
+                'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($i) => [
                     'product_name' => $i->product_name,
+                    'product_id' => $i->product_id ? (int) $i->product_id : null,
                     'quantity' => $i->quantity,
                     'line_total' => (float) $i->line_total,
+                    'note' => $i->note ?? null,
+                    'parent_sku' => $i->parent_sku,
+                    'variant_label' => collect([
+                        [$i->variation_1_name, $i->variation_1_option],
+                        [$i->variation_2_name, $i->variation_2_option],
+                    ])->filter(fn ($p) => filled($p[0]) && filled($p[1]))->map(fn ($p) => $p[0].': '.$p[1])->implode(' · ') ?: null,
                 ])->all(),
             ],
+            'eta' => OrderEta::forOrder($order),
             'payment_instructions' => $isTransfer
-                ? \App\Support\BankTransferInstructions::forStorefront()
+                ? BankTransferInstructions::forStorefront()
                 : null,
             'whatsapp_url' => $whatsappUrl,
+        ]);
+    }
+
+    /**
+     * Pembatalan oleh pembeli: hanya saat status masih "menunggu konfirmasi"
+     * (pending). Identitas harus cocok (nomor order + HP), sama
+     * seperti pencarian status, agar orang lain tidak bisa membatalkan pesanan.
+     */
+    public function cancel(LookupOrderStatusRequest $request, string $order_number): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $order = $this->findGuestOrder([
+            'order_number' => $order_number,
+            'customer_phone' => $validated['customer_phone'] ?? null,
+        ], $request);
+
+        if (! $order) {
+            return back()->withErrors([
+                'cancel' => 'Nomor pesanan dan identitas tidak cocok. Periksa kembali data Anda.',
+            ]);
+        }
+
+        if ($order->order_status !== 'awaiting_confirmation') {
+            return back()->withErrors([
+                'cancel' => 'Pesanan sudah diproses dan tidak dapat dibatalkan dari halaman ini.',
+            ]);
+        }
+
+        $changed = $this->orders->cancel($order, null, 'Pembatalan oleh pembeli');
+
+        return back()->with(
+            $changed ? 'success' : 'error',
+            $changed
+                ? 'Pesanan '.$order->order_number.' dibatalkan. Stok dikembalikan ke katalog.'
+                : 'Pesanan sudah dibatalkan sebelumnya.',
+        );
+    }
+
+    public function index(Request $request): Response
+    {
+        $orders = $this->sessionOrdersPayload($request);
+
+        return Inertia::render('Public/OrderList', [
+            'has_session_orders' => $orders !== [],
+            'orders' => $orders,
         ]);
     }
 
@@ -73,11 +168,16 @@ class OrderController extends Controller
     {
         $orders = $this->sessionOrdersPayload($request);
 
+        // Prefill dari tautan (mis. redirect halaman konfirmasi yang sesinya
+        // sudah berakhir): pembeli tidak perlu mengetik ulang nomor order.
+        $prefill = trim((string) $request->query('order_number', ''));
+
         return Inertia::render('Public/OrderStatus', [
             'has_session_orders' => $orders !== [],
             'orders' => $orders,
             'order' => $orders[0] ?? null,
             'searched' => false,
+            'prefill_order_number' => $prefill !== '' ? $prefill : null,
         ]);
     }
 
@@ -100,15 +200,11 @@ class OrderController extends Controller
         return response()->json(['count' => $count]);
     }
 
-    public function statusLookup(Request $request): Response
+    public function statusLookup(LookupOrderStatusRequest $request): Response
     {
-        $validated = $request->validate([
-            'order_number' => ['required', 'string'],
-            'customer_phone' => ['required_without:customer_email', 'nullable', 'string'],
-            'customer_email' => ['required_without:customer_phone', 'nullable', 'email'],
-        ]);
+        $validated = $request->validated();
 
-        $order = $this->findGuestOrder($validated);
+        $order = $this->findGuestOrder($validated, $request);
 
         if ($order) {
             $this->rememberConfirmedOrder($request, $order->order_number);
@@ -116,7 +212,7 @@ class OrderController extends Controller
             $order->refresh()->load('items', 'shippingRecords');
         }
 
-        $payload = $order ? $this->publicOrderPayload($order) : null;
+        $payload = $order ? $this->publicOrderPayload($order, true) : null;
         $orders = $order
             ? $this->sessionOrdersPayload($request)
             : [];
@@ -129,18 +225,14 @@ class OrderController extends Controller
         ]);
     }
 
-    public function statusApi(Request $request, string $order_number): JsonResponse
+    public function statusApi(LookupOrderStatusApiRequest $request, string $order_number): JsonResponse
     {
-        $validated = $request->validate([
-            'customer_phone' => ['required_without:customer_email', 'nullable', 'string'],
-            'customer_email' => ['required_without:customer_phone', 'nullable', 'email'],
-        ]);
+        $validated = $request->validated();
 
         $order = $this->findGuestOrder([
             'order_number' => $order_number,
             'customer_phone' => $validated['customer_phone'] ?? null,
-            'customer_email' => $validated['customer_email'] ?? null,
-        ]);
+        ], $request);
 
         if (! $order) {
             return response()->json(['message' => 'Order not found'], 404);
@@ -149,7 +241,7 @@ class OrderController extends Controller
         $this->refreshShippingFromCarrier($order);
         $order->refresh()->load('items', 'shippingRecords');
 
-        return response()->json($this->publicOrderPayload($order));
+        return response()->json($this->publicOrderPayload($order, true));
     }
 
     /**
@@ -197,25 +289,24 @@ class OrderController extends Controller
             }
             $this->refreshShippingFromCarrier($order);
             $order->refresh()->load('items', 'shippingRecords');
-            $payloads[] = $this->publicOrderPayload($order);
+            $payloads[] = $this->publicOrderPayload($order, true);
         }
 
         return $payloads;
     }
 
-    /**
-     * @param  array{order_number: string, customer_phone?: string|null, customer_email?: string|null}  $validated
-     */
-    private function findGuestOrder(array $validated): ?Order
+    private function findGuestOrder(array $validated, ?Request $request = null): ?Order
     {
-        $query = Order::where('order_number', $validated['order_number']);
+        $orderNumber = (string) $validated['order_number'];
+        $confirmed = $request?->hasSession() ? $request->session()->get('confirmed_orders', []) : [];
+        $hasSessionOwnership = is_array($confirmed) && in_array($orderNumber, $confirmed, true);
+        $query = Order::where('order_number', $orderNumber);
 
-        if (! empty($validated['customer_phone'])) {
+        if (! $hasSessionOwnership) {
+            if (empty($validated['customer_phone'])) {
+                return null;
+            }
             $query->where('customer_phone', PhoneNumber::normalize($validated['customer_phone']));
-        }
-
-        if (! empty($validated['customer_email'])) {
-            $query->where('customer_email', $validated['customer_email']);
         }
 
         return $query->with('items', 'shippingRecords')->first();
@@ -249,33 +340,153 @@ class OrderController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function publicOrderPayload(Order $order): array
+    private function publicOrderPayload(Order $order, bool $includeReviewMeta = false): array
     {
         $shipping = $order->shippingRecords
             ->filter(fn (ShippingRecord $row) => filled($row->waybill_number))
             ->sortByDesc(fn (ShippingRecord $row) => $row->last_status_at?->getTimestamp() ?? $row->id)
-            ->first();
+            ->first()
+            ?? $order->shippingRecords->first(
+                fn (ShippingRecord $row) => $row->status !== 'cancelled'
+            )
+            ?? $order->shippingRecords->first();
+
+        $tracking = OrderTrackingPresenter::forOrder($order, $shipping);
+        $viewModel = new OrderTrackingViewModel($order, $shipping);
+
+        // Phase D: blok retur customer-safe (tanpa internal reason; reason sdh
+        // dirancang customer-facing di ReturnService::canCreateReturn).
+        // Revisi skema full manual 2026-09-21: syarat mengikatnya hanya pesanan
+        // berstatus Sampai, sedangkan batas 48 jam dan status lunas ikut dikirim
+        // sebagai `warnings` supaya pelanggan tetap melihat kebijakan resminya.
+        $deliveredRecord = $shipping?->status === 'delivered' ? $shipping : $order->shippingRecords
+            ->first(fn ($r) => $r->status === 'delivered' && $r->last_status_at !== null);
+        $deliveredAt = $deliveredRecord?->last_status_at;
+        $eligibility = app(ReturnService::class)
+            ->canCreateReturn($order, $deliveredRecord);
+        $returnBlock = [
+            'eligible' => (bool) ($eligibility['allowed'] ?? false),
+            'reason' => $eligibility['reason'] ?? null,
+            'deadline' => $eligibility['deadline'] ?? null,
+            'warnings' => $eligibility['warnings'] ?? [],
+        ];
+
+        // Item 9 antrean: riwayat kasus retur milik pelanggan. Hanya status
+        // dan waktu; alasan admin serta nominal tetap tidak dipublikasikan.
+        $kasusReturTerakhir = $order->returnCases->sortByDesc('id')->first();
+        $returnCase = $kasusReturTerakhir ? [
+            'status' => $kasusReturTerakhir->status,
+            'created_at' => optional($kasusReturTerakhir->created_at)?->toIso8601String(),
+            'completed_at' => optional($kasusReturTerakhir->completed_at)?->toIso8601String(),
+        ] : null;
+
+        $whatsappUrl = null;
+        $returnWhatsappUrl = null;
+        $businessPhone = PhoneNumber::normalize(ConsultationWhatsApp::businessPhone());
+        if ($businessPhone) {
+            $whatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_inquiry', [':order' => (string) $order->order_number]),
+            );
+            $returnWhatsappUrl = 'https://wa.me/'.$businessPhone.'?text='.rawurlencode(
+                WhatsAppMessageDrafts::body('order_return', [':order' => (string) $order->order_number]),
+            );
+        }
 
         return [
             'order_number' => $order->order_number,
             'order_status' => $order->order_status,
             'payment_status' => $order->payment_status,
+            'payment_method' => $order->payment_method,
             'shipping_status' => $order->shipping_status,
             'total_amount' => (float) $order->total_amount,
+            'billing' => [
+                'subtotal' => (float) $order->subtotal_amount,
+                'discount' => (float) $order->discount_amount,
+                'voucher_discount' => (float) $order->voucher_discount_amount,
+                'shipping_gross' => (float) $order->shipping_amount + (float) $order->shipping_subsidy_amount,
+                'shipping_subsidy' => (float) $order->shipping_subsidy_amount,
+                'shipping_net' => (float) $order->shipping_amount,
+                'cod_fee' => (float) ($order->cod_fee_amount ?? 0),
+                'insurance' => (float) ($order->shipping_insurance_amount ?? 0),
+                'total' => (float) $order->total_amount,
+            ],
             'customer_name' => $order->customer_name,
-            'items' => $order->items->map(fn ($i) => [
-                'product_name' => $i->product_name,
-                'quantity' => $i->quantity,
-                'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
-            ])->all(),
+            'created_at' => $order->created_at?->toIso8601String(),
+            'eta' => OrderEta::forOrder($order),
+            'items' => $order->items->map(function ($i) {
+                $img = $i->product?->media()->first();
+
+                return [
+                    'product_name' => $i->product_name ?: $i->product?->name,
+                    'product_id' => $i->product_id ? (int) $i->product_id : null,
+                    'quantity' => $i->quantity,
+                    'line_total' => isset($i->line_total) ? (float) $i->line_total : null,
+                    'note' => $i->note ?? null,
+                    'parent_sku' => $i->parent_sku,
+                    'variant_label' => collect([
+                        [$i->variation_1_name, $i->variation_1_option],
+                        [$i->variation_2_name, $i->variation_2_option],
+                    ])->filter(fn ($p) => filled($p[0]) && filled($p[1]))->map(fn ($p) => $p[0].': '.$p[1])->implode(' · ') ?: null,
+                    'image' => $img?->urlFor('thumb') ?? $img?->urlFor('card'),
+                ];
+            })->all(),
+            'reviews' => $includeReviewMeta ? CmsTestimonial::query()->where('order_id', $order->id)->get(['id', 'order_id', 'product_id', 'rating', 'message', 'media_items', 'moderation_status', 'published', 'verified_at', 'author_type'])->map(fn (CmsTestimonial $review) => ['id' => $review->id, 'product_id' => $review->product_id ? (int) $review->product_id : null, 'rating' => (int) $review->rating, 'message' => (string) $review->message, 'media_items' => $review->mediaPayload(), 'moderation_status' => $review->moderation_status, 'published' => (bool) $review->published, 'verified_purchase' => $review->verified_at !== null, 'customer_authored' => $review->isCustomerAuthored()])->values()->all() : [],
             'shipping' => $shipping ? [
                 'carrier_name' => $shipping->carrier_name,
                 'waybill_number' => $shipping->waybill_number,
                 'status' => $shipping->status,
-                'status_raw' => $shipping->status_raw,
                 'tracking_url' => $shipping->tracking_url,
                 'last_status_at' => $shipping->last_status_at?->toIso8601String(),
             ] : null,
+            // Satu lapisan publik: 'tracking' kini = versi TERSANITASI (metadata
+            // internal dibuang). UI memakai tracking_public / vm.*, jangan pernah
+            // kirim raw $tracking (record_status/status_raw/source) ke pelanggan.
+            'tracking' => self::publicTrackingSanitized($tracking, $shipping),
+            'vm' => $viewModel->toArray(),
+            'whatsapp_url' => $whatsappUrl,
+            'delivered_at' => $deliveredAt?->toIso8601String(),
+            'return_block' => $returnBlock,
+            'return_case' => $returnCase,
+            'return_whatsapp_url' => $returnWhatsappUrl,
+            // Lapisan publik: sanitasi metadata internal yang bukan informasi customer.
+            'tracking_public' => self::publicTrackingSanitized($tracking, $shipping),
+
         ];
+    }
+
+    /**
+     * Sanitasi tracking utk publik: hapus source/detail/location raw + status_raw.
+     *
+     * @param  array<string, mixed>  $tracking
+     * @return array<string, mixed>
+     */
+    private static function publicTrackingSanitized(array $tracking, ?ShippingRecord $shipping = null): array
+    {
+        unset($tracking['status_raw'], $tracking['record_status']);
+
+        // Raw provider text (dari fallback timeline shipping record) tidak boleh
+        // sampai ke UI customer; ganti dgn label aman generik.
+        $rawValues = collect($shipping ? [$shipping->status_raw] : [])
+            ->filter(fn ($v) => filled($v))
+            ->values();
+
+        if (isset($tracking['timeline']) && is_array($tracking['timeline'])) {
+            $tracking['timeline'] = array_map(static function (array $entry) use ($rawValues): array {
+                $message = (string) ($entry['message'] ?? '');
+                if ($rawValues->contains($message)) {
+                    $message = 'Status pengiriman diperbarui.';
+                }
+                $safe = [
+                    'message' => $message,
+                    'at' => $entry['at'] ?? null,
+                ];
+                // Hapus metadata internal; unknown scan selalu label aman dari presenter.
+                unset($safe['source'], $safe['detail'], $safe['location']);
+
+                return $safe;
+            }, $tracking['timeline']);
+        }
+
+        return $tracking;
     }
 }

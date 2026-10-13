@@ -73,10 +73,22 @@ class ActivityLogAdminTest extends TestCase
             ->get(route('admin.activity-logs.export'));
 
         $response->assertOk();
-        $response->assertStreamed();
-        $content = $response->streamedContent();
-        $this->assertStringContainsString('payment.confirmed', $content);
-        $this->assertStringContainsString('Pesanan & Biaya', $content);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertStringContainsString('.xlsx', (string) $response->headers->get('content-disposition'));
+        $content = file_get_contents($response->getFile()->getPathname());
+        $this->assertNotEmpty($content);
+        $tmp = tempnam(sys_get_temp_dir(), 'act').'.xlsx';
+        file_put_contents($tmp, $content);
+        $ws = (new \PhpOffice\PhpSpreadsheet\Reader\Xlsx())->load($tmp)->getActiveSheet();
+        $text = '';
+        foreach ($ws->getRowIterator() as $row) {
+            foreach ($row->getCellIterator() as $cell) {
+                $text .= (string) $cell->getValue().' ';
+            }
+        }
+        unlink($tmp);
+        $this->assertStringContainsString('Pesanan & Biaya', $text);
+        $this->assertStringContainsString('Pesanan', $text);
     }
 
     public function test_login_writes_auth_login_event_log(): void
@@ -84,12 +96,12 @@ class ActivityLogAdminTest extends TestCase
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'email' => 'admin@ragil.test',
+            'username' => 'admin.ragil',
             'password' => 'secret123',
         ]);
 
         $this->post(route('login.post'), [
-            'email' => 'admin@ragil.test',
+            'login' => 'admin.ragil',
             'password' => 'secret123',
         ])->assertRedirect(route('admin.dashboard'));
 
@@ -99,5 +111,27 @@ class ActivityLogAdminTest extends TestCase
             'entity_id' => $admin->id,
             'created_by_user_id' => $admin->id,
         ]);
+    }
+
+    public function test_shared_admin_activity_logs_use_human_readable_labels(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        EventLog::create([
+            'event_type' => 'order_status_changed',
+            'entity_type' => 'order',
+            'entity_id' => 1,
+            'payload' => ['from' => 'processing', 'order_status' => 'shipped'],
+            'created_by_user_id' => $admin->id,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.activity-logs.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('adminActivityLogs', 1)
+                ->where('adminActivityLogs.0.activity', 'Status pesanan diubah dari Diproses menjadi Dikirim')
+                ->where('adminActivityLogs.0.href', route('admin.orders.show', 1)));
     }
 }

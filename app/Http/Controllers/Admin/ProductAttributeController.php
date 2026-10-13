@@ -12,24 +12,13 @@ use Inertia\Response;
 
 class ProductAttributeController extends Controller
 {
-    public function index(Product $product): Response
+    public function index(Product $product): RedirectResponse
     {
-        $product->load('attributes');
-
-        return Inertia::render('Admin/Attributes', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'parent_sku' => $product->parent_sku,
-            ],
-            'attributes' => $product->attributes->map(fn (ProductAttribute $attribute) => [
-                'id' => $attribute->id,
-                'attribute_name' => $attribute->attribute_name,
-                'attribute_value' => $attribute->attribute_value,
-                'source' => $attribute->source,
-                'updateUrl' => route('admin.attributes.update', $attribute),
-            ])->values()->all(),
-            'submitUrl' => route('admin.products.attributes.store', $product),
+        // Penggabungan form edit terpusat (single source of truth): kelola spesifikasi
+        // dilakukan langsung di form edit produk utama.
+        return redirect()->route('admin.products.edit', [
+            'product' => $product,
+            'tab' => 'spesifikasi',
         ]);
     }
 
@@ -38,8 +27,9 @@ class ProductAttributeController extends Controller
         $validated = $request->validate([
             'attribute_name' => ['required', 'string', 'max:255'],
             'attribute_value' => ['required', 'string', 'max:255'],
-            'source' => ['required', 'in:shopee,internal'],
+            'source' => ['sometimes', 'in:shopee,internal'],
         ]);
+        $validated['source'] = $validated['source'] ?? 'internal';
         $validated['product_id'] = $product->id;
         $validated['created_by_user_id'] = $request->user()->id;
         $validated['updated_by_user_id'] = $request->user()->id;
@@ -47,7 +37,7 @@ class ProductAttributeController extends Controller
         ProductAttribute::create($validated);
 
         return redirect()->route('admin.products.attributes.index', $product)
-            ->with('success', 'Atribut ditambahkan.');
+            ->with('success', 'Spesifikasi ditambahkan.');
     }
 
     public function update(Request $request, ProductAttribute $attribute): RedirectResponse
@@ -55,11 +45,12 @@ class ProductAttributeController extends Controller
         $validated = $request->validate([
             'attribute_name' => ['required', 'string', 'max:255'],
             'attribute_value' => ['required', 'string', 'max:255'],
-            'source' => ['required', 'in:shopee,internal'],
+            'source' => ['sometimes', 'in:shopee,internal'],
         ]);
+        $validated['source'] = $validated['source'] ?? $attribute->source ?? 'internal';
         $validated['updated_by_user_id'] = $request->user()->id;
         $attribute->update($validated);
 
-        return redirect()->back()->with('success', 'Atribut diperbarui.');
+        return redirect()->back()->with('success', 'Spesifikasi diperbarui.');
     }
 }

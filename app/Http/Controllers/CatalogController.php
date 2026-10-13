@@ -3,19 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\ModelProductService;
 use App\Support\CatalogLabels;
 use App\Support\CatalogSearch;
 use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
 use App\Support\FlashSalePeriodSettings;
 use App\Support\InertiaCatalog;
+use App\Support\InstallationGallery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CatalogController extends Controller
 {
-    public function index(Request $request): JsonResponse|Response
+    public function index(Request $request): JsonResponse|\Illuminate\Http\RedirectResponse|Response
     {
         // API tetap daftar produk SKU.
         if ($request->is('api/*') || $request->wantsJson()) {
@@ -23,18 +29,105 @@ class CatalogController extends Controller
         }
 
         // /products?sort=popular|…|q|model → daftar produk (card-produk).
+        // /products?sort=latest|oldest → hub Semua Model Produk (urutan kartu model).
         // /products (hub) → Semua Model Produk (card-model-produk).
-        $listing = $request->filled('sort')
+        $hubSort = (string) $request->input('sort', '');
+        $listing = ($request->filled('sort') && ! in_array($hubSort, ['latest', 'oldest'], true))
             || $request->filled('q')
             || $request->filled('model')
             || $request->filled('price_min')
             || $request->filled('price_max');
 
         if ($listing) {
-            return $this->category(null, $request);
+            return redirect()->route('catalog.all', $request->query());
         }
 
         return $this->modelsHub($request);
+    }
+
+    /** Listing seluruh SKU pada URL yang tidak ambigu. */
+    public function all(Request $request): JsonResponse|Response
+    {
+        return $this->category(null, $request);
+    }
+
+    public function categoryShow(string $category, Request $request): JsonResponse|Response|RedirectResponse
+    {
+        if ($redirect = $this->canonicalCategoryRedirect($category, null, null, $request)) {
+            return $redirect;
+        }
+
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        if ($categoryCode === null || $categoryCode === 'LAINNYA') {
+            abort(404);
+        }
+
+        return $this->category($categoryCode, $request);
+    }
+
+    public function designShow(string $category, string $model, string $design, Request $request): JsonResponse|Response|RedirectResponse
+    {
+        if ($redirect = $this->canonicalCategoryRedirect($category, $model, $design, $request)) {
+            return $redirect;
+        }
+
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+        $designCode = CatalogLabels::normalizeDesign($design);
+        if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '' || $designCode === null) {
+            abort(404);
+        }
+        // Filter UI (query string) menimpa nilai path bila eksplisit - supaya
+        // memilih desain/model lain dari halaman ini berfungsi. Path = fallback.
+        $request->merge([
+            'model' => $request->input('model') !== null
+                ? CatalogLabels::normalizeModel((string) $request->input('model'))
+                : $modelCode,
+            'design' => $request->input('design') !== null
+                ? CatalogLabels::normalizeDesign((string) $request->input('design'))
+                : $designCode,
+        ]);
+
+        // Sub model opsional, dan filter desain hanya bermakna bila desain itu
+        // benar-benar punya produk. Tanpa penjagaan ini tautan seperti
+        // /products/boven/zigzag/polos menampilkan halaman kosong
+        // ("0 Produk ditemukan") yang membingungkan dan tetap terindeks.
+        $effectiveModel = (string) $request->input('model', $modelCode);
+        $effectiveDesign = (string) $request->input('design', $designCode);
+        if (! $this->designHasProducts($categoryCode, $effectiveModel, $effectiveDesign)) {
+            return $this->redirectToModelWithoutDesign($category, $effectiveModel, $request);
+        }
+
+        return $this->category($categoryCode, $request);
+    }
+
+    /** Apakah pasangan model+desain punya minimal satu produk yang tampil? */
+    protected function designHasProducts(string $categoryCode, string $modelCode, string $designCode): bool
+    {
+        return Product::visible()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode)
+            ->where('design_variant', $designCode)
+            ->exists();
+    }
+
+    /** Alihkan filter desain kosong ke halaman model, sambil membuang sisa filter desain. */
+    protected function redirectToModelWithoutDesign(string $category, string $modelSlug, Request $request): RedirectResponse
+    {
+        // 'model' dan 'design' sudah terwakili oleh path tujuan; sisanya
+        // (sort, flash, q) tetap diteruskan agar filter lain tidak hilang.
+        $query = $request->query();
+        unset($query['design'], $query['model']);
+
+        $target = route('catalog.model', [
+            'category' => $category,
+            'model' => InstallationGallery::modelToSlug($modelSlug),
+        ]);
+        if ($query !== []) {
+            $target .= '?'.http_build_query($query);
+        }
+
+        return redirect($target, 301);
     }
 
     /** Halaman Promo — listing SKU dengan atribut promo eksplisit. */
@@ -49,45 +142,173 @@ class CatalogController extends Controller
         return $this->category(null, $request, mode: 'flash');
     }
 
-    public function windows(Request $request): JsonResponse|Response
+    /**
+     * Redirect 301 slug kategori alias English / non-kanonik ke slug Indonesia kanonik
+     * (windows→jendela, doors→pintu, bouven→boven) agar tidak ada konten duplikat.
+     * Route model/desain tetap dipertahankan; return null bila slug sudah kanonik.
+     *
+     * @param  string|null  $model  Path segment model (di route catalog.model/design)
+     * @param  string|null  $design Path segment design (di route catalog.design)
+     */
+    protected function canonicalCategoryRedirect(string $category, ?string $model = null, ?string $design = null, ?Request $request = null): ?RedirectResponse
     {
-        return $this->category('WINDOW', $request);
+        $canonical = CategoryUrl::canonicalSlug((string) $category);
+        if ($canonical === null || strtolower((string) $category) === $canonical) {
+            return null;
+        }
+
+        $params = ['category' => $canonical];
+        if (filled($model)) {
+            $params['model'] = $model;
+        }
+        if (filled($design)) {
+            $params['design'] = $design;
+        }
+
+        $route = filled($design) ? 'catalog.design' : (filled($model) ? 'catalog.model' : 'catalog.category');
+
+        $target = route($route, $params);
+        if ($request) {
+            $qs = $request->getQueryString();
+            if ($qs !== null && $qs !== '') {
+                $target .= '?'.$qs;
+            }
+        }
+
+        return redirect($target, 301);
     }
 
-    public function doors(Request $request): JsonResponse|Response
+    /**
+     * Penanda User-Agent yang menunjukkan perangkat telepon (bukan tablet).
+     *
+     * Hanya dipakai untuk memilih ukuran halaman awal, bukan untuk mengunci
+     * fitur. Tablet sengaja TIDAK termasuk: grid tablet (768px ke atas) memakai
+     * 3 kolom, dan 15 kartu pas mengisi 5 baris di sana.
+     */
+    private const PHONE_AGENT_MARKERS = [
+        'iphone', 'ipod', 'windows phone', 'opera mini', 'opera mobi',
+        'iemobile', 'blackberry',
+    ];
+
+    /**
+     * Ukuran halaman katalog.
+     *
+     * Grid katalog responsif (2 kolom di HP, sampai 5 kolom di layar lebar)
+     * sedangkan paginate() dihitung server. Urutan keputusan:
+     *
+     *  1. per_page dari klien. Klien yang mengukur lebar viewport-nya sendiri
+     *     paling akurat, jadi nilai resmi yang dikirimnya menang.
+     *  2. User-Agent telepon. Pelanggan memakai satu perangkat secara konsisten
+     *     (tidak mengubah-ubah lebar jendela seperti pengembang), jadi
+     *     perangkatnya bisa dikenali di server. Dengan begitu HP menerima 16
+     *     kartu SEJAK RENDER PERTAMA: tanpa permintaan ulang, tanpa URL kotor.
+     *  3. Default config (desktop, 15 kartu).
+     *
+     * Nilai per_page di luar dua ukuran resmi diabaikan, bukan ditolak dengan
+     * pesan error, supaya URL yang menyisipkan per_page sembarang tidak bisa
+     * memaksa pagination raksasa.
+     */
+    protected function catalogPageSize(Request $request): int
     {
-        return $this->category('DOOR', $request);
+        $desktop = (int) config('storefront.catalog_page_size');
+        $mobile = (int) config('storefront.catalog_page_size_mobile');
+
+        $requested = $request->input('per_page');
+        if (is_string($requested) && ctype_digit($requested)) {
+            $requested = (int) $requested;
+            if (in_array($requested, [$desktop, $mobile], true)) {
+                return $requested;
+            }
+        }
+
+        if ($this->looksLikePhone($request)) {
+            return $mobile;
+        }
+
+        return $desktop;
     }
 
-    public function bouven(Request $request): JsonResponse|Response
+    /**
+     * Apakah permintaan datang dari telepon, dilihat dari User-Agent.
+     *
+     * Telepon Android selalu memuat "mobile"; tablet Android tidak. iPhone dan
+     * iPod dikenali dari namanya. iPad sengaja tidak dihitung telepon karena
+     * lebar layarnya masuk grid 3 kolom (15 kartu pas).
+     */
+    protected function looksLikePhone(Request $request): bool
     {
-        return $this->category('BOUVEN', $request);
+        $agent = strtolower((string) $request->userAgent());
+        if ($agent === '') {
+            return false;
+        }
+
+        foreach (self::PHONE_AGENT_MARKERS as $marker) {
+            if (str_contains($agent, $marker)) {
+                return true;
+            }
+        }
+
+        return str_contains($agent, 'android') && str_contains($agent, 'mobile');
     }
 
-    protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
+protected function category(?string $category, Request $request, string $mode = 'catalog'): JsonResponse|Response
     {
-        $sort = $request->input('sort');
+        $sort = (string) $request->input('sort', 'popular');
+        if (! in_array($sort, ['popular', 'terlaris', 'bestseller', 'newest', 'baru', 'size_asc', 'size_desc', 'price_asc', 'price_desc'], true)) {
+            $sort = 'popular';
+        }
         $model = CatalogLabels::normalizeModel($request->input('model'));
         $design = CatalogLabels::normalizeDesign($request->input('design'));
         $promoOnly = $mode === 'promo';
-        $flashOnly = $mode === 'flash';
+        $flashOnly = $mode === 'flash' || $request->boolean('flash');
         $flashPeriodLive = FlashSalePeriodSettings::isLive();
 
-        $promoAttributes = [
+        // Penanda dari carousel "Paling Banyak Dipesan" (tautan Lihat Semua).
+        // Hanya di konteks ini urutan kurasi admin dipakai; sort=popular biasa
+        // tetap murni skor penjualan agar tidak mengubah arti filter Populer.
+        // Fragmen urutannya milik Product::palingBanyakDipesanOrderSql(), dan
+        // itu SATU-SATUNYA sumber urutan Paling Banyak Dipesan: carousel
+        // beranda mengambil N produk pertamanya, grid halaman memakai urutan
+        // yang sama dengan pagination, dan carousel Flash Sale di halaman ini
+        // hanyalah subset dari urutan itu. Status Flash Sale karena itu tidak
+        // pernah mengecualikan produk dari urutan ini.
+        $fromCuratedPopular = $request->input('from') === 'paling-banyak-dipesan';
+
+        // Harga pembanding manual (diskon yang diisi admin per varian). Daftarnya
+        // sengaja sama dengan PriceService::MANUAL_COMPARE_ATTRIBUTES supaya yang
+        // tampil di halaman Promo memang produk yang benar-benar berdiskon.
+        $manualDiscountAttributes = [
             'promo_compare_price',
             'compare_price',
             'harga_asli',
             'harga_sebelum_diskon',
-            'promo_flash_sale',
-            'flash_sale',
         ];
 
         $products = Product::visible()
             ->when($category, fn ($q) => $q->where('product_category', $category))
-            ->when($promoOnly, fn ($q) => $q->whereHas(
-                'attributes',
-                fn ($qa) => $qa->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(attribute_name))'), $promoAttributes)
-            ))
+            // Halaman Promo = SEMUA diskon selain Flash Sale: kampanye diskon
+            // reguler (toko) ditambah produk yang harga pembandingnya diisi
+            // manual. Flash Sale dikeluarkan karena pengunjung yang mencari Flash
+            // Sale sudah punya halaman sendiri (/flash-sale) dan pintunya di
+            // drawer, sehingga Promo tidak boleh mengulang isi halaman itu.
+            ->when($promoOnly, function ($q) use ($manualDiscountAttributes) {
+                $storeIds = app(\App\Services\CampaignService::class)->promoProductIds();
+
+                $q->where(function ($w) use ($storeIds, $manualDiscountAttributes) {
+                    if ($storeIds !== []) {
+                        $w->whereIn('id', $storeIds);
+                    }
+
+                    $w->orWhereHas('activeVariants.attributes', fn ($qa) => $qa
+                        ->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $manualDiscountAttributes)
+                        ->where('attribute_value', '>', '0'))
+                        ->orWhereHas('attributes', fn ($qa) => $qa
+                            ->whereIn(DB::raw('LOWER(TRIM(attribute_name))'), $manualDiscountAttributes)
+                            ->where('attribute_value', '>', '0'));
+                });
+
+                $this->scopeFlashSaleExcluded($q);
+            })
             ->when($flashOnly, function ($q) use ($flashPeriodLive) {
                 if (! $flashPeriodLive) {
                     $q->whereRaw('0 = 1');
@@ -96,9 +317,12 @@ class CatalogController extends Controller
                 }
                 $this->scopeFlashSaleActive($q);
             })
-            ->with(['mainImage', 'activeVariants', 'attributes'])
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
             ->withMin('activeVariants as min_price_sort', 'price')
-            ->withSum('orderItems as sold_count', 'quantity')
+            ->withMin('activeVariants as min_height_sort', 'height_cm')
+            ->withMin('activeVariants as min_width_sort', 'width_cm')
+            ->withPopularityScore()
+            ->withSum('activeVariants as stock_sort', 'stock')
             ->when($model, fn ($q) => $q->where('product_model', $model))
             ->when($design, fn ($q) => $q->where('design_variant', $design))
             ->when(
@@ -128,28 +352,71 @@ class CatalogController extends Controller
                     );
                 }
             )
-            ->when($sort === 'price_asc', fn ($q) => $q->orderBy('min_price_sort'))
-            ->when($sort === 'price_desc', fn ($q) => $q->orderByDesc('min_price_sort'))
+            ->when($sort === 'size_asc', fn ($q) => $q->orderByRaw('min_height_sort is null')->orderBy('min_height_sort')->orderByRaw('min_width_sort is null')->orderBy('min_width_sort')->orderBy('parent_sku'))
+            ->when($sort === 'size_desc', fn ($q) => $q->orderByRaw('min_height_sort is null')->orderByDesc('min_height_sort')->orderByRaw('min_width_sort is null')->orderByDesc('min_width_sort')->orderByDesc('parent_sku'))
+            ->when($sort === 'price_asc', fn ($q) => $q->orderByRaw('min_price_sort is null')->orderBy('min_price_sort')->orderBy('id'))
+            ->when($sort === 'price_desc', fn ($q) => $q->orderByRaw('min_price_sort is null')->orderByDesc('min_price_sort')->orderByDesc('id'))
             ->when($sort === 'newest' || $sort === 'baru', fn ($q) => $q->latest('created_at')->orderByDesc('id'))
-            ->when($sort === 'popular', fn ($q) => $q->orderByDesc('sold_count')->orderByDesc('id'))
             ->when(
-                $sort === 'name_asc' || $sort === 'abjad',
-                fn ($q) => $q->orderByRaw('COALESCE(NULLIF(name, ""), short_name) asc')->orderBy('id')
+                in_array($sort, ['popular', 'terlaris', 'bestseller'], true),
+                function ($q) use ($fromCuratedPopular) {
+                    // Halaman "Lihat Semua" milik carousel Paling Banyak Dipesan
+                    // (from=paling-banyak-dipesan) memakai SATU urutan bersama
+                    // dengan carousel beranda dan carousel Flash Sale: kurasi
+                    // admin dulu, sisanya skor penjualan. sort=popular tanpa
+                    // penanda itu tetap murni penjualan.
+                    if ($fromCuratedPopular) {
+                        $q->orderByRaw(Product::palingBanyakDipesanOrderSql());
+
+                        return;
+                    }
+
+                    // Populer: penjualan dulu, lalu stok terbanyak sebagai tie-breaker
+                    // (belum ada pembelian → produk stok tertinggi tampil di depan).
+                    $q->orderByRaw(Product::popularityScoreSql().' DESC')
+                        ->orderByDesc('stock_sort')
+                        ->orderByDesc('id');
+                }
             )
-            ->when(! $sort, fn ($q) => $q->latest('created_at')->orderByDesc('id'))
-            ->paginate(24)
+             ->paginate($this->catalogPageSize($request))
             ->withQueryString();
 
+        // P2-2.1: hasil katalog per kombinasi filter di-cache 5 menit;
+        // invalidasi via observer (flush tag products).
+        $cacheKey = implode('|', [
+            'cat', (string) $category, $mode, (string) ($model ?? ''),
+            (string) ($design ?? ''),
+            (string) $request->input('q'), (string) $request->input('sort'),
+            // Penanda asal ikut jadi kunci cache: urutan kurasi hanya berlaku
+            // untuk konteks Paling Banyak Dipesan, jadi hasilnya tidak boleh
+            // bertukar dengan listing sort=popular biasa.
+            $fromCuratedPopular ? 'from-curated' : 'from-other',
+            // Filter Flash Sale harus menjadi bagian dari kunci cache,
+            // agar hasil filter flash tidak bertabrakan dengan listing umum.
+            $flashOnly ? 'flash' : 'no-flash',
+            (string) $request->input('price_min'), (string) $request->input('price_max'),
+            (string) $products->currentPage(),
+            // Ukuran halaman ikut jadi kunci: hasil 15 dan 16 potongannya beda.
+            'pp'.$products->perPage(),
+        ]);
+        $products = \App\Support\ProductCache::rememberCatalog($cacheKey, fn () => $products);
+
         $flashSaleSpotlight = [];
-        if ($promoOnly && $flashPeriodLive && ! ($request->is('api/*') || $request->wantsJson())) {
-            $flashQuery = Product::visible();
-            $this->scopeFlashSaleActive($flashQuery);
+        if (
+            ! $flashOnly
+            && $products->currentPage() <= 1
+            && $flashPeriodLive
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            // Carousel Flash Sale di atas daftar (halaman 1 saja) BUKAN feed
+            // terpisah: isinya subset dari urutan Paling Banyak Dipesan yang
+            // sama dengan grid di bawahnya dan carousel beranda, disaring ke
+            // produk yang sedang Flash Sale lalu diambil 8 teratas menurut
+            // urutan itu. Jadi produk Flash Sale tetap ikut tampil di grid, dan
+            // urutan grid tidak pernah bergantung pada status Flash Sale.
             $flashSaleSpotlight = InertiaCatalog::productCards(
-                $flashQuery
-                    ->with(['mainImage', 'activeVariants', 'attributes'])
-                    ->withSum('orderItems as sold_count', 'quantity')
-                    ->latest('updated_at')
-                    ->orderByDesc('id')
+                $this->scopeFlashSaleActive(Product::visible()->orderByPalingBanyakDipesan())
+                    ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
                     ->limit(8)
                     ->get()
             );
@@ -168,10 +435,33 @@ class CatalogController extends Controller
             );
         }
 
+        // Pencarian tanpa hasil: tawarkan ukuran terdekat + kategori terkait
+        // + ajakan konsultasi WhatsApp, bukan sekadar "tidak ada hasil".
+        $searchFallback = null;
+        if (
+            $request->filled('q')
+            && $products->isEmpty()
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            $searchFallback = $this->searchFallbackFor(
+                term: trim((string) $request->input('q')),
+                category: $category,
+            );
+        }
+
+        $categoryName = $this->listingTitle(
+            category: $category,
+            model: $model,
+            design: $design,
+            sort: $request->filled('sort') ? $sort : null,
+            flashOnly: $flashOnly,
+            promoOnly: $promoOnly,
+        );
+
         if ($request->is('api/*') || $request->wantsJson()) {
             return response()->json([
                 'category' => $category ?? 'ALL',
-                'category_name' => CatalogLabels::category($category),
+                'category_name' => $categoryName,
                 'products' => $products->getCollection()->map(
                     fn ($product) => $product->toApiArray()
                 )->all(),
@@ -185,22 +475,15 @@ class CatalogController extends Controller
         }
 
         $basePath = match (true) {
-            $flashOnly => '/flash-sale',
+            $request->routeIs('catalog.flash-sale') => '/flash-sale',
             $promoOnly => '/promo',
-            $category === 'WINDOW' => '/windows',
-            $category === 'DOOR' => '/doors',
-            $category === 'BOUVEN' => '/bouven',
-            default => '/products',
+            $request->routeIs('catalog.category', 'catalog.design') => '/'.$request->path(),
+            $category !== null => '/products/'.CategoryUrl::categoryToSlug($category),
+            default => '/products/all',
         };
 
-        $categoryName = match (true) {
-            $flashOnly => 'Flash Sale',
-            $promoOnly => 'Promo',
-            $sort === 'popular' && ! $category => 'Paling Banyak Dipesan',
-            ! $category => 'Semua Produk',
-            default => CatalogLabels::category($category) ?: 'Semua Produk',
-        };
-
+        // Satu permintaan = satu halaman kartu (paginate). Navigasi antar halaman
+        // memakai nomor halaman di UI; daftar TIDAK menumpuk antar halaman.
         $productCards = InertiaCatalog::productCards($products->getCollection());
         if ($youMightLike !== [] && (int) $products->currentPage() === 1) {
             $likeIds = collect($youMightLike)->pluck('id')->all();
@@ -210,12 +493,25 @@ class CatalogController extends Controller
             ));
         }
 
+        $isAllProductsListing = $category === null && ! $promoOnly && ! $flashOnly;
+        // Carousel "Paling Banyak Dipesan" ditampilkan di semua halaman listing
+        // katalog (semua produk, kategori, model, desain), bukan promo/flash/API.
+        $popularProducts = [];
+        if (
+            ! $promoOnly
+            && ! $flashOnly
+            && ! ($request->is('api/*') || $request->wantsJson())
+        ) {
+            $popularProducts = InertiaCatalog::popularProductCards(10);
+        }
+
         return Inertia::render('Public/Catalog', [
             'category' => $category ?? 'ALL',
             'categoryName' => $categoryName,
             'listingMode' => $flashOnly ? 'flash' : ($promoOnly ? 'promo' : 'catalog'),
-            'isAllProductsListing' => $category === null && ! $promoOnly && ! $flashOnly,
+            'isAllProductsListing' => $isAllProductsListing,
             'products' => $productCards,
+            'popularProducts' => $popularProducts,
             'youMightLike' => $youMightLike,
             'flashSaleSpotlight' => $flashSaleSpotlight,
             'flashSalePeriod' => FlashSalePeriodSettings::publicState(),
@@ -226,6 +522,11 @@ class CatalogController extends Controller
                 'total' => $products->total(),
                 'links' => $products->linkCollection()->toArray(),
             ],
+            'catalogPageSize' => [
+                'desktop' => (int) config('storefront.catalog_page_size'),
+                'mobile' => (int) config('storefront.catalog_page_size_mobile'),
+            ],
+            'categoryLinks' => CategoryUrl::categoryLinks(),
             'filterModels' => collect(CatalogTaxonomy::models($category))
                 ->map(fn ($m) => ['value' => $m, 'label' => CatalogLabels::model($m) ?: $m])
                 ->values()
@@ -235,10 +536,87 @@ class CatalogController extends Controller
             'activeDesign' => $design,
             'activeSort' => $sort,
             'searchQuery' => trim((string) $request->input('q', '')),
+            'searchFallback' => $searchFallback,
             'priceMin' => $request->filled('price_min') ? (int) $request->input('price_min') : null,
             'priceMax' => $request->filled('price_max') ? (int) $request->input('price_max') : null,
             'basePath' => $basePath,
+            'canonicalUrl' => url($isAllProductsListing ? '/products/all' : $basePath),
+            'robotsDirective' => ! $request->routeIs('catalog.category', 'catalog.design') && ($request->hasAny(['q', 'model', 'design', 'price_min', 'price_max']) || $request->filled('sort')) ? 'noindex,follow' : 'index,follow',
         ]);
+    }
+
+    /**
+     * Fallback saat pencarian tanpa hasil: ukuran terdekat (dari dimensi varian)
+     * dan model/kategori terkait dari token pencarian.
+     *
+     * @return array{nearby_sizes: list<array<string, mixed>>, related_models: list<array{label: string, href: string}>}|null
+     */
+    protected function searchFallbackFor(string $term, ?string $category): ?array
+    {
+        $nearbySizes = [];
+        $relatedModels = [];
+
+        if (preg_match('/(\d+)\s*[x×]\s*(\d+)/iu', $term, $matches)) {
+            $dims = array_values(array_unique([(float) $matches[1], (float) $matches[2]]));
+
+            $nearby = Product::visible()
+                ->when($category, fn ($q) => $q->where('product_category', $category))
+                // ADR-021: dimensi milik produk.
+                ->where(function ($q) use ($dims) {
+                    foreach ($dims as $dimension) {
+                        $q->orWhereBetween('height_cm', [$dimension - 15, $dimension + 15])
+                            ->orWhereBetween('width_cm', [$dimension - 15, $dimension + 15]);
+                    }
+                })
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
+                ->withPopularityScore()
+                ->latest('id')
+                ->limit(8)
+                ->get();
+
+            $nearbySizes = InertiaCatalog::productCards($nearby);
+        }
+
+        $tokens = preg_split('/\s+/u', mb_strtolower($term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
+        $categorySlug = CategoryUrl::categoryToSlug((string) $category);
+
+        foreach (CatalogLabels::MODEL_ORDER as $code) {
+            $label = mb_strtolower(CatalogLabels::model($code));
+            $slug = mb_strtolower(str_replace('_', ' ', $code));
+            foreach ($haystacks as $piece) {
+                if ($piece === '') {
+                    continue;
+                }
+                if ($piece === $label || $piece === $slug || str_contains($slug, $piece) || str_contains($piece, $slug)) {
+                    $relatedModels[] = [
+                        'label' => CatalogLabels::model($code) ?: $code,
+                        'href' => route('catalog.model', [
+                            'category' => $categorySlug,
+                            'model' => strtolower(str_replace('_', '-', $code)),
+                        ], absolute: false),
+                    ];
+                    break;
+                }
+            }
+        }
+
+        $relatedModels = array_values(array_unique(array_map(
+            fn (array $row) => $row['label'].'|'.$row['href'],
+            $relatedModels,
+        )));
+        $relatedModels = array_values(array_map(
+            fn (string $key) => ['label' => explode('|', $key)[0], 'href' => explode('|', $key)[1]],
+            $relatedModels,
+        ));
+
+        // Tetap kirim struktur walau keduanya kosong: halaman membutuhkannya
+        // untuk menampilkan kartu "Tidak menemukan ukuran yang sesuai?"
+        // + tombol Konsultasi via WhatsApp.
+        return [
+            'nearby_sizes' => $nearbySizes,
+            'related_models' => $relatedModels,
+        ];
     }
 
     /**
@@ -275,8 +653,8 @@ class CatalogController extends Controller
 
         return InertiaCatalog::productCards(
             $flashQuery
-                ->with(['mainImage', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
+                ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
+                ->withPopularityScore()
                 ->latest('updated_at')
                 ->orderByDesc('id')
                 ->limit(8)
@@ -284,9 +662,14 @@ class CatalogController extends Controller
         );
     }
 
-    /** @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Product>  $query */
+    /** @param  Builder<Product>  $query */
     protected function scopeFlashSaleActive($query)
     {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+        if ($flashIds !== []) {
+            return $query->whereIn('id', $flashIds);
+        }
+
         $flashAttributes = ['promo_flash_sale', 'flash_sale'];
         $trueValues = ['true', '1', 'yes', 'on'];
 
@@ -300,15 +683,231 @@ class CatalogController extends Controller
         });
     }
 
+    /**
+     * Kebalikan scopeFlashSaleActive(): produk yang BUKAN Flash Sale.
+     *
+     * Dipakai halaman Promo supaya isinya benar-benar "semua diskon selain Flash
+     * Sale", sebab Flash Sale punya halaman sendiri (/flash-sale). Definisi Flash
+     * Sale-nya sengaja sama persis dengan scopeFlashSaleActive() di atas, jadi
+     * kedua himpunan tidak pernah bisa berbeda; kalau salah satu diubah, yang lain
+     * wajib ikut diubah.
+     *
+     * @param  Builder<Product>  $query
+     */
+    protected function scopeFlashSaleExcluded($query)
+    {
+        $flashIds = app(\App\Services\CampaignService::class)->flashProductIds();
+        if ($flashIds !== []) {
+            return $query->whereNotIn('id', $flashIds);
+        }
+
+        $flashAttributes = ['promo_flash_sale', 'flash_sale'];
+        $trueValues = ['true', '1', 'yes', 'on'];
+
+        return $query->whereDoesntHave('attributes', function ($attr) use ($flashAttributes, $trueValues) {
+            $attr->whereIn('attribute_name', $flashAttributes)
+                ->where(function ($inner) use ($trueValues) {
+                    foreach ($trueValues as $value) {
+                        $inner->orWhereRaw('LOWER(TRIM(attribute_value)) = ?', [$value]);
+                    }
+                });
+        });
+    }
+
     /** Halaman Semua Model Produk — kartu model (`card-model-produk`), bukan SKU. */
     protected function modelsHub(Request $request): Response
     {
         $design = CatalogLabels::normalizeDesign($request->input('design'));
+        $category = CatalogLabels::normalizeCategory($request->input('category'));
+
+        $sort = (string) $request->input('sort', 'admin');
+        if (! in_array($sort, ['admin', 'latest', 'oldest'], true)) {
+            $sort = 'admin';
+        }
 
         return Inertia::render('Public/ModelProduk', [
-            'models' => app(\App\Services\ModelProductService::class)->storefrontCards(0, $design),
-            'filterDesigns' => CatalogTaxonomy::availableDesignFilters(),
-            'activeDesign' => $design,
+            'models' => app(ModelProductService::class)->storefrontCards(0, $design, $category, $sort),
+            'activeSort' => $sort,
         ]);
+    }
+
+    /**
+     * Halaman detail satu model (deskripsi + highlight) + daftar produk nyata model itu.
+     */
+    public function modelShow(string $category, string $model): Response|RedirectResponse
+    {
+        if ($redirect = $this->canonicalCategoryRedirect($category, $model, null)) {
+            return $redirect;
+        }
+
+        $categoryCode = InstallationGallery::categoryFromSlug($category);
+        $modelCode = InstallationGallery::modelFromSlug($model);
+
+        if ($categoryCode === null || $categoryCode === 'LAINNYA' || $modelCode === '') {
+            abort(404);
+        }
+
+        $card = collect(app(ModelProductService::class)->storefrontCards())
+            ->first(function (array $item) use ($categoryCode, $modelCode) {
+                return strtoupper((string) ($item['category'] ?? '')) === $categoryCode
+                    && strtoupper((string) ($item['model'] ?? '')) === $modelCode;
+            });
+
+        if (! is_array($card)) {
+            abort(404);
+        }
+
+        $products = Product::visible()
+            ->where('product_category', $categoryCode)
+            ->where('product_model', $modelCode)
+            ->with(['mainImage', 'activeVariants.attributes', 'attributes'])
+            ->withPopularityScore()
+            ->latest('id')
+            ->limit(48)
+            ->get();
+
+        $designRails = $this->designRailsForModel($products, $categoryCode, $modelCode);
+
+        return Inertia::render('Public/ModelDetail', [
+            'model' => $card,
+            'products' => InertiaCatalog::productCards($products),
+            'designRails' => $designRails,
+            'hubHref' => route('catalog.index', absolute: false),
+        ]);
+    }
+
+    /**
+     * Rail per desain: hanya produk category+model halaman ini; kartu = ukuran terurut.
+     * Hanya desain yang punya produk yang ditampilkan (tanpa carousel kosong).
+     *
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     * @return list<array<string, mixed>>
+     */
+    protected function designRailsForModel($products, string $categoryCode, string $modelCode): array
+    {
+        $grouped = $products
+            ->filter(
+                fn (Product $product) => strtoupper((string) $product->product_category) === strtoupper($categoryCode)
+                    && strtoupper((string) $product->product_model) === strtoupper($modelCode)
+            )
+            ->map(fn (Product $product) => [
+                'code' => CatalogLabels::normalizeDesign($product->design_variant),
+                'product' => $product,
+            ])
+            // Sub model opsional: produk tanpa sub model tidak punya desain
+            // untuk difilter, jadi tidak dibuatkan rail. Produknya tetap
+            // tampil pada daftar produk halaman model.
+            ->filter(fn (array $row) => $row['code'] !== null)
+            ->groupBy('code');
+
+        if ($grouped->isEmpty()) {
+            return [];
+        }
+
+        $categorySlug = CategoryUrl::categoryToSlug($categoryCode);
+
+        $ordered = [];
+        foreach (CatalogLabels::DESIGN_ORDER as $code) {
+            if ($grouped->has($code)) {
+                $ordered[] = $code;
+            }
+        }
+        foreach ($grouped->keys() as $code) {
+            if (! in_array($code, $ordered, true)) {
+                $ordered[] = $code;
+            }
+        }
+
+        $rails = [];
+        foreach ($ordered as $code) {
+            $railProducts = $grouped->get($code)->map(fn (array $row) => $row['product'])->values();
+            if ($railProducts->isEmpty()) {
+                continue;
+            }
+
+            $uniqueSizes = [];
+            foreach ($railProducts as $product) {
+                if (! $product->relationLoaded('activeVariants')) {
+                    continue;
+                }
+                // ADR-021: dimensi milik produk.
+                $height = (float) ($product->height_cm ?? 0);
+                $width = (float) ($product->width_cm ?? 0);
+                if ($height > 0 && $width > 0) {
+                    $uniqueSizes[round($height, 2).'x'.round($width, 2)] = true;
+                }
+            }
+
+            $railCards = InertiaCatalog::sizeCardsForRail($railProducts, 12);
+            if ($railCards === []) {
+                $railCards = InertiaCatalog::productCards($railProducts->sortBy('name')->values());
+            }
+            if ($railCards === []) {
+                continue;
+            }
+
+            /** @var Product $sample */
+            $sample = $railProducts->sortByDesc(
+                fn (Product $p) => $p->relationLoaded('activeVariants') ? $p->activeVariants->count() : 0
+            )->first();
+
+            $rails[] = [
+                'value' => $code,
+                'label' => CatalogLabels::design($code) ?: $code,
+                // Desain selalu disebut (termasuk Polos) agar tidak ambigu
+                // saat satu model punya beberapa desain (owner 2026-09-04).
+                'title' => trim(implode(' ', array_filter([
+                    CatalogLabels::category($categoryCode),
+                    CatalogLabels::model($modelCode),
+                    CatalogLabels::design($code),
+                ]))),
+                'image' => InertiaCatalog::cardImage($sample),
+                'count' => $railProducts->count(),
+                'size_count' => count($uniqueSizes) > 0 ? count($uniqueSizes) : $railProducts->count(),
+                'href' => route('catalog.design', [
+                    'category' => $categorySlug,
+                    'model' => strtolower(str_replace('_', '-', $modelCode)),
+                    'design' => strtolower(str_replace('_', '-', $code)),
+                ], absolute: false),
+                'products' => $railCards,
+            ];
+        }
+
+        return $rails;
+    }
+
+    /**
+     * Judul listing: ikut filter model/desain bila aktif (mis. "Jendela Sliding").
+     */
+    protected function listingTitle(
+        ?string $category,
+        ?string $model,
+        ?string $design,
+        ?string $sort,
+        bool $flashOnly,
+        bool $promoOnly,
+    ): string {
+        if ($flashOnly) {
+            return 'Flash Sale';
+        }
+        if ($promoOnly) {
+            return 'Promo';
+        }
+        if ($sort === 'popular' && ! $category && ! $model && ! $design) {
+            return 'Paling Banyak Dipesan';
+        }
+
+        if ($model || $design) {
+            $line = CatalogLabels::productLine($category, $model, $design);
+            if ($line !== '') {
+                return $line;
+            }
+        }
+
+        if (! $category) {
+            return 'Semua Produk';
+        }
+
+        return CatalogLabels::category($category) ?: 'Semua Produk';
     }
 }

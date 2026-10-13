@@ -1,34 +1,16 @@
 import { Link } from "@inertiajs/react"
 
+import { Icon } from "@/components/shared/icon"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { cn } from "@/lib/utils"
+import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import type { InstallationItem } from "@/types"
 
-function mediaMeta(photoCount = 0, videoCount = 0): { primary: string; secondary?: string } | null {
-  const photos = Math.max(0, photoCount)
-  const videos = Math.max(0, videoCount)
-  if (photos <= 0 && videos <= 0) {
-    return null
-  }
-
-  if (photos > 0 && videos > 0) {
-    return {
-      primary: `${photos} Foto`,
-      secondary: `${videos} Video`,
-    }
-  }
-
-  if (photos > 0) {
-    return { primary: `${photos} Foto` }
-  }
-
-  return { primary: `${videos} Video` }
-}
-
 /**
- * Kartu Hasil Pemasangan: layout sama dengan ModelCard.
- * Keterangan = total foto / video (bukan jumlah produk).
+ * Kartu Hasil Pemasangan (gaya Zalora):
+ * gambar + badge merah jumlah produk + judul + divider + statistik foto/video + panah.
+ * Dipakai di halaman Hasil Pemasangan dan carousel homepage.
  */
 export function InstallationCard({
   item,
@@ -40,47 +22,75 @@ export function InstallationCard({
   const title = item.label?.trim() || "Hasil pemasangan"
   const href = item.href?.trim() || routeUrl("installation.index")
   const image = item.image ?? item.image_url ?? null
-  const meta = mediaMeta(item.photo_count ?? 0, item.video_count ?? 0)
+  const productCount = Math.max(0, Number(item.product_count ?? 0))
+  const photoCount = Math.max(0, Number(item.photo_count ?? 0))
+  const videoCount = Math.max(0, Number(item.video_count ?? 0))
+  const external = href.startsWith("http://") || href.startsWith("https://")
+
+  const body = (
+    <>
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
+        <ResponsiveImage
+          src={image}
+          alt={title}
+          wrapperClassName="absolute inset-0"
+          className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        />
+        {productCount > 0 ? (
+          <span className="absolute bottom-2 left-2 rounded-[4px] bg-primary px-2 py-1.5 text-[10px] font-semibold leading-none text-white shadow-sm">
+            {formatNumber(productCount)} produk
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5">
+        <h3 className="line-clamp-2 min-h-[2.75em] shrink-0 text-[13px] font-semibold leading-snug text-foreground">
+          {title}
+        </h3>
+        <div className="flex-1" aria-hidden="true" />
+        <div className="h-px w-full bg-border" aria-hidden="true" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-muted-foreground">
+              <Icon name="images" className="size-3 shrink-0" aria-hidden="true" />
+              {formatNumber(photoCount)} foto
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] leading-snug text-muted-foreground">
+              <Icon name="video" className="size-3 shrink-0" aria-hidden="true" />
+              {formatNumber(videoCount)} video
+            </span>
+          </div>
+          <Icon name="arrow-up-right" className="size-3.5 shrink-0 text-foreground" aria-hidden="true" />
+        </div>
+      </div>
+    </>
+  )
 
   return (
     <article
       className={cn(
-        "@container group flex h-full min-w-0 flex-col overflow-hidden border border-border bg-white shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "group flex h-full min-w-0 flex-col overflow-hidden rounded-[5px] border border-border bg-white transition-colors duration-200 hover:border-border",
         className,
       )}
     >
-      <Link
-        href={href}
-        className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={`Lihat galeri hasil pemasangan ${title}`}
-      >
-        <div className="aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
-          <ResponsiveImage
-            src={image}
-            alt={title}
-            wrapperClassName="aspect-square size-full bg-surface-muted"
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
-          />
-        </div>
-
-        <div className="flex h-[5.75rem] shrink-0 flex-col gap-1 overflow-hidden bg-white px-2.5 py-2 @[16rem]:h-[6.5rem] @[16rem]:px-3 @[16rem]:py-2.5 @[20rem]:h-[7rem] @[20rem]:gap-1.5 @[20rem]:px-3.5 @[20rem]:py-2.5">
-          <h3 className="line-clamp-2 text-xs font-medium leading-4 text-foreground @[16rem]:text-[13px] @[16rem]:leading-4 @[22rem]:text-sm @[22rem]:leading-5">
-            {title}
-          </h3>
-
-          {meta ? (
-            <p className="truncate text-[11px] font-light leading-snug @[16rem]:text-xs @[22rem]:text-[13px]">
-              <span className="text-primary">{meta.primary}</span>
-              {meta.secondary ? (
-                <span className="text-foreground">
-                  {" | "}
-                  <span className="text-primary">{meta.secondary}</span>
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-      </Link>
+      {external ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Lihat ${title}`}
+        >
+          {body}
+        </a>
+      ) : (
+        <Link
+          href={href}
+          className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {body}
+        </Link>
+      )}
     </article>
   )
 }

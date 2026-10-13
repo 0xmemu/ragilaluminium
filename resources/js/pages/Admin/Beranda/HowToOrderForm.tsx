@@ -1,10 +1,15 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
+import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { SectionCard } from "@/components/admin/section-card"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Textarea } from "@/components/admin/ui/textarea"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface StepItem {
   title: string
@@ -26,6 +31,21 @@ export default function HowToOrderForm({
     steps: howToOrder.steps.length ? howToOrder.steps : [{ title: "", description: "" }],
   })
 
+
+  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
+  // menekan Edit, supaya setelan tidak rawan tersunting tanpa sengaja saat
+  // halaman cuma dibuka untuk melihat kondisi sekarang.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
+
   function updateStep(index: number, patch: Partial<StepItem>) {
     form.setData(
       "steps",
@@ -33,44 +53,92 @@ export default function HowToOrderForm({
     )
   }
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"title": "Judul section"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title="Edit Cara Pesan Jendela Anda"
       description="Langkah pemesanan yang tampil di beranda publik."
+      backUrl={indexUrl}
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexUrl}>Kembali</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {mode === "view" ? (
+            <Button type="button" size="sm" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="howto-form"
+                size="sm"
+              >
+                Simpan
+              </SubmitGateButton>
+            </>
+          )}
+        </div>
       }
     >
       <Head title="Edit Cara Pesan | Admin" />
       <form
-        className="mx-auto max-w-3xl space-y-6"
+        id="howto-form"
+        className="w-full max-w-4xl space-y-6"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
-          form.put(submitUrl)
+          form.put(submitUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+              // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+              form.setDefaults()
+              setMode("view")
+            },
+          })
         }}
       >
         <FormErrorSummary errors={form.errors} />
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <SectionCard
+          title="Identitas Section"
+          description="Judul dan subjudul yang tampil di atas daftar langkah pada beranda publik."
+        >
+          <div className="space-y-4">
           <Field id="howto-title" label="Judul section" required error={form.errors.title}>
-            <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+            <Input disabled={terkunci} value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
           </Field>
           <Field id="howto-subtitle" label="Subjudul" error={form.errors.subtitle}>
-            <Input value={form.data.subtitle} onChange={(event) => form.setData("subtitle", event.target.value)} />
+            <Input disabled={terkunci} value={form.data.subtitle} onChange={(event) => form.setData("subtitle", event.target.value)} />
           </Field>
-        </section>
+          </div>
+        </SectionCard>
 
-        <section className="space-y-3">
+        <SectionCard
+          title="Langkah Pemesanan"
+          description="Setiap langkah tampil berurutan di beranda publik, maksimal 8 langkah."
+        >
+
           {form.data.steps.map((step, index) => (
-            <article key={index} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="text-sm font-bold">Langkah {index + 1}</p>
+            <SectionCard
+              key={index}
+              title={`Langkah ${index + 1}`}
+              action={
                 <Button
                   type="button"
                   variant="secondary"
-                  className="h-8 px-2 text-xs text-destructive"
-                  disabled={form.data.steps.length <= 1}
+                  size="xs"
+                  className="text-destructive"
+                  disabled={terkunci || form.data.steps.length <= 1}
                   onClick={() =>
                     form.setData(
                       "steps",
@@ -80,37 +148,33 @@ export default function HowToOrderForm({
                 >
                   Hapus
                 </Button>
-              </div>
+              }
+            >
               <div className="grid gap-3">
                 <Field id={`step-title-${index}`} label="Judul langkah">
-                  <Input value={step.title} onChange={(event) => updateStep(index, { title: event.target.value })} />
+                  <Input disabled={terkunci} value={step.title} onChange={(event) => updateStep(index, { title: event.target.value })} />
                 </Field>
                 <Field id={`step-desc-${index}`} label="Deskripsi langkah">
                   <Textarea
+                    disabled={terkunci}
                     rows={3}
                     value={step.description}
                     onChange={(event) => updateStep(index, { description: event.target.value })}
                   />
                 </Field>
               </div>
-            </article>
+            </SectionCard>
           ))}
           <Button
             type="button"
             variant="secondary"
-            disabled={form.data.steps.length >= 8}
+            disabled={terkunci || form.data.steps.length >= 8}
             onClick={() => form.setData("steps", [...form.data.steps, { title: "", description: "" }])}
           >
-            Tambah langkah
+            Tambah
           </Button>
-        </section>
+        </SectionCard>
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="secondary"><Link href={indexUrl}>Batal</Link></Button>
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-        </div>
       </form>
     </AdminLayout>
   )

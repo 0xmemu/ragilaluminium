@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+use App\Observers\ProductVariantObserver;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([ProductVariantObserver::class])]
 class ProductVariant extends Model
 {
     protected $fillable = [
@@ -16,6 +19,12 @@ class ProductVariant extends Model
         'variation_1_option',
         'variation_2_name',
         'variation_2_option',
+        'variation_3_name',
+        'variation_3_option',
+        'variation_4_name',
+        'variation_4_option',
+        'variation_5_name',
+        'variation_5_option',
         'price',
         'stock',
         'weight_kg',
@@ -47,7 +56,7 @@ class ProductVariant extends Model
 
     public function media(): HasMany
     {
-        return $this->hasMany(ProductMedia::class);
+        return $this->hasMany(ProductMedia::class)->with('mediaAsset');
     }
 
     public function createdBy(): BelongsTo
@@ -68,6 +77,19 @@ class ProductVariant extends Model
     /**
      * Schema-shaped API representation (database-schema.md: product_variants).
      */
+    /** Label ringkas opsi varian untuk pemilih, contoh: "Warna: Hitam · Kaca: Kaca Es". */
+    public function optionLabel(): string
+    {
+        return collect([
+            $this->variation_1_option
+                ? trim(($this->variation_1_name ? $this->variation_1_name.': ' : '').$this->variation_1_option)
+                : null,
+            $this->variation_2_option
+                ? trim(($this->variation_2_name ? $this->variation_2_name.': ' : '').$this->variation_2_option)
+                : null,
+        ])->filter()->implode(' · ');
+    }
+
     public function toApiArray(): array
     {
         return [

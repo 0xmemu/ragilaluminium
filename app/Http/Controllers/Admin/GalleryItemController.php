@@ -3,39 +3,55 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessUploadedMediaAsset;
 use App\Models\CmsGalleryItem;
+use App\Models\MediaAsset;
 use App\Support\InstallationPageSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class GalleryItemController extends Controller
 {
+    /** Nomor urut baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) CmsGalleryItem::query()->max('sort_order') + 1;
+    }
+
     public function create(): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
+            'backUrl' => route('admin.hasil-pemasangan.index'),
             'item' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.gallery-items.store'),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'indexUrl' => route('admin.hasil-pemasangan.index'),
+            'presignUrl' => route('admin.media.presign'),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request);
+        $validated['sort_order'] ??= $this->nextSortOrder();
+        $image = $this->resolveImage($request, existing: null);
         $validated['cms_page_id'] = InstallationPageSettings::pageId();
 
-        CmsGalleryItem::create($validated);
+        CmsGalleryItem::create($image + $validated);
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'foto'])
+            ->route('admin.hasil-pemasangan.index')
             ->with('success', 'Ulasan foto ditambahkan.');
     }
 
     public function edit(CmsGalleryItem $galleryItem): Response
     {
         return Inertia::render('Admin/Testimonials/GalleryForm', [
+            'backUrl' => route('admin.hasil-pemasangan.index'),
             'item' => [
                 'id' => $galleryItem->id,
                 'label' => $galleryItem->label,
@@ -44,16 +60,20 @@ class GalleryItemController extends Controller
                 'published' => $galleryItem->published,
             ],
             'submitUrl' => route('admin.gallery-items.update', $galleryItem),
-            'indexUrl' => route('admin.testimonials.index', ['tab' => 'foto']),
+            'indexUrl' => route('admin.hasil-pemasangan.index'),
+            'presignUrl' => route('admin.media.presign'),
         ]);
     }
 
     public function update(Request $request, CmsGalleryItem $galleryItem): RedirectResponse
     {
-        $galleryItem->update($this->validated($request));
+        $image = $this->resolveImage($request, existing: $galleryItem);
+        $validated = $this->validated($request);
+        $validated['sort_order'] ??= (int) $galleryItem->sort_order;
+        $galleryItem->update($image + $validated);
 
         return redirect()
-            ->route('admin.testimonials.index', ['tab' => 'foto'])
+            ->route('admin.hasil-pemasangan.index')
             ->with('success', 'Ulasan foto diperbarui.');
     }
 
@@ -76,15 +96,99 @@ class GalleryItemController extends Controller
     {
         $validated = $request->validate([
             'label' => ['nullable', 'string', 'max:255'],
-            'image_url' => ['required', 'string', 'max:2048'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'image_url' => ['nullable', 'string', 'max:2048'],
+            'object_key' => ['nullable', 'string', 'max:255'],
+            // Owner 2026-09-16: Media Library satu-satunya sumber gambar.
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'published' => ['boolean'],
         ]);
 
         $validated['published'] = $request->boolean('published');
-        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        // Kosong berarti "belum ditentukan": baris baru ditaruh paling belakang,
+        // baris lama mempertahankan nomornya (lihat store/update).
+        $validated['sort_order'] = isset($validated['sort_order']) ? (int) $validated['sort_order'] : null;
         $validated['label'] = $validated['label'] ?: null;
 
         return $validated;
+    }
+
+    /**
+     * Resolusi gambar galeri: upload langsung (object_key hasil presign) ->
+     * URL lama / URL input manual.
+     *
+     * @return array{image_url: string, media_asset_id: ?int}
+     */
+    protected function resolveImage(Request $request, ?CmsGalleryItem $existing): array
+    {
+        // Owner 2026-09-16: Media Library satu-satunya sumber gambar galeri.
+        if ($request->filled('media_asset_id')) {
+            $asset = MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('media_asset_id'));
+
+            return [
+                'image_url' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+                'media_asset_id' => $asset->id,
+            ];
+        }
+
+        if ($request->filled('object_key')) {
+            $key = (string) $request->input('object_key');
+            $disk = Storage::disk(config('media.disk', 'media'));
+            if (! str_starts_with($key, 'pending/') || ! $disk->exists($key)) {
+                throw ValidationException::withMessages([
+                    'image_url' => 'File upload tidak ditemukan. Silakan unggah ulang.',
+                ]);
+            }
+
+            $asset = MediaAsset::create([
+                'kind' => 'image',
+                'label' => pathinfo($key, PATHINFO_FILENAME),
+                'checksum' => null,
+                'source_url' => null,
+                'object_key' => $key,
+                'mime_type' => $this->mimeFromKey($key),
+                'size_bytes' => (int) ($disk->size($key) ?: 0),
+                'status' => 'pending',
+                'visibility' => 'visible',
+                'created_by_user_id' => (int) $request->user()->id,
+            ]);
+            ProcessUploadedMediaAsset::dispatch($asset->id);
+
+            if ($existing?->media_asset_id && $existing->media_asset_id !== $asset->id) {
+                MediaAsset::where('id', $existing->media_asset_id)
+                    ->where('status', '!=', 'archived')
+                    ->update(['status' => 'archived']);
+            }
+
+            return [
+                'image_url' => $disk->url($key),
+                'media_asset_id' => $asset->id,
+            ];
+        }
+
+        if ($request->filled('image_url')) {
+            return [
+                'image_url' => trim((string) $request->input('image_url')),
+                'media_asset_id' => $existing?->media_asset_id,
+            ];
+        }
+
+        throw ValidationException::withMessages([
+            'image_url' => 'Unggah gambar atau isi URL gambar.',
+        ]);
+    }
+
+    protected function mimeFromKey(string $key): string
+    {
+        return match (strtolower(pathinfo($key, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'application/octet-stream',
+        };
     }
 }

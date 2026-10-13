@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
             $table->enum('payment_method', ['cod', 'transfer', 'gateway']);
             $table->decimal('amount', 12, 2);
-            $table->enum('status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
+            $table->enum('status', ['pending', 'completed', 'cancelled', 'refunded'])->default('pending');
             $table->string('transaction_reference')->nullable();
             $table->text('evidence_url')->nullable();
             $table->timestamp('paid_at')->nullable();

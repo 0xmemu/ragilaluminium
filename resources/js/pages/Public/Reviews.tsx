@@ -1,227 +1,302 @@
-import { Head, Link, router, usePage } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
+import * as React from "react"
 
+import {
+  ReviewFilterPills,
+  type ReviewRatingCount,
+  type ReviewSortValue,
+} from "@/components/public/review-filter-pills"
 import { FilterBerdasarkanControl } from "@/components/public/filter-berdasarkan-control"
-import { TestimonialCard } from "@/components/public/testimonial-card"
+import { GalleryLightbox, toGalleryItems } from "@/components/public/gallery-lightbox"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
+import { TestimonialCard } from "@/components/public/testimonial-card"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Pagination } from "@/components/ui/pagination"
+import { ReviewListingFrame } from "@/components/public/review-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import { cn } from "@/lib/utils"
-import type { Pagination as PaginationData, SharedPageProps, Testimonial } from "@/types"
+import type { Testimonial } from "@/types"
 
-const REVIEW_SORT_OPTIONS = [
-  { value: "newest", label: "Terbaru" },
-  { value: "oldest", label: "Terlama" },
-  { value: "rating_desc", label: "Rating tertinggi" },
-  { value: "rating_asc", label: "Rating terendah" },
-]
-
-const SOURCE_FILTERS = [
-  { value: "all", label: "Semua" },
-  { value: "marketplace", label: "Shopee & WhatsApp" },
-  { value: "website", label: "Website" },
-] as const
-
-interface ReviewStats {
-  total: number
-  average_rating: number | null
+interface ModelNavOption {
+  value: string
+  label: string
+  count: number
 }
 
+/**
+ * Halaman gabungan "Apa kata pelanggan kami" + "Ulasan pelanggan di website".
+ * Satu slug (/reviews) dengan nav/filter model produk seperti halaman Model Produk.
+ */
 export default function Reviews({
+  type = "ss",
   pageMeta,
   testimonials = [],
-  pagination,
+  activeModel = null,
+  ratingNav = [],
+  activeRating = null,
+  activeMediaOnly = false,
+  activeSort = "all",
   stats,
-  activeSort = "newest",
-  activeSource = "all",
-  installationsHref,
 }: {
+  type?: "ss" | "web"
   pageMeta?: { title: string; heading: string; subtitle: string } | null
-  testimonials: Testimonial[]
-  pagination?: PaginationData | null
-  stats?: ReviewStats
+  testimonials?:
+    | Testimonial[]
+    | {
+        data: Testimonial[]
+        current_page: number
+        last_page: number
+        total: number
+        next_page_url: string | null
+        prev_page_url: string | null
+        links?: Array<{ url: string | null; label: string; active: boolean }>
+      }
+  activeModel?: string | null
+  /** Opsi filter rating (mis. "5 bintang") beserta jumlah ulasannya. */
+  ratingNav?: ModelNavOption[]
+  activeRating?: string | null
+  activeMediaOnly?: boolean
   activeSort?: string
-  activeSource?: string
-  installationsHref?: string
+  stats?: { website_total?: number; average_rating?: number | null }
 }) {
-  const { consultationWhatsApp } = usePage<SharedPageProps>().props
-  const totalCount = stats?.total ?? testimonials.length
-  const averageRating = stats?.average_rating ?? null
-  const heading = pageMeta?.heading?.trim() || "Apa kata pelanggan kami"
+  const isSs = type === "ss"
+  const heading =
+    pageMeta?.heading?.trim().replace(/\.$/, "") ||
+    (isSs ? "Apa kata pelanggan kami" : "Ulasan pelanggan di website")
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Ulasan pelanggan dari Shopee, WhatsApp, dan website."
-  const docTitle = pageMeta?.title?.trim() || "Ulasan Pelanggan"
+    (isSs
+      ? "Galeri screenshot percakapan Shopee/WhatsApp dari pelanggan."
+      : "Ulasan pelanggan yang memesan lewat website.")
+  const docTitle = pageMeta?.title?.trim() || heading
 
-  function navigateReviews(next: { sort?: string; source?: string }) {
-    const sort = next.sort ?? activeSort
-    const source = next.source ?? activeSource
+  // Dibungkus useMemo supaya identitasnya stabil: tiga useMemo di bawah memakai
+  // array ini sebagai dependensi, dan tanpa ini warning
+  // react-hooks/exhaustive-deps muncul (lint wajib nol warning).
+  const testimonialList = React.useMemo(
+    () => (Array.isArray(testimonials) ? testimonials : testimonials?.data ?? []),
+    [testimonials],
+  )
+  const pagination = !Array.isArray(testimonials)
+    ? {
+        current_page: testimonials?.current_page ?? 1,
+        last_page: testimonials?.last_page ?? 1,
+        next_page_url: testimonials?.next_page_url ?? null,
+        prev_page_url: testimonials?.prev_page_url ?? null,
+        total: testimonials?.total ?? 0,
+        links: testimonials?.links ?? [],
+      }
+    : null
+
+  const marketplace = React.useMemo(() => {
+    const marketplaceItems = testimonialList.filter((t) => t.source !== "website")
+    return marketplaceItems.length ? marketplaceItems : testimonialList
+  }, [testimonialList])
+  const website = React.useMemo(
+    () => testimonialList.filter((t) => t.source === "website"),
+    [testimonialList],
+  )
+
+  const total = isSs ? marketplace.length : (stats?.website_total ?? website.length)
+  const averageRating = stats?.average_rating ?? null
+
+  // Halaman /reviews/ss memakai kontrol urutan ASLI (tidak diubah): nilai
+  // urutan hanya dipakai kontrolnya sendiri, daftar screenshot dirender apa
+  // adanya sesuai perilaku sebelum perubahan filter dipasang.
+  const [sortFilter, setSortFilter] = React.useState("")
+  const sortOptions = React.useMemo(
+    () => [
+      { value: "", label: "Ulasan terbaru" },
+      { value: "oldest", label: "Ulasan terlama" },
+      { value: "best", label: "Ulasan terbaik" },
+    ],
+    [],
+  )
+
+  const galleryItems = React.useMemo(() => toGalleryItems(testimonialList), [testimonialList])
+  const [lightboxIndex, setLightboxIndex] = React.useState(-1)
+
+  /** Rating terpilih dari query param, mis. "4,5" -> [4, 5]. */
+  const selectedRatings = React.useMemo(
+    () =>
+      (activeRating ?? "")
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5)
+        .sort((a, b) => a - b),
+    [activeRating],
+  )
+
+  const sortValue: ReviewSortValue =
+    activeSort === "newest" || activeSort === "oldest" ? activeSort : "all"
+
+  const ratingCounts: ReviewRatingCount[] = React.useMemo(
+    () =>
+      ratingNav
+        .map((option) => ({ value: option.value, count: option.count }))
+        .sort((a, b) => Number(a.value) - Number(b.value)),
+    [ratingNav],
+  )
+
+  /**
+   * Semua filter dikirim sebagai query param dan SALING menjaga: memilih satu
+   * filter tidak menghapus filter lain, sehingga bisa dipakai bersamaan.
+   */
+  function applyFilters(next: {
+    model?: string | null
+    ratings?: number[]
+    mediaOnly?: boolean
+    sort?: ReviewSortValue
+  }) {
+    const model = next.model !== undefined ? next.model : activeModel
+    const ratings = next.ratings !== undefined ? next.ratings : selectedRatings
+    const mediaOnly = next.mediaOnly !== undefined ? next.mediaOnly : activeMediaOnly
+    const sort = next.sort !== undefined ? next.sort : sortValue
+
+    const params: Record<string, string> = {}
+    if (model) params.model = model
+    if (ratings.length) params.rating = ratings.join(",")
+    if (mediaOnly) params.media_only = "1"
+    if (sort !== "all") params.sort = sort
+
     router.get(
-      routeUrl("reviews"),
-      {
-        sort: sort === "newest" ? undefined : sort,
-        source: source === "all" ? undefined : source,
-      },
+      routeUrl(isSs ? "reviews.screenshots" : "reviews.website"),
+      params,
       { preserveScroll: true, preserveState: false, replace: true },
     )
   }
 
-  return (
+
+  function renderGrid(
+    items: Testimonial[],
+    variant: "screenshot" | "review",
+    emptyTitle: string,
+    emptyDesc: string,
+  ) {
+    if (!items.length) {
+      return (
+        <EmptyState
+          icon="message-circle"
+          title={emptyTitle}
+          description={emptyDesc}
+        />
+      )
+    }
+    // Screenshot = galeri 2 kolom (2 gambar per baris); ulasan teks tetap 1 kolom.
+    const grid = variant === "screenshot"
+    return (
+      <ul className={grid ? "grid grid-cols-2 gap-2 md:gap-3" : "flex flex-col gap-3"}>
+        {items.map((testimonial) => {
+          const itemIndex = galleryItems.findIndex((g) => g.src === testimonial.image_url)
+          return (
+            <li key={testimonial.id} className="min-w-0">
+              <TestimonialCard
+                testimonial={testimonial}
+                compact
+                variant={variant}
+                onOpen={itemIndex >= 0 ? () => setLightboxIndex(itemIndex) : undefined}
+              />
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }return (
     <PublicLayout>
       <Head title={docTitle}>
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-border bg-foreground text-background">
-        <div className="container-page grid gap-10 py-12 lg:grid-cols-[1fr_auto] lg:items-end lg:py-16">
-          <div>
-            <h1 className="max-w-3xl text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
-              {heading}
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 sm:text-base">{subtitle}</p>
-          </div>
-          <div className="flex flex-col gap-4 sm:items-end">
-            {totalCount ? (
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-background/20">
-                <div className="min-w-32 bg-foreground p-5">
-                  <p className="tabular-nums text-2xl font-semibold text-background">
-                    {formatNumber(totalCount)}
-                  </p>
-                  <p className="mt-2 text-xs text-background/60">Ulasan terbit</p>
-                </div>
-                <div className="min-w-32 bg-foreground p-5">
-                  <p className="tabular-nums flex items-center gap-2 text-2xl font-semibold text-background">
-                    {averageRating ? averageRating.toFixed(1) : "-"}
-                    {averageRating ? (
-                      <Icon name="star" weight="fill" className="h-5 w-5 text-warning" aria-hidden="true" />
-                    ) : null}
-                  </p>
-                  <p className="mt-2 text-xs text-background/60">Rata-rata rating</p>
-                </div>
-              </div>
-            ) : null}
-            <Button
-              asChild
-              variant="secondary"
-              className="border-white/30 bg-white/10 text-background hover:bg-white/20"
-            >
-              <Link href={installationsHref ?? routeUrl("installation.index")}>
-                Lihat hasil pemasangan
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-space border-b border-border">
-        <div className="container-page">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold tracking-tight sm:text-base">Semua ulasan</h2>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                Ulasan Shopee, WhatsApp, dan website. Pisahkan lewat filter sumber.
-              </p>
-            </div>
-            {testimonials.length || activeSource !== "all" ? (
-              <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-                <span className="text-sm text-muted-foreground">Urutkan</span>
+      {/* Ringkasan jumlah ulasan dan rating rata-rata sengaja tidak
+          ditampilkan: jumlahnya sudah ada di pill filter, dan rating
+          rata-rata mudah menyesatkan karena saat ini seluruh ulasan
+          berating 4 sampai 5. */}
+      <ReviewListingFrame
+        title={heading}
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: heading, href: null },
+        ]}
+        summary={
+          isSs ? (
+            /* Halaman /reviews/ss TIDAK diubah: tetap memakai ringkasan jumlah
+               ulasan dan kontrol urutan seperti semula. Tiga pill filter hanya
+               berlaku di /reviews/web. */
+            total ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground">
+                  <span className="tabular-nums font-semibold text-foreground">{formatNumber(total)}</span> ulasan
+                  {averageRating ? (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="mx-1.5 text-muted-foreground">·</span>
+                      <Icon name="star" weight="fill" className="size-4 text-warning" aria-hidden="true" />
+                      <span className="tabular-nums font-semibold text-foreground">{averageRating.toFixed(1)}</span>
+                    </span>
+                  ) : null}
+                </p>
                 <FilterBerdasarkanControl
                   id="reviews-sort"
-                  value={activeSort || "newest"}
-                  options={REVIEW_SORT_OPTIONS}
-                  onChange={(sort) => navigateReviews({ sort })}
+                  variant="plain"
+                  value={sortFilter}
+                  options={sortOptions}
+                  onChange={setSortFilter}
                   ariaLabel="Urutkan ulasan"
+                  menuLabel="Urutkan"
                 />
               </div>
-            ) : null}
-          </div>
-
-          <div
-            className="mt-6 flex flex-wrap gap-2"
-            role="tablist"
-            aria-label="Filter sumber ulasan"
-          >
-            {SOURCE_FILTERS.map((filter) => {
-              const active = (activeSource || "all") === filter.value
-              return (
-                <button
-                  key={filter.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => navigateReviews({ source: filter.value })}
-                  className={cn(
-                    "inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-semibold transition",
-                    active
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-surface text-foreground hover:border-foreground/40",
-                  )}
-                >
-                  {filter.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {testimonials.length ? (
-            <>
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {testimonials.map((testimonial) => (
-                  <TestimonialCard key={testimonial.id} testimonial={testimonial} compact />
-                ))}
-              </div>
-              <Pagination pagination={pagination} />
-            </>
+            ) : null
           ) : (
-            <EmptyState
-              className="mt-8"
-              icon="star"
-              title="Belum ada testimoni"
-              description={
-                activeSource === "all"
-                  ? "Belum ada ulasan yang tampil. Lihat hasil pemasangan kami atau tanya langsung via WhatsApp."
-                  : "Tidak ada ulasan untuk filter sumber ini."
-              }
-              action={
-                activeSource === "all" ? (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button asChild variant="secondary">
-                      <Link href={routeUrl("installation.index")}>Hasil pemasangan</Link>
-                    </Button>
-                    {consultationWhatsApp?.directUrl ? (
-                      <Button asChild>
-                        <a href={consultationWhatsApp.directUrl} target="_blank" rel="noreferrer">
-                          WhatsApp
-                        </a>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : undefined
-              }
+            <ReviewFilterPills
+              idPrefix="reviews-web"
+              totalCount={total}
+              sort={sortValue}
+              onSortChange={(value) => applyFilters({ sort: value })}
+              mediaOnly={activeMediaOnly}
+              onMediaOnlyChange={(value) => applyFilters({ mediaOnly: value })}
+              ratings={ratingCounts}
+              selectedRatings={selectedRatings}
+              onRatingsChange={(value) => applyFilters({ ratings: value })}
             />
-          )}
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-surface py-12">
-        <div className="container-page flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold sm:text-xl">Temukan model untuk kebutuhan Anda</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Bandingkan model terlebih dahulu sebelum memilih ukuran dan varian.
-            </p>
-          </div>
-          <Button asChild size="lg">
-            <Link href={routeUrl("catalog.index")}>
-              Pilih model
-              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-            </Link>
-          </Button>
-        </div>
-      </section>
+          )
+        }
+        pagination={pagination}
+      >
+        {isSs ? (
+          <section id="apa-kata-pelanggan" className="scroll-mt-20">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-foreground">Screenshot pelanggan</h2>
+              <span className="tabular-nums text-sm text-muted-foreground">
+                {formatNumber(marketplace.length)}
+              </span>
+            </div>
+            {renderGrid(
+              marketplace,
+              "screenshot",
+              "Belum ada screenshot pelanggan",
+              "Bukti percakapan Shopee/WhatsApp akan tampil di sini.",
+            )}
+          </section>
+        ) : (
+          <section id="ulasan-website" className="scroll-mt-20">
+            {renderGrid(
+              website,
+              "review",
+              "Belum ada ulasan sesuai filter",
+              "Coba ubah atau hapus filter untuk melihat ulasan lainnya.",
+            )}
+          </section>
+        )}
+      </ReviewListingFrame>
+      {isSs && galleryItems.length ? (
+        <GalleryLightbox
+          items={galleryItems}
+          index={lightboxIndex}
+          onOpenChange={(open) => {
+            if (!open) setLightboxIndex(-1)
+          }}
+          onIndexChange={setLightboxIndex}
+        />
+      ) : null}
     </PublicLayout>
   )
 }

@@ -1,27 +1,90 @@
-import { Head, Link } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
+import * as React from "react"
 
 import { InstallationCard } from "@/components/public/installation-card"
-import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
+import { InstallationMediaGallery } from "@/components/public/installation-media-gallery"
+import { ShowcaseCardGrid } from "@/components/public/product-card-grid"
+import { PageTopBar } from "@/components/public/page-top-bar"
+import { ModelHero } from "@/components/public/model-hero"
+import { ShowcaseListingFrame } from "@/components/public/showcase-listing-frame"
 import { EmptyState } from "@/components/ui/empty-state"
+import { SortMenu } from "@/components/public/model-sort-menu"
+import { formatNumber } from "@/lib/format"
 import PublicLayout from "@/layouts/public-layout"
 import { routeUrl } from "@/lib/routes"
-import type { InstallationItem } from "@/types"
+import type { InstallationItem, ModelCardData } from "@/types"
 
 export default function Installations({
   pageMeta,
   installations = [],
-  reviewsHref,
+  featured = null,
+  modelHighlights: highlightsFromCms = null,
+  modelDescription = null,
+  gallery = [],
+  level = "model",
+  modelMeta = null,
+  models = [],
+  activeSort = "admin",
+  standaloneGroup = false,
+  indexHref,
 }: {
   pageMeta?: { title: string; heading: string; subtitle: string } | null
   installations?: InstallationItem[]
+  featured?: InstallationItem | null
+  /** Pill keunggulan dari CMS (Kata kunci pill di menu Model Produk). */
+  modelHighlights?: Array<{ icon?: string; label: string }> | null
+  modelDescription?: string | null
+  gallery?: { id: number; url: string; thumb?: string | null; is_video?: boolean; caption?: string | null }[]
+  level?: "model" | "product"
+  modelMeta?: { category: string; model: string; label: string } | null
+  indexHref?: string
+  models?: ModelCardData[]
+  activeSort?: string
+  /** Halaman grup mandiri (tanpa model produk): statistik hero disesuaikan. */
+  standaloneGroup?: boolean
   reviewsHref?: string
 }) {
-  const heading = pageMeta?.heading?.trim() || "Hasil pemasangan kami"
+  const isModelLevel = level !== "product"
+
+  // Kontrak owner: label pill maksimal 2 kata (ikut model produk).
+  // Fallback lama 3-4 kata membuat pill terpotong di mobile.
+  const resolvedHighlights =
+    standaloneGroup
+      ? []
+      : highlightsFromCms?.length === 3
+        ? highlightsFromCms
+        : [
+            { label: "Bersih & Modern" },
+            { label: "Cahaya Optimal" },
+            { label: "Serbaguna" },
+          ]
+  const heading = pageMeta?.heading?.trim() || "Hasil Pemasangan Kami"
   const subtitle =
     pageMeta?.subtitle?.trim() ||
-    "Dokumentasi visual pemasangan dari pelanggan, dikelompokkan per produk."
+    (isModelLevel
+      ? "Pilih model untuk melihat contoh pemasangan di rumah dan proyek nyata."
+      : "Contoh pemasangan untuk produk dalam model ini.")
   const docTitle = pageMeta?.title?.trim() || "Hasil Pemasangan"
+  const listingHref = indexHref || routeUrl("installation.index")
+
+  const totalModels = (models || []).reduce((sum, model) => sum + (Number(model.count) || 0), 0)
+
+  // Urutan tampilan diatur admin (tidak ada kontrol urut di halaman pembeli).
+  const [sort, setSort] = React.useState<string>(activeSort)
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSort(activeSort)
+  }, [activeSort])
+
+  function selectSort(value: string) {
+    setSort(value)
+    router.get(
+      routeUrl("installation.index"),
+      value ? { sort: value } : {},
+      { preserveState: true, preserveScroll: true, replace: true },
+    )
+  }
 
   return (
     <PublicLayout>
@@ -29,60 +92,95 @@ export default function Installations({
         <meta name="description" content={subtitle} />
       </Head>
 
-      <section className="border-b border-border bg-foreground text-background">
-        <div className="container-page grid gap-8 py-12 lg:grid-cols-[1fr_auto] lg:items-end lg:py-16">
-          <div>
-            <h1 className="max-w-3xl text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
-              {heading}
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-background/70 sm:text-base">{subtitle}</p>
-          </div>
-          <Button asChild variant="secondary" className="border-white/30 bg-white/10 text-background hover:bg-white/20">
-            <Link href={reviewsHref ?? routeUrl("reviews")}>Lihat ulasan pelanggan</Link>
-          </Button>
-        </div>
-      </section>
+      {!isModelLevel ? (
+        <section className="border-b border-border bg-surface">
+          <PageTopBar
+            title="Hasil Pemasangan"
+            singleLine
+            breadcrumbs={[
+              { label: "Beranda", href: routeUrl("home") },
+              { label: "Hasil Pemasangan", href: listingHref },
+              { label: modelMeta?.label || heading },
+            ]}
+          />
+        </section>
+      ) : null}
 
-      <section className="section-space">
-        <div className="container-page">
-          {installations.length ? (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
-              {installations.map((item) => (
-                <InstallationCard
-                  key={`install-${item.id}`}
-                  item={{
-                    ...item,
-                    image: item.image ?? item.image_url,
-                  }}
+      {isModelLevel ? (
+        <>
+          <ShowcaseListingFrame
+            title={heading}
+            breadcrumbs={[
+              { label: "Beranda", href: routeUrl("home") },
+              { label: "Hasil Pemasangan" },
+            ]}
+            countLabel={`${formatNumber(totalModels)} model produk ditemukan`}
+            toolbar={<SortMenu value={sort} onChange={selectSort} />}
+          >
+            {installations.length ? (
+              <ShowcaseCardGrid>
+                {installations.map((item) => (
+                  <InstallationCard key={item.id} item={item} />
+                ))}
+              </ShowcaseCardGrid>
+            ) : (
+              <EmptyState
+                icon="funnel"
+                title="Belum ada model yang cocok"
+                description="Model produk belum tersedia pada katalog aktif."
+              />
+            )}
+          </ShowcaseListingFrame>
+        </>
+      ) : (
+          <div className="space-y-6 lg:space-y-8">
+            {featured?.image_url ? (
+              <ModelHero
+                title={heading}
+                description={modelDescription ?? subtitle}
+                slogan={modelDescription ?? subtitle}
+                highlights={resolvedHighlights}
+                thumbs={[{ id: "featured", src: featured.image_url, alt: heading }]}
+                stats={
+                  standaloneGroup
+                    ? [
+                        {
+                          value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0),
+                          label: "Hasil pemasangan",
+                        },
+                        { value: "100%", label: "Garansi" },
+                      ]
+                    : [
+                        { value: installations.length, label: "Produk" },
+                        {
+                          value: (featured?.photo_count ?? 0) + (featured?.video_count ?? 0),
+                          label: "Hasil pemasangan",
+                        },
+                        { value: "100%", label: "Garansi" },
+                      ]
+                }
+              />
+            ) : null}
+
+            <div id="inspirasi-pemasangan" className="container-page !px-2.5 pb-10 md:!px-8 lg:!px-12 scroll-mt-24">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
+                <h2 className="!text-base font-bold tracking-tight text-foreground">
+                  Inspirasi Pemasangan
+                </h2>
+              </div>
+
+              {gallery.length ? (
+                <InstallationMediaGallery items={gallery} title={modelMeta?.label || heading} />
+              ) : (
+                <EmptyState
+                  icon="images"
+                  title={standaloneGroup ? "Belum ada dokumentasi di grup ini" : "Belum ada dokumentasi untuk model ini"}
+                  description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
                 />
-              ))}
+              )}
             </div>
-          ) : (
-            <EmptyState
-              icon="image"
-              title="Belum ada dokumentasi pemasangan"
-              description="Foto hasil pemasangan akan tampil di sini setelah tersedia."
-            />
-          )}
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-surface py-12">
-        <div className="container-page flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold sm:text-xl">Temukan model untuk kebutuhan Anda</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Bandingkan model terlebih dahulu sebelum memilih ukuran dan varian.
-            </p>
           </div>
-          <Button asChild size="lg">
-            <Link href={routeUrl("catalog.index")}>
-              Pilih model
-              <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-            </Link>
-          </Button>
-        </div>
-      </section>
+        )}
     </PublicLayout>
   )
 }

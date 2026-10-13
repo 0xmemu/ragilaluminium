@@ -11,6 +11,7 @@ class Order extends Model
 {
     protected $fillable = [
         'order_number',
+        'checkout_idempotency_key',
         'customer_id',
         'customer_name',
         'customer_phone',
@@ -21,14 +22,22 @@ class Order extends Model
         'shipping_province',
         'shipping_district',
         'shipping_village',
+        'shipping_province_id',
+        'shipping_city_id',
+        'shipping_district_id',
+        'shipping_village_id',
         'shipping_postal_code',
         'shipping_country',
         'order_status',
+        'admin_seen_status',
         'payment_status',
         'shipping_status',
         'subtotal_amount',
         'shipping_amount',
         'shipping_subsidy_amount',
+        'shipping_insurance_amount',
+        'shipping_chargeable_weight_kg',
+        'shipping_package_snapshot',
         'discount_amount',
         'voucher_code',
         'voucher_discount_amount',
@@ -37,6 +46,7 @@ class Order extends Model
         'payment_method',
         'cod_flag',
         'notes',
+        'admin_notes',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -45,6 +55,8 @@ class Order extends Model
         'subtotal_amount' => 'decimal:2',
         'shipping_amount' => 'decimal:2',
         'shipping_subsidy_amount' => 'decimal:2',
+        'shipping_chargeable_weight_kg' => 'decimal:3',
+        'shipping_package_snapshot' => 'array',
         'discount_amount' => 'decimal:2',
         'voucher_discount_amount' => 'decimal:2',
         'cod_fee_amount' => 'decimal:2',
@@ -77,13 +89,41 @@ class Order extends Model
         return $this->hasMany(WhatsAppMessage::class);
     }
 
+    public function returnCases(): HasMany
+    {
+        return $this->hasMany(OrderReturnCase::class);
+    }
+
     public function scopePendingPayment(Builder $query): Builder
     {
-        return $query->where('order_status', 'pending_payment');
+        return $query->where('order_status', 'awaiting_confirmation');
     }
 
     public function scopeNeedsAttention(Builder $query): Builder
     {
         return $query->whereIn('order_status', ['issue', 'return_in_process']);
+    }
+
+    /**
+     * Scope pesanan yang belum dilihat atau ditindaklanjuti admin pada statusnya saat ini.
+     * Mencakup pesanan baru (admin_seen_status null) atau pesanan yang baru berganti
+     * status (admin_seen_status != order_status).
+     */
+    public function scopeUnseenByAdmin(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('admin_seen_status')
+              ->orWhereColumn('admin_seen_status', '!=', 'order_status');
+        });
+    }
+
+    /**
+     * Tandai pesanan sudah dilihat atau ditangani admin pada status saat ini.
+     */
+    public function markAdminSeen(): void
+    {
+        if ($this->admin_seen_status !== $this->order_status) {
+            $this->update(['admin_seen_status' => $this->order_status]);
+        }
     }
 }

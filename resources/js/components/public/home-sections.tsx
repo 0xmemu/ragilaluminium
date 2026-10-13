@@ -1,0 +1,592 @@
+import { Link } from "@inertiajs/react"
+import * as React from "react"
+
+import {
+  InstallationCarousel,
+  ModelCardCarousel,
+  ProductCardCarousel,
+  TestimonialCarousel,
+} from "@/components/public/home-carousels"
+import { Icon } from "@/components/shared/icon"
+import { SectionHeading } from "@/components/shared/section-heading"
+import { SectionHeadingAction } from "@/components/shared/section-heading-action"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { CTA_CONTENT, ctaActionLabel } from "@/lib/cta-content"
+import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
+import type {
+  InstallationItem,
+  ModelCardData,
+  ProductCardData,
+  Testimonial,
+} from "@/types"
+
+export interface HowToOrderData {
+  title: string
+  subtitle?: string
+  steps: Array<{ step: string; title: string; description: string }>
+}
+
+export function PilihModelProdukSection({ models }: { models: ModelCardData[] }) {
+  const seeMoreHref = routeUrl("catalog.index")
+  const emptyBlock = CTA_CONTENT["home-empty-model"]
+
+  return (
+    <section id="pilih-model-produk" className="scroll-mt-20 bg-surface">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title="Model Produk"
+          action={
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel("home-model", "Lihat Semua")}
+            />
+          }
+        />
+        {models.length ? (
+          <ModelCardCarousel models={models} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            title={emptyBlock?.eyebrow || "Model belum tersedia"}
+            description={
+              emptyBlock?.heading ||
+              "Katalog model sedang disiapkan. Chat WhatsApp jika Anda ingin dibantu memilih."
+            }
+            action={
+              <Button asChild>
+                <Link href={seeMoreHref}>
+                  {emptyBlock?.actions?.[0]?.label ?? "Buka Katalog"}
+                </Link>
+              </Button>
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function PalingBanyakDipesanSection({ products }: { products: ProductCardData[] }) {
+  const seeMoreHref = `${routeUrl("catalog.all")}?sort=popular&from=paling-banyak-dipesan`
+  const emptyBlock = CTA_CONTENT["home-empty-popular"]
+
+  return (
+    <section id="paling-banyak-dipesan" className="scroll-mt-20">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title="Paling banyak dipesan"
+          action={
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel("home-popular", "Lihat Semua")}
+            />
+          }
+        />
+        {products.length ? (
+          <ProductCardCarousel products={products} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            title={emptyBlock?.eyebrow || "Belum ada produk populer"}
+            description={
+              emptyBlock?.heading ||
+              "Mulai dari katalog jendela, pintu, atau bouven untuk menemukan ukuran yang Anda butuhkan."
+            }
+            action={
+              <Button asChild>
+                <Link href={routeUrl("catalog.category", { category: "jendela" })}>
+                  {emptyBlock?.actions?.[0]?.label ?? "Jelajahi Produk"}
+                </Link>
+              </Button>
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+const DEFAULT_ORDER_STEPS = [
+  { step: "01", title: "Pilih model", icon: "package" as const },
+  { step: "02", title: "Pilih ukuran & varian", icon: "ruler" as const },
+  { step: "03", title: "Proses pesanan & konfirmasi WhatsApp", icon: "whatsapp" as const },
+]
+
+const ORDER_STEP_ICONS = ["package", "ruler", "whatsapp"] as const
+
+/** Shared step index chip - filled hitam (Kami bantu); dipakai juga di Cara pesan. */
+function orderStepIcon(title: string, index: number): string {
+  const t = title.toLowerCase()
+  if (t.includes("model")) return "package"
+  if (t.includes("ukuran") || t.includes("varian")) return "ruler"
+  if (t.includes("whatsapp") || t.includes("konfirmasi") || t.includes("proses")) return "whatsapp"
+  if (t.includes("checkout") || t.includes("bayar")) return "credit-card"
+  if (t.includes("lacak") || t.includes("pesanan")) return "clipboard-list"
+  return ORDER_STEP_ICONS[index % ORDER_STEP_ICONS.length] ?? "package"
+}
+
+export function CaraPesanSection({
+  data,
+}: {
+  data?: HowToOrderData
+}) {
+  const title = data?.title || "cara pesan jendela impian anda"
+  const steps = (data?.steps?.length ? data.steps : DEFAULT_ORDER_STEPS).slice(0, 3)
+  const stepDescriptions: Record<string, string> = {
+    "Pilih model": "telusuri katalog di website dan pilih model jendela favoritmu",
+    "Pilih ukuran & varian": "tentukan ukuran & varian yang kamu butuhkan, lalu masukkan ke keranjang",
+    "Proses pesanan & konfirmasi WhatsApp": "selesaikan checkout, lalu konfirmasi pesananmu lewat WhatsApp",
+  }
+  const [active, setActive] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
+  const [isDesktop, setIsDesktop] = React.useState(false)
+  React.useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px)")
+    const update = () => setIsDesktop(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [])
+  const total = steps.length
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  const dragRef = React.useRef<{
+    pointerId: number | null
+    startX: number
+    dragged: boolean
+  }>({ pointerId: null, startX: 0, dragged: false })
+
+  React.useEffect(() => {
+    if (total < 2 || paused || isDesktop) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
+    const id = window.setInterval(() => {
+      setActive((current) => (current + 1) % total)
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [total, paused, isDesktop])
+
+  // Swipe kiri/kanan untuk ganti langkah.
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
+
+    const state = dragRef.current
+    let startX = 0
+    let activeDrag = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      activeDrag = true
+      dragged = false
+      startX = clientX
+      state.pointerId = pointerId
+      state.dragged = false
+    }
+
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!activeDrag) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        state.dragged = true
+        if (state.pointerId !== null && event instanceof PointerEvent) {
+          try {
+            el.setPointerCapture(state.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+      event?.preventDefault()
+    }
+
+    const finish = (clientX: number) => {
+      if (!activeDrag) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      activeDrag = false
+      dragged = false
+      state.pointerId = null
+      state.dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActive((current) => ((current + (dx < 0 ? 1 : -1)) % total + total) % total)
+    }
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX, event.pointerId)
+      }
+      const onPointerMove = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        markDrag(event.clientX, event)
+      }
+      const onPointerUp = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        finish(event.clientX)
+      }
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!activeDrag || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+    }
+  }, [total])
+
+  return (
+    <section id="cara-pesan" className="scroll-mt-20 bg-surface">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title={title}
+          action={
+            <SectionHeadingAction
+              href={routeUrl("cara-pemesanan")}
+              label={ctaActionLabel("home-howto", "Lihat Panduan")}
+            />
+          }
+        />
+
+        <div
+          ref={surfaceRef}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={() => setPaused(false)}
+          className="relative w-full overflow-hidden rounded-xl bg-header-bg shadow-[0_2px_16px_rgba(10,0,0,0.12)] [touch-action:pan-y]"
+        >
+          <div
+            className={cn(
+              "flex h-[120px] w-full",
+              !isDesktop && !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) &&
+                "transition-transform duration-200 ease-emphasized",
+            )}
+            style={{ transform: isDesktop ? "translateX(0)" : `translateX(-${active * 100}%)` }}
+            aria-live="polite"
+          >
+            {steps.map((item, index) => {
+              const icon = orderStepIcon(item.title, index)
+              const desc =
+                stepDescriptions[item.title] ??
+                ("description" in item ? item.description : undefined)
+              return (
+                <div
+                  key={`${index}-${item.title}`}
+                  className="flex h-full w-full shrink-0 items-center gap-3 bg-[#333333] px-4 sm:gap-4 sm:px-6 lg:w-1/3 lg:basis-1/3"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:size-10">
+                    <Icon name={icon} className="size-4.5 sm:size-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="mt-0.5 text-[13px] font-bold leading-snug tracking-tight text-white sm:text-sm">
+                      {item.title.toLowerCase()}
+                    </h3>
+                    {desc ? (
+                      <p className="mt-0.5 text-[11px] leading-snug text-white/70 sm:text-xs">
+                        {desc.toLowerCase()}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Dots tipis di kanan bawah */}
+          {total > 1 ? (
+            <div className="absolute bottom-2 right-3 flex items-center gap-1 lg:hidden">
+              {steps.map((item, index) => (
+                <button
+                  key={`dot-${index}-${item.title}`}
+                  type="button"
+                  onClick={() => setActive(index)}
+                  aria-label={`Langkah ${index + 1}`}
+                  className="relative flex size-8 items-center justify-center rounded-full transition-colors before:absolute before:-inset-2 before:content-['']"
+                >
+                  <span
+                    className={cn(
+                      "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-[width,background-color]",
+                      index === active ? "w-4 bg-white mix-blend-difference opacity-80" : "w-1 bg-white mix-blend-difference opacity-80",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+export function HasilPemasanganSection({
+  items,
+  meta,
+}: {
+  items: InstallationItem[]
+  meta?: { heading?: string; subtitle?: string } | null
+}) {
+  const seeMoreHref = routeUrl("installation.index")
+  const emptyBlock = CTA_CONTENT["home-empty-installation"]
+
+  return (
+    <section id="hasil-pemasangan" className="scroll-mt-20">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title={meta?.heading?.trim() || "Hasil pemasangan"}
+          action={
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel("home-installation", "Lihat Semua")}
+            />
+          }
+        />
+        {items.length ? (
+          <InstallationCarousel items={items} seeMoreHref={seeMoreHref} />
+        ) : (
+          <EmptyState
+            icon="image"
+            title={emptyBlock?.eyebrow || "Belum ada foto pemasangan"}
+            description={
+              emptyBlock?.heading ||
+              "Contoh pemasangan di kota Anda bisa ditanyakan langsung lewat WhatsApp."
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function ApaKataPelangganSection({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = routeUrl("reviews.screenshots")
+  const emptyBlock = CTA_CONTENT["home-empty-testimonial"]
+
+  // Section screenshot: hanya ulasan ber-media (hindari kartu kosong tanpa media).
+  const screenshots = testimonials.filter((t) => Boolean(t.image_url))
+
+  return (
+    <section id="apa-kata-pelanggan" className="scroll-mt-20 bg-surface">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title="Apa kata pelanggan kami"
+          action={
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel("home-testimonial", "Lihat Semua")}
+            />
+          }
+        />
+        {screenshots.length ? (
+          <TestimonialCarousel
+            testimonials={screenshots}
+            seeMoreHref={seeMoreHref}
+            variant="screenshot"
+            navLabel="testimoni"
+          />
+        ) : (
+          <EmptyState
+            icon="message-circle"
+            title={emptyBlock?.eyebrow || "Belum ada screenshot"}
+            description={
+              emptyBlock?.heading ||
+              "Screenshot Shopee/WhatsApp akan tampil di sini setelah admin menambahkan."
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function UlasanPelangganWebsiteSection({ testimonials }: { testimonials: Testimonial[] }) {
+  const seeMoreHref = routeUrl("reviews.website")
+  const emptyBlock = CTA_CONTENT["home-empty-review"]
+
+  return (
+    <section id="ulasan-website" className="scroll-mt-20 bg-surface">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+<SectionHeading
+          align="left"
+          size="default"
+          fitHeading={false}
+          headingClassName="!text-[18px]"
+          className="gap-1"
+          title="Ulasan pelanggan di website"
+          action={
+            <SectionHeadingAction
+              href={seeMoreHref}
+              label={ctaActionLabel("home-review-website", "Lihat Semua")}
+            />
+          }
+        />
+        {testimonials.length ? (
+          <TestimonialCarousel
+            testimonials={testimonials}
+            seeMoreHref={seeMoreHref}
+            variant="review"
+            navLabel="ulasan"
+            showAdminReply={false}
+          />
+        ) : (
+          <EmptyState
+            icon="star"
+            title={emptyBlock?.eyebrow || "Belum ada ulasan website"}
+            description={
+              emptyBlock?.heading ||
+              "Ulasan dari pembeli website (teks dan/atau foto) akan tampil di sini."
+            }
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+const HELP_STEPS = [
+  {
+    icon: "headset",
+    title: "Konsultasi sebelum produksi",
+    description:
+      "Tim kami bantu memilih model yang pas untuk kebutuhan dan tampilan rumah Anda.",
+  },
+  {
+    icon: "ruler",
+    title: "Kami bantu cek & konfirmasi ukuran sebelum produksi",
+    description:
+      "Ukuran dan opsi dicek ulang bersama Anda sebelum produksi, agar hasilnya pas di lokasi.",
+  },
+  {
+    icon: "package",
+    title: "Packing kayu gratis & pengiriman ke seluruh Indonesia",
+    description:
+      "Produk dikemas rapi agar aman sampai di rumah Anda, ke seluruh Indonesia.",
+  },
+  {
+    icon: "whatsapp",
+    title: "Masih ragu? Chat WhatsApp, kami bantu sampai jelas",
+    description:
+      "Tanya apa saja lewat WhatsApp, dari pilihan model sampai panduan pemasangan.",
+  },
+]
+
+export { ClosingCTASection } from "./closing-cta"
+
+export function KamiBantuSection() {
+  // Kop, judul, dan kartu langkah dibaca dari CTA_CONTENT, blok "home-help".
+  // Bila bloknya kosong, teks dan kartu di bawah ini yang dipakai. Ikon tetap
+  // milik komponen dan dipakai bergiliran sesuai urutan.
+  const block = CTA_CONTENT["home-help"]
+  const steps = block?.items?.length
+    ? block.items.map((item, index) => ({
+        icon: HELP_STEPS[index % HELP_STEPS.length].icon,
+        title: item.label,
+        description: item.description,
+      }))
+    : HELP_STEPS
+
+  return (
+    <section id="kami-bantu" className="scroll-mt-20 bg-surface">
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-[10px]">
+        <div className="mx-auto mb-4 max-w-xl text-center md:mb-6">
+          <p className="text-xs font-bold text-primary sm:text-sm">
+            {block?.eyebrow || "Masih Bingung?"}
+          </p>
+          <SectionHeading
+            size="display"
+            fitHeading={false}
+            headingClassName="!text-[18px]"
+            title={
+              block?.heading || (
+                <>
+                  Kami bantu dari <span>awal sampai jadi</span>
+                </>
+              )
+            }
+          />
+        </div>
+
+        <div className="mx-auto max-w-3xl grid grid-cols-2 gap-3 sm:gap-4 lg:max-w-none">
+          {steps.map((item, index) => {
+            const stepNo = String(index + 1).padStart(2, "0")
+            return (
+              <article
+                key={item.title}
+                className="flex flex-col rounded-xl border border-border/60 bg-surface-muted p-3 sm:p-4"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold tracking-tight text-primary sm:text-base">
+                    {stepNo}
+                  </span>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10">
+                    <Icon name={item.icon} className="size-4 sm:size-5" aria-hidden="true" />
+                  </span>
+                </div>
+                <h3 className="mt-2 text-[12.5px] font-bold leading-snug tracking-tight text-foreground sm:text-sm">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs">
+                  {item.description}
+                </p>
+              </article>
+            )
+          })}
+        </div>
+
+      </div>
+    </section>
+  )
+}

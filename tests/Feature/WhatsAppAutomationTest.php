@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Events\OrderCreated;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\OrderEta;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
 use App\Services\WhatsAppService;
@@ -63,7 +64,7 @@ class WhatsAppAutomationTest extends TestCase
                 'language_code' => 'id',
                 'body_preview' => 'Halo {{order_number}}',
             ])
-            ->assertRedirect(route('admin.whatsapp.templates.edit', $template));
+            ->assertRedirect(route('admin.whatsapp.templates.index'));
 
         $this->assertDatabaseHas('whatsapp_templates', [
             'id' => $template->id,
@@ -72,17 +73,142 @@ class WhatsAppAutomationTest extends TestCase
         ]);
     }
 
-    public function test_connection_page_renders_cloud_api_status(): void
+    public function test_legacy_connection_route_redirects_to_pairing_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Halaman Hubungkan WhatsApp dihapus: seluruh isinya duplikat halaman
+        // Sambungkan Nomor. Rute lama dipertahankan sebagai redirect permanen.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.connection'))
+            ->assertRedirect('/admin/whatsapp/pairing');
+    }
+
+    public function test_pairing_page_carries_delivery_stats(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
         $this->actingAs($admin)
-            ->get(route('admin.whatsapp.connection'))
+            ->get(route('admin.whatsapp.pairing'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/WhatsApp/Connection')
-                ->has('connection')
-                ->has('stats'));
+                ->component('Admin/WhatsApp/Pairing')
+                ->has('stats.sent')
+                ->has('stats.failed')
+                ->has('stats.total'));
+    }
+
+    public function test_live_chat_route_redirects_to_orders(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.messages.index'))
+            ->assertRedirect(route('admin.orders.index'));
+    }
+
+    public function test_whatsapp_hub_shows_summary_of_conversations(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $order = Order::create([
+            'order_number' => 'RA-HUB-1',
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '6285725116817',
+            'shipping_address_line1' => 'Jl A',
+            'shipping_city' => 'Semarang',
+            'shipping_province' => 'Jawa Tengah',
+            'shipping_postal_code' => '50254',
+            'shipping_country' => 'Indonesia',
+            'order_status' => 'processing',
+            'payment_status' => 'pending',
+            'shipping_status' => 'pending_pickup',
+            'subtotal_amount' => 100000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 100000,
+        ]);
+
+        WhatsAppMessage::create([
+            'phone_number' => '6285725116817',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesanan saya sudah dikirim belum?',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
+
+        // Sampah saluran lama memakai nomor pseudo panjang dan wajib
+        // tidak muncul di ringkasan.
+        WhatsAppMessage::create([
+            'phone_number' => '62120363363090730395',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Promo spam saluran',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/WhatsApp/Hub')
+                ->where('conversations.0.phone', '6285725116817')
+                ->where('conversations.0.name', 'Budi Santoso')
+                ->where('conversations.0.order_number', $order->order_number)
+                ->where('conversations.0.order_status', 'processing')
+                ->where('conversations.0.last_text', 'Pesanan saya sudah dikirim belum?')
+                ->has('stats.inbound')
+                ->where('range', '7d')
+                ->count('conversations', 1));
+    }
+
+    public function test_whatsapp_hub_range_filter_limits_summary(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        WhatsAppMessage::create([
+            'phone_number' => '6285725116817',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesan baru',
+            'provider' => 'baileys',
+            'received_at' => now(),
+        ]);
+
+        $old = WhatsAppMessage::create([
+            'phone_number' => '6289990001112',
+            'direction' => 'inbound',
+            'status' => 'received',
+            'content_text' => 'Pesan lama',
+            'provider' => 'baileys',
+            'received_at' => now()->subDays(20),
+        ]);
+        $old->forceFill(['created_at' => now()->subDays(20)])->save();
+
+        // Rentang 24 jam hanya memuat percakapan baru.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => '24h']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('range', '24h')
+                ->where('stats.inbound', 1)
+                ->count('conversations', 1));
+
+        // Rentang 30 hari memuat keduanya.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => '30d']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.inbound', 2)
+                ->count('conversations', 2));
+
+        // Nilai rentang tidak sah jatuh ke bawaan 7 hari.
+        $this->actingAs($admin)
+            ->get(route('admin.whatsapp.dashboard', ['range' => 'sembarang']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('range', '7d'));
     }
 
     public function test_order_created_uses_cod_or_transfer_template_key(): void
@@ -111,7 +237,7 @@ class WhatsAppAutomationTest extends TestCase
             'shipping_province' => 'Jawa Tengah',
             'shipping_postal_code' => '50254',
             'shipping_country' => 'Indonesia',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 100000,
@@ -124,11 +250,19 @@ class WhatsAppAutomationTest extends TestCase
 
         app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($codOrder));
 
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'order_id' => $codOrder->id,
-            'internal_template_key' => 'order_created',
-            'direction' => 'outbound',
-        ]);
+        $codMessage = WhatsAppMessage::query()->where('order_id', $codOrder->id)->firstOrFail();
+        $this->assertSame('order_created', $codMessage->internal_template_key);
+        $this->assertSame([
+            'Budi',
+            'RA-WA-COD-1',
+            'Budi',
+            'Jl A, Semarang, Jawa Tengah, 50254',
+            '-',
+            '-',
+            // Variabel {{7}} kini berisi estimasi tiba nyata (produksi + range pengiriman).
+            OrderEta::whatsappLabel($codOrder),
+            '100.000',
+        ], $codMessage->content_payload['variables']);
 
         $transferOrder = Order::create([
             'order_number' => 'RA-WA-TRF-1',
@@ -139,7 +273,7 @@ class WhatsAppAutomationTest extends TestCase
             'shipping_province' => 'DKI Jakarta',
             'shipping_postal_code' => '12190',
             'shipping_country' => 'Indonesia',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending_pickup',
             'subtotal_amount' => 200000,
@@ -152,12 +286,32 @@ class WhatsAppAutomationTest extends TestCase
 
         app(WhatsAppService::class)->handleOrderCreated(new OrderCreated($transferOrder));
 
-        $this->assertDatabaseHas('whatsapp_messages', [
-            'order_id' => $transferOrder->id,
-            'internal_template_key' => 'payment_instructions',
-            'direction' => 'outbound',
-        ]);
+        $transferMessage = WhatsAppMessage::query()->where('order_id', $transferOrder->id)->firstOrFail();
+        $this->assertSame('payment_instructions', $transferMessage->internal_template_key);
+        $this->assertCount(11, $transferMessage->content_payload['variables']);
+        $this->assertSame('Ani', $transferMessage->content_payload['variables'][0]);
+        $this->assertSame('RA-WA-TRF-1', $transferMessage->content_payload['variables'][1]);
+        $this->assertSame('Ani', $transferMessage->content_payload['variables'][2]);
 
         $this->assertSame(2, WhatsAppMessage::query()->count());
+    }
+
+    public function test_catalog_bodies_use_positional_meta_tokens(): void
+    {
+        foreach (WhatsAppAutomationCatalog::all() as $trigger) {
+            $this->assertStringContainsString('{{1}}', $trigger['default_body']);
+            $this->assertStringNotContainsString('{{order_number}}', $trigger['default_body']);
+            foreach ($trigger['variables'] as $variable) {
+                $this->assertMatchesRegularExpression('/^\{\{\d+\}\}$/', $variable['token']);
+            }
+
+            preg_match_all('/\{\{(\d+)\}\}/', $trigger['default_body'], $matches);
+            $indexes = $matches[1];
+            $this->assertSame(
+                $indexes,
+                array_values(array_unique($indexes)),
+                "Template {$trigger['internal_key']} mengulang indeks variabel Meta yang sama."
+            );
+        }
     }
 }

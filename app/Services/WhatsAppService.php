@@ -4,14 +4,46 @@ namespace App\Services;
 
 use App\Events\OrderCreated;
 use App\Events\PaymentConfirmed;
+use App\Models\AdminNotification;
+use App\Models\CmsTestimonial;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ShippingRecord;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppTemplate;
+use App\Support\AdminLiveEvents;
+use App\Support\BankTransferInstructions;
+use App\Support\OrderEta;
 use App\Support\PhoneNumber;
+use App\Support\WhatsAppSendFailureNotifier;
+use App\Support\WhatsAppSessionNotifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class WhatsAppService
 {
+    /** Footer otomatis: dikosongkan owner 2026-09-15 (hapus dari semua template). */
+    public const REPLY_SIGNATURE = '';
+
+    /**
+     * Footer otomatis yang ditambahkan ke SEMUA pesan template.
+     *
+     * Sebelumnya teks ini hanya hidup di kode sehingga halaman admin
+     * menampilkan naskah yang berbeda dari pesan yang benar-benar
+     * terkirim. Sekarang nilainya bisa dioverride lewat
+     * services.whatsapp.reply_signature (env WHATSAPP_REPLY_SIGNATURE)
+     * dan ditampilkan sebagai bacaan di /admin/whatsapp/templates.
+     */
+    public static function replySignature(): string
+    {
+        $configured = trim((string) config('services.whatsapp.reply_signature'));
+
+        return $configured !== '' ? $configured : self::REPLY_SIGNATURE;
+    }
+
+    public function __construct(protected OrderService $orders) {}
+
     public function sendTemplateMessage(string $phone, string $internalKey, array $variables = [], ?int $orderId = null): ?WhatsAppMessage
     {
         $template = WhatsAppTemplate::active()->where('internal_key', $internalKey)->first();
@@ -24,61 +56,33 @@ class WhatsAppService
 
         $phone = PhoneNumber::normalize($phone) ?? $phone;
 
-        $message = WhatsAppMessage::create([
-            'direction' => 'outbound',
-            'order_id' => $orderId,
-            'phone_number' => $phone,
-            'internal_template_key' => $internalKey,
-            'status' => 'pending',
-            'content_payload' => ['variables' => $variables],
-        ]);
+        $primaryProvider = $this->defaultProvider();
+        $message = $this->dispatchTemplateMessage(
+            $primaryProvider,
+            $template,
+            $phone,
+            $internalKey,
+            $variables,
+            $orderId,
+            true,
+        );
 
-        if (! config('services.whatsapp.token')) {
-            // No provider configured (dev/test): mark as sent without calling the API.
-            $message->update(['status' => 'sent', 'sent_at' => now()]);
-
-            return $message;
-        }
-
-        $payload = [
-            'messaging_product' => 'whatsapp',
-            'to' => $phone,
-            'type' => 'template',
-            'template' => [
-                'name' => $template->provider_template_name,
-                'language' => ['code' => $template->language_code],
-                'components' => [
-                    [
-                        'type' => 'body',
-                        'parameters' => collect($variables)->map(fn ($v) => ['type' => 'text', 'text' => (string) $v])->values()->all(),
-                    ],
-                ],
-            ],
-        ];
-
-        try {
-            $response = Http::withToken(config('services.whatsapp.token'))
-                ->timeout((int) config('services.whatsapp.timeout', 15))
-                ->retry(2, 500, throw: false)
-                ->post($this->endpoint(), $payload);
-
-            if ($response->successful()) {
-                $providerId = $response->json('messages.0.id');
-                $message->update([
-                    'provider_message_id' => $providerId,
-                    'status' => 'sent',
-                    'sent_at' => now(),
-                    'raw_payload' => $response->json(),
-                ]);
-            } else {
-                $message->update([
-                    'status' => 'failed',
-                    'error_reason' => $response->body(),
-                    'raw_payload' => $response->json(),
-                ]);
-            }
-        } catch (\Throwable $e) {
-            $message->update(['status' => 'failed', 'error_reason' => $e->getMessage()]);
+        $compareProvider = $this->compareProvider();
+        if (
+            $compareProvider
+            && $compareProvider !== $primaryProvider
+            && $this->providerConfigured($compareProvider)
+            && $this->shouldSendCompareCopy($phone)
+        ) {
+            $this->dispatchTemplateMessage(
+                $compareProvider,
+                $template,
+                $phone,
+                $internalKey,
+                $variables,
+                $orderId,
+                false,
+            );
         }
 
         return $message;
@@ -86,61 +90,813 @@ class WhatsAppService
 
     public function sendTextMessage(string $phone, string $text, ?int $orderId = null): ?WhatsAppMessage
     {
-        return $this->sendTemplateMessage($phone, 'free_form', [$text], $orderId);
+        $phone = PhoneNumber::normalize($phone) ?? $phone;
+        $provider = $this->defaultProvider();
+
+        $message = WhatsAppMessage::create([
+            'direction' => 'outbound',
+            'order_id' => $orderId,
+            'phone_number' => $phone,
+            'provider' => $provider,
+            'internal_template_key' => 'free_form',
+            'status' => 'pending',
+            'content_text' => $text,
+            'content_payload' => ['variables' => [$text]],
+        ]);
+
+        if (! $this->providerConfigured($provider)) {
+            $message->update(['status' => 'sent', 'sent_at' => now()]);
+
+            return $message;
+        }
+
+        $result = $this->sendViaBaileys($phone, $text);
+
+        $this->applyProviderResult($message, $result);
+
+        return $message;
     }
 
-    public function handleWebhook(array $payload): void
+    /**
+     * Kirim ulang satu baris pesan yang gagal: naskah persis dari baris itu,
+     * hasil percobaan terbaru menimpa status baris yang sama supaya jumlah
+     * gagal berkurang saat berhasil. Catatan kegagalan sebelumnya dipindah ke
+     * raw_payload agar jejaknya tidak hilang (owner 2026-09-27).
+     */
+    public function resendMessage(WhatsAppMessage $message): WhatsAppMessage
     {
-        $entry = $payload['entry'][0]['changes'][0]['value'] ?? null;
-        if (! $entry) {
+        $sebelumnya = [
+            'status' => $message->status,
+            'error_reason' => $message->error_reason,
+            'attempted_at' => optional($message->updated_at)?->toIso8601String(),
+        ];
+
+        if (! $this->providerConfigured($this->defaultProvider())) {
+            $message->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+                'error_reason' => null,
+                'raw_payload' => array_merge((array) ($message->raw_payload ?? []), ['resend' => $sebelumnya]),
+            ]);
+
+            return $message;
+        }
+
+        $hasil = $this->sendViaBaileys((string) $message->phone_number, (string) $message->content_text);
+        $this->applyProviderResult($message, $hasil);
+        $message->update([
+            'raw_payload' => array_merge((array) ($message->raw_payload ?? []), ['resend' => $sebelumnya]),
+        ]);
+
+        return $message->fresh() ?? $message;
+    }
+
+    /**
+     * Tandai percobaan lain dari SATU notifikasi yang sama sebagai digantikan.
+     *
+     * Satu notifikasi bisa punya beberapa baris percobaan gagal. Yang dikirim
+     * hanya satu baris, jadi sisanya wajib ditandai supaya (a) tidak ikut
+     * terkirim sehingga pelanggan tidak menerima pesan ganda, dan (b) tidak
+     * lagi terhitung sebagai kegagalan yang menunggu tindakan admin.
+     *
+     * Dipakai dua jalur: tombol kirim ulang borongan di detail pesanan dan
+     * tombol kirim ulang per baris di daftar Pesan Gagal. Keduanya wajib lewat
+     * sini supaya aturannya tidak berbeda.
+     *
+     * @param  iterable<int, WhatsAppMessage>  $attempts
+     */
+    public function supersedeAttempts(iterable $attempts, WhatsAppMessage $winner): void
+    {
+        foreach ($attempts as $attempt) {
+            if ($attempt->id === $winner->id) {
+                continue;
+            }
+
+            $attempt->update([
+                'raw_payload' => array_merge((array) ($attempt->raw_payload ?? []), [
+                    'superseded_by' => $winner->id,
+                ]),
+            ]);
+        }
+    }
+
+    /**
+     * Percobaan gagal KEMBAR dari notifikasi yang sama: baris lain dengan kunci
+     * templat dan pesanan yang sama (atau nomor yang sama bila pesannya tidak
+     * tertaut pesanan) yang masih gagal dan belum ditandai digantikan.
+     *
+     * Pesan manual tanpa kunci templat tidak punya kelompok, jadi hasilnya
+     * kosong: kirim ulang pesan manual tidak boleh menyentuh baris lain.
+     *
+     * @return \Illuminate\Support\Collection<int, WhatsAppMessage>
+     */
+    public function siblingAttempts(WhatsAppMessage $message): \Illuminate\Support\Collection
+    {
+        $key = (string) ($message->internal_template_key ?? '');
+        if ($key === '') {
+            return collect();
+        }
+
+        return WhatsAppMessage::query()
+            ->where('id', '!=', $message->id)
+            ->where('status', 'failed')
+            ->where('internal_template_key', $key)
+            ->whereNull('raw_payload->superseded_by')
+            ->when(
+                $message->order_id,
+                fn ($q) => $q->where('order_id', $message->order_id),
+                fn ($q) => $q->where('phone_number', $message->phone_number),
+            )
+            ->get();
+    }
+
+    /**
+     * @return array{
+     *   configured: bool,
+     *   default_provider: string,
+     *   compare_provider: string|null,
+     *   compare_allowlist: list<string>,
+     *   providers: array<string, array{
+     *     configured: bool,
+     *     base_url: string|null,
+     *     token_set: bool,
+     *     number_id_set?: bool,
+     *     verify_token_set?: bool,
+     *     session?: string|null,
+     *     api_key_set?: bool,
+     *     webhook_secret_set?: bool
+     *   }>
+     * }
+     */
+    /**
+     * Status sambungan LIVE ke gateway WhatsApp (bukan sekadar konfigurasi).
+     *
+     * Owner 2026-09-17: dipakai ringkasan halaman admin untuk menampilkan
+     * "Terhubung / Terputus" tanpa masing-masing controller menduplikasi
+     * pemanggilan HTTP ke gateway. Kegagalan menanyakan status tidak pernah
+     * melempar error, dianggap belum terhubung.
+     *
+     * @return array{configured: bool, connected: bool, phone: string|null, error: string|null}
+     */
+    public function liveConnectionStatus(): array
+    {
+        return \App\Support\WhatsAppSessionPhone::gatewayStatus();
+    }
+
+    public function connectionStatus(): array
+    {
+        $defaultProvider = $this->defaultProvider();
+
+        return [
+            'configured' => $this->providerConfigured($defaultProvider),
+            'default_provider' => $defaultProvider,
+            'compare_provider' => $this->compareProvider(),
+            'compare_allowlist' => $this->compareAllowlist(),
+            'providers' => [
+                'baileys' => [
+                    'configured' => $this->providerConfigured('baileys'),
+                    'base_url' => config('services.whatsapp.baileys.base_url'),
+                    'token_set' => filled(config('services.whatsapp.baileys.api_key')),
+                    'session' => config('services.whatsapp.baileys.session'),
+                    'api_key_set' => filled(config('services.whatsapp.baileys.api_key')),
+                    'webhook_secret_set' => filled(config('services.whatsapp.baileys.webhook_secret')),
+                ],
+            ],
+        ];
+    }
+
+    public function handleBaileysWebhook(array $payload): void
+    {
+        $event = (string) ($payload['event'] ?? '');
+        $body = $payload['payload'] ?? [];
+        $session = $payload['session'] ?? config('services.whatsapp.baileys.session');
+
+        if ($event === 'message' && ($body['fromMe'] ?? false)) {
+            // Pesan yang diketik admin langsung dari perangkat toko (HP atau
+            // WhatsApp Web) ikut tercatat sebagai pesan keluar manual, tanpa
+            // penanda templat. Kiriman lewat gateway tidak diduplikasi:
+            // provider_message_id-nya sudah tersimpan saat pengiriman.
+            $chatId = $body['from'] ?? ($body['chatId'] ?? null);
+
+            if ($this->isNonPersonalChat($chatId)) {
+                return;
+            }
+
+            $providerId = $body['id'] ?? null;
+            if ($providerId && WhatsAppMessage::query()
+                ->where('provider', 'baileys')
+                ->where('provider_message_id', $providerId)
+                ->exists()) {
+                return;
+            }
+
+            WhatsAppMessage::create([
+                'direction' => 'outbound',
+                'phone_number' => $this->normalizeBaileysPhone($chatId),
+                'provider' => 'baileys',
+                'provider_session' => $session,
+                'provider_message_id' => $providerId,
+                'content_text' => $body['body'] ?? null,
+                'status' => 'sent',
+                'sent_at' => now(),
+                'raw_payload' => $payload,
+            ]);
+
             return;
         }
 
-        $messages = $entry['messages'] ?? [];
-        $statuses = $entry['statuses'] ?? [];
+        if ($event === 'message' && ! ($body['fromMe'] ?? false)) {
+            $chatId = $body['from'] ?? ($body['chatId'] ?? null);
 
-        foreach ($messages as $msg) {
-            $phone = PhoneNumber::normalize($msg['from'] ?? null) ?? ($msg['from'] ?? null);
-            $text = $msg['text']['body'] ?? null;
-            $providerId = $msg['id'] ?? null;
+            // Hanya obrolan pribadi yang masuk ke Live Chat. Grup, saluran,
+            // status, dan siaran diabaikan agar kotak masuk admin tidak
+            // tercemar. Nomor pribadi di luar pelanggan tetap diterima.
+            if ($this->isNonPersonalChat($chatId)) {
+                return;
+            }
 
-            // Idempoten: webhook Meta bisa dikirim ulang, hindari duplikasi.
-            WhatsAppMessage::firstOrCreate(
-                ['provider_message_id' => $providerId],
-                [
-                    'direction' => 'inbound',
-                    'phone_number' => $phone,
-                    'content_text' => $text,
-                    'status' => 'received',
-                    'received_at' => now(),
-                    'raw_payload' => $msg,
-                ]
-            );
+            $this->handleCanonicalWebhook('baileys', [[
+                'provider_message_id' => $body['id'] ?? null,
+                'phone' => $this->normalizeBaileysPhone($chatId),
+                'text' => $body['body'] ?? null,
+                'raw' => $payload,
+                'provider_session' => $session,
+            ]], []);
+
+            return;
         }
 
-        foreach ($statuses as $status) {
-            $providerId = $status['id'] ?? null;
-            $state = $status['status'] ?? null;
-            $message = WhatsAppMessage::where('provider_message_id', $providerId)->first();
-            if ($message) {
-                $message->update(['status' => $state ?? $message->status]);
+        if ($event === 'message.ack') {
+            $this->handleCanonicalWebhook('baileys', [], [[
+                'provider_message_id' => $body['id'] ?? null,
+                'status' => $this->mapBaileysAckStatus($body['ack'] ?? null),
+            ]]);
+
+            return;
+        }
+
+        if ($event === 'session.status') {
+            $this->handleSessionStatusWebhook($body);
+
+            return;
+        }
+    }
+
+    /**
+     * Webhook session.status dari gateway Baileys.
+     * logged_out -> notifikasi admin + audit (dedupe di notifier).
+     */
+    protected function handleSessionStatusWebhook(array $body): void
+    {
+        $status = (string) ($body['status'] ?? '');
+
+        if ($status === 'logged_out') {
+            WhatsAppSessionNotifier::notifyLoggedOut();
+
+            // Nomor tersimpan sengaja TIDAK dihapus: website tetap menampilkan
+            // nomor terakhir sampai nomor baru benar-benar tersambung.
+            return;
+        }
+
+        // Perangkat tersambung (baru/ganti nomor): simpan nomor terkini supaya
+        // seluruh tampilan nomor WA di website ikut berganti otomatis.
+        if (in_array($status, ['open', 'connected'], true)) {
+            try {
+                \App\Support\WhatsAppSessionPhone::sync();
+            } catch (\Throwable $e) {
+                Log::warning('Gagal sinkron nomor WhatsApp dari webhook sesi', ['error' => $e->getMessage()]);
             }
         }
     }
 
+    protected function dispatchTemplateMessage(
+        string $provider,
+        WhatsAppTemplate $template,
+        string $phone,
+        string $internalKey,
+        array $variables,
+        ?int $orderId,
+        bool $degradeWhenUnconfigured,
+    ): ?WhatsAppMessage {
+        $message = WhatsAppMessage::create([
+            'direction' => 'outbound',
+            'order_id' => $orderId,
+            'phone_number' => $phone,
+            'provider' => $provider,
+            'internal_template_key' => $internalKey,
+            'status' => 'pending',
+            'content_text' => $this->renderTemplateBody($template, $variables),
+            'content_payload' => ['variables' => $variables],
+        ]);
+
+        if (! $this->providerConfigured($provider)) {
+            if ($degradeWhenUnconfigured) {
+                $message->update(['status' => 'sent', 'sent_at' => now()]);
+
+                return $message;
+            }
+
+            $alasan = "Provider {$provider} belum dikonfigurasi.";
+            $message->update(['status' => 'failed', 'error_reason' => $alasan]);
+            WhatsAppSendFailureNotifier::notify($alasan);
+
+            return $message;
+        }
+
+        $result = $this->sendViaBaileys($phone, $this->renderTemplateBody($template, $variables));
+
+        $this->applyProviderResult($message, $result);
+
+        return $message;
+    }
+
+    protected function applyProviderResult(WhatsAppMessage $message, array $result): void
+    {
+        $status = $result['status'] ?? ($result['successful'] ? 'sent' : 'failed');
+
+        $message->update([
+            'provider_message_id' => $result['provider_message_id'] ?? null,
+            'provider_session' => $result['provider_session'] ?? null,
+            'status' => $status,
+            'sent_at' => ($result['successful'] ?? false) ? now() : null,
+            'error_reason' => $result['error_reason'] ?? null,
+            'raw_payload' => $result['raw_payload'] ?? null,
+        ]);
+
+        // Kegagalan kirim WAJIB memberi tahu admin. Tanpa ini kegagalan hanya
+        // menumpuk diam-diam sampai ada yang kebetulan membuka halaman
+        // WhatsApp. Dedupe di notifier menjaga satu sebab massal tetap satu
+        // notifikasi, bukan puluhan.
+        if ($status === 'failed') {
+            WhatsAppSendFailureNotifier::notify($result['error_reason'] ?? null);
+        }
+    }
+
+    /**
+     * Cek registrasi nomor lewat gateway Baileys (endpoint /api/on-whatsapp,
+     * jembatan ke sock.onWhatsApp bawaan Baileys). Hasil: true = terdaftar,
+     * false = tidak terdaftar, null = gateway belum menyediakan pemeriksaan
+     * atau pemeriksaan gagal (kirim tetap berjalan, tidak menghambat).
+     */
+    public function numberRegistered(string $phone): ?bool
+    {
+        try {
+            $response = Http::withHeaders([
+                'X-Api-Key' => (string) config('services.whatsapp.baileys.api_key'),
+            ])
+                ->timeout(5)
+                ->post(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/api/on-whatsapp', [
+                    'numbers' => [$this->toBaileysChatId($phone)],
+                ]);
+
+            if ($response->status() === 404) {
+                return null;
+            }
+
+            // Baileys menyaring nomor mati: hanya nomor terdaftar yang muncul
+            // di hasil. Nomor yang tidak muncul berarti tidak terdaftar.
+            $hasil = $response->json('results');
+            if (! is_array($hasil)) {
+                return null;
+            }
+
+            foreach ($hasil as $baris) {
+                $jid = (string) ($baris['jid'] ?? '');
+                if (str_starts_with($jid, $phone.'@') && ($baris['exists'] ?? false)) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function sendViaBaileys(string $phone, string $text): array
+    {
+        $payload = [
+            'session' => config('services.whatsapp.baileys.session', 'default'),
+            'chatId' => $this->toBaileysChatId($phone),
+            'text' => $text,
+        ];
+
+        // Cek pra-kirim: nomor yang tidak terdaftar WhatsApp tidak akan pernah
+        // menerima pesan, tetapi server WhatsApp tetap menerima serahannya
+        // sehingga tercatat "Terkirim" tanpa pernah sampai (bukti ACK nomor
+        // dummy). Tandai gagal dengan alasan jelas sebelum menyerahkan ke
+        // gateway. Pemeriksaan tidak tersedia atau gagal = kirim seperti
+        // biasa (fail-open).
+        if ($this->numberRegistered($phone) === false) {
+            return [
+                'successful' => false,
+                'provider_message_id' => null,
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => 'failed',
+                'error_reason' => 'Nomor tidak terdaftar WhatsApp.',
+                'raw_payload' => ['pre_send_check' => 'not_registered'],
+            ];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'X-Api-Key' => (string) config('services.whatsapp.baileys.api_key'),
+            ])
+                ->timeout((int) config('services.whatsapp.baileys.timeout', 15))
+                ->retry(2, 500, throw: false)
+                ->post(rtrim((string) config('services.whatsapp.baileys.base_url'), '/').'/api/sendText', $payload);
+
+            return [
+                'successful' => $response->successful(),
+                'provider_message_id' => $response->json('id')
+                    ?? $response->json('message.id')
+                    ?? $response->json('messageId'),
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => $response->successful() ? 'sent' : 'failed',
+                'error_reason' => $response->successful() ? null : $response->body(),
+                'raw_payload' => $response->json() ?: ['body' => $response->body()],
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'successful' => false,
+                'provider_message_id' => null,
+                'provider_session' => (string) ($payload['session'] ?? 'default'),
+                'status' => 'failed',
+                'error_reason' => $e->getMessage(),
+                'raw_payload' => null,
+            ];
+        }
+    }
+
+    protected function handleCanonicalWebhook(string $provider, array $messages, array $statuses): void
+    {
+        foreach ($messages as $msg) {
+            $providerId = $msg['provider_message_id'] ?? null;
+            $attributes = [
+                'direction' => 'inbound',
+                'phone_number' => $msg['phone'] ?? '-',
+                'provider' => $provider,
+                'provider_session' => $msg['provider_session'] ?? null,
+                'content_text' => $msg['text'] ?? null,
+                'status' => 'received',
+                'received_at' => now(),
+                'raw_payload' => $msg['raw'] ?? null,
+            ];
+
+            $message = $providerId
+                ? WhatsAppMessage::firstOrCreate(
+                    ['provider' => $provider, 'provider_message_id' => $providerId],
+                    $attributes,
+                )
+                : WhatsAppMessage::create($attributes);
+
+            if ($message->wasRecentlyCreated) {
+                $this->handleInboundCustomerAction($message, (array) ($msg['raw'] ?? []), $msg['phone'] ?? null);
+            }
+        }
+
+        foreach ($statuses as $status) {
+            $providerId = $status['provider_message_id'] ?? null;
+            if (! $providerId) {
+                continue;
+            }
+
+            $message = WhatsAppMessage::query()
+                ->where('provider', $provider)
+                ->where('provider_message_id', $providerId)
+                ->first();
+
+            if (! $message) {
+                continue;
+            }
+
+            // Pesan masuk tidak punya siklus kirim: begitu diterima, statusnya
+            // selesai. Ack untuk pesan masuk diabaikan agar 'received' tidak
+            // ditimpa menjadi 'pending'.
+            if ($message->direction === 'inbound') {
+                continue;
+            }
+
+            $next = $status['status'] ?? null;
+            if (! $next) {
+                continue;
+            }
+
+            // Ack tidak boleh menurunkan status yang sudah lebih maju
+            // (mis. ack 'sent' datang terlambat setelah 'read').
+            $rank = ['pending' => 0, 'queued' => 0, 'sent' => 1, 'delivered' => 2, 'read' => 3];
+            $currentRank = $rank[$message->status] ?? -1;
+            $nextRank = $rank[$next] ?? -1;
+
+            if ($nextRank >= 0 && $currentRank > $nextRank) {
+                continue;
+            }
+
+            $message->update(['status' => $next]);
+        }
+    }
+
+    protected function defaultProvider(): string
+    {
+        return 'baileys';
+    }
+
+    protected function compareProvider(): ?string
+    {
+        $provider = trim((string) config('services.whatsapp.compare_provider', ''));
+
+        return $provider === '' ? null : 'baileys';
+    }
+
+    protected function normalizeProvider(string $provider): string
+    {
+        return 'baileys';
+    }
+
+    protected function providerConfigured(string $provider): bool
+    {
+        return filled(config('services.whatsapp.baileys.base_url'))
+            && filled(config('services.whatsapp.baileys.api_key'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function compareAllowlist(): array
+    {
+        return collect(config('services.whatsapp.compare_allowlist', []))
+            ->map(fn ($phone) => PhoneNumber::normalize((string) $phone))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    protected function shouldSendCompareCopy(string $phone): bool
+    {
+        return in_array($phone, $this->compareAllowlist(), true);
+    }
+
+    protected function renderTemplateBody(WhatsAppTemplate $template, array $variables): string
+    {
+        $body = (string) ($template->body_preview ?: '');
+
+        foreach (array_values($variables) as $index => $value) {
+            $body = str_replace('{{'.($index + 1).'}}', (string) $value, $body);
+        }
+
+        $rendered = trim($body) !== '' ? trim($body) : implode("\n", $variables);
+
+        // Owner 2026-09-15: footer balasan dihapus dari semua template (mencabut
+        // kontrak anti-spam 2026-09-03). Aktifkan lagi via env WHATSAPP_REPLY_SIGNATURE.
+        $signature = self::replySignature();
+
+        return $signature !== '' ? $rendered."
+
+".$signature : $rendered;
+    }
+
+    protected function toBaileysChatId(string $phone): string
+    {
+        return $phone.'@s.whatsapp.net';
+    }
+
+    /**
+     * Obrolan non pribadi: grup, saluran, status, dan siaran.
+     * Identitas ini bukan nomor pelanggan sehingga tidak boleh
+     * membuat thread di Live Chat admin.
+     */
+    protected function isNonPersonalChat(?string $chatId): bool
+    {
+        if (! $chatId) {
+            return true;
+        }
+
+        $chatId = strtolower(trim($chatId));
+
+        foreach (['@g.us', '@newsletter', '@broadcast', 'status@'] as $marker) {
+            if (str_contains($chatId, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function normalizeBaileysPhone(?string $chatId): ?string
+    {
+        if (! $chatId) {
+            return null;
+        }
+
+        $chatId = preg_replace('/@.+$/', '', $chatId) ?? $chatId;
+
+        return PhoneNumber::normalize($chatId) ?? $chatId;
+    }
+
+    protected function mapBaileysAckStatus(mixed $ack): string
+    {
+        return match ((int) $ack) {
+            3 => 'read',
+            2 => 'delivered',
+            1 => 'sent',
+            default => 'pending',
+        };
+    }
+
+    /**
+     * Penanganan pesan masuk WhatsApp dari pelanggan.
+     * Mode fully manual (2026-09-09): auto-processing COD dinonaktifkan atas instruksi owner.
+     * Pesan tetap ditautkan ke pesanan (order_id) untuk histori obrolan admin.
+     * Kode auto-processing asli diarsipkan di: docs/archive/whatsapp-customer-cod-auto-confirm.md
+     *
+     * @param  array<string, mixed>  $msg
+     */
+    protected function handleInboundCustomerAction(WhatsAppMessage $message, array $msg, ?string $phone): void
+    {
+        $order = $this->resolveOrderForInbound($phone, $msg);
+        if ($order) {
+            $message->update(['order_id' => $order->id]);
+            $message->setRelation('order', $order);
+        }
+
+        $cleanPhone = $phone ?? $message->phone_number;
+        $senderName = $order?->customer_name;
+        $label = $senderName ? "{$senderName} ({$cleanPhone})" : $cleanPhone;
+        $preview = Str::limit((string) $message->content_text, 80);
+
+        AdminNotification::create([
+            'type' => 'whatsapp_inbound',
+            'title' => 'Pesan WhatsApp Masuk',
+            'body' => "{$label}: {$preview}",
+            'order_id' => $order?->id,
+            'href' => $order
+                ? route('admin.orders.show', $order).'#percakapan-whatsapp'
+                : route('admin.orders.index', ['search' => $cleanPhone]),
+        ]);
+
+        AdminLiveEvents::whatsAppReceived($message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $msg
+     */
+    protected function extractInboundText(array $msg): ?string
+    {
+        $parts = array_filter([
+            $msg['text']['body'] ?? null,
+            $msg['button']['text'] ?? null,
+            $msg['button']['payload'] ?? null,
+            $msg['interactive']['button_reply']['title'] ?? null,
+            $msg['interactive']['button_reply']['id'] ?? null,
+            $msg['interactive']['list_reply']['title'] ?? null,
+            $msg['interactive']['list_reply']['id'] ?? null,
+        ], fn ($v) => filled($v));
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode(' | ', array_map('strval', $parts));
+    }
+
+    /**
+     * @param  array<string, mixed>  $msg
+     */
+    protected function isOrderConfirmation(array $msg, ?string $combinedText): bool
+    {
+        $candidates = array_filter([
+            $msg['button']['payload'] ?? null,
+            $msg['button']['text'] ?? null,
+            $msg['interactive']['button_reply']['id'] ?? null,
+            $msg['interactive']['button_reply']['title'] ?? null,
+            $msg['interactive']['list_reply']['id'] ?? null,
+            $msg['interactive']['list_reply']['title'] ?? null,
+            $msg['text']['body'] ?? null,
+            $combinedText,
+        ], fn ($v) => filled($v));
+
+        foreach ($candidates as $raw) {
+            if ($this->matchesConfirmationPhrase((string) $raw)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function matchesConfirmationPhrase(string $raw): bool
+    {
+        $n = mb_strtolower(trim($raw));
+        $n = preg_replace('/\s+/u', ' ', $n) ?? $n;
+
+        if ($n === '') {
+            return false;
+        }
+
+        $exact = [
+            'oke', 'ok', 'ya', 'yes', 'y', 'benar', 'setuju', 'sesuai',
+            'konfirmasi', 'confirm', 'confirmed',
+        ];
+        if (in_array($n, $exact, true)) {
+            return true;
+        }
+
+        // Payload / id tombol Meta (bebas, sering snake_case).
+        if (preg_match('/(confirm|konfirmasi|order_ok|proses_pesan|proses_pesanan|accept_order)/i', $n)) {
+            return true;
+        }
+
+        // Judul tombol: "Oke, Proses Pesanan", "Ya, sesuai", dll.
+        if (preg_match('/\b(oke|ok|ya|yes)\b/u', $n) && preg_match('/(proses|pesan|order|sesuai|benar|konfirm)/u', $n)) {
+            return true;
+        }
+
+        if (preg_match('/proses\s*pesanan/u', $n)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $msg
+     */
+    protected function resolveOrderForInbound(?string $phone, array $msg): ?Order
+    {
+        $haystack = implode(' ', array_filter([
+            $msg['button']['payload'] ?? null,
+            $msg['interactive']['button_reply']['id'] ?? null,
+            $msg['interactive']['list_reply']['id'] ?? null,
+            $msg['text']['body'] ?? null,
+        ]));
+
+        if (preg_match('/(?:RA-\d{6}-[A-Z0-9]+|ORD\d{8})/i', $haystack, $match)) {
+            $order = Order::query()
+                ->where('order_number', strtoupper($match[0]))
+                ->where('order_status', 'awaiting_confirmation')
+                ->first();
+            if ($order) {
+                return $order;
+            }
+        }
+
+        if (! $phone) {
+            return null;
+        }
+
+        $recentOutbound = WhatsAppMessage::query()
+            ->where('direction', 'outbound')
+            ->where('phone_number', $phone)
+            ->whereNotNull('order_id')
+            ->whereIn('internal_template_key', ['order_created', 'payment_instructions'])
+            ->latest('id')
+            ->first();
+
+        if ($recentOutbound) {
+            $order = Order::query()
+                ->where('id', $recentOutbound->order_id)
+                ->where('order_status', 'awaiting_confirmation')
+                ->first();
+            if ($order) {
+                return $order;
+            }
+        }
+
+        return Order::query()
+            ->where('order_status', 'awaiting_confirmation')
+            ->where(function ($q) use ($phone) {
+                $q->where('customer_phone', $phone);
+                if (str_starts_with($phone, '62')) {
+                    $q->orWhere('customer_phone', '0'.substr($phone, 2));
+                }
+            })
+            ->latest('id')
+            ->first();
+    }
+
     public function handleOrderCreated(OrderCreated $event): void
     {
-        $order = $event->order->loadMissing('items');
-        $items = $order->items->map(fn ($item) => $item->name.' × '.$item->quantity)->implode(', ');
-        $total = number_format((float) $order->total_amount, 0, ',', '.');
-        $variables = [$order->order_number, $items !== '' ? $items : '-', $total];
+        $this->sendOrderConfirmation($event->order);
+    }
 
-        // Figma / Stage 8: COD → order_created; transfer → payment_instructions.
+    /**
+     * Konfirmasi pesanan (order_created / payment_instructions) - dipakai saat
+     * checkout dan dikirim ULANG setelah admin mengedit isi pesanan (keputusan #7).
+     */
+    public function sendOrderConfirmation(Order $order): ?WhatsAppMessage
+    {
+        $order->loadMissing('items');
+
+        // Stage 8: COD → order_created; transfer → payment_instructions.
         $key = ($order->cod_flag || $order->payment_method === 'cod')
             ? 'order_created'
             : 'payment_instructions';
 
-        $this->sendTemplateMessage(
+        $variables = $key === 'order_created'
+            ? $this->variablesForOrderCreatedCod($order)
+            : $this->variablesForPaymentInstructions($order);
+
+        return $this->sendTemplateMessage(
             $order->customer_phone,
             $key,
             $variables,
@@ -148,20 +904,410 @@ class WhatsAppService
         );
     }
 
+    /** WA ulang konfirmasi setelah pesanan diedit admin. Aman bila gagal. */
+    public function notifyOrderEdited(Order $order): ?WhatsAppMessage
+    {
+        try {
+            return $this->sendOrderConfirmation($order);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal kirim ulang WA konfirmasi setelah edit pesanan', [
+                'order' => $order->order_number,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     public function handlePaymentConfirmed(PaymentConfirmed $event): void
     {
-        $order = $event->order;
-        $this->sendTemplateMessage(
+        $this->notifyOrderProcessing($event->order);
+    }
+
+    /**
+     * Template `payment_confirmed` (= WA "pesanan diproses"). Idempotent per order.
+     */
+    public function notifyOrderProcessing(Order $order): ?WhatsAppMessage
+    {
+        $already = WhatsAppMessage::query()
+            ->where('order_id', $order->id)
+            ->where('direction', 'outbound')
+            ->where('internal_template_key', 'payment_confirmed')
+            ->whereIn('status', ['pending', 'sent', 'delivered', 'read'])
+            ->exists();
+
+        if ($already) {
+            return null;
+        }
+
+        return $this->sendTemplateMessage(
             $order->customer_phone,
             'payment_confirmed',
-            [$order->order_number],
+            $this->variablesForPaymentConfirmed($order),
             $order->id
         );
     }
 
-    protected function endpoint(): string
+    /** @var array<string, WhatsAppTemplate|null> Template aktif per kunci, sekali per request. */
+    protected array $templateCache = [];
+
+    /**
+     * Kunci templat otomatis untuk perubahan status pesanan. Jaga sinkron
+     * dengan templateKeyForOrderStatus di bawah. Dipakai fitur kirim ulang WA
+     * supaya tombolnya hanya menyasar notifikasi perubahan status.
+     */
+    public const STATUS_TEMPLATE_KEYS = [
+        'order_created',
+        'payment_instructions',
+        'payment_confirmed',
+        'order_shipped',
+        'order_delivered',
+        'order_issue_followup',
+        'order_returned',
+    ];
+
+    /** Daftar kunci templat perubahan status pesanan (fitur kirim ulang). */
+    public function statusTemplateKeys(): array
     {
-        return rtrim(config('services.whatsapp.base_url'), '/')
-            .'/'.config('services.whatsapp.number_id').'/messages';
+        return self::STATUS_TEMPLATE_KEYS;
+    }
+
+    /**
+     * Status tanpa template otomatis (completed, cancelled) mengembalikan null:
+     *
+     * Dipetakan dari perilaku pengiriman otomatis yang sudah ada supaya tombol
+     * "Chat WA" di panel admin menghasilkan naskah yang SAMA dengan pesan yang
+     * dikirim sistem pada status tersebut (permintaan owner 2026-09-19).
+     *
+     * Status tanpa template otomatis (completed, cancelled) mengembalikan null:
+     * admin tetap bisa membuka WhatsApp, hanya tanpa naskah terisi.
+     */
+    public function templateKeyForOrderStatus(Order $order): ?string
+    {
+        return match ($order->order_status) {
+            'awaiting_confirmation' => ($order->cod_flag || $order->payment_method === 'cod')
+                ? 'order_created'
+                : 'payment_instructions',
+            'processing' => 'payment_confirmed',
+            'shipped' => 'order_shipped',
+            'delivered' => 'order_delivered',
+            'issue', 'return_in_process' => 'order_issue_followup',
+            'return_completed' => 'order_returned',
+            default => null,
+        };
+    }
+
+    /**
+     * Tautan wa.me berisi naskah template sesuai status pesanan.
+     *
+     * Mengembalikan null bila status tidak punya template otomatis, template
+     * itu tidak aktif di katalog, atau datanya belum cukup (mis. status dikirim
+     * tapi belum ada resi). Pemanggil memakai tautan WhatsApp biasa sebagai
+     * gantinya, sehingga tombol chat tetap bisa dipakai kapan pun.
+     */
+    public function statusMessageUrl(Order $order): ?string
+    {
+        $key = $this->templateKeyForOrderStatus($order);
+        if ($key === null) {
+            return null;
+        }
+
+        $phone = PhoneNumber::normalize($order->customer_phone);
+        if ($phone === null) {
+            return null;
+        }
+
+        $record = $order->relationLoaded('shippingRecords')
+            ? $order->shippingRecords->first()
+            : $order->shippingRecords()->latest('id')->first();
+
+        // Template resi butuh nomor resi; tanpa resi naskahnya belum bermakna.
+        if ($key === 'order_shipped' && ($record === null || trim((string) $record->waybill_number) === '')) {
+            return null;
+        }
+
+        $variables = match ($key) {
+            'order_created' => $this->variablesForOrderCreatedCod($order),
+            'payment_instructions' => $this->variablesForPaymentInstructions($order),
+            'payment_confirmed' => $this->variablesForPaymentConfirmed($order),
+            'order_shipped' => $this->variablesForOrderShipped($order, $record),
+            'order_delivered' => $this->variablesForOrderDelivered($order),
+            'order_issue_followup' => [$this->customerName($order), $order->order_number],
+            // Retur bisa terjadi tanpa record pengiriman (mis. retur dicatat
+            // sebelum resi pernah diinput). Naskahnya tetap dikirim dengan tanda
+            // "-" pada slot resi, sama seperti jalur update status.
+            'order_returned' => $record === null
+                ? [$this->customerName($order), $order->order_number, '-']
+                : $this->variablesForOrderReturned($order, $record),
+            default => null,
+        };
+
+        if ($variables === null) {
+            return null;
+        }
+
+        $template = $this->activeTemplate($key);
+        if ($template === null) {
+            return null;
+        }
+
+        return 'https://wa.me/'.$phone.'?text='.rawurlencode(
+            $this->renderTemplateBody($template, $variables),
+        );
+    }
+
+    /**
+     * Template aktif per kunci, dimuat sekali per request.
+     *
+     * Daftar pesanan memanggil statusMessageUrl() untuk setiap baris; tanpa
+     * memo ini satu halaman menghasilkan belasan query yang isinya sama.
+     */
+    protected function activeTemplate(string $internalKey): ?WhatsAppTemplate
+    {
+        if (! isset($this->templateCache[$internalKey])) {
+            $this->templateCache[$internalKey] = WhatsAppTemplate::active()
+                ->where('internal_key', $internalKey)
+                ->first();
+        }
+
+        return $this->templateCache[$internalKey];
+    }
+
+    public function handleShippingStatus(Order $order, ShippingRecord $record, string $templateKey): void
+    {
+        $variables = match ($templateKey) {
+            'order_shipped' => $this->variablesForOrderShipped($order, $record),
+            'order_delivered' => $this->variablesForOrderDelivered($order),
+            'order_returned' => $this->variablesForOrderReturned($order, $record),
+            default => [$order->order_number, $record->waybill_number ?: '-'],
+        };
+
+        $this->sendTemplateMessage(
+            $order->customer_phone,
+            $templateKey,
+            $variables,
+            $order->id,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForOrderCreatedCod(Order $order): array
+    {
+        $name = $this->customerName($order);
+
+        // Meta melarang indeks yang sama dua kali di body: {{1}} sapaan, {{3}} blok DATA PENERIMA.
+        return [
+            $name,
+            $order->order_number,
+            $name,
+            $this->formatAddress($order),
+            $this->formatAddressDetail($order),
+            $this->formatItems($order),
+            $this->formatEta($order),
+            $this->formatTotal($order),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForPaymentInstructions(Order $order): array
+    {
+        $name = $this->customerName($order);
+        $bank = BankTransferInstructions::forStorefront();
+
+        return [
+            $name,
+            $order->order_number,
+            $name,
+            $this->formatAddress($order),
+            $this->formatAddressDetail($order),
+            $this->formatItems($order),
+            $this->formatEta($order),
+            $this->formatTotal($order),
+            $bank['bank_name'] ?? '-',
+            $bank['account_number'] ?? '-',
+            $bank['account_name'] ?? '-',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForPaymentConfirmed(Order $order): array
+    {
+        return [
+            $this->customerName($order),
+            $order->order_number,
+            $this->formatEta($order),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForOrderShipped(Order $order, ShippingRecord $record): array
+    {
+        $carrier = trim((string) ($record->carrier_name ?: 'J&T Cargo'));
+        $waybill = trim((string) ($record->waybill_number ?: '-'));
+        $link = trim((string) ($record->tracking_url ?: '')) ?: route('order.status');
+
+        return [
+            $this->customerName($order),
+            $order->order_number,
+            $carrier !== '' ? $carrier : 'J&T Cargo',
+            $waybill !== '' ? $waybill : '-',
+            $link,
+            $this->formatEta($order),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForOrderDelivered(Order $order): array
+    {
+        return [
+            $this->customerName($order),
+            $order->order_number,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variablesForOrderReturned(Order $order, ShippingRecord $record): array
+    {
+        $waybill = trim((string) ($record->waybill_number ?: '-'));
+
+        return [
+            $this->customerName($order),
+            $order->order_number,
+            $waybill !== '' ? $waybill : '-',
+        ];
+    }
+
+    /**
+     * Variabel naskah WA balasan ulasan (owner 2026-09-21).
+     *
+     * Naskah resmi memakai TEPAT tiga token berurutan: nama pelanggan, nomor
+     * order, lalu isi balasan admin. Nama produk dan label varian sudah dihapus
+     * dari naskah, jadi keduanya tidak lagi dihitung di sini.
+     *
+     * Ulasan yang tidak tertaut pesanan diisi tanda "-" pada nomor order supaya
+     * naskahnya tidak pernah bolong.
+     *
+     * @return list<string>
+     */
+    public function variablesForReviewReplied(CmsTestimonial $testimonial): array
+    {
+        $customerName = trim((string) $testimonial->customer_name);
+        $orderNumber = trim((string) ($testimonial->order?->order_number));
+        $reply = trim((string) $testimonial->admin_reply);
+
+        return [
+            $customerName !== '' ? $customerName : 'Kak',
+            $orderNumber !== '' ? $orderNumber : '-',
+            $reply,
+        ];
+    }
+
+    /**
+     * WA balasan ulasan saat admin PERTAMA KALI membalas ulasan pelanggan.
+     *
+     * Nomor tujuan hanya diketahui bila ulasan tertaut pesanan. Ulasan tanpa
+     * pesanan (mis. dibuat admin) tidak punya nomor, jadi tidak ada yang
+     * dikirim dan method mengembalikan null tanpa melempar exception.
+     *
+     * Perlakuan kegagalan sama seperti template otomatis lain: statusnya
+     * ditentukan sendTemplateMessage lewat baris whatsapp_messages, tanpa
+     * penanganan khusus yang menyembunyikan kegagalan.
+     */
+    public function notifyReviewReplied(CmsTestimonial $testimonial): ?WhatsAppMessage
+    {
+        $phone = trim((string) ($testimonial->order?->customer_phone));
+
+        if ($phone === '') {
+            return null;
+        }
+
+        return $this->sendTemplateMessage(
+            $phone,
+            'review_replied',
+            $this->variablesForReviewReplied($testimonial),
+            $testimonial->order_id,
+        );
+    }
+
+    protected function customerName(Order $order): string
+    {
+        $name = trim((string) $order->customer_name);
+
+        return $name !== '' ? $name : 'Kak';
+    }
+
+    protected function formatAddress(Order $order): string
+    {
+        $parts = array_filter([
+            trim((string) $order->shipping_address_line1),
+            trim((string) ($order->shipping_village ?? '')),
+            trim((string) ($order->shipping_district ?? '')),
+            trim((string) ($order->shipping_city ?? '')),
+            trim((string) ($order->shipping_province ?? '')),
+            trim((string) ($order->shipping_postal_code ?? '')),
+        ], fn ($part) => $part !== '');
+
+        return $parts !== [] ? implode(', ', $parts) : '-';
+    }
+
+    protected function formatAddressDetail(Order $order): string
+    {
+        $parts = array_filter([
+            trim((string) ($order->shipping_address_line2 ?? '')),
+            trim((string) ($order->notes ?? '')),
+        ], fn ($part) => $part !== '');
+
+        return $parts !== [] ? implode(' · ', $parts) : '-';
+    }
+
+    protected function formatItems(Order $order): string
+    {
+        $order->loadMissing('items');
+
+        $lines = $order->items->map(function (OrderItem $item) {
+            $qty = max(1, (int) $item->quantity);
+            $name = trim((string) $item->name) ?: 'Produk';
+            $header = "• {$qty} Unit {$name}";
+
+            $attrs = array_filter([
+                trim((string) ($item->variation_1_option ?? '')),
+                trim((string) ($item->variation_2_option ?? '')),
+            ], fn ($part) => $part !== '');
+
+            $suffix = $attrs !== [] ? ' ('.implode(' • ', $attrs).')' : '';
+
+            // Catatan per-produk ikut dalam konfirmasi order (keputusan #11).
+            $note = trim((string) ($item->note ?? ''));
+            if ($note !== '') {
+                $suffix .= ' [Catatan: '.$note.']';
+            }
+
+            return $header.$suffix;
+        })->filter()->values();
+
+        // Satu baris per item dipisah " | ": Meta menolak newline di parameter template.
+        return $lines->isNotEmpty() ? $lines->implode(' | ') : '-';
+    }
+
+    protected function formatEta(Order $order): string
+    {
+        return OrderEta::whatsappLabel($order);
+    }
+
+    protected function formatTotal(Order $order): string
+    {
+        return number_format((float) $order->total_amount, 0, ',', '.');
     }
 }

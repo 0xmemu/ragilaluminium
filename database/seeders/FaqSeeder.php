@@ -21,54 +21,55 @@ class FaqSeeder extends Seeder
 
         $defaults = [
             [
-                'category' => 'Umum & Profil Toko',
-                'question' => 'Apakah Ragil Aluminium toko resmi?',
-                'answer' => "Ya. Kami menjual jendela, pintu, dan boven aluminium secara langsung. Katalog di website adalah stok yang kami kelola; pemesanan bisa lewat checkout website atau konsultasi WhatsApp.",
+                'category' => 'Spesifikasi Material & Ukuran',
+                'question' => 'Ukuran yang tertera itu ukuran kaca atau kusen?',
+                'answer' => 'Semua ukuran yang tertera adalah ukuran total atau luar kusen.',
                 'sort_order' => 0,
             ],
             [
                 'category' => 'Spesifikasi Material & Ukuran',
-                'question' => 'Apakah ukuran bisa custom?',
-                'answer' => "Bisa. Pilih varian terdekat di katalog, lalu tulis ukuran (tinggi x lebar) di catatan checkout atau hubungi WhatsApp agar kami bantu hitung.",
+                'question' => 'Apakah bisa pesan custom ukuran?',
+                'answer' => 'Bisa. Silakan infokan model dan ukuran yang dibutuhkan.',
                 'sort_order' => 1,
             ],
             [
-                'category' => 'Spesifikasi Material & Ukuran',
-                'question' => 'Apa perbedaan model jungkit, sliding, swing, dan kaca mati?',
-                'answer' => "Jungkit cocok untuk ventilasi dan area yang sering kena hujan. Sliding hemat ruang untuk bukaan lebar. Swing memberi sirkulasi maksimal. Kaca mati fokus pencahayaan tanpa daun bukaan. Pilih sesuai ruang dan kebutuhan udara.",
+                'category' => 'Umum & Profil Toko',
+                'question' => 'Apakah pesanan akan dikonfirmasi sebelum diproses?',
+                'answer' => 'Ya, kami akan konfirmasi detail pesanan Anda via WhatsApp sebelum diproses.',
                 'sort_order' => 2,
             ],
             [
-                'category' => 'Metode Pembayaran',
-                'question' => 'Metode pembayaran apa saja yang tersedia?',
-                'answer' => "Checkout publik mendukung transfer bank dan COD (jika COD tersedia untuk produk/area Anda). Setelah transfer, kirim bukti via WhatsApp agar pesanan diproses.",
+                'category' => 'Pengiriman & Pemasangan',
+                'question' => 'Berapa lama proses pengiriman?',
+                'answer' => 'Pesanan diproses dan dikirim maksimal 1 hari kerja setelah konfirmasi.',
                 'sort_order' => 3,
             ],
             [
-                'category' => 'Metode Pembayaran',
-                'question' => 'Apakah bisa bayar COD?',
-                'answer' => "COD tersedia pada produk yang bertanda COD dan jika pengaturan toko mengaktifkannya. Status COD dicek otomatis di checkout sebelum pesanan dibuat.",
+                'category' => 'Pengiriman & Pemasangan',
+                'question' => 'Bagaimana packing produk saat dikirim?',
+                'answer' => 'Kami menggunakan packing kayu dan perlindungan tambahan agar produk aman sampai di tujuan.',
                 'sort_order' => 4,
             ],
             [
-                'category' => 'Pengiriman & Pemasangan',
-                'question' => 'Apakah ada jasa pengiriman dan pemasangan?',
-                'answer' => "Pengiriman memakai kurir (J&T Cargo untuk jalur yang terintegrasi). Detail ongkir dihitung di checkout. Untuk pemasangan, hubungi kami agar dijadwalkan sesuai area Anda.",
+                'category' => 'Umum & Profil Toko',
+                'question' => 'Apakah ada garansi produk?',
+                'answer' => 'Ya, kami memberikan garansi jika terjadi kerusakan atau ketidaksesuaian produk.',
                 'sort_order' => 5,
             ],
             [
-                'category' => 'Pengiriman & Pemasangan',
-                'question' => 'Berapa lama pengiriman sampai lokasi saya?',
-                'answer' => "Estimasi tergantung kota tujuan dan kesiapan produksi. Setelah pembayaran dikonfirmasi, kami proses dan kirim. Lacak status di menu Pesanan dengan nomor pesanan Anda.",
+                'category' => 'Metode Pembayaran',
+                'question' => 'Apakah tersedia pembayaran COD?',
+                'answer' => 'Ya. COD selalu tersedia di checkout sebagai salah satu pilihan pembayaran di samping transfer bank.',
                 'sort_order' => 6,
             ],
-            [
-                'category' => 'Garansi & Retur',
-                'question' => 'Bagaimana jika barang rusak atau tidak sesuai?',
-                'answer' => "Laporkan segera via WhatsApp dengan foto/video dan nomor pesanan. Kami bantu cek dan proses penggantian atau perbaikan sesuai ketentuan toko.",
-                'sort_order' => 7,
-            ],
         ];
+
+        $questions = array_column($defaults, 'question');
+
+        CmsFaqItem::query()
+            ->where('cms_page_id', $pageId)
+            ->whereNotIn('question', $questions)
+            ->update(['status' => CmsFaqItem::STATUS_ARCHIVED]);
 
         foreach ($defaults as $row) {
             CmsFaqItem::query()->updateOrCreate(

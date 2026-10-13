@@ -1,20 +1,22 @@
 import { Head, Link, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { MediaPicker } from "@/components/admin/media-picker"
+import { Button } from "@/components/admin/ui/button"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { HintTip } from "@/components/admin/ui/hint-tip"
+import { Input } from "@/components/admin/ui/input"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { ResponsiveImage } from "@/components/ui/responsive-image"
 import AdminLayout from "@/layouts/admin-layout"
+import { storeExampleUrl } from "@/lib/routes"
 
 interface BannerFormData {
   id?: number
   title?: string | null
   image_url?: string | null
   link_url?: string | null
-  sort_order: number
   published: boolean
+  media_asset_id?: number | null
 }
 
 export default function BannerForm({
@@ -22,142 +24,173 @@ export default function BannerForm({
   submitUrl,
   method,
   indexHref,
+  backUrl,
 }: {
+  backUrl?: string | null
   banner: BannerFormData | null
   submitUrl: string
   method: "post" | "put"
   indexHref: string
 }) {
   const isEdit = Boolean(banner?.id)
+  // Status aktif tidak ditampilkan di form (sejajar dengan form Bar Promo):
+  // dinyalakan/dimatikan lewat aksi Terbitkan/Sembunyikan di daftar. Nilainya
+  // tetap ikut terkirim dari nilai awal supaya menyunting banner tidak pernah
+  // mengubah status terbitnya tanpa disengaja.
   const form = useForm<{
     title: string
     link_url: string
-    sort_order: number
     published: boolean
-    image: File | null
+    media_asset_id: string
   }>({
     title: banner?.title ?? "",
     link_url: banner?.link_url ?? "",
-    sort_order: banner?.sort_order ?? 0,
-    published: banner?.published ?? true,
-    image: null,
+    published: banner?.published ?? false,
+    media_asset_id: banner?.media_asset_id ? String(banner.media_asset_id) : "",
   })
-
-  const [objectUrl, setObjectUrl] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    if (!form.data.image) {
-      setObjectUrl(null)
-      return
-    }
-    const url = URL.createObjectURL(form.data.image)
-    setObjectUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [form.data.image])
-
-  const previewUrl = objectUrl ?? banner?.image_url ?? null
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [pickedPreview, setPickedPreview] = React.useState<string | null>(null)
+  const previewUrl = pickedPreview ?? banner?.image_url ?? null
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (method === "put") {
       form.transform((data) => ({ ...data, _method: "put" }))
       form.post(submitUrl, {
-        forceFormData: true,
         preserveScroll: true,
         onFinish: () => form.transform((data) => data),
       })
       return
     }
-    form.post(submitUrl, { forceFormData: true, preserveScroll: true })
+    form.post(submitUrl, { preserveScroll: true })
   }
+
+  // Kontrak owner 2026-10-12: tombol simpan hanya hidup saat memang ada yang
+  // bisa dikirim. Di form tambah syaratnya gambar sudah dipilih; di form edit
+  // syaratnya sudah ada perubahan. Gambar tidak wajib saat menyunting banner
+  // lama, jadi yang dihitung ada atau tidaknya gambar, bukan id asetnya.
+  const gambarKosong = !previewUrl
+  const belumBerubah = isEdit && !form.isDirty
+  const terkunci = gambarKosong || belumBerubah
+  const alasanTerkunci = gambarKosong
+    ? "Pilih gambar banner dulu sebelum disimpan."
+    : "Belum ada perubahan yang perlu disimpan."
+  const tombolSimpan = (
+    <Button type="submit" form="banner-form" disabled={form.processing || terkunci}>
+      {form.processing ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
+    </Button>
+  )
 
   return (
     <AdminLayout
-      title={isEdit ? "Edit Promo Toko" : "Tambah Promo Toko"}
-      description="Slide manual beranda (cms_banners): judul, gambar, link, urutan, status published."
+      backUrl={backUrl}
+      title={isEdit ? "Edit Banner Promo" : "Tambah Banner Promo"}
+      description="Slide banner di beranda, tampil setelah slide pembuka."
       actions={
-        <Button asChild variant="secondary">
-          <Link href={indexHref}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={indexHref}>Batal</Link>
+          </Button>
+          {terkunci && !form.processing ? (
+            <HintTip
+              label={tombolSimpan}
+              hint={alasanTerkunci}
+              side="bottom"
+              align="right"
+              className="no-underline"
+            />
+          ) : (
+            tombolSimpan
+          )}
+        </div>
       }
     >
-      <Head title={`${isEdit ? "Edit" : "Tambah"} Promo Toko | Admin`} />
+      <Head title={`${isEdit ? "Edit" : "Tambah"} Banner Promo | Admin`} />
 
-      <form onSubmit={onSubmit} className="mx-auto grid max-w-3xl gap-6">
+      <form id="banner-form" onSubmit={onSubmit} className="w-full space-y-6">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-          <h2 className="text-base font-bold">Informasi promo</h2>
-          <div className="mt-4 space-y-4">
-            <Field id="title" label="Nama / judul promo" error={form.errors.title}>
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          {/* Baris media ikut grid field (ADR-022), bukan stripe ber-padding
+              sendiri, supaya tepi kiri/kanan lurus dengan field lain. */}
+          <FieldGrid className="p-5 sm:p-6">
+            <Field
+              id="image"
+              label="Gambar banner"
+              error={form.errors.media_asset_id}
+              required
+              hint="Rasio 2,4:1 (rekomendasi 1600 × 664 px), dipilih dari Media Library."
+              className="sm:col-span-2"
+            >
+              {/* Pratinjau lalu tombol, bertumpuk satu kolom: tombol selalu
+                  lurus dengan tepi kiri pratinjau tanpa perlu trik penyelarasan
+                  (ADR-022). */}
+              <div className="space-y-3">
+                <div className="aspect-[1024/426] w-full max-w-[260px] overflow-hidden rounded-md border border-border bg-muted">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Pratinjau banner" className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center px-2 text-center text-[11px] leading-tight text-muted-foreground">
+                      Tanpa gambar
+                    </div>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPickerOpen(true)}
+                  className="inline-flex w-fit items-center gap-1.5"
+                >
+                  <Icon name="image" className="size-3.5" aria-hidden="true" />
+                  <span>{form.data.media_asset_id ? "Ganti gambar" : "Pilih gambar"}</span>
+                </Button>
+              </div>
+            </Field>
+
+            <Field
+              id="title"
+              label="Nama banner"
+              error={form.errors.title}
+              hint="Untuk daftar admin dan keterangan gambar di pembaca layar; tidak dicetak di atas gambar."
+            >
               <Input
                 value={form.data.title}
                 onChange={(event) => form.setData("title", event.target.value)}
                 placeholder="Mis. Diskon sampai 30%"
+                maxLength={64}
               />
             </Field>
             <Field
               id="link"
-              label="Link tujuan / produk terkait"
+              label="Link tujuan"
               error={form.errors.link_url}
-              hint="Path internal /product/SKU atau URL penuh. Tanpa upload, link produk aktif bisa mengisi gambar otomatis."
+              hint="Boleh alamat lengkap atau cukup bagian setelah nama domain."
             >
               <Input
                 value={form.data.link_url}
                 onChange={(event) => form.setData("link_url", event.target.value)}
-                placeholder="/product/WIN-JUNG-001"
+                placeholder={storeExampleUrl("/product/RAF3QHJA5FHY")}
               />
             </Field>
-            <Field id="sort" label="Urutan slide" error={form.errors.sort_order}>
-              <Input
-                type="number"
-                value={form.data.sort_order}
-                onChange={(event) => form.setData("sort_order", Number(event.target.value))}
-              />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Status aktif (published)
-            </label>
-          </div>
+          </FieldGrid>
         </section>
-
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-          <h2 className="text-base font-bold">Media</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Unggah gambar promo. Kartu homepage memakai rasio 3:4.
-          </p>
-          <Field id="image" label="Upload gambar" className="mt-4" error={form.errors.image}>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(event) => form.setData("image", event.target.files?.[0] ?? null)}
-            />
-          </Field>
-          {previewUrl ? (
-            <div className="mt-4 max-w-xs overflow-hidden rounded-md border border-border">
-              <ResponsiveImage src={previewUrl} alt="Pratinjau" wrapperClassName="aspect-[3/4]" />
-            </div>
-          ) : null}
-        </section>
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Tambah promo"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href={indexHref}>Batal</Link>
-          </Button>
-        </div>
       </form>
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        multiple={false}
+        kind="image"
+        title="Pilih Gambar Banner Promo"
+        onPick={(picked) => {
+          const asset = picked[0]
+          if (!asset) return
+          form.setData("media_asset_id", String(asset.assetId))
+          setPickedPreview(asset.thumbUrl)
+          setPickerOpen(false)
+        }}
+      />
     </AdminLayout>
   )
 }

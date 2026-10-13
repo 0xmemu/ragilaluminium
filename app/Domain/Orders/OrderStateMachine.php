@@ -1,0 +1,146 @@
+<?php
+
+namespace App\Domain\Orders;
+
+use App\Models\EventLog;
+use App\Models\Order;
+use App\Models\Payment;
+use Closure;
+use DomainException;
+use Illuminate\Support\Facades\DB;
+
+class OrderStateMachine
+{
+    /** @var array<string, list<string>> */
+    private const ORDER_TRANSITIONS = [
+        'awaiting_confirmation' => ['processing', 'issue', 'cancelled'],
+        'processing' => ['shipped', 'issue', 'cancelled'],
+        // Retur dari shipped: paket ditolak/dikembalikan kurir sebelum
+        // diterima pembeli (scan returned J&T), belum pernah lunas.
+        'shipped' => ['delivered', 'issue', 'return_in_process'],
+        'delivered' => ['completed', 'issue', 'return_in_process'],
+        'issue' => ['processing', 'shipped', 'delivered'],
+        'return_in_process' => ['completed', 'issue', 'return_completed'],
+        // Retur Selesai: terminal , pesanan ditutup sebagai retur (tab "Retur Selesai").
+        'return_completed' => [],
+        'completed' => ['return_in_process'],
+        'cancelled' => [],
+    ];
+
+    /** @var array<string, list<string>> */
+    private const CARRIER_ORDER_TRANSITIONS = [
+        'processing' => ['delivered', 'return_in_process'],
+        'shipped' => ['delivered', 'return_in_process'],
+    ];
+
+    /** @var array<string, list<string>> */
+    private const SHIPPING_TRANSITIONS = [
+        // Pipeline tracking J&T , status internal sesuai docs open.jtcargo.co.id
+        // (orderStatus 100-105 + scanType 1/3/4/5/10/11/12/13 + scanTypeCode 100/101)
+        'tracking_pending' => ['picked_up', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'picked_up' => ['in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'in_transit' => ['delivered', 'returned', 'cancelled', 'exception'],
+        'delivered' => ['returned'],
+        'returned' => [],
+        'cancelled' => [],
+        'exception' => ['in_transit', 'delivered', 'returned', 'cancelled'],
+        'unknown' => ['tracking_pending', 'picked_up', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        // Legacy (data lama tetap bisa lanjut ke pipeline baru)
+        'pending_pickup' => ['picked_up', 'in_process', 'in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+        'in_process' => ['in_transit', 'delivered', 'returned', 'cancelled', 'exception'],
+    ];
+
+    public function canTransition(Order|string $order, string $to, string $source = 'admin'): bool
+    {
+        $from = $order instanceof Order ? $order->order_status : $order;
+
+        if ($from === $to) {
+            return array_key_exists($from, self::ORDER_TRANSITIONS);
+        }
+
+        $allowed = self::ORDER_TRANSITIONS[$from] ?? [];
+
+        if ($source === 'carrier') {
+            $allowed = array_values(array_unique([
+                ...$allowed,
+                ...(self::CARRIER_ORDER_TRANSITIONS[$from] ?? []),
+            ]));
+        }
+
+        return in_array($to, $allowed, true);
+    }
+
+    public function canTransitionShipping(string $from, string $to): bool
+    {
+        if ($from === $to) {
+            return array_key_exists($from, self::SHIPPING_TRANSITIONS);
+        }
+
+        return in_array($to, self::SHIPPING_TRANSITIONS[$from] ?? [], true);
+    }
+
+    /**
+     * @param  array<string, bool|float|int|string|null>  $context
+     * @param  (Closure(Order): void)|null  $beforeTransition
+     */
+    public function transition(
+        Order $order,
+        string $to,
+        ?int $actorUserId,
+        string $source,
+        array $context = [],
+        ?Closure $beforeTransition = null,
+    ): bool {
+        return DB::transaction(function () use ($order, $to, $actorUserId, $source, $context, $beforeTransition): bool {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $from = $lockedOrder->order_status;
+
+            if ($from === $to) {
+                return false;
+            }
+
+            if (! $this->canTransition($from, $to, $source)) {
+                throw new DomainException("Transisi status pesanan {$from} → {$to} tidak diizinkan.");
+            }
+
+            if ($beforeTransition !== null) {
+                $beforeTransition($lockedOrder);
+            }
+
+            $lockedOrder->update([
+                'order_status' => $to,
+                'updated_by_user_id' => $actorUserId,
+            ]);
+
+            EventLog::create([
+                'event_type' => 'order_status_changed',
+                'entity_type' => 'order',
+                'entity_id' => $lockedOrder->id,
+                'payload' => array_filter([
+                    'from' => $from,
+                    'order_status' => $to,
+                    'source' => $source,
+                    ...$context,
+                ], fn (mixed $value): bool => $value !== null && $value !== ''),
+                'created_by_user_id' => $actorUserId,
+                'created_at' => now(),
+            ]);
+
+            // Pesanan ditolak/dikembalikan kurir sebelum lunas: tutup payment
+            // pending supaya tidak menggantung sebagai "COD Belum Selesai".
+            // Barang kembali ke gudang dan tidak direstore ke stok
+            // (keputusan owner 2026-09-19). Efek samping ada di dalam transaksi
+            // yang sama, mengikuti pola restore stok pada pembatalan (ADR-006).
+            // Item 6 antrean: INI satu-satunya tempat penutupan payment pending
+            // untuk return_completed; panggilan ganda di controller dihapus.
+            if ($to === 'return_completed' && $lockedOrder->payment_status !== 'paid') {
+                Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+            }
+
+            return true;
+        });
+    }
+}

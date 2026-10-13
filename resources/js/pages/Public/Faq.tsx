@@ -1,12 +1,11 @@
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { Button } from "@/components/ui/button"
+import { ClosingCTASection } from "@/components/public/closing-cta"
+import { HelpPageFrame } from "@/components/public/help-page-frame"
 import { EmptyState } from "@/components/ui/empty-state"
 import PublicLayout from "@/layouts/public-layout"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
 
@@ -38,13 +37,8 @@ interface FaqGuide {
 export default function Faq({ guide }: { guide: FaqGuide }) {
   const { consultationWhatsApp } = usePage<SharedPageProps>().props
   const whatsappUrl = consultationWhatsApp?.directUrl ?? null
-  const [activeCategory, setActiveCategory] = React.useState<string>("all")
   const [openId, setOpenId] = React.useState<number | null>(null)
-
-  const visibleGroups =
-    activeCategory === "all"
-      ? guide.groups
-      : guide.groups.filter((group) => group.category === activeCategory)
+  const visibleGroups = guide.groups
 
   return (
     <PublicLayout>
@@ -52,93 +46,47 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
         <meta name="description" content={guide.subtitle || "Pertanyaan yang sering diajukan tentang Ragil Aluminium."} />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <div className="container-page py-6">
-          <Breadcrumbs
-            items={[
-              { label: "Beranda", href: routeUrl("home") },
-              { label: "Sering ditanyakan", href: null },
-            ]}
-          />
-        </div>
-        <div className="container-page flex flex-col items-center pb-12 pt-6 text-center lg:pb-16">
-          <h1 className="max-w-2xl text-2xl font-bold leading-snug tracking-tight sm:text-3xl md:text-4xl">
-            {guide.heading}
-          </h1>
-          {guide.subtitle ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">{guide.subtitle}</p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="section-space">
-        <div className="container-page">
-          {guide.categories.length > 1 ? (
-            <div className="mb-8 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={cn(
-                  "min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
-                  activeCategory === "all"
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-surface text-foreground hover:border-foreground/40",
-                )}
-              >
-                Semua
-              </button>
-              {guide.categories.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.key)}
-                  className={cn(
-                    "min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors",
-                    activeCategory === tab.key
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-surface text-foreground hover:border-foreground/40",
-                  )}
-                >
-                  {tab.label}
-                  <span className="ml-1.5 tabular-nums opacity-70">({tab.count})</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
+      <HelpPageFrame
+        title={guide.heading}
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: "Sering ditanyakan", href: null },
+        ]}
+      >
+        <div>
           {visibleGroups.length ? (
-            <div className="mx-auto grid max-w-3xl gap-8">
+            <div className="grid gap-6">
               {visibleGroups.map((group) => (
-                <div key={group.category}>
-                  <h2 className="text-sm font-bold tracking-tight text-foreground sm:text-base">{group.category}</h2>
-                  <ul className="mt-4 divide-y divide-border border border-border bg-surface">
-                    {group.items.map((item) => {
+                <section key={group.category} aria-labelledby={`faq-category-${group.category}`}>
+                  <div className="mb-2.5 flex items-end justify-between gap-3">
+                    <h2 id={`faq-category-${group.category}`} className="text-sm font-bold tracking-tight text-foreground">
+                      {group.category}
+                    </h2>
+                  </div>
+                  <ul className="overflow-hidden rounded-lg border border-border bg-surface">
+                    {group.items.map((item, itemIndex) => {
                       const open = openId === item.id
                       const panelId = `faq-panel-${item.id}`
                       return (
-                        <li key={item.id}>
+                        <li key={item.id} className="border-b border-border last:border-b-0">
                           <button
                             type="button"
-                            className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left sm:px-5"
+                            className="flex min-h-14 w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
                             onClick={() => setOpenId(open ? null : item.id)}
                             aria-expanded={open}
                             aria-controls={panelId}
                             id={`faq-trigger-${item.id}`}
                           >
-                            <span className="text-sm font-semibold text-foreground sm:text-base">{item.question}</span>
-                            <Icon
-                              name={open ? "chevron-up" : "chevron-down"}
-                              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                              aria-hidden="true"
-                            />
+                            <span className="flex min-w-0 items-start gap-3">
+                              <span className="tabular-nums mt-0.5 text-xs font-bold text-primary/70">{String(itemIndex + 1).padStart(2, "0")}</span>
+                              <span className="text-sm font-semibold leading-5 text-foreground">{item.question}</span>
+                            </span>
+                            <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${open ? "bg-primary/10 text-primary" : "bg-surface-muted text-muted-foreground"}`}>
+                              <Icon name={open ? "chevron-up" : "chevron-down"} className="size-3.5" aria-hidden="true" />
+                            </span>
                           </button>
                           {open ? (
-                            <div
-                              id={panelId}
-                              role="region"
-                              aria-labelledby={`faq-trigger-${item.id}`}
-                              className="border-t border-border px-4 pb-4 pt-3 sm:px-5"
-                            >
+                            <div id={panelId} role="region" aria-labelledby={`faq-trigger-${item.id}`} className="border-t border-border bg-surface-muted/45 px-4 pb-4 pt-3 sm:px-5">
                               <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.answer}</p>
                             </div>
                           ) : null}
@@ -146,7 +94,7 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
                       )
                     })}
                   </ul>
-                </div>
+                </section>
               ))}
             </div>
           ) : (
@@ -157,27 +105,19 @@ export default function Faq({ guide }: { guide: FaqGuide }) {
               className="mx-auto max-w-lg"
             />
           )}
-
-          <div className="mx-auto mt-12 max-w-xl text-center">
-            <p className="text-sm text-muted-foreground">Tidak menemukan jawaban?</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button asChild variant="secondary">
-                <Link href={routeUrl("cara-pemesanan")}>Lihat cara pemesanan</Link>
-              </Button>
-              <Button asChild>
-                {whatsappUrl ? (
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    <Icon name="whatsapp" className="h-4 w-4" aria-hidden="true" />
-                    Chat WhatsApp
-                  </a>
-                ) : (
-                  <Link href={routeUrl("contact")}>Hubungi kami</Link>
-                )}
-              </Button>
-            </div>
-          </div>
         </div>
-      </section>
+      </HelpPageFrame>
+
+      <ClosingCTASection
+        pageKey="faq"
+        eyebrow="Masih punya pertanyaan?"
+        heading="Tim kami siap membantu lewat WhatsApp"
+        compact
+        actions={[
+          { label: "Chat WhatsApp", href: whatsappUrl ?? routeUrl("contact"), variant: "primary", whatsappIcon: true, external: true },
+          { label: "Cara pemesanan", href: routeUrl("cara-pemesanan"), variant: "secondary" },
+        ]}
+      />
     </PublicLayout>
   )
 }

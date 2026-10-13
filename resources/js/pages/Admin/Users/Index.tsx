@@ -1,24 +1,25 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface UserRow {
   id: number
   no: number
   name: string
-  email: string
+  username: string
   status: string
   is_self: boolean
   created_at?: string | null
@@ -52,15 +53,12 @@ export default function UsersIndex({
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
   function apply(next?: Partial<{ q: string; status: string; sort: string }>) {
-    router.get(
-      routeUrl("admin.users.index"),
-      {
-        q: next?.q ?? q,
-        status: next?.status ?? status,
-        sort: next?.sort ?? sort,
-      },
-      { preserveState: true, preserveScroll: true },
-    )
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.status !== undefined) dikirim.status = next.status
+    if (next?.sort !== undefined) dikirim.sort = next.sort
+    navigateFilter("admin.users.index", { q, status, sort }, dikirim, { replace: false })
   }
 
   function postStatus(url: string, id: number) {
@@ -79,34 +77,47 @@ export default function UsersIndex({
         <Button asChild>
           <Link href={createHref}>
             <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah admin
+            Tambah
           </Link>
         </Button>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      {/* Baris kontrol seragam: search | filter/sort */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari nama atau username",
         }}
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value)
+              apply({ sort: event.target.value })
+            }}
+            aria-label="Urutkan"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
+        className="mb-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari nama atau email"
-          className="min-w-[16rem] flex-1"
-        />
         <Select
+          className="w-40"
           value={status}
           onChange={(event) => {
-            const value = event.target.value
-            setStatus(value)
-            apply({ status: value })
+            setStatus(event.target.value)
+            apply({ status: event.target.value })
           }}
-          className="w-40"
+          aria-label="Filter status"
         >
           {statusOptions.map((option) => (
             <option key={option.value || "all-status"} value={option.value}>
@@ -114,34 +125,18 @@ export default function UsersIndex({
             </option>
           ))}
         </Select>
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-40"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+      </ListToolbar>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Nama</th>
-                    <th className="px-3 py-3 font-semibold">Email</th>
+                    <th className="px-3 py-3 font-semibold">Username</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
                     <th className="px-3 py-3 font-semibold text-right">Aksi</th>
                   </tr>
@@ -158,7 +153,7 @@ export default function UsersIndex({
                           <p className="mt-0.5 text-[11px] font-semibold text-primary">Anda</p>
                         ) : null}
                       </td>
-                      <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{row.email}</td>
+                      <td className="px-3 py-3 font-mono text-xs font-semibold text-foreground">{row.username}</td>
                       <td className="px-3 py-3">
                         <StatusBadge status={row.status} />
                       </td>
@@ -167,39 +162,43 @@ export default function UsersIndex({
                           <Button asChild variant="secondary" size="xs">
                             <Link href={row.edit_href}>Edit</Link>
                           </Button>
-                          {row.status === "active" ? (
-                            row.is_self ? (
-                              <Button variant="secondary" size="xs" disabled>
-                                Nonaktifkan
-                              </Button>
+                          <RowActionsMenu>
+                            {row.status === "active" ? (
+                              row.is_self ? (
+                                <DropdownMenuItem disabled>
+                                  Nonaktifkan (Akun Sendiri)
+                                </DropdownMenuItem>
+                              ) : (
+                                <ConfirmAction
+                                  trigger={
+                                    <button
+                                      type="button"
+                                      className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                                      disabled={busyId === row.id}
+                                    >
+                                      Nonaktifkan
+                                    </button>
+                                  }
+                                  title="Nonaktifkan akun?"
+                                  description={`${row.name} tidak dapat login sampai diaktifkan kembali.`}
+                                  confirmLabel="Nonaktifkan"
+                                  processing={busyId === row.id}
+                                  onConfirm={() => postStatus(row.deactivate_url, row.id)}
+                                />
+                              )
                             ) : (
-                              <ConfirmAction
-                                trigger={
-                                  <Button
-                                    variant="destructive"
-                                    size="xs"
-                                    disabled={busyId === row.id}
-                                  >
-                                    Nonaktifkan
-                                  </Button>
-                                }
-                                title="Nonaktifkan akun?"
-                                description={`${row.name} tidak dapat login sampai diaktifkan kembali.`}
-                                confirmLabel="Nonaktifkan"
-                                processing={busyId === row.id}
-                                onConfirm={() => postStatus(row.deactivate_url, row.id)}
-                              />
-                            )
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              size="xs"
-                              disabled={busyId === row.id}
-                              onClick={() => postStatus(row.activate_url, row.id)}
-                            >
-                              Aktifkan
-                            </Button>
-                          )}
+                              <DropdownMenuItem asChild>
+                                <button
+                                  type="button"
+                                  className="w-full text-left"
+                                  disabled={busyId === row.id}
+                                  onClick={() => postStatus(row.activate_url, row.id)}
+                                >
+                                  Aktifkan
+                                </button>
+                              </DropdownMenuItem>
+                            )}
+                          </RowActionsMenu>
                         </RowActions>
                       </td>
                     </tr>
@@ -229,7 +228,7 @@ export default function UsersIndex({
                       <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
                     </Link>
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                  <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
                       <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>
@@ -240,9 +239,9 @@ export default function UsersIndex({
                         <StatusBadge status={row.status} />
                       </dd>
                     </div>
-                    <div className="col-span-2">
-                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Email</dt>
-                      <dd className="mt-1 font-mono text-xs text-muted-foreground">{row.email}</dd>
+                    <div>
+                      <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Username</dt>
+                      <dd className="mt-1 font-mono text-xs font-semibold text-foreground">{row.username}</dd>
                     </div>
                   </dl>
                   <div className="mt-4">

@@ -20,7 +20,7 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Normalize Shopee typos only — do not reinterpret door finishing as window axes.
+ * Normalize Shopee typos only - do not reinterpret door finishing as window axes.
  * "KcaBening" / "KacaRiben" → spaced "Kaca …".
  */
 export function normalizeVariationOption(value: string | null | undefined): string | null {
@@ -98,7 +98,7 @@ function normalizeAxisOption(name: string, option: string): string {
   return cleaned
 }
 
-function variantPairs(variant: ProductVariant): Array<[string, string]> {
+export function variantPairs(variant: ProductVariant): Array<[string, string]> {
   const pairs: Array<[string, string]> = []
 
   const firstName = axisNameForPair(variant.variation_1_name, variant.variation_1_option)
@@ -110,7 +110,7 @@ function variantPairs(variant: ProductVariant): Array<[string, string]> {
   const secondName = axisNameForPair(variant.variation_2_name, variant.variation_2_option)
   const secondOption = normalizeVariationOption(variant.variation_2_option)
   if (secondName && secondOption) {
-    // Keep door finishing as one axis — same two Shopee slots, different semantics than window.
+    // Keep door finishing as one axis - same two Shopee slots, different semantics than window.
     pairs.push([secondName, normalizeAxisOption(secondName, secondOption)])
   }
 
@@ -127,19 +127,40 @@ export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
     })
   })
 
-  const dimensions = new Set(
-    variants
-      .map((variant) => variant.dimension_label ?? variant.dimension_compact)
-      .filter((value): value is string => Boolean(value)),
-  )
+  // Use dimension_compact for Ukuran axis display (e.g. "200x180") and map to label for resolveVariant.
+  const compactToLabel = new Map<string, string>()
+  variants.forEach((variant) => {
+    const compact = variant.dimension_compact
+    const label = variant.dimension_label ?? compact
+    if (compact && label) compactToLabel.set(compact, label)
+  })
+  const dimensions = new Set(compactToLabel.keys())
   if (dimensions.size > 1 && !axes.has("Ukuran")) {
     axes.set("Ukuran", dimensions)
   }
 
   const preferredOrder = ["Arah Buka", "Warna & Kaca", "Warna", "Kaca", "Ukuran"]
+
+  // Urutan opsi varian: ikuti urutan kemunculan alami dari baris varian (urutan di Excel).
+  // Jangan hardcode nama opsi atau memaksakan urutan alfabetis agar katalog fleksibel
+  // terhadap variasi baru apa pun di masa depan.
+  function sortDimensionOptions(options: string[]): string[] {
+    const parseDim = (s: string) => {
+      const m = s.match(/(\d+\.?\d*)\s*[x×]\s*(\d+\.?\d*)/)
+      return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0]
+    }
+    return [...options].sort((a, b) => {
+      const [ah, aw] = parseDim(a)
+      const [bh, bw] = parseDim(b)
+      return ah !== bh ? ah - bh : aw - bw
+    })
+  }
+
   return Array.from(axes, ([name, options]) => ({
     name,
-    options: Array.from(options),
+    // Khusus axis Ukuran sintetis: urutkan secara numerik (Tinggi x Lebar).
+    // Semua axis varian nyata (Warna, Kaca, Bahan, dll.): pertahankan urutan alami dari Excel.
+    options: name === "Ukuran" ? sortDimensionOptions(Array.from(options)) : Array.from(options),
   })).sort((a, b) => {
     const ai = preferredOrder.indexOf(a.name)
     const bi = preferredOrder.indexOf(b.name)
@@ -155,7 +176,7 @@ function variantMatchesSelections(
   const pairs = new Map(variantPairs(variant))
 
   if (axes.some((axis) => axis.name === "Ukuran")) {
-    const dimension = variant.dimension_label ?? variant.dimension_compact
+    const dimension = variant.dimension_compact
     if (dimension) pairs.set("Ukuran", dimension)
   }
 
@@ -179,20 +200,36 @@ export function resolveVariant(
   return variants.find((variant) => variantMatchesSelections(variant, selections, axes)) ?? null
 }
 
-export function firstAvailableSelections(variants: ProductVariant[]): VariantSelections {
-  const first = variants.find((variant) => variant.stock > 0) ?? variants[0]
-  if (!first) return {}
-
-  const axes = variantAxes(variants)
-  const pairs = new Map(variantPairs(first))
-  if (axes.some((axis) => axis.name === "Ukuran")) {
-    const dimension = first.dimension_label ?? first.dimension_compact
-    if (dimension) pairs.set("Ukuran", dimension)
+/**
+ * Selaraskan parameter `variant` di URL dengan varian yang benar-benar terpilih.
+ * Ada varian -> tulis parameternya (tautan bisa dibagikan untuk varian itu).
+ * Belum ada varian -> HAPUS parameternya, supaya tautan yang dibagikan tetap
+ * tautan produk biasa dan tidak mewarisi pilihan lama dari tautan sebelumnya.
+ */
+export function variantUrl(href: string, variantSku: string | null | undefined): string {
+  const url = new URL(href)
+  if (variantSku) {
+    url.searchParams.set("variant", variantSku)
+  } else {
+    url.searchParams.delete("variant")
   }
+  return url.toString()
+}
 
-  return Object.fromEntries(
-    axes
-      .map((axis) => [axis.name, pairs.get(axis.name)] as const)
-      .filter((pair): pair is [string, string] => Boolean(pair[1])),
-  )
+export function firstAvailableSelections(_variants: ProductVariant[]): VariantSelections {
+  // Default: tidak ada opsi yang terpilih. Pengguna harus memilih setiap axis
+  // (Warna, Kaca, dll.) secara eksplisit sebelum varian ditemukan dan
+  // tombol "Tambah ke keranjang" / "Beli Sekarang" bisa diklik.
+  return {}
+}
+
+/** Map compact dimension strings to full labels for resolveVariant matching. */
+export function dimensionLabelMap(variants: ProductVariant[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const v of variants) {
+    const compact = v.dimension_compact
+    const label = v.dimension_label ?? compact
+    if (compact && label) map.set(compact, label)
+  }
+  return map
 }

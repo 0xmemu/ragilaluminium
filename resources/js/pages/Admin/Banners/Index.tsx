@@ -1,17 +1,23 @@
 import { Head, Link, router, useForm } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
+import { routeUrl } from "@/lib/routes"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
+import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Pagination } from "@/components/admin/ui/pagination"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { useAutoRefreshPause } from "@/lib/admin-auto-refresh"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
@@ -28,13 +34,7 @@ interface BannerCard {
   edit_href: string
   publish_url: string
   unpublish_url: string
-}
-
-interface AutoPromotionsProps {
-  enabled: boolean
-  max_slides: number
-  candidate_count: number
-  updateUrl: string
+  destroy_url: string
 }
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -76,30 +76,63 @@ function BannerActions({
       <Button asChild variant="secondary" size="xs">
         <Link href={banner.edit_href}>Edit</Link>
       </Button>
-      {banner.published ? (
+      <RowActionsMenu>
+        {banner.published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Nonaktifkan
+              </button>
+            }
+            title="Nonaktifkan promo?"
+            description="Slide tidak akan tampil di beranda publik."
+            confirmLabel="Nonaktifkan"
+            processing={busy}
+            onConfirm={unpublish}
+          />
+        ) : (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy}
+              onClick={publish}
+            >
+              Aktifkan
+            </button>
+          </DropdownMenuItem>
+        )}
         <ConfirmAction
           trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Nonaktifkan
+            <button
+              type="button"
+              className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+              disabled={busy}
+            >
+              Hapus
             </button>
           }
-          title="Nonaktifkan promo?"
-          description="Slide tidak akan tampil di beranda publik."
-          confirmLabel="Nonaktifkan"
+          title="Hapus promo toko?"
+          description="Banner dihapus permanen beserta file media terkait di penyimpanan."
+          confirmLabel="Hapus permanen"
           processing={busy}
-          onConfirm={unpublish}
+          onConfirm={() => {
+            setBusyId(banner.id)
+            router.delete(banner.destroy_url, { preserveScroll: true, onFinish: () => setBusyId(null) })
+          }}
         />
-      ) : (
-        <Button size="xs" disabled={busy} onClick={publish}>
-          Aktifkan
-        </Button>
-      )}
+      </RowActionsMenu>
     </RowActions>
   )
 }
 
 export default function BannersIndex({
   title,
+  backUrl,
   description,
   viewMode,
   searchQuery,
@@ -107,9 +140,10 @@ export default function BannersIndex({
   banners,
   pagination,
   createHref,
-  autoPromotions,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   viewMode: "list" | "grid"
   searchQuery: string
@@ -117,131 +151,132 @@ export default function BannersIndex({
   banners: BannerCard[]
   pagination: PaginationData
   createHref: string
-  autoPromotions: AutoPromotionsProps
 }) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
-  const autoForm = useForm({
-    enabled: autoPromotions.enabled,
-    max_slides: autoPromotions.max_slides,
+  // Mode Urutkan (owner 2026-09-29): geser urutan lewat pegangan di baris,
+  // angka di form tambah/edit sudah dihapus. Hanya di tampilan List; daftar
+  // tersaring tidak bisa digeser karena posisi target tidak mewakili global.
+  const [reorderMode, setReorderMode] = React.useState(false)
+  // Selama mode Urutkan, muat ulang otomatis dijeda agar geseran tidak terusik.
+  useAutoRefreshPause(reorderMode)
+  // Urutan lokal dipakai HANYA selama mode Urutkan; di luar itu daftar selalu
+  // mengikuti props server supaya filter/pindah halaman tidak menampilkan data basi.
+  const [rows, setRows] = React.useState(banners)
+  // Daftar tersaring tidak bisa diurutkan: posisi target tidak mewakili urutan
+  // global, jadi hasil geser bisa salah tempat. Seragam dengan halaman daftar
+  // lain, tombol Urutkan disembunyikan selagi daftar tersaring.
+  const listTersaring = q !== "" || activeStatus !== "all"
+  const canReorder = reorderMode && !listTersaring && viewMode === "list"
+  const daftar = canReorder ? rows : banners
+  // Kontrak owner 2026-10-12: tombol Simpan urutan hanya relevan setelah
+  // ada geseran yang belum disimpan. Dibandingkan dengan urutan terakhir dari
+  // server, bukan bendera form, karena geseran ditahan di `rows` sampai tombol
+  // simpan urutan ditekan.
+  const dirty = React.useMemo(
+    () =>
+      rows.length !== banners.length ||
+      rows.some((row, index) => row.id !== banners[index]?.id),
+    [rows, banners],
+  )
+  const urutanDasar = ((pagination.current_page ?? 1) - 1) * (pagination.per_page ?? 20)
+  const urutanForm = useForm<{ rows: Array<{ id: number; sort_order: number }> }>({
+    rows: [],
   })
 
-  function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      view: viewMode,
-      q: searchQuery,
-      status: activeStatus,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "view" && value === "grid") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
+  function geser(from: number, to: number) {
+    if (from === to) return
+    setRows((current) => {
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
     })
-    router.get("/admin/banners", next, { preserveState: true, replace: true })
+  }
+
+  const dnd = useRowDragSort({
+    enabled: canReorder,
+    count: daftar.length,
+    onReorder: geser,
+  })
+
+  function mulaiUrutkan() {
+    if (viewMode !== "list") {
+      visit({ view: "list" })
+    }
+    setRows(banners)
+    setReorderMode(true)
+  }
+
+  function batalkanUrutkan() {
+    setRows(banners)
+    urutanForm.setData("rows", [])
+    urutanForm.setDefaults("rows", [])
+    setReorderMode(false)
+  }
+
+  function simpanUrutan() {
+    urutanForm.setData(
+      "rows",
+      rows.map((row, index) => ({ id: row.id, sort_order: urutanDasar + index + 1 })),
+    )
+    urutanForm.put(routeUrl("admin.banners.reorder"), {
+      preserveScroll: true,
+      onSuccess: () => setReorderMode(false),
+    })
+  }
+
+  function visit(params: Record<string, string | undefined>) {
+    navigateFilter(
+      "admin.banners.index",
+      { view: viewMode, q: searchQuery, status: activeStatus },
+      params,
+      { defaults: { view: "grid" } },
+    )
   }
 
   return (
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
+      lockInteraction={reorderMode}
       actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Tambah Promo
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner
+              2026-09-20): Urutkan, lalu Urungkan saat mode aktif, lalu Simpan
+              urutan begitu ada urutan yang benar-benar digeser. Kini memakai
+              komponen bersama, sama seperti halaman daftar lain. */}
+          <ReorderActionButton
+            active={reorderMode}
+            dirty={dirty}
+            processing={urutanForm.processing}
+            disabled={!banners.length || listTersaring}
+            size="sm"
+            onToggle={mulaiUrutkan}
+            onCancel={batalkanUrutkan}
+            onSave={simpanUrutan}
+          />
+          <Button asChild size="sm">
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Tambah
+            </Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold">Banner promosi otomatis</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Produk dengan harga coret atau Flash Sale masuk slide otomatis (bukan baris cms_banners).
-            </p>
-          </div>
-          <StatusBadge status={autoForm.data.enabled ? "active" : "inactive"} />
-        </div>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            autoForm.put(autoPromotions.updateUrl, { preserveScroll: true })
-          }}
-          className="mt-4 grid gap-4 md:grid-cols-[1fr_10rem_auto] md:items-end"
-        >
-          <FormErrorSummary errors={autoForm.errors} className="md:col-span-3" />
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={autoForm.data.enabled}
-              onChange={(event) => autoForm.setData("enabled", event.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Aktifkan banner otomatis
-          </label>
-          <Field id="auto-max-slides" label="Maks. slide" error={autoForm.errors.max_slides}>
-            <Input
-              type="number"
-              min={1}
-              max={8}
-              value={autoForm.data.max_slides}
-              onChange={(event) => autoForm.setData("max_slides", Number(event.target.value))}
-            />
-          </Field>
-          <Button type="submit" disabled={autoForm.processing}>
-            {autoForm.processing ? "Menyimpan..." : "Simpan"}
-          </Button>
-          <p className="text-xs text-muted-foreground md:col-span-3">
-            Kandidat produk:{" "}
-            <span className="font-semibold text-foreground">{autoPromotions.candidate_count}</span>
-          </p>
-        </form>
-      </section>
-
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <form
-            className="min-w-0 flex-1"
-            onSubmit={(event) => {
-              event.preventDefault()
-              visit({ q })
-            }}
-          >
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Cari promo
-            </label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                value={q}
-                onChange={(event) => setQ(event.target.value)}
-                placeholder="Judul atau link"
-              />
-              <Button type="submit" variant="secondary">
-                Cari
-              </Button>
-            </div>
-          </form>
-          <div className="w-full sm:w-48">
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Status
-            </label>
-            <Select
-              className="mt-1.5"
-              value={activeStatus}
-              onChange={(event) => visit({ status: event.target.value })}
-            >
-              <option value="all">Semua status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </Select>
-          </div>
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q }),
+          placeholder: "Judul atau link",
+        }}
+        actions={
           <div className="flex gap-1 rounded-md border border-border p-1">
             <button
               type="button"
@@ -270,25 +305,39 @@ export default function BannersIndex({
               List
             </button>
           </div>
-        </div>
-      </section>
+        }
+      >
+        <Select
+          className="w-full sm:w-48"
+          value={activeStatus}
+          onChange={(event) => visit({ status: event.target.value })}
+          aria-label="Filter status"
+        >
+          <option value="all">Semua status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </Select>
+      </ListToolbar>
+
 
       {!banners.length ? (
         <EmptyState
           className="mt-6"
-          title="Belum ada promo manual"
-          description="Tambah slide promo beranda, atau aktifkan banner otomatis di atas."
+          title="Belum ada banner"
+          description="Tambah slide promo beranda dan publish agar tampil setelah slide pembuka brand."
           action={
             <Button asChild>
-              <Link href={createHref}>Tambah Promo</Link>
+              <Link href={createHref}>Tambah</Link>
             </Button>
           }
         />
       ) : viewMode === "list" ? (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="min-w-full text-left">
-            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
+            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold tracking-tight text-muted-foreground">
               <tr>
+                {canReorder ? <th className="w-12 px-2 py-3" aria-label="Seret" /> : null}
+                <th className="w-12 px-2 py-3">No</th>
                 <th className="px-3 py-3">Promo</th>
                 <th className="px-3 py-3">Urutan</th>
                 <th className="px-3 py-3">Diperbarui</th>
@@ -297,8 +346,24 @@ export default function BannersIndex({
               </tr>
             </thead>
             <tbody>
-              {banners.map((banner) => (
-                <tr key={banner.id} className="border-b border-border last:border-0">
+              {daftar.map((banner, index) => (
+                <tr
+                  key={banner.id}
+                  className={cn(
+                    "border-b border-border transition-colors hover:bg-muted/40 last:border-0",
+                    dnd.draggingIndex === index && "opacity-40",
+                    dnd.targetIndex === index && canReorder && "bg-muted/50",
+                  )}
+                  {...(canReorder ? dnd.rowProps(index) : {})}
+                >
+                  {canReorder ? (
+                    <td className="w-12 px-2 py-3 align-middle">
+                      <ReorderDragHandle enabled />
+                    </td>
+                  ) : null}
+                  <td className="w-12 px-2 py-3 align-middle">
+                    <span className="text-xs text-muted-foreground tabular-nums">{urutanDasar + index + 1}</span>
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
                       <div className="size-14 shrink-0 overflow-hidden rounded bg-muted">
@@ -318,7 +383,7 @@ export default function BannersIndex({
                       </div>
                     </div>
                   </td>
-                  <td className="tabular-nums px-3 py-3 text-sm">{banner.sort_order}</td>
+                  <td className="tabular-nums px-3 py-3 text-sm">{urutanDasar + index + 1}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">
                     {formatDateTime(banner.updated_at)}
                   </td>
@@ -338,12 +403,12 @@ export default function BannersIndex({
           {banners.map((banner) => (
             <article
               key={banner.id}
-              className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
+              className="overflow-hidden rounded-xl border border-border bg-card shadow-soft"
             >
               <ResponsiveImage
                 src={banner.image_url}
                 alt={banner.title ?? `Promo #${banner.id}`}
-                wrapperClassName="aspect-[16/9]"
+                wrapperClassName="aspect-[1024/426]"
               />
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">

@@ -3,17 +3,24 @@ import * as React from "react"
 
 import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { ReorderActionButton } from "@/components/admin/reorder-action-button"
+import { ReorderDragHandle } from "@/components/admin/reorder-drag-handle"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Select } from "@/components/admin/ui/select"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { cn } from "@/lib/utils"
+import { useRowDragSort } from "@/hooks/use-row-drag-sort"
+import { useReorderMode } from "@/hooks/use-reorder-mode"
 import { routeUrl } from "@/lib/routes"
 import type { SharedPageProps } from "@/types"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface FaqRow {
   id: number
@@ -74,13 +81,14 @@ export default function FaqIndex({
 
   const [q, setQ] = React.useState(filters.q)
   const [category, setCategory] = React.useState(filters.category)
-  const [reorderMode, setReorderMode] = React.useState(false)
-  const [rows, setRows] = React.useState(initialRows)
-  const [openId, setOpenId] = React.useState<number | null>(null)
   const [editingId, setEditingId] = React.useState<number | null>(null)
   const [busyId, setBusyId] = React.useState<number | null>(null)
   const [showCreate, setShowCreate] = React.useState(openCreate)
   const [showMeta, setShowMeta] = React.useState(openMeta)
+  // Kontrak halaman pengaturan (ADR-023): bagian yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci, seragam dengan bagian Slide bar promo di
+  // halaman Bar Promo. Isian baru hidup setelah admin menekan Edit.
+
   const createPanelRef = React.useRef<HTMLElement | null>(null)
 
   const metaForm = useForm({
@@ -103,22 +111,43 @@ export default function FaqIndex({
     rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
     status,
   })
+  // Mode Urutkan dikelola hook bersama; nama variabel dipertahankan supaya JSX
+  // dan tombol header tidak perlu berubah.
+  const {
+    mode: reorderMode,
+    setMode: setReorderMode,
+    orderedRows: rows,
+    move: reorderRows,
+    save: saveReorder,
+    cancel: cancelReorder,
+  } = useReorderMode({
+    snapshot: initialRows,
+    form: reorderForm,
+    url: reorderUrl,
+    buildItems: (list) => list.map((row, index) => ({ id: row.id, sort_order: index + 1 })),
+    numbering: true,
+    beforeSave: () => reorderForm.setData("status", status),
+    submitOptions: { preserveScroll: true },
+    onSync: () => setEditingId(null),
+  })
+
 
   React.useEffect(() => {
-    setRows(initialRows)
-    setEditingId(null)
+    // Pindah tab membatalkan mode urut. Mode urut tidak boleh direset saat rows
+    // berganti, karena menyalakan mode urut membersihkan pencarian dan itu
+    // memuat ulang rows, sehingga mode urut akan langsung mati sendiri.
     setReorderMode(false)
-    reorderForm.setData({
-      rows: initialRows.map((row, index) => ({ id: row.id, sort_order: index })),
-      status,
-    })
-  }, [initialRows, status])
+  }, [status, setReorderMode])
 
   React.useEffect(() => {
+    // Query flags are navigation inputs, while the local state drives the panel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowCreate(openCreate)
   }, [openCreate])
 
   React.useEffect(() => {
+    // Query flags are navigation inputs, while the local state drives the panel.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowMeta(openMeta)
   }, [openMeta])
 
@@ -127,8 +156,12 @@ export default function FaqIndex({
       createForm.reset()
       createForm.clearErrors()
       createForm.setData("category", categories[0] ?? "")
+      // Close the create panel after the server confirms creation.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowCreate(false)
     }
+    // `useForm` returns a new facade on every render; the flash transition is the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash?.success])
 
   React.useEffect(() => {
@@ -173,23 +206,41 @@ export default function FaqIndex({
     })
   }
 
-  function move(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= rows.length) return
-    const next = [...rows]
-    const [item] = next.splice(index, 1)
-    next.splice(target, 0, item)
-    const numbered = next.map((row, i) => ({ ...row, no: i + 1, sort_order: i }))
-    setRows(numbered)
-    reorderForm.setData(
-      "rows",
-      numbered.map((row, i) => ({ id: row.id, sort_order: i })),
-    )
+
+
+  /** Batalkan mode urut: kembalikan urutan ke snapshot server lalu keluar. */
+
+  // Geser-urut hanya sahih saat daftar memuat seluruh baris tab ini: payload
+  // simpan hanya berisi baris yang tampil, jadi daftar tersaring akan menulis
+  // sort_order parsial dan menabrak urutan baris di luar filter.
+  // `status` dikecualikan karena tab memang memisahkan lingkup: urutan yang
+  // ditulis hanya untuk baris di tab itu sendiri. Pencarian juga tidak dikunci
+  // karena tombol Urutkan membersihkannya sendiri.
+  const listTersaring = filters.q.trim() !== "" || filters.category !== ""
+  const filterKunci = filters.category !== ""
+
+  function toggleReorder() {
+    setReorderMode(true)
+    // Urutan tidak bisa digeser saat daftar tersaring, jadi pencarian
+    // dibersihkan sekaligus saat mode urut dinyalakan (kontrak owner 2026-09-20).
+    if (filters.q) {
+      setQ("")
+      apply({ q: "" })
+    }
   }
+
+  // Ikon tarik hanya ada saat mode Urutkan aktif, tab bukan arsip, dan daftar
+  // tidak tersaring (kontrak owner 2026-09-20, direvisi).
+  const dragAktif = reorderMode && !isArchivedTab && !listTersaring
+
+  const dnd = useRowDragSort({
+    enabled: dragAktif,
+    count: rows.length,
+    onReorder: reorderRows,
+  })
 
   function startEdit(row: FaqRow) {
     setEditingId(row.id)
-    setOpenId(row.id)
     editForm.setData({
       question: row.question,
       answer: row.answer,
@@ -209,15 +260,36 @@ export default function FaqIndex({
     { key: "archived", label: "FAQ Diarsipkan", count: statusCounts.archived },
   ]
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangMeta = {
+    fields: {"title": "Judul CMS", "heading": "Judul hero"},
+    requireChange: true,
+  }
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangBuat = {
+    fields: {"question": "Pertanyaan", "answer": "Jawaban", "category": "Kategori"},
+    requireChange: false,
+  }
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangUbah = {
+    fields: {"question": "Pertanyaan", "answer": "Jawaban", "category": "Kategori"},
+    requireChange: true,
+  }
+
   return (
     <AdminLayout
       title={title}
       description={description}
+      lockInteraction={reorderMode}
       actions={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary">
             <a href={previewUrl} target="_blank" rel="noreferrer">
-              Lihat halaman publik
+              Lihat di toko
             </a>
           </Button>
           <Button type="button" variant="secondary" onClick={toggleMeta}>
@@ -225,31 +297,25 @@ export default function FaqIndex({
           </Button>
           {!isArchivedTab ? (
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!rows.length}
-                onClick={() => setReorderMode((value) => !value)}
-              >
-                {reorderMode ? "Selesai atur urutan" : "Atur urutan"}
-              </Button>
-              {reorderMode ? (
-                <Button
-                  type="button"
-                  disabled={reorderForm.processing}
-                  onClick={() => {
-                    reorderForm.setData("status", status)
-                    reorderForm.put(reorderUrl)
-                  }}
-                >
-                  {reorderForm.processing ? "Menyimpan..." : "Simpan urutan"}
-                </Button>
-              ) : (
+              {/* Satu tombol yang berubah peran mengikuti keadaan (kontrak owner 2026-09-20):
+                  Urutkan -> Urungkan saat mode aktif -> Simpan urutan begitu ada urutan
+                  yang benar-benar digeser. */}
+              <ReorderActionButton
+                active={reorderMode}
+                dirty={reorderForm.isDirty}
+                processing={reorderForm.processing}
+                disabled={!rows.length || filterKunci}
+                disabledReason="Kosongkan filter kategori dulu supaya tombol Urutkan bisa dipakai."
+                onToggle={toggleReorder}
+                onCancel={cancelReorder}
+                onSave={saveReorder}
+              />
+              {!reorderMode ? (
                 <Button type="button" onClick={openCreatePanel}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
                   Tambah
                 </Button>
-              )}
+              ) : null}
             </>
           ) : null}
         </div>
@@ -291,47 +357,63 @@ export default function FaqIndex({
       </div>
 
       {showMeta ? (
-        <section className="mt-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
-          <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Judul hero dan status terbit — jarang diubah. Tutup panel ini setelah selesai.
-          </p>
+        <section className="mt-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold tracking-tight text-muted-foreground">Pengaturan halaman</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Judul hero dan status terbit - jarang diubah. Tutup panel ini setelah selesai.
+              </p>
+            </div>
+          </div>
           <form
-            className="mt-4 grid gap-4 sm:grid-cols-2"
+            id="faq-meta-form"
+            className="mt-4 space-y-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, metaForm, gerbangMeta)) return
               event.preventDefault()
-              metaForm.put(metaUrl)
+              metaForm.put(metaUrl, {
+              preserveScroll: true,
+              onSuccess: () => {
+                metaForm.setDefaults()
+                setShowMeta(false)
+              },
+            })
             }}
           >
-            <Field id="faq-title" label="Judul CMS">
-              <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
-            </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:pt-7">
-              <input
-                type="checkbox"
+            <FieldGrid>
+              <Field id="faq-title" label="Judul CMS">
+                <Input value={metaForm.data.title} onChange={(event) => metaForm.setData("title", event.target.value)} />
+              </Field>
+              <CheckboxField
+                id="faq-published"
                 checked={metaForm.data.published}
-                onChange={(event) => metaForm.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
+                onChange={(checked) => metaForm.setData("published", checked)}
+                label="Terbitkan halaman"
               />
-              Terbitkan halaman
-            </label>
-            <Field id="faq-heading" label="Judul hero" className="sm:col-span-2">
-              <Input
-                value={metaForm.data.heading}
-                onChange={(event) => metaForm.setData("heading", event.target.value)}
-              />
-            </Field>
-            <Field id="faq-subtitle" label="Subjudul" className="sm:col-span-2">
-              <Textarea
-                rows={2}
-                value={metaForm.data.subtitle}
-                onChange={(event) => metaForm.setData("subtitle", event.target.value)}
-              />
-            </Field>
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <Button type="submit" disabled={metaForm.processing}>
-                {metaForm.processing ? "Menyimpan..." : "Simpan pengaturan"}
-              </Button>
+              <Field id="faq-heading" label="Judul hero" className="sm:col-span-2">
+                <Input
+                  value={metaForm.data.heading}
+                  onChange={(event) => metaForm.setData("heading", event.target.value)}
+                />
+              </Field>
+              <Field id="faq-subtitle" label="Subjudul" className="sm:col-span-2">
+                <Textarea
+                  rows={2}
+                  value={metaForm.data.subtitle}
+                  onChange={(event) => metaForm.setData("subtitle", event.target.value)}
+                />
+              </Field>
+            </FieldGrid>
+            {/* Tombol simpan duduk di section ini supaya jelas ia menyimpan meta halaman,
+                bukan daftar FAQ di bawahnya. Ikut tersembunyi bersama formnya. */}
+            <div className="flex flex-wrap gap-2">
+              <SubmitGateButton
+                form={metaForm}
+                {...gerbangMeta}
+              >
+                Simpan pengaturan
+              </SubmitGateButton>
               <Button type="button" variant="secondary" onClick={() => setShowMeta(false)}>
                 Tutup
               </Button>
@@ -343,7 +425,7 @@ export default function FaqIndex({
       {showCreate && !isArchivedTab ? (
         <section
           ref={createPanelRef}
-          className="mt-5 rounded-lg border border-primary/25 bg-surface p-5 shadow-sm sm:p-6"
+          className="mt-4 rounded-lg border border-primary/25 bg-surface p-5 shadow-sm sm:p-6"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -359,6 +441,7 @@ export default function FaqIndex({
           <form
             className="mt-4 grid gap-4"
             onSubmit={(event) => {
+              if (!gerbangBolehLanjut(event, createForm, gerbangBuat)) return
               event.preventDefault()
               createForm.post(storeUrl, { preserveScroll: true })
             }}
@@ -393,9 +476,14 @@ export default function FaqIndex({
               />
             </Field>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={createForm.processing || reorderMode}>
-                {createForm.processing ? "Menyimpan..." : "Simpan FAQ"}
-              </Button>
+                            <SubmitGateButton
+                form={createForm}
+                {...gerbangBuat}
+                extraDisabled={reorderMode}
+                extraDisabledReason="Selesaikan atau batalkan mode urut dulu."
+              >
+                Simpan FAQ
+              </SubmitGateButton>
               <Button type="button" variant="secondary" onClick={closeCreatePanel}>
                 Batal
               </Button>
@@ -404,25 +492,17 @@ export default function FaqIndex({
         </section>
       ) : null}
 
-      {reorderMode ? (
-        <div className="mt-5 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-          Geser naik/turun lalu klik Simpan urutan.
-        </div>
-      ) : null}
 
-      <form
-        className="mt-5 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari pertanyaan atau jawaban",
         }}
+
+        className="mt-4"
       >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari pertanyaan atau jawaban"
-          className="min-w-[16rem] flex-1"
-        />
         <Select
           value={category}
           onChange={(event) => {
@@ -430,7 +510,7 @@ export default function FaqIndex({
             setCategory(value)
             apply({ category: value })
           }}
-          className="min-w-[14rem]"
+          className="w-56"
         >
           {categoryOptions.map((option) => (
             <option key={option.value || "all"} value={option.value}>
@@ -438,202 +518,198 @@ export default function FaqIndex({
             </option>
           ))}
         </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+      </ListToolbar>
 
-      <section className="mt-4 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {rows.length ? (
-          <ul className="divide-y divide-border">
-            {rows.map((row, index) => {
-              const open = openId === row.id
-              const editing = editingId === row.id
-              return (
-                <li key={row.id} className="p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start gap-3">
-                    {reorderMode && !isArchivedTab ? (
-                      <div className="flex flex-col gap-1">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-7 px-2 text-xs"
-                          disabled={index === 0}
-                          onClick={() => move(index, -1)}
-                        >
-                          ↑
-                        </Button>
-                        <span className="text-center tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-7 px-2 text-xs"
-                          disabled={index === rows.length - 1}
-                          onClick={() => move(index, 1)}
-                        >
-                          ↓
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="mt-1 tabular-nums text-xs text-muted-foreground">{row.no}</span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      {editing ? (
-                        <form
-                          className="grid gap-3"
-                          onSubmit={(event) => {
-                            event.preventDefault()
-                            editForm.put(routeUrl("admin.faq.update", { faq: row.id }), {
-                              preserveScroll: true,
-                              onSuccess: () => cancelEdit(),
-                            })
-                          }}
-                        >
-                          <FormErrorSummary errors={editForm.errors} />
-                          <Field id={`faq-edit-q-${row.id}`} label="Pertanyaan" required error={editForm.errors.question}>
-                            <Input
-                              value={editForm.data.question}
-                              onChange={(event) => editForm.setData("question", event.target.value)}
-                            />
-                          </Field>
-                          <Field id={`faq-edit-c-${row.id}`} label="Kategori" required error={editForm.errors.category}>
-                            <Select
-                              value={editForm.data.category}
-                              onChange={(event) => editForm.setData("category", event.target.value)}
-                            >
-                              {categories.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                          <Field id={`faq-edit-a-${row.id}`} label="Jawaban" required error={editForm.errors.answer}>
-                            <Textarea
-                              rows={4}
-                              value={editForm.data.answer}
-                              onChange={(event) => editForm.setData("answer", event.target.value)}
-                            />
-                          </Field>
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="submit" disabled={editForm.processing}>
-                              {editForm.processing ? "Menyimpan..." : "Simpan perubahan"}
-                            </Button>
-                            <Button type="button" variant="secondary" onClick={cancelEdit}>
-                              Batal
-                            </Button>
-                          </div>
-                        </form>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="flex w-full items-start justify-between gap-3 text-left"
-                            onClick={() => setOpenId(open ? null : row.id)}
-                            aria-expanded={open}
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left">
+              <thead className="border-b border-border text-xs font-medium text-muted-foreground">
+                <tr>
+                  {dragAktif ? <th className="w-12 px-3 py-2.5" aria-label="Seret" /> : null}
+                  <th className="w-10 px-3 py-2.5 text-right">No</th>
+                  <th className="px-3 py-2.5">Pertanyaan</th>
+                  <th className="px-3 py-2.5">Jawaban</th>
+                  <th className="px-3 py-2.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => {
+                  const kolom = dragAktif ? 5 : 4
+                  // Edit tetap di tempat: baris yang sedang diedit berubah jadi
+                  // satu sel selebar tabel berisi formnya, jadi admin tidak
+                  // berpindah halaman dan konteks daftar tidak hilang.
+                  if (editingId === row.id) {
+                    return (
+                      <tr key={row.id} className="border-b border-border last:border-0">
+                        <td colSpan={kolom} className="px-3 py-3">
+                          <form
+                            className="grid gap-3"
+                            onSubmit={(event) => {
+                              if (!gerbangBolehLanjut(event, editForm, gerbangUbah)) return
+                              event.preventDefault()
+                              editForm.put(routeUrl("admin.faq.update", { faq: row.id }), {
+                                preserveScroll: true,
+                                onSuccess: () => cancelEdit(),
+                              })
+                            }}
                           >
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                                {row.category}
-                              </p>
-                              <p className="mt-1 text-sm font-bold text-foreground">{row.question}</p>
+                            <FormErrorSummary errors={editForm.errors} />
+                            <Field id={`faq-edit-q-${row.id}`} label="Pertanyaan" required error={editForm.errors.question}>
+                              <Input
+                                value={editForm.data.question}
+                                onChange={(event) => editForm.setData("question", event.target.value)}
+                              />
+                            </Field>
+                            <Field id={`faq-edit-c-${row.id}`} label="Kategori" required error={editForm.errors.category}>
+                              <Select
+                                value={editForm.data.category}
+                                onChange={(event) => editForm.setData("category", event.target.value)}
+                              >
+                                {categories.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
+                            <Field id={`faq-edit-a-${row.id}`} label="Jawaban" required error={editForm.errors.answer}>
+                              <Textarea
+                                rows={4}
+                                value={editForm.data.answer}
+                                onChange={(event) => editForm.setData("answer", event.target.value)}
+                              />
+                            </Field>
+                            <div className="flex flex-wrap gap-2">
+                                                            <SubmitGateButton
+                                form={editForm}
+                                {...gerbangUbah}
+                              >
+                                Simpan
+                              </SubmitGateButton>
+                              <Button type="button" variant="secondary" onClick={cancelEdit}>
+                                Batal
+                              </Button>
                             </div>
-                            <Icon
-                              name={open ? "chevron-up" : "chevron-down"}
-                              className="mt-1 size-4 shrink-0 text-muted-foreground"
-                              aria-hidden="true"
-                            />
-                          </button>
-                          {open ? (
-                            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                              {row.answer}
-                            </p>
-                          ) : null}
-                          <RowActions className="mt-3 justify-start">
-                            {!isArchivedTab ? (
-                              <>
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="xs"
-                                  disabled={reorderMode}
-                                  onClick={() => startEdit(row)}
-                                >
-                                  Edit
-                                </Button>
-                                <ConfirmAction
-                                  trigger={
-                                    <button
-                                      type="button"
-                                      className={cn(rowActionTextClass, "text-muted-foreground")}
-                                      disabled={busyId === row.id || reorderMode}
-                                    >
-                                      Arsipkan
-                                    </button>
-                                  }
-                                  title="Arsipkan FAQ?"
-                                  description="FAQ hilang dari halaman publik, tetap bisa diaktifkan lagi dari tab Diarsipkan."
-                                  confirmLabel="Arsipkan"
-                                  processing={busyId === row.id}
-                                  onConfirm={() => {
-                                    setBusyId(row.id)
-                                    setOpenId(null)
-                                    router.post(row.archive_url, {}, {
-                                      preserveScroll: true,
-                                      onFinish: () => setBusyId(null),
-                                    })
-                                  }}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="xs"
-                                  disabled={busyId === row.id}
-                                  onClick={() => {
-                                    setBusyId(row.id)
-                                    router.post(row.unarchive_url, {}, {
-                                      preserveScroll: true,
-                                      onFinish: () => setBusyId(null),
-                                    })
-                                  }}
-                                >
-                                  Aktifkan
-                                </Button>
-                                <ConfirmAction
-                                  trigger={
-                                    <button
-                                      type="button"
-                                      className={cn(rowActionTextClass, "text-destructive")}
-                                      disabled={busyId === row.id}
-                                    >
-                                      Hapus permanen
-                                    </button>
-                                  }
-                                  title="Hapus FAQ permanen?"
-                                  description="Tidak bisa dikembalikan. Arsipkan saja jika masih mungkin dibutuhkan."
-                                  confirmLabel="Hapus permanen"
-                                  processing={busyId === row.id}
-                                  onConfirm={() => {
-                                    setBusyId(row.id)
-                                    setOpenId(null)
-                                    router.delete(row.destroy_url, {
-                                      preserveScroll: true,
-                                      onFinish: () => setBusyId(null),
-                                    })
-                                  }}
-                                />
-                              </>
-                            )}
-                          </RowActions>
-                        </>
+                          </form>
+                        </td>
+                      </tr>
+                    )
+                  }
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        "border-b border-border align-top last:border-0",
+                        dnd.draggingIndex === index && "opacity-40",
+                        dnd.targetIndex === index && dragAktif && "bg-muted/50",
                       )}
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+                      {...(dragAktif ? dnd.rowProps(index) : {})}
+                    >
+                      {/* Ikon tarik hanya dirender saat mode Urutkan aktif, jadi tidak
+                          ada kolom kosong di luar mode itu (kontrak 2026-09-20, direvisi). */}
+                      {dragAktif ? (
+                        <td className="px-3 py-2.5 align-top">
+                          <ReorderDragHandle enabled />
+                        </td>
+                      ) : null}
+                      <td className="px-3 py-2.5 text-right align-top tabular-nums text-xs text-muted-foreground">
+                        {row.no}
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
+                        <p className="text-[11px] font-semibold tracking-tight text-muted-foreground">
+                          {row.category}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">{row.question}</p>
+                      </td>
+                      <td className="max-w-[34rem] px-3 py-2.5 align-top">
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{row.answer}</p>
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-top">
+                        <RowActions className="justify-end">
+                          {!isArchivedTab ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="xs"
+                                disabled={reorderMode}
+                                onClick={() => startEdit(row)}
+                              >
+                                Edit
+                              </Button>
+                              <ConfirmAction
+                                trigger={
+                                  <button
+                                    type="button"
+                                    className={cn(rowActionTextClass, "text-muted-foreground")}
+                                    disabled={busyId === row.id || reorderMode}
+                                  >
+                                    Arsipkan
+                                  </button>
+                                }
+                                title="Arsipkan FAQ?"
+                                description="FAQ hilang dari halaman publik, tetap bisa diaktifkan lagi dari tab Diarsipkan."
+                                confirmLabel="Arsipkan"
+                                processing={busyId === row.id}
+                                onConfirm={() => {
+                                  setBusyId(row.id)
+                                  router.post(row.archive_url, {}, {
+                                    preserveScroll: true,
+                                    onFinish: () => setBusyId(null),
+                                  })
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="xs"
+                                disabled={busyId === row.id}
+                                onClick={() => {
+                                  setBusyId(row.id)
+                                  router.post(row.unarchive_url, {}, {
+                                    preserveScroll: true,
+                                    onFinish: () => setBusyId(null),
+                                  })
+                                }}
+                              >
+                                Aktifkan
+                              </Button>
+                              <ConfirmAction
+                                trigger={
+                                  <button
+                                    type="button"
+                                    className={cn(rowActionTextClass, "text-destructive")}
+                                    disabled={busyId === row.id}
+                                  >
+                                    Hapus permanen
+                                  </button>
+                                }
+                                title="Hapus FAQ permanen?"
+                                description="Tidak bisa dikembalikan. Arsipkan saja jika masih mungkin dibutuhkan."
+                                confirmLabel="Hapus permanen"
+                                processing={busyId === row.id}
+                                onConfirm={() => {
+                                  setBusyId(row.id)
+                                  router.delete(row.destroy_url, {
+                                    preserveScroll: true,
+                                    onFinish: () => setBusyId(null),
+                                  })
+                                }}
+                              />
+                            </>
+                          )}
+                        </RowActions>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <EmptyState
             title={isArchivedTab ? "Tidak ada FAQ diarsipkan" : "Belum ada FAQ aktif"}
@@ -647,7 +723,7 @@ export default function FaqIndex({
               !isArchivedTab ? (
                 <Button type="button" onClick={openCreatePanel}>
                   <Icon name="plus" className="size-4" aria-hidden="true" />
-                  Tambah FAQ
+                  Tambah
                 </Button>
               ) : undefined
             }

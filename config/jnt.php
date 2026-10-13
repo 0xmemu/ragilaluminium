@@ -59,6 +59,7 @@ return [
         'order_get' => env('JNT_EP_ORDER_GET', '/webopenplatformapi/api/order/getOrders'),
         'order_cancel' => env('JNT_EP_ORDER_CANCEL', '/webopenplatformapi/api/order/cancelOrder'),
         'tariff' => env('JNT_EP_TARIFF', '/webopenplatformapi/api/agingCost/get'),
+        'dimensional_tariff' => env('JNT_EP_DIMENSIONAL_TARIFF', '/webopenplatformapi/api/spmComCost/getComCost'),
         'track' => env('JNT_EP_TRACK', '/webopenplatformapi/api/logistics/trace'),
         'track_subscribe' => env('JNT_EP_TRACK_SUBSCRIBE', '/webopenplatformapi/api/trace/subscribe'),
         'dispatch_code' => env('JNT_EP_DISPATCH_CODE', '/webopenplatformapi/api/order/getDispatchCode'),
@@ -92,16 +93,34 @@ return [
     |    (bahan bangunan) / bm000006 (furnitur). Sesuaikan dgn akun.
     */
     'defaults' => [
-        'express_type' => env('JNT_EXPRESS_TYPE', 'FTAIR'),
+        // expressType/goodsType/paymentType disamakan dengan contoh resmi doc
+        // agingCost/get (2026-08-21): FTAIR mengembalikan freight 0 untuk akun
+        // ini — FT (produk darat) yang valid.
+        'express_type' => env('JNT_EXPRESS_TYPE', 'FT'),
         'order_type' => env('JNT_ORDER_TYPE', '2'),
         'service_type' => env('JNT_SERVICE_TYPE', '01'),
         'delivery_type' => env('JNT_DELIVERY_TYPE', '101'),
         'pay_type' => env('JNT_PAY_TYPE', 'PP_PM'),
         'pay_type_cod' => env('JNT_PAY_TYPE_COD', 'CC_CASH'),
-        'goods_type' => env('JNT_GOODS_TYPE', 'bm000010'),
+        'goods_type' => env('JNT_GOODS_TYPE', 'bm000005'),
         // paymentType utk agingCost/get: 1 cash by post, 2 monthly, 3 cod
-        'payment_type' => (int) env('JNT_PAYMENT_TYPE', 2),
+        'payment_type' => (int) env('JNT_PAYMENT_TYPE', 1),
         'price_currency' => env('JNT_PRICE_CURRENCY', 'IDR'),
+        // Asuransi pengiriman (opsional, pilihan pembeli). Ada DUA angka
+        // yang berbeda dan tidak boleh dicampur:
+        //
+        //   offerFee              = NILAI BARANG yang diasuransikan
+        //                           (dokumen J&T: 保价金额, IDR). Ini angka
+        //                           milik kami (subtotal keranjang).
+        //   estimateInsuranceCost = BIAYA asuransi. 100% angka J&T, dibaca
+        //                           apa adanya; TIDAK ADA rumus tarif
+        //                           asuransi di sistem ini (tanpa persen,
+        //                           tanpa floor, tanpa nilai tetap).
+        //
+        // Karena itu TIDAK boleh ada config 'insurance_rate', 'insurance_fee',
+        // 'offer_fee', atau sejenisnya. Bila J&T tidak mengirim biayanya,
+        // asuransi cukup tidak ditawarkan (biaya 0) — dilarang dihitung sendiri.
+        'insurance_enabled' => (bool) env('JNT_INSURANCE_ENABLED', true),
     ],
 
     'sender' => [
@@ -124,30 +143,37 @@ return [
     | Internal: pending_pickup | in_process | in_transit | delivered | returned | cancelled
     */
     'status_map' => [
-        // Order-level status (getOrders / order status push)
-        '100' => 'pending_pickup', // not dispatched
-        '101' => 'pending_pickup', // outlets dispatched
-        '102' => 'pending_pickup', // salesperson dispatched
-        '103' => 'in_process',     // picked up
-        '104' => 'cancelled',      // cancelled
-        '105' => 'cancelled',      // pickupFail
+        // Order-level status (getOrders / order status push) — docs open.jtcargo.co.id
+        // 100 not dispatched | 101 outlets dispatched | 102 salesperson dispatched
+        // 103 picked up | 104 cancelled | 105 pickupFail
+        '100' => 'tracking_pending', // belum ada penjemputan (resi sudah terbit)
+        '101' => 'tracking_pending', // sudah di-dispatch ke outlet
+        '102' => 'tracking_pending', // salesperson di-dispatch
+        '103' => 'picked_up',        // paket dijemput kurir
+        '104' => 'cancelled',        // dibatalkan
+        '105' => 'exception',        // pickupFail
         // Trace scanType (logistics/trace + trajectory push)
-        '1' => 'in_process',       // express mail collection
-        '3' => 'in_transit',       // outgoing scan
-        '4' => 'in_transit',       // incoming scan
-        '5' => 'in_transit',       // outbound scan
-        '10' => 'delivered',       // express delivery (refine via scanTypeCode)
-        '11' => 'in_transit',      // problem scan
-        '12' => 'returned',        // return scan
-        '13' => 'cancelled',       // pickup failed
+        '1' => 'picked_up',          // 1 pengambilan paket (express mail collection)
+        '3' => 'in_transit',         // 3 scan kirim (outgoing)
+        '4' => 'in_transit',         // 4 scan paket sampai (incoming)
+        '5' => 'in_transit',         // 5 scan keluar gudang (outbound)
+        '10' => 'delivered',         // 10 tanda terima (refine via scanTypeCode 100/101)
+        '11' => 'exception',         // 11 scan paket bermasalah (problem)
+        '12' => 'returned',          // 12 scan retur
+        '13' => 'exception',         // 13 pick up failed
         // Fallback teks (order status push memakai teks)
-        'picked up' => 'in_process',
-        'pickup and collecting' => 'in_process',
-        'deployed salesperson' => 'pending_pickup',
+        'picked up' => 'picked_up',
+        'pickup and collecting' => 'picked_up',
+        'deployed salesperson' => 'tracking_pending',
         'delivered' => 'delivered',
         'returned' => 'returned',
+        'return initiated' => 'returned',
         'cancelled' => 'cancelled',
-        'pickupfail' => 'cancelled',
+        'pickupfail' => 'exception',
+        // Label teks Indonesia dari trace J&T (fallback bila scanCode absen)
+        'pengambilan paket' => 'picked_up',
+        'scan kirim' => 'in_transit',
+        'scan sampai' => 'in_transit',
     ],
 
     // scanTypeCode (hanya membedakan tipe tanda tangan pada scanType=10).

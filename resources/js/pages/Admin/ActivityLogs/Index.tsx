@@ -1,16 +1,16 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link } from "@inertiajs/react"
 import * as React from "react"
 
 import { RowActions } from "@/components/admin/row-actions"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { routeUrl } from "@/lib/routes"
+import { navigateFilter } from "@/lib/filter-url"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -33,9 +33,9 @@ interface LogRow {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
+  if (Number.isNaN(date.getTime())) return "-"
   return date.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -82,14 +82,14 @@ export default function ActivityLogsIndex({
   const [sort, setSort] = React.useState(filters.sort)
 
   function apply(next?: Partial<{ q: string; sort: string }>) {
-    router.get(
-      routeUrl("admin.activity-logs.index"),
-      {
-        category: category === "all" ? undefined : category,
-        q: next?.q ?? q,
-        sort: next?.sort ?? sort,
-      },
-      { preserveState: true, preserveScroll: true },
+    // Hanya kunci yang benar-benar dikirim yang menimpa keadaan saat ini.
+    const dikirim: Record<string, string | undefined> = {}
+    if (next?.q !== undefined) dikirim.q = next.q
+    if (next?.sort !== undefined) dikirim.sort = next.sort
+    navigateFilter(
+      "admin.activity-logs.index",
+      { category: category === "all" ? undefined : category, q, sort },
+      dikirim,
     )
   }
 
@@ -97,14 +97,7 @@ export default function ActivityLogsIndex({
     <AdminLayout
       title={title}
       description={description}
-      actions={
-        <Button asChild variant="secondary">
-          <a href={exportUrl}>
-            <Icon name="download" className="size-4" aria-hidden="true" />
-            Unduh CSV
-          </a>
-        </Button>
-      }
+      actions={undefined}
     >
       <Head title={`${title} | Admin`} />
 
@@ -125,43 +118,47 @@ export default function ActivityLogsIndex({
         ))}
       </div>
 
-      <form
-        className="mb-4 flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply({ q })
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => apply({ q }),
+          placeholder: "Cari berdasarkan deskripsi atau user",
         }}
-      >
-        <Input
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Cari berdasarkan deskripsi atau user"
-          className="min-w-[16rem] flex-1"
-        />
-        <Select
-          value={sort}
-          onChange={(event) => {
-            const value = event.target.value
-            setSort(value)
-            apply({ sort: value })
-          }}
-          className="w-40"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Cari</Button>
-      </form>
+        actions={
+          <Button asChild variant="secondary">
+            <a href={exportUrl}>
+              <Icon name="download" className="size-4" aria-hidden="true" />
+              Ekspor
+            </a>
+          </Button>
+        }
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              const value = event.target.value
+              setSort(value)
+              apply({ sort: value })
+            }}
+            className="w-40"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
+        className="mb-4"
+      />
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         {rows.length ? (
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs uppercase tracking-tight text-muted-foreground">
+                <thead className="bg-muted/40 text-left text-xs tracking-tight text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3 font-semibold">No</th>
                     <th className="px-3 py-3 font-semibold">Nama Admin</th>
@@ -208,7 +205,7 @@ export default function ActivityLogsIndex({
                               <Link href={row.href}>Detail</Link>
                             </Button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </RowActions>
                       </td>
@@ -241,7 +238,7 @@ export default function ActivityLogsIndex({
                       </Link>
                     ) : null}
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                  <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                     <div>
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">No</dt>
                       <dd className="mt-1 text-sm tabular-nums text-muted-foreground">{row.no}</dd>

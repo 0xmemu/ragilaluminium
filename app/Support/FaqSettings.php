@@ -40,6 +40,11 @@ class FaqSettings
 
     public static function ensurePage(): CmsPage
     {
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         return CmsPage::query()->firstOrCreate(
             ['slug' => self::PAGE_SLUG],
             [
@@ -244,7 +249,7 @@ class FaqSettings
             CmsFaqItem::query()
                 ->where('cms_page_id', $pageId)
                 ->whereKey($id)
-                ->update(['sort_order' => (int) ($row['sort_order'] ?? $index)]);
+                ->update(['sort_order' => (int) ($row['sort_order'] ?? $index + 1)]);
         }
     }
 }

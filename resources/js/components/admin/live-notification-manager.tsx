@@ -1,0 +1,433 @@
+import * as React from "react"
+import { Link, router, usePage } from "@inertiajs/react"
+import { Icon } from "@/components/shared/icon"
+import { routeUrl } from "@/lib/routes"
+import { isAutoRefreshPaused } from "@/lib/admin-auto-refresh"
+
+interface ToastItem {
+  id: string
+  type: "order" | "whatsapp" | "generic"
+  title: string
+  subtitle: string
+  amount?: string
+  body?: string
+  href: string
+  timestamp: number
+}
+
+interface AdminOrderCreatedEvent {
+  event_id: string
+  occurred_at: string
+  order_id: number
+  order_number: string
+  customer_name: string
+  customer_phone: string
+  total_amount: number
+  total_amount_formatted: string
+  shipping_city: string
+  href: string
+}
+
+interface AdminWhatsAppReceivedEvent {
+  event_id: string
+  occurred_at: string
+  message_id: number
+  phone_number: string
+  customer_name?: string | null
+  order_number?: string | null
+  content_text: string
+  href: string
+}
+
+interface PollResponse {
+  unread_count: number
+  latest_id: number
+  /** Penanda versi data panel; berubah bila data admin berubah. */
+  data_version?: string
+  new_notifications: Array<{
+    id: number
+    type: string
+    title: string
+    body?: string | null
+    href?: string | null
+    created_at?: string | null
+  }>
+}
+
+function playNotificationChime(type: "order" | "whatsapp" | "generic" = "generic"): void {
+  try {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextClass) return
+
+    const ctx = new AudioContextClass()
+    if (ctx.state === "suspended") {
+      void ctx.resume()
+    }
+
+    const now = ctx.currentTime
+
+    if (type === "order") {
+      // 3-note celebration chime: G5 -> C6 -> E6
+      const freqs = [783.99, 1046.5, 1318.51]
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = "sine"
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09)
+        gain.gain.setValueAtTime(0, now + idx * 0.09)
+        gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.09 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + idx * 0.09)
+        osc.stop(now + idx * 0.09 + 0.36)
+      })
+    } else if (type === "whatsapp") {
+      // 2-note message chirp: F5 -> A5
+      const freqs = [698.46, 880.0]
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = "sine"
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08)
+        gain.gain.setValueAtTime(0, now + idx * 0.08)
+        gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.08 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.28)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + idx * 0.08)
+        osc.stop(now + idx * 0.08 + 0.29)
+      })
+    } else {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = "sine"
+      osc.frequency.setValueAtTime(880, now)
+      gain.gain.setValueAtTime(0.12, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.29)
+    }
+  } catch {
+    // Autoplay policy di browser; diabaikan tanpa error
+  }
+}
+
+export function LiveNotificationManager(): React.ReactElement | null {
+  const [toasts, setToasts] = React.useState<ToastItem[]>([])
+  const seenIdsRef = React.useRef<Set<string>>(new Set())
+  const lastPollIdRef = React.useRef<number>(0)
+
+  // ---- Muat ulang otomatis (owner 2026-09-29) ----
+  // Halaman memuat ulang datanya sendiri saat ada perubahan nyata: lewat event
+  // live (WebSocket) begitu pesanan/pesan WA berubah, atau lewat penanda versi
+  // pada polling cadangan. Tidak ada tombol Muat ulang lagi.
+  const { component } = usePage()
+  const lastVersionRef = React.useRef<string | null>(null)
+  const autoTimerRef = React.useRef<number | null>(null)
+  const lastReloadRef = React.useRef<number>(0)
+  const busyRef = React.useRef(false)
+
+  // Halaman form tidak ikut dimuat ulang otomatis: tidak menampilkan data hidup
+  // dan isian yang belum disimpan sebaiknya tidak terusik. Disimpan di ref
+  // supaya fungsi penjadwal punya identitas stabil (effect WebSocket tidak
+  // perlu dibangun ulang tiap pindah halaman).
+  const bolehMuatUlangRef = React.useRef(true)
+  React.useEffect(() => {
+    bolehMuatUlangRef.current = !/(Form|Create|Edit)$/.test(component)
+  }, [component])
+
+  const jadwalkanMuatUlang = React.useCallback(() => {
+    if (!bolehMuatUlangRef.current) return
+    if (autoTimerRef.current !== null) window.clearTimeout(autoTimerRef.current)
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = null
+      // Jeda sebentar supaya perubahan beruntun hanya memicu satu pemuatan.
+      if (isAutoRefreshPaused()) return
+      if (typeof document !== "undefined" && document.hidden) return
+      if (busyRef.current) return
+      const sekarang = Date.now()
+      if (sekarang - lastReloadRef.current < 8000) return
+      lastReloadRef.current = sekarang
+      // reload bawaan Inertia sudah mempertahankan posisi gulir dan state.
+      router.reload()
+    }, 1200)
+  }, [])
+
+  // Tandai saat Inertia sedang memuat: jangan menumpuk permintaan.
+  React.useEffect(() => {
+    const mulai = router.on("start", () => {
+      busyRef.current = true
+    })
+    const selesai = router.on("finish", () => {
+      busyRef.current = false
+    })
+    return () => {
+      mulai()
+      selesai()
+    }
+  }, [])
+
+  const dismissToast = React.useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
+
+  const pushToast = React.useCallback((item: ToastItem) => {
+    if (seenIdsRef.current.has(item.id)) return
+    seenIdsRef.current.add(item.id)
+
+    // Batasi ukuran set seenIds
+    if (seenIdsRef.current.size > 200) {
+      const arr = Array.from(seenIdsRef.current)
+      seenIdsRef.current = new Set(arr.slice(-100))
+    }
+
+    setToasts((prev) => [item, ...prev.slice(0, 4)])
+    playNotificationChime(item.type)
+
+    // Auto dismiss setelah 7 detik
+    window.setTimeout(() => {
+      dismissToast(item.id)
+    }, 7000)
+  }, [dismissToast])
+
+  // Inisialisasi WebSocket Reverb
+  React.useEffect(() => {
+    let disposed = false
+
+    const connectReverb = async (): Promise<void> => {
+      const reverbKey = import.meta.env.VITE_REVERB_APP_KEY
+      if (!reverbKey) return
+
+      try {
+        const { default: Echo } = await import("laravel-echo")
+        if (disposed) return
+
+        if (!window.Echo) {
+          const host = (import.meta.env.VITE_REVERB_HOST as string) || window.location.hostname
+          const scheme = (import.meta.env.VITE_REVERB_SCHEME as string) || "https"
+          const isTls = scheme === "https"
+
+          window.Echo = new Echo({
+            broadcaster: "reverb",
+            key: reverbKey,
+            wsHost: host,
+            wsPort: 80,
+            wssPort: 443,
+            forceTLS: isTls,
+            enabledTransports: ["ws", "wss"],
+          }) as unknown as typeof window.Echo
+        }
+
+        const echoClient = window.Echo
+        if (!echoClient) return
+        const channel = echoClient.private("admin.operations")
+
+        channel.listen(".order.created", (data: AdminOrderCreatedEvent) => {
+          if (disposed) return
+          jadwalkanMuatUlang()
+          pushToast({
+            id: "order-" + data.event_id,
+            type: "order",
+            title: "Pesanan Baru Masuk",
+            subtitle: data.order_number + " : " + (data.customer_name || "Pelanggan"),
+            amount: data.total_amount_formatted,
+            body: data.shipping_city ? "Tujuan: " + data.shipping_city : undefined,
+            href: data.href || routeUrl("admin.orders.show", { order: data.order_id }),
+            timestamp: Date.now(),
+          })
+        })
+
+        channel.listen(".whatsapp.received", (data: AdminWhatsAppReceivedEvent) => {
+          if (disposed) return
+          jadwalkanMuatUlang()
+          const senderLabel = data.customer_name
+            ? data.customer_name + " (" + data.phone_number + ")"
+            : data.phone_number
+
+          pushToast({
+            id: "wa-" + data.event_id,
+            type: "whatsapp",
+            title: "Pesan WhatsApp Masuk",
+            subtitle: senderLabel,
+            body: data.content_text,
+            href: data.href || routeUrl("admin.orders.index", { search: data.phone_number }),
+            timestamp: Date.now(),
+          })
+        })
+      } catch {
+        // Fallback ke polling otomatis
+      }
+    }
+
+    void connectReverb()
+
+    return () => {
+      disposed = true
+    }
+  }, [pushToast, jadwalkanMuatUlang])
+
+  // Heartbeat Polling Fallback (setiap 8 detik)
+  React.useEffect(() => {
+    let disposed = false
+
+    const pollNotifications = async (): Promise<void> => {
+      try {
+        const url = routeUrl("admin.notifications.poll") + "?last_id=" + lastPollIdRef.current
+        const res = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        })
+
+        if (!res.ok || disposed) return
+        const data = (await res.json()) as PollResponse
+
+        // Penanda versi: pertama kali hanya dicatat, setelah itu perubahan
+        // memicu pemuatan ulang halaman (menangkap perubahan yang tidak
+        // menghasilkan notifikasi, mis. status resi dari J&T).
+        if (typeof data.data_version === "string" && data.data_version !== "") {
+          if (lastVersionRef.current === null) {
+            lastVersionRef.current = data.data_version
+          } else if (lastVersionRef.current !== data.data_version) {
+            lastVersionRef.current = data.data_version
+            jadwalkanMuatUlang()
+          }
+        }
+
+        if (lastPollIdRef.current === 0) {
+          // Inisialisasi awal ID, tidak memicu alert notifikasi lama saat halaman pertama kali dimuat
+          lastPollIdRef.current = data.latest_id || 0
+          return
+        }
+
+        if (data.latest_id > lastPollIdRef.current) {
+          lastPollIdRef.current = data.latest_id
+
+          if (Array.isArray(data.new_notifications) && data.new_notifications.length > 0) {
+            for (const notif of data.new_notifications) {
+              const notifType = notif.type === "order_created" ? "order" : notif.type === "whatsapp_inbound" ? "whatsapp" : "generic"
+              pushToast({
+                id: "notif-" + notif.id,
+                type: notifType,
+                title: notif.title || "Notifikasi Baru",
+                subtitle: notif.body || "",
+                href: notif.href || routeUrl("admin.notifications.index"),
+                timestamp: Date.now(),
+              })
+            }
+          }
+        }
+      } catch {
+        // Abaikan kegagalan jaringan sementara
+      }
+    }
+
+    // Eksekusi inisialisasi awal
+    void pollNotifications()
+
+    const timer = window.setInterval(() => {
+      if (!disposed) {
+        void pollNotifications()
+      }
+    }, 8000)
+
+    return () => {
+      disposed = true
+      window.clearInterval(timer)
+    }
+  }, [pushToast, jadwalkanMuatUlang])
+
+  if (toasts.length === 0) return null
+
+  return (
+    <div
+      className="pointer-events-none fixed right-4 top-[var(--toast-top)] z-[9999] flex w-full max-w-sm flex-col gap-2.5"
+      role="region"
+      aria-label="Notifikasi langsung toko"
+    >
+      {toasts.map((toast) => {
+        const isOrder = toast.type === "order"
+        const isWa = toast.type === "whatsapp"
+
+        return (
+          <div
+            key={toast.id}
+            className="pointer-events-auto group relative ml-auto flex w-fit max-w-full items-start gap-3 rounded-xl bg-surface p-3.5 text-foreground shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-top-4"
+          >
+            {/* Ikon dengan animasi ping badge */}
+            <div className="relative mt-0.5 shrink-0">
+              <div
+                className={`flex size-9 items-center justify-center rounded-full ${
+                  isOrder
+                    ? "bg-success/15 text-success"
+                    : isWa
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      : "bg-muted text-foreground"
+                }`}
+              >
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
+                <Icon
+                  name={isOrder ? "shopping-cart" : isWa ? "whatsapp" : "bell"}
+                  className="relative z-10 size-4"
+                />
+              </div>
+            </div>
+
+            {/* Isi Notifikasi */}
+            <div className="min-w-0 flex-1 pr-1">
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-xs font-semibold text-foreground tracking-tight">
+                  {toast.title}
+                </p>
+                <span className="font-mono text-[10px] text-muted-foreground">Baru saja</span>
+              </div>
+
+              <p className="mt-0.5 truncate text-xs font-medium text-foreground/90">
+                {toast.subtitle}
+              </p>
+
+              {toast.amount ? (
+                <p className="mt-0.5 font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {toast.amount}
+                </p>
+              ) : null}
+
+              {toast.body && !toast.amount ? (
+                <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                  {toast.body}
+                </p>
+              ) : null}
+
+              <div className="mt-2 flex items-center gap-2">
+                <Link
+                  href={toast.href}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  onClick={() => dismissToast(toast.id)}
+                >
+                  <span>{isOrder ? "Lihat Pesanan" : isWa ? "Buka Chat" : "Buka Detail"}</span>
+                  <Icon name="arrow-right" className="size-3" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Tombol Tutup */}
+            <button
+              type="button"
+              onClick={() => dismissToast(toast.id)}
+              className="-mr-1 -mt-1 shrink-0 p-1 text-muted-foreground transition hover:text-foreground"
+              aria-label="Tutup notifikasi"
+            >
+              <Icon name="x" className="size-3.5" />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}

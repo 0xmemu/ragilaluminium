@@ -1,16 +1,25 @@
 import { Link, usePage } from "@inertiajs/react"
 import * as React from "react"
 
-import { Icon } from "@/components/shared/icon"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/admin/ui/dialog"
+import { Icon } from "@/components/shared/icon"
 import { filterAdminSearchHits, flattenAdminNav, type AdminSearchHit } from "@/lib/admin-search"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] leading-none text-muted-foreground">
+      {children}
+    </kbd>
+  )
+}
 
 export function AdminCommandSearch({
   open,
@@ -20,24 +29,30 @@ export function AdminCommandSearch({
   onOpenChange: (open: boolean) => void
 }) {
   const { nav } = usePage<SharedPageProps>().props
+  const capabilities = useAdminCapabilities()
   const [query, setQuery] = React.useState("")
   const [activeIndex, setActiveIndex] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
-  const allHits = React.useMemo(() => flattenAdminNav(nav?.admin), [nav?.admin])
+  const allHits = React.useMemo(
+    () => flattenAdminNav(nav?.admin).filter((hit) => (hit.capability ? can(hit.capability, capabilities) : true)),
+    [nav?.admin, capabilities],
+  )
   const hits = React.useMemo(() => filterAdminSearchHits(allHits, query), [allHits, query])
 
   React.useEffect(() => {
     if (!open) return
-    setQuery("")
-    setActiveIndex(0)
     const id = window.setTimeout(() => inputRef.current?.focus(), 10)
     return () => window.clearTimeout(id)
   }, [open])
 
-  React.useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setQuery("")
+      setActiveIndex(0)
+    }
+    onOpenChange(next)
+  }
 
   function goTo(_hit: AdminSearchHit) {
     onOpenChange(false)
@@ -64,44 +79,52 @@ export function AdminCommandSearch({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:p-0">
-        <div className="border-b border-border px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
-          <DialogTitle className="text-lg">Cari di admin</DialogTitle>
-          <DialogDescription className="mt-1">
-            Loncat ke menu dashboard. Ketik nama modul, lalu Enter.
-          </DialogDescription>
-          <label className="relative mt-4 block">
-            <span className="sr-only">Kata kunci pencarian</span>
-            <Icon
-              name="search"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              ref={inputRef}
-              data-admin-search
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Contoh: pesanan, import, voucher…"
-              className="h-11 w-full rounded-full border border-border bg-background pl-10 pr-3 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-          </label>
-        </div>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="top-[22%] w-[min(calc(100%-2rem),36rem)] -translate-y-0 gap-0 overflow-hidden p-0"
+      >
+        <DialogTitle className="sr-only">Cari di admin</DialogTitle>
+        <DialogDescription className="sr-only">
+          Loncat ke menu dashboard. Ketik nama modul, lalu Enter.
+        </DialogDescription>
+
+        <label className="flex h-12 items-center gap-3 border-b border-border px-4">
+          <Icon
+            name="search"
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Kata kunci pencarian</span>
+          <input
+            ref={inputRef}
+            data-admin-search
+            type="search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setActiveIndex(0)
+            }}
+            onKeyDown={onKeyDown}
+            placeholder="Cari menu admin…"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70 [&::-webkit-search-cancel-button]:hidden"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <Kbd>esc</Kbd>
+        </label>
 
         <ul
           role="listbox"
           aria-label="Hasil pencarian menu"
-          className="max-h-[min(50dvh,22rem)] overflow-y-auto p-2"
+          className="max-h-[min(50dvh,20rem)] overflow-y-auto p-1.5"
         >
           {hits.length === 0 ? (
-            <li className="px-3 py-8 text-center text-sm text-muted-foreground">
-              Tidak ada menu yang cocok.
+            <li className="px-3 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">Tidak ada hasil</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Coba kata kunci lain, misalnya “pesanan” atau “voucher”.
+              </p>
             </li>
           ) : (
             hits.map((hit, index) => (
@@ -110,32 +133,42 @@ export function AdminCommandSearch({
                   href={hit.href}
                   data-admin-search-hit={hit.id}
                   onClick={() => goTo(hit)}
+                  onMouseEnter={() => setActiveIndex(index)}
                   className={cn(
-                    "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                    "flex h-10 items-center gap-3 rounded-md px-2.5 text-sm transition duration-75",
                     index === activeIndex
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-accent",
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground",
                   )}
                 >
                   <Icon
                     name={hit.icon ?? "package"}
-                    className="h-4 w-4 shrink-0"
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      index === activeIndex ? "text-accent-foreground" : "text-muted-foreground",
+                    )}
                     aria-hidden="true"
                   />
-                  <span className="min-w-0 flex-1 truncate font-semibold">{hit.label}</span>
-                  <span
-                    className={cn(
-                      "shrink-0 text-[11px]",
-                      index === activeIndex ? "text-primary-foreground/80" : "text-muted-foreground",
-                    )}
-                  >
-                    {hit.group}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{hit.label}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{hit.group}</span>
                 </Link>
               </li>
             ))
           )}
         </ul>
+
+        <div className="flex items-center gap-3 border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd>
+            navigasi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>↵</Kbd>
+            buka
+          </span>
+          <span className="ml-auto hidden sm:block">Pencarian menu admin</span>
+        </div>
       </DialogContent>
     </Dialog>
   )

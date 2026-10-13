@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ActivityLogService;
+use App\Support\ExportSafety;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ActivityLogExport;
 use App\Support\InertiaAdmin;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -65,33 +68,12 @@ class ActivityLogController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $rows = $this->logs->exportRows($request);
-        $filename = 'log-aktivitas-'.now()->format('Ymd-His').'.csv';
+        ExportSafety::assertCountWithinLimit($rows->count());
 
-        return response()->streamDownload(function () use ($rows) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['id', 'waktu', 'admin', 'kategori', 'aktivitas', 'event_type', 'entity_type', 'entity_id', 'status']);
+        return Excel::download(new ActivityLogExport($rows), 'log-aktivitas-'.now()->format('Ymd-His').'.xlsx');
 
-            foreach ($rows as $log) {
-                $status = $this->logs->statusFor($log);
-                fputcsv($out, [
-                    $log->id,
-                    optional($log->created_at)?->toDateTimeString(),
-                    $this->logs->actorLabel($log),
-                    $this->logs->categoryLabel($this->logs->categoryFor($log)),
-                    $this->logs->describe($log),
-                    $log->event_type,
-                    $log->entity_type,
-                    $log->entity_id,
-                    $status['label'],
-                ]);
-            }
-
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
     }
 }

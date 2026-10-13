@@ -1,13 +1,15 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { Button } from "@/components/admin/ui/button"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { Textarea } from "@/components/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface TemplatePayload {
   id: number
@@ -30,6 +32,7 @@ export default function WhatsAppEdit({
   description,
   template,
   variables = [],
+  replySignature = "",
   submitUrl,
   backUrl,
   activateUrl,
@@ -39,6 +42,7 @@ export default function WhatsAppEdit({
   description: string
   template: TemplatePayload
   variables: VariableChip[]
+  replySignature?: string
   submitUrl: string
   backUrl: string
   activateUrl: string
@@ -51,6 +55,21 @@ export default function WhatsAppEdit({
   })
   const statusForm = useForm({})
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+
+  // Kontrak halaman pengaturan (ADR-023): halaman yang tugasnya mengubah nilai
+  // yang sudah ada dibuka terkunci. Isian baru bisa diubah setelah admin
+  // menekan Edit, supaya setelan tidak rawan tersunting tanpa sengaja saat
+  // halaman cuma dibuka untuk melihat kondisi sekarang.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): Inertia di repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setMode("view")
+  }
 
   function insertVariable(token: string) {
     const el = textareaRef.current
@@ -72,34 +91,72 @@ export default function WhatsAppEdit({
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.put(submitUrl, { preserveScroll: true })
+    form.put(submitUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        form.setDefaults()
+        setMode("view")
+      },
+    })
+  }
+
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"provider_template_name": "Nama template provider", "language_code": "Kode bahasa"},
+    requireChange: true,
   }
 
   return (
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={template.status === "active" ? "active" : "inactive"} />}
+      backUrl={backUrl}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={template.status === "active" ? "active" : "inactive"} />
+          {mode === "view" ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setMode("edit")}
+            >
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="wa-template-form"
+                size="sm"
+              >
+                Simpan
+              </SubmitGateButton>
+            </>
+          )}
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      <div className="mb-4">
-        <Button asChild variant="secondary">
-          <Link href={backUrl}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke WhatsApp Otomatis
-          </Link>
-        </Button>
-      </div>
 
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
+
+      <form id="wa-template-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full max-w-5xl grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <FormErrorSummary errors={form.errors} />
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGrid>
             <Field id="provider_template_name" label="Nama template provider (Meta/BSP)" required error={form.errors.provider_template_name}>
               <Input
                 id="provider_template_name"
+                disabled={terkunci}
                 value={form.data.provider_template_name}
                 onChange={(event) => form.setData("provider_template_name", event.target.value)}
                 className="font-mono"
@@ -109,21 +166,23 @@ export default function WhatsAppEdit({
             <Field id="language_code" label="Kode bahasa" required error={form.errors.language_code}>
               <Input
                 id="language_code"
+                disabled={terkunci}
                 value={form.data.language_code}
                 onChange={(event) => form.setData("language_code", event.target.value)}
                 required
               />
             </Field>
-          </div>
+          </FieldGrid>
 
           <Field
             id="body_preview"
-            label="Pratinjau isi pesan"
+            label="Pratinjau isi pesan (naskah Meta)"
             error={form.errors.body_preview}
-            hint="Salinan referensi untuk admin. Pengiriman production memakai template yang disetujui di Meta/BSP."
+            hint="Salin teks ini ke WhatsApp Manager. Variabel harus {{1}}, {{2}}, … (jenis Nomor). Pengiriman production memakai template yang sudah Approved di Meta."
           >
             <Textarea
               id="body_preview"
+              disabled={terkunci}
               ref={textareaRef}
               rows={16}
               value={form.data.body_preview}
@@ -133,9 +192,6 @@ export default function WhatsAppEdit({
           </Field>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-            </Button>
             <Button
               type="button"
               variant={template.status === "active" ? "destructive" : "secondary"}
@@ -151,24 +207,43 @@ export default function WhatsAppEdit({
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
-          <h2 className="text-base font-bold">Daftar variabel</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Klik variabel untuk menambahkannya ke posisi kursor di editor. Token ini untuk referensi mapping parameter template Meta.
+        <aside className="space-y-4 xl:sticky xl:top-24">
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-bold">Pratinjau pesan terkirim</h2>
+            <p className="mt-2 text-pretty text-sm text-muted-foreground">
+              Naskah di atas dikirim apa adanya. Footer otomatis (bila diisi) ditambahkan backend di bawah naskah.
+            </p>
+            <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs leading-5 text-foreground">
+              {replySignature ? `${form.data.body_preview ?? ""}\n\n${replySignature}` : form.data.body_preview ?? ""}
+            </pre>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {replySignature
+                ? "Footer ini berlaku untuk semua template dan bisa diubah lewat env WHATSAPP_REPLY_SIGNATURE."
+                : "Footer otomatis sedang tidak diisi, jadi tidak ada tambahan di bawah naskah. Isi env WHATSAPP_REPLY_SIGNATURE bila ingin menambahkannya lagi."}
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-base font-bold">Urutan variabel Meta</h2>
+          <p className="mt-2 text-pretty text-sm text-muted-foreground">
+            Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend - jangan ganti jadi nama seperti {"{{order_number}}"}.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {variables.map((variable) => (
               <button
                 key={variable.token}
                 type="button"
+                disabled={terkunci}
                 onClick={() => insertVariable(variable.token)}
-                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs font-semibold text-foreground hover:border-primary hover:text-primary"
+                className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-semibold text-foreground hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
               >
-                {variable.label}
+                <span className="font-mono">{variable.token}</span>
+                <span className="mt-0.5 block font-medium text-muted-foreground">{variable.label}</span>
               </button>
             ))}
           </div>
           <p className="mt-4 font-mono text-[11px] text-muted-foreground">Key: {template.internal_key}</p>
+          </section>
         </aside>
       </form>
     </AdminLayout>

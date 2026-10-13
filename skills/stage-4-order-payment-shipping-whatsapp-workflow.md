@@ -75,6 +75,9 @@ Modules: **Order**, **Catalog**, **Shipping**, **Payment**, **WhatsApp**
 
 When the customer clicks “Place Order” / “Checkout”:
 
+0. Order Module assigns a session-scoped UUID idempotency key. The unique
+   `orders.checkout_idempotency_key` guarantees double-click, retry, or parallel
+   submission returns the same order and does not decrement stock twice.
 1. Public UI instructs Order Module to create an `order` from the `cart`:
    - Snapshot customer data (name, address, WhatsApp number).
    - Snapshot items:
@@ -86,8 +89,8 @@ When the customer clicks “Place Order” / “Checkout”:
 
 2. Order Module sets initial states:
    - `order_status = pending_payment`
-   - `payment_status = unpaid`
-   - `shipping_status = awaiting_shipment` (or similar initial state).
+   - `payment_status = pending`
+   - `shipping_status = pending_pickup`.
 
 3. Shipping Module:
    - Receives address details.
@@ -96,7 +99,7 @@ When the customer clicks “Place Order” / “Checkout”:
 
 4. Payment Module:
    - Creates a `payment` record linked to the order, with:
-     - status `unpaid`,
+     - status `pending`,
      - expected amount,
      - payment method (e.g., bank transfer).
 
@@ -109,6 +112,13 @@ When the customer clicks “Place Order” / “Checkout”:
 
 Result:  
 An order exists in state **pending_payment**, and the customer has all info needed to pay.
+
+### 3.3 Cancellation and Inventory Compensation
+
+Cancellation must run through Order Module, lock the order, aggregate item
+quantities per variant, restore stock, write an audit event, and only then set
+`order_status=cancelled`. A retry or parallel cancellation sees the locked
+terminal state and must not restore stock a second time.
 
 ---
 
@@ -141,12 +151,13 @@ Modules: **Admin UI**, **Payment**, **Order**, **WhatsApp**
 Flow:
 
 1. Store Admin opens Admin UI:
-   - views orders with `payment_status = unpaid` and `order_status = pending_payment`.
+   - views orders with `payment_status = pending` and `order_status = pending_payment`.
    - checks linked WhatsApp messages or payment proofs.
 
 2. If payment proof is valid:
-   - Admin updates Payment Module:
-     - `payment_status` changes from `unpaid` to `paid`.
+   - Admin records a payment amount greater than zero.
+   - Payment Module locks the order/payment rows and sums all `completed` payments.
+   - `payment_status` changes from `pending` to `paid` only when settlement covers `orders.total_amount`; partial settlement remains `pending`.
    - Admin may add notes (who verified, time, channel).
 
 3. Order Module reacts:
@@ -162,6 +173,8 @@ Flow:
 
 Result:  
 The order is now **paid** and ready for fulfillment. Warehouse/production can start work.
+A later `failed` or `refunded` payment is reconciled to `orders.payment_status`
+without silently keeping the order marked paid.
 
 ---
 
@@ -416,7 +429,7 @@ To help agents design integrations, key events and triggers include:
 Before designing or implementing any workflow or automation related to orders, agents must:
 
 - [ ] Confirm that each step (cart, order, payment, fulfillment, shipping, completion) is mapped to the **correct module** and **actor**.  
-- [ ] Ensure that order creation always sets `order_status = pending_payment`, `payment_status = unpaid`, and initial `shipping_status`.  
+- [ ] Ensure that order creation always sets `order_status = pending_payment`, `payment_status = pending`, and `shipping_status = pending_pickup`.
 - [ ] Use Payment Module to manage payment confirmation; do not directly flip order status to processing without payment.  
 - [ ] Use Shipping Module and carrier integration to manage shipping status; do not manually set shipping states without logging.  
 - [ ] Use WhatsApp Module to send notifications at key events (order_created, payment_confirmed, order_shipped, delivered, issues).  

@@ -1,0 +1,308 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\MediaAsset;
+use App\Models\Product;
+use App\Models\ProductMedia;
+use App\Services\MediaDerivativeService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
+
+final class MediaAssetResolver
+{
+    public function fromSourceUrl(string $url, string $kind = 'image', ?int $userId = null, ?int $jobId = null): MediaAsset
+    {
+        $kind = in_array($kind, ['image', 'video'], true) ? $kind : 'image';
+        $normalized = $this->normalizeUrl($url);
+        $hash = hash('sha256', $normalized);
+
+        // URL internal (host = media disk milik sendiri, diambil dari konfigurasi
+        // environment, bukan hardcode). File sudah ada di R2/storage: pakai objek
+        // yang ada langsung, TANPA membuat job download ulang. Fleksibel terhadap
+        // domain yang dipakai environment (test maupun prod).
+        $objectKey = $this->internalObjectKey($url);
+        if ($objectKey !== null) {
+            $existing = MediaAsset::where('object_key', $objectKey)->first();
+            if ($existing) {
+                return $existing;
+            }
+
+            return MediaAsset::firstOrCreate(
+                ['source_url_hash' => $hash],
+                [
+                    'kind' => $kind,
+                    'source_url' => $url,
+                    'object_key' => $objectKey,
+                    'status' => 'ready',
+                    'visibility' => 'visible',
+                    'created_by_user_id' => $userId,
+                    'created_by_import_job_id' => $jobId,
+                ],
+            );
+        }
+
+        return MediaAsset::firstOrCreate(
+            ['source_url_hash' => $hash],
+            [
+                'kind' => $kind,
+                'source_url' => $url,
+                'status' => 'pending',
+                'visibility' => 'visible',
+                'created_by_user_id' => $userId,
+                'created_by_import_job_id' => $jobId,
+            ],
+        );
+    }
+
+    /**
+     * Jika URL menunjuk host media disk sendiri, kembalikan object_key yang
+     * bersangkutan (path setelah host). Host diambil dari config filesystems
+     * disk media + proxy, sehingga mengikuti environment (test/prod) tanpa
+     * hardcode. Hanya path media yang dikenal yang dianggap internal.
+     */
+    /**
+     * Public wrapper untuk pengecekan preview: apakah URL menunjuk aset media
+     * internal (host dari config environment), dan object_key-nya apa.
+     */
+    public function internalObjectKeyPublic(string $url): ?string
+    {
+        return $this->internalObjectKey($url);
+    }
+
+    protected function internalObjectKey(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+        if (! is_array($parts) || empty($parts['host']) || empty($parts['path'])) {
+            return null;
+        }
+
+        $hosts = [];
+        foreach ([config('filesystems.disks.'.config('media.disk', 'media').'.url', ''), config('filesystems.disks.'.config('media.disk', 'media').'.proxy_url', '')] as $base) {
+            if (is_string($base) && $base !== '') {
+                $h = strtolower((string) parse_url($base, PHP_URL_HOST));
+                if ($h !== '') {
+                    $hosts[] = $h;
+                }
+            }
+        }
+        if ($hosts === []) {
+            return null;
+        }
+
+        $urlHost = strtolower((string) $parts['host']);
+        if (! in_array($urlHost, $hosts, true)) {
+            return null;
+        }
+
+        $path = ltrim((string) $parts['path'], '/');
+
+        // Awalan path yang sah di media disk milik sendiri. Semua lokasi
+        // penyimpanan media harus terdaftar di sini supaya URL public-nya
+        // dikenali internal (tanpa download ulang). products/ = file hasil
+        // autoconvert (pdp/card/thumb), media/library/ = upload library,
+        // media-assets/ = arsip checksum. Tambahkan awalan baru di sini
+        // kalau ada lokasi penyimpanan media baru.
+        $knownPrefixes = ['media/library/', 'media-assets/', 'products/'];
+        $known = false;
+        foreach ($knownPrefixes as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $known = true;
+                break;
+            }
+        }
+        if (! $known) {
+            return null;
+        }
+
+        // Cek DB dulu: jika sudah tercatat sebagai MediaAsset ready, valid & hemat S3 API call.
+        if (MediaAsset::where('object_key', $path)->where('status', 'ready')->exists()) {
+            return $path;
+        }
+
+        // Pastikan file benar-benar ada di disk sebelum dianggap internal;
+        // URL internal yang menunjuk file yang tidak ada = tidak valid.
+        if (! \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    public function fromUploadedImage(UploadedFile $file, ?int $userId = null): MediaAsset
+    {
+        return $this->fromUploadedFile($file, 'image', $userId);
+    }
+
+    public function fromUploadedFile(UploadedFile $file, string $kind = 'image', ?int $userId = null): MediaAsset
+    {
+        $kind = in_array($kind, ['image', 'video'], true) ? $kind : 'image';
+        $tmp = $file->getRealPath();
+        if (! $tmp || ! is_file($tmp)) {
+            throw new RuntimeException('Berkas media tidak dapat dibaca.');
+        }
+
+        $maxBytes = $kind === 'video'
+            ? (int) config('media.max_video_bytes')
+            : (int) config('media.max_bytes');
+        if (($file->getSize() ?: 0) > $maxBytes) {
+            throw new RuntimeException('Ukuran file media melebihi batas yang diizinkan.');
+        }
+
+        $mime = strtolower((string) ($file->getMimeType() ?: mime_content_type($tmp)));
+        $allowed = $kind === 'video' ? config('media.allowed_video_mime', []) : config('media.allowed_mime', []);
+        if (! in_array($mime, $allowed, true)) {
+            throw new RuntimeException('Tipe file media tidak diizinkan.');
+        }
+
+        $checksum = hash_file('sha256', $tmp);
+        if (! is_string($checksum) || $checksum === '') {
+            throw new RuntimeException('Checksum media gagal dibuat.');
+        }
+
+        $existing = MediaAsset::where('checksum', $checksum)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $asset = MediaAsset::create([
+            'kind' => $kind,
+            'label' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'checksum' => $checksum,
+            'mime_type' => $mime,
+            'size_bytes' => $file->getSize(),
+            'status' => 'downloading',
+            'visibility' => 'visible',
+            'created_by_user_id' => $userId,
+        ]);
+
+        try {
+            $derivativeService = app(MediaDerivativeService::class);
+            if ($kind === 'video') {
+                $stored = $derivativeService->storeVideoAsset($tmp, $checksum, $mime);
+                $asset->update([
+                    'object_key' => $stored['path'],
+                    'derivatives' => null,
+                    'mime_type' => $stored['mime_type'],
+                    'size_bytes' => $stored['size_bytes'],
+                    'status' => 'ready',
+                    'error_reason' => null,
+                ]);
+            } else {
+                $derivatives = $derivativeService->storeAssetDerivatives($tmp, $checksum);
+                $master = $derivativeService->masterDerivative($derivatives);
+                $asset->update([
+                    'object_key' => $master['path'] ?? null,
+                    'derivatives' => $derivatives,
+                    'mime_type' => 'image/webp',
+                    'size_bytes' => $master ? Storage::disk(config('media.disk', 'media'))->size($master['path']) : $file->getSize(),
+                    'width_px' => $master['width'] ?? null,
+                    'height_px' => $master['height'] ?? null,
+                    'status' => 'ready',
+                    'error_reason' => null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            $asset->update(['status' => 'failed', 'error_reason' => Str::limit($e->getMessage(), 500)]);
+            throw $e;
+        }
+
+        return $asset->fresh();
+    }
+
+    public function attach(
+        Product $product,
+        MediaAsset $asset,
+        array $attributes = [],
+        ?int $userId = null,
+        ?int $jobId = null,
+    ): ProductMedia {
+        $query = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $asset->id);
+
+        if (array_key_exists('product_variant_id', $attributes) && $attributes['product_variant_id'] !== null) {
+            $query->where('product_variant_id', $attributes['product_variant_id']);
+        } else {
+            $query->whereNull('product_variant_id');
+        }
+
+        // Pisahkan baris foto katalog vs hasil pemasangan: satu aset foto
+        // boleh sekaligus dipakai di Foto Produk dan di Hasil Pemasangan.
+        $isInstallation = (bool) ($attributes['is_installation'] ?? false);
+        $query->where('is_installation', $isInstallation);
+
+        $media = $query->first() ?? new ProductMedia([
+            'product_id' => $product->id,
+            'media_asset_id' => $asset->id,
+            'product_variant_id' => $attributes['product_variant_id'] ?? null,
+            'is_installation' => $isInstallation,
+            'source_url' => $asset->source_url,
+            'created_by_user_id' => $userId,
+            'created_by_import_job_id' => $jobId,
+        ]);
+
+        // Band posisi (kontrak): 1-49 katalog, 50-79 media varian, 80-99
+        // shared/video, 100+ hasil pemasangan. Media varian yang masuk band
+        // katalog membuat position-nya SERI dengan foto katalog, sehingga
+        // urutan jadi acak dan foto varian bisa muncul sebagai cover
+        // storefront (bug 2026-09-17). Paksa media varian ke band 50-79.
+        $isVariantMedia = ($attributes['product_variant_id'] ?? $media->product_variant_id) !== null;
+        $rawPosition = (int) ($attributes['position'] ?? ($media->position ?: 1));
+        // Posisi mengikuti nilai yang diberikan pemanggil (urutan form galeri).
+        $position = $rawPosition > 0 ? $rawPosition : 1;
+
+        // Gambar utama produk hanya milik media katalog.
+        $isMain = (bool) ($attributes['is_main_image'] ?? $media->is_main_image);
+        if ($isVariantMedia) {
+            $isMain = false;
+        }
+
+        $media->fill([
+            'media_asset_id' => $asset->id,
+            'source_url' => $asset->source_url,
+            'position' => $position,
+            'is_main_image' => $isMain,
+            'show_in_catalog' => (bool) ($attributes['show_in_catalog'] ?? true),
+            'is_installation' => (bool) ($attributes['is_installation'] ?? false),
+            'installation_caption' => $attributes['installation_caption'] ?? $media->installation_caption,
+            'visibility' => $attributes['visibility'] ?? 'visible',
+            'status' => $asset->status === 'ready' ? 'downloaded' : 'pending',
+            'last_updated_by_import_job_id' => $jobId,
+            'updated_by_user_id' => $userId,
+        ]);
+        $media->save();
+
+        if ($media->is_main_image) {
+            ProductMedia::where('product_id', $product->id)
+                ->where('id', '!=', $media->id)
+                ->update(['is_main_image' => false]);
+        }
+
+        return $media->fresh(['mediaAsset']);
+    }
+
+    public function normalizeUrl(string $url): string
+    {
+        $parts = parse_url(trim($url));
+        if (! is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
+            return trim($url);
+        }
+
+        $normalized = strtolower($parts['scheme']).'://'.strtolower($parts['host']);
+        if (! empty($parts['port'])) {
+            $normalized .= ':'.$parts['port'];
+        }
+        $normalized .= $parts['path'] ?? '/';
+
+        if (! empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+            ksort($query);
+            $normalized .= '?'.http_build_query($query);
+        }
+
+        return $normalized;
+    }
+}

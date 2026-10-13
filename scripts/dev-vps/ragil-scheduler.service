@@ -1,0 +1,17 @@
+[Unit]
+Description=Ragil Aluminium Laravel scheduler
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ragilaluminium
+ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan schedule:work
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -15,11 +15,18 @@ export function ResponsiveImage({
   className,
   wrapperClassName,
   loading = "lazy",
+  onLoad,
   onError,
   ...props
 }: ResponsiveImageProps) {
   const [failed, setFailed] = React.useState(false)
   const canRender = Boolean(src) && !failed
+
+  React.useEffect(() => {
+    // A changed variant/media source starts a fresh loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFailed(false)
+  }, [src])
 
   return (
     <div
@@ -34,6 +41,7 @@ export function ResponsiveImage({
           alt={alt}
           loading={loading}
           className={cn("absolute inset-0 h-full w-full object-cover", className)}
+          onLoad={onLoad}
           onError={(event) => {
             setFailed(true)
             onError?.(event)

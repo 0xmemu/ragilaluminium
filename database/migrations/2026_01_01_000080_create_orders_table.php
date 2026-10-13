@@ -25,9 +25,9 @@ return new class extends Migration
 
             $table->string('shipping_country')->default('Indonesia');
             $table->enum('order_status', [
-                'pending_payment', 'processing', 'shipped', 'delivered',
+                'awaiting_confirmation', 'processing', 'shipped', 'delivered',
                 'completed', 'issue', 'return_in_process', 'cancelled',
-            ])->default('pending_payment');
+            ])->default('awaiting_confirmation');
             $table->enum('payment_status', ['pending', 'paid', 'refunded'])->default('pending');
             $table->enum('shipping_status', [
                 'pending_pickup', 'in_process', 'in_transit', 'delivered', 'cancelled',

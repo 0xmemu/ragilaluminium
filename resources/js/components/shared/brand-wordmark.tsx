@@ -1,6 +1,7 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 
 import { cn } from "@/lib/utils"
+import type { SharedPageProps } from "@/types"
 import { routeUrl } from "@/lib/routes"
 
 const LOGO = {
@@ -19,28 +20,34 @@ export function BrandWordmark({
   variant = "light",
   className,
   href,
+  onClick,
 }: {
   compact?: boolean
-  /** Emblem only — mobile header beside search. */
+  /** Emblem only - mobile header beside search. */
   mark?: boolean
   /** `light` = for light backgrounds; `dark` = for dark backgrounds */
   variant?: keyof typeof LOGO
   className?: string
   href?: string
+  onClick?: () => void
 }) {
+  const { brand } = usePage<SharedPageProps>().props
+  const logoVersion = brand?.logo_version ?? null
+
   return (
     <Link
       href={href ?? routeUrl("home")}
+      onClick={onClick}
       className={cn(
         "group relative z-20 inline-flex items-center",
-        mark ? "size-9 shrink-0" : compact ? "min-h-9" : "min-h-10",
+        mark ? "size-11 shrink-0" : compact ? "min-h-9" : "min-h-10",
         className,
       )}
       aria-label="Ragil Aluminium, ke beranda"
       prefetch={false}
     >
       <img
-        src={mark ? MARK[variant] : LOGO[variant]}
+        src={`${mark ? MARK[variant] : LOGO[variant]}${logoVersion ? `?v=${logoVersion}` : ""}`}
         alt="Ragil Aluminium"
         width={mark ? 36 : compact ? 185 : 200}
         height={mark ? 36 : compact ? 48 : 52}

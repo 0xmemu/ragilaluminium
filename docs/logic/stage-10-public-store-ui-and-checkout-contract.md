@@ -1,8 +1,8 @@
 # Skill: Stage 10 – Public Store UI & Checkout Contract (Ragil Aluminium)
 
 This document connects the **public store data & behaviour** to backend modules (Catalog, Order, Payment, Shipping, WhatsApp, CMS) defined in Stage 1–9.  
-**Visual SoT:** `docs/DESIGN.md` Bagian A + `resources/views/public/partials/home-desktop.blade.php` + `docs/sitemap/public-*`.  
-**Do not** use Next.js (`website_2.0/ui`) or legacy `public_store_ui_blueprint.md` as visual source of truth.
+**Visual SoT:** `frontend/docs/UI-CONSISTENCY-CONTRACT.md` + `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md` + `docs/sitemap/public-*`. Runtime UI: `resources/js`.
+**Do not** use Next.js (`website_2.0/ui`) or legacy Blade/Figma references as visual source of truth.
 
 ---
 
@@ -22,13 +22,13 @@ Beranda reads data from:
   - Footer legal & contact info (Informasi Toko, Ketentuan Layanan, Kebijakan Privasi).  
 
 - **Catalog Module** (Stage 3):
-  - Showcase “Kategori Produk” (Casement, Sliding, Bouven) and possibly a few featured models.
+  - Showcase “Kategori Produk” (Window, Door, Bouven) and possibly a few featured models; canonical models are `JUNGKIT`, `SLIDING`, `SWING`, `KACA_MATI`, and `ZIGZAG`.
 
 ### 1.2 Behaviour Contract
 
 - **Dual CTA Buttons**:
   - “Pilih Model Produk”:
-    - navigates to **Katalog Produk** route (e.g. `/produk`), pre-filtered to main categories or models.  
+    - navigates to **Katalog Produk** route `/products`, pre-filtered to main categories or models.
   - “Konsultasi WhatsApp”:
     - opens WhatsApp chat deep link using store business number, with a prefilled message template.  
     - message template is managed by WhatsApp Module templates (Stage 8).
@@ -56,33 +56,32 @@ Katalog reads from:
 
 - **Catalog Module** (Stage 3):
   - `products` and aggregated `product_variants`.  
-  - attributes for filtering: category (Window/Door/Bouven), model (Casement, Sliding, Bouven), price range, color, glass type, dimensions.  
+  - attributes for filtering (implementasi aktual): category (`product_category`), model (`product_model`), design (`design_variant`), dan rentang harga (min/max via `activeVariants.price`). Facet warna/kaca/dimensi belum diimplementasikan sisi backend maupun frontend.
 
 - **Performance & Caching** (Stage 7):
   - query results should be cached (Redis) for common filters to keep UI responsive.
 
 ### 2.2 Filter & Sort Contract
 
-Filter Sidebar:
+Filter Sidebar (implementasi aktual — `catalog-listing-sidebar.tsx:249-320`, `CatalogController.php`):
 
-- CategoryAccordionFilter:
-  - maps to internal `product_category` and `product_model`.  
-- PriceRangeRangeSlider:
-  - filters min/max based on variant prices.  
-- ColorCheckboxGroup:
-  - filters by variant color attribute.  
-- GlassTypeFilter:
-  - filters by glass attribute.  
-- DimensionCustomFilter:
-  - filters by width/height attributes (either direct or via a size category).
+- Model Bukaan (`ModelFilterOptions`):
+  - pivot `product_model`; memicu revisi query `?model=...`.
+- Desain (`DesignFilterOptions`):
+  - pivot `design_variant`; memicu revisi query `?design=...`.
+- Rentang Harga (input numerik manual min/max, bukan slider):
+  - memicu `?price_min=` / `?price_max=` dibatasi ke `activeVariants.price`.
+
+Catatan: facet warna (`ColorCheckboxGroup`), jenis kaca (`GlassTypeFilter`), dan dimensi (`DimensionCustomFilter`) yang semula dikontrak BELUM diimplementasikan (tidak ada di backend maupun frontend). Kontrak diturunkan mengikuti implementasi.
 
 SortAndResultCountBar:
 
-- sorts by:
-  - newest (created_at desc),  
-  - most popular ( orders count or featured flag ),  
-  - lowest price,  
-  - highest price.
+- sorts by (nilai aktual `CatalogController.php:135-137,208-219`):
+  - popular/terlaris/bestseller (popularity score + stock tie-breaker),
+  - newest/baru (created_at desc),
+  - price_asc (termurah),
+  - price_desc (termahal),
+  - size_asc / size_desc (tinggi×lebar).
 
 ### 2.3 Product Card Behaviour
 
@@ -208,7 +207,7 @@ Empty state:
 Checkout forms gather data required for order creation:
 
 - Customer details:
-  - name, phone (WhatsApp), email (optional).  
+  - name, phone (WhatsApp).
   - shipping address: **pilih** province → city/kabupaten → district (kecamatan) → village (desa/kelurahan) dari data wilayah lokal; **isi manual** address detail (`address_line1`), patokan (`address_line2`, opsional), dan kode pos.  
 
 - Order summary:
@@ -230,7 +229,7 @@ Checkout uses:
   - to estimate shipping cost and store address.  
 
 - **Payment Module**:
-  - to create initial `payment` record with status `unpaid`.
+  - to create initial `payment` record with status `pending`.
 
 ### 5.2 Behaviour Contract
 
@@ -245,10 +244,11 @@ Form fields:
 On “Buat Pesanan” / “Konfirmasi Pesanan”:
 
 - backend must:
+  - assign/persist a session-scoped unique checkout idempotency key; retry/double-submit returns the same order without a second stock decrement.
   - create `order` entity as per Stage 4:  
     - `order_status = pending_payment`  
-    - `payment_status = unpaid`  
-    - `shipping_status = awaiting_shipment` (or equivalent initial)  
+    - `payment_status = pending`
+    - `shipping_status = pending_pickup` (canonical initial; see `docs/contracts/ROLE-AND-STATUS-CONTRACT.md`)
   - create `payment` record (Payment Module).  
   - create `shipping` record with address (Shipping Module).  
 
@@ -286,7 +286,7 @@ UI must:
   **Status pengiriman** is a section *inside* that page after an order is available — not a separate top-level nav item.
 - **Session first (no login):** if the browser still has temporary `confirmed_orders` from checkout, open those orders automatically (with J&T refresh when a waybill exists). Do **not** show the lookup form.
 - **Lookup form only as fallback** when session/cache is empty (data sementara hilang):
-  - order ID + WhatsApp/phone or email.  
+  - order ID + WhatsApp/phone.
 - on successful guest lookup:
   - refresh J&T Cargo track for the order’s waybill when present, then show updated `shipping_status`;
   - re-seed `confirmed_orders` so subsequent visits on the same browser skip the form.
@@ -306,7 +306,7 @@ UI must:
 Security:
 
 - do not expose other customers’ orders.  
-- require matching phone/email (or active session order numbers from this browser’s checkout) to access tracking data.
+- require matching phone (or active session order numbers from this browser checkout) to access tracking data.
 
 ---
 
@@ -362,7 +362,7 @@ Public store must respect Stage 7:
 
 Before implementing or modifying public store UI or checkout, agents must:
 
-- [ ] Treat `docs/DESIGN.md` + Home Desktop partial + `docs/sitemap/public-*` as visual source of truth; do not alter layout or menu without explicit design updates.  
+- [ ] Treat `frontend/docs/UI-CONSISTENCY-CONTRACT.md` + public React pages + `docs/sitemap/public-*` as visual source of truth; do not alter layout or menu without explicit design updates.
 - [ ] Wire Beranda Publik sections to CMS (hero, portofolio, testimoni, legal texts) and Catalog (kategori & showcase) so admin edits appear correctly.  
 - [ ] Implement Katalog Produk filters & sorting as views over Catalog Module data, with proper indexing and caching to keep grid responsive.  
 - [ ] Make Detail Produk variant selection drive actual `product_variant` choices and price updates, enforcing stock constraints.  
@@ -373,3 +373,26 @@ Before implementing or modifying public store UI or checkout, agents must:
 - [ ] Apply performance & security practices from Stage 7 (pagination, caching, rate limits, HTTPS) to public APIs and interactions.  
 
 Any public store implementation that diverges from this Stage 10 contract or from DESIGN must be reviewed and aligned before deployment.
+
+
+
+
+### 4.3 Cart selection semantics (locked)
+
+- When selection mode is off, Checkout includes every cart line, even if no checkbox is visible or no item was checked.
+- When selection mode is on, only checked line IDs are carried into checkout.
+- An active selection mode with zero checked lines is rejected; the customer must choose at least one item.
+- The backend intersects submitted line IDs with the current session cart and rejects an empty effective selection. Stale selection state is cleared after an order is created.
+- Voucher preview, subtotal, stock validation, and order creation use the same effective line set.
+
+### 5.3 Per-item product notes
+
+- The note form appears before the shipping-address section on checkout.
+- Each cart line has its own optional note (maximum 2,000 characters); there is no global checkout/address note.
+- Notes are persisted to the session cart through POST /cart/update and copied to order_items.note at order creation.
+- address_line2 remains only for location detail/patokan/RT/RW, not a customer order note.
+
+### 6.3 Order-status identity
+
+- Guest status lookup and customer cancellation use order number plus WhatsApp/phone.
+- Email is not collected at checkout and is not a fallback identity for public order status.

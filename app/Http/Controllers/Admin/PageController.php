@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CmsPage;
 use App\Support\HomepageLayoutSettings;
-use App\Support\HomepagePromotionSettings;
 use App\Support\InertiaAdmin;
+use App\Support\MediaNamer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -41,6 +41,7 @@ class PageController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/CmsPageForm', [
+            'backUrl' => route('admin.pages.index'),
             'page' => null,
             'submitUrl' => route('admin.pages.store'),
         ]);
@@ -65,6 +66,7 @@ class PageController extends Controller
     public function edit(CmsPage $page): Response
     {
         return Inertia::render('Admin/CmsPageForm', [
+            'backUrl' => route('admin.pages.index'),
             'page' => [
                 'id' => $page->id,
                 'slug' => $page->slug,
@@ -84,12 +86,9 @@ class PageController extends Controller
             'published' => ['boolean'],
         ]);
         $validated['content'] = HomepageLayoutSettings::mergePreserving(
-            HomepagePromotionSettings::mergePreservingAutoPromotions(
-                \App\Support\CaraPemesananSettings::mergePreserving(
-                    \App\Support\CmsDocumentSettings::mergePreserving(
-                        $validated['content'] ?? null,
-                        $page,
-                    ),
+            \App\Support\CaraPemesananSettings::mergePreserving(
+                \App\Support\CmsDocumentSettings::mergePreserving(
+                    $validated['content'] ?? null,
                     $page,
                 ),
                 $page,
@@ -108,18 +107,51 @@ class PageController extends Controller
         $request->validate([
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
             'favicon' => 'nullable|image|mimes:ico,png|max:2048',
+            // Owner 2026-09-16: Media Library satu-satunya sumber aset.
+            'logo_asset_id' => 'nullable|integer|exists:media_assets,id',
+            'favicon_asset_id' => 'nullable|integer|exists:media_assets,id',
         ]);
 
-        if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $file->move(public_path('images'), 'site-logo.png');
+        // Owner 2026-09-16: logo dari Media Library -> disalin ke file sistem.
+        if ($request->filled('logo_asset_id')) {
+            $asset = \App\Models\MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('logo_asset_id'));
+            $sourcePath = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->path($asset->object_key);
+            copy($sourcePath, public_path('images/site-logo.png'));
+
+            // Logo yang dipakai situs ada di images/brand/ (header desktop,
+            // mobile, dan footer). Satu unggahan dipakai untuk kedua varian
+            // tema; PNG transparan cocok untuk keduanya.
+            foreach (['light-logo.png', 'dark-logo.png'] as $brandLogo) {
+                $target = public_path('images/brand/'.$brandLogo);
+                if (is_file($target)) {
+                    @unlink($target);
+                }
+                if (! @copy(public_path('images/site-logo.png'), $target)) {
+                    throw new \RuntimeException("Gagal memasang logo: {$target}. Periksa kepemilikan berkas (harus dapat ditulis www-data).");
+                }
+            }
         }
 
-        if ($request->hasFile('favicon')) {
-            $file = $request->file('favicon');
-            $file->move(public_path('images'), 'site-favicon.ico');
+        // Owner 2026-09-16: favicon dari Media Library -> disalin ke file sistem.
+        if ($request->filled('favicon_asset_id')) {
+            $asset = \App\Models\MediaAsset::query()
+                ->where('status', 'ready')
+                ->where('visibility', '!=', 'archived')
+                ->findOrFail((int) $request->input('favicon_asset_id'));
+            $sourcePath = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->path($asset->object_key);
+            copy($sourcePath, public_path('images/site-favicon.ico'));
+
+            // Turunan PNG dipakai <head> untuk browser modern; tanpa ini PNG
+            // lama tetap tampil walau favicon sudah diganti.
+            app(\App\Support\FaviconWriter::class)
+                ->sync(public_path('images/site-favicon.ico'));
         }
 
-        return redirect()->route('admin.pages.index')->with('success', 'Branding berhasil diperbarui!');
+        return redirect()
+            ->route('admin.store-settings.index', ['tab' => 'brand'])
+            ->with('success', 'Branding berhasil diperbarui!');
     }
 }

@@ -9,8 +9,9 @@ use App\Services\Shipping\JntResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
+use Tests\TestCase;
 
-class OrderPrivacyTest extends \Tests\TestCase
+class OrderPrivacyTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -31,7 +32,7 @@ class OrderPrivacyTest extends \Tests\TestCase
         $this->makeOrder();
 
         $this->post('/order/status', ['order_number' => 'RA-PRIV-1'])
-            ->assertSessionHasErrors(['customer_phone', 'customer_email']);
+            ->assertSessionHasErrors(['customer_phone']);
     }
 
     public function test_status_lookup_matches_with_normalized_phone(): void
@@ -49,6 +50,102 @@ class OrderPrivacyTest extends \Tests\TestCase
             ->where('order.order_number', 'RA-PRIV-1')
             ->has('orders', 1))
             ->assertSessionHas('confirmed_orders', fn ($list) => in_array('RA-PRIV-1', $list, true));
+    }
+
+    public function test_public_payload_does_not_leak_raw_provider_metadata(): void
+    {
+        $order = $this->makeOrder();
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JNT-PRIV-1',
+            'status' => 'in_transit',
+            'status_raw' => 'RAW-PROVIDER-INTERNAL-CODE-999',
+            'last_status_at' => now(),
+        ]);
+
+        $this->post('/order/status', [
+            'order_number' => 'RA-PRIV-1',
+            'customer_phone' => '08123456789',
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('order.order_number', 'RA-PRIV-1')
+            // Raw provider metadata bukan informasi customer: tidak boleh bocor.
+            ->missing('order.shipping.status_raw')
+            ->missing('order.customer_phone')
+            ->missing('order.shipping_address')
+            ->missing('order.vm.recipient.phoneFull')
+            ->missing('order.vm.recipient.addressLine1')
+            ->where('order.vm.recipient.city', 'Jakarta')
+            ->where('order.vm.recipient.province', 'DKI')
+            // Data lokasi ringkas tetap tersedia untuk customer.
+            ->where('order.shipping.waybill_number', 'JNT-PRIV-1')
+            ->where('order.shipping.carrier_name', 'J&T Cargo'));
+    }
+
+    public function test_api_payload_does_not_leak_raw_provider_metadata(): void
+    {
+        $order = $this->makeOrder();
+        ShippingRecord::create([
+            'order_id' => $order->id,
+            'carrier_name' => 'J&T Cargo',
+            'waybill_number' => 'JNT-PRIV-2',
+            'status' => 'in_transit',
+            'status_raw' => 'RAW-PROVIDER-INTERNAL-CODE-888',
+            'last_status_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
+            ->assertOk();
+
+        $json = $response->json();
+        $this->assertArrayNotHasKey('status_raw', $json['shipping'] ?? []);
+        $this->assertSame('JNT-PRIV-2', $json['shipping']['waybill_number']);
+        // Timeline publik tersanitasi: hanya message + at, tanpa metadata internal.
+        $this->assertArrayHasKey('tracking_public', $json);
+        foreach (($json['tracking_public']['timeline'] ?? []) as $entry) {
+            $this->assertArrayHasKey('message', $entry);
+            $this->assertArrayNotHasKey('source', $entry);
+            $this->assertArrayNotHasKey('detail', $entry);
+            $this->assertArrayNotHasKey('location', $entry);
+        }
+        // Phase C: handoff WhatsApp dengan order reference tersedia di payload publik.
+        $this->assertIsString($json['whatsapp_url'] ?? null);
+        $this->assertStringContainsString('wa.me/', $json['whatsapp_url'] ?? '');
+    }
+
+    public function test_api_payload_includes_whatsapp_url_with_order_reference(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
+            ->assertOk()
+            ->assertJsonPath('whatsapp_url', fn ($url) => is_string($url)
+                && str_contains($url, 'wa.me/')
+                && str_contains($url, rawurlencode($order->order_number)));
+    }
+
+    public function test_lookup_errors_are_enumeration_safe(): void
+    {
+        $this->makeOrder();
+
+        // Nomor pesanan tidak ada vs nomor pesanan ada tapi HP salah:
+        // keduanya harus menghasilkan payload order null yang sama (customer-facing generic).
+        $this->post('/order/status', [
+            'order_number' => 'RA-TIDAK-ADA',
+            'customer_phone' => '08123456789',
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('searched', true)
+            ->where('order', null));
+
+        $this->post('/order/status', [
+            'order_number' => 'RA-PRIV-1',
+            'customer_phone' => '08129876543', // HP salah
+        ])->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Public/OrderStatus')
+            ->where('searched', true)
+            ->where('order', null));
     }
 
     public function test_status_form_without_session_shows_empty_orders(): void
@@ -85,7 +182,7 @@ class OrderPrivacyTest extends \Tests\TestCase
     {
         $this->makeOrder();
 
-        $this->getJson('/api/orders/RA-PRIV-1/status')->assertStatus(422);
+        $this->getJson('/api/orders/RA-PRIV-1/status')->assertStatus(404);
 
         $this->getJson('/api/orders/RA-PRIV-1/status?customer_phone=08123456789')
             ->assertOk()
@@ -96,7 +193,10 @@ class OrderPrivacyTest extends \Tests\TestCase
     {
         $this->makeOrder();
 
-        $this->get('/order/RA-PRIV-1/confirmation')->assertRedirect(route('order.status'));
+        // Redirect membawa nomor order agar pembeli tidak mengetik ulang;
+        // tujuan tetap halaman status/detail pesanan tanpa sesi.
+        $this->get('/order/RA-PRIV-1/confirmation')
+            ->assertRedirect(route('order.status', ['order_number' => 'RA-PRIV-1']));
     }
 
     public function test_status_lookup_refreshes_jnt_and_returns_shipping(): void

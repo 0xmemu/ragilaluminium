@@ -2,17 +2,50 @@
 declare module 'ziggy-js' {
   interface RouteList {
     "sanctum.csrf-cookie": [],
+    "health.ready": [],
     "home": [],
+    "sitemap": [],
     "about": [],
     "faq": [],
+    "masalah-dan-solusi": [],
     "contact": [],
     "cara-pemesanan": [],
     "privacy": [],
     "terms": [],
     "catalog.index": [],
-    "catalog.windows": [],
-    "catalog.doors": [],
-    "catalog.bouven": [],
+    "catalog.all": [],
+    "catalog.category": [
+        {
+            "name": "category",
+            "required": true
+        }
+    ],
+    "catalog.model": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        }
+    ],
+    "catalog.design": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        },
+        {
+            "name": "design",
+            "required": true
+        }
+    ],
+    "catalog.promo": [],
+    "catalog.flash-sale": [],
     "search": [],
     "product.show": [
         {
@@ -20,15 +53,40 @@ declare module 'ziggy-js' {
             "required": true
         }
     ],
+    "product.engage": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "cart.index": [],
+    "cart.preview": [],
     "cart.count": [],
     "cart.add": [],
     "cart.update": [],
     "cart.remove": [],
+    "cart.restore": [],
+    "cart.select": [],
+    "cart.remove-selected": [],
     "reviews": [],
+    "installation.index": [],
+    "installation.model": [
+        {
+            "name": "category",
+            "required": true
+        },
+        {
+            "name": "model",
+            "required": true
+        }
+    ],
     "checkout.index": [],
     "checkout.validate": [],
+    "checkout.voucher.apply": [],
+    "checkout.voucher.remove": [],
     "checkout.place-order": [],
+    "consultation.whatsapp.send": [],
     "order.confirmation": [
         {
             "name": "order_number",
@@ -38,11 +96,18 @@ declare module 'ziggy-js' {
     "order.count": [],
     "order.status": [],
     "order.status.lookup": [],
+    "order.cancel": [
+        {
+            "name": "order_number",
+            "required": true
+        }
+    ],
     "login": [],
     "login.post": [],
     "logout": [],
     "admin.dashboard": [],
     "admin.pages.branding": [],
+    "admin.products.export": [],
     "admin.products.index": [],
     "admin.products.create": [],
     "admin.products.store": [],
@@ -67,6 +132,30 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.categories.index": [],
+    "admin.categories.create": [],
+    "admin.categories.store": [],
+    "admin.categories.edit": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.update": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.destroy": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.products.archive": [
         {
             "name": "product",
@@ -81,6 +170,20 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.products.publish": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.products.duplicate": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.products.variants.index": [
         {
             "name": "product",
@@ -89,6 +192,13 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.products.variants.store": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.products.variants.bulk": [
         {
             "name": "product",
             "required": true,
@@ -180,17 +290,24 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
-    "admin.imports.index": [],
-    "admin.imports.create": [],
-    "admin.imports.store": [],
-    "admin.imports.show": [
+    "admin.media.destroy": [
         {
-            "name": "import_job",
+            "name": "media",
             "required": true,
             "binding": "id"
         }
     ],
-    "admin.imports.retry": [
+    "admin.media.attach": [
+        {
+            "name": "asset",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.imports.index": [],
+    "admin.imports.create": [],
+    "admin.imports.store": [],
+    "admin.imports.show": [
         {
             "name": "import_job",
             "required": true,
@@ -212,6 +329,7 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.orders.index": [],
+    "admin.orders.export": [],
     "admin.orders.show": [
         {
             "name": "order",
@@ -220,6 +338,34 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.orders.status": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.orders.items.update": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.orders.admin-notes.update": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.orders.shipping.store": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.orders.shipping.refresh": [
         {
             "name": "order",
             "required": true,
@@ -263,8 +409,17 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.whatsapp.dashboard": [],
     "admin.whatsapp.templates.index": [],
+    "admin.whatsapp.connection": [],
     "admin.whatsapp.templates.store": [],
+    "admin.whatsapp.templates.edit": [
+        {
+            "name": "template",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.whatsapp.templates.update": [
         {
             "name": "template",
@@ -301,8 +456,48 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.whatsapp.pairing": [],
+    "admin.whatsapp.pairing.status": [],
+    "admin.whatsapp.pairing.qr": [],
+    "admin.whatsapp.pairing.code": [],
+    "admin.whatsapp.pairing.refresh-qr": [],
     "admin.analytics.store-performance": [],
+    "admin.analytics.store-performance.export": [],
     "admin.analytics.import-performance": [],
+    "admin.activity-logs.index": [],
+    "admin.activity-logs.export": [],
+    "admin.notifications.index": [],
+    "admin.notifications.read": [
+        {
+            "name": "notification",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.notifications.mark-all-read": [],
+    "admin.customers.index": [],
+    "admin.customers.export": [],
+    "admin.customers.show": [
+        {
+            "name": "customer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.customers.edit": [
+        {
+            "name": "customer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.customers.update": [
+        {
+            "name": "customer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.pages.index": [],
     "admin.pages.create": [],
     "admin.pages.store": [],
@@ -321,7 +516,342 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.banners.index": [],
+    "admin.banners.create": [],
     "admin.banners.store": [],
+    "admin.banners.auto-promotions.update": [],
+    "admin.banners.edit": [
+        {
+            "name": "banner",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.banners.update": [
+        {
+            "name": "banner",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.banners.publish": [
+        {
+            "name": "banner",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.banners.unpublish": [
+        {
+            "name": "banner",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.index": [],
+    "admin.announcements.create": [],
+    "admin.announcements.store": [],
+    "admin.announcements.slide": [],
+    "admin.announcements.destroy": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.edit": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.update": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.publish": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.announcements.unpublish": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.flash-sale.index": [],
+    "admin.flash-sale.create": [],
+    "admin.flash-sale.store": [],
+    "admin.flash-sale.period": [],
+    "admin.flash-sale.edit": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.flash-sale.update": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.flash-sale.enable": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.flash-sale.bulk-enable": [],
+    "admin.flash-sale.bulk-disable": [],
+    "admin.flash-sale.disable": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.index": [],
+    "admin.vouchers.create": [],
+    "admin.vouchers.store": [],
+    "admin.vouchers.edit": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.update": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.publish": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.unpublish": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.duplicate": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.vouchers.end": [
+        {
+            "name": "voucher",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.cod-settings.edit": [],
+    "admin.cod-settings.update": [],
+    "admin.shipping-subsidy.edit": [],
+    "admin.shipping-subsidy.update": [],
+    "admin.beranda.index": [],
+    "admin.beranda.update": [],
+    "admin.beranda.service-highlights.edit": [],
+    "admin.beranda.service-highlights.update": [],
+    "admin.beranda.how-to-order.edit": [],
+    "admin.beranda.how-to-order.update": [],
+    "admin.sub-models.index": [],
+    "admin.sub-models.create": [],
+    "admin.sub-models.store": [],
+    "admin.sub-models.edit": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.update": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.toggle": [
+        {
+            "name": "subModel",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.sub-models.reorder": [],
+    "admin.promotions.index": [],
+    "admin.promotions.create": [],
+    "admin.promotions.store": [],
+    "admin.promotions.edit": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.update": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.end": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.activate": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promotions.impact": [
+        {
+            "name": "promotion",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.model-products.index": [],
+    "admin.model-products.create": [],
+    "admin.model-products.store": [],
+    "admin.model-products.sync": [],
+    "admin.model-products.reorder": [],
+    "admin.model-products.edit": [
+        {
+            "name": "modelProduct",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.model-products.update": [
+        {
+            "name": "modelProduct",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.model-products.activate": [
+        {
+            "name": "modelProduct",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.model-products.deactivate": [
+        {
+            "name": "modelProduct",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.cara-pemesanan.edit": [],
+    "admin.cara-pemesanan.update": [],
+    "admin.faq.index": [],
+    "admin.faq.meta.update": [],
+    "admin.faq.reorder": [],
+    "admin.faq.create": [],
+    "admin.faq.store": [],
+    "admin.faq.edit": [
+        {
+            "name": "faq",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.faq.update": [
+        {
+            "name": "faq",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.faq.archive": [
+        {
+            "name": "faq",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.faq.unarchive": [
+        {
+            "name": "faq",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.faq.destroy": [
+        {
+            "name": "faq",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.masalah-solusi.index": [],
+    "admin.masalah-solusi.meta.update": [],
+    "admin.masalah-solusi.reorder": [],
+    "admin.masalah-solusi.create": [],
+    "admin.masalah-solusi.store": [],
+    "admin.masalah-solusi.edit": [
+        {
+            "name": "masalahSolusi",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.masalah-solusi.update": [
+        {
+            "name": "masalahSolusi",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.masalah-solusi.destroy": [
+        {
+            "name": "masalahSolusi",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.tentang-kami.edit": [],
+    "admin.tentang-kami.update": [],
+    "admin.storefront-platforms.edit": [],
+    "admin.storefront-platforms.update": [],
+    "admin.ketentuan-layanan.edit": [],
+    "admin.ketentuan-layanan.update": [],
+    "admin.kebijakan-privasi.edit": [],
+    "admin.kebijakan-privasi.update": [],
+    "admin.apa-kata-pelanggan.index": [],
+    "admin.apa-kata-pelanggan.meta.update": [],
+    "admin.apa-kata-pelanggan.reorder": [],
+    "admin.hasil-pemasangan.index": [],
+    "admin.hasil-pemasangan.meta.update": [],
     "admin.testimonials.index": [],
     "admin.testimonials.create": [],
     "admin.testimonials.store": [],
@@ -339,6 +869,52 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.testimonials.publish": [
+        {
+            "name": "testimonial",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.testimonials.unpublish": [
+        {
+            "name": "testimonial",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.gallery-items.create": [],
+    "admin.gallery-items.store": [],
+    "admin.gallery-items.edit": [
+        {
+            "name": "galleryItem",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.gallery-items.update": [
+        {
+            "name": "galleryItem",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.gallery-items.publish": [
+        {
+            "name": "galleryItem",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.gallery-items.unpublish": [
+        {
+            "name": "galleryItem",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.profile.edit": [],
+    "admin.profile.update": [],
     "admin.users.index": [],
     "admin.users.create": [],
     "admin.users.store": [],
@@ -374,6 +950,7 @@ declare module 'ziggy-js' {
     "admin.settings.update": [],
     "webhook.whatsapp.verify": [],
     "webhook.whatsapp.handle": [],
+    "webhook.whatsapp.baileys": [],
     "webhook.shipping.jnt": [],
     "storage.local": [
         {

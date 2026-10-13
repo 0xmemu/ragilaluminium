@@ -3,135 +3,404 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
+use App\Models\EventLog;
 use App\Models\ImportJob;
+use App\Models\MediaAsset;
 use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\WhatsAppMessage;
+use App\Services\ProductEngagementService;
+use App\Services\StorePerformanceService;
+use App\Services\WhatsAppService;
+use App\Support\JntReadiness;
+use App\Support\OrderStatusView;
+use App\Support\OrderTrackingPresenter;
 use App\Support\PhoneNumber;
 use App\Support\ProductPromotionMetadata;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function __construct(
+        protected StorePerformanceService $performance,
+        protected ProductEngagementService $productEngagement,
+        protected WhatsAppService $whatsapp,
+    ) {}
+
+    public function index(Request $request): Response
     {
         $today = now()->startOfDay();
-        $yesterday = now()->subDay()->startOfDay();
+        $activeOrderStatuses = ['processing', 'shipped', 'delivered'];
 
-        $todaysOrders = Order::where('created_at', '>=', $today)->count();
-        $todaysRevenue = (float) Order::where('created_at', '>=', $today)->sum('total_amount');
-        $yesterdaysRevenue = (float) Order::whereBetween('created_at', [$yesterday, $today])->sum('total_amount');
-
-        $todaysUnits = (int) OrderItem::query()
-            ->whereHas('order', fn ($q) => $q->where('created_at', '>=', $today))
-            ->sum('quantity');
-
-        $revenueChangePercent = $yesterdaysRevenue > 0
-            ? round((($todaysRevenue - $yesterdaysRevenue) / $yesterdaysRevenue) * 100, 1)
-            : ($todaysRevenue > 0 ? 100.0 : 0.0);
-
-        // Sparkline 7 hari: omzet harian (untuk kartu Omset).
-        $revenueSparkline = collect(range(6, 0))->map(function (int $daysAgo) {
-            $day = now()->subDays($daysAgo)->startOfDay();
-
-            return (float) Order::whereBetween('created_at', [$day, $day->copy()->endOfDay()])
-                ->sum('total_amount');
-        })->values()->all();
+        $pendingPaymentQuery = Order::query()->where('order_status', 'awaiting_confirmation');
+        $activeOrdersQuery = Order::query()->whereIn('order_status', $activeOrderStatuses);
+        $paymentsReceivedTodayQuery = Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('paid_at', [$today, now()]);
+        $jntReadiness = JntReadiness::report();
+        $whatsappReadiness = $this->whatsapp->connectionStatus();
+        $mediaDriver = (string) config('filesystems.disks.media.driver', config('filesystems.default', 'local'));
+        $mediaIsReady = $mediaDriver === 's3'
+            ? filled(config('filesystems.disks.media.key'))
+                && filled(config('filesystems.disks.media.secret'))
+                && filled(config('filesystems.disks.media.bucket'))
+                && filled(config('filesystems.disks.media.endpoint'))
+            : ! app()->environment('production');
+        $queueConnection = (string) config('queue.default', 'sync');
+        $queueIsReady = ! in_array($queueConnection, ['sync', 'null'], true);
 
         $statusOrder = [
-            ['key' => 'pending_payment', 'label' => 'Perlu Konfirmasi', 'icon' => 'alert-circle'],
-            ['key' => 'processing', 'label' => 'Diproses', 'icon' => 'package'],
+            ['key' => 'awaiting_confirmation', 'label' => 'Perlu Konfirmasi', 'icon' => 'clock'],
+            ['key' => 'processing', 'label' => 'Diproses', 'icon' => 'refresh'],
             ['key' => 'shipped', 'label' => 'Dikirim', 'icon' => 'truck'],
             ['key' => 'delivered', 'label' => 'Sampai', 'icon' => 'check-circle'],
-            ['key' => 'return_in_process', 'label' => 'Retur Diproses', 'icon' => 'refresh'],
+            ['key' => 'return_in_process', 'label' => 'Retur Diproses', 'icon' => 'package'],
         ];
 
-        $statusCounts = Order::select('order_status', DB::raw('count(*) as total'))
+        $statusSummary = Order::select(
+            'order_status',
+            DB::raw('count(*) as total'),
+            DB::raw('sum(total_amount) as total_value'),
+        )
             ->whereIn('order_status', collect($statusOrder)->pluck('key'))
             ->groupBy('order_status')
-            ->pluck('total', 'order_status');
+            ->get()
+            ->keyBy('order_status');
+
+        $attentionOrderIds = Order::query()
+            ->whereIn('order_status', ['awaiting_confirmation', 'processing', 'delivered', 'return_in_process'])
+            ->pluck('id');
+
+        // Status aging follows the last status transition event; legacy orders fall back to updated_at.
+        $latestStatusEvents = EventLog::query()
+            ->where('entity_type', 'order')
+            ->where('event_type', 'order_status_changed')
+            ->whereIn('entity_id', $attentionOrderIds)
+            ->latest('created_at')
+            ->get(['entity_id', 'payload', 'created_at'])
+            ->groupBy('entity_id')
+            ->map(fn ($events) => $events->first());
+
+        $overdueCount = static function (string $status, $cutoff) use ($latestStatusEvents): int {
+            return Order::query()
+                ->where('order_status', $status)
+                ->get(['id', 'created_at', 'updated_at'])
+                ->filter(function (Order $order) use ($latestStatusEvents, $cutoff, $status): bool {
+                    $event = $latestStatusEvents->get($order->id);
+                    $eventStatus = $event
+                        ? (string) data_get($event->payload, 'order_status', data_get($event->payload, 'to', ''))
+                        : '';
+                    $enteredAt = $event && $eventStatus === $status
+                        ? $event->created_at
+                        : ($order->updated_at ?? $order->created_at);
+
+                    return $enteredAt !== null && $enteredAt->lt($cutoff);
+                })
+                ->count();
+        };
 
         $attention = [
             [
                 'key' => 'confirm_overdue',
-                'label' => 'Pesanan menunggu konfirmasi > 24 jam',
-                'count' => Order::where('order_status', 'pending_payment')
-                    ->where('updated_at', '<', now()->subDay())
-                    ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'pending_payment']),
+                'label' => 'Perlu Konfirmasi > 24 Jam',
+                'count' => $overdueCount('awaiting_confirmation', now()->subDay()),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'awaiting_confirmation',
+                    'older_than' => '24h',
+                ]),
             ],
             [
                 'key' => 'processing_overdue',
-                'label' => 'Pesanan diproses > 24 jam',
-                'count' => Order::where('order_status', 'processing')
-                    ->where('updated_at', '<', now()->subDay())
-                    ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'processing']),
+                'label' => 'Diproses > 24 Jam',
+                'count' => $overdueCount('processing', now()->subDay()),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'processing',
+                    'older_than' => '24h',
+                ]),
             ],
             [
                 'key' => 'delivered_stale',
-                'label' => 'Pesanan sampai belum selesai > 2 hari',
-                'count' => Order::where('order_status', 'delivered')
-                    ->where('updated_at', '<', now()->subDays(2))
-                    ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'delivered']),
+                'label' => 'Pesanan Sampai > 2 Hari Belum Selesai',
+                'count' => $overdueCount('delivered', now()->subDays(2)),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'delivered',
+                    'older_than' => '2d',
+                ]),
             ],
             [
                 'key' => 'return_overdue',
-                'label' => 'Retur menunggu tindak lanjut > 7 hari',
-                'count' => Order::where('order_status', 'return_in_process')
-                    ->where('updated_at', '<', now()->subDays(7))
+                'label' => 'Retur Diproses > 7 Hari',
+                'count' => $overdueCount('return_in_process', now()->subDays(7)),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'return_in_process',
+                    'older_than' => '7d',
+                ]),
+            ],
+            [
+                'key' => 'issue_orders',
+                'label' => 'Pesanan Perlu Perhatian',
+                'count' => Order::where('order_status', 'issue')->count(),
+                'href' => route('admin.orders.index', ['order_status' => 'issue']),
+            ],
+            // Antrean pesanan baru yang belum diproses. Sebelumnya dipecah jadi
+            // transfer_unpaid dan cod_pending, padahal keduanya menyaring status
+            // pesanan yang sama (awaiting_confirmation), sehingga yang tampil
+            // sebenarnya satu antrean yang dipisah menurut cara bayar. Owner
+            // 2026-09-21: jadikan satu item.
+            //
+            // Payment status sengaja TIDAK disaring: labelnya bicara soal proses,
+            // bukan pembayaran, jadi pesanan yang sudah dibayar tetapi belum kita
+            // proses tetap menunggu diproses. Tautannya juga tidak memaksa cara
+            // bayar, supaya kedua populasi terlihat sekaligus; halaman pesanan
+            // sudah punya filter cara bayar sendiri.
+            [
+                'key' => 'menunggu_diproses',
+                'label' => 'Pesanan menunggu diproses',
+                'count' => Order::query()
+                    ->where('order_status', 'awaiting_confirmation')
                     ->count(),
-                'href' => route('admin.orders.index', ['order_status' => 'return_in_process']),
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'awaiting_confirmation',
+                ]),
+            ],
+            // WhatsApp belum terhubung = notifikasi pesanan tidak terkirim:
+            // harus segera ditangani, layak masuk daftar perhatian (bukan panel pasif).
+            [
+                'key' => 'wa_disconnected',
+                'label' => 'WhatsApp Belum Terhubung',
+                'count' => ($whatsappReadiness['configured'] ?? false) ? 0 : 1,
+                'href' => route('admin.whatsapp.pairing'),
             ],
         ];
 
-        $failedMedia = ProductMedia::where('status', 'failed')->count();
+        $severityMap = [
+            'confirm_overdue' => 'high',
+            'processing_overdue' => 'high',
+            'delivered_stale' => 'medium',
+            'return_overdue' => 'medium',
+            'issue_orders' => 'high',
+            // medium, bukan low: item ini kini mencakup transfer yang uangnya
+            // belum masuk, jadi tidak tepat ditandai paling tidak mendesak.
+            'menunggu_diproses' => 'medium',
+            'wa_disconnected' => 'high',
+        ];
+        // Beri 'severity' pada tiap item attention utk tone badge di UI (danger/warning/info).
+        $attention = collect($attention)->map(function (array $item) use ($severityMap): array {
+            $item['severity'] = $severityMap[$item['key']] ?? 'medium';
+            return $item;
+        })->values()->all();
+
+        // Nilai plus: alert operasional di luar Figma status-aging.
+        $failedMedia = ProductMedia::query()
+            ->whereNull('media_asset_id')
+            ->where('status', 'failed')
+            ->count();
+        $failedMediaAssets = MediaAsset::where('status', 'failed')->count();
+        $pendingMedia = ProductMedia::query()
+            ->whereNull('media_asset_id')
+            ->whereIn('status', ['pending', 'downloading'])
+            ->count();
+        $pendingMediaAssets = MediaAsset::whereIn('status', ['pending', 'downloading'])->count();
+        $failedImports = ImportJob::where('status', 'failed')->count();
         $failedMessages = WhatsAppMessage::where('status', 'failed')->count();
-        $runningImports = ImportJob::running()->count();
+        $runningImports = ImportJob::where('status', 'running')->count();
 
-        $newCustomersToday = Customer::where('created_at', '>=', $today)->count();
-        $repeatCustomers = (int) Customer::query()->has('orders', '>=', 2)->count();
+        $importStatusCounts = ImportJob::query()
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+        $recentImports = ImportJob::query()
+            ->latest('updated_at')
+            ->limit(4)
+            ->get(['id', 'source_file_name', 'status', 'failed_rows', 'updated_at'])
+            ->map(fn (ImportJob $job) => [
+                'id' => $job->id,
+                'file_name' => $job->source_file_name,
+                'status' => $job->status,
+                'failed_rows' => (int) ($job->failed_rows ?? 0),
+                'updated_at' => optional($job->updated_at)?->toIso8601String(),
+                'href' => route('admin.imports.show', $job),
+            ])
+            ->values()
+            ->all();
+        $attachmentStatusCounts = ProductMedia::query()
+            ->where('visibility', '!=', 'archived')
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+        $assetStatusCounts = MediaAsset::query()
+            ->where('visibility', '!=', 'archived')
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+        $countStatuses = static function ($counts, array $statuses): int {
+            return (int) collect($statuses)->sum(fn (string $status) => (int) ($counts[$status] ?? 0));
+        };
+        $importMediaSummary = [
+            'imports' => [
+                'running' => $runningImports,
+                'failed' => (int) ($importStatusCounts['failed'] ?? 0),
+                'completed' => (int) ($importStatusCounts['completed'] ?? 0),
+                'failed_rows' => (int) ImportJob::sum('failed_rows'),
+                'recent' => $recentImports,
+                'href' => route('admin.imports.index'),
+            ],
+            'media' => [
+                'attachments' => [
+                    'ready' => (int) ($attachmentStatusCounts['downloaded'] ?? 0),
+                    'pending' => $countStatuses($attachmentStatusCounts, ['pending', 'downloading']),
+                    'failed' => (int) ($attachmentStatusCounts['failed'] ?? 0),
+                    'archived' => (int) ProductMedia::where('visibility', 'archived')->count(),
+                ],
+                'shared_assets' => [
+                    'ready' => (int) ($assetStatusCounts['ready'] ?? 0),
+                    'pending' => $countStatuses($assetStatusCounts, ['pending', 'downloading']),
+                    'failed' => (int) ($assetStatusCounts['failed'] ?? 0),
+                    'archived' => (int) MediaAsset::where('visibility', 'archived')->count(),
+                ],
+                'href' => route('admin.media.library', ['origin' => 'dashboard']),
+            ],
+        ];
 
-        // Promo aktif (dipertahankan dari dashboard lama).
-        $promoProducts = Product::visible()
-            ->with(['activeVariants', 'attributes'])
-            ->whereHas('attributes', function ($attr) {
-                $attr->whereIn('attribute_name', [
-                    'promo_compare_price',
-                    'compare_price',
-                    'harga_asli',
-                    'harga_sebelum_diskon',
-                    'promo_flash_sale',
-                    'flash_sale',
-                ]);
-            })
-            ->orderByDesc('homepage_popular')
-            ->orderBy('homepage_popular_sort')
-            ->orderBy('id')
-            ->get()
-            ->map(function (Product $product) {
-                $promo = ProductPromotionMetadata::forProduct($product, applyGlobalEventDiscount: false);
+        if ($failedMedia > 0) {
+            $attention[] = [
+                'key' => 'failed_media_attachments',
+                'label' => 'Attachment Media Gagal Unduh',
+                'count' => $failedMedia,
+                'href' => route('admin.media.library', ['status' => 'failed', 'origin' => 'dashboard']),
+            ];
+        }
+        if ($failedMediaAssets > 0) {
+            $attention[] = [
+                'key' => 'failed_media_assets',
+                'label' => 'Shared Media Gagal Diproses',
+                'count' => $failedMediaAssets,
+                'href' => route('admin.media.library', ['status' => 'failed', 'origin' => 'dashboard']),
+            ];
+        }
+        if ($pendingMedia + $pendingMediaAssets > 0) {
+            $attention[] = [
+                'key' => 'pending_media',
+                'label' => 'Media Menunggu Diproses',
+                'count' => $pendingMedia + $pendingMediaAssets,
+                'href' => route('admin.media.library', ['origin' => 'dashboard']),
+            ];
+        }
+        if ($failedImports > 0) {
+            $attention[] = [
+                'key' => 'failed_imports',
+                'label' => 'Import Gagal',
+                'count' => $failedImports,
+                'href' => route('admin.imports.index', ['status' => 'failed']),
+            ];
+        }
+        if ($failedMessages > 0) {
+            $attention[] = [
+                'key' => 'failed_wa',
+                'label' => 'Pesan WhatsApp Gagal',
+                'count' => $failedMessages,
+                'href' => route('admin.whatsapp.templates.index'),
+            ];
+        }
+        if ($runningImports > 0) {
+            $attention[] = [
+                'key' => 'running_imports',
+                'label' => 'Import Sedang Berjalan',
+                'count' => $runningImports,
+                'href' => route('admin.imports.index', ['status' => 'running']),
+            ];
+        }
 
-                return [
-                    'id' => $product->id,
-                    'parent_sku' => $product->parent_sku,
-                    'name' => $product->name,
-                    'discount_percent' => $promo['discount_percent'],
-                    'flash_sale' => $promo['flash_sale'],
-                    'homepage_popular' => (bool) $product->homepage_popular,
-                    'href' => route('admin.products.show', $product),
-                ];
-            })
-            ->filter(fn (array $row) => $row['discount_percent'] !== null || $row['flash_sale'])
-            ->values();
+        // Action Center: Order yang siap dikemas & butuh nomor resi pengiriman
+        $needWaybillCount = Order::query()
+            ->where('order_status', 'processing')
+            ->whereIn('shipping_status', ['pending_pickup', 'tracking_pending'])
+            ->count();
+        if ($needWaybillCount > 0) {
+            $attention[] = [
+                'key' => 'need_waybill',
+                'label' => 'Pesanan Perlu Resi Pengiriman',
+                'count' => $needWaybillCount,
+                'severity' => 'medium',
+                'href' => route('admin.orders.index', [
+                    'order_status' => 'processing',
+                    'shipping_status' => 'pending_pickup',
+                ]),
+            ];
+        }
+
+        // Action Center: Kasus retur yang masih aktif/terbuka
+        $openReturnsCount = \App\Models\OrderReturnCase::query()
+            ->whereIn('status', ['requested', 'approved', 'item_shipped', 'item_received'])
+            ->count();
+        if ($openReturnsCount > 0) {
+            $attention[] = [
+                'key' => 'open_returns',
+                'label' => 'Kasus Retur Aktif',
+                'count' => $openReturnsCount,
+                'severity' => 'medium',
+                'href' => route('admin.orders.index', ['order_status' => 'return_in_process']),
+            ];
+        }
+
+        $attention = collect($attention)
+            ->filter(fn (array $item) => $item['count'] > 0)
+            ->values()
+            ->all();
+
+        $performaPeriod = (string) $request->query('performa_period', 'today');
+        if (! in_array($performaPeriod, ['today', 'yesterday', 'last_7', 'last_30', 'this_month'], true)) {
+            $performaPeriod = 'today';
+        }
+
+        // StorePerformanceService is the canonical read model for dashboard sales
+        // metrics. SATU SUMBER: kartu Penjualan Gross mengikuti filter
+        // performa_period (owner 2026-09-04) - tanpa perhitungan terpisah.
+        $performance = $this->performance->build($performaPeriod);
+
+        // Count untuk tile Pembayaran Diterima mengikuti periode performa yang
+        // dipilih - bukan hari ini. Count hari ini dicampur nilai 30 hari
+        // menghasilkan 'Rp 20 juta - 0 pembayaran' yang mustahil.
+        $paymentsReceivedPeriodCount = Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('paid_at', [$performance['range']['from'], $performance['range']['to']])
+            ->count();
+        $salesKpis = collect($performance['sections'] ?? [])
+            ->firstWhere('key', 'sales')['kpis'] ?? [];
+        $sales = collect($salesKpis)->keyBy('key');
+        // net_revenue adalah KPI section 'payments', bukan 'sales' - lookup dari
+        // section sales selalu null sehingga tile Penjualan Bersih tampil Rp 0.
+        $netRevenueKpi = collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'net_revenue');
+        $omzetKpi = $sales->get('omzet', []);
+        $ordersKpi = $sales->get('orders', []);
+        $unitsKpi = $sales->get('units', []);
+        $revenueChart = collect($performance['charts'] ?? [])->firstWhere('key', 'revenue') ?? [];
+        $todaysRevenue = (float) ($omzetKpi['value'] ?? 0);
+        $todaysOrders = (int) ($ordersKpi['value'] ?? 0);
+        $todaysUnits = (int) ($unitsKpi['value'] ?? 0);
+        $revenueChangePercent = $omzetKpi['change_percent'] ?? 0;
+        $ordersDelta = $todaysOrders - (int) ($ordersKpi['previous'] ?? 0);
+        $unitsDelta = $todaysUnits - (int) ($unitsKpi['previous'] ?? 0);
+        $revenueSparkline = collect($revenueChart['series'] ?? [])->pluck('value')->map(fn ($value) => (float) $value)->values()->all();
+
+        $trafficKpis = collect($performance['sections'] ?? [])
+            ->firstWhere('key', 'traffic')['kpis'] ?? [];
+        $performaMetrics = collect($trafficKpis)
+            ->whereIn('key', ['visitors', 'conversion', 'new_customers', 'repeat_customers'])
+            ->map(fn (array $metric): array => collect($metric)->except('detail')->all())
+            ->values()
+            ->all();
+        $performaVisitorChart = collect($performance['charts'] ?? [])->firstWhere('key', 'visitors') ?? [];
+
+        // Promo calculations are handled in Campaign/Promotion module, not on dashboard.
 
         $recentOrders = Order::query()
+            ->with(['shippingRecords' => fn ($q) => $q->latest('id')])
             ->withCount('items')
             ->withSum('items as units_count', 'quantity')
             ->latest()
@@ -139,6 +408,9 @@ class DashboardController extends Controller
             ->get()
             ->map(function (Order $order) {
                 $phone = PhoneNumber::normalize($order->customer_phone) ?? $order->customer_phone;
+                $shipping = $order->shippingRecords->first(
+                    fn ($record) => $record->status !== 'cancelled'
+                ) ?? $order->shippingRecords->first();
 
                 return [
                     'id' => $order->id,
@@ -150,11 +422,16 @@ class DashboardController extends Controller
                     'shipping_province' => $order->shipping_province,
                     'customer_phone' => $order->customer_phone,
                     'order_status' => $order->order_status,
+                    'payment_status' => $order->payment_status,
+                    'shipping_status' => $order->shipping_status,
+                    'waybill_number' => $shipping?->waybill_number,
+
                     'total_amount' => (float) $order->total_amount,
                     'payment_method' => $order->payment_method,
                     'product_count' => (int) $order->items_count,
                     'unit_count' => (int) ($order->units_count ?? 0),
                     'href' => route('admin.orders.show', $order),
+                    'shipping_href' => route('admin.orders.show', $order).'#lacak-pesanan',
                     'whatsapp_url' => $phone
                         ? 'https://wa.me/'.$phone
                         : null,
@@ -165,65 +442,153 @@ class DashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'greetingName' => auth()->user()?->name ?? 'Admin',
             'todayLabel' => now()->locale('id')->translatedFormat('l, d F Y'),
+            'generatedAt' => now()->toIso8601String(),
+            'productCount' => Product::visible()->count(),
+            'jntReadiness' => $jntReadiness,
+            'integrationReadiness' => [
+                [
+                    'key' => 'whatsapp',
+                    'label' => 'WhatsApp',
+                    'icon' => 'whatsapp',
+                    'ready' => (bool) ($whatsappReadiness['configured'] ?? false),
+                    'verified' => false,
+                    'status_label' => ($whatsappReadiness['configured'] ?? false)
+                        ? 'Konfigurasi ada, live check belum dilakukan'
+                        : 'Konfigurasi belum lengkap',
+                    'detail' => ($whatsappReadiness['default_provider'] ?? 'meta').' provider',
+                    'href' => route('admin.whatsapp.pairing'),
+                ],
+                [
+                    'key' => 'media',
+                    'label' => 'Media / R2',
+                    'icon' => 'image',
+                    'ready' => $mediaIsReady,
+                    'verified' => false,
+                    'status_label' => $mediaIsReady
+                        ? 'Konfigurasi ada, object storage belum diuji'
+                        : 'Konfigurasi object storage belum lengkap',
+                    'detail' => $mediaDriver === 's3' ? 'Object storage aktif' : 'Disk lokal development',
+                    'href' => route('admin.media.library', ['origin' => 'dashboard']),
+                ],
+                [
+                    'key' => 'queue',
+                    'label' => 'Queue worker',
+                    'icon' => 'refresh',
+                    'ready' => $queueIsReady,
+                    'verified' => false,
+                    'status_label' => $queueIsReady
+                        ? 'Konfigurasi ada, worker belum diverifikasi'
+                        : 'Worker perlu dipisahkan dari request',
+                    'detail' => $queueConnection === 'sync'
+                        ? 'Sync aktif, worker belum terpisah'
+                        : 'Konfigurasi '.$queueConnection,
+                    'href' => route('admin.settings.index'),
+                ],
+                [
+                    'key' => 'jnt',
+                    'label' => 'J&T Cargo',
+                    'icon' => 'truck',
+                    'ready' => (bool) $jntReadiness['client_ready'],
+                    'verified' => false,
+                    'status_label' => $jntReadiness['client_ready']
+                        ? 'Kredensial ada, koneksi live belum diuji'
+                        : 'Kredensial belum lengkap',
+                    'detail' => $jntReadiness['client_ready']
+                        ? $jntReadiness['environment']
+                        : 'Kredensial belum lengkap',
+                    'href' => route('admin.settings.index'),
+                ],
+            ],
+            'importMediaSummary' => $importMediaSummary,
             'omzet' => [
                 'revenue' => $todaysRevenue,
                 'orders' => $todaysOrders,
                 'units' => $todaysUnits,
                 'change_percent' => $revenueChangePercent,
+                'orders_delta' => $ordersDelta,
+                'units_delta' => $unitsDelta,
+                'orders_change_percent' => $ordersKpi['change_percent'] ?? null,
+                'units_change_percent' => $unitsKpi['change_percent'] ?? null,
+                // Label pembanding mengikuti periode (mis. 'vs 17 Agt - 15 Sep'),
+                // bukan 'dari kemarin' yang hanya benar untuk periode today.
+                'comparison_label' => $performance['range']['compare_label'] ?? 'dari kemarin',
                 'sparkline' => $revenueSparkline,
+                'series' => $revenueChart['series'] ?? [],
+                'previous_series' => $revenueChart['previous_series'] ?? [],
+            ],
+            'financial' => [
+                'awaiting_confirmation_amount' => (float) $pendingPaymentQuery->sum('total_amount'),
+                'awaiting_confirmation_orders' => (int) $pendingPaymentQuery->count(),
+                'active_order_amount' => (float) $activeOrdersQuery->sum('total_amount'),
+                'active_order_count' => (int) $activeOrdersQuery->count(),
+                'received_today_amount' => (float) $paymentsReceivedTodayQuery->sum('amount'),
+                'received_today_count' => (int) $paymentsReceivedTodayQuery->count(),
+                'received_period_amount' => (float) (collect(collect($performance['sections'] ?? [])->firstWhere('key', 'payments')['kpis'] ?? [])->firstWhere('key', 'payments_received')['value'] ?? $paymentsReceivedTodayQuery->sum('amount')),
+                'received_period_count' => $paymentsReceivedPeriodCount,
+                'received_period_label' => 'Pembayaran Diterima (' . ($performaPeriod === 'today' ? 'Hari ini' : ($performance['range']['label'] ?? 'Periode ini')) . ')',
+                // Penjualan bersih: gross dikurangi refund retur selesai (periode sama dengan KPI omzet).
+                'net_revenue' => (float) ($netRevenueKpi['value'] ?? 0),
+                'net_revenue_change_percent' => $netRevenueKpi['change_percent'] ?? null,
+                // COD berjalan: pesanan COD aktif yang uangnya belum dicatat lunas
+                // (baru masuk saat paket tiba). Konteks untuk tile Pembayaran Diterima.
+                'cod_running_amount' => (float) Order::query()
+                    ->whereIn('order_status', ['awaiting_confirmation', 'processing', 'shipped', 'delivered'])
+                    ->where('payment_method', 'cod')
+                    ->sum('total_amount'),
             ],
             'performa' => [
-                'running_imports' => $runningImports,
-                'failed_media' => $failedMedia,
-                'failed_messages' => $failedMessages,
-                'new_customers' => $newCustomersToday,
-                'repeat_customers' => $repeatCustomers,
+                'period' => $performaPeriod,
+                'period_label' => $performance['range']['label'] ?? 'Hari ini',
+                'period_detail' => $performance['range']['range_detail'] ?? null,
+                'period_options' => [
+                    ['value' => 'today', 'label' => 'Hari Ini'],
+                    ['value' => 'yesterday', 'label' => 'Kemarin'],
+                    ['value' => 'last_7', 'label' => '7 Hari Terakhir'],
+                    ['value' => 'last_30', 'label' => '30 Hari Terakhir'],
+                    ['value' => 'this_month', 'label' => 'Bulan Ini'],
+                ],
+                'metrics' => $performaMetrics,
+                'comparison_label' => $performance['range']['compare_label'] ?? null,
+                'trend' => [
+                    'total' => (int) ($performaVisitorChart['total'] ?? 0),
+                    'total_format' => 'number',
+                    'granularity' => $performance['range']['granularity'] ?? 'day',
+                    'series' => $performaVisitorChart['series'] ?? [],
+                    'previous_series' => $performaVisitorChart['previous_series'] ?? [],
+                ],
+                'detail_href' => route('admin.analytics.store-performance', ['period' => $performaPeriod]),
             ],
             'statusOrder' => collect($statusOrder)->map(fn ($row) => [
                 ...$row,
-                'total' => (int) ($statusCounts[$row['key']] ?? 0),
+                'total' => (int) ($statusSummary[$row['key']]?->total ?? 0),
+                'total_value' => (float) ($statusSummary[$row['key']]?->total_value ?? 0),
                 'href' => route('admin.orders.index', ['order_status' => $row['key']]),
             ])->values()->all(),
             'attention' => $attention,
             'quickActions' => [
                 [
-                    'label' => 'Kelola promo / banner',
-                    'description' => 'Atur banner dan produk promo di storefront',
-                    'href' => route('admin.banners.index'),
-                    'icon' => 'ticket',
+                    'label' => 'Tambah',
+                    'description' => 'Buat produk katalog baru',
+                    'href' => route('admin.products.create'),
+                    'icon' => 'package',
                 ],
                 [
-                    'label' => 'Import katalog',
-                    'description' => 'Upload Excel Shopee / sinkron media',
-                    'href' => route('admin.imports.index'),
+                    'label' => 'Mulai Import',
+                    'description' => 'Upload katalog internal (XLSX)',
+                    'href' => route('admin.imports.create'),
                     'icon' => 'upload',
                 ],
                 [
-                    'label' => 'WhatsApp otomatis',
-                    'description' => 'Template & log pesan transaksi',
-                    'href' => route('admin.whatsapp.templates.index'),
-                    'icon' => 'whatsapp',
-                ],
-                [
-                    'label' => 'Performa toko',
-                    'description' => 'Ringkasan analitik operasional',
-                    'href' => route('admin.analytics.store-performance'),
-                    'icon' => 'trend-up',
+                    'label' => 'Kelola Media',
+                    'description' => 'Cek foto produk dan shared asset',
+                    'href' => route('admin.media.library', ['origin' => 'dashboard']),
+                    'icon' => 'images',
                 ],
             ],
             'recentOrders' => $recentOrders,
-            'promoProducts' => $promoProducts->take(6)->all(),
-            'promoTotal' => $promoProducts->count(),
-            'stats' => [
-                'todaysOrders' => $todaysOrders,
-                'todaysRevenue' => $todaysRevenue,
-                'pendingPayment' => (int) ($statusCounts['pending_payment'] ?? 0),
-                'inTransit' => Order::whereIn('shipping_status', ['in_process', 'in_transit'])->count(),
-                'needsAttention' => collect($attention)->sum('count'),
-                'runningImports' => $runningImports,
-                'failedMedia' => $failedMedia,
-                'failedMessages' => $failedMessages,
-            ],
+            'promoProducts' => [],
+            'promoTotal' => 0,
+            'topEngagedProducts' => $this->productEngagement->topProducts($performaPeriod, 8),
         ]);
     }
 }

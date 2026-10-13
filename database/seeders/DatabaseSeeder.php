@@ -24,5 +24,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(FaqSeeder::class);
+
+        // Konten storefront penuh untuk QA frontend (butuh katalog sudah diimport):
+        // php artisan db:seed --class=StorefrontQaSeeder
     }
 }

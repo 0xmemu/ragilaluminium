@@ -15,13 +15,64 @@ class StorefrontPlatformController extends Controller
 {
     public function edit(): Response
     {
+        // Satu view tanpa tab (owner 2026-09-29: "gausah pakai tab, campurkan
+        // jadi satu view halaman saja semuanya"). Parameter `tab` tidak lagi
+        // dibaca; tautan, kontak, dan aset brand selalu tampil bersama.
+        $kontakPage = CmsPage::where('slug', 'kontak')->first();
+        $kontakFields = $kontakPage && is_array($kontakPage->content)
+            ? $this->extractKontakFields($kontakPage->content)
+            : ['address' => '', 'phone' => '', 'email' => '', 'hours' => ''];
+
         return Inertia::render('Admin/StorefrontPlatforms/Edit', [
-            'title' => 'Marketplace & Media Sosial',
-            'description' => 'Atur tautan eksternal toko resmi di marketplace dan akun media sosial. Tampil di Informasi Toko dan footer.',
+            'title' => 'Profil & Kontak Toko',
+            'description' => 'Kelola tautan akun toko resmi di marketplace, media sosial, serta informasi kontak dan workshop.',
+            'brandAssets' => $this->brandAssetsState(),
+            'brandSubmitUrl' => route('admin.pages.branding'),
             'platforms' => StorefrontPlatformSettings::forAdmin(),
             'submitUrl' => route('admin.storefront-platforms.update'),
+            'kontakFields' => $kontakFields,
+            'kontakSubmitUrl' => route('admin.beranda.kontak.update'),
             'previewUrl' => route('about'),
         ]);
+    }
+
+    /**
+     * Status aset brand yang dipakai <head>: URL ber-cache-busting, ukuran, dan
+     * waktu terakhir diubah. Berkas 0 byte dianggap tidak ada, karena browser
+     * hanya menampilkan favicon kosong untuk berkas seperti itu.
+     *
+     * @return array<string, array{path: string, url: string, bytes: int, updated_at: string}|null>
+     */
+    protected function brandAssetsState(): array
+    {
+        return [
+            'logo' => $this->brandAsset('images/brand/light-logo.png'),
+            'favicon' => $this->brandAsset('images/favicon-32.png', 'images/site-favicon.ico'),
+            'faviconIco' => $this->brandAsset('images/site-favicon.ico'),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     * @return array{path: string, url: string, bytes: int, updated_at: string}|null
+     */
+    protected function brandAsset(string ...$candidates): ?array
+    {
+        foreach ($candidates as $candidate) {
+            $path = public_path($candidate);
+            if (! is_file($path) || filesize($path) === 0) {
+                continue;
+            }
+
+            return [
+                'path' => $candidate,
+                'url' => asset($candidate).'?v='.filemtime($path),
+                'bytes' => (int) filesize($path),
+                'updated_at' => date('d M Y H:i', (int) filemtime($path)),
+            ];
+        }
+
+        return null;
     }
 
     public function update(Request $request): RedirectResponse
@@ -74,5 +125,31 @@ class StorefrontPlatformController extends Controller
         return redirect()
             ->route('admin.storefront-platforms.edit')
             ->with('success', 'Tautan marketplace & media sosial disimpan.');
+    }
+
+    /** @return array<string, string> */
+    private function extractKontakFields(array $content): array
+    {
+        $blocks = $content['blocks'] ?? [];
+        $current = null;
+        $fields = ['address' => '', 'phone' => '', 'email' => '', 'hours' => ''];
+
+        foreach ($blocks as $block) {
+            $type = $block['type'] ?? '';
+            $text = (string) ($block['text'] ?? '');
+            if ($type === 'heading') {
+                $current = match (mb_strtolower($text)) {
+                    'alamat' => 'address',
+                    'telepon / whatsapp', 'telepon/wa', 'telepon', 'whatsapp' => 'phone',
+                    'email' => 'email',
+                    'jam operasional' => 'hours',
+                    default => null,
+                };
+            } elseif ($type === 'paragraph' && $current !== null) {
+                $fields[$current] = $text;
+            }
+        }
+
+        return $fields;
     }
 }

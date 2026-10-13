@@ -8,7 +8,7 @@ namespace App\Support;
  * Window / bouven (2 slots, separate attributes):
  *   "Putih,Kaca Bening" → Warna + Kaca
  *
- * Swing door (2 slots, different semantics — do NOT force window axes):
+ * Swing door (2 slots, different semantics - do NOT force window axes):
  *   "Buka Kanan,Putih Kaca Bening" → Arah Buka + Warna & Kaca (combined finishing)
  */
 class ShopeeVariationAxes

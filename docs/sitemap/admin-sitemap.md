@@ -20,45 +20,159 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Beranda** (Tipe: `Operational` & `Analytics`)
   - Snapshot KPI harian, funnel pesanan, grafik performa singkat, dan *alert* operasional (import gagal, WA gagal).
 
-### 2. Catalog / Produk
-- **Daftar Produk** (Tipe: `Operational` & `Content`)
+### 2. Performa Toko
+- **Performa Toko** (Tipe: Analytics / pembukuan)
+  - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
+  - Enam kartu KPI di baris atas sekaligus menjadi tab grafik tren, urut sejajar kartu:
+    revenue, orders, products, units, visitors, conversion_rate. Menambah kartu baru berarti
+    menambah satu entri di reports.charts agar kartunya tetap bisa menampilkan tren.
+    Halaman memasangkan seri periode ini dan periode pembanding berdasarkan INDEKS, jadi jumlah
+    titik kedua seri wajib sama dan tidak boleh ada label yang muncul di kedua seri. Jendela
+    pembanding diselaraskan ke batas bucket untuk granularitas minggu, bulan, dan tahun
+    (alignPreviousWindowToBuckets). Untuk skala Per Jam, label pembanding memuat tanggal.
+  - Chart pengunjung dan konversi membawa previous_measured. Bila false, jendela pembandingnya
+    berada sebelum tanggal pencatatan pengunjung, sehingga halaman menulis tidak diukur dan bukan
+    angka 0 yang terbaca sebagai hasil pengukuran. Halaman memakai range.from_date_iso untuk
+    perbandingan tanggal; range.from_date hanya untuk tampilan dan tidak boleh dipakai membandingkan.
+  - Cakupan setiap metrik dideklarasikan di satu tempat, StorePerformanceService::METRIC_BASIS,
+    yang menyebut scope (period atau current) dan anchor tanggal acuannya. Payload mengirimnya
+    sebagai kunci metric_basis, dan halaman memakainya untuk tabel Dasar Setiap Metrik di
+    kategori Referensi.
+  - Metrik PERIODE terikat rentang terpilih dan punya pembanding (payload mengirim previous
+    berupa angka). Metrik CAKUPAN SEKARANG dihitung dari keadaan saat laporan dibangun dan
+    sengaja tidak punya pembanding (payload mengirim previous null), karena membandingkannya
+    dengan dirinya sendiri selalu nol. Yang bercakupan sekarang: open_orders, dispatched_orders,
+    returns_open, payment_pending_count, cod_pending_amount, cod_pending_count.
+  - Penanda cakupan ditempel pada LABEL, bukan pada lencana terpisah di kartu, supaya ekspor
+    XLSX dan drawer yang hanya membaca label ikut membawa cakupannya. Metrik bercakupan
+    sekarang berlabel "(kondisi saat ini)", sedangkan dua angka kas COD berlabel "(semua waktu)"
+    karena cakupannya melampaui periode terpilih.
+  - Pesanan Selesai dihitung dari waktu pesanan berpindah ke status completed (event_logs), bukan
+    dari created_at, supaya pesanan lama yang selesai pada periode ini tetap terhitung. Untuk
+    pesanan lama yang perpindahannya tidak tercatat, updated_at dipakai sebagai perkiraan.
+  - Model Produk Terjual menghitung jenis model saja; Sub Model Terjual menghitung pasangan model
+    dan desainnya. Produk Terjual menghitung produk berbeda menurut varian ukuran, dan baris tanpa
+    variant_sku jatuh ke parent_sku supaya produk tanpa varian tetap terhitung.
+  - Rasio Retur Selesai dan Rasio Pembatalan memakai populasi yang sama di pembilang dan penyebut,
+    sehingga nilainya tidak bisa melewati 100 persen.
+  - Pengaman masukan rentang. Parameter from/to hanya dipakai bila bentuknya persis YYYY-MM-DD; nilai
+    lain seperti "monday" atau "2026-13-45" TIDAK ditafsirkan, melainkan diabaikan dan dilaporkan lewat
+    range.input_diabaikan, lalu laporan memakai rentang bawaan. Rentang yang melewati hari ini dipotong
+    sampai hari ini dan dilaporkan lewat range.rentang_dipotong; tanpa itu jendela pembandingnya menciut
+    sampai nol detik sehingga seluruh kolom pembanding kehilangan arti. Halaman menampilkan satu kalimat
+    pemberitahuan bila salah satu penanda itu menyala.
+  - Jumlah kueri halaman ini TIDAK tumbuh sebanding jumlah pesanan. Riwayat status dan resi pertama
+    diambil sekali untuk seluruh pesanan periode (statusEventsFor dan firstWaybillAtFor), bukan satu
+    kueri per pesanan. Dijaga test StorePerformanceInputGuardTest, yang gagal bila menambah 40 pesanan
+    menambah lebih dari 10 kueri.
+  - Route: admin.analytics.store-performance (+ .export). Omset gross berasal dari order fulfillment/return (processing|shipped|delivered|completed|return_in_process|return_completed); untuk COD, omzet hanya diakui saat order mencapai completed (uang belum tertagih di status fulfillment); net dikurangi refund return ledger yang selesai. issue bukan retur.
+
+### 3. Produk (Catalog)
+Satu menu nav **Kelola Produk** (submenu inline, pola Ant Design) memayungi seluruh domain katalog:
+Produk | Kategori | Model Produk | Sub Model | Hasil Pemasangan | Import | Teruskan Popularitas | Media Library | Riwayat Media.
+URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/categories`,
+`/admin/model-products`, `/admin/sub-models`, `/admin/variants`, `/admin/attributes`) redirect 301.
+
+- **Produk** (Tipe: `Operational` & `Content`) — `/admin/kelola/produk`
   - Daftar SKU Induk, status aktif/arsip.
-  - Sub-view: Product Detail (Overview, Variants, Attributes, Media per produk).
+  - Sub-view: Product Detail (tab Varian, Spesifikasi & Deskripsi, Media per produk).
+    Table-first: dua kartu seimbang 50-50 di atas (kartu identitas foto 1:1 full-height
+    + nama, SKU, status di kiri; kartu detail 2 kolom di kanan: Kategori, Model, Sub Model,
+    Berat paket, Dimensi paket, Pengiriman), lalu tabel utama per tab aktif. Tab aktif tercermin
+    di URL lewat `?tab=` (`varian` [default] | `spesifikasi` | `media`).
+    Varian: kolom Varian | Status | Harga | Stok | SKU | Aksi + tombol Kelola varian;
+    Spesifikasi & Deskripsi: gabungan deskripsi produk (collapsible) + tabel spesifikasi;
+    Media: thumbnail besar setinggi baris dengan modal preview saat diklik, kolom Status File,
+    Publikasi, Berkas (tautan ke Media Library), dan tombol Kelola media ke Media Library.
+    Form Edit Varian fokus pada opsi, harga, stok, status (foto dan berat/dimensi dihapus).
+    Form Kelola Spesifikasi fokus pada nama dan nilai (pilihan sumber internal/shopee dihapus).
+  - Urutan daftar: Baru saja diubah (default, memakai updated_at sehingga hasil import dan hasil edit sama-sama terangkat), Paling lama tidak diubah, Terlaris, Paling sedikit terjual, Terbaru ditambahkan, Terlama ditambahkan. Tiap opsi punya pasangan arah naik/turun lewat parameter `sort`, dan urutan yang sama dipakai file Export CSV.
   - Shortcut toolbar: Import, Media hub, Export CSV, Tambah Produk.
-- **Import** (Tipe: `Operational`) — di bawah grup nav **Produk**
+- **Kategori** (Tipe: Operational) — `/admin/kelola/kategori`
+  - CRUD kategori katalog (aktif/nonaktif).
+- **Model Produk** (Tipe: `Content/CMS` showcase katalog) — `/admin/kelola/model-produk`
+  - Showcase/kurasi model katalog (`cms_model_products`): list + stats, reorder, sync dari produk, CRUD, aktif/draft.
+  - Media setting (2026-09-15): gambar utama + galeri foto diambil dari Media Library (upload/pilih), urutan galeri disimpan, plus setelan tampil/tidaknya foto produk di hero model. Kolom `image_url` hanya fallback legacy.
+  - Route: `admin.model-products.*` → `Admin/ModelProducts/{Index,Form}`. **Bukan** `admin.products.*` (katalog SKU).
+- **Sub Model** (Tipe: Operational) — `/admin/kelola/sub-model`
+  - CRUD sub model + urutan per model produk. Route: `admin.sub-models.*`.
+  - Kontrak 2026-09-16: form tambah SELALU kosong (tanpa prefill model), pemilih model bercari, daftar tanpa parameter menampilkan semua sub model dikelompokkan per model dengan mode geser terkunci. Kolom image_url dihapus (tidak dipakai storefront).
+- **Hasil Pemasangan** (Tipe: `Content/CMS` & `Operational`) — `/admin/hasil-pemasangan`
+  - Galeri hasil pemasangan terstruktur per model produk (mirror storefront); drill-down `/admin/hasil-pemasangan/kelola` khusus mengelola media unassigned (tanpa terikat produk manapun) dan upload foto/video manual. Media terikat produk dikelola langsung di form produk.
+  - Route: `admin.hasil-pemasangan.*` → `Admin/InstallationGallery/{Index,Model}`.
+- **Import** (Tipe: Operational) — submenu Kelola Produk
   - Daftar job impor Shopee/Internal.
   - Sub-view: Job Detail (Summary, Statistik Bar, Failed Rows Table, Download Correction).
-- **Media** (Tipe: `Operational`) — di bawah grup nav **Produk**
-  - Media manager global + status download/upload; kelola per produk lewat `admin.products.media.*`.
-- **Attributes** (Tipe: `Operational`)
-  - Manajemen taksonomi (material, tipe kaca, dll) dari konteks produk.
+- **Import Performance** (Tipe: Analytics) — BUKAN nav terpisah; dibuka dari halaman **Import** lewat toolbar Performa Import (Fase 13).
+  - Metrik keberhasilan dan tingkat error sistem impor data.
+  - Route: admin.analytics.import-performance.
+- **Teruskan Popularitas** (Tipe: Operational) — konfigurasi eksplisit produk sumber → target.
+  - Snapshot penjualan valid sumber menjadi seed target; penjualan target tetap dihitung sendiri.
+  - Bisa dinonaktifkan dengan alasan; audit dan notifikasi ambang masuk ke Akun & Sistem.
+  - Route: admin.products.popularity-boosts.*.
+- **Media Library** (Tipe: Operational) — global shared asset, submenu Kelola Produk.
+  - Sebelum unggah, isi setiap berkas diperiksa lebih dulu lewat `POST /admin/media/check-duplicates`
+    (sidik jari SHA-256). Berkas yang isinya sudah ada ditahan dan admin diberi peringatan berisi aset
+    yang sama, dengan pilihan Lewati (bawaan) atau Tetap unggah. Aset berstatus arsip tidak dihitung
+    duplikat karena berkasnya sudah dihapus, jadi mengunggahnya lagi menghasilkan aset baru.
+  - Penggabungan otomatis di server tetap berlaku sebagai penjaga terakhir: kalau pemeriksaan di klien
+    tidak bisa dijalankan, berkas tetap dikirim dan digabungkan seperti sebelumnya.
+- **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
+  - Filter: tab status (Semua, Gagal, Berhasil), pencarian label/pesan,
+    dan SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang tanggal)
+    memakai pola yang sama dengan halaman daftar admin lain. Rentang tanggal hanya muncul
+    setelah "Rentang tanggal" dipilih, dan periode aktif ditandai chip beserta jalan melepasnya.
+  - Nilai status yang tidak punya tab lagi (mis. `?event=dedup` dari tautan lama) diabaikan,
+    bukan ditolak, supaya halaman tidak pernah tampil tanpa tab aktif. Daftar jenis event
+    yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`, sinkron dengan
+    `EVENT_TABS` di `resources/js/pages/Admin/Media/History.tsx`.
 
-### 3. Orders & Payments (Pesanan & Pembayaran)
+### 4. Orders & Payments (Pesanan & Pembayaran)
 - **Orders** (Tipe: `Operational`)
   - Daftar pesanan dengan filter status (pending, processing, shipped, dll).
   - Sub-view: Order Detail (Ringkasan, Info Pelanggan, Item, Log WA, Log Status).
 - **Payments** (Tipe: `Operational`)
   - Daftar rekaman pembayaran, verifikasi bukti transfer.
 
-### 4. Shipping (Pengiriman)
+### 5. Promo (Harga & Promo)
+Satu menu nav **Promo Toko** (submenu inline) memayungi semua jenis promosi:
+Promo Toko | Flash Sale | Voucher Toko | Banner Promo | Bar Promo.
+Biaya COD tetap item flat di grup yang sama.
+
+- **Promo Toko** (tab di dalamnya bernama **Diskon Reguler**, type=store) — kampanye
+  diskon reguler toko untuk produk terpilih.
+- **Flash Sale** — diskon menit terbatas (type=flash_sale).
+- **Detail kampanye** — `admin.promotions.show` untuk kedua tipe: target kampanye,
+  ringkasan penjualan (unit terjual, nilai, pesanan, nilai diskon), dan tabel
+  produk yang diurutkan dari paling banyak terjual; produk tanpa penjualan tetap
+  tampil dengan angka nol. Rentang dapat diganti antara periode kampanye dan semua waktu.
+  Hanya pesanan scope omzet (`StorePerformanceService::REVENUE_STATUSES`) yang dihitung.
+- **Voucher Toko** — kode voucher diskon.
+- **Diskon Ongkir** — pengaturan subsidi ongkos kirim.
+- **Banner Promo** — banner promosi di halaman.
+- **Bar Promo** — bar notifikasi promosi.
+- **Biaya COD** — biaya tambahan pembayaran tunai.
+
+### 6. Shipping (Pengiriman)
 - **Shipping Records** (Tipe: `Operational`)
   - Daftar nomor resi (Waybill), kurir, dan status integrasi J&T/lainnya.
+  - Resi diterbitkan di J&T di luar website; admin hanya memasukkan nomor resi manual.
+  - Detail menampilkan URL tracking (bila tersedia), timeline event, dan refresh dengan hasil sukses/gagal/stale yang jujur.
 
-### 5. WhatsApp Center
+### 6. WhatsApp Center
 - **WhatsApp Otomatis** (Tipe: `Settings/System` & `Operational`)
   - Daftar 5 otomasi Stage-8 (COD, Transfer, Diproses, Resi, Sampai): toggle aktif + edit provider/body preview.
   - Route: `admin.whatsapp.templates.*` → `Admin/WhatsApp/Index|Edit`.
-  - Status koneksi Cloud API: `admin.whatsapp.connection` → `Admin/WhatsApp/Connection` (bukan QR WhatsApp Web).
+  - Status koneksi gateway **Baileys** (provider Meta diarsipkan 2026-08-19): `admin.whatsapp.connection` → `Admin/WhatsApp/Connection` (bukan QR WhatsApp Web).
 - **Messages** (Tipe: `Operational`)
   - Log lalu lintas pesan masuk/keluar dan *troubleshooting* status gagal. Route: `admin.whatsapp.messages.*`.
 
-### 6. CMS / Pengaturan Website
+### 7. CMS / Pengaturan Website
 - **Beranda Pembeli** (Tipe: `Content/CMS`)
-  - Tata letak section beranda (urutan/aktif) + editor Sorotan Layanan & Cara Pesan. Banner → Promo Toko.
-  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,ServiceHighlightsForm,HowToOrderForm}`. Data: `cms_pages.beranda` JSON.
-- **Model Produk** (Tipe: `Content/CMS`)
-  - Showcase/kurasi model katalog (`cms_model_products`): list + stats, reorder, sync dari produk, CRUD, aktif/draft.
-  - Route: `admin.model-products.*` → `Admin/ModelProducts/{Index,Form}`. **Bukan** `admin.products.*` (katalog SKU).
+  - Tata letak section beranda (urutan/aktif) + editor seksi Cara Pesan Jendela Anda. Banner → Promo Toko.
+  - Tidak punya entri sidebar sejak 2026-09-21 (permintaan owner: "buang menu"). Halaman dan rutenya tetap hidup dan bisa dibuka lewat URL langsung `/admin/beranda`; yang dihapus hanya entri navigasinya. Halaman ini masih memuat dua kontrol yang dibaca beranda publik: on/off carousel Banner Utama dan editor seksi Cara Pesan Jendela Anda. Editor Sorotan Layanan sudah dihapus lebih dulu (tidak ada komponen publik yang membacanya).
+  - Route: `admin.beranda.*` → `Admin/Beranda/{Index,HowToOrderForm,Popular}`.
+  - **Paling Banyak Dipesan** (`admin.beranda.popular.index`): satu daftar urutan untuk seluruh katalog (drag & drop, plus tombol "Ke atas" per baris untuk memindahkan produk mana pun ke posisi 1); menulis `products.homepage_popular` + `homepage_popular_sort` (10 produk aktif teratas tayang). Kolom metrik sama untuk semua baris: baris carousel menampilkan views/clicks sebelum vs sesudah, baris lain hanya total tercatat. Data: `cms_pages.beranda` JSON.
 - **Cara Pemesanan** (Tipe: `Content/CMS`)
   - Editor panduan publik `/cara-pemesanan`: hero, langkah (+ checklist), kartu info, catatan HTML.
   - Route: `admin.cara-pemesanan.*` → `Admin/CaraPemesanan/Edit`. Data: `cms_pages.slug = cara-pemesanan`.
@@ -66,14 +180,17 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Accordion FAQ (`cms_faq_items`): tab Aktif / Diarsipkan, list first, tambah on-demand, meta halaman tersembunyi; filter kategori, reorder, archive.
   - Route: `admin.faq.*` → `Admin/Faq/Index`. Publik: `/faq` → `Public/Faq` (hanya `status=active`).
 - **Masalah & Solusi** (Tipe: `Content/CMS`)
-  - Pasangan kendala/rekomendasi (`cms_problems_solutions`) + meta `cms_pages.masalah-solusi`.
+  - Pasangan kendala/rekomendasi (`cms_problems_solutions`) + meta `cms_pages.masalah-solusi` (judul CMS, judul hero, subjudul). Kontrol "Terbitkan halaman" tidak ada: halaman ini selalu tayang.
+  - Form item: deskripsi masalah, teks solusi (selalu tampil di publik, termasuk saat daftar opsi dipakai), judul/teks bagian contoh, sampai dua media berurutan, judul & lead solusi, daftar opsi bernomor (nomor WhatsApp di keterangannya menjadi tombol CTA), catatan WhatsApp.
   - Route: `admin.masalah-solusi.*` → `Admin/MasalahSolusi/{Index,Form}`. Publik: `/masalah-dan-solusi` → `Public/MasalahSolusi`.
-- **Informasi Toko** (Tipe: `Content/CMS`)
-  - Editor dokumen panjang (`cms_pages.tentang-kami` → `content.body` + heading).
-  - Route: `admin.tentang-kami.*` → `Admin/CmsDocument/Edit`. Publik: `/about`.
-- **Marketplace & Media Sosial** (Tipe: `Settings`)
-  - Editor tautan eksternal toko/akun (`cms_pages.storefront-platforms` → `content.links`). Katalog key/label/icon di `config/sitemap.php` → `platforms`.
-  - Route: `admin.storefront-platforms.*` → `Admin/StorefrontPlatforms/Edit`. Tampil di Informasi Toko + footer via Inertia share `platforms`.
+- **Informasi Toko / Tentang Kami** (Tipe: `Content/CMS` & Pusat Profil Terpadu)
+  - Pusat pengelolaan profil perusahaan terpadu: informasi utama (hero/headline/deskripsi), foto utama & galeri workshop (1-4 foto), statistik keunggulan, proses produksi, cara kerja pemesanan, dan jaminan pelanggan (`cms_pages.tentang-kami` via `AboutPageSettings`).
+  - Otomatis menyinkronkan kontak (alamat, WA, email, jam kerja) ke `cms_pages.kontak` (`StoreContactSettings`) dan tautan marketplace/sosmed ke `cms_pages.storefront-platforms` (`StorefrontPlatformSettings`).
+  - Route: `admin.tentang-kami.*` → `Admin/TentangKami/Edit`. Publik: `/about` → `Public/About`.
+- **Profil & Kontak Toko** (Tipe: `Settings`)
+  - Satu view tanpa tab (owner 2026-09-29): tautan marketplace & media sosial (`cms_pages.storefront-platforms` → `content.links`, katalog key/label/icon di `config/sitemap.php` → `platforms`), kontak & jam kerja (`cms_pages.kontak`), dan aset brand (logo + favicon).
+  - Halaman dibuka read-only; isian aktif setelah tombol Edit ditekan, disimpan lewat tombol Simpan di header. Simpan mengirim tiga endpoint berurutan (tautan, kontak, aset brand hanya bila ada berkas baru dipilih) dan berhenti pada kegagalan pertama.
+  - Route: `admin.storefront-platforms.*` → `Admin/StorefrontPlatforms/Edit`; alias lama `admin.store-settings.index` menampilkan view yang sama. Tampil di Informasi Toko + footer via Inertia share `platforms`.
 - **Ketentuan Layanan** (Tipe: `Content/CMS`)
   - Editor dokumen (`cms_pages.ketentuan-layanan`). Route: `admin.ketentuan-layanan.*` → `Admin/CmsDocument/Edit`. Publik: `/policy/terms`.
 - **Kebijakan Privasi** (Tipe: `Content/CMS`)
@@ -82,9 +199,6 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
   - Meta hero `/reviews` (`cms_pages.testimoni`: `title`, `heading`, `subtitle`, `published`) + daftar ulasan website (`cms_testimonials`).
   - Route: `admin.apa-kata-pelanggan.*` → `Admin/Testimonials/Index` (surface Pengaturan; CRUD item tetap `admin.testimonials.*`).
   - Monitoring → Ulasan tetap entry dual-tab (website + foto).
-- **Hasil Pemasangan Kami** (Tipe: `Content/CMS`)
-  - Meta section `/hasil-pemasangan` + beranda (`cms_pages.hasil-pemasangan`) + galeri `cms_gallery_items`; detail publik `/hasil-pemasangan/{parent_sku}`.
-  - Route: `admin.hasil-pemasangan.*` → `Admin/Testimonials/Index` (tab foto + meta; CRUD item tetap `admin.gallery-items.*`).
 - **Pages** (Tipe: `Content/CMS`)
   - Editor halaman publik generik.
 - **Banners / Promo** (Tipe: `Content/CMS`)
@@ -92,30 +206,28 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 - **Flash Sale** (Tipe: `Operational` & `Content`)
   - Menandai produk peserta Flash Sale via `product_attributes` (`promo_flash_sale`, `promo_compare_price`). Route: `admin.flash-sale.*`.
 - **Voucher Toko** (Tipe: `Operational`)
-  - CRUD kode voucher checkout (`store_vouchers`). Route: `admin.vouchers.*`. Hanya satu voucher `published` sekaligus.
+  - CRUD/status/duplikasi/akhiri kode voucher checkout (`store_vouchers`). Route: `admin.vouchers.*`. Beberapa voucher dapat aktif; stacking dikonfigurasi per voucher.
 - **Biaya COD** (Tipe: `Settings`)
   - Toggle COD + handling fee + limit belanja. Route: `admin.cod-settings.*` → `cms_pages.checkout.content.cod`.
 - **Subsidi Ongkir** (Tipe: `Settings`)
   - Toggle subsidi + skema %/Rp + kurir J&T. Route: `admin.shipping-subsidy.*` → `cms_pages.checkout.content.shipping_subsidy`.
 
-### 7. Analytics (Analitik & Performa)
-- **Performa Toko** (Tipe: `Analytics` / pembukuan)
-  - Dashboard KPI penjualan, kunjungan, operasional + tren + tabel produk/customer + unduh CSV.
-  - Route: `admin.analytics.store-performance` (+ `.export`). Inertia: `Admin/Analytics/StorePerformance`.
-  - Omzet hanya order fulfillment (`processing|shipped|delivered|completed`).
+### 8. Pelanggan & Monitoring
 - **Customer** (Tipe: `Operational` / Monitoring)
   - Kelola pelanggan guest (tabel `customers`): cari, status/fraud turunan, detail/edit, riwayat order, unduh CSV.
   - Route: `admin.customers.*` → `Admin/Customers/{Index,Edit}`. **Bukan** Manajemen Admin (`admin.users.*`).
 - **Ulasan** (Tipe: `Operational` / Monitoring)
   - Tab **Ulasan Website** (`cms_testimonials`) + **Ulasan Foto** (`cms_gallery_items` / hasil pemasangan): cari, filter publish, publish/unpublish, CRUD.
+-  Moderasi ulasan: status pending/approved/rejected, audit source/author, verified purchase dari order delivered/completed, admin dapat membuat satu ulasan/order yang belum diberi ulasan; teks pelanggan immutable, media foto/video dapat ditambahkan admin.
   - Route: `admin.testimonials.*` + `admin.gallery-items.*` → `Admin/Testimonials/{Index,Form,GalleryForm}`.
-- **Log Aktivitas** (Tipe: `Operational` / Monitoring)
-  - Audit trail `event_logs`: tab kategori, cari, sort, unduh CSV, Detail ke order/import/WA. **Bukan** Import Performance.
-  - Route: `admin.activity-logs.*` → `Admin/ActivityLogs/Index`.
-- **Import Performance** (Tipe: `Analytics`)
-  - Metrik keberhasilan dan tingkat *error* sistem impor data. Route: `admin.analytics.import-performance`.
-
-### 8. Settings (Sistem) / Akun
+### 9. Settings (Sistem) / Akun
+- **Log Aktivitas** (Tipe: Operational / Monitoring)
+  - Audit trail event_logs: tab kategori, cari, sort, unduh CSV, Detail ke order/import/WA.
+  - Route: admin.activity-logs.* → Admin/ActivityLogs/Index.
+- **Notifikasi** (Tipe: Operational / Monitoring)
+  - Daftar dan tanda-baca notifikasi admin.
+  - Review ongkir manual ditampilkan satu kali per order (dedupe target order), dengan aksi Review ongkir, Edit biaya ongkir, dan Konfirmasi order menuju detail pesanan.
+  - Route: admin.notifications.index.
 - **Profil Saya** (Tipe: `Settings/Account`)
   - Edit nama, email, password akun yang sedang login. Peran/status read-only.
   - Route: `admin.profile.*` → `Admin/Profile/Edit`.
@@ -133,3 +245,12 @@ Footer sidebar: tautan **Lihat toko** → beranda publik (`home`, tab baru) agar
 
 - **Order Management Flow**: `Dashboard (Needs Attention)` -> `Orders List` -> `Order Detail` -> (Tab Pembayaran / Tab Pengiriman / Tab WA Logs).
 - **Catalog Update Flow**: `Dashboard (Import Alerts)` -> `Produk → Import` -> `Failed Rows` -> (Perbaikan Data Excel) -> `Produk → Daftar Produk` -> `Product Detail (Variants & Media)`.
+
+---
+
+## Error Handling (404)
+
+URL `/admin/*` yang tidak dikenal (mis. `/admin/dashboard`) tidak punya route → catch-all
+`admin/{any}` (auth+admin) memanggil `abort(404)` → exceptions handler merender `Admin/Error`
+(ber-brand, tombol "Ke Dashboard" / "Daftar pesanan") dengan status HTTP 404. Admin yang
+belum login diarahkan ke `/login`. Bukan menu navigasi — tidak masuk sidebar.

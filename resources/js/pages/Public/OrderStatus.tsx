@@ -1,136 +1,103 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, router, useForm, usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { OrderStatusTimeline } from "@/components/public/order-status-timeline"
+import { OrderTrackingDetail } from "@/components/public/order-tracking-detail"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { PageTopBar } from "@/components/public/page-top-bar"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Field, FormErrorSummary } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/ui/status-badge"
 import PublicLayout from "@/layouts/public-layout"
-import { formatCurrency, formatDate } from "@/lib/format"
-import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
-import type { PublicOrder } from "@/types"
+import type { PublicOrder, SharedPageProps } from "@/types"
 
-function OrderDetail({
-  order,
-  eyebrow = "Pesanan",
-}: {
-  order: PublicOrder
-  eyebrow?: string
-}) {
+const TERMINAL_STATUSES = new Set(["completed", "cancelled", "return_completed"])
+const ORDER_STATUS_STORAGE_KEY = "ragil.order-status.v1"
+const MAX_STORED_ORDER_REFS = 5
+
+type StoredOrderRef = {
+  order_number: string
+  /** Legacy browser records may still contain the lookup phone for one migration read. */
+  customer_phone?: string
+}
+
+function readStoredOrderRefs(): StoredOrderRef[] {
+  try {
+    const raw = window.localStorage.getItem(ORDER_STATUS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed)) return []
+
+    return parsed
+      .filter((row): row is StoredOrderRef => (
+        row
+        && typeof row.order_number === "string"
+        && row.order_number.trim() !== ""
+      ))
+      .slice(0, MAX_STORED_ORDER_REFS)
+  } catch {
+    return []
+  }
+}
+
+function writeStoredOrderRefs(refs: StoredOrderRef[]): void {
+  try {
+    window.localStorage.setItem(
+      ORDER_STATUS_STORAGE_KEY,
+      JSON.stringify(refs.slice(0, MAX_STORED_ORDER_REFS).map(({ order_number }) => ({ order_number }))),
+    )
+  } catch {
+    // Browser storage may be disabled (private mode or policy); session tracking still works.
+  }
+}
+
+function mergeStoredRef(ref: StoredOrderRef): void {
+  const refs = readStoredOrderRefs()
+  writeStoredOrderRefs([
+    ref,
+    ...refs.filter((row) => row.order_number !== ref.order_number),
+  ])
+}
+
+function mergeOrders(...lists: PublicOrder[][]): PublicOrder[] {
+  const byNumber = new Map<string, PublicOrder>()
+  for (const list of lists) {
+    for (const row of list) {
+      if (row?.order_number) byNumber.set(row.order_number, row)
+    }
+  }
+  return Array.from(byNumber.values())
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function fetchStoredOrder(
+  ref: StoredOrderRef,
+  signal: AbortSignal,
+  customerPhone?: string,
+): Promise<PublicOrder | null> {
+  const url = new URL(
+    routeUrl("order.status.api", { order_number: ref.order_number }),
+    window.location.origin,
+  )
+  if (customerPhone) {
+    url.searchParams.set("customer_phone", customerPhone)
+  }
+  const response = await fetch(url, {
+    signal,
+    cache: "no-store",
+    headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+  })
+  if (!response.ok) return null
+  return await response.json() as PublicOrder
+}
+
+function OrderDetail({ order }: { order: PublicOrder }) {
   return (
-    <div className="animate-reveal">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-tight text-success">
-            {eyebrow}
-          </p>
-          <h2 className="tabular-nums mt-2 break-all font-mono text-xl font-semibold sm:text-2xl">
-            {order.order_number}
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">Atas nama {order.customer_name}</p>
-        </div>
-        <p className="tabular-nums text-xl font-bold sm:text-2xl">
-          {formatCurrency(order.total_amount)}
-        </p>
-      </div>
-
-      <OrderStatusTimeline
-        className="mt-8"
-        orderStatus={order.order_status}
-        paymentStatus={order.payment_status}
-        shippingStatus={order.shipping_status}
-      />
-
-      <section className="mt-8 border border-border bg-surface p-5">
-        <div className="flex items-start gap-3">
-          <Icon name="truck" className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold">Status pengiriman</h3>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Diperbarui otomatis dari J&amp;T Cargo saat halaman ini dibuka.
-            </p>
-            {order.shipping ? (
-              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Kurir</dt>
-                  <dd className="mt-1 font-semibold">
-                    {order.shipping.carrier_name ?? "J&T Cargo"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Status kirim</dt>
-                  <dd className="mt-1">
-                    <StatusBadge status={order.shipping.status ?? order.shipping_status} />
-                  </dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-xs text-muted-foreground">Nomor resi</dt>
-                  <dd className="tabular-nums mt-1 break-all font-mono text-sm font-semibold">
-                    {order.shipping.waybill_number}
-                  </dd>
-                </div>
-                {order.shipping.last_status_at ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-muted-foreground">Pembaruan terakhir</dt>
-                    <dd className="mt-1 text-sm">
-                      {formatDate(order.shipping.last_status_at, true)}
-                    </dd>
-                  </div>
-                ) : null}
-                {order.shipping.status_raw ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-muted-foreground">Keterangan kurir</dt>
-                    <dd className="mt-1 text-sm text-muted-foreground">
-                      {order.shipping.status_raw}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Resi belum tersedia. Pelacakan aktif setelah gudang membuat pengiriman J&amp;T.
-              </p>
-            )}
-            {order.shipping?.tracking_url ? (
-              <Button asChild variant="secondary" size="sm" className="mt-4">
-                <a href={order.shipping.tracking_url} target="_blank" rel="noreferrer">
-                  Buka lacak di J&amp;T
-                  <Icon name="arrow-right" className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-lg font-semibold">Item pesanan</h3>
-        <ul className="mt-4 divide-y divide-border border-y border-border">
-          {order.items.map((item, index) => (
-            <li
-              key={`${item.product_name}-${index}`}
-              className="flex justify-between gap-4 py-4 text-sm"
-            >
-              <span className="font-semibold">{item.product_name ?? item.name}</span>
-              <span className="tabular-nums text-muted-foreground">{item.quantity} item</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <Alert tone="info" className="mt-8">
-        Jika status belum berubah, buka ulang halaman pesanan beberapa menit lagi atau hubungi tim
-        Ragil.
-      </Alert>
-      <Button asChild variant="secondary" className="mt-4">
-        <Link href={routeUrl("contact")}>Hubungi kami</Link>
-      </Button>
-    </div>
+    <OrderTrackingDetail order={order} />
   )
 }
 
@@ -139,177 +106,371 @@ export default function OrderStatus({
   orders = [],
   has_session_orders = false,
   searched = false,
+  prefill_order_number = null,
 }: {
   order?: PublicOrder | null
   orders?: PublicOrder[]
   has_session_orders?: boolean
   searched?: boolean
+  /** Nomor order yang dibawa tautan (mis. dari halaman konfirmasi yang sesinya berakhir). */
+  prefill_order_number?: string | null
 }) {
-  const sessionList = orders.length ? orders : order ? [order] : []
+  const { errors: pageErrors = {} } = usePage<SharedPageProps>().props
+  const serverOrders = React.useMemo(
+    () => orders.length ? orders : order ? [order] : [],
+    [orders, order],
+  )
+  const currentOrderNumber = order?.order_number ?? ""
+  const [storedOrders, setStoredOrders] = React.useState<PublicOrder[]>([])
+  const [browserHydrated, setBrowserHydrated] = React.useState(false)
+  const [storedLoading, setStoredLoading] = React.useState(false)
+  const sessionList = React.useMemo(
+    () => mergeOrders(storedOrders, serverOrders),
+    [serverOrders, storedOrders],
+  )
   const [activeNumber, setActiveNumber] = React.useState(
-    () => sessionList[0]?.order_number ?? "",
+    () => currentOrderNumber,
   )
 
   React.useEffect(() => {
-    const list = orders.length ? orders : order ? [order] : []
+    const list = sessionList
+    // Keep the selected order valid after a lookup response or local restore replaces the list.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveNumber((current) =>
       list.some((row) => row.order_number === current)
         ? current
-        : (list[0]?.order_number ?? ""),
+        : currentOrderNumber,
     )
-  }, [orders, order])
+  }, [sessionList, currentOrderNumber])
 
-  const activeOrder =
-    sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null
-
-  const [identityMode, setIdentityMode] = React.useState<"phone" | "email">("phone")
   const form = useForm({
+    order_number: prefill_order_number ?? "",
+    customer_phone: "",
+  })
+  const cancelForm = useForm({
     order_number: "",
     customer_phone: "",
-    customer_email: "",
   })
+
+  // Data pesanan terbaru hasil polling (fallback ke prop awal).
+  const [liveOrder, setLiveOrder] = React.useState<PublicOrder | null>(null)
+  // Feedback polling: idle | updating | error + timestamp terakhir berhasil.
+  const [pollState, setPollState] = React.useState<"idle" | "updating" | "error">("idle")
+  const [lastPolledAt, setLastPolledAt] = React.useState<Date | null>(null)
+  // Ref agar tombol Muat Ulang manual dapat memicu satu siklus polling tanpa reload halaman.
+  const pollRef = React.useRef<null | (() => void)>(null)
+  function requestRefresh(): void {
+    pollRef.current?.()
+  }
+
+  React.useEffect(() => {
+    const refs = readStoredOrderRefs()
+    // Tandai storage sudah dibaca agar form tidak berkedip sebelum restore selesai.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBrowserHydrated(true)
+    if (refs.length === 0) return
+
+    let disposed = false
+    const controller = new AbortController()
+    setStoredLoading(true)
+
+    void (async () => {
+      const loaded: PublicOrder[] = []
+      for (const ref of refs) {
+        if (disposed) return
+        if (loaded.length > 0) await sleep(350)
+        try {
+          const row = await fetchStoredOrder(ref, controller.signal, ref.customer_phone)
+          if (row) loaded.push(row)
+        } catch {
+          // Satu order gagal dipulihkan tidak boleh menghentikan order lain.
+        }
+      }
+
+      if (!disposed) {
+        setStoredOrders(loaded)
+        setStoredLoading(false)
+      }
+    })()
+
+    return () => {
+      disposed = true
+      controller.abort()
+    }
+  }, [])
+
+
+
+  React.useEffect(() => {
+    for (const row of serverOrders) {
+      if (row.order_number) {
+        mergeStoredRef({ order_number: row.order_number })
+      }
+    }
+  }, [serverOrders])
+
+  const activeOrder = React.useMemo(
+    () => sessionList.find((row) => row.order_number === activeNumber) ?? sessionList[0] ?? null,
+    [sessionList, activeNumber],
+  )
+
+  React.useEffect(() => {
+    // Reset data polling saat pindah order.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLiveOrder(null)
+    // Polling hanya untuk order yang sedang tampil dan belum mencapai status terminal.
+    if (!activeOrder || TERMINAL_STATUSES.has(activeOrder.order_status)) return
+
+    let disposed = false
+    let timer: number | null = null
+    let inFlight = false
+    let lastAttempt = 0
+    let failures = 0
+
+    const stopPolling = () => {
+      disposed = true
+      if (timer !== null) window.clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+
+    const schedule = (delay: number) => {
+      if (disposed) return
+      if (timer !== null) window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        timer = null
+        void poll()
+      }, delay)
+    }
+
+    const poll = async () => {
+      if (disposed || document.hidden || cancelForm.processing || inFlight) return
+
+      const elapsed = Date.now() - lastAttempt
+      if (lastAttempt > 0 && elapsed < 10_000) {
+        schedule(10_000 - elapsed)
+        return
+      }
+
+      inFlight = true
+      lastAttempt = Date.now()
+      setPollState("updating")
+
+      try {
+        const url = new URL(
+          routeUrl("order.status.api", { order_number: activeOrder.order_number }),
+          window.location.origin,
+        )
+        url.searchParams.set("session", "1")
+        const response = await fetch(url, {
+          cache: "no-store",
+          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        })
+        if (!response.ok) {
+          failures = response.status === 429 ? Math.max(2, failures + 1) : failures + 1
+          setPollState("error")
+          return
+        }
+
+        const fresh = await response.json() as PublicOrder
+        if (disposed) return
+        failures = 0
+        setLiveOrder(fresh)
+        setLastPolledAt(new Date())
+        setPollState("idle")
+        setStoredOrders((current) => current.map((row) =>
+          row.order_number === fresh.order_number ? fresh : row,
+        ))
+        if (TERMINAL_STATUSES.has(fresh.order_status)) {
+          stopPolling()
+        }
+      } catch {
+        failures += 1
+        setPollState("error")
+      } finally {
+        inFlight = false
+        if (!disposed) {
+          const delay = Math.min(120_000, 30_000 * (2 ** Math.min(failures, 2)))
+          schedule(delay)
+        }
+      }
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden && Date.now() - lastAttempt >= 10_000) {
+        void poll()
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibility)
+    // Start conservatively; visibility changes may trigger one guarded refresh.
+    pollRef.current = poll
+    schedule(30_000)
+
+    return () => {
+      pollRef.current = null
+      disposed = true
+      if (timer !== null) window.clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  }, [activeOrder, cancelForm.processing])
+
+  const shownOrder = liveOrder ?? activeOrder
+
+  function _cancelOrder() {
+    if (!activeOrder) return
+    const confirmed = window.confirm(
+      `Batalkan Pesanan ${activeOrder.order_number}?\nStok produk akan dikembalikan ke katalog.`,
+    )
+    if (!confirmed) return
+    cancelForm.setData({
+      order_number: activeOrder.order_number,
+      customer_phone: "",
+    })
+    cancelForm.post(routeUrl("order.cancel", { order_number: activeOrder.order_number }), {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Muat ulang agar status & stok tampilan mengikuti pembatalan.
+        router.reload()
+      },
+    })
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.transform((data) => ({
-      order_number: data.order_number,
-      customer_phone: identityMode === "phone" ? data.customer_phone : "",
-      customer_email: identityMode === "email" ? data.customer_email : "",
-    }))
     form.post(routeUrl("order.status.lookup"), {
       preserveScroll: true,
     })
   }
 
-  const showLookupForm = !has_session_orders
+  const hasBrowserOrders = has_session_orders || sessionList.length > 0
+  const hashTarget = typeof window !== "undefined" && window.location.hash === "#lacak-pengiriman"
+  React.useEffect(() => {
+    if (!hashTarget) return
+    if (!browserHydrated || storedLoading) return
+    // Scroll hanya setelah konten (order / panduan) benar-benar dirender.
+    const t = window.setTimeout(() => {
+      document.getElementById("lacak-pengiriman")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [hashTarget, browserHydrated, storedLoading, shownOrder])
+
+  const showLookupForm = browserHydrated && !storedLoading && !hasBrowserOrders
 
   return (
     <PublicLayout>
       <Head title="Pesanan">
         <meta
           name="description"
-          content="Cek status pesanan dari perangkat ini, atau masukkan nomor pesanan beserta HP/email checkout."
+          content="Cek Status Pesanan dari perangkat ini, atau masukkan nomor pesanan beserta nomor HP checkout."
         />
       </Head>
 
       <section className="border-b border-border bg-surface">
-        <div className="container-page grid gap-6 py-10 lg:grid-cols-[1fr_0.82fr] lg:items-end lg:py-14">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {has_session_orders ? "Pesanan di perangkat ini" : "Cek pesanan"}
-            </h1>
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
-            {has_session_orders
-              ? "Tanpa login. Status pembayaran dan pengiriman ditampilkan dari pesanan yang dibuat di perangkat ini."
-              : "Masukkan nomor pesanan plus nomor HP atau email yang dipakai saat checkout untuk membuka status."}
-          </p>
-        </div>
+        <PageTopBar
+          title="Cek Status Pesanan"
+          breadcrumbs={[{ label: "Beranda", href: routeUrl("home") }, { label: "Cek Status Pesanan" }]}
+        />
       </section>
 
-      <section className="container-page py-10 lg:py-14">
+      <section className="container-page !px-2.5 md:!px-8 lg:!px-12 min-w-0 pt-4 pb-6 lg:pt-6 lg:pb-10">
         {showLookupForm ? (
-          <div className="grid gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-12">
-            <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28">
-              <h2 className="text-lg font-semibold sm:text-xl">Cek pesanan</h2>
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-stretch lg:gap-8">
+            <form onSubmit={submit} className="surface-panel p-5 sm:p-6 lg:sticky lg:top-28 lg:self-start lg:p-7">
+              <h2 className="text-lg font-semibold">Cek pesanan</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Gunakan data yang sama dengan saat checkout.
               </p>
-              <FormErrorSummary className="mt-5" errors={form.errors} />
-              <div className="mt-6 space-y-5">
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Pesanan yang berhasil ditemukan disimpan di browser ini. Gunakan browser yang sama
+                untuk membukanya kembali.
+              </p>
+              <FormErrorSummary className="mt-4" errors={form.errors} />
+              <div className="mt-6 space-y-4">
                 <Field
                   id="order-number"
                   label="Nomor pesanan"
                   required
                   error={form.errors.order_number}
+                  hint="Contoh format: ORD26090011, yaitu ORD lalu tanggal dan nomor urut. Nomor ini tertera di halaman konfirmasi setelah checkout."
                 >
                   <Input
                     value={form.data.order_number}
                     onChange={(event) => form.setData("order_number", event.target.value)}
-                    placeholder="Contoh: RA-..."
+                    placeholder="ORD26090011"
                     autoComplete="off"
                     className="font-mono"
                   />
                 </Field>
 
-                <div>
-                  <p className="text-sm font-semibold">Cocokkan dengan</p>
-                  <div className="mt-2 grid grid-cols-2 rounded-md border border-border bg-surface-muted p-1">
-                    {[
-                      ["phone", "Nomor HP"],
-                      ["email", "Email"],
-                    ].map(([value, label]) => (
-                      <button
-                        type="button"
-                        key={value}
-                        onClick={() => setIdentityMode(value as "phone" | "email")}
-                        className={cn(
-                          "min-h-10 rounded-sm px-3 text-xs font-semibold transition",
-                          identityMode === value
-                            ? "bg-surface text-foreground shadow-sm"
-                            : "text-muted-foreground",
-                        )}
-                        aria-pressed={identityMode === value}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {identityMode === "phone" ? (
-                  <Field
-                    id="customer-phone"
-                    label="Nomor HP/WhatsApp"
-                    required
-                    error={form.errors.customer_phone}
-                  >
-                    <Input
-                      type="tel"
-                      inputMode="tel"
-                      value={form.data.customer_phone}
-                      onChange={(event) => form.setData("customer_phone", event.target.value)}
-                      autoComplete="tel"
-                    />
-                  </Field>
-                ) : (
-                  <Field
-                    id="customer-email"
-                    label="Email"
-                    required
-                    error={form.errors.customer_email}
-                  >
-                    <Input
-                      type="email"
-                      value={form.data.customer_email}
-                      onChange={(event) => form.setData("customer_email", event.target.value)}
-                      autoComplete="email"
-                    />
-                  </Field>
-                )}
+                <Field
+                  id="customer-phone"
+                  label="Nomor HP/WhatsApp"
+                  required
+                  error={form.errors.customer_phone}
+                  hint="Nomor yang dipakai saat checkout. Boleh ditulis diawali 08 atau 62, keduanya dikenali. Contoh: 085725116817."
+                >
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={form.data.customer_phone}
+                    onChange={(event) => form.setData("customer_phone", event.target.value)}
+                    placeholder="085725116817"
+                    autoComplete="tel"
+                  />
+                </Field>
               </div>
               <Button type="submit" size="lg" className="mt-6 w-full" disabled={form.processing}>
                 <Icon name="search" className="h-5 w-5" aria-hidden="true" />
-                {form.processing ? "Mencocokkan..." : "Lihat pesanan"}
+                {form.processing ? "Mencocokkan..." : "Lihat Pesanan"}
               </Button>
             </form>
 
             <div>
+              {pageErrors.cancel ? (
+                <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
+              ) : null}
               {!searched ? (
-                <div className="flex min-h-[22rem] flex-col justify-center border-y border-border py-10">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-muted text-primary">
-                    <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                  <h2 className="mt-6 text-xl font-semibold sm:text-2xl">
-                    Cek pesanan Anda
-                  </h2>
-                  <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
-                    Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
-                    Jika daftar kosong, isi formulir di samping dengan nomor pesanan dan HP/email.
-                  </p>
+                <div className="surface-panel flex flex-col p-5 sm:p-6 lg:h-full lg:p-8">
+                  <div className="flex items-center gap-4">
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
+                      <Icon name="clipboard-list" className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-semibold sm:text-2xl">Cek pesanan Anda</h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Setelah checkout di perangkat yang sama, pesanan biasanya tampil otomatis.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="my-auto grid gap-8 pt-8 sm:grid-cols-3 sm:gap-6 lg:gap-8">
+                    {[
+                      ["1", "Checkout", "Lakukan checkout seperti biasa melalui keranjang."],
+                      ["2", "Siapkan data", "Catat nomor pesanan & nomor HP yang dipakai saat checkout."],
+                      ["3", "Cek status", "Isi formulir di samping, lalu lihat status pesanan Anda."],
+                    ].map(([step, title, text], i, arr) => (
+                      <li key={step} className="relative flex flex-col gap-3 pl-14 sm:pl-0">
+                        {i < arr.length - 1 ? (
+                          <span
+                            aria-hidden="true"
+                            className="absolute left-5 top-5 hidden h-px w-[calc(100%-2.5rem)] border-t border-dashed border-border sm:block"
+                          />
+                        ) : null}
+                        <span className="absolute left-0 top-0 flex size-10 items-center justify-center rounded-full bg-foreground text-sm font-bold text-background">
+                          {step}
+                        </span>
+                        <div className="sm:pt-12">
+                          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </div>
                 </div>
               ) : order ? (
-                <OrderDetail order={order} eyebrow="Pesanan ditemukan" />
+                <OrderDetail
+                  order={order}
+                />
               ) : (
                 <EmptyState
                   icon="search"
@@ -325,50 +486,54 @@ export default function OrderStatus({
             </div>
           </div>
         ) : (
-          <div
-            className={cn(
-              "grid gap-10 lg:items-start lg:gap-12",
-              sessionList.length > 1 && "lg:grid-cols-[16rem_minmax(0,1fr)]",
-            )}
-          >
-            {sessionList.length > 1 ? (
-              <aside className="space-y-2 lg:sticky lg:top-28">
-                <p className="text-xs font-bold tracking-tight text-muted-foreground">
-                  Daftar pesanan
-                </p>
-                <ul className="divide-y divide-border border border-border bg-surface">
-                  {sessionList.map((row) => (
-                    <li key={row.order_number}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveNumber(row.order_number)}
-                        className={cn(
-                          "flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition",
-                          row.order_number === activeOrder?.order_number
-                            ? "bg-surface-muted"
-                            : "hover:bg-surface-muted/60",
-                        )}
-                        aria-current={
-                          row.order_number === activeOrder?.order_number ? "true" : undefined
-                        }
-                      >
-                        <span className="break-all font-mono text-xs font-semibold">
-                          {row.order_number}
-                        </span>
-                        <StatusBadge status={row.order_status} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </aside>
+          // Konten status dipusatkan dengan lebar baca nyaman. Grid 20rem+1fr
+          // ditinggalkan dari sidebar "Pesanan tersimpan" yang sudah dihapus.
+          <div className="mx-auto w-full min-w-0 max-w-2xl lg:max-w-5xl">
+            {pageErrors.cancel ? (
+              <Alert tone="danger" title={pageErrors.cancel} className="mb-4" />
             ) : null}
 
-            <div>
-              {activeOrder ? (
-                <OrderDetail
-                  order={activeOrder}
-                  eyebrow={sessionList.length > 1 ? "Pesanan dipilih" : "Pesanan perangkat ini"}
-                />
+
+
+            <div className="min-w-0">
+              {storedLoading ? (
+                <div className="flex min-h-[22rem] flex-col items-center justify-center gap-3 rounded-lg border border-border py-10 text-center">
+                  <Icon name="dots-three" className="size-6 animate-pulse text-primary" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground">Memuat pesanan yang tersimpan di browser ini...</p>
+                </div>
+              ) : shownOrder ? (
+                <>
+                  <div role="status" aria-live="polite" className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {pollState === "updating" ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icon name="dots-three" className="size-3.5 animate-pulse" aria-hidden="true" />
+                        Memperbarui...
+                      </span>
+                    ) : null}
+                    {lastPolledAt ? (
+                      <span>
+                        Terakhir diperbarui:{" "}
+                        {new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(lastPolledAt)}{" "}
+                        WIB
+                      </span>
+                    ) : null}
+                    {pollState === "error" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 font-medium text-destructive">
+                        Koneksi bermasalah. Data mungkin belum terbarui.
+                        <button
+                          type="button"
+                          className="ml-1 font-bold underline underline-offset-2"
+                          onClick={requestRefresh}
+                        >
+                          Muat Ulang
+                        </button>
+                      </span>
+                    ) : null}
+                  </div>
+                  <OrderDetail
+                    order={shownOrder}
+                  />
+                </>
               ) : (
                 <EmptyState
                   icon="clipboard-list"

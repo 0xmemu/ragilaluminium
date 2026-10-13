@@ -7,8 +7,8 @@ use App\Models\CmsPage;
 /**
  * Long-form CMS documents on cms_pages (Informasi Toko, Ketentuan, Privasi).
  *
- * content.heading — optional hero label
- * content.body — HTML or plain text (stage-9a)
+ * content.heading - optional hero label
+ * content.body - HTML or plain text (stage-9a)
  */
 class CmsDocumentSettings
 {
@@ -53,6 +53,11 @@ class CmsDocumentSettings
     {
         self::assertKey($key);
         $meta = self::DOCUMENTS[$key];
+
+        $cached = CmsSettings::pageBySlug($key);
+        if ($cached !== null) {
+            return $cached;
+        }
 
         return CmsPage::query()->firstOrCreate(
             ['slug' => $key],

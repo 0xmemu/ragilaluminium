@@ -51,7 +51,7 @@ return [
             'driver'      => 'redis',
             'connection'  => 'default',
             'queue'       => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
+            'retry_after' => 1860,
             'block_for'   => null,
         ],
 
@@ -59,7 +59,7 @@ return [
             'driver'      => 'database',
             'table'       => 'jobs',
             'queue'       => 'default',
-            'retry_after' => 90,
+            'retry_after' => 1860,
         ],
     ],
 
@@ -79,6 +79,8 @@ At the job level, we set specific queues:
   - `$this->onQueue('media');`
 
 This keeps bulk workloads separated from general tasks while still using a single Redis or Database backend.
+The 1,860-second visibility timeout must remain greater than the longest
+`ProcessCatalogImport::$timeout` (1,800 seconds).
 
 ### 1.3 Redis Configuration (Recommended)
 
@@ -139,11 +141,13 @@ To keep workers healthy:
 Example:
 
 ```bash
-php artisan queue:work redis --queue=imports --max-jobs=100 --max-time=3600 --sleep=3 --retry=3
+php artisan queue:work redis --queue=imports --max-jobs=100 --max-time=3600 --sleep=3 --tries=1 --timeout=1800
 ```
 
 Principles:
 
+- Worker `--timeout` must stay below the connection `retry_after`.
+- Long import dispatches use `ShouldBeUnique` and `WithoutOverlapping` keyed by import job ID.
 - Workers periodically restart to avoid memory leaks.
 - Failed jobs are persisted in `failed_jobs` and can be retried via artisan (`queue:retry`) or Horizon.
 
@@ -346,6 +350,7 @@ Before configuring or coding anything related to queues or storage, agents must:
 
 - [ ] Use **Redis** as the main queue connection in production (`QUEUE_CONNECTION=redis`), with `database` only as a dev fallback.  
 - [ ] Separate queue workloads logically using queue names: `default`, `imports`, `media`, and run workers accordingly.  
+- [ ] Keep database/Redis `retry_after` above 1,800 seconds and preserve unique/overlap locks on catalog imports.
 - [ ] Configure and run queue workers via Supervisor or Horizon with appropriate `--max-jobs` and `--max-time` to keep workers healthy.  
 - [ ] Store raw import files on the dedicated `imports` disk/path and reference them via `import_job.file_path`.  
 - [ ] Store product media on the `media` disk and always access them via `Storage::disk('media')` APIs (not hardcoded paths).  

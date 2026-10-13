@@ -1,0 +1,238 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Announcement;
+use App\Support\AnnouncementSlideSettings;
+use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AnnouncementController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $status = (string) $request->input('status', 'all');
+        $q = trim((string) $request->input('q', ''));
+
+        $announcements = Announcement::query()
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($inner) use ($q) {
+                    LikeSearch::whereLike($inner, 'text', $q);
+                    LikeSearch::orWhereLike($inner, 'href', $q);
+                });
+            })
+            ->when($status === 'active', fn ($query) => $query->where('published', true))
+            ->when($status === 'inactive', fn ($query) => $query->where('published', false))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Announcements/Index', [
+            'backUrl' => route('admin.promotions.index'),
+            'title' => 'Bar Promo',
+            'description' => 'Kelola teks promo pada bar merah di atas header. Item teratas yang aktif dan masih dalam periode akan tampil.',
+            'searchQuery' => $q,
+            'activeStatus' => in_array($status, ['active', 'inactive'], true) ? $status : 'all',
+            'announcements' => $announcements->getCollection()
+                ->map(fn (Announcement $a) => $this->card($a))
+                ->values()
+                ->all(),
+            'pagination' => InertiaAdmin::pagination($announcements),
+            'createHref' => route('admin.announcements.create'),
+            'announcementSlide' => AnnouncementSlideSettings::sharedProps(),
+            'slideHref' => route('admin.announcements.slide'),
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Announcements/Form', [
+            'announcement' => null,
+            'nextSortOrder' => $this->nextSortOrder(),
+            'submitUrl' => route('admin.announcements.store'),
+            'method' => 'post',
+            'indexHref' => route('admin.announcements.index'),
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $this->validateItem($request);
+        $validated['sort_order'] ??= $this->nextSortOrder();
+
+        Announcement::create($validated);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo dibuat.');
+    }
+
+    public function edit(Announcement $announcement): Response
+    {
+        return Inertia::render('Admin/Announcements/Form', [
+            'announcement' => $this->card($announcement),
+            'submitUrl' => route('admin.announcements.update', $announcement),
+            'method' => 'put',
+            'indexHref' => route('admin.announcements.index'),
+        ]);
+    }
+
+    public function update(Request $request, Announcement $announcement): RedirectResponse
+    {
+        $validated = $this->validateItem($request);
+        $validated['sort_order'] ??= (int) $announcement->sort_order;
+
+        $announcement->update($validated);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo diperbarui.');
+    }
+
+    /**
+     * Simpan urutan bar promo hasil geser di daftar (owner 2026-09-29).
+     */
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1'],
+            'rows.*.id' => ['required', 'integer', 'exists:announcements,id'],
+            'rows.*.sort_order' => ['required', 'integer', 'min:1', 'max:9999'],
+        ]);
+
+        foreach ($validated['rows'] as $row) {
+            Announcement::whereKey((int) $row['id'])->update(['sort_order' => (int) $row['sort_order']]);
+        }
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Urutan bar promo disimpan.');
+    }
+
+    public function unpublish(Announcement $announcement): RedirectResponse
+    {
+        $announcement->update(['published' => false]);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo dinonaktifkan.');
+    }
+
+    public function publish(Announcement $announcement): RedirectResponse
+    {
+        $announcement->update(['published' => true]);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo diaktifkan.');
+    }
+
+    /**
+     * @return array{
+     *     text: string,
+     *     href: string|null,
+     *     starts_at: string|null,
+     *     ends_at: string|null,
+     *     sort_order: int,
+     *     published: bool,
+     * }
+     */
+    /** Nomor urut untuk baris baru: selalu di bawah baris yang sudah ada. */
+    private function nextSortOrder(): int
+    {
+        return (int) Announcement::query()->max('sort_order') + 1;
+    }
+
+    private function validateItem(Request $request): array
+    {
+        $data = $request->validate([
+            'text' => ['required', 'string', 'max:64'],
+            'href' => ['nullable', 'string', 'max:255', 'starts_with:/,http://,https://'],
+            'starts_at' => ['nullable', 'date'],
+            'ends_at' => ['nullable', 'date'],
+            'sort_order' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'published' => ['boolean'],
+        ]);
+
+        // `?? null` wajib: validate() hanya mengembalikan kolom yang benar-benar
+        // dikirim, dan kolom periode boleh kosong, jadi permintaan yang tidak
+        // mengirim keduanya tetap lolos validasi tanpa kuncinya ikut ada. Membaca
+        // kunci yang tidak ada memicu peringatan PHP yang diubah Laravel menjadi
+        // error, sehingga jawabannya 500 alih-alih pesan validasi. Form admin
+        // selalu mengirim kedua kolom itu, jadi jalur ini hanya tersentuh
+        // permintaan yang dibuat langsung.
+        if (filled($data['starts_at'] ?? null) && filled($data['ends_at'] ?? null)) {
+            $starts = Carbon::parse($data['starts_at']);
+            $ends = Carbon::parse($data['ends_at']);
+            if ($ends->lt($starts)) {
+                throw ValidationException::withMessages([
+                    'ends_at' => 'Tanggal berakhir harus sama atau setelah tanggal mulai.',
+                ]);
+            }
+        }
+
+        $href = trim((string) ($data['href'] ?? ''));
+        if ($href !== '') {
+            // Internal absolute URLs (mis. hasil route()) disederhanakan jadi path relatif
+            // agar tetap benar saat domain publik berganti.
+            $appUrl = rtrim((string) config('app.url'), '/');
+            if (str_starts_with($href, $appUrl)) {
+                $href = substr($href, strlen($appUrl));
+            }
+        }
+        $data['href'] = $href === '' ? null : $href;
+        $data['starts_at'] = filled($data['starts_at'] ?? null) ? $data['starts_at'] : null;
+        $data['ends_at'] = filled($data['ends_at'] ?? null) ? $data['ends_at'] : null;
+        // Nomor urut 1-based dan hanya bermakna saat dibandingkan, jadi baris baru
+        // tanpa isian ditaruh paling bawah: max + 1, bukan 0 (angka 0 membuat baris
+        // itu melompat ke paling atas tanpa disengaja).
+        $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : null;
+        $data['published'] = (bool) ($data['published'] ?? false);
+
+        return $data;
+    }
+
+    public function saveSlide(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'enabled' => ['boolean'],
+            // Satuan detik dan boleh pecahan: rotasi storefront punya lantai
+            // 2,5 detik (announcement-bar.tsx), dan nilai bawaan setelan ini 2,5.
+            'interval' => ['required', 'numeric', 'min:2.5', 'max:30'],
+        ]);
+
+        AnnouncementSlideSettings::save([
+            'enabled' => (bool) ($validated['enabled'] ?? false),
+            'interval' => (float) $validated['interval'],
+        ]);
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Pengaturan bar slide disimpan.');
+    }
+
+    public function destroy(Announcement $announcement): RedirectResponse
+    {
+        $announcement->delete();
+
+        return redirect()->route('admin.announcements.index')->with('success', 'Bar promo dihapus.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function card(Announcement $announcement): array
+    {
+        return [
+            'id' => $announcement->id,
+            'text' => $announcement->text,
+            'href' => $announcement->href,
+            'starts_at' => $announcement->starts_at?->toDateString(),
+            'ends_at' => $announcement->ends_at?->toDateString(),
+            'sort_order' => $announcement->sort_order,
+            'published' => $announcement->published,
+            'created_at' => $announcement->created_at?->toISOString(),
+            'updated_at' => $announcement->updated_at?->toISOString(),
+            'edit_href' => route('admin.announcements.edit', $announcement),
+            'publish_url' => route('admin.announcements.publish', $announcement),
+            'unpublish_url' => route('admin.announcements.unpublish', $announcement),
+            'delete_url' => route('admin.announcements.destroy', $announcement),
+        ];
+    }
+}

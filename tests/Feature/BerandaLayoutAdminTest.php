@@ -23,7 +23,8 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Beranda/Index')
                 ->has('sections', 2)
-                ->where('sections.0.key', 'banner'));
+                ->where('sections.0.key', 'banner')
+                ->where('sections.1.key', 'how_to_order'));
 
         $this->actingAs($admin)
             ->put(route('admin.beranda.update'), [
@@ -36,24 +37,21 @@ class BerandaLayoutAdminTest extends TestCase
 
         $page = CmsPage::query()->where('slug', 'beranda')->first();
         $this->assertNotNull($page);
-        $this->assertFalse((bool) collect($page->content['layout']['sections'])->firstWhere('key', 'banner')['enabled']);
-        $this->assertSame('how_to_order', $page->content['layout']['sections'][0]['key']);
+
+        // Update bersifat merge: semua SECTION_KEYS selalu hadir (default untuk yang
+        // tidak dikirim), toggle banner tersimpan sesuai payload.
+        $sections = collect($page->content['layout']['sections']);
+        $this->assertCount(3, $sections);
+        $this->assertFalse((bool) $sections->firstWhere('key', 'banner')['enabled']);
+        // Category menu is intentionally disabled in the homepage CMS layout;
+        // storefront navigation remains available through the header.
+        $this->assertFalse((bool) $sections->firstWhere('key', 'category_menu')['enabled']);
+        $this->assertTrue((bool) $sections->firstWhere('key', 'how_to_order')['enabled']);
     }
 
-    public function test_admin_can_update_service_highlights_and_how_to_order(): void
+    public function test_admin_can_update_how_to_order(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-
-        $this->actingAs($admin)
-            ->put(route('admin.beranda.service-highlights.update'), [
-                'title' => 'Keunggulan Ragil',
-                'subtitle' => 'Alasan pelanggan percaya',
-                'items' => [
-                    ['icon' => 'shield', 'title' => 'Garansi Resmi', 'description' => '1 tahun'],
-                    ['icon' => 'cod', 'title' => 'Bisa COD', 'description' => 'Bayar ditempat'],
-                ],
-            ])
-            ->assertRedirect(route('admin.beranda.index'));
 
         $this->actingAs($admin)
             ->put(route('admin.beranda.how-to-order.update'), [
@@ -67,7 +65,6 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertRedirect(route('admin.beranda.index'));
 
         $layout = HomepageLayoutSettings::forStorefront();
-        $this->assertSame('Keunggulan Ragil', $layout['service_highlights']['title']);
         $this->assertSame('Cara pesan cepat', $layout['how_to_order']['title']);
         $this->assertSame('01', $layout['how_to_order']['steps'][0]['step']);
     }
@@ -87,6 +84,6 @@ class BerandaLayoutAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Public/Home')
                 ->where('homepageLayout.how_to_order.title', 'Cara pesan dari CMS')
-                ->has('homepageLayout.sections', 2));
+                ->has('homepageLayout.sections', 3));
     }
 }

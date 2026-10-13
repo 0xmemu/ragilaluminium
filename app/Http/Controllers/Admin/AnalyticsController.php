@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Services\StorePerformanceService;
+use App\Support\ExportSafety;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StorePerformanceExport;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,24 +23,41 @@ class AnalyticsController extends Controller
     public function storePerformance(Request $request): Response
     {
         $period = (string) $request->input('period', 'today');
-        $granularity = $request->input('granularity');
-        $from = $request->input('from');
-        $to = $request->input('to');
+        $from = is_string($request->input('from')) ? $request->input('from') : null;
+        $to = is_string($request->input('to')) ? $request->input('to') : null;
+        $rawGranularity = $request->input('granularity');
+
+        // Resolve range to check valid allowed granularities for this period/span
+        $range = $this->performance->resolveRange(
+            period: $period,
+            from: $from,
+            to: $to,
+        );
+        $allowedOptions = $this->allowedGranularity(['range' => [
+            'from_date_iso' => $range['from']->toDateString(),
+            'to_date_iso' => $range['to']->toDateString(),
+        ]], from: $from, to: $to);
+        $allowedValues = array_column($allowedOptions, 'value');
+
+        // If requested granularity is not allowed for this range, fallback to null (auto)
+        $granularity = is_string($rawGranularity) && in_array($rawGranularity, $allowedValues, true)
+            ? $rawGranularity
+            : null;
 
         $payload = $this->performance->build(
             period: $period,
-            from: is_string($from) ? $from : null,
-            to: is_string($to) ? $to : null,
-            granularity: is_string($granularity) ? $granularity : null,
+            from: $from,
+            to: $to,
+            granularity: $granularity,
         );
 
         return Inertia::render('Admin/Analytics/StorePerformance', [
             'title' => 'Performa Toko',
-            'description' => 'Pantau dan analisis basis data performa toko Anda dalam satu antarmuka — pembukuan penjualan, produk, dan operasional.',
+            'description' => 'Ringkasan bisnis toko: penjualan, pengunjung, operasional, dan pembayaran pada periode terpilih.',
             'filters' => [
                 'period' => $payload['range']['period'],
-                'from' => $payload['range']['from_date'],
-                'to' => $payload['range']['to_date'],
+                'from' => $payload['range']['from_date_iso'] ?? $payload['range']['from_date'],
+                'to' => $payload['range']['to_date_iso'] ?? $payload['range']['to_date'],
                 'granularity' => $payload['range']['granularity'],
             ],
             'periodOptions' => [
@@ -49,125 +70,131 @@ class AnalyticsController extends Controller
                 ['value' => 'all', 'label' => 'Semua'],
                 ['value' => 'custom', 'label' => 'Kustom'],
             ],
-            'granularityOptions' => [
-                ['value' => 'hour', 'label' => 'Per Jam'],
-                ['value' => 'day', 'label' => 'Per Hari'],
-                ['value' => 'week', 'label' => 'Per Minggu'],
-                ['value' => 'month', 'label' => 'Per Bulan'],
-            ],
+            'granularityOptions' => $this->allowedGranularity($payload, from: is_string($from) ? $from : null, to: is_string($to) ? $to : null),
             'report' => $payload,
             'exportUrl' => route('admin.analytics.store-performance.export', [
                 'period' => $payload['range']['period'],
-                'from' => $payload['range']['from_date'],
-                'to' => $payload['range']['to_date'],
+                'from' => $payload['range']['from_date_iso'] ?? $payload['range']['from_date'],
+                'to' => $payload['range']['to_date_iso'] ?? $payload['range']['to_date'],
                 'granularity' => $payload['range']['granularity'],
             ]),
         ]);
     }
 
-    public function exportStorePerformance(Request $request): StreamedResponse
+    public function exportStorePerformance(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $period = (string) $request->input('period', 'today');
+        $from = is_string($request->input('from')) ? $request->input('from') : null;
+        $to = is_string($request->input('to')) ? $request->input('to') : null;
+        $granularity = is_string($request->input('granularity')) ? $request->input('granularity') : null;
+
+        // Rentang & granularitas KHUSUS export (independen dari filter layar);
+        // fallback ke filter layar bila tidak diisi.
+        $exportFrom = is_string($request->input('export_from')) && $request->input('export_from') !== '' ? $request->input('export_from') : $from;
+        $exportTo = is_string($request->input('export_to')) && $request->input('export_to') !== '' ? $request->input('export_to') : $to;
+        $rawExportGranularity = is_string($request->input('export_granularity')) && $request->input('export_granularity') !== '' ? $request->input('export_granularity') : $granularity;
+
+        $exportRange = $this->performance->resolveRange(period: $period, from: $exportFrom, to: $exportTo);
+        $exportAllowed = $this->allowedGranularity(['range' => [
+            'from_date_iso' => $exportRange['from']->toDateString(),
+            'to_date_iso' => $exportRange['to']->toDateString(),
+        ]], from: $exportFrom, to: $exportTo);
+        $exportAllowedValues = array_column($exportAllowed, 'value');
+
+        $exportGranularity = is_string($rawExportGranularity) && in_array($rawExportGranularity, $exportAllowedValues, true)
+            ? $rawExportGranularity
+            : null;
+
         $payload = $this->performance->build(
             period: $period,
-            from: is_string($request->input('from')) ? $request->input('from') : null,
-            to: is_string($request->input('to')) ? $request->input('to') : null,
-            granularity: is_string($request->input('granularity')) ? $request->input('granularity') : null,
+            from: $exportFrom,
+            to: $exportTo,
+            granularity: $exportGranularity,
         );
 
-        $filename = 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.csv';
+        // Sheet Income Detail + Item Terjual: data baris per pesanan/item pada rentang
+        // yang SAMA dengan payload performa (range.from/to), sesuai kontrak export.
+        $payload['income_detail'] = \App\Support\IncomeDetailQuery::orders($payload['range']['from_date_iso'], $payload['range']['to_date_iso']);
+        $payload['sold_items'] = \App\Support\IncomeDetailQuery::items($payload['range']['from_date_iso'], $payload['range']['to_date_iso']);
 
-        return response()->streamDownload(function () use ($payload) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
+        ExportSafety::assertPerformancePayloadWithinLimit($payload);
 
-            fputcsv($out, ['Performa Toko', $payload['range']['label']]);
-            fputcsv($out, ['Dari', $payload['range']['from_date'], 'Sampai', $payload['range']['to_date']]);
-            fputcsv($out, []);
-            fputcsv($out, ['Bagian', 'Metrik', 'Nilai', 'Periode sebelumnya', 'Perubahan %']);
+        // Span > 31 hari: pecah per bulan kalender -> satu file, set sheet
+        // lengkap per bulan (nama sheet ber-suffix nama bulan).
+        $fromDate = \Carbon\Carbon::parse($payload['range']['from_date_iso']);
+        $toDate = \Carbon\Carbon::parse($payload['range']['to_date_iso']);
+        $spanDays = $fromDate->diffInDays($toDate) + 1;
 
-            foreach ($payload['sections'] as $section) {
-                foreach ($section['kpis'] as $kpi) {
-                    fputcsv($out, [
-                        $section['title'],
-                        $kpi['label'],
-                        $kpi['value'],
-                        $kpi['previous'],
-                        $kpi['change_percent'],
-                    ]);
-                }
+        if ($spanDays > 31) {
+            $sheets = [];
+            $cursor = $fromDate->copy()->startOfDay();
+            while ($cursor->lte($toDate)) {
+                // Potong ke batas rentang yang diminta. Tanpa ini bulan
+                // pertama dan terakhir melebar ke bulan kalender penuh,
+                // sehingga baris di luar rentang ikut terekspor dan subjudul
+                // periode di sheet tidak sama dengan rentang unduhan.
+                $monthFrom = $cursor->copy()->startOfMonth()->max($fromDate);
+                $monthTo = $cursor->copy()->endOfMonth()->min($toDate)->endOfDay();
+                $monthPayload = $this->performance->build(
+                    period: 'custom',
+                    from: $monthFrom->toDateString(),
+                    to: $monthTo->toDateString(),
+                    granularity: $exportGranularity,
+                );
+
+                // Kontrak export: rincian baris wajib ikut rentang payload
+                // bulan ini. Tanpa ini, sheet Rincian Pesanan & Item Terjual
+                // tiap bulan kosong padahal angka finansialnya ada (bug 2026-09-11).
+                $monthPayload['income_detail'] = \App\Support\IncomeDetailQuery::orders($monthPayload['range']['from_date_iso'], $monthPayload['range']['to_date_iso']);
+                $monthPayload['sold_items'] = \App\Support\IncomeDetailQuery::items($monthPayload['range']['from_date_iso'], $monthPayload['range']['to_date_iso']);
+
+                ExportSafety::assertPerformancePayloadWithinLimit($monthPayload);
+                $suffix = $monthFrom->translatedFormat('M Y');
+                $sheets = array_merge($sheets, (new StorePerformanceExport($monthPayload, $suffix))->sheets());
+                $cursor = $monthTo->copy()->addDay()->startOfDay();
             }
 
-            fputcsv($out, []);
-            fputcsv($out, ['Produk terlaris']);
-            fputcsv($out, ['SKU', 'Nama', 'Unit', 'Omzet', 'Jumlah order']);
-            foreach ($payload['top_products'] as $product) {
-                fputcsv($out, [
-                    $product['parent_sku'],
-                    $product['name'],
-                    $product['units'],
-                    $product['revenue'],
-                    $product['order_count'],
-                ]);
-            }
+            return Excel::download(
+                new \App\Exports\StorePerformanceMonthlyExport($sheets),
+                'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx',
+            );
+        }
 
-            fputcsv($out, []);
-            fputcsv($out, ['Customer']);
-            fputcsv($out, ['Nama', 'Telepon', 'Frekuensi', 'Total belanja', 'Order terakhir']);
-            foreach ($payload['customers'] as $customer) {
-                fputcsv($out, [
-                    $customer['customer_name'],
-                    $customer['customer_phone'],
-                    $customer['order_count'],
-                    $customer['total_spent'],
-                    $customer['last_order_at'],
-                ]);
-            }
-
-            foreach ($payload['charts'] as $chart) {
-                fputcsv($out, []);
-                fputcsv($out, [$chart['title']]);
-                fputcsv($out, ['Bucket', 'Label', 'Nilai']);
-                foreach ($chart['series'] as $point) {
-                    fputcsv($out, [$point['bucket'], $point['label'], $point['value']]);
-                }
-            }
-
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return Excel::download(new StorePerformanceExport($payload), 'performa-toko-'.$payload['range']['from_date'].'_'.$payload['range']['to_date'].'.xlsx');
     }
 
-    public function importPerformance(): Response
+    public function importPerformance(): RedirectResponse
     {
-        $jobs = ImportJob::latest()->limit(50)->get();
+        // Semua metrik performa import kini tersaji langsung di daftar import
+        // (KPI kartu + kolom Hasil Import). Halaman analitik terpisah hanya
+        // menduplikasi informasi yang sama, jadi dialihkan ke sumber utamanya.
+        return redirect()->route('admin.imports.index');
+    }
 
-        $total = ImportJob::count();
-        $completed = ImportJob::where('status', 'completed')->count();
-        $failed = ImportJob::where('status', 'failed')->count();
-        $totalRows = (int) ImportJob::sum('total_rows');
-        $failedRows = (int) ImportJob::sum('failed_rows');
-        $rowFailureRate = $totalRows > 0 ? round(($failedRows / $totalRows) * 100, 2) : 0;
+    /**
+     * Opsi granularitas tren yang masuk akal untuk rentang yang dipilih.
+     * Daftarnya berasal dari StorePerformanceService supaya default otomatis
+     * yang dipakai grafik selalu ada di dalam pilihan yang ditampilkan.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<int, array{value: string, label: string}>
+     */
+    protected function allowedGranularity(array $payload, ?string $from = null, ?string $to = null): array
+    {
+        $fromDate = $payload['range']['from_date_iso'] ?? $from;
+        $toDate = $payload['range']['to_date_iso'] ?? $to;
 
-        return Inertia::render('Admin/ResourceShow', [
-            'title' => 'Performa Import',
-            'subtitle' => '50 job terbaru',
-            'fields' => [
-                ['label' => 'Total Job', 'value' => $total],
-                ['label' => 'Completed', 'value' => $completed],
-                ['label' => 'Failed', 'value' => $failed],
-                ['label' => 'Row Failure Rate', 'value' => $rowFailureRate.'%'],
-            ],
-            'sections' => [
-                [
-                    'title' => 'Job Terbaru',
-                    'rows' => $jobs->map(fn (ImportJob $j) => [
-                        'label' => '#'.$j->id.' · '.$j->type,
-                        'value' => $j->status.' · '.($j->success_rows ?? 0).' ok / '.($j->failed_rows ?? 0).' gagal',
-                    ])->values()->all(),
-                ],
-            ],
-        ]);
+        if (! $fromDate || ! $toDate) {
+            return $this->performance->granularityOptions(now()->startOfDay(), now()->endOfDay());
+        }
+
+        try {
+            return $this->performance->granularityOptions(
+                \Carbon\Carbon::parse($fromDate)->startOfDay(),
+                \Carbon\Carbon::parse($toDate)->endOfDay(),
+            );
+        } catch (\Throwable $e) {
+            return $this->performance->granularityOptions(now()->startOfDay(), now()->endOfDay());
+        }
     }
 }

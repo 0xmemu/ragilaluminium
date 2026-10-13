@@ -1,253 +1,327 @@
-# Coding Agents – Ragil Aluminium (`website.4.0`)
+# AGENTS.md - Ragil Aluminium
 
-Laravel modular monolith: Inertia + React storefront and admin panel.  
-**Orchestration:** read [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) first.  
-**Server / production migrate:** only when product is final — out of scope until then.
+Laravel 11 + Inertia React (TypeScript) modular monolith: public storefront + admin panel.
+Runtime: `resources/js/app.tsx` (Inertia), routes in `routes/web.php` (285 routes), thin
+controllers → `app/Services/*` → Eloquent. Prod DB MySQL (`DB_DATABASE=ragil`), Redis
+queue/cache/session, media Cloudflare R2 (`MEDIA_DISK`), WhatsApp Meta/BAILEYS, J&T Cargo.
 
-## Always read before code
+**Read first:** `docs/ORCHESTRATION.md` (source-of-truth hierarchy + skill tracks) →
+`docs/AGENT-ARCHITECT-ORCHESTRATOR.md` (architect/orchestrator contract, ADR-001) →
+`docs/PRODUCT-HANDOFF.md` (product behavior). Session context: `docs/MEMORY.md`.
 
-1. [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) — SoT hierarchy & skill map  
-2. Architecture / schema / API (as needed for the task):
-   - `docs/architecture/system-architecture-ragil-aluminium.md`
-   - `docs/database-schema-ragil-aluminium.md`
-   - `docs/api-and-routes-ragil-aluminium.md`
-3. UI work additionally:
-   - `frontend/README.md`
-   - `frontend/brand/BRAND-KIT.md` + `frontend/docs/DESIGN-SYSTEM.md`
-   - `docs/sitemap/*` + `config/sitemap.php` / `config/admin-sitemap.php`
-   - `frontend/skills/ragil-public-ui/SKILL.md` or `frontend/skills/ragil-admin-ui/SKILL.md`
-   - **`frontend/skills/ragil-ui-functional-integration/SKILL.md`** — UI/fitur wajib fungsional + terintegrasi backend (bukan mockup)
-4. Domain stage skill under `skills/stage-*.md` when touching that domain
+## Papan kolaborasi agent (baca sebelum menyentuh berkas)
 
-`skills/` domain files are flat `.md` (e.g. `stage-1-foundation.md`). Treat each as a skill.  
-Marketplace skills live in `.agents/skills/` (technique helpers only).
+Beberapa agent bekerja di working tree yang sama, kadang bersamaan. Papan ini
+membuat pekerjaan mereka terlihat tanpa perlu bertanya.
 
-**Do not** port UI from `website_2.0/ui` (Next.js). Functional contracts live in `docs/PRODUCT-HANDOFF.md`; visual governance lives in `frontend/`.
+1. **Identitas.** Sebut agent id di awal laporan, dan akhiri pesan commit dengan
+   baris `Agent: <id>`. Semua commit repo ini tercatat atas nama mesin (`Ubuntu`),
+   jadi tanpa baris itu pekerjaan tidak bisa dibedakan pemiliknya.
+2. **Sebelum menulis, lihat dulu.** Jalankan `bash scripts/agent-state.sh`. Skrip
+   itu mencetak berkas kotor, berkas kontrak yang sedang dipegang agent lain,
+   selisih dengan origin, commit terakhir, dan entri log terakhir.
+3. **Jangan menimpa pekerjaan agent lain.** Berkas berstatus ` M` adalah pekerjaan
+   yang belum di-commit, bukan berkas bebas. Jangan `git add` massal per direktori,
+   jangan `git checkout --` berkas itu, jangan `git stash` milik orang lain. Bila
+   berkas kotor harus diubah, ikuti prosedur di `docs/AGENT-COLLABORATION.md`.
+4. **Sesudah selesai, catat.** Tambahkan satu entri di `docs/AGENT-LOG.md` (wajib
+   tiap task, termasuk yang gagal atau diblokir). Bila ada keputusan atau
+   milestone, tambahkan juga di `docs/MEMORY.md`.
+5. **Data terkini menang atas dokumen.** Sebelum mengklaim sesuatu benar,
+   verifikasi kondisi terkini. `docs/TEKNIS/` selalu akurat karena dihasilkan dari
+   kode; `docs/KONTRAK/` dan `docs/ADR/` bisa basi. Bagian "Current status" di
+   bawah adalah RIWAYAT, bukan kondisi terkini.
 
-**UI / fitur:** setiap perubahan tampilan harus dianalisis fungsinya lalu disambungkan ke route/controller/service/schema yang ada sehingga **langsung fungsional**. Jangan kirim mockup atau data palsu sebagai selesai. Rule Cursor: `.cursor/rules/ui-must-be-functional.mdc`.
+Ledger perubahan: `docs/AGENT-LOG.md`. Prosedur rinci: `docs/AGENT-COLLABORATION.md`.
+- **Push: cek dulu, jangan ulang buta.** Sebelum push jalankan `git fetch`
+  lalu `git log HEAD..origin/<branch>`. Kalau ada isi, integrasikan dulu dan
+  jangan mengirim ulang perintah push yang sama. Rinci: bagian 7
+  `docs/AGENT-COLLABORATION.md`.
 
----
+## Non-negotiables
 
-[AGENT REPORT FORMAT — MUST FOLLOW]
+- **DATABASE SAFETY (hard rule):** never `migrate:fresh` / `migrate:refresh` / `db:wipe` /
+  TRUNCATE / mass destructive seeder against the app DB (MySQL `ragil` or whatever `.env`
+  points to) unless the user explicitly orders it in the same request. Forward-only `migrate`
+  is allowed when relevant to the task. Test with PHPUnit (sqlite `:memory:` per `phpunit.xml`);
+  `--env=testing` in `Artisan::call` does NOT switch the DB connection. Incident 2026-07-27:
+  `migrate:fresh` wiped `ragil`, catalog/orders lost, recovery needed re-import.
+- **Report format below is mandatory** for every code change or error fix.
+- **WORK TIER AND STEP BUDGET (contract 2026-09-21).** Before starting, pick a tier
+  and state it in the report. Trivial (1-2 files, no behavioral change) is capped at
+  15 tool calls, Standard (one area, has tests) at 60, Deep (cross-module, or touching
+  auth, payments, migrations, external contracts) at 270. On Trivial and Standard,
+  do NOT invoke the `ce-brainstorm`, `ce-plan`, `ce-compound`, or `ce-doc-review`
+  skills; use a short plan in chat instead (goal, files, how to verify, risks).
+  Reason: `ce-plan` costs 40-70 tool calls and `ce-work` 50-80, so invoking both is
+  90-150 and already exceeds the Standard budget. Full rules live in
+  `docs/ORCHESTRATION.md` under "Tier kerja dan anggaran langkah" and in
+  `docs/decisions/ADR-002`. Exceeding the budget means stop and report.
+  The budget is a ceiling, not a target: every tool call must have a nameable
+  purpose and a result you actually use. Do not call tools whose output you
+  ignore, and do not skip verification to stay under budget.
+- No new route / URL / schema field / enum / status / JSON shape without updating the
+  canonical docs (`docs/database-schema-ragil-aluminium.md`,
+  `docs/api-and-routes-ragil-aluminium.md`, `docs/sitemap/*` + `config/sitemap.php`,
+  `config/admin-sitemap.php`) → then report `SPEC_CHANGED_AND_DOCS_UPDATED`.
+- UI changes must be wired to real routes/controllers/services - functional, responsive,
+- **ALIGNMENT FORM ADMIN (kontrak global, ADR-022, 2026-09-17):** semua baris form admin wajib lurus. Pakai primitif bersama di resources/js/components/admin/ui/field.tsx: Field (sudah content-start), FieldGrid untuk grid form, CheckboxField untuk checkbox yang sebaris dengan field (atau standalone bila satu baris penuh), FieldAction untuk tombol yang sebaris dengan field. Jangan pakai sm:self-end, items-end, atau sm:pt-* manual untuk menyejajarkan kontrol. Section/kartu dalam satu halaman form wajib memakai skala padding sama (p-5 sm:p-6) supaya tepi kiri/kanan lurus; baris media digabung ke grid field, bukan stripe dengan padding sendiri. Verifikasi: kontrol dalam satu baris harus punya center Y sama (toleransi pembulatan 1px).
 
-Every time you change code or fix an error, you MUST report using EXACTLY this structure.
-Do NOT add extra narrative or steps.
-
-1) SCOPE:
-   - One short line.
-   - Example: "Admin product create form"
-              "API /api/products detail WIN-JUNG-001"
-
-2) ROOT_CAUSE:
-   - One line, directly stating the real cause.
-   - Example: "Null product_media->url caused blade error"
-              "variants relation not loaded, property access in loop"
-
-3) CHANGE:
-   - Maximum two lines.
-   - Name the files and what you changed.
-   - Example: "Added null-check in resources/views/admin/products/create.blade.php"
-              "Loaded variants relation in ProductController@show before rendering"
-
-4) SPEC_IMPACT:
-   - Choose ONE of these and write it exactly:
-     - "SPEC_UNCHANGED" → schema, routes, and JSON contracts are all unchanged.
-     - "SPEC_CHANGED_AND_DOCS_UPDATED" → spec changed AND docs have been updated.
-
-5) TEST_STATUS:
-   - One line about tests or manual checks.
-   - Example: "Smoke test admin create product: PASS"
-              "Route /api/products/WIN-JUNG-001: 200 OK, payload matches api-and-routes spec"
-
-Extra rules:
-- Do NOT describe your internal process (e.g. "let me check the log", "let me run the request").
-- Do NOT mention misleading stack frames or line numbers once you know they are not the real source.
-- Focus only on: scope, root cause, concrete code changes, impact on spec, and test status.
----
-
-## SKILL USAGE RULES
-
-**Peta lengkap (tracks A–F, verify, gap):** [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md).  
-Ringkas area → skill wajib:
-
-| Area | Track | Baca wajib |
-|------|-------|------------|
-| Public storefront / checkout | C | `frontend/skills/ragil-public-ui/SKILL.md`, **`ragil-ui-functional-integration`**, brand/design docs, `docs/logic/stage-10-*`, `docs/sitemap/public-*` |
-| Admin UI | C | `frontend/skills/ragil-admin-ui/SKILL.md`, **`ragil-ui-functional-integration`**, brand/design docs, `docs/logic/stage-9a-*` / `9b-*`, `docs/sitemap/admin-*` |
-| Import & media | B | `skills/stage-5-import-and-media-pipeline.md`, schema |
-| WhatsApp (+ event order) | B | `skills/stage-8-*`; event order juga `skills/stage-4-*` |
-| Queue & storage | B | `skills/stage-6-laravel-queue-and-storage.md` |
-| Order / payment / shipping | B | `skills/stage-4-*`; JNT → `docs/jnt-cargo-integration.md` |
-| Tests / PHPUnit | E | `.agents/skills/laravel-testing` + `tests/Feature/*` |
-| Visual implementation | C | `frontend/brand/BRAND-KIT.md`, `frontend/docs/DESIGN-SYSTEM.md`, `frontend/skills/ragil-visual-qa/SKILL.md`, **`ragil-ui-functional-integration`** |
-| Visual overhaul technique | C | `.agents/skills/design-taste-frontend` + tetap tunduk pada kontrak dan brand kit |
-
-General rule:
-- Read AGENTS.md → [`ORCHESTRATION.md`](docs/ORCHESTRATION.md) track → skill lokal → supporting docs.
-- Do NOT rely only on docs/; `skills/` domain files are authoritative workflows for that stage.
-- Marketplace `.agents/skills/` = technique only; do not override frontend governance / schema / sitemap.
-- Do NOT invent beyond schema / API / Product Handoff / sitemap contracts.
-
----
-
-## Phase 0 – Setup & Baseline
-
-1. **Initialize Laravel project**
-   - Ensure Laravel version (e.g. 10+).  
-   - Configure environment for MySQL (local dev).
-
-2. **Configure environment files**
-   - `.env`:
-     - DB connection (MySQL).  
-     - queue (Redis or database).  
-     - storage (local, possibly S3 later).  
-     - placeholder config for WhatsApp and shipping.
-
-3. **Create basic route groups**
-   - `routes/web.php`: public + admin prefixes.  
-   - `routes/api.php`: if needed for API endpoints.  
-   - Webhook routes for WhatsApp and shipping.
+- **MODE TERKUNCI HALAMAN PENGATURAN (kontrak global keras, ADR-023, ditegaskan ulang 2026-10-12).** Halaman atau bagian yang tugasnya MENGUBAH NILAI YANG SUDAH ADA (pengaturan, setelan, konfigurasi) WAJIB dibuka TERKUNCI: isian, pilih, dan kotak centang diberi disabled, dan yang tampil hanya tombol Edit di kanan header. Isian baru bisa diubah setelah Edit ditekan; saat mode edit muncul Batal + Simpan di kanan header, dan setelah Simpan berhasil halaman kembali terkunci. Dua varian: (A) ringkasan read-only menggantikan form untuk form panjang (Tentang Kami, Profil & Kontak Toko), (B) form yang sama tetapi seluruh kontrol disabled untuk setelan ringkas (Biaya COD, Subsidi Ongkir, Slide bar promo). Batal TIDAK boleh memakai router.reload(): Inertia repo ini mempertahankan state sehingga mode edit bertahan; pulihkan isian ke nilai tersimpan lalu set mode view. Keadaan terkunci harus terbaca dari kontrolnya sendiri; JANGAN menambah kalimat penutup seperti tekan Edit untuk mengubah. Pengecualian: (1) halaman daftar/beranda yang tugasnya menampilkan data; (2) alur pembuatan entitas baru (create) yang memang mengisi dari nol; (3) halaman yang merangkap alur tambah hanya terkunci saat menyunting (Halaman CMS); (4) tombol aksi STATUS seperti Aktifkan/Nonaktifkan tidak ikut terkunci karena ia mengubah status, bukan mengisi nilai (Template WhatsApp); (5) posisi tombol Edit boleh di baris tombol form bila header bagiannya sudah berupa tombol buka panel (Apa Kata Pelanggan). Rincian tiap pengecualian ada di ADR-023. Penjaga: tests/frontend/admin-edit-guard.test.ts.
+  accessible. Mockups or fake data are NOT completion (`frontend/skills/ragil-ui-functional-integration/SKILL.md`).
+- Do NOT port UI from `website_2.0/ui` (Next.js). `resources/` is a real folder, not a junction.
+- Archive instead of hard-delete. Guest-only checkout (no customer accounts).
+- Customer-facing copy in Bahasa Indonesia; currency IDR.
+- **Route parameter HARUS Inggris & cocok dengan variabel controller.** `Route::resource`/manual dengan segmen URI Indonesia (kelola/produk, kelola/kategori, sub-model, model-produk, masalah-solusi, dll) WAJIB memetakan parameter ke nama Inggris via `->parameters([...])` (contoh: `->parameters(['produk' => 'product'])`), karena Laravel men-generate nama parameter dari segmen URI (produk -> {produk}) padahal kode memakai $product -> implicit binding & route() 500. Test `AdminRouteParameterNamingTest` mengunci ini; jangan menambah route admin berparameter baru tanpa memastikan nama parameter cocok dengan variabel method controller.
+- **DILARANG EM DASH (karakter U+2014) di SEMUA teks**: copy storefront/admin, placeholder, pesan error, tooltip, hint, komentar kode, dokumen. Ganti dengan koma, titik, titik dua, atau "·"; placeholder kosong pakai "-" (hyphen). EN DASH (–) TIDAK dilarang dan boleh dipakai untuk rentang/range (mis. jam, tanggal, harga) sesuai konvensi. (KONTRAK 2026-08-21, user verbatim: "JANGAN SAMPAI ADA TEXT DENGAN EM DASHES"; koreksi 2026-08-23: en dash TIDAK termasuk larangan.)
+- **TOMBOL TAMBAH CUKUP "Tambah" (kontrak global, 2026-09-20).** Semua tombol, tautan,
+  dan tombol submit di panel admin yang menambah entitas atau baris baru berlabel
+  "Tambah" saja, tanpa imbuhan konteks. "Tambah spesifikasi", "Tambah produk",
+  "Tambah langkah", "Tambah media", "Tambah kategori" semuanya salah. Konteks sudah
+  dibawa judul seksi atau kartu di sekitarnya, jadi imbuhan itu mubazir dan bikin label
+  tidak seragam. Berlaku juga untuk label tombol yang datang dari controller
+  (`createLabel`, `quickActions.label`). Yang TIDAK termasuk: judul halaman dan modal,
+  heading, atribut `title`, dan `aria-label` yang memang boleh deskriptif karena bukan
+  label tombol yang dibaca mata. Storefront tidak terikat: "Tambah ke keranjang" tetap.
+  Verifikasi: `grep -rn "Tambah [a-z]" resources/js/pages/Admin resources/js/components/admin`
+  hanya boleh menyisakan judul, deskripsi, dan atribut title.
+- **NOMOR TEST WHATSAPP (kontrak keras, 2026-09-27):** Untuk setiap pengujian pesan WhatsApp,
+  pesanan uji coba (dummy order) yang menyentuh alur WhatsApp/lacak pesanan, atau simulasi
+  kirim pesan/notifikasi, **WAJIB menggunakan nomor `085725116817`** (format normal: `6285725116817`).
+  **DILARANG KERAS menggunakan nomor sembarang / acak / palsu** (seperti `081200000001`, `081234567890`, dll),
+  agar tidak menyasar orang lain dan pengujian selalu terarah ke perangkat uji owner.
 
 ---
 
-## Phase 1 – Database Migrations & Models (MySQL)
+## AGENT REPORT FORMAT - FLEKSIBEL & KONTEKSTUAL
 
-1. **Implement migrations for catalog tables**
-   - `products`, `product_variants`, `product_attributes`, `product_media`.  
-   - Add indexes and enum fields as per `database-schema-ragil-aluminium.md`.
+Laporan menyesuaikan jenis pekerjaan, bukan template kaku. Tujuan: komunikasi
+padat, jujur, dan kaya konteks. Lead with outcome: mulai dari hasil, lalu alasan
+dan bukti. Narasi proses internal boleh ringkas; yang tidak boleh hilang: apa
+yang berubah, kenapa, dan bagaimana terverifikasi.
 
-2. **Implement migrations for import pipeline**
-   - `import_jobs`, `import_job_rows`.
+### Seksi (pilih yang relevan - tidak harus semua)
 
-3. **Implement migrations for orders & logistics**
-   - `orders`, `order_items`, `payments`, `shipping_records`.
+| Seksi | Kapan dipakai |
+|-------|---------------|
+| **Konteks & Lingkup** | Selalu (ringkas): apa yang dikerjakan, di area mana, kenapa |
+| **Akar Masalah** | Wajib untuk bug/error: penyebab nyata, satu kalimat langsung |
+| **Perubahan** | Selalu: file + inti perubahan; sedetail yang dibutuhkan kasus |
+| **Dampak Spesifikasi & Docs** | Hanya jika schema/route/JSON/enum/status berubah → wajib update dokumen kanonik & sebutkan. Jika tidak berubah → cukup tulis "Spec tidak berubah" |
+| **Verifikasi / Pengujian** | Selalu: perintah + hasil nyata (jumlah test, status curl/HTTP, screenshot). Sebutkan juga yang gagal/belum dicek bila relevan |
+| **Keputusan & Trade-off** | Opsional: asumsi, alternatif yang ditolak, hal yang sengaja tidak dikerjakan |
+| **Tindak Lanjut** | Opsional: yang masih terbuka / rekomendasi agent berikutnya |
 
-4. **Implement migrations for WhatsApp integration**
-   - `whatsapp_templates`, `whatsapp_messages`.
+### Panduan per jenis pekerjaan
 
-5. **Implement migrations for users & customers**
-   - `users`, `customers`.
+- **Bug fix / error** → Konteks → Akar Masalah → Perubahan → Verifikasi (+ Dampak Spec bila route/schema berubah).
+- **Fitur / perubahan UI fungsional** → Konteks → Perubahan (per area) → Dampak Spec & Docs → Verifikasi → Tindak Lanjut.
+- **Refactor / pemeliharaan** → Konteks → Perubahan → Verifikasi (regresi).
+- **Docs / riset / investigasi** → naratif bebas, tutup dengan kesimpulan + rekomendasi.
+- **Operasional / infra (VPS, queue, backup, deploy)** → Konteks → Langkah → Verifikasi → Status & risiko.
 
-6. **Implement migrations for analytics/logs**
-   - `event_logs`, `performance_metrics`.
+### Aturan minimum
 
-7. **Create Eloquent models**
-   - One per table, with:
-     - relationships (e.g. `Product` ↔ `ProductVariant`, `Order` ↔ `OrderItem` ↔ `Payment` ↔ `ShippingRecord`).  
-     - fillable/guarded fields and casting.
-
----
-
-## Phase 2 – Routing & Controller Skeletons
-
-1. **Public store controllers**
-   - `HomeController`, `PageController`, `CatalogController`, `ProductController`, `CartController`, `CheckoutController`, `OrderController`.
-
-2. **Admin controllers**
-   - `Admin\DashboardController`, `Admin\ProductController`, `Admin\ProductVariantController`, `Admin\ProductAttributeController`, `Admin\ProductMediaController`.  
-   - `Admin\ImportJobController`, `Admin\OrderController`, `Admin\PaymentController`, `Admin\ShippingRecordController`.  
-   - `Admin\WhatsAppTemplateController`, `Admin\WhatsAppMessageController`.  
-   - `Admin\AnalyticsController`, `Admin\PageController`, `Admin\BannerController`, `Admin\UserController`, `Admin\SettingsController`.
-
-3. **Webhook controllers**
-   - `Webhook\WhatsAppController`, `Webhook\ShippingController`.
-
-4. **Wire routes to controllers**
-   - Implement route definitions as per `docs/api-and-routes-ragil-aluminium.md`.
+- Wajib di setiap laporan: apa yang diubah + kenapa + bagaimana diverifikasi.
+- Bug → Akar Masalah wajib. Perubahan spec → update docs kanonik wajib; kalau
+  tidak diupdate, nyatakan alasannya eksplisit.
+- Jangan menyembunyikan hal penting demi singkat; hindari boilerplate.
 
 ---
 
-## Phase 3 – Core Features Implementation
+## Commands (verified from package.json / composer.json)
 
-1. **Catalog browsing & product detail**
-   - Implement queries for category pages, filters, and product detail.  
-   - Integrate `product_media` for images.  
-   - Respect `status` and `visibility` flags.
+- `composer dev` - artisan serve + `queue:listen --queue=default,media --tries=3` + pail + vite
+- `npm run typecheck` · `npm run lint` (eslint, `--max-warnings=0` - zero warnings required) ·
+  `npm run test` (Vitest) · `npm run build` (Vite; required before checking Inertia asset updates)
+- `npm run test:php` - PHPUnit; **on Windows it spawns WSL** (`wsl php vendor/bin/phpunit`)
+- `php artisan test --filter=NameOfTest` - single PHPUnit test
+- `npm run test:e2e` (build + Playwright) · `npm run test:e2e:only` (no build)
+- `npm run quality` = typecheck + lint + test + build + budget
+- Prod queue worker: `artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600` (systemd `ragil-queue`)
 
-2. **Cart & checkout**
-   - Implement cart storage (session or DB).  
-   - Implement checkout flow: customer details, shipping, payment method, order creation.  
-   - Ensure order creation writes to `orders`, `order_items`, `payments`.
+## Testing quirks
 
-3. **Admin catalog management**
-   - Implement product/variant CRUD with archive behavior (no hard delete).  
-   - Implement media manager UI and actions.
+- `phpunit.xml` pins `DB_CONNECTION=sqlite` `:memory:`, `QUEUE_CONNECTION=sync`, `CACHE_STORE=array`, `SESSION_DRIVER=array` - tests never touch MySQL.
+- `phpunit.xml` also pins `LOG_CHANNEL=null`: tests must never write the production daily log (`storage/logs/laravel-YYYY-MM-DD.log`), which php-fpm also writes.
+- E2E/audit helpers live in `scripts/qa-*.mjs` (historical storefront audits used headless Chrome + puppeteer-core; evidence under `storage/app/audit-evidence/`).
 
-4. **Import & media pipeline**
-   - Implement upload of Shopee Excel.  
-   - Use Laravel Excel queued imports for `import_jobs` and `import_job_rows`.  
-   - Implement media download jobs and update `product_media`.
+### Kepemilikan file: WAJIB diperbaiki setelah menjalankan artisan sebagai root
 
-5. **Order, payment, shipping management in admin**
-   - Implement order list & detail.  
-   - Implement payment recording & status updates.  
-   - Implement shipping record creation & status refresh.
+php-fpm berjalan sebagai `www-data`. Perintah `php artisan ...` atau `php artisan test`
+yang dijalankan sebagai **root** menulis ke `storage/` dan `bootstrap/cache/` (log harian,
+view terkompilasi, cache). File itu menjadi milik root dengan mode 644, sehingga `www-data`
+bisa membacanya tetapi TIDAK bisa menambah atau menimpanya. Begitu Laravel perlu menulis,
+penulisan gagal, Laravel melempar exception, dan **seluruh situs 500** (insiden 2026-09-15).
 
-6. **WhatsApp integration**
-   - Implement outbound messaging via Business API.  
-   - Implement webhook handling, log messages, and link to orders.  
-   - Map Stage 4 events to Stage 8 templates.
+**Cara utama (terbersih): jalankan artisan/test sebagai www-data**, sehingga file baru
+langsung memiliki pemilik yang benar dan tidak perlu diperbaiki:
 
----
+```
+su -s /bin/bash www-data -c 'cd /root/ragilaluminium && php artisan test'
+```
 
-## Phase 4 – UI & UX Details (Admin & Public)
+Bila terlanjur dijalankan sebagai root, pulihkan segera:
 
-1. **Admin UI**
-   - Implement sidebar and Dashboard / Beranda widgets.  
-   - Implement views for Catalog, Imports, Orders, Shipping, WhatsApp, Analytics, CMS, Settings.  
-   - Follow `frontend/brand/BRAND-KIT.md`, `frontend/docs/DESIGN-SYSTEM.md`, and the admin project skill.
+```
+scripts/prod/fix-storage-perms.sh
+```
 
-2. **Public store UI**
-   - Implement homepage, category, product detail, cart, checkout, order status.  
-   - Follow the public project skill and `frontend/docs/UX-FLOWS.md`; mobile responsive.
+Gejala khas bila ini terlewat: HTTP 500 di SEMUA halaman, `storage/logs/` tidak mendapat
+entri baru sama sekali (penulisan log itu sendiri yang gagal), dan `php artisan tinker`
+sebagai root justru mengembalikan 200. Cara memastikan:
 
----
+```
+su -s /bin/bash www-data -c 'php -r "echo is_writable(\"storage/logs\") ? \"OK\" : \"TIDAK BISA TULIS\";"'
+```
 
-## Phase 5 – Testing, Performance, Security
+## Read before code (routing)
 
-1. **Testing**
-   - Add feature tests for:
-     - imports.  
-     - order lifecycles.  
-     - checkout flow.  
-     - WhatsApp integration.  
+| Area | Read |
+|------|------|
+| Public storefront / checkout | `docs/logic/stage-10-*`, `docs/sitemap/public-*`, `frontend/skills/ragil-public-ui/SKILL.md`, `ragil-ui-functional-integration`, `docs/STANDAR-DESAIN-HALAMAN-PUBLIK.md` |
+| Admin UI | `docs/logic/stage-9a-*` / `9b-*`, `docs/sitemap/admin-*`, `frontend/skills/ragil-admin-ui/SKILL.md` |
+| Visual | `frontend/brand/BRAND-KIT.md`, `frontend/docs/DESIGN-SYSTEM.md`, `frontend/docs/UI-CONSISTENCY-CONTRACT.md` (gerbang visual lintas halaman), `frontend/docs/ADMIN-DESIGN-LANGUAGE.md` (halaman admin), `frontend/skills/ragil-visual-qa/SKILL.md` |
+| Import & media | `skills/stage-5-import-and-media-pipeline.md` |
+| WhatsApp / order events | `skills/stage-8-*`, `skills/stage-4-*` |
+| Order / payment / shipping | `skills/stage-4-*`, `docs/jnt-cargo-integration.md` |
+| Queue / storage | `skills/stage-6-laravel-queue-and-storage.md` |
+| PHPUnit | `tests/Feature/*` patterns (`.agents/skills/laravel-testing`) |
 
-2. **Performance**
-   - Optimize queries with indexes and eager loading.  
-   - Tune queue workers and chunk sizes.
+Marketplace `.agents/skills/` = technique helpers only; never override schema / sitemap / Product Handoff contracts.
 
-3. **Security**
-   - Secure admin routes and webhooks with auth and validation.  
-   - Protect sensitive config values.
+## Gotchas (verified hard-earned fixes)
 
----
+- Public layout must use `route('privacy')` / `route('terms')` - route names are `privacy`/`terms`, NOT `policy/privacy` (was a 500 on every page).
+- `whenLoaded()` is not an Eloquent base method - use `relationLoaded(...)` guards. `$this->attributes` collides with Eloquent's internal property - use `getRelation('attributes')`.
+- `config/app.php` overrides the `aliases` array - don't drop `Auth`; views use `auth()->user()`.
+- Queue jobs must be serializable: dispatch IDs, not models (`DownloadProductMedia::dispatch($media->id)`).
+- `webhook/*` routes are CSRF-exempt (`bootstrap/app.php` `validateCsrfTokens`) - contract, not a bug.
+- `products.design_variant` is a nullable string (sub-models since 2026-08-08); validated against `sub_models`, fallback legacy map in `CatalogLabels::design()`.
+- Excel import must NOT implement `WithEvents` (500s) - route through `App\Jobs\ProcessCatalogImport` (holds only `$jobId`/`$storedPath`).
+- SQLite test quirk: `PerformanceMetric.metric_date` cast `date` tersimpan sebagai `Y-m-d 00:00:00` di SQLite - `whereBetween("metric_date", [..toDateString()..])` TIDAK match row cast; test yang butuh metric harus insert via `DB::table(...)->insert([... "metric_date" => now()->toDateString()])` (sudah dipraktikkan di StorePerformanceContractTest:166). Produksi MySQL aman (kolom date men-trim time). Bukan bug runtime.
 
-## Agent Rules
+## Current status
 
-- Always read orchestration + relevant docs/skills before coding.  
-- Prefer updating docs/sitemap/DESIGN first when contracts change, then code.  
-- Log major architecture decisions in `docs/architecture/` as needed.  
-- Do not start production server migration until explicitly scoped as a mature release.
+**Kondisi terkini TIDAK ditulis di sini.** Status lama basi dan menyesatkan, dan
+berkas ini dimuat otomatis ke setiap sesi sehingga isi basi itu ikut terpakai.
+Sumber kebenaran kondisi sekarang:
 
----
----
+- perubahan terakhir dan pemiliknya: `docs/AGENT-LOG.md` plus `git log`
+- route, DB, dan model aktual: `docs/TEKNIS/` (dihasilkan dari kode, selalu akurat)
+- kondisi working tree: jalankan `bash scripts/agent-state.sh`
 
-## Resolved Issues Log (stabilization)
+Riwayat status 2026-08-11 sampai 2026-08-13 dipindah apa adanya ke
+`docs/archive/status-agustus-2026.md`. Berkas itu arsip beku, bukan kondisi
+terkini. Isinya termasuk hitungan test dan berkas kotor pada saat itu, catatan
+subagent opencode, dan satu peringatan lama bahwa folder lokal `D:/website_5.0`
+adalah snapshot basi. Peringatan itu SUDAH TIDAK BERLAKU: folder lokal kini
+dicerminkan lewat `sync.sh` dari repo VPS dan justru dipakai untuk inspeksi baca.
 
-- **RouteNotFoundException `policy/privacy` / `policy/terms`** (500 on every page using `layouts/public.blade.php`, incl. `/`, `/windows`, `/api/catalog/*`): the public layout called `route('policy/privacy')` but the contracted route names are `privacy` and `terms` (`routes/web.php`). Fixed by using the defined names `route('privacy')` / `route('terms')` in `resources/views/layouts/public.blade.php`. No new route added.
-- **API routes returned HTML instead of JSON** (`/api/catalog/{category}`, `/api/products/{sku}`, `/api/search`): per `api-and-routes.md` §10 these are API routes. Branched responses in `CatalogController`, `ProductController`, `SearchController`: when `request()->is('api/*')` **or** `request()->wantsJson()` (Accept: application/json) they return schema-shaped JSON; otherwise Blade view. Added `Product::toApiArray()` and `ProductVariant::toApiArray()` (fields taken from `database-schema.md`; no new fields). No schema/route/field changes.
-- **`BadMethodCallException: whenLoaded`** in `toApiArray()`: `whenLoaded()` is not a base Eloquent Model method. Replaced with `relationLoaded(...)` guards.
-- **`Error: map() on array` on `attributes` relation**: `$this->attributes` collides with Eloquent's internal `$attributes` array property. Used `getRelation('attributes')` inside the `relationLoaded` guard.
-- **Return-type `TypeError`** on `CatalogController::windows/doors/bouven`: widened their return types to `JsonResponse|View` to match the branched `category()` helper.
-- **`main_image` null on product-detail API**: `ProductController@show` now also eager-loads `mainImage` so the field is consistent with the catalog API.
+Yang masih berlaku dan sengaja tetap di berkas ini:
 
-- **Checkout → order creation flow verified (Stage 3)**: full flow `POST /cart/add` → `POST /checkout/validate` → `POST /checkout/place-order` runs end-to-end with no 500. `OrderService::createFromCart()` writes `orders` (status `pending_payment`/`pending`/`pending_pickup`), `order_items`, and `payments` per `database-schema.md`. `OrderCreated` event fires `SendOrderCreatedWhatsApp`; `WhatsAppService` degrades safely when no `whatsapp_templates` row / no API token (returns null, no partial write). Confirmation (`/order/{n}/confirmation`) and status (`/order/status`) pages render HTML 200. CSRF 419 on POST is expected framework behavior (browser supplies token); not a contract bug.
+- Landing pill segment tab dimatikan, lihat bagian di bawah.
+- Cutover produksi belum dijalankan, dan tunduk pada
+  `docs/FULL-STACK-PRODUCTION-CHECKLIST.md` (tidak cutover selama masih ada `[!]`
+  terbuka). Berkas checklist itu lebih tua daripada pekerjaan terkini, jadi
+  verifikasi ulang isinya sebelum memakai klaim ini.
 
+## Landing pill segment tab - DISABLED (2026-08-13)
 
-- **Stage 4 import pipeline + admin pages fixed**: (a) `CatalogProductsImport` had a `BeforeImport` handler calling `$event->reader->getActiveSheet()` which 500s (null reader delegate) — removed `WithEvents`/`registerEvents`/`RemembersRowNumber`; `total_rows` stays nullable per schema. (b) `Excel::queueImport()` requires `ShouldQueue` but making the import `ShouldQueue` crashed serialization (`"spreadsheet" ... does not exist`). Fixed by adding queued job `App\Jobs\ProcessCatalogImport` (holds only `$jobId`/`$storedPath`) and dispatching it from `ImportJobController@store`/`retry`; import runs and writes `products`/`product_variants`/`product_media`/`import_job_rows` per schema. (c) All admin pages 500'd with `Class "Auth" not found` because `config/app.php` overrode the default facade `aliases` array (only `Excel`), dropping `Auth`. Fixed view to use `auth()->user()` in `layouts/admin.blade.php`. All admin sections now 200.
+- Fitur landing berbasis pill segment tab (`SegmentLanding.tsx`, route
+  `/segment`, serta pendahulunya `ModelLanding.tsx` / route `/model/...`)
+  **dimatikan** - akan didesain ulang di masa depan.
+- Kode lengkap semua iterasi tersimpan aman di git history:
+  - `9af09e5` model landing ala Zalora (route `/model/...`)
+  - `6e58213` segment landing dinamis satu template (route `/segment`)
+  - `c1b1746` slider promo segment ala "cara pesan jendela anda"
+- Pill segment tab homepage saat ini kembali mengarah ke halaman model produk
+  (`/products/{category}/{model}` → `Public/ModelDetail.tsx`), seperti sebelum
+  fitur landing dibuat. Override `menu_href` admin tetap dihormati.
 
-- **Stage 5 (WhatsApp + Shipping webhooks & admin) verified**: webhook routes `GET/POST /webhook/whatsapp` and `POST /webhook/shipping/jnt` are CSRF-exempt (see `bootstrap/app.php` `validateCsrfTokens(except: ['webhook/*'])`). `WhatsAppController@handle` writes inbound `whatsapp_messages` (test: 1 inbound row created); `ShippingController@handleJnt` → `ShippingService::applyCarrierUpdate` updates `shipping_records` + cascades `orders.shipping_status` (graceful when waybill missing). Admin WhatsApp/Shipping/Payments pages 200; template `store` 302 + row created; shipping `refresh` 302 + graceful (`last_status_at` touched) when no carrier API key. No 500 in Stage 5.
+## Communication
 
-- **Admin media manager 500 fixed**: `ProductMediaController@store` and `@redownload` called `DownloadProductMedia::dispatch($media)` (passing the model), but the job constructor requires `int $mediaId` → `TypeError`. Fixed to `DownloadProductMedia::dispatch($media->id)` (matches `CatalogProductsImport`). Media store/redownload/set-main/archive now 302, no 500.
+- Lead with outcome; keep updates concise; preserve exact commands, paths, errors, and test evidence.
+- Ask questions only when genuinely blocking; otherwise make a safe assumption and state it.
+- Efficiency protocols (Caveman / Compound Engineering loop) are process helpers only - they never override the rules above.
+- **EXPLAIN SYSTEM TERMS BEFORE USING THEM** (contract 2026-09-21). Any time a report, document, or
+  explanation names an internal term (column name, table name, method name, flag, protocol
+  abbreviation), write what it means and what it does FIRST in human language, then use the term.
+  This applies even to terms the agent considers obvious.
 
-- **Phase 5 feature tests added**: enabled SQLite (in-memory) for `phpunit.xml` (matches dev env) and added `tests/Feature/CheckoutFlowTest` (order+items+payment), `ImportPipelineTest` (via `ProcessCatalogImport` → products/variants/media, job `completed`), `WhatsAppWebhookTest` (inbound logged, verify 403). All 4 pass (17 assertions). No app code changed.
+  | Do not write | Write instead |
+  |---|---|
+  | "`body_preview` is empty" | "the message body column (`body_preview`), the place the WhatsApp script is stored, is empty" |
+  | "`order_id` is null" | "the link to the order (`order_id`) is empty" |
+  | "`whatsapp_messages` was checked" | "the WhatsApp message history table (`whatsapp_messages`) was checked" |
+  | "the payload has `scope`" | "the data payload carries a coverage marker (`scope`)" |
+
+  Reason: the owner does not always know column names or protocol abbreviations, and a report that
+  uses technical terms without explanation forces him to guess or ask back. One explanatory clause
+  is enough; do not turn the report into a tutorial. A term explained once early in a report does
+  not need repeating later in that same report.
+
+## WORKFLOW CONTRACT - TANPA KERJA LOKAL/TEMP (disepakati user 2026-08-12)
+
+Berlaku untuk SEMUA agent di repo ini, termasuk agent lain/sebelumnya.
+
+1. **Edit langsung di repo VPS** - satu-satunya sumber kebenaran. Akses via
+   SSH ke /root/ragilaluminium. DILARANG membuat salinan file di mesin lain,
+   folder temp lokal, atau scp bolak-balik: kerja lokal membuat git log repo
+   kehilangan jejak perubahan dan konteks antar agent terputus.
+2. **Commit + push per batch yang selesai** (setelah typecheck + build +
+   verifikasi live). Jangan menumpuk perubahan tanpa commit - git history
+   adalah kontrak antar agent.
+3. Jangan commit: .env.pre-*, .backup-*, *.bak-* (kecuali diminta user).
+4. Sebelum menyentuh file: cek git status - agent lain boleh bekerja di
+   working tree yang sama; report format fleksibel (lihat AGENTS.md) tetap
+   wajib di setiap laporan perubahan.
+5. **Instruksi ambigu → TANYA DULU, jangan tebak** (disepakati user 2026-08-13):
+   kalau instruksi kurang jelas, menyebut elemen UI yang bisa menunjuk ke
+   beberapa komponen (mis. "bar merah", "pill", "tombol lihat semua"), atau
+   target/perilaku yang kamu ragukan - tanyakan ke user SEBELUM mengubah kode
+   atau data. Jangan berasumsi lalu mengubah komponen yang salah; konfirmasi
+   singkat (1 kalimat) dengan menyebutkan target yang kamu pahami.
+## ADMIN TESTING WORKFLOW (2026-08-14 - biar tidak terhambat hal remeh)
+
+- **Akun tes admin (dev-only):** `dev.agent@ragilaluminium.test` - password ada di
+  `docs/MEMORY.md` (entri 2026-08-14). Pakai akun ini untuk SEMUA verifikasi/otomasi UI
+  admin. **DILARANG mengubah password `qa.admin@example.com`** (akun QA asli, password
+  tidak diketahui). Jika terlanjur berubah, recovery dari backup harian:
+  `zcat /root/backups/ragil/ragil_aluminium-<tanggal>.sql.gz | grep "INSERT INTO \`users\`" | grep qa.admin@example.com`
+  (ambil hash asli di baris itu, restore via tinker).
+- **Preview/verifikasi halaman admin:** `scripts/admin-preview.cjs` - jalankan di mesin
+  lokal (butuh Chrome/Edge + Node >= 22, TANPA dependensi). Login otomatis pakai akun tes,
+  render halaman, dump DOM + console errors + screenshot:
+  `node scripts/admin-preview.cjs --url=/admin --find="Kelola banner" --mode=dump`
+  `node scripts/admin-preview.cjs --url=/admin/banners --mode=shot --out=x.png`
+  (Ambil file via `ssh 209.23.10.62 "cat /root/ragilaluminium/scripts/admin-preview.cjs"`.)
+- **Jalur admin yang valid:** dashboard = `/admin` - **BUKAN `/admin/dashboard`** (URL itu
+  tidak ada route-nya; kini dirender sebagai 404 ber-brand `Admin/Error` tanpa crash React,
+  tapi tetap jangan dipakai untuk verifikasi dashboard).
+  Banner promo: `/admin/banners` (+ `/admin/banners/create`). Sidebar admin juga punya
+  menu "Promo Toko" dan "Bar Promo".
+- **Shared working tree aktif:** agent lain sedang mengerjakan homepage publik (file
+  `resources/js/components/public/*`, `app.css`, dll.) dan melakukan rebuild berkala -
+  nama asset hashed berubah tiap build. Selalu `git status` dulu dan verifikasi live via
+  tool di atas, jangan berasumsi dari kondisi sebelumnya.
+
+### 2026-08-15 - Banner Promo: menu sidebar sendiri + label jelas (anti-bingung)
+
+- Sidebar admin kini punya item **"Banner Promo"** di grup Harga & Promo
+  (config/admin-sitemap.php) - pintu masuk langsung ke `/admin/banners`,
+  tidak perlu lagi lewat dashboard/beranda.
+- Label di halaman banner diubah agar tidak tertukar dengan kampanye Promo Toko:
+  "Tambah Promo" -> "Tambah Banner", judul halaman "Banner Promo" (Index.tsx,
+  Form.tsx, BannerController@index).
+- **Peta akses banner** (semua menuju `/admin/banners`):
+  1. Sidebar -> Harga & Promo -> **Banner Promo** (paling langsung)
+  2. Dashboard -> scroll bawah -> section "Promo & flash sale aktif" -> "Kelola banner"
+  3. Pengaturan Website -> Beranda Pembeli -> section "Banner Utama" -> "Edit konten"
+     (HomepageLayoutSettings SECTION_META `banner` -> route admin.banners.index)
+- **GOTCHA (penyebab kebingungan 2026-08-15): build live BISA tertinggal dari
+  working tree.** File `resources/js/pages/Admin/Beranda/Index.tsx` diedit agent
+  lain (18:57) SETELAH build terakhir (17:38) - hasilnya: source code grep bilang
+  Beranda tidak punya banner, padahal LIVE masih punya section "Banner Utama".
+  Aturan baru: **untuk memastikan kondisi UI, selalu verifikasi LIVE dulu
+  (admin-preview.cjs / curl), jangan hanya percaya grep source.**

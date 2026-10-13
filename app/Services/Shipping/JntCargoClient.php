@@ -5,6 +5,7 @@ namespace App\Services\Shipping;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Low-level client untuk J&T Cargo Open Platform.
@@ -15,8 +16,8 @@ use Illuminate\Support\Facades\Log;
  *   - POST x-www-form-urlencoded, field bizContent = JSON string
  *   - Header apiAccount, timestamp (epoch ms), digest = base64(md5(bizContent+privateKey))
  *
- * Semua request/response penuh dilog (channel jnt) sebagai bukti joint-debugging
- * sandbox yang diminta J&T (sukses >= 3x sebelum ajukan environment formal).
+ * Log hanya menyimpan metadata operasional agar kredensial dan data pelanggan
+ * tidak masuk ke file log.
  */
 class JntCargoClient
 {
@@ -49,6 +50,18 @@ class JntCargoClient
     {
         return $this->call('dispatch_code', $this->withOrderCredentials($bizContent));
     }
+
+    /**
+     * Quote biaya berdasarkan dimensi package (spmComCost/getComCost).
+     * Endpoint ini memerlukan permission khusus pada customer account.
+     *
+     * @param array{sender:array, receiver:array, length:int|float, width:int|float, height:int|float, weight:int|float, totalQuantity?:int} $bizContent
+     */
+    public function dimensionalTariff(array $bizContent): JntResponse
+    {
+        return $this->call('dimensional_tariff', $this->withOrderCredentials($bizContent));
+    }
+
 
     /** Validasi provinsi/kota/area (getAddress). */
     public function address(array $bizContent): JntResponse
@@ -142,20 +155,21 @@ class JntCargoClient
             config('jnt.headers.digest') => $digest,
         ];
 
-        $requestId = (string) \Illuminate\Support\Str::uuid();
+        $requestId = (string) Str::uuid();
         $startedAt = microtime(true);
 
-        Log::channel('jnt')->info('JNT request', [
+        $this->safeLog('info', 'JNT request', [
             'request_id' => $requestId,
             'env' => $this->environment(),
             'endpoint' => $endpointKey,
             'url' => $url,
-            'headers' => ['apiAccount' => $headers[config('jnt.headers.api_account')], 'timestamp' => $timestamp, 'digest' => $digest],
-            'bizContent' => $bizContent,
+            'timestamp' => $timestamp,
+            'customer_order_ref' => $this->logReference($bizContent['txlogisticId'] ?? null),
+            'waybill_ref' => $this->logReference($bizContent['billCode'] ?? $bizContent['billCodes'] ?? null),
         ]);
 
         try {
-            $response = $this->httpClient()
+            $response = $this->httpClient($endpointKey)
                 ->asForm()
                 ->withHeaders($headers)
                 ->post($url, [config('jnt.content_field') => $json]);
@@ -163,12 +177,13 @@ class JntCargoClient
             $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
             $body = $response->json() ?? [];
 
-            Log::channel('jnt')->info('JNT response', [
+            $this->safeLog('info', 'JNT response', [
                 'request_id' => $requestId,
                 'endpoint' => $endpointKey,
                 'http_status' => $response->status(),
                 'elapsed_ms' => $elapsedMs,
-                'body' => $body,
+                'business_code' => $body['code'] ?? null,
+                'business_success' => $this->isBusinessSuccess($body),
             ]);
 
             return new JntResponse(
@@ -181,10 +196,11 @@ class JntCargoClient
         } catch (\Throwable $e) {
             $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
 
-            Log::channel('jnt')->error('JNT request failed', [
+            $this->safeLog('error', 'JNT request failed', [
                 'request_id' => $requestId,
                 'endpoint' => $endpointKey,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'error_code' => $e->getCode(),
                 'elapsed_ms' => $elapsedMs,
             ]);
 
@@ -198,13 +214,43 @@ class JntCargoClient
         }
     }
 
-    protected function httpClient(): PendingRequest
+    /**
+     * Logging tidak boleh bisa mematikan alur J&T: bila channel gagal
+     * (file log root-owned, disk penuh, dsb.), diamkan dan lanjutkan.
+     */
+    private function safeLog(string $level, string $message, array $context): void
+    {
+        try {
+            Log::channel('jnt')->{$level}($message, $context);
+        } catch (\Throwable) {
+            // Logging failure tidak boleh mengganggu tariff/shipment.
+        }
+    }
+
+    protected function logReference(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = is_scalar($value)
+            ? (string) $value
+            : (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return substr(hash('sha256', $normalized), 0, 12);
+    }
+
+    protected function httpClient(string $endpointKey): PendingRequest
     {
         $http = config('jnt.http');
+        $readOnlyEndpoints = ['order_get', 'tariff', 'track', 'dispatch_code', 'address'];
+        $retries = in_array($endpointKey, $readOnlyEndpoints, true)
+            ? max(0, (int) $http['retries'])
+            : 0;
 
         return Http::timeout($http['timeout'])
             ->connectTimeout($http['connect_timeout'])
-            ->retry($http['retries'], $http['retry_sleep_ms'], throw: false);
+            ->retry($retries, $http['retry_sleep_ms'], throw: false);
     }
 
     /** HEADER digest = Base64(MD5(bizContent + privateKey)). */

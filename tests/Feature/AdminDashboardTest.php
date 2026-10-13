@@ -1,0 +1,543 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ImportJob;
+use App\Models\MediaAsset;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class AdminDashboardTest extends TestCase
+{
+    use RefreshDatabase;
+    use \Tests\Concerns\TanamEventPengakuan;
+
+    private function makeOrder(array $overrides = []): Order
+    {
+        $order = Order::create(array_merge([
+            'order_number' => 'RA-DASH-'.uniqid(),
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '08123456789',
+            'shipping_address_line1' => 'Jl. Merdeka 1',
+            'shipping_city' => 'Jakarta Selatan',
+            'shipping_province' => 'DKI Jakarta',
+            'shipping_postal_code' => '12190',
+            'order_status' => 'processing',
+            'payment_status' => 'paid',
+            'shipping_status' => 'pending_pickup',
+            'payment_method' => 'transfer',
+            'subtotal_amount' => 1000000,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 1000000,
+        ], $overrides));
+
+        return $this->tanamEventPengakuan($order);
+    }
+
+    public function test_dashboard_exposes_figma_feature_blocks(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+            'name' => 'Mas Putra',
+        ]);
+
+        $overdue = $this->makeOrder([
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'total_amount' => 1_500_000,
+        ]);
+        $overdue->forceFill(['updated_at' => now()->subDays(2)])->save();
+
+        $this->makeOrder([
+            'order_status' => 'processing',
+            'total_amount' => 2_000_000,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('greetingName', 'Mas Putra')
+                ->has('generatedAt')
+                ->has('omzet.revenue')
+                ->has('omzet.orders_delta')
+                ->has('omzet.units_delta')
+                ->has('omzet.sparkline')
+                ->has('performa.metrics', 4)
+                ->where('performa.trend.granularity', 'hour')
+                ->has('performa.trend.series')
+                ->where('performa.period', 'today')
+                ->has('performa.period_options')
+                ->has('integrationReadiness', 4)
+                ->where('integrationReadiness.0.verified', false)
+                ->where('integrationReadiness.0.status_label', 'Konfigurasi ada, live check belum dilakukan')
+                ->has('statusOrder', 5)
+                ->has('attention')
+                ->has('quickActions', 3)
+                ->where('quickActions.0.label', 'Tambah')
+                ->where('quickActions.0.href', route('admin.products.create'))
+                ->where('quickActions.1.label', 'Mulai Import')
+                ->where('quickActions.1.href', route('admin.imports.create'))
+                ->where('quickActions.2.label', 'Kelola Media')
+                ->where('quickActions.2.href', route('admin.media.library', ['origin' => 'dashboard']))
+                ->has('recentOrders')
+            );
+    }
+
+    public function test_dashboard_performa_period_filter_is_honoured(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard', ['performa_period' => 'last_7']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('performa.period', 'last_7')
+                ->where('performa.trend.granularity', 'day')
+                ->has('performa.trend.series', 7)
+            );
+    }
+
+    public function test_status_order_cards_link_to_filtered_orders(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->makeOrder(['order_status' => 'shipped']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('statusOrder.2.key', 'shipped')
+                ->where('statusOrder.2.total', 1)
+                ->where('statusOrder.2.total_value', 1_000_000)
+                ->where('statusOrder.2.href', route('admin.orders.index', ['order_status' => 'shipped']))
+            );
+    }
+
+    public function test_pending_attention_uses_last_activity_not_created_at(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        // Overdue berbasis updated_at (konsisten dengan filter older_than di daftar order):
+        // order yang baru di-edit admin TIDAK ikut dihitung, yang tak tersentuh > 24 jam YA.
+        $oldPending = $this->makeOrder([
+            'order_number' => 'RA-DASH-OLD-PENDING-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+        ]);
+        $oldPending->forceFill([
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ])->save();
+
+        $newPending = $this->makeOrder([
+            'order_number' => 'RA-DASH-NEW-PENDING-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('attention.0.key', 'confirm_overdue')
+                ->where('attention.0.count', 1)
+                ->where('attention.0.href', route('admin.orders.index', [
+                    'order_status' => 'awaiting_confirmation',
+                    'older_than' => '24h',
+                ]))
+                ->where('statusOrder.0.total', 2)
+            );
+
+        $this->assertNotNull($newPending->fresh());
+    }
+
+    public function test_recent_orders_expose_real_operational_actions_and_cancelled_status(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $cancelled = $this->makeOrder([
+            'order_number' => 'RA-DASH-CANCELLED-RECENT-'.uniqid(),
+            'order_status' => 'cancelled',
+            'payment_status' => 'refunded',
+            'shipping_status' => 'cancelled',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('recentOrders.0.id', $cancelled->id)
+                ->where('recentOrders.0.order_status', 'cancelled')
+                ->where('recentOrders.0.payment_status', 'refunded')
+                ->where('recentOrders.0.shipping_href', route('admin.orders.show', $cancelled).'#lacak-pesanan')
+                ->where('recentOrders.0.href', route('admin.orders.show', $cancelled))
+                ->where('recentOrders.0.whatsapp_url', 'https://wa.me/628123456789')
+            );
+    }
+
+    public function test_attention_includes_issue_orders_after_fulfillment_aging_alerts(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $pending = $this->makeOrder([
+            'order_number' => 'RA-DASH-ATTENTION-PENDING-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+        ]);
+        $pending->forceFill(['created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)])->save();
+
+        $processing = $this->makeOrder([
+            'order_number' => 'RA-DASH-ATTENTION-PROCESSING-'.uniqid(),
+            'order_status' => 'processing',
+        ]);
+        $processing->forceFill(['updated_at' => now()->subDays(2)])->save();
+        // Umur status kini dibaca dari event status terbaru (logika perhatian
+        // dashboard), jadi simulasi umur 2 hari harus memundurkan waktu event
+        // pengakuannya juga.
+        \App\Models\EventLog::where('entity_type', 'order')->where('entity_id', $processing->id)
+            ->update(['created_at' => now()->subDays(2)]);
+
+        $delivered = $this->makeOrder([
+            'order_number' => 'RA-DASH-ATTENTION-DELIVERED-'.uniqid(),
+            'order_status' => 'delivered',
+        ]);
+        $delivered->forceFill(['updated_at' => now()->subDays(3)])->save();
+
+        $return = $this->makeOrder([
+            'order_number' => 'RA-DASH-ATTENTION-RETURN-'.uniqid(),
+            'order_status' => 'return_in_process',
+        ]);
+        $return->forceFill(['updated_at' => now()->subDays(8)])->save();
+
+        $issue = $this->makeOrder([
+            'order_number' => 'RA-DASH-ATTENTION-ISSUE-'.uniqid(),
+            'order_status' => 'issue',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('attention.0.key', 'confirm_overdue')
+                ->where('attention.1.key', 'processing_overdue')
+                ->where('attention.2.key', 'delivered_stale')
+                ->where('attention.3.key', 'return_overdue')
+                ->where('attention.4.key', 'issue_orders')
+                ->where('attention.4.count', 1)
+                ->where('attention.4.href', route('admin.orders.index', ['order_status' => 'issue']))
+            );
+    }
+
+    /**
+     * Antrean pesanan baru dihitung sebagai SATU item.
+     *
+     * Sebelumnya dipecah jadi transfer_unpaid dan cod_pending, padahal keduanya
+     * menyaring status pesanan yang sama (awaiting_confirmation), sehingga yang
+     * tampil sebenarnya satu antrean yang dipisah menurut cara bayar. Owner
+     * 2026-09-21 memutuskan digabung, dan penyaringan payment_status dibuang:
+     * yang dihitung semua pesanan menunggu konfirmasi, COD maupun transfer,
+     * termasuk yang sudah dibayar tetapi belum diproses.
+     *
+     * Dijaga di sini karena item perhatian dashboard tidak punya test lain, jadi
+     * tanpa ini angka dan labelnya bisa berubah tanpa ketahuan.
+     */
+    public function test_antrean_menunggu_diproses_menggabungkan_cod_dan_transfer(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        // Dua cara bayar yang dulu punya item terpisah.
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-COD-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'payment_method' => 'cod',
+            'cod_flag' => true,
+        ]);
+
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-TRANSFER-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        // Sudah dibayar tetapi belum diproses. Ikut terhitung, karena label item
+        // ini bicara soal proses, bukan soal pembayaran.
+        $this->makeOrder([
+            'order_number' => 'RA-DASH-GABUNG-LUNAS-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'paid',
+            'payment_method' => 'transfer',
+            'cod_flag' => false,
+        ]);
+
+        // Semua dibuat baru, jadi tidak masuk item aging yang sudah ada.
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) {
+                $attention = collect($page->toArray()['props']['attention'] ?? []);
+                $keys = $attention->pluck('key')->all();
+
+                $this->assertNotContains('transfer_unpaid', $keys, 'Item transfer_unpaid harus sudah tidak ada.');
+                $this->assertNotContains('cod_pending', $keys, 'Item cod_pending harus sudah tidak ada.');
+
+                $item = $attention->firstWhere('key', 'menunggu_diproses');
+                $this->assertNotNull($item, 'Item Pesanan menunggu diproses harus ada.');
+
+                $this->assertSame('Pesanan menunggu diproses', $item['label']);
+                $this->assertSame(
+                    3,
+                    $item['count'],
+                    'COD, transfer, dan yang sudah lunas semuanya terhitung dalam satu item.'
+                );
+                $this->assertSame(
+                    route('admin.orders.index', ['order_status' => 'awaiting_confirmation']),
+                    $item['href'],
+                    'Tautan menyaring status pesanan saja, tanpa memaksa cara bayar.'
+                );
+            });
+    }
+
+    public function test_dashboard_hides_empty_attention_items(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('attention', [])
+            );
+    }
+
+    public function test_dashboard_revenue_and_units_ignore_pending_and_cancelled_orders_but_count_all_incoming_orders(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $product = Product::create([
+            'parent_sku' => 'WIN-DASH',
+            'name' => 'Jendela dashboard',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $fulfilled = $this->makeOrder([
+            'order_number' => 'RA-DASH-FULFILLED-'.uniqid(),
+            'order_status' => 'processing',
+            'total_amount' => 2_000_000,
+        ]);
+        OrderItem::create([
+            'order_id' => $fulfilled->id,
+            'product_id' => $product->id,
+            'parent_sku' => 'WIN-DASH-1',
+            'variant_sku' => 'WIN-DASH-1-V1',
+            'name' => 'Jendela dashboard',
+            'unit_price' => 2_000_000,
+            'quantity' => 2,
+            'line_subtotal' => 2_000_000,
+            'line_discount' => 0,
+            'line_total' => 2_000_000,
+        ]);
+        Payment::create([
+            'order_id' => $fulfilled->id,
+            'payment_method' => 'transfer',
+            'amount' => 2_000_000,
+            'status' => 'completed',
+            'paid_at' => now(),
+        ]);
+
+        $pending = $this->makeOrder([
+            'order_number' => 'RA-DASH-PENDING-'.uniqid(),
+            'order_status' => 'awaiting_confirmation',
+            'payment_status' => 'pending',
+            'total_amount' => 9_000_000,
+        ]);
+        OrderItem::create([
+            'order_id' => $pending->id,
+            'product_id' => $product->id,
+            'parent_sku' => 'WIN-DASH-2',
+            'variant_sku' => 'WIN-DASH-2-V1',
+            'name' => 'Jendela belum bayar',
+            'unit_price' => 9_000_000,
+            'quantity' => 9,
+            'line_subtotal' => 9_000_000,
+            'line_discount' => 0,
+            'line_total' => 9_000_000,
+        ]);
+
+        $cancelled = $this->makeOrder([
+            'order_number' => 'RA-DASH-CANCELLED-'.uniqid(),
+            'order_status' => 'cancelled',
+            'total_amount' => 8_000_000,
+        ]);
+        OrderItem::create([
+            'order_id' => $cancelled->id,
+            'product_id' => $product->id,
+            'parent_sku' => 'WIN-DASH-3',
+            'variant_sku' => 'WIN-DASH-3-V1',
+            'name' => 'Jendela dibatalkan',
+            'unit_price' => 8_000_000,
+            'quantity' => 8,
+            'line_subtotal' => 8_000_000,
+            'line_discount' => 0,
+            'line_total' => 8_000_000,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('omzet.revenue', 2_000_000)
+                // KPI-003: omzet.orders = pesanan VALID (exclude pending & cancelled) => 1 (processing).
+                ->where('omzet.orders', 1)
+                ->where('omzet.units', 2)
+                ->where('financial.awaiting_confirmation_amount', 9_000_000)
+                ->where('financial.awaiting_confirmation_orders', 1)
+                ->where('financial.active_order_amount', 2_000_000)
+                ->where('financial.active_order_count', 1)
+                ->where('financial.received_today_amount', 2_000_000)
+                ->where('financial.received_today_count', 1)
+            );
+    }
+
+    public function test_dashboard_surfaces_failed_import_and_media_operations(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        ImportJob::create([
+            'type' => 'shopee_mass_upload',
+            'source_file_name' => 'catalog.xlsx',
+            'source_file_path' => 'catalog/catalog.xlsx',
+            'status' => 'failed',
+            'failed_rows' => 3,
+        ]);
+        MediaAsset::create([
+            'kind' => 'image',
+            'status' => 'failed',
+            'visibility' => 'visible',
+        ]);
+        MediaAsset::create([
+            'kind' => 'image',
+            'status' => 'pending',
+            'visibility' => 'visible',
+        ]);
+        MediaAsset::create([
+            'kind' => 'image',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+        MediaAsset::create([
+            'kind' => 'image',
+            'status' => 'ready',
+            'visibility' => 'archived',
+        ]);
+        ImportJob::create([
+            'type' => 'shopee_mass_update',
+            'source_file_name' => 'catalog-complete.xlsx',
+            'source_file_path' => 'catalog/catalog-complete.xlsx',
+            'status' => 'completed',
+            'failed_rows' => 2,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('attention.0.key', 'failed_media_assets')
+                ->where('attention.1.key', 'pending_media')
+                ->where('attention.2.key', 'failed_imports')
+                ->where('importMediaSummary.imports.failed', 1)
+                ->where('importMediaSummary.imports.completed', 1)
+                ->where('importMediaSummary.imports.failed_rows', 5)
+                ->where('importMediaSummary.media.shared_assets.failed', 1)
+                ->where('importMediaSummary.media.shared_assets.pending', 1)
+                ->where('importMediaSummary.media.shared_assets.ready', 1)
+                ->where('importMediaSummary.media.shared_assets.archived', 1)
+            );
+    }
+
+    public function test_dashboard_exposes_visible_product_count(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->createVisibleProduct('RA-PROD-1');
+        $this->createVisibleProduct('RA-PROD-2');
+        $this->createVisibleProduct('RA-PROD-3', 'archived');
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('productCount', 2)
+            );
+    }
+
+    private function createVisibleProduct(string $sku, string $status = 'active'): void
+    {
+        $product = Product::create([
+            'parent_sku' => $sku,
+            'name' => 'Produk '.$sku,
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => $status,
+        ]);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'variant_sku' => $sku.'-V1',
+            'price' => 1000000,
+            'stock' => 5,
+            'status' => 'active',
+        ]);
+    }
+}

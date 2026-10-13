@@ -1,14 +1,14 @@
 import * as React from "react"
 
 export const SEARCH_PLACEHOLDER_ROTATIONS = [
-  "Cari: jendela sliding / 120x80",
-  "Jendela jungkit",
-  "100x50",
-  "Boven zigzag",
-  "Pintu sliding",
-  "120x80",
-  "Kaca mati",
-  "Warna hitam",
+  "cari: jendela sliding / 120x80...",
+  "jendela jungkit...",
+  "100x50...",
+  "boven zigzag...",
+  "pintu sliding...",
+  "120x80...",
+  "kaca mati...",
+  "warna hitam...",
 ] as const
 
 /**
@@ -41,5 +41,5 @@ export function useRotatingPlaceholder(
     return () => window.clearInterval(id)
   }, [paused, reduceMotion, phrases, intervalMs])
 
-  return phrases[index] ?? "Cari produk..."
+  return phrases[index] ?? "cari produk..."
 }

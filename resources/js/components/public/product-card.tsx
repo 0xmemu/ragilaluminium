@@ -1,22 +1,112 @@
-import { Link } from "@inertiajs/react"
-import { Lightning, SealCheck } from "@phosphor-icons/react"
+import { usePage } from "@inertiajs/react"
+import { Heart, Lightning, SealCheck } from "@phosphor-icons/react"
+import * as React from "react"
 
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { ResponsiveImage } from "@/components/ui/responsive-image"
 import { formatCurrency, productName } from "@/lib/format"
+import { trackProductClick } from "@/lib/product-engage"
 import { cn } from "@/lib/utils"
-import type { ProductCardData } from "@/types"
+import type { ProductCardData, SharedPageProps } from "@/types"
 
+/**
+ * Baris compare-price + discount badge wajib satu baris; font menyusut
+ * bila baris meluap (JS meng-override `font-size` inline).
+ */
+function FitOneLine({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  const ref = React.useRef<HTMLSpanElement>(null)
+
+  React.useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const fit = () => {
+      el.style.fontSize = ""
+      const parent = el.parentElement
+      if (!parent) return
+      let size = parseFloat(getComputedStyle(el).fontSize) || 11
+      const min = 10.5
+      while (el.scrollWidth > parent.clientWidth + 0.5 && size > min) {
+        size -= 0.5
+        el.style.fontSize = `${size}px`
+      }
+    }
+
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    if (el.parentElement) observer.observe(el.parentElement)
+    return () => observer.disconnect()
+  }, [children])
+
+  return (
+    <span ref={ref} className={className}>
+      {children}
+    </span>
+  )
+}
+
+
+function CodBadge() {
+  return (
+    <span className="product-card__cod">
+      {/* Single composite SVG - avoid layered scale (subpixel breaks thin strokes). ~lightning height. */}
+      <img
+        src="/images/icons/cod.svg"
+        alt=""
+        width={24}
+        height={12}
+        className="h-[12px] w-[24px]"
+        aria-hidden="true"
+      />
+      <span className="sr-only">COD tersedia</span>
+    </span>
+  )
+}
+
+/**
+ * Product card - BEM visual system (Zalora-inspired guideline).
+ *
+ * Block: `.product-card` (+ modifier `--discounted/--flash/--unavailable/--model`)
+ * Elements: `__media __link __image __availability __favorite
+ *           __content __title __pricing __price __empty-price __compare
+ *           __original-price __discount __cod __flash-label
+ *           __meta __warranty __sold`
+ *
+ * Seluruh chrome visual hidup di `@layer components` (resources/css/app.css)
+ * berbasis token :root; komponen ini hanya data-driven + state. Interaksi
+ * memakai dua link terpisah (media + body) - pola multi-link standar -
+ * sehingga overlay wishlist tetap sibling link (HTML valid).
+ */
 export function ProductCard({
   product,
   priority = false,
   className,
   emphasis = "default",
+  titleStyle = "default",
+  imageFit = "cover",
+  isWishlisted = false,
+  onWishlistChange,
 }: {
   product: ProductCardData
   priority?: boolean
   className?: string
   /** Stronger Flash Sale chrome for /flash-sale and Promo spotlight. */
   emphasis?: "default" | "flash"
+  /** `model` = tipografi judul ModelCard (container query, lebih rapat di carousel). */
+  titleStyle?: "default" | "model"
+  /** Override image crop behavior for contexts that must show the whole asset. */
+  imageFit?: "cover" | "contain"
+  /** State wishlist - hanya berpengaruh bila `onWishlistChange` disediakan. */
+  isWishlisted?: boolean
+  /** Tanpa handler, tombol wishlist tidak dirender. */
+  onWishlistChange?: (next: boolean) => void
 }) {
   const title = productName(product.name, product.short_name)
   const priceValue =
@@ -42,144 +132,120 @@ export function ProductCard({
   const warrantyLabel = product.warranty_label?.trim() || "Garansi 100%"
   const soldCount = Number(product.sold_count ?? 0)
   const flashEmphasis = emphasis === "flash"
+  const useModelTitle = titleStyle === "model"
+  const isAvailable = product.isAvailable !== false
+  const { csrf } = usePage<SharedPageProps>().props
+
+  const cardClass = cn(
+    "product-card",
+    hasCompare && "product-card--discounted",
+    flashEmphasis && "product-card--flash",
+    !isAvailable && "product-card--unavailable",
+    useModelTitle && "product-card--model",
+    className,
+  )
+  const linkClass = "product-card__link"
 
   return (
-    <article
-      className={cn(
-        "group flex h-full min-w-0 flex-col border border-transparent bg-white p-2 shadow-[0_1px_3px_rgba(10,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-foreground/25 hover:shadow-[0_10px_24px_rgba(10,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
-        flashEmphasis && "ring-1 ring-primary/25 shadow-[0_2px_8px_rgba(192,0,0,0.12)]",
-        className,
-      )}
-    >
-      <Link
-        href={product.href}
-        className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-muted/50">
+    <article className={cardClass}>
+      <div className="product-card__media">
+        <PrefetchLink
+          href={product.href}
+          className={linkClass}
+          onClick={() => trackProductClick(product.id, csrf)}
+        >
           <ResponsiveImage
             src={product.image}
             alt={title}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
-            wrapperClassName="aspect-square size-full bg-muted/50"
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            wrapperClassName="size-full bg-muted/50"
+            className={cn(
+              "product-card__image",
+              imageFit === "contain" ? "!object-contain" : "object-cover",
+            )}
           />
-          {flashEmphasis ? (
-            <span className="absolute left-0 top-0 z-10 inline-flex items-center gap-0.5 bg-primary px-2 py-1 text-[10px] font-extrabold uppercase italic leading-none tracking-tight text-primary-foreground sm:text-[11px]">
-              <Lightning weight="fill" className="size-3 shrink-0" aria-hidden />
-              Flash
+        </PrefetchLink>
+
+        {showFlash ? (
+          <span className="product-card__flash-label">
+            <Lightning weight="fill" className="-mr-px size-3.5 shrink-0" aria-hidden />
+            FLASH SALE
+          </span>
+        ) : null}
+        {!isAvailable ? (
+          <span className="product-card__availability">Stok habis</span>
+        ) : null}
+        {onWishlistChange ? (
+          <button
+            type="button"
+            className="product-card__favorite"
+            aria-label={
+              isWishlisted ? "Hapus dari wishlist" : "Tambahkan ke wishlist"
+            }
+            aria-pressed={isWishlisted}
+            onClick={() => onWishlistChange(!isWishlisted)}
+          >
+            <Heart
+              weight={isWishlisted ? "fill" : "regular"}
+              className="size-4"
+              aria-hidden="true"
+            />
+          </button>
+        ) : null}
+      </div>
+
+      <PrefetchLink
+        href={product.href}
+        className={cn(linkClass, "product-card__link--body")}
+        onClick={() => trackProductClick(product.id, csrf)}
+      >
+        <div className="product-card__content">
+          {soldCount > 0 ? (
+            <span className="product-card__sold">
+              {soldCount.toLocaleString("id-ID")} terjual
             </span>
           ) : null}
-        </div>
-
-        <div className="relative flex flex-1 flex-col gap-0 pt-2">
-          <h3 className="line-clamp-2 min-w-0 text-sm font-medium leading-5 text-foreground group-hover:underline">
+          <h3 data-slot="product-item-name" className="product-card__title">
             {title}
           </h3>
 
-          {/* Harga bertumpuk: antisipasi angka panjang agar tidak wrap acak */}
-          <div className="mt-1 flex min-h-6 flex-col">
+          {/* Harga bertumpuk: compare + diskon wajib satu baris (mengecil bila sempit). */}
+          <div className="product-card__pricing">
             {priceValue !== null && Number.isFinite(priceValue) ? (
               <>
-                <span className="tabular-nums text-base font-bold leading-6 text-sale lg:text-xl lg:leading-7">
+                <span className="product-card__price">
                   {formatCurrency(priceValue)}
                 </span>
                 {hasCompare ? (
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="tabular-nums text-sm font-light leading-5 text-muted-foreground line-through lg:text-base lg:leading-6">
+                  <FitOneLine className="product-card__compare">
+                    <span className="product-card__original-price">
                       {formatCurrency(compareValue)}
                     </span>
                     {discountPercent !== null && discountPercent > 0 ? (
-                      <span className="rounded bg-accent px-1.5 text-xs font-semibold leading-5 text-accent-foreground lg:text-sm lg:leading-6">
+                      <span className="product-card__discount">
                         -{discountPercent}%
                       </span>
                     ) : null}
-                  </span>
+                  </FitOneLine>
                 ) : null}
               </>
             ) : (
-              <span className="text-sm font-medium text-muted-foreground lg:text-base">Lihat harga</span>
+              <span className="product-card__empty-price">Lihat harga</span>
             )}
           </div>
 
-          <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1.5">
-            {showCod ? (
-              <span
-                className="relative inline-flex h-[17px] w-[34px] shrink-0"
-                aria-label="COD tersedia"
-              >
-                <img
-                  src="/images/icons/cod-card-layer.svg"
-                  alt=""
-                  className="absolute h-[16.2812px] w-[33.8542px]"
-                  style={{ left: 0.135437, top: 0 }}
-                  aria-hidden="true"
-                />
-                <img
-                  src="/images/icons/cod-part2.svg"
-                  alt=""
-                  className="absolute h-[5.11458px] w-[4.5625px]"
-                  style={{ left: 16.4167, top: 5.5625 }}
-                  aria-hidden="true"
-                />
-                <img
-                  src="/images/icons/cod-part3.svg"
-                  alt=""
-                  className="absolute h-[4.9375px] w-[3.54167px]"
-                  style={{ left: 25.8125, top: 5.64587 }}
-                  aria-hidden="true"
-                />
-                <img
-                  src="/images/icons/cod-p4.svg"
-                  alt=""
-                  className="absolute h-px w-[6.75px]"
-                  style={{ left: 0, top: 10.073 }}
-                  aria-hidden="true"
-                />
-                <img
-                  src="/images/icons/cod-p5.svg"
-                  alt=""
-                  className="absolute h-px w-[6.73958px]"
-                  style={{ left: 0.833313, top: 11.625 }}
-                  aria-hidden="true"
-                />
-                <span className="sr-only">COD tersedia</span>
-              </span>
-            ) : null}
-            {showFlash ? (
-              <span className="inline-flex min-w-0 max-w-full items-center">
-                <Lightning weight="fill" className="-mr-px size-3.5 shrink-0 text-sale lg:size-4" aria-hidden />
-                <span className="truncate text-[11px] font-extrabold italic leading-4 tracking-tight text-sale sm:text-sm lg:text-base lg:leading-5">
-                  FLASH SALE
-                </span>
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-            <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-medium leading-4 text-warning lg:text-xs lg:leading-5">
-              <SealCheck weight="fill" className="size-3.5 shrink-0 lg:size-4" aria-hidden />
+          <div className="product-card__meta">
+            <span className="product-card__meta-start">
+            {showCod ? <CodBadge /> : null}
+            <span className="product-card__warranty">
+              <SealCheck weight="fill" className="size-3.5 shrink-0 text-copper lg:size-4" aria-hidden />
               <span className="truncate">{warrantyLabel}</span>
             </span>
-            {soldCount > 0 ? (
-              <span className="shrink-0 text-[10px] font-light leading-4 text-muted-foreground lg:text-xs lg:leading-5">
-                {soldCount.toLocaleString("id-ID")} terjual
-              </span>
-            ) : (
-              <span className="shrink-0" aria-hidden="true" />
-            )}
+            </span>
           </div>
         </div>
-      </Link>
-      {product.installation_href ? (
-        <Link
-          href={product.installation_href}
-          className="mt-2 inline-flex min-h-8 items-center text-[11px] font-semibold text-primary hover:underline"
-          onClick={(event) => event.stopPropagation()}
-        >
-          Hasil pemasangan
-        </Link>
-      ) : null}
+      </PrefetchLink>
     </article>
   )
 }

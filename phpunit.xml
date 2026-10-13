@@ -27,9 +27,30 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Tes tidak boleh menulis ke log aplikasi: tanpa ini test memakai
+             LOG_STACK=daily dari .env sehingga ikut menulis
+             storage/logs/laravel-YYYY-MM-DD.log (file yang sama dengan
+             php-fpm). Bila tes dijalankan sebagai root, file log menjadi
+             milik root dan www-data gagal menulisnya - Laravel melempar
+             exception dan SELURUH situs 500 (insiden 2026-09-15). -->
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- Gateway WhatsApp WAJIB tidak terjangkau saat test. Tanpa ini,
+             test memakai WHATSAPP_BAILEYS_BASE_URL dari .env sehingga di
+             server produksi test menembak gateway SUNGGUHAN: test
+             pairing-code memicu permintaan pairing dan test disconnect
+             benar-benar memutus sesi live (insiden 2026-09-10 dan
+             2026-09-14). Port 1 selalu ditolak koneksi. -->
+        <env name="WHATSAPP_BAILEYS_BASE_URL" value="http://127.0.0.1:1"/>
+        <!-- J&T juga WAJIB nonaktif saat test. Bila .env server memuat
+             kredensial (JNT_ENABLED=true), test yang lupa mem-fake
+             JntCargoClient akan menembak API J&T SUNGGUHAN: kena limit akun
+             produksi dan hasilnya tidak deterministik. Test yang memang butuh
+             J&T aktif menyetel config(['jnt.enabled' => true]) sendiri, dan
+             nilai config eksplisit itu menang atas nilai env. -->
+        <env name="JNT_ENABLED" value="false"/>
     </php>
 </phpunit>

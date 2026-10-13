@@ -2,22 +2,42 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
+
 use App\Models\CmsModelProduct;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CatalogLabels;
 use App\Support\CatalogTaxonomy;
+use App\Support\CategoryUrl;
+use App\Support\ModelProductPresentation;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ModelProductService
 {
     /**
-     * @return list<array<string, mixed>>
+     * Baris admin model produk, sudah terpaginasi. Ukuran halaman ditentukan
+     * pemanggil (hanya 20, 50, 100 yang dipakai halaman daftar).
+     *
+     * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    public function adminRows(?string $q = null, ?string $status = null): array
-    {
-        $query = CmsModelProduct::query()->orderBy('sort_order')->orderBy('id');
+    public function adminRows(
+        ?string $q = null,
+        ?string $status = null,
+        ?string $category = null,
+        int $perPage = 20,
+    ): LengthAwarePaginator {
+        // Model aktif mendahului nonaktif (keputusan owner 2026-09-16: nonaktif
+        // "jatuh" dari urutan). Dalam masing-masing kelompok urutan tetap
+        // mengikuti sort_order sehingga model nonaktif yang diaktifkan kembali
+        // muncul di posisi semula. sort_order tersimpan tidak diubah.
+        $query = CmsModelProduct::query()
+            ->with(['mediaAsset', 'galleryAssets'])
+            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', ['active'])
+            ->orderBy('sort_order')
+            ->orderBy('id');
 
         if ($q) {
             $query->where(function ($builder) use ($q) {
@@ -31,10 +51,16 @@ class ModelProductService
             $query->where('status', $status);
         }
 
-        $items = $query->get();
-        $stats = $this->statsByCategoryModel($items);
+        if ($category && $category !== 'all') {
+            $query->where('product_category', $category);
+        }
 
-        return $items->values()->map(function (CmsModelProduct $item, int $index) use ($stats) {
+        $paginator = $query->paginate($perPage);
+        $stats = $this->statsByCategoryModel(collect($paginator->items()));
+        $offset = ($paginator->currentPage() - 1) * $paginator->perPage();
+
+        $position = 0;
+        return $paginator->through(function (CmsModelProduct $item) use ($stats, $offset, &$position) {
             $key = $this->pairKey($item->product_category, $item->product_model);
             $stat = $stats[$key] ?? [
                 'active_count' => 0,
@@ -42,12 +68,15 @@ class ModelProductService
                 'variant_count' => 0,
                 'designs' => [],
             ];
+            $position++;
 
             return [
                 'id' => $item->id,
-                'no' => $index + 1,
+                'no' => $offset + $position,
                 'name' => $item->name,
-                'image_url' => $item->image_url,
+                'description' => $item->description,
+                'image_url' => $item->resolvedImage('card'),
+                'gallery_count' => $item->galleryAssets->count(),
                 'type' => $item->type,
                 'status' => $item->status,
                 'sort_order' => $item->sort_order,
@@ -64,13 +93,17 @@ class ModelProductService
                 'activate_url' => route('admin.model-products.activate', $item),
                 'deactivate_url' => route('admin.model-products.deactivate', $item),
             ];
-        })->all();
+        });
     }
 
     /**
-     * Create missing CMS rows from distinct visible catalog models.
+     * Create missing CMS rows from distinct visible catalog models, and
+     * auto-archive CMS rows whose container is empty (kontrak owner
+     * 2026-09-10: model produk tanpa isi tidak masuk akal, arsipkan otomatis).
+     *
+     * @return array{created: int, archived: int}
      */
-    public function syncFromCatalog(?int $adminId = null): int
+    public function syncFromCatalog(?int $adminId = null): array|int
     {
         $pairs = Product::query()
             ->select('product_category', 'product_model')
@@ -117,18 +150,61 @@ class ModelProductService
             $existing[] = $key;
         }
 
-        if ($created > 0) {
+        // Auto-arsip wadah kosong (kontrak owner 2026-09-10): "wadah" berarti
+        // produk yang BISA dibeli, jadi ukurannya produk aktif. Pasangan CMS
+        // tanpa satu pun produk aktif (mis. semua produknya sudah diarsipkan)
+        // dimatikan otomatis; admin bisa mengaktifkan kembali manual.
+        $activePairs = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('product_category')
+            ->whereNotNull('product_model')
+            ->select('product_category', 'product_model')
+            ->groupBy('product_category', 'product_model')
+            ->get()
+            ->map(fn ($pair) => $this->pairKey($pair->product_category, $pair->product_model))
+            ->filter()
+            ->all();
+
+        $archived = 0;
+        $firstArchivedId = 0;
+        CmsModelProduct::query()
+            ->where('status', 'active')
+            ->whereNotNull('product_category')
+            ->whereNotNull('product_model')
+            ->get()
+            ->each(function (CmsModelProduct $row) use ($activePairs, &$archived, &$firstArchivedId) {
+                $key = $this->pairKey($row->product_category, $row->product_model);
+                if ($key === '' || in_array($key, $activePairs, true)) {
+                    return;
+                }
+                $row->update(['status' => 'draft']);
+                $archived++;
+                $firstArchivedId = $firstArchivedId ?: (int) $row->id;
+            });
+
+        if ($created > 0 || $archived > 0) {
             CatalogTaxonomy::forgetCache();
+        }
+        if ($created > 0) {
             ActivityLogService::record(
                 'cms.model_products_synced',
                 'cms_model_product',
                 $firstCreatedId,
-                ['created' => $created],
+                ['created' => $created, 'archived' => $archived],
+                $adminId,
+            );
+        }
+        if ($archived > 0) {
+            ActivityLogService::record(
+                'cms.model_products_auto_archived',
+                'cms_model_product',
+                $firstArchivedId,
+                ['archived' => $archived],
                 $adminId,
             );
         }
 
-        return $created;
+        return ['created' => $created, 'archived' => $archived];
     }
 
     /**
@@ -143,7 +219,7 @@ class ModelProductService
                     continue;
                 }
                 CmsModelProduct::query()->whereKey($id)->update([
-                    'sort_order' => (int) ($row['sort_order'] ?? $index),
+                    'sort_order' => (int) ($row['sort_order'] ?? $index + 1),
                 ]);
             }
         });
@@ -165,18 +241,23 @@ class ModelProductService
     /**
      * Storefront cards from active CMS rows; fallback to taxonomy when empty.
      *
-     * @return list<array{title: string, count: string, meta: string, desc: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
+     * @return list<array{title: string, count: string, meta: string, desc: string, subtitle: string, highlights: list<array{icon: string, label: string}>, inspiration_count: int, inspiration_href: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
-    public function storefrontCards(int $limit = 0, ?string $design = null): array
+    public function storefrontCards(int $limit = 0, ?string $design = null, ?string $category = null, string $sort = 'popular'): array
     {
-        $rows = CmsModelProduct::query()->active()->get();
+        $rows = CmsModelProduct::query()->active()
+            ->with(['mediaAsset', 'galleryAssets'])
+            ->when($category, fn ($q) => $q->where('product_category', $category))
+            ->get();
         if ($rows->isEmpty()) {
-            return CatalogTaxonomy::modelCards($limit, $design);
+            return CatalogTaxonomy::modelCards($limit, $design, $category);
         }
 
         $design = CatalogLabels::normalizeDesign($design);
         $stats = $this->statsByCategoryModel($rows);
+        $popularity = $this->modelPopularity();
         $cards = [];
+        $pairs = [];
 
         foreach ($rows as $row) {
             if (! $row->product_category || ! $row->product_model) {
@@ -184,48 +265,68 @@ class ModelProductService
             }
 
             $productQuery = Product::visible()
-                ->where('product_category', $row->product_category)
+                ->whereIn('product_category', $this->productCategoryCandidates($row->product_category))
                 ->where('product_model', $row->product_model)
                 ->when($design, fn ($q) => $q->where('design_variant', $design));
 
-            $count = (int) (clone $productQuery)->count();
-            if ($design && $count === 0) {
+            $key = $this->pairKey($row->product_category, $row->product_model);
+            // Optimasi (2026-08-21): tanpa filter design, ambil count dari stats
+            // yang sudah dihitung satu kali (GROUP BY) — hindari 1 query COUNT per baris.
+            $count = $design === null
+                ? (int) ($stats[$key]['active_count'] ?? 0)
+                : (int) (clone $productQuery)->count();
+            // Kontrak owner 2026-09-10: Model Produk adalah wadah produk. Wadah
+            // tanpa isi (0 produk aktif) tidak masuk akal ditampilkan — skip.
+            if ($count === 0) {
                 continue;
             }
-
-            $key = $this->pairKey($row->product_category, $row->product_model);
             $designs = $stats[$key]['designs'] ?? [];
 
-            $route = match ($row->product_category) {
-                'DOOR' => 'catalog.doors',
-                'BOUVEN' => 'catalog.bouven',
-                default => 'catalog.windows',
-            };
-
+            $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
+            $route = $design ? 'catalog.design' : 'catalog.model';
             $params = array_filter([
-                'model' => $row->product_model,
-                'design' => $design,
+                'category' => $categorySlug,
+                'model' => strtolower(str_replace('_', '-', $row->product_model)),
+                'design' => $design ? strtolower(str_replace('_', '-', $design)) : null,
             ]);
 
-            $image = $row->image_url;
+            $image = $row->resolvedImage('card');
             if (! $image) {
-                $sample = (clone $productQuery)->with('mainImage')->latest('id')->first();
+                $sample = (clone $productQuery)
+                    ->with('mainImage')
+                    ->withCount('activeVariants')
+                    ->orderByDesc('active_variants_count')
+                    ->orderByDesc('id')
+                    ->first();
                 $image = $sample?->mainImage?->urlFor('card');
             }
             if (! $image) {
                 $image = '/'.ltrim((string) config('media.placeholder', 'images/home/product-flash.png'), '/');
             }
 
+            $pairs[] = [
+                'category' => $row->product_category,
+                'model' => $row->product_model,
+            ];
+
+            $cmsDescription = trim((string) ($row->description ?? ''));
+            $cmsKeywords = $row->keywords ?? [];
+
             $cards[] = [
                 'title' => $row->name,
                 'count' => (string) $count,
                 'meta' => $this->metaFromDesigns($designs),
-                'desc' => $this->descriptionFor($row->product_model),
+                'desc' => $cmsDescription !== '' ? $cmsDescription : $this->descriptionFor($row->product_model),
+                'keywords' => $cmsKeywords,
                 'image' => $image,
+                'gallery' => $row->galleryPayload('pdp'),
+                'show_product_photos' => (bool) $row->media_show_product_photos,
                 'href' => route($route, $params, absolute: false),
                 'model' => $row->product_model,
                 'category' => $row->product_category,
                 'designs' => $designs,
+                'popularity' => $popularity[$key] ?? 0,
+                'created_at' => $row->created_at?->timestamp ?? 0,
             ];
 
             if ($limit > 0 && count($cards) >= $limit) {
@@ -233,7 +334,136 @@ class ModelProductService
             }
         }
 
-        return $cards !== [] ? $cards : CatalogTaxonomy::modelCards($limit, $design);
+        if ($cards === []) {
+            return CatalogTaxonomy::modelCards($limit, $design, $category);
+        }
+
+        // Urutan kartu model:
+        // - 'admin'   : urutan manual admin (sort_order CMS) — baris sudah urut dari scopeActive().
+        // - 'popular' : total penjualan (validOrderItems) tertinggi di depan (default lama).
+        // - 'latest' / 'oldest' : urutan pembuatan kartu model (created_at) — halaman Semua Model Produk.
+        switch ($sort) {
+            case 'admin':
+                break;
+            case 'latest':
+                usort($cards, fn (array $a, array $b): int => ($b['created_at'] ?? 0) <=> ($a['created_at'] ?? 0));
+                break;
+            case 'oldest':
+                usort($cards, fn (array $a, array $b): int => ($a['created_at'] ?? 0) <=> ($b['created_at'] ?? 0));
+                break;
+            default:
+                usort(
+                    $cards,
+                    fn (array $a, array $b): int => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0)
+                        ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+                );
+        }
+
+        foreach ($cards as &$card) {
+            unset($card['popularity'], $card['created_at']);
+        }
+        unset($card);
+
+        $inspiration = ModelProductPresentation::inspirationByPair($pairs);
+
+        return array_map(
+            fn (array $card) => ModelProductPresentation::enrichCard($card, $inspiration),
+            $cards,
+        );
+    }
+
+    /**
+     * Menu kategori horizontal beranda — model produk aktif (urut CMS `sort_order`)
+     * beserta sub-model (desain) masing-masing. Routing selalu otomatis dari category/model.
+     *
+     * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>
+     */
+    public function storefrontCategoryMenu(): array
+    {
+        return Cache::remember('catalog.category_menu', 300, function (): array {
+            return $this->buildCategoryMenu();
+        });
+    }
+
+    protected function buildCategoryMenu(): array
+    {
+        $rows = CmsModelProduct::query()->active()->get();
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $stats = $this->statsByCategoryModel($rows);
+        $menu = [];
+
+        foreach ($rows as $row) {
+            if (! $row->product_category || ! $row->product_model) {
+                continue;
+            }
+
+            $key = $this->pairKey($row->product_category, $row->product_model);
+            // Kontrak owner 2026-09-10: wadah kosong (0 produk aktif) tidak
+            // ditampilkan di menu kategori juga.
+            if ((int) ($stats[$key]['active_count'] ?? 0) === 0) {
+                continue;
+            }
+            $designCodes = $stats[$key]['design_codes'] ?? [];
+
+            $categorySlug = CategoryUrl::categoryToSlug((string) $row->product_category);
+            $modelSlug = strtolower(str_replace('_', '-', $row->product_model));
+
+            $href = route('catalog.model', [
+                'category' => $categorySlug,
+                'model' => $modelSlug,
+            ], absolute: false);
+
+            $subs = [];
+            foreach ($designCodes as $code) {
+                $subs[] = [
+                    'label' => CatalogLabels::design($code) ?: $code,
+                    'href' => route('catalog.design', [
+                        'category' => $categorySlug,
+                        'model' => $modelSlug,
+                        'design' => strtolower(str_replace('_', '-', $code)),
+                    ], absolute: false),
+                ];
+            }
+
+            $menuLabel = trim(CatalogLabels::category($row->product_category).' '.CatalogLabels::model($row->product_model));
+            if ($menuLabel === '') {
+                $menuLabel = (string) $row->name;
+            }
+
+            $menu[] = [
+                'key' => $key,
+                'label' => $menuLabel,
+                'href' => $href,
+                'category' => $row->product_category,
+                'model' => $row->product_model,
+                'subs' => $subs,
+            ];
+        }
+
+        return $menu;
+    }
+
+    /**
+     * @param  Collection<int, CmsModelProduct>  $items
+     * @return array<string, array{active_count:int,archived_count:int,variant_count:int,designs:list<string>}>
+     */
+    /**
+     * Total kuantitas terjual (validOrderItems) per model (category|model) untuk
+     * sortir model produk secara "popular".
+     *
+     * @return array<string, int>
+     */
+    protected function modelPopularity(): array
+    {
+        return Product::visible()
+            ->withPopularityScore()
+            ->get()
+            ->groupBy(fn (Product $p) => $this->pairKey($p->product_category, $p->product_model))
+            ->map(fn (Collection $group) => (int) $group->sum(fn (Product $product) => (int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0)))
+            ->all();
     }
 
     /**
@@ -259,7 +489,7 @@ class ModelProductService
             ->where(function ($q) use ($pairs) {
                 foreach ($pairs as $pair) {
                     $q->orWhere(function ($inner) use ($pair) {
-                        $inner->where('product_category', $pair['category'])
+                        $inner->whereIn('product_category', $this->productCategoryCandidates($pair['category']))
                             ->where('product_model', $pair['model']);
                     });
                 }
@@ -279,7 +509,8 @@ class ModelProductService
         foreach ($pairs as $pair) {
             $key = $this->pairKey($pair['category'], $pair['model']);
             $group = $products->filter(
-                fn (Product $p) => $p->product_category === $pair['category'] && $p->product_model === $pair['model']
+                fn (Product $p) => in_array((string) $p->product_category, $this->productCategoryCandidates($pair['category']), true)
+                    && $p->product_model === $pair['model']
             );
 
             $designs = $group->pluck('design_variant')->filter()->unique()->values()
@@ -291,10 +522,48 @@ class ModelProductService
                 'archived_count' => $group->where('status', 'archived')->count(),
                 'variant_count' => (int) $group->sum(fn (Product $p) => (int) ($variantCounts[$p->id] ?? 0)),
                 'designs' => $designs,
+                'design_codes' => $group->pluck('design_variant')->filter()->unique()->values()->all(),
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * Ringkasan isi wadah satu model (dipakai form edit model produk):
+     * jumlah produk aktif/arsip, varian, dan sub model yang terdeteksi.
+     *
+     * @return array{active_count:int, archived_count:int, variant_count:int, designs:list<string>}
+     */
+    public function containerStats(CmsModelProduct $item): array
+    {
+        $stats = $this->statsByCategoryModel(collect([$item]));
+        $key = $this->pairKey($item->product_category, $item->product_model);
+
+        return $stats[$key] ?? [
+            'active_count' => 0,
+            'archived_count' => 0,
+            'variant_count' => 0,
+            'designs' => [],
+        ];
+    }
+    /**
+     * Kandidat kode product_category untuk satu kode kategori CMS. Setelah kode
+     * warisan dihapus, kode kategori tabel `categories` identik dengan kode
+     * products.product_category, jadi hasilnya satu kode kanonik. Kode warisan
+     * (WINDOW/DOOR/BOUVEN) tidak lagi dikenali.
+     *
+     * @return list<string>
+     */
+    protected function productCategoryCandidates(?string $category): array
+    {
+        if ($category === null || $category === '') {
+            return [];
+        }
+
+        $code = CategoryUrl::codeToProductCode($category);
+
+        return $code === '' ? [] : [$code];
     }
 
     protected function pairKey(?string $category, ?string $model): string

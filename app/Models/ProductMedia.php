@@ -11,11 +11,15 @@ class ProductMedia extends Model
 {
     protected $fillable = [
         'product_id',
+        'model_product_id',
+        'installation_group_id',
         'product_variant_id',
+        'media_asset_id',
         'position',
         'is_main_image',
         'show_in_catalog',
         'is_installation',
+        'installation_caption',
         'visibility',
         'source_url',
         'stored_path',
@@ -54,6 +58,23 @@ class ProductMedia extends Model
         return $this->belongsTo(ProductVariant::class);
     }
 
+    /** Pemilik level model (media pemasangan tanpa SKU). */
+    public function modelProduct(): BelongsTo
+    {
+        return $this->belongsTo(CmsModelProduct::class, 'model_product_id');
+    }
+
+    /** Grup mandiri (media pemasangan tanpa model & SKU). */
+    public function installationGroup(): BelongsTo
+    {
+        return $this->belongsTo(InstallationGroup::class, 'installation_group_id');
+    }
+
+    public function mediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class);
+    }
+
     public function createdByImportJob(): BelongsTo
     {
         return $this->belongsTo(ImportJob::class, 'created_by_import_job_id');
@@ -85,7 +106,11 @@ class ProductMedia extends Model
      */
     public function localUrlFor(string $variant = 'card'): ?string
     {
-        $variant = in_array($variant, ['thumb', 'card', 'pdp'], true) ? $variant : 'card';
+        if ($this->relationLoaded('mediaAsset') && $this->mediaAsset) {
+            return $this->mediaAsset->urlFor($variant);
+        }
+
+        $variant = in_array($variant, ['thumb', 'card', 'pdp', 'video'], true) ? $variant : 'card';
 
         $derivatives = $this->derivatives ?? [];
         if (! empty($derivatives[$variant]['path'])) {
@@ -155,18 +180,18 @@ class ProductMedia extends Model
      */
     protected function rewriteR2DevToAppProxy(string $url): string
     {
-        $legacy = rtrim((string) env('AWS_R2_DEV_URL', 'https://pub-e0bf1b0315804ca58f84ecd92654b902.r2.dev'), '/');
-        $proxyBase = rtrim((string) config('filesystems.disks.media.url', ''), '/');
+        $legacy = rtrim((string) env('MEDIA_LEGACY_PUBLIC_URL', ''), '/');
+        $proxyBase = rtrim((string) config('filesystems.disks.media.proxy_url', ''), '/');
 
-        if ($legacy !== '' && str_starts_with($url, $legacy.'/')) {
+        if ($legacy === '' || $proxyBase === '' || ! str_starts_with($url, $legacy.'/')) {
+            return $url;
+        }
+
+        if (str_starts_with($url, $legacy.'/')) {
             $suffix = substr($url, strlen($legacy));
-            if ($proxyBase !== '') {
-                $proxyPath = parse_url($proxyBase, PHP_URL_PATH) ?: '/media-cdn';
+            $proxyPath = parse_url($proxyBase, PHP_URL_PATH) ?: '/media-cdn';
 
-                return rtrim($proxyPath, '/').$suffix;
-            }
-
-            return '/media-cdn'.$suffix;
+            return rtrim($proxyPath, '/').$suffix;
         }
 
         return $url;

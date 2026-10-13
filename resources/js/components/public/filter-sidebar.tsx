@@ -29,7 +29,7 @@ export function FilterOptionChip({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "min-h-10 rounded-md border px-3.5 text-xs font-semibold transition",
+        "min-h-11 rounded-md border px-3.5 text-xs font-semibold transition",
         selected
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
           : "border-border bg-surface text-foreground hover:border-foreground/25 hover:bg-muted/40",
@@ -65,14 +65,14 @@ export function FilterSheetContent({
         <span className="h-1 w-10 rounded-full bg-border" />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3">
-        <SheetTitle className="font-display text-xl font-bold tracking-tight">{title}</SheetTitle>
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2.5">
+        <SheetTitle className="text-sm font-bold tracking-tight">{title}</SheetTitle>
         {description ? (
-          <SheetDescription className="mt-1.5 text-sm text-muted-foreground">
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
             {description}
           </SheetDescription>
         ) : null}
-        <div className="mt-5">{children}</div>
+        <div className="mt-3 space-y-3">{children}</div>
       </div>
 
       {footer ? (
@@ -118,7 +118,7 @@ export function FilterSidebarSection({
   const panelId = React.useId()
 
   return (
-    <FilterSidebarCard>
+    <div>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 text-left"
@@ -127,26 +127,18 @@ export function FilterSidebarSection({
         aria-controls={panelId}
       >
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="text-sm font-bold capitalize text-foreground">{title}</span>
+          <span className="text-[13px] font-semibold capitalize text-foreground">{title}</span>
           {subtitle ? (
-            <span className="truncate text-sm text-muted-foreground">({subtitle})</span>
+            <span className="truncate text-xs text-muted-foreground">({subtitle})</span>
           ) : null}
         </span>
-        <Icon
-          name="caret-down"
-          className={cn(
-            "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-[260ms] motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
       </button>
       {open ? (
-        <div id={panelId} className="mt-4">
+        <div id={panelId} className="mt-2">
           {children}
         </div>
       ) : null}
-    </FilterSidebarCard>
+    </div>
   )
 }
 
@@ -170,13 +162,13 @@ export function AppliedFiltersCard({
           onClick={onClearAll}
           className="text-sm font-semibold text-primary hover:underline"
         >
-          Hapus semua
+          Hapus Semua
         </button>
       </div>
       <ul className="mt-4 flex flex-wrap gap-2">
         {chips.map((chip) => (
           <li key={chip.id}>
-            <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-muted px-3 text-sm text-foreground">
+            <span className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface-muted px-3 text-sm text-foreground">
               {chip.label}
               <button
                 type="button"

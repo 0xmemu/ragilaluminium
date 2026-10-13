@@ -1,35 +1,64 @@
+/* build-rev: 2026-09-10-cool-slate-clean-v3 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Inter - self-hosted variable font (400-800), subsets latin + latin-ext (DS v2 storefront font). */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/inter/inter-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/inter/inter-latin-ext-var.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @layer base {
   /* Logo accent: Signal Red from light-logo.png (#C00000) + Graphite ink */
   :root {
+    --admin-theme-version: "2026-09-10-cool-slate";
     color-scheme: light;
     --background: 0 0% 100%;
-    --foreground: 150 6% 11%;
+    --foreground: 0 0% 20%;
+    --action-foreground: 0 0% 15.686%;
+    --body-foreground: 0 0% 40%;
     --card: 0 0% 100%;
-    --card-foreground: 150 6% 11%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 150 6% 11%;
+    --popover-foreground: 0 0% 20%;
     --primary: 0 100% 38%;
     --primary-hover: 0 100% 31%;
     --primary-foreground: 0 0% 100%;
     --secondary: 150 8% 93%;
-    --secondary-foreground: 150 6% 11%;
+    --secondary-foreground: 0 0% 20%;
     --muted: 150 8% 94%;
-    --muted-foreground: 150 5% 38%;
+    --muted-foreground: 0 0% 40%;
     --accent: 0 72% 96%;
     --accent-foreground: 0 100% 28%;
     --destructive: 0 84% 40%;
     --destructive-foreground: 0 0% 100%;
     --sale: 0 100% 38%;
+    /* Light coral accent for dark bands (AA on --foreground). */
+    --on-dark-accent: 0 88% 75%;
     --success: 149 45% 31%;
     --success-foreground: 0 0% 100%;
-    --warning: 35 84% 42%;
+    --warning: 38 92% 50%;
     --warning-foreground: 35 92% 10%;
+    /* Copper: aksen garansi/kepercayaan brand (lebih hangat dari warning emas). */
+    --copper: 25 65% 47%;
+    --copper-foreground: 0 0% 100%;
     --info: 205 56% 39%;
     --info-foreground: 0 0% 100%;
+    --whatsapp: 142 71% 45%;
+    --header-bg: 0 0% 7.1%;
     --border: 150 8% 88%;
     --input: 150 6% 82%;
     --ring: 0 100% 38%;
@@ -46,39 +75,155 @@
     /* Mobile bottom nav (h-14 chrome) + iOS home indicator */
     --mobile-bottom-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px));
     /* Sticky commerce CTA strip above bottom nav */
-    --mobile-sticky-cta-height: 4.25rem;
+    --mobile-sticky-cta-height: 5rem;
+    /* Posisi atas toast. Toast duduk di area halaman, BUKAN menimpa header
+       atau menu navigasi (keluhan owner 2026-09-19: toast tampak mengambang
+       di antara navbar dan isi halaman).
+       Di bawah md breadcrumb disembunyikan, jadi acuan terdekat adalah judul
+       halaman. Sejak md toast turun sampai bawah breadcrumb.
+       Nilai diukur langsung di browser dan ditulis dalam PIXEL, bukan rem:
+       root font-size admin 14px sedangkan storefront 16px, jadi rem
+       menghasilkan piksel berbeda dan posisi toast meleset. Lihat docs/MEMORY.md. */
+    --toast-top: 120px;
   }
 
+  /* Sejak md: header 48px + menu navigasi 44px + breadcrumb 44px + jarak 12px. */
+  @media (min-width: 768px) {
+    :root {
+      --toast-top: 156px;
+    }
+  }
+
+  /* Admin dark: turunan sidebar graphite #131212 (netral), bukan mineral hijau hue 150. */
   .dark {
     color-scheme: dark;
-    --background: 150 6% 8%;
-    --foreground: 150 8% 96%;
-    --card: 150 6% 12%;
-    --card-foreground: 150 8% 96%;
-    --popover: 150 6% 12%;
-    --popover-foreground: 150 8% 96%;
+    --background: 0 3% 7.5%;
+    --foreground: 0 0% 96%;
+    --action-foreground: 0 0% 96%;
+    --body-foreground: 0 0% 78%;
+    --card: 0 2% 12%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 2% 12%;
+    --popover-foreground: 0 0% 96%;
     --primary: 0 100% 38%;
     --primary-hover: 0 100% 31%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 150 6% 18%;
-    --secondary-foreground: 150 8% 96%;
-    --muted: 150 6% 16%;
-    --muted-foreground: 150 8% 78%;
+    --secondary: 0 2% 18%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 2% 16%;
+    --muted-foreground: 0 0% 78%;
     --accent: 0 40% 18%;
     --accent-foreground: 0 92% 72%;
     --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 100%;
     --sale: 0 100% 38%;
+    /* Light coral accent for dark bands (AA on --foreground). */
+    --on-dark-accent: 0 88% 75%;
     --success: 149 42% 46%;
     --warning: 35 78% 54%;
     --info: 205 62% 56%;
-    --border: 150 6% 24%;
-    --input: 150 6% 28%;
+    --border: 0 2% 22%;
+    --input: 0 2% 28%;
     --ring: 0 100% 38%;
-    --surface: 150 6% 12%;
-    --surface-muted: 150 6% 16%;
+    --surface: 0 2% 12%;
+    --surface-muted: 0 2% 16%;
     --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.3);
     --shadow-float: 0 8px 24px hsl(0 0% 0% / 0.4);
+  }
+
+  /* ==========================================================================
+     ADMIN DESIGN LANGUAGE : "Ink" (dark command-center, fintech bento)
+     Dark-first: token gelap adalah DEFAULT admin. Mode terang opsional via
+     <html class="admin-shell light">. Storefront tidak terpengaruh.
+     Kanvas: mono near-black · Kartu: dark raised + hairline · CTA: putih solid ·
+     Aksen fungsional: netral (monochrome) · Status: semantik.
+     ========================================================================== */
+  html.admin-shell {
+    color-scheme: dark;
+    --toast-top: 96px;
+    --background: 0 0% 7%; /* #121212 kanvas */
+    --foreground: 0 0% 96%;
+    --action-foreground: 0 0% 94%;
+    --body-foreground: 0 0% 62%;
+    --card: 240 8% 12%; /* #1d1d22 kartu konten, ~1.2:1 vs kanvas */
+    --sidebar: 240 8% 7.3%; /* #111114 sidebar */
+    --card-foreground: 0 0% 96%;
+    --popover: 240 8% 12.5%; /* #1f1f24 */
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-hover: 0 0% 82%;
+    --primary-foreground: 0 0% 6%;
+    --secondary: 0 0% 16%; /* #292929 hover di card */
+    --secondary-foreground: 0 0% 94%;
+    --muted: 0 0% 14%; /* #242424 chip di atas card */
+    --muted-foreground: 0 0% 62%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 74% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --sale: 0 74% 56%;
+    --success: 151 55% 48%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 92% 58%;
+    --warning-foreground: 36 95% 82%;
+    --copper: 27 70% 62%;
+    --copper-foreground: 0 0% 12%;
+    --info: 207 82% 62%;
+    --info-foreground: 207 90% 84%;
+    --border: 0 0% 16.5%; /* #2a2a2a hairline terlihat di #121212 & #1d1d22 */
+    --input: 0 0% 18%;
+    --ring: 0 0% 72%;
+    --surface: 240 8% 12%; /* #1d1d22 panel konten */
+    --surface-muted: 240 8% 15.5%; /* #27272c */
+    --radius: 0.5rem;
+    --radius-control: 0.375rem;
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.5);
+    --shadow-float: 0 24px 48px -16px hsl(0 0% 0% / 0.65);
+  }
+
+  /* Mode terang admin : kanvas slate tipis #f8fafc sebagai pembeda, kartu & header putih #ffffff. */
+  html.admin-shell.light {
+    color-scheme: light;
+    --background: 210 20% 98%; /* #f8fafc kanvas slate dingin tipis, pembeda dari kartu putih */
+    --foreground: 222 47% 11%; /* #0f172a teks obsidian slate tajam dan kontras tinggi */
+    --action-foreground: 222 47% 11%;
+    --body-foreground: 215 16% 42%; /* #475569 teks body slate sejuk */
+    --card: 0 0% 100%; /* #ffffff kartu putih murni, seragam semua permukaan */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-hover: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 20% 94%; /* #f1f5f9 chip dan tombol sekunder cool slate */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 215 20% 94%; /* #f1f5f9 */
+    --muted-foreground: 215 16% 45%;
+    --accent: 215 25% 92%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --sale: 0 84.2% 60.2%;
+    --success: 158 42% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 75% 38%;
+    --warning-foreground: 36 80% 26%;
+    --copper: 25 60% 38%;
+    --copper-foreground: 0 0% 100%;
+    --info: 207 55% 38%;
+    --info-foreground: 0 0% 100%;
+    --whatsapp: 142 71% 45%;
+    --header-bg: 0 0% 100%; /* #ffffff putih murni */
+    --border: 215 20% 89%; /* #e2e8f0 garis pembatas slate dingin bersih */
+    --input: 215 20% 89%;
+    --ring: 222 47% 11%;
+    --surface: 0 0% 100%;
+    --surface-muted: 215 20% 95%; /* #f1f5f9 */
+    --sidebar: 210 20% 98%; /* #f8fafc sidebar menyatu dgn kanvas */
+    --radius: 0.5rem;
+    --radius-control: 0.375rem;
+    --shadow-soft: 0 1px 2px 0 hsl(215 25% 20% / 0.05), 0 1px 3px 0 hsl(215 25% 20% / 0.05);
+    --shadow-float: 0 10px 25px -5px hsl(215 25% 20% / 0.08), 0 8px 10px -6px hsl(215 25% 20% / 0.06);
   }
 
   * {
@@ -92,8 +237,52 @@
   }
 
   body {
-    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    @apply min-h-screen bg-background font-sans text-body antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  a,
+  button {
+    color: hsl(var(--action-foreground));
+  }
+
+  /* Admin shell: density ala Shopee Seller (root 14px, ~+17% dari 12px).
+     Layout naik sedikit, tapi text-xs dikunci 12px literal via override. */
+  html.admin-shell {
+    font-size: 14px;
+  }
+
+  html.admin-shell .text-xs {
+    font-size: 0.857rem; /* 12px literal di root 14px */
+  }
+
+  /* Sidebar light: teks menu lebih kontras (anti kusam di kanvas slate).
+     Label menu naik dari muted 45% ke slate 700; ikon mengikuti warna label. */
+  html.admin-shell.light .admin-sidebar-nav {
+    color: hsl(215 25% 27%); /* #334155 slate 700, kontras kuat di #f8fafc */
+  }
+
+  html.admin-shell.light .admin-sidebar-nav:hover {
+    color: hsl(222 47% 11%); /* #0f172a obsidian saat hover */
+  }
+
+  html.admin-shell.light .admin-sidebar-title {
+    color: hsl(215 16% 47%); /* #64748b slate 500, lebih tegas dari muted/80 */
+  }
+
+  /* Kontrak 2026-10-13: tombol aksi di header halaman seragam 32px.
+     Halaman memakai size="sm" (28px) dan ukuran bawaan (31,5px) secara
+     bercampur, sehingga tinggi tombol berbeda saat berpindah halaman.
+     Normalisasi ditaruh di sini, bukan ditambal di 18 halaman, supaya halaman
+     baru ikut aturannya. Catatan: jangan menaruh tombol ikon persegi di area
+     ini, karena tinggi dipaksa sedangkan lebarnya tidak. */
+  html.admin-shell .admin-header-actions :is(button, a) {
+    height: 2.25rem;
+    min-height: 2.25rem;
+  }
+
+  html.admin-shell .admin-main {
+    background: hsl(var(--background));
   }
 
   h1,
@@ -138,14 +327,14 @@
      lebar datang dari sisa ruang max-width, bukan padding. */
   .container-page {
     width: 100%;
-    max-width: 112rem;
+    max-width: 80rem;
     margin-inline: auto;
-    padding-inline: 1.25rem;
+    padding-inline: 0.625rem;
   }
 
   @media (min-width: 37.5em) {
     .container-page {
-      padding-inline: 2rem;
+      padding-inline: 2.5rem;
     }
   }
 
@@ -155,15 +344,84 @@
     }
   }
 
-  /* Ritme vertikal antar section ala IKEA: 30px mobile, 60px desktop. */
-  .section-space {
-    padding-block: 1.875rem;
+  @media (min-width: 80rem) {
+    .container-page {
+      padding-inline: 0;
+    }
   }
 
-  @media (min-width: 56.25em) {
-    .section-space {
-      padding-block: 3.75rem;
+  /* Typography hierarchy standar (desktop) utk semua halaman publik.
+     Mobile dipertahankan seperti asli (tidak disentuh).
+     Skala: H1 20px/700 · H2 18px/700 · H3 15px/600 · H4 14px/600. */
+  @media (min-width: 48em) {
+    .public-title-case h1 {
+      font-size: 1.25rem;
+      line-height: 1.4;
+      font-weight: 700;
     }
+    .public-title-case h2 {
+      font-size: 1.125rem;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+    .public-title-case h3 {
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+    /* Judul seksi footer: 16px (kontrak owner 14-09). */
+    .public-title-case h3.footer-heading {
+      font-size: 1rem;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+    .public-title-case h4 {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+  }
+
+  /* Spacing antar section homepage (desktop): 10px (0.625rem) atas-bawah.
+     Pengecualian: section dengan data-pdp-section (halaman detail produk)
+     mengatur padding vertikalnya sendiri via utility Tailwind. */
+  @media (min-width: 48em) {
+    .public-title-case main > section:not([class*="border-b"]):not([class*="pb-5"]):not([class*="py-0"]):not([data-pdp-section]) {
+      padding-block: 0.625rem;
+    }
+    .public-title-case main > section.pb-5:not([data-pdp-section]) {
+      padding-block: 0.625rem;
+    }
+  }
+
+  .public-title-case article {
+    border-radius: 5px !important;
+  }
+
+  .public-title-case article:has(img) {
+    overflow: visible;
+  }
+
+  .public-title-case .product-card {
+    border-radius: 5px !important;
+  }
+
+  .public-title-case .testimonial-card {
+    border-radius: 12px !important;
+  }
+
+  .public-title-case .product-card__media,
+  .public-title-case .testimonial-card--with-image > button {
+    border-radius: 0;
+  }
+
+  .public-title-case .product-card__content,
+  .public-title-case article:has(img) > a:last-child > div:last-child {
+    border-radius: 0 0 5px 5px;
+  }
+
+  .public-title-case .testimonial-card--with-image > :first-child,
+  .public-title-case .testimonial-card--with-image > button:last-of-type {
+    border-radius: 0;
   }
 
   .surface-panel {
@@ -186,29 +444,463 @@
     content: none;
   }
 
+  /* ================================================================
+     Product card : BEM visual system (Zalora-inspired guideline)
+     Block: .product-card | Elements: .product-card__* | Modifier: --*
+     Semua visual berasal dari token :root. Flow layout; position
+     absolute hanya untuk overlay (badge flash, label stok, wishlist).
+     ================================================================ */
+  .product-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid transparent;
+    background: hsl(var(--surface));
+    box-shadow: 0 1px 3px rgb(10 0 0 / 0.08);
+    transition:
+      transform 300ms var(--ease-standard),
+      border-color 300ms var(--ease-standard),
+      box-shadow 300ms var(--ease-standard);
+  }
+
+  .product-card:hover {
+    transform: translateY(-4px);
+    border-color: hsl(var(--foreground) / 0.25);
+    box-shadow: 0 10px 24px rgb(10 0 0 / 0.14);
+  }
+
+  /* Modifier: chrome Flash Sale (ring tipis + bayangan merah lembut). */
+  .product-card--flash {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.25),
+      0 2px 8px rgb(192 0 0 / 0.12);
+  }
+
+  /* Modifier: judul tipografi model (container query, carousel Home).
+     Versi desain baru : flat ala kartu model (tanpa shadow/lift),
+     border #dee3e0, judul semibold, padding body 10px. */
+  .product-card--model {
+    container-type: inline-size;
+    border-color: #dee3e0;
+    box-shadow: none;
+  }
+
+  .product-card--model:hover {
+    transform: none;
+    border-color: #b9c2bd;
+    box-shadow: none;
+  }
+
+  .product-card--model .product-card__content {
+    padding: 10px;
+  }
+
+  .product-card--model .product-card__title {
+    color: #333333;
+    font-weight: 400;
+    line-height: 1.3;
+    min-height: 0;
+  }
+
+  /* Carousel reusable: track jadi container (inline-size) sehingga jumlah kolom
+     kartu mengikuti RUANG yang tersedia (bukan viewport/halaman).
+     Patokan = homepage (5 kartu di ruang lebar). Kolom sempit otomatis menurun
+     (4 -> 3) tanpa profil terpisah. */
+  .carousel-track {
+    container-type: inline-size;
+  }
+
+  .carousel-card {
+    width: calc((100cqw - 1rem) * 6 / 13);
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  @container (min-width: 560px) {
+    /* 3 kartu: 2 gap x 16px = 32px = 2rem */
+    .carousel-card { width: calc((100cqw - 2rem) / 3); }
+  }
+
+  @container (min-width: 760px) {
+    /* 4 kartu: 3 gap x 16px = 48px = 3rem */
+    .carousel-card { width: calc((100cqw - 3rem) / 4); }
+  }
+
+  @container (min-width: 960px) {
+    /* 4.5 kartu: ~5 gap x 16px = 80px = 5rem */
+    .carousel-card { width: calc((100cqw - 5rem) / 4.5); }
+  }
+
+  @container (min-width: 1120px) {
+    /* 5 kartu: 4 gap x 16px = 64px = 4rem */
+    .carousel-card { width: calc((100cqw - 4rem) / 5); }
+  }
+
+  @container (min-width: 1400px) {
+    /* 6 kartu: 5 gap x 16px = 80px = 5rem */
+    .carousel-card { width: calc((100cqw - 5rem) / 6); }
+  }
+
+  /* Skala teks kartu model mengikuti dimensi kartu (container query).
+     Kartu di kolom sempit (190-290px) tidak boleh dipenuhi harga raksasa. */
+  .product-card--model .product-card__price {
+    font-size: 0.875rem;
+    line-height: 1.125rem;
+  }
+  .product-card--model .product-card__compare {
+    font-size: 0.6875rem;
+  }
+  .product-card--model .product-card__title {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  @container (min-width: 236px) {
+    .product-card--model .product-card__price {
+      font-size: 1rem;
+      line-height: 1.25rem;
+    }
+  }
+
+  @container (min-width: 280px) {
+    .product-card--model .product-card__price {
+      font-size: 1.125rem;
+      line-height: 1.375rem;
+    }
+    .product-card--model .product-card__compare {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Modifier: stok habis : kartu redup, tidak interaktif. */
+  .product-card--unavailable .product-card__image {
+    filter: grayscale(0.85);
+    opacity: 0.55;
+  }
+
+  .product-card--unavailable:hover {
+    transform: none;
+    border-color: transparent;
+    box-shadow: 0 1px 3px rgb(10 0 0 / 0.08);
+  }
+
+  .product-card--unavailable .product-card__link {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Area klik kartu : dua link (media + body) menutup seluruh kartu,
+     pola multi-link standar (navigasi, bukan aksi state). */
+  .product-card__link {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .product-card__link--body {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    height: auto;
+    flex-direction: column;
+  }
+
+  .product-card__link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+
+  .product-card__media {
+    position: relative;
+    flex-shrink: 0;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: hsl(var(--muted) / 0.5);
+  }
+
+  .product-card__image {
+    transition: transform 300ms var(--ease-standard);
+  }
+
+  .product-card:hover .product-card__image {
+    transform: scale(1.03);
+  }
+
+  /* Overlay: label stok habis (bawah media). */
+  .product-card__availability {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    background: rgb(0 0 0 / 0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  /* Overlay: tombol wishlist (kanan atas media) : hanya dirender bila
+     consumer menyediakan onWishlistChange. */
+  .product-card__favorite {
+    position: absolute;
+    inset-block-start: 8px;
+    inset-inline-end: 8px;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background: hsl(var(--surface));
+    color: hsl(var(--muted-foreground));
+    box-shadow: var(--shadow-soft);
+    cursor: pointer;
+  }
+
+  .product-card__favorite:hover,
+  .product-card__favorite[aria-pressed="true"] {
+    color: hsl(var(--primary));
+  }
+
+  .product-card__favorite:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  .product-card__content {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0;
+    padding: 5px;
+  }
+
+  /* Badge "X terjual" menempati area padding bawah; meta (garansi, COD)
+     naik supaya tidak tertimpa badge. */
+  .product-card__content:has(.product-card__sold) {
+    padding-bottom: 10px;
+  }
+
+  .product-card__title {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    color: hsl(var(--action-foreground));
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    text-wrap: pretty;
+  }
+
+  .product-card__pricing {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin-top: 2px;
+    line-height: 1;
+  }
+
+  .product-card__price {
+    color: hsl(var(--sale));
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1.25rem;
+  }
+
+  @media (min-width: 64rem) {
+    .product-card__price {
+      font-size: 1.25rem;
+      line-height: 1.5rem;
+    }
+  }
+
+  .product-card__empty-price {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+  }
+
+  @media (min-width: 64rem) {
+    .product-card__empty-price {
+      font-size: 1rem;
+    }
+  }
+
+  /* Baris compare + diskon wajib satu baris; font menyusut bila sempit
+     (JS FitOneLine meng-override font-size inline). */
+  .product-card__compare {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 2px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 13px;
+    line-height: 1rem;
+  }
+
+  @media (min-width: 40rem) {
+    .product-card__compare {
+      font-size: 14px;
+    }
+  }
+
+  .product-card__original-price {
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+    font-weight: 300;
+    text-decoration: line-through;
+  }
+
+  .product-card__discount {
+    flex-shrink: 0;
+    padding: 0 4px;
+    border-radius: 2px;
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1rem;
+  }
+
+  .product-card__cod {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: 11px;
+  }
+
+  /* Overlay: label FLASH SALE (kiri bawah media), sebahasa visual dengan badge.
+     pointer-events: none supaya area ini tetap menavigasi lewat link media di
+     bawahnya, seperti sebelum label dipindah ke gambar. Dirender sebelum overlay
+     stok habis, sehingga bar "Stok habis" menutupinya bila produk sekaligus
+     flash sale dan tidak tersedia. */
+  .product-card__flash-label {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-size: 10px;
+    font-style: italic;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 40rem) {
+    .product-card__flash-label {
+      font-size: 11px;
+    }
+  }
+
+  .product-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 6px;
+  }
+
+  .product-card__meta-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .product-card__warranty {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    color: hsl(var(--copper));
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /* Overlay: "X terjual" : floating pojok kanan atas card text (content),
+     di atas nama produk. Flow layout lain (padding/space) tidak diubah. */
+  .product-card__sold {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    z-index: 10;
+    padding: 4px;
+    color: hsl(var(--muted-foreground));
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  @media (min-width: 40rem) {
+    .product-card__sold {
+      font-size: 11px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .product-card,
+    .product-card:hover {
+      transform: none;
+      transition: none;
+    }
+  }
+
   .cms-content {
-    @apply text-base leading-8 text-foreground;
+    @apply text-base font-normal leading-7 text-body;
   }
 
   .cms-content > * + * {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
   }
 
-  .cms-content h2 {
-    margin-top: 2.75rem;
-    font-size: clamp(1.75rem, 3vw, 2.35rem);
-    line-height: 1.15;
+  .cms-content p strong {
+    @apply font-bold text-foreground;
   }
 
+  .cms-content h2,
   .cms-content h3 {
-    margin-top: 2rem;
-    font-size: 1.35rem;
-    line-height: 1.25;
+    @apply text-base font-bold leading-7 tracking-tight text-foreground;
+    margin-top: 1.75rem;
   }
 
   .cms-content ul,
   .cms-content ol {
-    padding-left: 1.35rem;
+    padding-left: 1.25rem;
   }
 
   .cms-content ul {
@@ -217,6 +909,15 @@
 
   .cms-content ol {
     list-style: decimal;
+  }
+
+  .cms-content li + li {
+    margin-top: 0.35rem;
+  }
+
+  .cms-content ul ul,
+  .cms-content ol ul {
+    margin-top: 0.5rem;
   }
 
   .cms-content a {
@@ -238,7 +939,6 @@
   }
 
   .text-pretty {
-    text-wrap: pretty;
   }
 
   .tabular-nums {
@@ -251,6 +951,53 @@
 
   .scrollbar-none::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Thin horizontal slider for public carousels (always visible when overflowing). */
+  .scrollbar-x {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
+  }
+
+  .scrollbar-x::-webkit-scrollbar {
+    height: 10px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-track {
+    margin-inline: 0.25rem;
+    background: hsl(var(--muted));
+    border-radius: 999px;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.4);
+    border-radius: 999px;
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  .scrollbar-x::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--foreground) / 0.5);
+    border: 2px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+
+  /* Desktop carousel: hide slider, use next/back arrows instead. */
+  @media (min-width: 768px) {
+    .scrollbar-x {
+      scrollbar-width: none;
+    }
+
+    .scrollbar-x::-webkit-scrollbar {
+      display: none;
+      height: 0;
+    }
   }
 
   .safe-bottom {
@@ -271,8 +1018,9 @@
   .mobile-sticky-cta {
     position: fixed;
     inset-inline: 0;
-    bottom: var(--mobile-bottom-nav-height);
-    z-index: 40;
+    /* Di atas bottom navbar (3.5rem + safe area) - tidak pernah bertumpuk */
+    bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
   }
 
   .pb-mobile-sticky-cta {
@@ -289,17 +1037,6 @@
     animation: reveal-up 420ms var(--ease-standard) both;
   }
 
-  .skeleton-shimmer {
-    background:
-      linear-gradient(
-        100deg,
-        hsl(var(--muted)) 20%,
-        hsl(var(--secondary)) 42%,
-        hsl(var(--muted)) 64%
-      );
-    background-size: 240% 100%;
-    animation: skeleton-shimmer 1.4s var(--ease-standard) infinite;
-  }
 }
 
 @keyframes reveal-up {
@@ -311,12 +1048,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes skeleton-shimmer {
-  to {
-    background-position: -240% 0;
   }
 }
 
@@ -341,7 +1072,7 @@
   animation-play-state: paused;
 }
 
-/* Inertia NProgress — yellow bar above sticky header */
+/* Inertia NProgress : yellow bar above sticky header */
 #nprogress {
   pointer-events: none;
 }
@@ -367,7 +1098,7 @@
   transform: rotate(3deg) translate(0px, -4px);
 }
 
-/* Public storefront: capitalize headings/nav/CTA labels only — body stays sentence case. */
+/* Public storefront: capitalize headings/nav/CTA labels only : body stays sentence case. */
 .public-title-case :is(h1, h2, h3, h4, h5, h6),
 .public-title-case :is(nav, header) a,
 .public-title-case button,
@@ -375,10 +1106,81 @@
 .public-title-case .uppercase {
   text-transform: capitalize;
 }
+/* Keep genuine brand labels uppercase (e.g. FLASH SALE) despite title-case rule. */
+.public-title-case .flash-sale-headline,
+.public-title-case .uppercase.flash-sale-label {
+  text-transform: uppercase;
+}
 
 .public-title-case :is(p, li, dd, dt, figcaption, label, input, textarea, select),
 .public-title-case [role="alert"] {
   text-transform: none;
+}
+
+/*
+ * CETAK (konsolidasi): tombol Cetak mana pun (alamat, detail konsumen, detail
+ * pesanan) me-render portalnya ke <body>. Satu aturan untuk semua: seluruh app
+ * (saudara kandung body selain portal) di-display:none sehingga TIDAK ada
+ * layout website yang tersisa di hasil cetak; hanya portal aktif yang tampil.
+ * Aturan page-margin mematikan header/footer otomatis browser.
+ */
+@media print {
+  body > *:not(#print-address):not(#print-customer-detail):not(#print-order-customer) {
+    display: none !important;
+  }
+
+  #print-address,
+  #print-address *,
+  #print-customer-detail,
+  #print-customer-detail *,
+  #print-order-customer,
+  #print-order-customer * {
+    visibility: visible;
+  }
+
+  #print-address {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    display: block !important;
+  }
+
+  #print-customer-detail {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    display: block !important;
+  }
+
+  #print-order-customer {
+    display: block !important;
+    background: #fff;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+
+/* Badge keranjang berdenyut saat produk "mendarat" (FlyingCart). */
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.35) rotate(-6deg);
+  }
+  70% {
+    transform: scale(0.9) rotate(3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.animate-cart-bump {
+  animation: cart-bump 620ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -398,5 +1200,51 @@
   /* Desktop ticker: keep a very slow scroll so promos remain discoverable */
   .announcement-marquee {
     animation: announcement-marquee 48s linear infinite !important;
+  }
+}
+
+
+/* Cart select count/controls chrome */
+@keyframes cart-count-slide {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes cart-label-slide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type="search"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@layer components {
+  /* Mode Urutkan aktif (kontrak owner 2026-09-30): seluruh kontrol di area
+     halaman dikunci, kecuali pegangan geser dan tombol Urungkan/Simpan urutan.
+     Tombol mati saja tidak cukup karena tombol yang tampak aktif tapi tidak
+     bisa diklik membingungkan, jadi kuncinya di sini plus peredupan sebagai
+     penanda visual. Baris tabel sengaja TIDAK ikut dikunci: penangan
+     dragover/drop menempel di <tr>, dan <tr>/<td> bukan kontrol, sehingga
+     geser-urut tetap bekerja. */
+  .admin-reorder-lock :is(a, button, input, select, textarea, label, [role="button"], [role="combobox"], [role="tab"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"]) {
+    pointer-events: none !important;
+  }
+
+  .admin-reorder-lock :is(a, button, input, select, textarea, [role="button"], [role="combobox"], [role="tab"], [role="option"]) {
+    opacity: 0.45;
+  }
+
+  .admin-reorder-lock :is(a, button, input, select, textarea, [role="button"])[data-reorder-allow],
+  .admin-reorder-lock [data-reorder-handle] {
+    pointer-events: auto !important;
+    opacity: 1;
   }
 }

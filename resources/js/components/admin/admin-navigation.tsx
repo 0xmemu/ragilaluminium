@@ -1,79 +1,172 @@
 import { Link, usePage } from "@inertiajs/react"
+import * as React from "react"
 
-import { BrandWordmark } from "@/components/shared/brand-wordmark"
 import { Icon } from "@/components/shared/icon"
+import { PrefetchLink } from "@/components/shared/prefetch-link"
 import { cn } from "@/lib/utils"
 import { isRouteActive, routeUrl } from "@/lib/routes"
+import { clearReadyCount, getReadyCount, onReadyCountChange } from "@/lib/media-live"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { SharedPageProps } from "@/types"
 
-/** Sidebar chrome stays graphite in both admin themes (content canvas toggles light/dark). */
-const sidebarShell = "flex h-full flex-col bg-[#131212] text-white"
-const sidebarMuted = "text-white/70"
-const sidebarHover = "hover:bg-white/10 hover:text-white"
-const sidebarRule = "border-white/10"
+interface AdminNavItemData {
+  label: string
+  route: string
+  params?: Record<string, string | number | boolean | null>
+  icon?: string
+  active?: string[]
+  /** Capability admin yang dibutuhkan utk menampilkan item (Foundation Track A). */
+  capability?: string
+  /** Filter tambahan berbasis query string (mis. type=flash_sale pada route yang sama). */
+  activeType?: "store" | "flash_sale"
+}
+
+function AdminBrand() {
+  const dashboardHref = routeUrl("admin.dashboard")
+
+  return (
+    <PrefetchLink
+      href={dashboardHref}
+      className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-muted"
+      aria-label="Ragil Aluminium, ke dashboard admin"
+    >
+      <img
+        src="/images/brand/light-mark.png"
+        alt=""
+        width={28}
+        height={28}
+        className="size-7 object-contain dark:hidden"
+        decoding="async"
+      />
+      <img
+        src="/images/brand/dark-mark.png"
+        alt=""
+        width={28}
+        height={28}
+        className="hidden size-7 object-contain dark:block"
+        decoding="async"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold tracking-tight text-foreground">
+          Ragil Aluminium
+        </span>
+        <span className="block text-[11px] leading-4 text-muted-foreground">Panel Admin</span>
+      </span>
+    </PrefetchLink>
+  )
+}
+
+/** Item menu tunggal (link). */
+function AdminNavLink({
+  item,
+  onNavigate,
+}: {
+  item: AdminNavItemData
+  onNavigate?: () => void
+}) {
+  const navHref = routeUrl(item.route, item.params)
+  let active = isRouteActive(item.active ?? [item.route])
+  if (item.activeType && typeof window !== "undefined") {
+    const type = new URLSearchParams(window.location.search).get("type")
+    active = active && (item.activeType === "flash_sale" ? type === "flash_sale" : type !== "flash_sale")
+  }
+  return (
+    <PrefetchLink
+      href={navHref}
+      onClick={() => {
+        if (item.route === "admin.media.library") clearReadyCount()
+        onNavigate?.()
+      }}
+      className={cn(
+        "group/item flex h-8 items-center gap-2.5 rounded-lg text-[13px] font-medium transition duration-100",
+        "h-9 px-2.5",
+        active
+          ? "bg-secondary text-foreground font-semibold"
+          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+      )}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon
+        name={item.icon ?? "package"}
+        className={cn(
+          "size-4 shrink-0 transition",
+          active
+            ? "text-foreground"
+            : "text-muted-foreground/80 group-hover/item:text-foreground",
+        )}
+        weight={active ? "fill" : "regular"}
+        aria-hidden="true"
+      />
+      <span className="truncate">{item.label}</span>
+      {item.route === "admin.media.library" ? (
+        <MediaBadge />
+      ) : null}
+    </PrefetchLink>
+  )
+}
+
+function MediaBadge() {
+  const [mediaReadyCount, setMediaReadyCount] = React.useState<number>(() => getReadyCount())
+  React.useEffect(() => onReadyCountChange(setMediaReadyCount), [])
+  if (mediaReadyCount <= 0) return null
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-none text-primary-foreground">
+      {mediaReadyCount > 99 ? "99+" : mediaReadyCount}
+    </span>
+  )
+}
 
 export function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const { nav } = usePage<SharedPageProps>().props
+  const capabilities = useAdminCapabilities()
   const groups = Object.entries(nav?.admin ?? {})
 
+  function canShowItem(item: AdminNavItemData): boolean {
+    if (!item.capability) return true
+    return can(item.capability, capabilities)
+  }
+
   return (
-    <div className={sidebarShell}>
-      <div className={cn("flex min-h-[4.5rem] items-center border-b px-5", sidebarRule)}>
-        <BrandWordmark href={routeUrl("admin.dashboard")} variant="dark" />
+    <div className="flex h-full flex-col bg-[hsl(var(--sidebar))]">
+      <div className="flex h-14 shrink-0 items-center border-b border-border px-3">
+        <AdminBrand />
       </div>
-      <nav className="scrollbar-none flex-1 overflow-y-auto px-3 py-5" aria-label="Navigasi admin">
-        {groups.map(([key, group], groupIndex) => (
-          <div key={key} className={cn(groupIndex > 0 && "mt-6")}>
+
+      <nav
+        className="admin-sidebar-nav scrollbar-none flex-1 overflow-y-auto px-2.5 py-3"
+        aria-label="Navigasi admin"
+      >
+        {groups.map(([key, group], groupIndex) => {
+          const visibleItems = group.items.filter(canShowItem)
+          if (!visibleItems.length) return null
+          return (
+          <div key={key} className={cn(groupIndex > 0 && "mt-4")}>
             {group.title ? (
-              <p className={cn("px-3 text-[10px] font-bold tracking-tight", sidebarMuted)}>
+              <p className="admin-sidebar-title px-2.5 pb-1.5 text-[10px] font-bold tracking-tight">
                 {group.title}
               </p>
             ) : null}
-            <ul className={cn("space-y-1", group.title && "mt-2")}>
-              {group.items.map((item) => {
-                const active = isRouteActive(item.active ?? [item.route])
-                return (
-                  <li key={`${item.label}-${item.route}`}>
-                    <Link
-                      href={routeUrl(item.route, item.params)}
-                      onClick={onNavigate}
-                      className={cn(
-                        "flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition",
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : cn(sidebarMuted, sidebarHover),
-                      )}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <Icon
-                        name={item.icon ?? "package"}
-                        className="h-[18px] w-[18px] shrink-0"
-                        weight={active ? "fill" : "regular"}
-                        aria-hidden="true"
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  </li>
-                )
-              })}
+            <ul className="space-y-0.5">
+              {visibleItems.map((item: AdminNavItemData) => (
+                <AdminNavLink key={item.label} item={item} onNavigate={onNavigate} />
+              ))}
             </ul>
           </div>
-        ))}
+          )
+        })}
       </nav>
-      <div className={cn("border-t p-3", sidebarRule)}>
+
+      <div className="shrink-0 border-t border-border p-2.5">
         <Link
           href={routeUrl("home")}
           target="_blank"
           rel="noreferrer"
-          className={cn(
-            "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition",
-            sidebarMuted,
-            sidebarHover,
-          )}
+          className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label="Lihat toko di tab baru"
         >
-          <Icon name="storefront" className="h-[18px] w-[18px]" aria-hidden="true" />
+          <Icon name="storefront" className="size-4" aria-hidden="true" />
           Lihat toko
+          <Icon name="arrow-right" className="ml-auto size-3.5 opacity-60" aria-hidden="true" />
         </Link>
       </div>
     </div>

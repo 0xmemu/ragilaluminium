@@ -17,13 +17,31 @@ return [
     | Manual admin product public ID (website-created, not Shopee import)
     |--------------------------------------------------------------------------
     |
-    | Admin-created products receive parent_sku = {prefix}{randomToken}.
-    | Default prefix WEB keeps them distinct from Shopee imports (SP{n}).
+    | Admin-created products receive parent_sku = RA + 10 random chars (Fase 4, no dash).
+    | Default prefix RA keeps manual codes distinct from Shopee imports (SP{n}).
     | These codes are URL/backend keys only — never show on the storefront.
     | manual_sku_floor is legacy (sequential era) and unused by the random allocator.
     |
     */
-    'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'WEB'),
+    /*
+    |--------------------------------------------------------------------------
+    | Jumlah produk per halaman katalog
+    |--------------------------------------------------------------------------
+    |
+    | Dipakai CatalogController lewat paginate(). Sebelumnya kunci ini tidak ada
+    | sehingga (int) null = 0 dan paginate(0) diam-diam memakai default model (15).
+    | Nilai 15 dipertahankan untuk desktop: grid 3 kolom (sm/md) dan 5 kolom (xl)
+    | terisi penuh dengan 15 kartu.
+    |
+    | catalog_page_size_mobile dipakai bila halaman diminta dengan per_page
+    | (klien mengirimnya saat viewport < 640px, di sana grid 2 kolom). 16 kartu
+    | = 8 baris penuh tanpa kartu menggantung di baris terakhir.
+    |
+    */
+    'catalog_page_size' => (int) env('STOREFRONT_CATALOG_PAGE_SIZE', 15),
+    'catalog_page_size_mobile' => (int) env('STOREFRONT_CATALOG_PAGE_SIZE_MOBILE', 16),
+
+    'manual_sku_prefix' => env('STOREFRONT_MANUAL_SKU_PREFIX', 'RA'),
     'manual_sku_floor' => (int) env('STOREFRONT_MANUAL_SKU_FLOOR', 1),
 
     /*

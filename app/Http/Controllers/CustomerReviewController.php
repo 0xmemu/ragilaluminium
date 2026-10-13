@@ -1,0 +1,263 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CmsTestimonial;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Services\ActivityLogService;
+use App\Support\PhoneNumber;
+use App\Support\TestimonialPageSettings;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class CustomerReviewController extends Controller
+{
+    /**
+     * Customer reviews are guest-owned: the order number and checkout phone
+     * together are the legacy ownership proof; verified browser sessions are accepted too. No customer account is required.
+     */
+    public function store(Request $request, string $order_number): JsonResponse
+    {
+        $validated = $this->validated($request);
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
+        $this->ensureEligible($order);
+        $productId = $this->productId($order, $validated['product_id'] ?? null);
+
+        $review = DB::transaction(function () use ($order, $validated, $productId) {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            if (CmsTestimonial::query()->where('order_id', $lockedOrder->id)->exists()) {
+                throw ValidationException::withMessages(['order' => 'Pesanan ini sudah memiliki ulasan.']);
+            }
+
+            $review = CmsTestimonial::create([
+                'cms_page_id' => TestimonialPageSettings::pageId(),
+                'product_id' => $productId,
+                'order_id' => $lockedOrder->id,
+                'author_type' => 'customer',
+                // Keputusan owner 2026-09-21: ulasan pelanggan LANGSUNG tayang,
+                // tanpa moderasi atau persetujuan admin. Pembeliannya sudah
+                // terverifikasi lewat pesanan delivered/completed, dan itu
+                // dianggap cukup sebagai penjaga mutu. Nilai ini sekaligus
+                // sejalan dengan default kolomnya di database.
+                //
+                // Admin tetap punya alat menyembunyikan ulasan yang bermasalah,
+                // lewat unpublish (takedown) atau moderation_status rejected.
+                'moderation_status' => 'approved',
+                'verified_at' => now(),
+                'customer_name' => $lockedOrder->customer_name,
+                'message' => trim((string) $validated['message']),
+                'rating' => (int) $validated['rating'],
+                'source' => 'website',
+                'media_items' => $validated['media_items'] ?? [],
+                'published' => true,
+                'sort_order' => 0,
+            ]);
+
+            ActivityLogService::record(
+                'cms.testimonial_customer_created',
+                'cms_testimonial',
+                $review->id,
+                ['order_id' => $lockedOrder->id, 'product_id' => $productId, 'verified_purchase' => true],
+                null,
+                'customer',
+                null,
+                ['moderation_status' => 'approved', 'rating' => $review->rating],
+                'customer_review',
+                Order::class,
+                (string) $lockedOrder->id,
+            );
+
+            return $review;
+        });
+
+        return response()->json([
+            'message' => 'Ulasan berhasil dikirim dan langsung tayang.',
+            'review' => $this->reviewPayload($review),
+        ], 201);
+    }
+
+    public function uploadMedia(Request $request, string $order_number): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_phone' => ['nullable', 'string', 'max:40'],
+            'session' => ['nullable', 'boolean'],
+            'media' => ['required', 'file'],
+        ]);
+
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
+        $this->ensureEligible($order);
+
+        $file = $request->file('media');
+        $mime = strtolower((string) $file->getMimeType());
+        $kind = str_starts_with($mime, 'video/') ? 'video' : 'image';
+        $allowed = $kind === 'video'
+            ? (array) config('media.allowed_video_mime', [])
+            : (array) config('media.allowed_mime', []);
+        if (! in_array($mime, $allowed, true)) {
+            throw ValidationException::withMessages(['media' => "Tipe file tidak diizinkan: {$mime}"]);
+        }
+
+        $maxBytes = $kind === 'video'
+            ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
+            : (int) config('media.max_bytes', 10 * 1024 * 1024);
+        if ($file->getSize() > $maxBytes) {
+            throw ValidationException::withMessages(['media' => 'Ukuran file melebihi batas yang diizinkan.']);
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: ($kind === 'video' ? 'mp4' : 'jpg'));
+        $extension = preg_replace('/[^a-z0-9]/', '', $extension) ?: ($kind === 'video' ? 'mp4' : 'jpg');
+        $key = sprintf('reviews/%s/%s.%s', $order->order_number, uniqid('', true), $extension);
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'));
+        $disk->put($key, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
+
+        return response()->json([
+            'url' => $disk->url($key),
+            'type' => $kind,
+        ], 201);
+    }
+
+    public function update(Request $request, string $order_number, CmsTestimonial $testimonial): JsonResponse
+    {
+        $validated = $this->validated($request, false);
+        $order = $this->ownedOrder($order_number, $request, $validated['customer_phone'] ?? null);
+        $this->ensureEligible($order);
+
+        if ((int) $testimonial->order_id !== (int) $order->id || ! $testimonial->isCustomerAuthored()) {
+            abort(403, 'Ulasan ini tidak dapat diedit oleh pelanggan.');
+        }
+
+        $before = [
+            'message' => $testimonial->message,
+            'rating' => $testimonial->rating,
+            'media_items' => $testimonial->mediaPayload(),
+            'moderation_status' => $testimonial->moderation_status,
+        ];
+
+        // Hasil edit pelanggan ikut tayang langsung, sama seperti kiriman baru.
+        // Kalau di sini statusnya dikembalikan ke pending, ulasan yang sudah
+        // tayang akan HILANG dari storefront begitu pelanggan memperbaiki
+        // salah ketik, dan itu bertentangan dengan keputusan owner
+        // 2026-09-21 bahwa ulasan pelanggan tampil tanpa moderasi.
+        $testimonial->update([
+            'message' => trim((string) $validated['message']),
+            'rating' => (int) $validated['rating'],
+            'media_items' => $validated['media_items'] ?? [],
+            'moderation_status' => 'approved',
+            'published' => true,
+        ]);
+
+        ActivityLogService::record(
+            'cms.testimonial_customer_updated',
+            'cms_testimonial',
+            $testimonial->id,
+            ['order_id' => $order->id, 'verified_purchase' => $testimonial->verified_at !== null],
+            null,
+            'customer',
+            $before,
+            ['message' => $testimonial->message, 'rating' => $testimonial->rating, 'moderation_status' => 'approved'],
+            'customer_review_edit',
+            Order::class,
+            (string) $order->id,
+        );
+
+        return response()->json([
+            'message' => 'Ulasan diperbarui dan langsung tayang.',
+            'review' => $this->reviewPayload($testimonial->fresh()),
+        ]);
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function validated(Request $request, bool $withProduct = true): array
+    {
+        $rules = [
+            'customer_phone' => ['nullable', 'string', 'max:40'],
+            'session' => ['nullable', 'boolean'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'message' => ['required', 'string', 'min:3', 'max:5000'],
+            'media_items' => ['nullable', 'array', 'max:10'],
+            'media_items.*' => ['array'],
+            'media_items.*.type' => ['required_with:media_items.*', 'in:image,video'],
+            'media_items.*.url' => ['required_with:media_items.*', 'url', 'max:2048'],
+        ];
+
+        if ($withProduct) {
+            $rules['product_id'] = ['nullable', 'integer'];
+        }
+
+        return $request->validate($rules);
+    }
+
+    private function ownedOrder(string $orderNumber, Request $request, ?string $phone = null): Order
+    {
+        $confirmed = $request->session()->get('confirmed_orders', []);
+        $sessionOwnsOrder = is_array($confirmed) && in_array($orderNumber, $confirmed, true);
+        $order = Order::query()->where('order_number', $orderNumber)->first();
+
+        if (! $order) {
+            abort(404, 'Pesanan tidak ditemukan.');
+        }
+        if (! $sessionOwnsOrder && (! $phone || ! hash_equals((string) PhoneNumber::normalize($order->customer_phone), PhoneNumber::normalize($phone)))) {
+            abort(404, 'Pesanan tidak ditemukan.');
+        }
+
+        return $order;
+    }
+
+    private function ensureEligible(Order $order): void
+    {
+        if (! in_array($order->order_status, ['delivered', 'completed'], true)) {
+            abort(422, 'Ulasan hanya tersedia setelah pesanan diterima.');
+        }
+    }
+
+    private function productId(Order $order, mixed $productId): ?int
+    {
+        $itemQuery = OrderItem::query()->where('order_id', $order->id);
+        $itemCount = (clone $itemQuery)->count();
+
+        if ($productId !== null && ! $itemQuery->where('product_id', (int) $productId)->exists()) {
+            throw ValidationException::withMessages(['product_id' => 'Produk tidak termasuk dalam pesanan ini.']);
+        }
+
+        if ($productId !== null) {
+            return (int) $productId;
+        }
+
+        if ($itemCount === 1) {
+            return (int) $itemQuery->value('product_id') ?: null;
+        }
+
+        if ($itemCount > 1) {
+            throw ValidationException::withMessages(['product_id' => 'Pilih produk yang ingin diberi ulasan.']);
+        }
+
+        return null;
+    }
+
+    /**
+     * Balasan tipis untuk konfirmasi pengiriman, bukan salinan ulasan.
+     *
+     * Isinya sengaja hanya status dan identitas, tanpa teks atau media
+     * pelanggan, supaya respons ini tetap sekadar tanda terima.
+     *
+     * @return array<string,mixed>
+     */
+    private function reviewPayload(CmsTestimonial $review): array
+    {
+        return [
+            'id' => $review->id,
+            'order_id' => $review->order_id,
+            'product_id' => $review->product_id,
+            'rating' => $review->rating,
+            'moderation_status' => $review->moderation_status,
+            'verified_purchase' => $review->verified_at !== null,
+        ];
+    }
+}

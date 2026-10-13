@@ -1,16 +1,18 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, Link, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { ResourceValue } from "@/components/admin/resource-value"
 import { ResourceContextPanel } from "@/components/admin/resource-context-panel"
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
+import { Button } from "@/components/admin/ui/button"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { CheckboxField, Field } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { humanize } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -26,58 +28,277 @@ function rowText(row: ResourceRow): string {
 function RowActionButtons({ actions }: { actions: ResourceRowAction[] }) {
   if (!actions.length) return null
 
+  // Owner 2026-09-16: tombol di kolom aksi hanya Edit dan ...Lainnya.
+  const editIndex = actions.findIndex((a) => a.label.toLowerCase() === "edit")
+  const primaryIndex = editIndex >= 0 ? editIndex : 0
+  const primaryAction = actions[primaryIndex]
+  const secondaryActions = actions.filter((_, i) => i !== primaryIndex)
+
+  const renderAction = (action: ResourceRowAction, inMenu: boolean) => {
+    const key = `${action.label}-${action.href ?? action.url}`
+    const method = action.method ?? (action.href ? "get" : "post")
+
+    if (method === "get" && action.href) {
+      if (inMenu) {
+        return (
+          <DropdownMenuItem key={key} asChild>
+            <Link href={action.href}>{action.label}</Link>
+          </DropdownMenuItem>
+        )
+      }
+      return (
+        <Button key={key} asChild variant="secondary" size="xs">
+          <Link href={action.href}>{action.label}</Link>
+        </Button>
+      )
+    }
+
+    if (!action.url) return null
+
+    const run = () => {
+      if (method === "put") {
+        router.put(action.url!, {}, { preserveScroll: true })
+        return
+      }
+      if (method === "delete") {
+        router.delete(action.url!, { preserveScroll: true })
+        return
+      }
+      router.post(action.url!, {}, { preserveScroll: true })
+    }
+
+    // Default aman: setiap metode non-GET wajib dikonfirmasi. Teks
+    // dari server dipakai sebagai judul dialog bila tersedia.
+    if (typeof action.confirm === "string" || method !== "get") {
+      return (
+        <ConfirmAction
+          key={key}
+          trigger={
+            inMenu ? (
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs hover:bg-muted"
+              >
+                {action.label}
+              </button>
+            ) : (
+              <button type="button" className={cn(rowActionTextClass, "min-h-8 px-2")}>
+                {action.label}
+              </button>
+            )
+          }
+          title={action.confirm || "Jalankan tindakan ini?"}
+          description="Tindakan ini akan dijalankan pada record yang dipilih."
+          confirmLabel={action.label}
+          onConfirm={run}
+        />
+      )
+    }
+
+    if (inMenu) {
+      return (
+        <DropdownMenuItem key={key} asChild>
+          <button type="button" className="w-full text-left" onClick={run}>
+            {action.label}
+          </button>
+        </DropdownMenuItem>
+      )
+    }
+
+    return (
+      <Button key={key} type="button" variant="secondary" size="xs" onClick={run}>
+        {action.label}
+      </Button>
+    )
+  }
+
   return (
     <RowActions>
-      {actions.map((action) => {
-        const key = `${action.label}-${action.href ?? action.url}`
-        const method = action.method ?? (action.href ? "get" : "post")
-
-        if (method === "get" && action.href) {
-          return (
-            <Button key={key} asChild variant="secondary" size="xs">
-              <Link href={action.href}>{action.label}</Link>
-            </Button>
-          )
-        }
-
-        if (!action.url) return null
-
-        const run = () => {
-          if (method === "put") {
-            router.put(action.url!, {}, { preserveScroll: true })
-            return
-          }
-          if (method === "delete") {
-            router.delete(action.url!, { preserveScroll: true })
-            return
-          }
-          router.post(action.url!, {}, { preserveScroll: true })
-        }
-
-        if (action.confirm) {
-          return (
-            <ConfirmAction
-              key={key}
-              trigger={
-                <button type="button" className={cn(rowActionTextClass, "min-h-8 px-2")}>
-                  {action.label}
-                </button>
-              }
-              title={action.confirm}
-              description="Tindakan ini akan dijalankan pada record yang dipilih."
-              confirmLabel={action.label}
-              onConfirm={run}
-            />
-          )
-        }
-
-        return (
-          <Button key={key} type="button" variant="secondary" size="xs" onClick={run}>
-            {action.label}
-          </Button>
-        )
-      })}
+      {renderAction(primaryAction, false)}
+      {secondaryActions.length > 0 ? (
+        <RowActionsMenu>
+          {secondaryActions.map((action) => renderAction(action, true))}
+        </RowActionsMenu>
+      ) : null}
     </RowActions>
+  )
+}
+
+function MediaBulkAttachPanel({
+  assets,
+  assetFilters,
+  productSearch,
+  productOptions,
+}: {
+  assets: NonNullable<ResourceIndexProps["assetLibrary"]>
+  assetFilters: NonNullable<ResourceIndexProps["assetFilters"]>
+  productSearch: string
+  productOptions: NonNullable<ResourceIndexProps["productOptions"]>
+}) {
+  const [selectedAssetId, setSelectedAssetId] = React.useState<number | null>(null)
+  const [assetQuery, setAssetQuery] = React.useState(assetFilters.q)
+  const [assetKind, setAssetKind] = React.useState(assetFilters.kind)
+  const [assetStatus, setAssetStatus] = React.useState(assetFilters.status)
+  const [productsQuery, setProductsQuery] = React.useState(productSearch)
+  const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? null
+  const form = useForm({
+    product_ids: [] as number[],
+    position: "1",
+    show_in_catalog: true,
+    is_installation: false,
+    is_main_image: false,
+    visibility: "visible",
+  })
+
+  function searchWith(param: "asset_q" | "product_q", value: string) {
+    const params = Object.fromEntries(new URLSearchParams(window.location.search))
+    if (value.trim()) params[param] = value.trim()
+    else delete params[param]
+    router.get(window.location.pathname, params, { preserveState: true, replace: true })
+  }
+
+  function searchAssets(event: React.FormEvent) {
+    event.preventDefault()
+    const params = Object.fromEntries(new URLSearchParams(window.location.search))
+    if (assetQuery.trim()) params.asset_q = assetQuery.trim()
+    else delete params.asset_q
+    if (assetKind) params.asset_kind = assetKind
+    else delete params.asset_kind
+    if (assetStatus) params.asset_status = assetStatus
+    else delete params.asset_status
+    router.get(window.location.pathname, params, { preserveState: true, replace: true })
+  }
+
+  return (
+    <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-soft">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.14em] text-primary">Media Library</p>
+          <h2 className="mt-1 text-xl font-semibold">Pasang satu media ke banyak produk</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Aset fisik tetap satu di R2. Yang dibuat per produk hanya attachment dan pengaturan tampilnya.
+          </p>
+        </div>
+        <form onSubmit={searchAssets} className="flex flex-wrap gap-2 lg:justify-end">
+          <Input value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="Cari motif atau label" />
+          <Select value={assetKind} onChange={(event) => setAssetKind(event.target.value)} aria-label="Jenis aset">
+            <option value="">Semua jenis</option>
+            <option value="image">Gambar</option>
+            <option value="video">Video</option>
+          </Select>
+          <Select value={assetStatus} onChange={(event) => setAssetStatus(event.target.value)} aria-label="Status aset">
+            <option value="">Semua status</option>
+            <option value="ready">Siap</option>
+            <option value="pending">Menunggu</option>
+            <option value="failed">Gagal</option>
+          </Select>
+          <Button type="submit" variant="secondary">Cari</Button>
+        </form>
+      </div>
+
+      {assets.length ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {assets.map((asset) => (
+            <button
+              key={asset.id}
+              type="button"
+              onClick={() => setSelectedAssetId(asset.id)}
+              className={cn("rounded-lg border p-4 text-left transition-colors hover:bg-accent/50", selectedAssetId === asset.id ? "border-primary bg-primary/5" : "border-border")}
+            >
+              <div className="aspect-[4/3] overflow-hidden rounded-md border border-border bg-muted/30">
+                {asset.preview_url && asset.kind === "video" ? (
+                  <video src={asset.preview_url} muted preload="metadata" className="h-full w-full object-cover" />
+                ) : asset.preview_url ? (
+                  <img src={asset.preview_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Belum siap</div>
+                )}
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold">{asset.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{asset.kind} · {asset.status} · Dipakai di {asset.usage_count} produk</p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Belum ada aset yang cocok.</p>
+      )}
+
+      {selectedAsset ? (
+        <form
+          className="mt-4 grid gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:grid-cols-[minmax(0,1fr)_16rem]"
+          onSubmit={(event) => {
+            event.preventDefault()
+            form.transform((data) => ({
+              ...data,
+              position: data.position === "" ? null : Number(data.position),
+            }))
+            form.post(selectedAsset.attach_url, { preserveScroll: true, onSuccess: () => form.reset("product_ids") })
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Pasang “{selectedAsset.label}”</p>
+                <p className="text-xs text-muted-foreground">Pilih satu atau beberapa produk.</p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedAssetId(null)}>Tutup</Button>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Input value={productsQuery} onChange={(event) => setProductsQuery(event.target.value)} placeholder="Cari produk atau SKU" />
+              <Button type="button" variant="secondary" onClick={() => searchWith("product_q", productsQuery)}>Cari</Button>
+            </div>
+            <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
+              {productOptions.map((product) => (
+                <label key={product.id} className="flex items-start gap-2 rounded-md border border-border bg-card p-4 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.data.product_ids.includes(product.id)}
+                    onChange={(event) => form.setData("product_ids", event.target.checked ? [...form.data.product_ids, product.id] : form.data.product_ids.filter((id) => id !== product.id))}
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                  />
+                  <span className="leading-5">{product.label}</span>
+                </label>
+              ))}
+            </div>
+            {!productOptions.length ? <p className="mt-3 text-xs text-muted-foreground">Produk tidak ditemukan.</p> : null}
+          </div>
+          <div className="space-y-3">
+            <Field id="bulk-position" label="Posisi">
+              <Input type="number" min="1" max="109" value={form.data.position} onChange={(event) => form.setData("position", event.target.value)} />
+            </Field>
+            <Select value={form.data.visibility} onChange={(event) => form.setData("visibility", event.target.value)} aria-label="Visibilitas attachment">
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </Select>
+            <CheckboxField
+              id="attach-show-in-catalog"
+              checked={form.data.show_in_catalog}
+              onChange={(checked) => form.setData("show_in_catalog", checked)}
+              label="Galeri katalog"
+              standalone
+            />
+            <CheckboxField
+              id="attach-is-installation"
+              checked={form.data.is_installation}
+              onChange={(checked) => form.setData("is_installation", checked)}
+              label="Hasil pemasangan"
+              standalone
+            />
+            <CheckboxField
+              id="attach-is-main-image"
+              checked={form.data.is_main_image}
+              disabled={selectedAsset.kind === "video"}
+              onChange={(checked) => form.setData("is_main_image", checked)}
+              label="Gambar utama"
+              standalone
+            />
+            <Button type="submit" className="w-full" disabled={form.processing || !form.data.product_ids.length}>
+              {form.processing ? "Memasang..." : `Pasang ke ${form.data.product_ids.length || "produk"}`}
+            </Button>
+          </div>
+        </form>
+      ) : null}
+    </section>
   )
 }
 
@@ -89,6 +310,10 @@ export default function ResourceIndex({
   columns = [],
   rows = [],
   pagination,
+  assetLibrary,
+  assetFilters,
+  productSearch = "",
+  productOptions = [],
 }: ResourceIndexProps) {
   const initialQuery =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") ?? "" : ""
@@ -131,7 +356,7 @@ export default function ResourceIndex({
     <div className="flex flex-wrap items-center gap-2">
       {toolbarLinks.map((link) => (
         <Button key={link.href} asChild variant="secondary">
-          <Link href={link.href}>{link.label}</Link>
+          <a href={link.href}>{link.label}</a>
         </Button>
       ))}
       {createHref ? (
@@ -153,9 +378,18 @@ export default function ResourceIndex({
     >
       <Head title={`${title} | Admin`} />
 
+      {assetLibrary && assetFilters ? (
+        <MediaBulkAttachPanel
+          assets={assetLibrary}
+          assetFilters={assetFilters}
+          productSearch={productSearch}
+          productOptions={productOptions}
+        />
+      ) : null}
+
       <ResourceContextPanel rows={rows} />
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-xl border border-border bg-card shadow-soft">
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center">
           <form onSubmit={submitSearch} className="relative flex-1">
             <Icon
@@ -300,7 +534,7 @@ export default function ResourceIndex({
                         </Link>
                       ) : null}
                     </div>
-                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    <dl className="mt-4 grid sm:grid-cols-2 gap-x-4 gap-y-3">
                       {columns.slice(1).map((column) => (
                         <div key={column.key}>
                           <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">
@@ -349,7 +583,7 @@ export default function ResourceIndex({
                 </Button>
               ) : createHref ? (
                 <Button asChild>
-                  <Link href={createHref}>Tambah record</Link>
+                  <Link href={createHref}>Tambah</Link>
                 </Button>
               ) : null
             }

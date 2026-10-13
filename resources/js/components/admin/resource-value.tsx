@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate, humanize } from "@/lib/format"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 
 export function ResourceValue({
   fieldKey,
@@ -18,6 +18,17 @@ export function ResourceValue({
     return <span className="tabular-nums">{formatDate(value as string, format !== "date")}</span>
   }
 
+  // Teks bebas ditampilkan apa adanya: humanize() mengubah tiap kata jadi
+  // Title Case sehingga "6,6 kg" tampil "6,6 Kg" dan "129.666 unit" jadi
+  // "129.666 Unit".
+  if (format === "text") {
+    if (value === null || value === undefined || value === "") {
+      return <span>Belum tersedia</span>
+    }
+
+    return <span>{typeof value === "boolean" ? (value ? "Ya" : "Tidak") : String(value)}</span>
+  }
+
   if (
     fieldKey?.includes("status") ||
     fieldKey === "visibility" ||
@@ -25,6 +36,19 @@ export function ResourceValue({
     fieldKey === "direction"
   ) {
     return <StatusBadge status={value} />
+  }
+
+  if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+    return (
+      <a
+        href={value}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline-offset-2 hover:underline"
+      >
+        {value}
+      </a>
+    )
   }
 
   if (Array.isArray(value)) {

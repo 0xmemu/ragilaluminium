@@ -7,6 +7,7 @@
 - Field, FieldError, FormSummary
 - Dialog, Sheet, Dropdown
 - Alert, FlashMessage, StatusBadge
+- Toast (kartu notifikasi melayang, gaya di `lib/toast.ts`)
 - Skeleton, EmptyState, ErrorState
 - Pagination
 - ResponsiveImage

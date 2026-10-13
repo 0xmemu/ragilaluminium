@@ -142,19 +142,22 @@ class StorefrontPlatformSettings
 
     protected static function page(bool $create = false): ?CmsPage
     {
-        $query = CmsPage::query()->where('slug', self::PAGE_SLUG);
-
-        if ($create) {
-            return $query->firstOrCreate(
-                ['slug' => self::PAGE_SLUG],
-                [
-                    'title' => 'Marketplace & Media Sosial',
-                    'content' => ['links' => []],
-                    'published' => true,
-                ],
-            );
+        $cached = CmsSettings::pageBySlug(self::PAGE_SLUG);
+        if ($cached !== null) {
+            return $cached;
         }
 
-        return $query->first();
+        if (! $create) {
+            return null;
+        }
+
+        return CmsPage::query()->firstOrCreate(
+            ['slug' => self::PAGE_SLUG],
+            [
+                'title' => 'Marketplace & Media Sosial',
+                'content' => ['links' => []],
+                'published' => true,
+            ],
+        );
     }
 }

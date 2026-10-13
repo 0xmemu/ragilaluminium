@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Static end-to-end application callgraph for Ragil Aluminium.">
+  <title>Ragil Aluminium · Application Callgraph</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'] },
+          colors: {
+            graphite: '#262626',
+            heading: '#333333',
+            body: '#737373',
+            signal: '#C00000',
+            aluminium: '#DDE2E0',
+            mist: '#F5F7F6'
+          },
+          borderRadius: { md: '8px' }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --graphite: #262626;
+      --heading: #333333;
+      --body: #737373;
+      --signal: #c00000;
+      --aluminium: #dde2e0;
+      --mist: #f5f7f6;
+      --white: #fff;
+      --line: #cbd3d0;
+      --shadow: 0 8px 26px rgba(38, 38, 38, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--heading);
+      background: var(--white);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    .container-page {
+      width: min(1792px, calc(100% - 40px));
+      margin-inline: auto;
+    }
+    .eyebrow {
+      color: var(--signal);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .section-rule { border-top: 1px solid var(--aluminium); }
+    .hero-grid {
+      background-image: linear-gradient(rgba(221,226,224,.34) 1px, transparent 1px), linear-gradient(90deg, rgba(221,226,224,.34) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .surface { border: 1px solid var(--aluminium); background: var(--white); border-radius: 8px; box-shadow: var(--shadow); }
+    .lane {
+      border: 1px solid var(--aluminium);
+      border-radius: 8px;
+      background: rgba(255,255,255,.94);
+      overflow: hidden;
+    }
+    .lane-head { padding: 16px 18px; border-bottom: 1px solid var(--aluminium); background: var(--mist); }
+    .lane-body { padding: 18px; }
+    .node {
+      position: relative;
+      border: 1px solid var(--aluminium);
+      border-left: 3px solid var(--graphite);
+      border-radius: 8px;
+      padding: 13px 14px;
+      background: #fff;
+      box-shadow: 0 4px 13px rgba(38,38,38,.05);
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, opacity .16s ease;
+    }
+    .node:hover, .node:focus-within { transform: translateY(-2px); border-color: #aeb9b5; box-shadow: 0 10px 24px rgba(38,38,38,.11); }
+    .node.signal { border-left-color: var(--signal); }
+    .node.external { border-left-color: #638c80; background: #fbfdfc; }
+    .node.data { border-left-color: #7d6a50; background: #fffdfa; }
+    .node.queue { border-left-color: #5a69a4; background: #fbfcff; }
+    .node.event { border-left-color: #9a4c80; background: #fffafd; }
+    .node-title { color: var(--heading); font-size: 13px; line-height: 1.25; font-weight: 700; }
+    .node-meta { margin-top: 5px; color: var(--body); font-size: 11px; line-height: 1.45; }
+    .node-code { margin-top: 7px; color: #5d6663; font: 600 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .node code, .contract code { color: var(--graphite); font: 600 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .flow-stack { display: grid; gap: 12px; }
+    .spine {
+      display: grid;
+      gap: 10px;
+      align-items: center;
+    }
+    .spine-node {
+      border: 1px solid var(--aluminium);
+      border-top: 3px solid var(--signal);
+      border-radius: 8px;
+      background: #fff;
+      padding: 13px 14px;
+      box-shadow: 0 4px 13px rgba(38,38,38,.05);
+    }
+    .spine-arrow { display: none; color: var(--body); text-align: center; font-size: 18px; }
+    .flow-stack > .node:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      left: 18px;
+      bottom: -13px;
+      width: 1px;
+      height: 12px;
+      background: var(--line);
+    }
+    .flow-stack > .node:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      left: 15px;
+      bottom: -14px;
+      width: 6px;
+      height: 6px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      transform: rotate(45deg);
+      background: #fff;
+    }
+    .callout { border-left: 3px solid var(--signal); background: #fff7f7; }
+    .legend-line { width: 34px; height: 0; border-top: 2px solid var(--graphite); }
+    .legend-dash { width: 34px; height: 0; border-top: 2px dashed #5a69a4; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 999px; border: 2px solid #9a4c80; background: #fff; }
+    .legend-hook { width: 34px; height: 12px; border-top: 2px dotted #638c80; }
+    .filter-button { border: 1px solid var(--aluminium); color: var(--body); background: #fff; border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 600; transition: all .16s ease; }
+    .filter-button:hover, .filter-button[aria-pressed="true"] { color: #fff; background: var(--graphite); border-color: var(--graphite); }
+    .filter-button[aria-pressed="true"] { box-shadow: 0 0 0 3px rgba(192,0,0,.12); }
+    .dimmed { opacity: .18; }
+    .focus-ring:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid rgba(192,0,0,.3); outline-offset: 3px; }
+    .mini-table { border-collapse: collapse; width: 100%; }
+    .mini-table th, .mini-table td { border-bottom: 1px solid var(--aluminium); padding: 11px 10px; text-align: left; vertical-align: top; font-size: 12px; }
+    .mini-table th { color: var(--body); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .mini-table tr:last-child td { border-bottom: 0; }
+    @media (min-width: 600px) { .container-page { width: min(1792px, calc(100% - 64px)); } }
+    @media (min-width: 900px) { .container-page { width: min(1792px, calc(100% - 96px)); } }
+    @media (min-width: 980px) { .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1280px) { .lanes { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 980px) { .spine { grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr auto 1fr; } .spine-arrow { display: block; } }
+    @media (max-width: 639px) {
+      .container-page { width: min(100% - 32px, 1792px); }
+      .hero-grid { background-size: 24px 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="bg-graphite text-white">
+    <div class="container-page flex min-h-[68px] items-center justify-between gap-6 py-4">
+      <a href="#top" class="focus-ring flex items-center gap-3 rounded-full" aria-label="Kembali ke bagian atas">
+        <span class="grid h-9 w-9 place-items-center rounded-full bg-signal text-sm font-bold">RA</span>
+        <span class="text-sm font-semibold tracking-tight">Ragil Aluminium</span>
+      </a>
+      <div class="hidden items-center gap-5 text-xs text-white/65 sm:flex">
+        <span>Internal architecture reference</span>
+        <span class="rounded-full border border-white/20 px-3 py-1 font-semibold text-white/85">STATIC HTML</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero-grid border-b border-aluminium">
+      <div class="container-page grid gap-10 py-14 lg:grid-cols-[1.15fr_.85fr] lg:items-end lg:py-20">
+        <div>
+          <p class="eyebrow">Runtime map · 08 August 2026</p>
+          <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-[1.04] tracking-tight text-heading sm:text-6xl">Callgraph aplikasi end-to-end</h1>
+          <p class="mt-6 max-w-2xl text-base leading-7 text-body">Peta statis dari kunjungan pertama, katalog, checkout, order lifecycle, media import, hingga operasi admin dan integrasi eksternal. Panah menunjukkan arah kendali atau data, bukan urutan deployment.</p>
+          <div class="mt-8 flex flex-wrap gap-2">
+            <span class="rounded-full bg-graphite px-3 py-2 text-xs font-semibold text-white">Laravel 11</span>
+            <span class="rounded-full border border-aluminium bg-white px-3 py-2 text-xs font-semibold text-heading">Inertia + React</span>
+            <span class="rounded-full border border-aluminium bg-white px-3 py-2 text-xs font-semibold text-heading">MySQL + queue</span>
+            <span class="rounded-full border border-aluminium bg-white px-3 py-2 text-xs font-semibold text-heading">Cloudflare R2</span>
+          </div>
+        </div>
+        <div class="surface p-5 lg:justify-self-end lg:max-w-md">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-xs font-bold uppercase tracking-[.08em] text-body">Cara membaca</p>
+            <span class="rounded-full bg-[#fff0f0] px-3 py-1 text-[10px] font-bold text-signal">SINGLE SOURCE</span>
+          </div>
+          <div class="mt-5 grid gap-4 text-sm">
+            <div class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-signal"></span><p><strong class="text-heading">Jalur utama:</strong> request sinkron dari browser sampai response.</p></div>
+            <div class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#5a69a4]"></span><p><strong class="text-heading">Kerja tertunda:</strong> job queue, media download, dan event listener.</p></div>
+            <div class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#638c80]"></span><p><strong class="text-heading">Batas sistem:</strong> R2, Meta WhatsApp, WAHA, J&amp;T, dan file Shopee.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container-page py-8" aria-label="Navigasi callgraph">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-wrap gap-2">
+          <a class="filter-button focus-ring" href="#runtime">Runtime</a>
+          <a class="filter-button focus-ring" href="#customer">Customer journey</a>
+          <a class="filter-button focus-ring" href="#operations">Admin &amp; operations</a>
+          <a class="filter-button focus-ring" href="#contracts">Contracts</a>
+        </div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Filter domain graph">
+          <button class="filter-button focus-ring" type="button" data-filter="all" aria-pressed="true">Semua alur</button>
+          <button class="filter-button focus-ring" type="button" data-filter="public" aria-pressed="false">Public</button>
+          <button class="filter-button focus-ring" type="button" data-filter="admin" aria-pressed="false">Admin</button>
+          <button class="filter-button focus-ring" type="button" data-filter="media" aria-pressed="false">Media</button>
+          <button class="filter-button focus-ring" type="button" data-filter="external" aria-pressed="false">External</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="runtime" class="container-page pb-14">
+      <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div><p class="eyebrow">01 · System boundary</p><h2 class="mt-2 text-2xl font-semibold tracking-tight text-heading">Dari browser ke application core</h2></div>
+        <p class="max-w-xl text-sm leading-6 text-body">Semua halaman publik dan admin melewati edge dan Laravel. Inertia mengembalikan view React, sementara endpoint API/webhook mengembalikan JSON atau menjalankan side effect sesuai kontrak.</p>
+      </div>
+      <div class="surface mb-5 overflow-hidden p-4 sm:p-5" aria-label="Jalur utama aplikasi">
+        <div class="spine">
+          <div class="spine-node"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">01</p><p class="mt-2 text-sm font-semibold">Browser</p><p class="mt-1 text-xs text-body">Customer / admin</p></div>
+          <span class="spine-arrow" aria-hidden="true">→</span>
+          <div class="spine-node"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">02</p><p class="mt-2 text-sm font-semibold">Edge + web server</p><p class="mt-1 text-xs text-body">Cloudflare · Nginx · PHP-FPM</p></div>
+          <span class="spine-arrow" aria-hidden="true">→</span>
+          <div class="spine-node"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">03</p><p class="mt-2 text-sm font-semibold">Laravel dispatch</p><p class="mt-1 text-xs text-body">Middleware · route · controller</p></div>
+          <span class="spine-arrow" aria-hidden="true">→</span>
+          <div class="spine-node"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">04</p><p class="mt-2 text-sm font-semibold">UI / JSON</p><p class="mt-1 text-xs text-body">Inertia · Blade · API</p></div>
+          <span class="spine-arrow" aria-hidden="true">→</span>
+          <div class="spine-node"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">05</p><p class="mt-2 text-sm font-semibold">Domain + durable state</p><p class="mt-1 text-xs text-body">Services · DB · queue · events</p></div>
+        </div>
+      </div>
+      <div class="lanes grid gap-5">
+        <article class="lane graph-item" data-domain="public external">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Entry</p><h3 class="mt-1 text-base font-semibold">Request masuk</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node external"><p class="node-title">Customer / admin browser</p><p class="node-meta">Mobile-first storefront atau panel operasi.</p><p class="node-code">HTTPS · cookie/session · CSRF</p></div>
+            <div class="node external"><p class="node-title">Cloudflare edge</p><p class="node-meta">DNS, TLS, cache policy, dan proteksi edge.</p><p class="node-code">ragilaluminium.com</p></div>
+            <div class="node"><p class="node-title">Nginx → PHP-FPM</p><p class="node-meta">Reverse proxy ke proses Laravel pada VPS.</p><p class="node-code">public/index.php</p></div>
+            <div class="node"><p class="node-title">Laravel HTTP kernel</p><p class="node-meta">Middleware auth, CSRF, security headers, binding, dan route dispatch.</p><p class="node-code">bootstrap/app.php</p></div>
+          </div>
+        </article>
+
+        <article class="lane graph-item" data-domain="public admin">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Presentation</p><h3 class="mt-1 text-base font-semibold">Route dan UI</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node signal"><p class="node-title">Route group</p><p class="node-meta">Public pages, API JSON, admin prefix, dan webhook exceptions.</p><p class="node-code">routes/web.php · routes/api.php</p></div>
+            <div class="node"><p class="node-title">Controller / service boundary</p><p class="node-meta">Validasi input, eager loading, authorization, dan pemanggilan service.</p><p class="node-code">Catalog · Checkout · Admin · Webhook</p></div>
+            <div class="node"><p class="node-title">Inertia React / Blade response</p><p class="node-meta">UI memakai data nyata. Error, loading, dan empty state tetap bagian kontrak.</p><p class="node-code">resources/js · resources/views</p></div>
+          </div>
+        </article>
+
+        <article class="lane graph-item" data-domain="public admin">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Application core</p><h3 class="mt-1 text-base font-semibold">Domain services</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node"><p class="node-title">Catalog &amp; search</p><p class="node-meta">Filter status/visibility, model, variant, media utama, dan pencarian.</p><p class="node-code">CatalogController · ProductController</p></div>
+            <div class="node signal"><p class="node-title">CartService → OrderService</p><p class="node-meta">Cart session, shipping estimate, DB revalidation, snapshot, dan transaksi order.</p><p class="node-code">createFromCart()</p></div>
+            <div class="node event"><p class="node-title">Domain events &amp; listeners</p><p class="node-meta">OrderCreated, PaymentConfirmed, ShippingStatusUpdated memicu side effect terukur.</p><p class="node-code">event → listener → notification</p></div>
+          </div>
+        </article>
+
+        <article class="lane graph-item" data-domain="admin media external">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Persistence</p><h3 class="mt-1 text-base font-semibold">Data &amp; workers</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node data"><p class="node-title">MySQL production</p><p class="node-meta">Catalog, order, CMS, auth, messages, analytics, dan job records.</p><p class="node-code">forward-only migrations</p></div>
+            <div class="node queue"><p class="node-title">Queue worker</p><p class="node-meta">Redis direkomendasikan di production. Database queue tetap bisa menjadi fallback kontrak.</p><p class="node-code">queue:work</p></div>
+            <div class="node external"><p class="node-title">Cloudflare R2</p><p class="node-meta">Media production-only. URL publik melalui domain media yang dikonfigurasi.</p><p class="node-code">S3-compatible object storage</p></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="customer" class="bg-mist border-y border-aluminium py-14">
+      <div class="container-page">
+        <div class="mb-7 max-w-3xl"><p class="eyebrow">02 · Customer journey</p><h2 class="mt-2 text-2xl font-semibold tracking-tight text-heading">Browse → decide → order → receive updates</h2><p class="mt-3 text-sm leading-6 text-body">Jalur ini memprioritaskan pelanggan yang datang dari ponsel, belum tentu login, dan membutuhkan kepastian harga, varian, pengiriman, serta langkah berikutnya.</p></div>
+        <div class="grid gap-5 xl:grid-cols-3">
+          <article class="surface graph-item p-5" data-domain="public">
+            <div class="flex items-center justify-between"><span class="rounded-full bg-[#fff0f0] px-3 py-1 text-[10px] font-bold text-signal">PUBLIC · SYNC</span><span class="text-xs font-semibold text-body">A</span></div>
+            <h3 class="mt-4 text-lg font-semibold">Temukan produk</h3>
+            <div class="mt-5 flow-stack">
+              <div class="node"><p class="node-title">Homepage / campaign</p><p class="node-meta">Banner, model populer, hasil pemasangan, bantuan dari awal sampai jadi.</p><p class="node-code">GET /</p></div>
+              <div class="node"><p class="node-title">Kategori / model / search</p><p class="node-meta">Filter yang dapat dipahami, grid product card, status promo nyata.</p><p class="node-code">/windows · /doors · /bouven · /api/search</p></div>
+              <div class="node"><p class="node-title">Product detail</p><p class="node-meta">Galeri varian, harga, atribut, ulasan, pengiriman, dan CTA WhatsApp/cart.</p><p class="node-code">/api/products/{sku}</p></div>
+            </div>
+          </article>
+
+          <article class="surface graph-item p-5" data-domain="public">
+            <div class="flex items-center justify-between"><span class="rounded-full bg-[#fff0f0] px-3 py-1 text-[10px] font-bold text-signal">PUBLIC · SESSION</span><span class="text-xs font-semibold text-body">B</span></div>
+            <h3 class="mt-4 text-lg font-semibold">Siapkan pesanan</h3>
+            <div class="mt-5 flow-stack">
+              <div class="node"><p class="node-title">Add to cart</p><p class="node-meta">Variant dan quantity disimpan di session. Tidak ada order sebelum checkout.</p><p class="node-code">POST /cart/add</p></div>
+              <div class="node"><p class="node-title">Checkout validation</p><p class="node-meta">Validasi customer, item, quantity, stok, alamat, dan aturan minimum.</p><p class="node-code">POST /checkout/validate</p></div>
+              <div class="node"><p class="node-title">Shipping estimate</p><p class="node-meta">Estimasi biaya/status ditampilkan sebelum pelanggan mengunci order.</p><p class="node-code">CheckoutController · shipping service</p></div>
+            </div>
+          </article>
+
+          <article class="surface graph-item p-5" data-domain="public">
+            <div class="flex items-center justify-between"><span class="rounded-full bg-[#fff0f0] px-3 py-1 text-[10px] font-bold text-signal">PUBLIC · COMMIT</span><span class="text-xs font-semibold text-body">C</span></div>
+            <h3 class="mt-4 text-lg font-semibold">Buat dan lacak order</h3>
+            <div class="mt-5 flow-stack">
+              <div class="node signal"><p class="node-title">OrderService::createFromCart()</p><p class="node-meta">Satu transaksi: revalidasi, snapshot, stock lock/decrement, dan payment pending.</p><p class="node-code">POST /checkout/place-order</p></div>
+              <div class="node data"><p class="node-title">orders + order_items + payments</p><p class="node-meta">Snapshot membuat order tetap dapat dibaca meski catalog berubah.</p><p class="node-code">transaction · unique checkout idempotency key</p></div>
+              <div class="node"><p class="node-title">Confirmation / status</p><p class="node-meta">Pelanggan mendapat nomor order, instruksi, dan status manusiawi.</p><p class="node-code">/order/{number}/confirmation · /order/status</p></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="mt-7 grid gap-5 lg:grid-cols-[1.35fr_.65fr]">
+          <div class="surface p-5">
+            <div class="flex items-center justify-between gap-4"><h3 class="text-base font-semibold">Fan-out setelah order dibuat</h3><span class="rounded-full bg-[#fbf5fa] px-3 py-1 text-[10px] font-bold text-[#9a4c80]">EVENT</span></div>
+            <div class="mt-5 grid gap-3 md:grid-cols-4 md:items-center">
+              <div class="node event"><p class="node-title">OrderCreated</p><p class="node-meta">Event domain setelah commit berhasil.</p></div>
+              <div class="hidden text-center text-body md:block">→</div>
+              <div class="node queue"><p class="node-title">SendOrderCreatedWhatsApp</p><p class="node-meta">Listener queued, gagal aman saat template/token belum tersedia.</p></div>
+              <div class="hidden text-center text-body md:block">→</div>
+              <div class="node external"><p class="node-title">Meta WhatsApp / WAHA</p><p class="node-meta">Notifikasi dan percakapan, bukan sumber kebenaran order.</p></div>
+            </div>
+          </div>
+          <div class="callout rounded-md p-5"><p class="text-xs font-bold uppercase tracking-[.08em] text-signal">Customer promise</p><p class="mt-3 text-sm leading-6 text-heading">Jika integrasi pesan gagal, order tetap tersimpan dan status tetap dapat dilihat. UI tidak boleh menjanjikan pengiriman WhatsApp sebagai satu-satunya bukti order.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="operations" class="container-page py-14">
+      <div class="mb-7 max-w-3xl"><p class="eyebrow">03 · Operations graph</p><h2 class="mt-2 text-2xl font-semibold tracking-tight text-heading">Admin menggerakkan state, bukan mengedit jejak masa lalu</h2><p class="mt-3 text-sm leading-6 text-body">Panel admin menjadi satu permukaan untuk katalog, media, import, order, shipping, komunikasi, CMS, dan audit. Archive/status transition lebih aman daripada hard delete.</p></div>
+      <div class="grid gap-5 xl:grid-cols-3">
+        <article class="lane graph-item" data-domain="admin">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Admin core</p><h3 class="mt-1 text-base font-semibold">Catalog &amp; media</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node signal"><p class="node-title">Login / session auth</p><p class="node-meta">Admin-only prefix, authorization, CSRF, dan security headers.</p><p class="node-code">auth middleware</p></div>
+            <div class="node"><p class="node-title">Products · variants · attributes</p><p class="node-meta">CRUD produk, archive behavior, status, visibility, dan harga.</p><p class="node-code">Admin/ProductController</p></div>
+            <div class="node"><p class="node-title">Media manager / shared media</p><p class="node-meta">Pilih asset yang sama untuk banyak produk, set main, redownload, archive.</p><p class="node-code">media_assets ↔ product_media</p></div>
+          </div>
+        </article>
+        <article class="lane graph-item" data-domain="admin">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Admin fulfillment</p><h3 class="mt-1 text-base font-semibold">Order → payment → shipping</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node"><p class="node-title">Dashboard / order list</p><p class="node-meta">Prioritaskan order yang menunggu tindakan, bukan vanity metric.</p><p class="node-code">Admin/DashboardController</p></div>
+            <div class="node signal"><p class="node-title">Payment confirmation</p><p class="node-meta">Admin mencatat validasi pembayaran, lalu sistem emit PaymentConfirmed.</p><p class="node-code">payments · order status</p></div>
+            <div class="node external"><p class="node-title">J&amp;T create / refresh</p><p class="node-meta">Waybill dan status carrier masuk melalui API atau webhook.</p><p class="node-code">/webhook/shipping/jnt</p></div>
+            <div class="node event"><p class="node-title">ShippingStatusUpdated</p><p class="node-meta">Shipping record menjadi sumber update dan mengalir ke order serta notifikasi.</p><p class="node-code">ShippingService::applyCarrierUpdate</p></div>
+          </div>
+        </article>
+        <article class="lane graph-item" data-domain="admin media">
+          <div class="lane-head"><p class="text-[10px] font-bold uppercase tracking-[.08em] text-body">Admin content</p><h3 class="mt-1 text-base font-semibold">CMS, communication &amp; insight</h3></div>
+          <div class="lane-body flow-stack">
+            <div class="node"><p class="node-title">WhatsApp templates / messages</p><p class="node-meta">Template yang tersedia dipakai event. Inbound webhook disimpan sebagai pesan.</p><p class="node-code">whatsapp_templates · whatsapp_messages</p></div>
+            <div class="node external"><p class="node-title">WhatsApp webhook</p><p class="node-meta">Verifikasi dan terima inbound event tanpa CSRF, lalu log pesan masuk.</p><p class="node-code">GET/POST /webhook/whatsapp · WhatsAppController@handle</p></div>
+            <div class="node"><p class="node-title">Banners, announcements, FAQ, gallery</p><p class="node-meta">Konten homepage dan informasi toko, dengan dimensi banner yang jelas.</p><p class="node-code">CMS + media resolver</p></div>
+            <div class="node data"><p class="node-title">Analytics, event logs, settings</p><p class="node-meta">Observability aplikasi, bukan pengganti audit trail order.</p><p class="node-code">event_logs · performance_metrics</p></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="bg-graphite py-14 text-white">
+      <div class="container-page">
+        <div class="mb-7 max-w-3xl"><p class="eyebrow text-[#ff7777]">04 · Import &amp; media pipeline</p><h2 class="mt-2 text-2xl font-semibold tracking-tight">Satu upload, asset reusable, delivery efisien</h2><p class="mt-3 text-sm leading-6 text-white/65">Import katalog dan media dipisah dari request admin agar halaman tetap responsif. Shared media menyimpan satu asset canonical dan banyak relasi produk.</p></div>
+        <div class="grid gap-5 xl:grid-cols-4">
+          <article class="rounded-md border border-white/15 bg-white/[.06] p-5 graph-item" data-domain="admin media external">
+            <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-white/75">01 · SOURCE</span>
+            <h3 class="mt-4 text-base font-semibold">Shopee file / media export</h3>
+            <p class="mt-3 text-sm leading-6 text-white/60">Admin upload template. File asli disimpan pada area import yang aman untuk diproses ulang.</p>
+          </article>
+          <article class="rounded-md border border-white/15 bg-white/[.06] p-5 graph-item" data-domain="admin media">
+            <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-white/75">02 · INGEST</span>
+            <h3 class="mt-4 text-base font-semibold">ImportJobController</h3>
+            <p class="mt-3 text-sm leading-6 text-white/60"><code class="text-white/80">import_jobs</code> dan <code class="text-white/80">import_job_rows</code> mencatat progress, error per baris, retry, dan hasil.</p>
+            <p class="mt-3 font-mono text-[10px] text-[#ffabab]">ProcessCatalogImport</p>
+          </article>
+          <article class="rounded-md border border-white/15 bg-white/[.06] p-5 graph-item" data-domain="media">
+            <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-white/75">03 · RESOLVE</span>
+            <h3 class="mt-4 text-base font-semibold">Canonical asset + relations</h3>
+            <p class="mt-3 text-sm leading-6 text-white/60"><code class="text-white/80">media_assets</code> menyimpan asset reusable. <code class="text-white/80">product_media</code> hanya menyimpan peran/order per produk.</p>
+            <p class="mt-3 font-mono text-[10px] text-[#ffabab]">shared image · shared video · set-main</p>
+          </article>
+          <article class="rounded-md border border-white/15 bg-white/[.06] p-5 graph-item" data-domain="media external">
+            <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-white/75">04 · DELIVER</span>
+            <h3 class="mt-4 text-base font-semibold">Derivative → R2</h3>
+            <p class="mt-3 text-sm leading-6 text-white/60">Asset diproses menjadi WebP yang cukup ringan dengan kualitas baik, lalu disajikan dari domain media production.</p>
+            <p class="mt-3 font-mono text-[10px] text-[#ffabab]">DownloadMediaAsset · R2</p>
+          </article>
+        </div>
+        <div class="mt-7 rounded-md border border-white/15 bg-white/[.05] p-5">
+          <div class="grid gap-4 text-sm md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] md:items-center">
+            <span class="font-semibold">Template / URL sumber</span><span class="hidden text-white/40 md:block">→</span>
+            <span class="font-semibold">Import job</span><span class="hidden text-white/40 md:block">→</span>
+            <span class="font-semibold">Asset canonical</span><span class="hidden text-white/40 md:block">→</span>
+            <span class="font-semibold text-[#ffabab]">R2 public delivery</span>
+          </div>
+          <p class="mt-4 text-xs leading-5 text-white/50">Production tidak memakai source URL fallback. Jika asset belum tersedia, status harus jelas dan tidak diam-diam mengarah ke domain lokal.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container-page py-14">
+      <div class="mb-7 max-w-3xl"><p class="eyebrow">05 · External integrations</p><h2 class="mt-2 text-2xl font-semibold tracking-tight text-heading">Batas ke sistem luar dan arah datanya</h2></div>
+      <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="mini-table min-w-[720px]">
+            <thead><tr><th>Sistem</th><th>Dipanggil oleh</th><th>Masuk / keluar</th><th>Failure boundary</th></tr></thead>
+            <tbody>
+              <tr><td class="font-semibold text-heading">Cloudflare R2</td><td>Media derivative / resolver</td><td>Upload object, public media URL</td><td class="text-body">Media gagal tidak boleh merusak transaksi order.</td></tr>
+              <tr><td class="font-semibold text-heading">Meta WhatsApp Cloud API</td><td>Event listeners / WhatsApp service</td><td>Outbound template/message</td><td class="text-body">Notification-only. Order tetap authoritative di DB.</td></tr>
+              <tr><td class="font-semibold text-heading">WAHA (opsional)</td><td>WhatsApp service fallback/ops</td><td>Outbound/inbound channel</td><td class="text-body">Channel boleh unavailable tanpa menghapus state order.</td></tr>
+              <tr><td class="font-semibold text-heading">J&amp;T Cargo</td><td>Shipping service + admin refresh</td><td>Waybill/status request dan webhook</td><td class="text-body">Status stale harus terlihat, bukan dipalsukan.</td></tr>
+              <tr><td class="font-semibold text-heading">Shopee export</td><td>Import controller/job</td><td>Spreadsheet dan media reference</td><td class="text-body">Per-row error, retry, dan resumable job.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="contracts" class="bg-mist border-y border-aluminium py-14">
+      <div class="container-page">
+        <div class="mb-7 max-w-3xl"><p class="eyebrow">06 · Contract notes</p><h2 class="mt-2 text-2xl font-semibold tracking-tight text-heading">Guardrails yang harus tetap benar</h2></div>
+        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">01</span><h3 class="mt-4 text-base font-semibold">Guest checkout tetap valid</h3><p class="mt-2 text-sm leading-6 text-body">Pelanggan tidak wajib membuat akun untuk membuat order. Nomor order dan status lookup menjadi pegangan setelah submit.</p></article>
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">02</span><h3 class="mt-4 text-base font-semibold">Snapshot melindungi histori</h3><p class="mt-2 text-sm leading-6 text-body">Nama, harga, varian, dan detail order disimpan sebagai snapshot agar perubahan katalog tidak mengubah transaksi lama.</p></article>
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">03</span><h3 class="mt-4 text-base font-semibold">WhatsApp bukan source of truth</h3><p class="mt-2 text-sm leading-6 text-body">WhatsApp membantu komunikasi. Database order, payment, dan shipping tetap menjadi sumber kebenaran.</p></article>
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">04</span><h3 class="mt-4 text-base font-semibold">R2 production-only</h3><p class="mt-2 text-sm leading-6 text-body">Konfigurasi disk dan public URL production harus eksplisit. Jangan fallback ke URL source atau filesystem lokal saat live.</p></article>
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">05</span><h3 class="mt-4 text-base font-semibold">Migration forward-only</h3><p class="mt-2 text-sm leading-6 text-body">Jangan reset database aktif. Verifikasi memakai SQLite testing atau database testing terpisah.</p></article>
+          <article class="surface p-5"><span class="text-2xl font-semibold text-signal">06</span><h3 class="mt-4 text-base font-semibold">Status harus manusiawi</h3><p class="mt-2 text-sm leading-6 text-body">Status teknis dipetakan ke label yang pelanggan pahami, dengan empty, error, loading, dan stale states yang terlihat.</p></article>
+        </div>
+        <div class="mt-7 grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
+          <div class="surface p-5"><p class="text-xs font-bold uppercase tracking-[.08em] text-body">Legend</p><div class="mt-5 grid gap-4 text-xs text-body"><div class="flex items-center gap-3"><span class="legend-line"></span><span>Request / flow sinkron</span></div><div class="flex items-center gap-3"><span class="legend-dash"></span><span>Queued job / deferred work</span></div><div class="flex items-center gap-3"><span class="legend-dot"></span><span>Domain event fan-out</span></div><div class="flex items-center gap-3"><span class="legend-hook"></span><span>External webhook / boundary</span></div><div class="flex items-center gap-3"><span class="h-3 w-3 rounded-sm border border-[#7d6a50] bg-[#fffdfa]"></span><span>Database / durable record</span></div></div></div>
+          <div class="callout rounded-md p-5"><p class="text-xs font-bold uppercase tracking-[.08em] text-signal">Scope boundary</p><h3 class="mt-3 text-lg font-semibold">Peta ini mendeskripsikan runtime aplikasi.</h3><p class="mt-3 text-sm leading-6 text-heading">Ia bukan deployment runbook dan tidak membuka callgraph melalui route publik. Detail production cutover, secret, backup, observability, dan VPS tetap mengikuti <code>docs/FULL-STACK-PRODUCTION-CHECKLIST.md</code> serta <code>docs/production-vps-env-contract.md</code>.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-graphite py-8 text-white">
+    <div class="container-page flex flex-col gap-3 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between"><p>Ragil Aluminium · Application Callgraph</p><p>Internal documentation · No public route added</p></div>
+  </footer>
+
+  <script>
+    (() => {
+      const buttons = [...document.querySelectorAll('[data-filter]')];
+      const items = [...document.querySelectorAll('.graph-item')];
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const filter = button.dataset.filter;
+          buttons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+          items.forEach((item) => {
+            const domains = item.dataset.domain || '';
+            item.classList.toggle('dimmed', filter !== 'all' && !domains.split(' ').includes(filter));
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

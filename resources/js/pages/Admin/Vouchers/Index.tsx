@@ -1,18 +1,22 @@
 import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { RowActions, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
+import { Card } from "@/components/admin/ui/card"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState } from "@/components/admin/ui/empty-state"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatRentangWaktu } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { navigateFilter } from "@/lib/filter-url"
 import type { Pagination as PaginationData } from "@/types"
 
 interface VoucherCard {
@@ -22,27 +26,21 @@ interface VoucherCard {
   discount_type: "percent" | "fixed"
   discount_value: number
   min_purchase: number
+  stackable: boolean
+  target_type: "general" | "model" | "product"
+  target_label: string
   starts_at: string | null
   ends_at: string | null
   published: boolean
+  /** Status tampil dari server: active / scheduled / expired / inactive. */
+  status: "active" | "scheduled" | "expired" | "inactive"
   runnable: boolean
   updated_at: string | null
   edit_href: string
   publish_url: string
   unpublish_url: string
-}
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
-  return date.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  duplicate_url: string
+  end_url: string
 }
 
 function discountLabel(voucher: VoucherCard): string {
@@ -51,6 +49,15 @@ function discountLabel(voucher: VoucherCard): string {
   }
   return formatCurrency(voucher.discount_value)
 }
+
+function TargetChip({ label }: { label: string }) {
+  return (
+    <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+      {label}
+    </span>
+  )
+}
+
 
 function VoucherActions({
   voucher,
@@ -73,44 +80,93 @@ function VoucherActions({
     router.post(voucher.unpublish_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
   }
 
+  function duplicate() {
+    setBusyId(voucher.id)
+    router.post(voucher.duplicate_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+  }
+
+  function end() {
+    setBusyId(voucher.id)
+    router.post(voucher.end_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+  }
+
   return (
     <RowActions>
       <Button asChild variant="secondary" size="xs">
         <Link href={voucher.edit_href}>Edit</Link>
       </Button>
-      {voucher.published ? (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Nonaktifkan
-            </button>
-          }
-          title="Nonaktifkan voucher?"
-          description="Kode tidak bisa dipakai di checkout sampai diaktifkan lagi."
-          confirmLabel="Nonaktifkan"
-          processing={busy}
-          onConfirm={unpublish}
-        />
-      ) : (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-primary")} disabled={busy}>
-              Aktifkan
-            </button>
-          }
-          title="Aktifkan voucher ini?"
-          description="Voucher lain yang sedang aktif akan dinonaktifkan otomatis."
-          confirmLabel="Aktifkan"
-          processing={busy}
-          onConfirm={publish}
-        />
-      )}
+      <RowActionsMenu>
+        <DropdownMenuItem asChild>
+          <button
+            type="button"
+            className="w-full text-left"
+            disabled={busy}
+            onClick={duplicate}
+          >
+            Duplikasi
+          </button>
+        </DropdownMenuItem>
+        {voucher.published ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Nonaktifkan
+              </button>
+            }
+            title="Nonaktifkan voucher?"
+            description="Kode tidak bisa dipakai di checkout sampai diaktifkan lagi."
+            confirmLabel="Nonaktifkan"
+            processing={busy}
+            onConfirm={unpublish}
+          />
+        ) : (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-primary hover:bg-primary/10"
+                disabled={busy}
+              >
+                Aktifkan
+              </button>
+            }
+            title="Aktifkan voucher ini?"
+            description="Voucher ini akan tersedia untuk dipakai pelanggan."
+            confirmLabel="Aktifkan"
+            processing={busy}
+            onConfirm={publish}
+          />
+        )}
+        {voucher.status === "active" || voucher.status === "scheduled" ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Akhiri
+              </button>
+            }
+            title="Akhiri voucher?"
+            description="Voucher langsung dinonaktifkan dan periode berakhir sekarang."
+            confirmLabel="Akhiri"
+            processing={busy}
+            onConfirm={end}
+          />
+        ) : null}
+      </RowActionsMenu>
     </RowActions>
   )
 }
 
 export default function VouchersIndex({
   title,
+  backUrl,
   description,
   viewMode,
   searchQuery,
@@ -121,6 +177,8 @@ export default function VouchersIndex({
   summary,
 }: {
   title: string
+  /** Tujuan tombol Kembali, diisi halaman induk (Promo Toko). */
+  backUrl?: string | null
   description: string
   viewMode: "list" | "grid"
   searchQuery: string
@@ -134,100 +192,89 @@ export default function VouchersIndex({
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      view: viewMode,
-      q: searchQuery,
-      status: activeStatus,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "view" && value === "list") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get("/admin/vouchers", next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.vouchers.index",
+      { view: viewMode, q: searchQuery, status: activeStatus },
+      params,
+      { defaults: { view: "list" } },
+    )
   }
 
   return (
     <AdminLayout
       title={title}
       description={description}
+      backUrl={backUrl}
       actions={
-        <Button asChild>
-          <Link href={createHref}>
-            <Icon name="plus" className="size-4" aria-hidden="true" />
-            Buat Voucher
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild size="sm">
+            <Link href={createHref}>
+              <Icon name="plus" className="size-4" aria-hidden="true" />
+              Buat Voucher
+            </Link>
+          </Button>
+        </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm text-muted-foreground shadow-sm">
-        Hanya <span className="font-semibold text-foreground">1 voucher</span> yang boleh aktif sekaligus.
-        Aktif sekarang: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> /{" "}
-        {summary.total_count} total.
-      </section>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Voucher aktif dapat dipakai bersamaan jika masing-masing mengizinkan stacking.</span>
+        <span>
+          Aktif: <span className="font-semibold tabular-nums text-foreground">{summary.active_count}</span> dari {summary.total_count} total
+        </span>
+      </div>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <form
-          className="min-w-[16rem] flex-1"
-          onSubmit={(event) => {
-            event.preventDefault()
-            visit({ q: q.trim() || undefined })
-          }}
-        >
-          <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="voucher-q">
-            Cari voucher
-          </label>
-          <Input
-            id="voucher-q"
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Nama atau kode"
-          />
-        </form>
-        <div className="w-40">
-          <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor="voucher-status">
-            Status
-          </label>
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q: q.trim() || undefined }),
+          placeholder: "Nama atau kode",
+        }}
+        actions={
+          <div className="flex gap-1 rounded-md border border-border p-1">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded",
+                viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+              onClick={() => visit({ view: "list" })}
+              aria-label="Tampilan list"
+            >
+              <Icon name="menu" className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded",
+                viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+              onClick={() => visit({ view: "grid" })}
+              aria-label="Tampilan grid"
+            >
+              <Icon name="layout-grid" className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        }
+        className="mb-4"
+      >
+        <div className="w-36">
           <Select
             id="voucher-status"
             value={activeStatus}
             onChange={(event) => visit({ status: event.target.value })}
+            className="h-9"
           >
-            <option value="all">Semua</option>
+            <option value="all">Semua status</option>
             <option value="active">Aktif</option>
+            <option value="scheduled">Terjadwal</option>
+            <option value="expired">Berakhir</option>
             <option value="inactive">Nonaktif</option>
           </Select>
         </div>
-        <div className="flex gap-1 rounded-md border border-border p-1">
-          <button
-            type="button"
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded",
-              viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => visit({ view: "list" })}
-            aria-label="Tampilan list"
-          >
-            <Icon name="menu" className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded",
-              viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => visit({ view: "grid" })}
-            aria-label="Tampilan grid"
-          >
-            <Icon name="layout-grid" className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+      </ListToolbar>
 
       {!vouchers.length ? (
         <EmptyState
@@ -242,15 +289,24 @@ export default function VouchersIndex({
       ) : viewMode === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {vouchers.map((voucher) => (
-            <article key={voucher.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={voucher.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={voucher.published ? "active" : "inactive"} />
+                <StatusBadge status={voucher.status} />
                 <span className="text-sm font-bold tabular-nums text-primary">{discountLabel(voucher)}</span>
               </div>
-              <h3 className="mt-2 text-sm font-semibold">{voucher.name}</h3>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">{voucher.code}</p>
+              <div className="mt-2 flex items-center gap-1.5 font-semibold text-foreground">
+                <h3 className="text-sm">{voucher.name}</h3>
+                <span className="font-mono text-xs font-normal text-muted-foreground">({voucher.code})</span>
+                <CopyButton text={voucher.code} label="Salin kode voucher" />
+              </div>
+              <p className="mt-1.5">
+                <TargetChip label={voucher.target_label} />
+              </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                {formatDateTime(voucher.starts_at)} s/d {formatDateTime(voucher.ends_at)}
+                {formatRentangWaktu(voucher.starts_at, voucher.ends_at)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Minimum {formatCurrency(voucher.min_purchase)}
               </p>
               <div className="mt-3">
                 <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
@@ -259,40 +315,50 @@ export default function VouchersIndex({
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-tight text-muted-foreground">
-              <tr>
-                <th className="px-3 py-3 font-semibold">Nama Voucher</th>
-                <th className="px-3 py-3 font-semibold">Waktu</th>
-                <th className="px-3 py-3 font-semibold">Diskon</th>
-                <th className="px-3 py-3 font-semibold">Status</th>
-                <th className="px-3 py-3 font-semibold">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((voucher) => (
-                <tr key={voucher.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-3">
-                    <p className="font-semibold">{voucher.name}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">{voucher.code}</p>
-                  </td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground">
-                    <div>{formatDateTime(voucher.starts_at)}</div>
-                    <div>s/d {formatDateTime(voucher.ends_at)}</div>
-                  </td>
-                  <td className="px-3 py-3 font-semibold tabular-nums">{discountLabel(voucher)}</td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={voucher.published ? "active" : "inactive"} />
-                  </td>
-                  <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
-                    <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
-                  </td>
+        <Card className="overflow-hidden border border-border bg-card shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-border bg-muted/40 text-xs tracking-tight text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Nama & Kode Voucher</th>
+                  <th className="px-4 py-3 text-center font-semibold">Waktu Berlaku</th>
+                  <th className="px-4 py-3 text-center font-semibold">Diskon</th>
+                  <th className="px-4 py-3 text-center font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {vouchers.map((voucher) => (
+                  <tr key={voucher.id} className="border-b border-border last:border-0 hover:bg-card-hover">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                        <span>{voucher.name}</span>
+                        <span className="font-mono text-xs font-normal text-muted-foreground">({voucher.code})</span>
+                        <CopyButton text={voucher.code} label="Salin kode voucher" />
+                      </div>
+                      <p className="mt-1">
+                        <TargetChip label={voucher.target_label} />
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {voucher.stackable ? "Bisa stacking" : "Tidak bisa stacking"} · Min {formatCurrency(voucher.min_purchase)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-center text-xs text-muted-foreground">
+                      {formatRentangWaktu(voucher.starts_at, voucher.ends_at)}
+                    </td>
+                    <td className="px-4 py-3 text-center font-semibold tabular-nums text-primary">{discountLabel(voucher)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <StatusBadge status={voucher.status} />
+                    </td>
+                    <td className="w-[1%] whitespace-nowrap px-4 py-3 text-right align-middle">
+                      <VoucherActions voucher={voucher} busyId={busyId} setBusyId={setBusyId} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       <Pagination pagination={pagination} />

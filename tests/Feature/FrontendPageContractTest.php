@@ -20,27 +20,49 @@ class FrontendPageContractTest extends TestCase
             ->assertRedirect(route('catalog.index', ['q' => 'jendela'], absolute: false));
     }
 
+    public function test_legacy_ulasan_redirects_to_web_reviews(): void
+    {
+        $this->get('/ulasan')
+            ->assertRedirect(route('reviews.website', absolute: false));
+
+        // Query string lama tetap diteruskan ke slug baru.
+        $this->get('/ulasan?sort=oldest')
+            ->assertRedirect(route('reviews.website', absolute: false).'?sort=oldest');
+    }
+
+    /**
+     * /checkout hanya boleh dirender saat ada produk yang siap di-checkout.
+     * Dengan keranjang kosong halaman ini mengalihkan ke keranjang (bukan 200).
+     */
+    public function test_checkout_requires_a_non_empty_cart(): void
+    {
+        $this->get(route('checkout.index'))
+            ->assertRedirect(route('cart.index'));
+    }
+
     public function test_public_entry_pages_render_the_contracted_inertia_components(): void
     {
         $routes = [
             ['home', 'Public/Home'],
             ['catalog.index', 'Public/ModelProduk'],
-            ['catalog.windows', 'Public/Catalog'],
-            ['reviews', 'Public/Reviews'],
+            ['catalog.category', 'Public/Catalog', ['category' => 'jendela']],
+            ['reviews.website', 'Public/Reviews'],
+            ['reviews.screenshots', 'Public/Reviews'],
             ['cart.index', 'Public/Cart'],
-            ['checkout.index', 'Public/Checkout'],
             ['order.status', 'Public/OrderStatus'],
             ['cara-pemesanan', 'Public/HowToOrder'],
             ['faq', 'Public/Faq'],
             ['masalah-dan-solusi', 'Public/MasalahSolusi'],
-            ['about', 'Public/CmsPage'],
+            ['about', 'Public/About'],
             ['terms', 'Public/CmsPage'],
             ['privacy', 'Public/CmsPage'],
             ['login', 'Auth/Login'],
         ];
 
-        foreach ($routes as [$routeName, $component]) {
-            $this->get(route($routeName))
+        foreach ($routes as $entry) {
+            [$routeName, $component, $parameters] = array_pad($entry, 3, []);
+
+            $this->get(route($routeName, $parameters))
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page->component($component));
         }
@@ -61,29 +83,24 @@ class FrontendPageContractTest extends TestCase
         $routes = [
             ['admin.dashboard', 'Admin/Dashboard'],
             ['admin.products.index', 'Admin/Products/Index'],
-            ['admin.imports.index', 'Admin/ResourceIndex'],
+            ['admin.imports.index', 'Admin/Imports/Index'],
             ['admin.orders.index', 'Admin/Orders/Index'],
-            ['admin.payments.index', 'Admin/ResourceIndex'],
-            ['admin.shipping.index', 'Admin/ResourceIndex'],
+            ['admin.payments.index', 'Admin/Payments/Index'],
+            ['admin.shipping.index', 'Admin/Shipping/Index'],
             ['admin.whatsapp.templates.index', 'Admin/WhatsApp/Index'],
-            ['admin.whatsapp.messages.index', 'Admin/ResourceIndex'],
             ['admin.analytics.store-performance', 'Admin/Analytics/StorePerformance'],
-            ['admin.analytics.import-performance', 'Admin/ResourceShow'],
             ['admin.activity-logs.index', 'Admin/ActivityLogs/Index'],
             ['admin.beranda.index', 'Admin/Beranda/Index'],
             ['admin.model-products.index', 'Admin/ModelProducts/Index'],
             ['admin.cara-pemesanan.edit', 'Admin/CaraPemesanan/Edit'],
             ['admin.faq.index', 'Admin/Faq/Index'],
             ['admin.masalah-solusi.index', 'Admin/MasalahSolusi/Index'],
-            ['admin.tentang-kami.edit', 'Admin/CmsDocument/Edit'],
+            ['admin.tentang-kami.edit', 'Admin/TentangKami/Edit'],
             ['admin.storefront-platforms.edit', 'Admin/StorefrontPlatforms/Edit'],
             ['admin.ketentuan-layanan.edit', 'Admin/CmsDocument/Edit'],
             ['admin.kebijakan-privasi.edit', 'Admin/CmsDocument/Edit'],
-            ['admin.apa-kata-pelanggan.index', 'Admin/Testimonials/Index'],
-            ['admin.hasil-pemasangan.index', 'Admin/Testimonials/Index'],
             ['admin.pages.index', 'Admin/ResourceIndex'],
             ['admin.banners.index', 'Admin/Banners/Index'],
-            ['admin.flash-sale.index', 'Admin/FlashSale/Index'],
             ['admin.vouchers.index', 'Admin/Vouchers/Index'],
             ['admin.cod-settings.edit', 'Admin/CodSettings/Edit'],
             ['admin.shipping-subsidy.edit', 'Admin/ShippingSubsidy/Edit'],
@@ -91,7 +108,7 @@ class FrontendPageContractTest extends TestCase
             ['admin.testimonials.index', 'Admin/Testimonials/Index'],
             ['admin.users.index', 'Admin/Users/Index'],
             ['admin.profile.edit', 'Admin/Profile/Edit'],
-            ['admin.settings.index', 'Admin/ResourceShow'],
+            ['admin.settings.index', 'Admin/SystemHealth'],
             ['admin.products.create', 'Admin/ProductForm'],
             ['admin.imports.create', 'Admin/ImportCreate'],
             ['admin.pages.create', 'Admin/CmsPageForm'],
@@ -99,8 +116,10 @@ class FrontendPageContractTest extends TestCase
             ['admin.users.create', 'Admin/Users/Form'],
         ];
 
-        foreach ($routes as [$routeName, $component]) {
-            $this->get(route($routeName))
+        foreach ($routes as $entry) {
+            [$routeName, $component, $parameters] = array_pad($entry, 3, []);
+
+            $this->get(route($routeName, $parameters))
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page->component($component));
         }
@@ -113,7 +132,7 @@ class FrontendPageContractTest extends TestCase
             'parent_sku' => 'WIN-UI-001',
             'name' => 'Jendela Uji UI',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -131,18 +150,15 @@ class FrontendPageContractTest extends TestCase
         $this->get(route('admin.products.show', $product))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Admin/Products/Show'));
+        // Penggabungan e2e: index varian dialihkan ke tab Varian di halaman edit.
         $this->get(route('admin.products.variants.index', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Variants'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
         $this->get(route('admin.variants.edit', $variant))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/VariantEdit'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
         $this->get(route('admin.products.attributes.index', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Attributes'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'spesifikasi']));
         $this->get(route('admin.products.media.byProduct', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Products/Media'));
+            ->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'media']));
     }
 
     public function test_every_controller_inertia_component_has_a_typescript_page(): void
@@ -169,4 +185,118 @@ class FrontendPageContractTest extends TestCase
             );
         }
     }
+
+    /**
+     * Kartu ulasan di carousel BERANDA tidak menampilkan balasan admin.
+     *
+     * Alasannya ruang: kartunya kecil, dan balasan memakan tempat yang dipakai
+     * foto ulasan. Balasan tetap tampil di halaman ulasan dan di carousel ulasan
+     * halaman produk, jadi yang dijaga di sini hanya beranda yang mematikannya.
+     */
+    public function test_home_review_carousel_hides_admin_reply(): void
+    {
+        $sections = File::get(resource_path('js/components/public/home-sections.tsx'));
+        $carousels = File::get(resource_path('js/components/public/home-carousels.tsx'));
+        $card = File::get(resource_path('js/components/public/testimonial-card.tsx'));
+
+        // Beranda mematikan balasan pada carousel ulasan website.
+        $this->assertMatchesRegularExpression(
+            '/<TestimonialCarousel\b(?:(?!\/>).)*?showAdminReply=\{false\}/s',
+            $sections,
+            'Carousel ulasan di beranda harus mematikan balasan admin.'
+        );
+
+        // Carousel meneruskan pilihannya ke kartu, bukan mengabaikannya.
+        $this->assertStringContainsString('showAdminReply = true', $carousels);
+        $this->assertStringContainsString('showAdminReply={showAdminReply}', $carousels);
+
+        // Kartu memakai prop itu, dan bawaannya tetap menampilkan balasan supaya
+        // halaman ulasan serta halaman produk tidak ikut berubah.
+        $this->assertStringContainsString('showAdminReply = true', $card);
+        $this->assertStringContainsString('adminReply && showAdminReply', $card);
+    }
+
+    /**
+     * Teks ulasan di carousel beranda dipotong TIGA baris, dan tombol
+     * "Lihat selengkapnya" termasuk di dalam tiga baris itu karena menempel di
+     * ujung baris ketiga, bukan baris sendiri di bawahnya.
+     *
+     * Potongannya diberikan pemanggil, bukan disimpulkan dari prop `compact`,
+     * karena `compact` dipakai bersama oleh daftar ulasan di /reviews/web yang
+     * TIDAK ikut berubah.
+     */
+    public function test_home_review_carousel_clamps_message_to_three_lines(): void
+    {
+        $sections = File::get(resource_path('js/components/public/home-sections.tsx'));
+        $carousels = File::get(resource_path('js/components/public/home-carousels.tsx'));
+        $card = File::get(resource_path('js/components/public/testimonial-card.tsx'));
+
+        // Carousel memotong teks ulasan di tiga baris. Nilainya dipasang pada
+        // pemanggilan TestimonialCard DI DALAM komponen carousel, bukan pada
+        // pemakaian <TestimonialCarousel> di seksi beranda, jadi berlaku untuk
+        // seluruh carousel ulasan yang memakai komponen itu.
+        $this->assertStringContainsString(
+            'messageClampClassName="line-clamp-3"',
+            $carousels,
+            'Carousel ulasan harus memotong teks ulasan di tiga baris.'
+        );
+
+        // Kartu menerima potongan eksplisit dari pemanggil.
+        $this->assertStringContainsString('messageClampClassName', $card);
+        $this->assertMatchesRegularExpression(
+            '/clampClassName=\{messageClampClassName \?\? \(compact \? "line-clamp-4" : "line-clamp-5"\)\}/',
+            $card,
+            'Potongan eksplisit harus didahulukan atas bawaan menurut `compact`.'
+        );
+
+        // Daftar ulasan di /reviews/web TIDAK ikut berubah: ia masih memakai
+        // `compact` dan tidak meminta potongan eksplisit.
+        $reviews = File::get(resource_path('js/pages/Public/Reviews.tsx'));
+        $this->assertStringContainsString('compact', $reviews);
+        $this->assertStringNotContainsString('messageClampClassName', $reviews);
+
+        // Demikian pula carousel "Apa kata pelanggan kami" pada seksi lain.
+        $this->assertStringNotContainsString('messageClampClassName', $sections);
+    }
+
+    /**
+     * Pemilihan media hanya boleh lewat SATU komponen (owner 2026-09-29:
+     * "saya ga mau 1 fitur sama tapi model menu beda-beda").
+     *
+     * Sebelumnya ada dua pemilih ke endpoint yang sama: MediaPicker (modal)
+     * dan MediaLibrarySelect (dropdown). Yang kedua sudah tidak dipakai lagi.
+     * Penjaga ini menahan agar pemilih kedua tidak lahir kembali, dan menahan
+     * impor ke berkas yang tidak ada di repo (pernah terjadi: sebuah halaman
+     * mengimpor berkas yang tidak pernah masuk git sehingga clone baru rusak).
+     */
+    public function test_pemilih_media_hanya_satu_komponen(): void
+    {
+        $js = collect(File::allFiles(resource_path('js')))
+            ->reject(fn ($file) => str_contains($file->getFilename(), '.bak'))
+            ->filter(fn ($file) => in_array($file->getExtension(), ['ts', 'tsx'], true));
+
+        $pelanggar = [];
+
+        foreach ($js as $file) {
+            $isi = File::get($file->getPathname());
+
+            if (str_contains($isi, 'media-library-select')) {
+                $pelanggar[] = $file->getRelativePathname();
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $pelanggar,
+            'MediaLibrarySelect sudah digantikan MediaPicker; jangan ada impor baru ke sana.',
+        );
+
+        // Komponen pemilih media yang diizinkan hanya satu.
+        $this->assertFileExists(resource_path('js/components/admin/media-picker.tsx'));
+
+        // Berkas pemilih lama boleh tertinggal sebagai arsip di disk, tetapi
+        // tidak boleh diimpor siapa pun. Itu sudah dijaga oleh daftar kosong
+        // di atas; berkasnya sendiri tidak diwajibkan ada.
+    }
+
 }

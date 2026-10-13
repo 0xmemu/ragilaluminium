@@ -1,6 +1,7 @@
 /.phpunit.cache
 /node_modules
 /public/build
+/public/build-slot-*
 /public/hot
 /public/storage
 /storage/*.key
@@ -32,3 +33,33 @@ xlsx/
 /test-results
 
 .venv/
+.waha-sessions
+
+# --- Secret & backup lokal (tidak pernah di-commit) ---
+/cloudflare.env
+/.env.bak-*
+/.env.*.bak
+*.bak-audit
+
+# --- File temp/debug ---
+/_tmp_*
+/smoke_*.php
+/test-results
+
+# --- Runtime framework (cache/sessions) ---
+/storage/framework/cache/*
+/storage/framework/sessions/*
+
+# --- Backup & legacy dump lokal ---
+/ragil_aluminium.bak-*
+*.legacy-*
+/_cf_rate_limit.py
+/_sync_env_example.py
+/.gitignore.bak-*
+
+# --- Artefak backup/junk agent (bukan sumber kebenaran) ---
+/.backup-*/
+/.env.pre-*
+*.bak-*
+/resources/js/ziggy.d.ts
+/storage/logs/

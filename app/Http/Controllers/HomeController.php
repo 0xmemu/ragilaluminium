@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\CmsTestimonial;
 use App\Models\Product;
+use App\Services\ModelProductService;
 use App\Support\HomepageLayoutSettings;
 use App\Support\HomepagePromotions;
 use App\Support\InertiaCatalog;
 use App\Support\InstallationGallery;
+use App\Support\InstallationPageSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,36 +26,26 @@ class HomeController extends Controller
 
         try {
             // Home “Paling Banyak Dipesan”: kurasi admin (max 10), fallback penjualan website.
-            $popularProducts = Product::visible()
-                ->homepagePopular()
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
-                ->orderBy('homepage_popular_sort')
-                ->orderByDesc('id')
-                ->limit(10)
-                ->get();
+            // Cache Redis 120s — data statis (tidak berubah per request user).
+            $popularProductCards = Cache::remember('home.popular_cards', 120,
+                fn () => InertiaCatalog::popularProductCards(10));
 
-            if ($popularProducts->isEmpty()) {
-                $popularProducts = Product::visible()
-                    ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                    ->withSum('orderItems as sold_count', 'quantity')
-                    ->orderByWebsiteSales()
-                    ->limit(10)
+            $featuredProducts = Cache::remember('home.featured_products', 120, function () {
+                return Product::visible()
+                    ->with(['mainImage', 'media', 'activeVariants.attributes', 'attributes'])
+                    ->withPopularityScore()
+                    ->latest()
+                    ->limit(8)
                     ->get();
-            }
+            });
 
-            $featuredProducts = Product::visible()
-                ->with(['mainImage', 'media', 'activeVariants', 'attributes'])
-                ->withSum('orderItems as sold_count', 'quantity')
-                ->latest()
-                ->limit(8)
-                ->get();
-
-            $modelCards = app(\App\Services\ModelProductService::class)->storefrontCards(8);
+            $modelCards = app(ModelProductService::class)->storefrontCards(8);
+            $categoryMenu = app(ModelProductService::class)->storefrontCategoryMenu();
         } catch (\Throwable) {
             $featuredProducts = collect();
-            $popularProducts = collect();
+            $popularProductCards = [];
             $modelCards = [];
+            $categoryMenu = [];
         }
 
         try {
@@ -62,32 +55,59 @@ class HomeController extends Controller
         }
 
         try {
-            // Gabungan ulasan Shopee (admin) + website/produk dalam satu daftar.
-            $testimonials = CmsTestimonial::query()
+            $base = CmsTestimonial::query()
                 ->published()
-                ->with('product:id,parent_sku,name,short_name')
+                ->with(['product:id,parent_sku,name,short_name,product_category,product_model,design_variant', 'order.items'])
                 ->orderBy('sort_order')
-                ->orderByDesc('id')
+                ->orderByDesc('id');
+
+            $marketplaceTestimonials = (clone $base)
+                ->marketplace()
+                ->withScreenshot()
                 ->limit(12)
                 ->get()
                 ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
                 ->values()
                 ->all();
+
+            // Home: section ulasan website baru muncul jika ≥ 10 ulasan terbit.
+            $websiteCount = (clone $base)->website()->count();
+            $websiteTestimonials = $websiteCount >= 10
+                ? (clone $base)
+                    ->website()
+                    ->limit(12)
+                    ->get()
+                    ->map(fn (CmsTestimonial $t) => $t->toPublicArray())
+                    ->values()
+                    ->all()
+                : [];
+
+            // Keep the customer section populated from published CMS reviews when
+            // no marketplace channel has been configured yet.
+            if ($marketplaceTestimonials === [] && $websiteTestimonials !== []) {
+                $marketplaceTestimonials = collect($websiteTestimonials)
+                    ->filter(fn (array $t) => filled($t['image_url'] ?? null))
+                    ->slice(0, 12)
+                    ->values()
+                    ->all();
+            }
         } catch (\Throwable) {
-            $testimonials = [];
+            $marketplaceTestimonials = [];
+            $websiteTestimonials = [];
         }
 
         try {
             $installations = InstallationGallery::forHome(8);
 
             if ($installations === []) {
-                $installations = collect($testimonials)
+                $installations = collect(array_merge($marketplaceTestimonials, $websiteTestimonials))
                     ->filter(fn (array $item) => filled($item['image_url'] ?? null))
                     ->take(8)
                     ->map(fn (array $item) => [
                         'id' => (string) $item['id'],
                         'image' => $item['image_url'],
                         'label' => $item['customer_name'] ?? 'Hasil pemasangan',
+                        'product_count' => 1,
                         'photo_count' => 1,
                         'video_count' => 0,
                         'href' => route('installation.index'),
@@ -101,7 +121,7 @@ class HomeController extends Controller
         }
 
         try {
-            $installationMeta = \App\Support\InstallationPageSettings::forStorefront();
+            $installationMeta = InstallationPageSettings::forStorefront();
         } catch (\Throwable) {
             $installationMeta = null;
         }
@@ -132,10 +152,14 @@ class HomeController extends Controller
 
         return Inertia::render('Public/Home', [
             'featuredProducts' => InertiaCatalog::productCards($featuredProducts),
-            'popularProducts' => InertiaCatalog::productCards($popularProducts),
+            'popularProducts' => $popularProductCards,
             'modelCards' => $modelCards,
+            'categoryMenu' => $categoryMenu,
             'promoSlides' => $promoSlides,
-            'testimonials' => $testimonials,
+            'marketplaceTestimonials' => $marketplaceTestimonials,
+            'websiteTestimonials' => $websiteTestimonials,
+            // Legacy alias (cuplikan marketplace) — hindari blank jika FE lama masih baca `testimonials`.
+            'testimonials' => $marketplaceTestimonials,
             'installations' => $installations,
             'installationMeta' => $installationMeta,
             'homepageLayout' => $homepageLayout,

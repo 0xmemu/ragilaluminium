@@ -1,21 +1,44 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { cn } from "@/lib/utils"
+
+import { SectionCard } from "@/components/admin/section-card"
+import { Sheet, SheetContent } from "@/components/admin/ui/sheet"
+import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
+import { Card } from "@/components/admin/ui/card"
+import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { ReviewReplyDialog } from "@/components/admin/review-reply-dialog"
+import { OrderProductPicker, type PickedOrderProduct } from "@/components/admin/order-product-picker"
+import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
+import { Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { QuantityInput } from "@/components/admin/ui/quantity-input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import {
+  PrintOrderArea,
+  usePrintOrder,
+} from "@/components/shared/print-order-customer"
+import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber, humanize } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
 import { statusMeta } from "@/lib/status"
+import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface OrderItemRow {
   id: number
   name: string
+  product_id?: number
+  variant_id?: number | null
   variant_sku?: string | null
   variation_1_name?: string | null
   variation_1_option?: string | null
@@ -24,6 +47,7 @@ interface OrderItemRow {
   quantity: number
   unit_price: number
   line_total: number
+  note?: string | null
   image?: string | null
 }
 
@@ -32,6 +56,8 @@ interface OrderDetail {
   order_number: string
   order_status: string
   payment_status: string
+  payment_bucket?: string
+  payment_label?: string
   shipping_status: string
   payment_method?: string | null
   payment_method_label: string
@@ -49,9 +75,18 @@ interface OrderDetail {
   shipping_province?: string | null
   shipping_postal_code?: string | null
   notes?: string | null
+  admin_notes?: string | null
   subtotal_amount: number
   shipping_amount: number
+  jnt_ongkir_assumed?: number
+  jnt_ongkir_actual?: number | null
+  jnt_ongkir_selisih?: number | null
+  jnt_freight_actual?: number | null
+  jnt_insured_fee_actual?: number | null
+  jnt_chargeable_weight_kg?: number | null
+  jnt_cost_synced_at?: string | null
   shipping_subsidy_amount?: number
+  shipping_insurance_amount?: number
   discount_amount: number
   voucher_code?: string | null
   voucher_discount_amount?: number
@@ -62,9 +97,29 @@ interface OrderDetail {
   created_at: string | null
   updated_at: string | null
   whatsapp_url?: string | null
+  /** Ulasan pelanggan untuk pesanan ini, bila sudah ada (owner 2026-09-21). */
+  testimonial?: {
+    id: number
+    customer_name: string
+    rating?: number | null
+    message?: string | null
+    location?: string | null
+    image_url?: string | null
+    source_label?: string | null
+    created_at?: string | null
+    admin_reply?: string | null
+    admin_replied_at?: string | null
+    has_reply?: boolean
+    can_reply?: boolean
+    reply_url?: string
+    destroy_reply_url?: string
+  } | null
+  /** Tautan chat WA berisi naskah template sesuai status pesanan. */
+  whatsapp_status_url?: string | null
   items: OrderItemRow[]
   payments: Array<{
     id: number
+    evidence_url?: string | null
     payment_method: string
     status: string
     amount: number
@@ -72,19 +127,25 @@ interface OrderDetail {
     paid_at?: string | null
   }>
   shipping_records: Array<{
-    id: number
-    carrier_name?: string | null
-    waybill_number?: string | null
-    status?: string | null
-    status_raw?: string | null
-    tracking_url?: string | null
-    last_status_at?: string | null
-  }>
-  whatsapp_messages: Array<{
+      id: number
+      carrier_name?: string | null
+      waybill_number?: string | null
+      status?: string | null
+      status_raw?: string | null
+      tracking_url?: string | null
+      last_status_at?: string | null
+    }>
+  whatsapp_failed_count?: number
+    whatsapp_messages: Array<{
+      text?: string
+      is_automated?: boolean
+      time_label?: string | null
+      date_label?: string | null
     id: number
     direction: string
     status: string
     internal_template_key?: string | null
+    label?: string | null
     phone_number?: string | null
     sent_at?: string | null
     received_at?: string | null
@@ -96,6 +157,13 @@ interface PrimaryAction {
   next_status: string | null
   kind?: string
   hint?: string | null
+  href?: string
+}
+
+interface EditPolicy {
+  allowed: boolean
+  require_note: boolean
+  reason: string | null
 }
 
 interface ShippingActions {
@@ -104,23 +172,31 @@ interface ShippingActions {
   jntEnabled: boolean
 }
 
+interface TrackingProps {
+  shipping_status: string
+  carrier_name?: string | null
+  waybill_number?: string | null
+  record_status?: string | null
+  status_raw?: string | null
+  last_status_at?: string | null
+  tracking_url?: string | null
+  order_status?: string
+  payment_status?: string
+  payment_method?: string | null
+  total_amount?: number
+  paid?: boolean
+  latest_message?: string | null
+  latest_at?: string | null
+  timeline?: Array<{ message: string; at?: string | null; source?: string }>
+}
+
 interface OrderEvent {
   event_type: string
+  label?: string
   payload?: Record<string, unknown> | null
   created_at: string | null
   user_id?: number | null
 }
-
-const orderStatuses = [
-  "pending_payment",
-  "processing",
-  "shipped",
-  "delivered",
-  "completed",
-  "issue",
-  "return_in_process",
-  "cancelled",
-]
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "-"
@@ -162,48 +238,531 @@ function fullAddress(order: OrderDetail): string {
     .join(", ")
 }
 
+interface EditLine {
+  item_id: number | null
+  parent_sku: string
+  variant_sku: string
+  qty: number
+  /** Terisi hanya untuk baris baru dari pemilih produk, supaya nama produk,
+      label varian, dan gambarnya bisa tampil sebelum pesanan disimpan. */
+  name?: string
+  variant_label?: string
+  image?: string | null
+  /** Harga satuan baris baru dari pemilih produk, hanya untuk hitungan sementara. */
+  unit_price?: number
+}
+
+interface EditFormData {
+  customer_name: string
+  customer_phone: string
+  customer_email: string
+  address_line1: string
+  address_line2: string
+  village: string
+  district: string
+  city: string
+  province: string
+  postal_code: string
+  notes: string
+  edit_note: string
+  /** Error dari server saat edit ditolak (mis. terkunci karena sudah ada resi). */
+  edit?: string
+  items: EditLine[]
+}
+
+function OrderEditPanel({
+  order,
+  editUrl,
+  requireNote,
+  onCancel,
+  onCopy,
+  onTotals,
+}: {
+  order: OrderDetail
+  editUrl: string
+  requireNote: boolean
+  onCancel: () => void
+  /** Penyalin teks dari halaman induk; dipakai tombol salin di baris produk. */
+  onCopy: (value: string) => void
+  /** Lapor angka ringkasan isian ke halaman induk supaya barisnya ikut bergerak. */
+  onTotals: (totals: { produk: number; unit: number; hargaProduk: number } | null) => void
+}) {
+  const [pemilihProdukTerbuka, setPemilihProdukTerbuka] = React.useState(false)
+  const [adminNotes, setAdminNotes] = React.useState<string>(order.admin_notes ?? "")
+  const [savingAdminNotes, setSavingAdminNotes] = React.useState(false)
+
+  function saveAdminNotes() {
+    setSavingAdminNotes(true)
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: order.id }),
+      { admin_notes: adminNotes },
+      { preserveScroll: true, onFinish: () => setSavingAdminNotes(false) },
+    )
+  }
+
+  const form = useForm<EditFormData>({
+    customer_name: order.customer_name ?? "",
+    customer_phone: order.customer_phone ?? "",
+    customer_email: order.customer_email ?? "",
+    address_line1: order.shipping_address_line1 ?? "",
+    address_line2: order.shipping_address_line2 ?? "",
+    village: order.shipping_village ?? "",
+    district: order.shipping_district ?? "",
+    city: order.shipping_city ?? "",
+    province: order.shipping_province ?? "",
+    postal_code: order.shipping_postal_code ?? "",
+    notes: order.notes ?? "",
+    edit_note: "",
+    items: order.items.map((item) => ({
+      item_id: item.id,
+      parent_sku: "",
+      variant_sku: "",
+      qty: item.quantity,
+    })),
+  })
+
+  const itemById = React.useMemo(
+    () => new Map(order.items.map((item) => [item.id, item])),
+    [order.items],
+  )
+
+  /**
+   * Angka ringkasan mengikuti isian, supaya admin melihat akibat perubahannya
+   * sebelum menyimpan (laporan owner 2026-09-29: harga dan subtotal belum
+   * tersinkron saat jumlah diubah). Harga satuan baris baru memakai harga dari
+   * pemilih produk, jadi yang dilaporkan ini PERKIRAAN; server tetap menghitung
+   * ulang harga, ongkir, dan total tagihan saat disimpan.
+   */
+  React.useEffect(() => {
+    const hargaSatuan = (line: EditLine): number | undefined =>
+      line.item_id != null ? itemById.get(line.item_id)?.unit_price : line.unit_price
+
+    let hargaProduk = 0
+    let unit = 0
+    for (const line of form.data.items) {
+      unit += Math.max(1, line.qty)
+      hargaProduk += Math.max(1, line.qty) * (hargaSatuan(line) ?? 0)
+    }
+
+    onTotals({ produk: form.data.items.length, unit, hargaProduk })
+
+    // Saat panel ditutup, halaman induk kembali memakai angka pesanan tersimpan.
+    return () => onTotals(null)
+  }, [form.data.items, itemById, onTotals])
+
+  function setQty(index: number, qty: number) {
+    form.setData(
+      "items",
+      form.data.items.map((line, i) =>
+        i === index ? { ...line, qty: Math.max(1, qty) } : line,
+      ),
+    )
+  }
+
+  function removeLine(index: number) {
+    form.setData(
+      "items",
+      form.data.items.filter((_, i) => i !== index),
+    )
+  }
+
+  function addLine(item: PickedOrderProduct) {
+    form.setData("items", [
+      ...form.data.items,
+      {
+        item_id: null,
+        parent_sku: item.parent_sku,
+        variant_sku: item.variant_sku,
+        qty: Math.max(1, item.qty),
+        name: item.name,
+        variant_label: item.variant_label,
+        image: item.image,
+        unit_price: item.unit_price,
+      },
+    ])
+  }
+
+  function submit() {
+    const lines = form.data.items.filter((line) => line.qty >= 1)
+    if (lines.length === 0) return
+    form.setData("items", lines)
+    form.put(editUrl, { preserveScroll: true })
+  }
+
+  return (
+    <div>
+      <FormErrorSummary errors={form.errors} className="mx-5 mt-4" />
+
+      {/* Daftar produk mode edit memakai layout baris yang sama dengan daftar isi
+          pesanan: gambar, nama, dan varian. Kontrol jumlah serta tombol hapus
+          menyatu di baris yang sama, jadi produknya hanya tampil SEKALI. */}
+      <ul className="divide-y divide-border">
+        {form.data.items.map((line, index) => {
+          const original = line.item_id != null ? itemById.get(line.item_id) : undefined
+          const nama = original?.name ?? line.name ?? line.parent_sku
+          const gambar = original?.image ?? line.image
+          // Baris baru sudah membawa harga dari pemilih produk, jadi angkanya bisa
+          // ditampilkan. Baris yang belum punya harga sama sekali tidak dihitung.
+          const hargaSatuan = original?.unit_price ?? line.unit_price
+          return (
+            <li key={line.item_id ?? `new-${index}`} className="flex items-start gap-3.5 px-5 py-4">
+              <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                {gambar ? (
+                  <img src={gambar} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <Icon name="image" className="size-4" aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-1.5">
+                  <p className="text-sm font-normal leading-5 text-foreground">{nama}</p>
+                  <button
+                    type="button"
+                    onClick={() => onCopy(nama)}
+                    className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label={`Salin ukuran & nama: ${nama}`}
+                    title="Salin ukuran & nama produk"
+                  >
+                    <Icon name="copy" className="size-3" aria-hidden="true" />
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {original
+                    ? variationLabel(original) || original.variant_sku || "-"
+                    : line.variant_label ?? (line.variant_sku || "tanpa varian")}
+                </p>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {hargaSatuan != null
+                    ? `${formatNumber(line.qty)} × ${formatCurrency(hargaSatuan)}${original ? "" : " (perkiraan)"}`
+                    : "Harga dihitung ulang saat disimpan"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {hargaSatuan != null ? (
+                  <p className="tabular-nums text-sm font-semibold">
+                    {formatCurrency(line.qty * hargaSatuan)}
+                  </p>
+                ) : null}
+                <QuantityInput
+                  value={line.qty}
+                  onChange={(qty) => setQty(index, qty)}
+                  ariaLabel={`Jumlah ${nama}`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeLine(index)}
+                  aria-label={`Hapus ${nama} dari pesanan`}
+                  title="Hapus produk dari pesanan"
+                >
+                  <Icon name="x" className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="px-5 py-3">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setPemilihProdukTerbuka(true)}
+        >
+          <Icon name="plus" className="size-3" aria-hidden="true" />
+          Pilih produk
+        </Button>
+        <OrderProductPicker
+          open={pemilihProdukTerbuka}
+          onClose={() => setPemilihProdukTerbuka(false)}
+          onPick={addLine}
+        />
+      </div>
+
+      <div className="space-y-4 border-t border-border bg-muted/30 px-5 py-4">
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        <Field id="edit-customer-name" label="Nama penerima" required error={form.errors.customer_name}>
+          <Input
+            value={form.data.customer_name}
+            onChange={(event) => form.setData("customer_name", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-customer-phone" label="Nomor HP" required error={form.errors.customer_phone}>
+          <Input
+            value={form.data.customer_phone}
+            onChange={(event) => form.setData("customer_phone", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-customer-email" label="Email (opsional)" error={form.errors.customer_email}>
+          <Input
+            value={form.data.customer_email}
+            onChange={(event) => form.setData("customer_email", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-address1" label="Alamat" required error={form.errors.address_line1}>
+          <Input
+            value={form.data.address_line1}
+            onChange={(event) => form.setData("address_line1", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-address2" label="Alamat 2 (opsional)" error={form.errors.address_line2}>
+          <Input
+            value={form.data.address_line2}
+            onChange={(event) => form.setData("address_line2", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-village" label="Desa/Kelurahan" error={form.errors.village}>
+          <Input
+            value={form.data.village}
+            onChange={(event) => form.setData("village", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-district" label="Kecamatan" error={form.errors.district}>
+          <Input
+            value={form.data.district}
+            onChange={(event) => form.setData("district", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-city" label="Kota/Kabupaten" required error={form.errors.city}>
+          <Input
+            value={form.data.city}
+            onChange={(event) => form.setData("city", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-province" label="Provinsi" required error={form.errors.province}>
+          <Input
+            value={form.data.province}
+            onChange={(event) => form.setData("province", event.target.value)}
+          />
+        </Field>
+        <Field id="edit-postal" label="Kode pos" required error={form.errors.postal_code}>
+          <Input
+            value={form.data.postal_code}
+            onChange={(event) => form.setData("postal_code", event.target.value)}
+          />
+        </Field>
+      </div>
+
+      <Field id="edit-notes" label="Catatan pesanan (opsional)" error={form.errors.notes}>
+        <Textarea
+          rows={2}
+          value={form.data.notes}
+          onChange={(event) => form.setData("notes", event.target.value)}
+        />
+      </Field>
+
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Icon name="clipboard-text" className="size-4 text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm font-semibold">Catatan internal admin</p>
+        </div>
+        <Textarea
+          rows={3}
+          value={adminNotes}
+          onChange={(event) => setAdminNotes(event.target.value)}
+          placeholder="Catatan hanya untuk tim admin, tidak terlihat pelanggan."
+        />
+        <div className="mt-2 flex justify-end gap-2">
+          {order.admin_notes?.trim() ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAdminNotes("")}>
+              Hapus
+            </Button>
+          ) : null}
+          <Button type="button" size="sm" onClick={saveAdminNotes} disabled={savingAdminNotes}>
+            {savingAdminNotes ? "Menyimpan..." : "Simpan catatan internal"}
+          </Button>
+        </div>
+      </div>
+
+      <Field
+        id="edit-note"
+        label={requireNote ? "Catatan perubahan (wajib)" : "Catatan perubahan (opsional)"}
+        required={requireNote}
+        error={form.errors.edit_note || form.errors.edit}
+      >
+        <Textarea
+          rows={2}
+          value={form.data.edit_note}
+          onChange={(event) => form.setData("edit_note", event.target.value)}
+          placeholder="Alasan perubahan isi pesanan - tercatat di riwayat."
+        />
+      </Field>
+
+      <div className="flex items-center gap-2">
+        <Button type="button" onClick={submit} disabled={form.processing}>
+          {form.processing ? "Menyimpan..." : "Simpan"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Batal
+        </Button>
+      </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Istilah status untuk PESAN WhatsApp.
+ *
+ * Peta status bersama (lib/status) memakai kosakata pesanan: 'pending' di sana
+ * berarti menunggu pembayaran dan 'delivered' berarti barang sampai. Kalau
+ * dipakai untuk pesan, labelnya jadi menyesatkan, sehingga pesan pelanggan
+ * berbunyi 'Menunggu pembayaran'. Peta kecil ini memakai istilah pengiriman
+ * pesan yang benar.
+ */
+const WA_MESSAGE_STATUS: Record<string, { icon: string; title: string; label: string; className: string }> = {
+  pending: { icon: "clock", title: "Menunggu tanda kirim", label: "Menunggu", className: "text-muted-foreground" },
+  queued: { icon: "clock", title: "Menunggu dikirim", label: "Antre", className: "text-muted-foreground" },
+  sent: { icon: "check", title: "Terkirim ke WhatsApp", label: "Terkirim", className: "text-success font-medium" },
+  delivered: { icon: "checks", title: "Sampai di HP pelanggan", label: "Terkirim", className: "text-success font-medium" },
+  read: { icon: "checks", title: "Dibaca pelanggan", label: "Dibaca", className: "text-info font-medium" },
+  failed: { icon: "x", title: "Gagal terkirim", label: "Gagal", className: "text-destructive font-medium" },
+  received: { icon: "arrow-down-left", title: "Diterima", label: "Diterima", className: "text-success font-medium" },
+}
+
+function waMessageStatus(status: string) {
+  return WA_MESSAGE_STATUS[status] ?? null
+}
+
 export default function OrderShow({
   order,
   events = [],
+  tracking,
   primaryAction,
+  secondaryAction,
   updateStatusUrl,
+  adminNotesUrl,
   shippingActions,
-  workflowLinks,
-}: {
-  order: OrderDetail
-  events?: OrderEvent[]
-  primaryAction: PrimaryAction | null
-  updateStatusUrl: string
-  shippingActions: ShippingActions
-  workflowLinks: Array<{ label: string; href: string }>
-}) {
+  workflowLinks: _workflowLinks,
+  editPolicy,
+  editUrl,
+    openTracking = false,
+  }: {
+    order: OrderDetail
+    events?: OrderEvent[]
+    tracking?: TrackingProps
+    primaryAction: PrimaryAction | null
+    secondaryAction?: PrimaryAction | null
+    updateStatusUrl: string
+    adminNotesUrl?: string
+    shippingActions: ShippingActions
+    workflowLinks: Array<{ label: string; href: string }>
+    editPolicy?: EditPolicy | null
+    editUrl?: string
+    /** Buka drawer Lacak Pesanan sejak render (deep-link `?lacak=1`). */
+    openTracking?: boolean
+  }) {
   const isCod = order.flow === "cod" || order.cod_flag
-  const lacakRef = React.useRef<HTMLElement | null>(null)
   const statusForm = useForm({ order_status: order.order_status })
   const [statusBusy, setStatusBusy] = React.useState(false)
-  const paymentForm = useForm({
-    payment_method: isCod ? "cod" : "transfer",
-    amount: String(Math.round(order.total_amount)),
-    status: isCod ? "pending" : "completed",
-    transaction_reference: "",
-    evidence_url: "",
-    paid_at: "",
-  })
-  const shippingForm = useForm({
-    mode: shippingActions.jntEnabled ? "jnt" : "manual",
-    waybill_number: "",
-    weight_kg: "1",
-    mark_shipped: true,
-  })
-  const [refreshBusy, setRefreshBusy] = React.useState(false)
 
-  function updateStatus(next?: string) {
+  const shippingForm = useForm({
+    waybill_number: "",
+  })
+  // Popup input resi: form + ringkasan verifikasi alamat/pelanggan.
+  // Sistem tidak menilai benar/salah; admin yang memastikan lalu menyimpan.
+  const [resiOpen, setResiOpen] = React.useState(false)
+  // Popup balas ulasan pelanggan, dipakai tombol Balas di baris aksi.
+  const [reviewReplyOpen, setReviewReplyOpen] = React.useState(false)
+  // Drawer Lacak Pesanan: dibuka tombol di kartu Detail pengiriman, atau
+  // langsung sejak render bila datang dari deep-link `?lacak=1` (daftar
+  // Pengiriman dan URL resi lama yang halamannya sudah dihapus).
+  const [trackingOpen, setTrackingOpen] = React.useState(openTracking)
+  const [refreshBusy, setRefreshBusy] = React.useState(false)
+  const [resendWaBusy, setResendWaBusy] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
+  /**
+   * Angka isi pesanan yang sedang diedit, dilaporkan panel edit. Dipakai
+   * supaya baris Total produk, Total unit, dan Total harga produk ikut
+   * bergerak saat jumlah atau produk diubah (owner 2026-09-29).
+   */
+  const [ringkasanEdit, setRingkasanEdit] = React.useState<{
+    produk: number
+    unit: number
+    hargaProduk: number
+  } | null>(null)
+  const [detailDrawer, setDetailDrawer] = React.useState<null | "riwayat" | "status" | "wa">(null)
+  const waLogRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    const el = waLogRef.current
+    if (el) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [order.whatsapp_messages.length])
+  const { printing, handlePrint } = usePrintOrder()
+  const capabilities = useAdminCapabilities()
+  const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
+  const { state: liveState, lastEventAt } = useAdminLiveOrders({
+    onOrderUpdated: (event) => {
+      if (event.order_id === order.id) {
+        // Jangan timpa form yang sedang diedit; tampilkan notice + Refresh manual.
+        setLiveChangedNotice(
+          "Pesanan diperbarui oleh aktivitas lain. Perbarui setelah menyimpan pekerjaan Anda.",
+        )
+      }
+    },
+  })
+
+  const [notesModalOpen, setNotesModalOpen] = React.useState(false)
+  const [notesMode, setNotesMode] = React.useState<"view" | "edit">(order.admin_notes?.trim() ? "view" : "edit")
+  const [notesText, setNotesText] = React.useState(order.admin_notes ?? "")
+  const [notesBusy, setNotesBusy] = React.useState(false)
+  const [expandedWaIds, setExpandedWaIds] = React.useState<Set<number>>(new Set())
+
+  function toggleWaExpand(id: number) {
+    setExpandedWaIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function saveAdminNotes(content: string) {
+    if (!adminNotesUrl) return
+    setNotesBusy(true)
+    router.put(
+      adminNotesUrl,
+      { admin_notes: content },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setNotesBusy(false)
+          setNotesModalOpen(false)
+          if (content.trim()) {
+            setNotesMode("view")
+          } else {
+            setNotesMode("edit")
+          }
+        },
+        onError: () => setNotesBusy(false),
+        onFinish: () => setNotesBusy(false),
+      },
+    )
+  }
+
+  function deleteAdminNotes() {
+    saveAdminNotes("")
+  }
+
+  function updateStatus(next?: string, cancelReason?: string) {
     const nextStatus = next ?? statusForm.data.order_status
     statusForm.setData("order_status", nextStatus)
     setStatusBusy(true)
     router.put(
       updateStatusUrl,
-      { order_status: nextStatus },
+      {
+        order_status: nextStatus,
+        ...(nextStatus === "cancelled" && cancelReason ? { cancel_reason: cancelReason } : {}),
+      },
       {
         preserveScroll: true,
         onFinish: () => setStatusBusy(false),
@@ -213,24 +772,19 @@ export default function OrderShow({
 
   function runPrimary() {
     if (primaryAction?.kind === "input_resi") {
-      lacakRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      setResiOpen(true)
       return
     }
     if (!primaryAction?.next_status) return
     updateStatus(primaryAction.next_status)
   }
 
-  function storePayment(event: React.FormEvent) {
-    event.preventDefault()
-    paymentForm.post(routeUrl("admin.payments.store", { order: order.id }), {
-      preserveScroll: true,
-      onSuccess: () => paymentForm.reset("transaction_reference", "evidence_url", "paid_at"),
-    })
-  }
-
   function storeShipping(event: React.FormEvent) {
     event.preventDefault()
-    shippingForm.post(shippingActions.createUrl, { preserveScroll: true })
+    shippingForm.post(shippingActions.createUrl, {
+      preserveScroll: true,
+      onSuccess: () => setResiOpen(false),
+    })
   }
 
   function refreshShipping() {
@@ -257,259 +811,655 @@ export default function OrderShow({
     order.shipping_records.find((row) => row.status !== "cancelled") ??
     order.shipping_records[0] ??
     null
-  const needsResi = !latestShipping?.waybill_number
+
+  const pageActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {(order.whatsapp_failed_count ?? 0) > 0 ? (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="shrink-0"
+          disabled={resendWaBusy}
+          onClick={() => {
+            setResendWaBusy(true)
+            router.post(
+              routeUrl("admin.orders.whatsapp.resend", { order: order.id }),
+              {},
+              { preserveScroll: true, onFinish: () => setResendWaBusy(false) },
+            )
+          }}
+          title="Ada pemberitahuan status pesanan yang gagal terkirim. Tekan untuk kirim ulang lewat gateway."
+        >
+          Kirim ulang WA ({order.whatsapp_failed_count})
+        </Button>
+      ) : order.whatsapp_status_url || order.whatsapp_url ? (
+        <Button asChild variant="secondary" size="sm" className="shrink-0">
+          <a
+            href={order.whatsapp_status_url || order.whatsapp_url || "#"}
+            target="_blank"
+            rel="noreferrer"
+            title="Chat WhatsApp pelanggan dengan naskah sesuai status pesanan"
+          >
+            <Icon name="whatsapp" className="size-3.5 text-success" aria-hidden="true" />
+            Chat WA
+          </a>
+        </Button>
+      ) : null}
+      {order.testimonial && order.testimonial.can_reply && (order.order_status === "delivered" || order.order_status === "completed") ? (
+        <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setReviewReplyOpen(true)}>
+          <Icon name="chat-circle" className="size-3.5" aria-hidden="true" />
+          {order.testimonial.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
+        </Button>
+      ) : null}
+      {secondaryAction?.href ? (
+        <Button
+          asChild
+          variant={secondaryAction.kind === "start_return" ? "destructive" : "secondary"}
+          size="sm"
+          className="shrink-0"
+        >
+          <a href={secondaryAction.href}>{secondaryAction.label}</a>
+        </Button>
+      ) : null}
+      {secondaryAction?.next_status ? (
+        <StatusConfirmButton
+          action={secondaryAction}
+          totalAmount={order.total_amount}
+          busy={statusBusy}
+          size="sm"
+          variant="secondary"
+          className="shrink-0"
+          onConfirm={() => updateStatus(secondaryAction.next_status!)}
+        />
+      ) : null}
+      {primaryAction?.next_status ? (
+        <StatusConfirmButton
+          action={primaryAction}
+          totalAmount={order.total_amount}
+          busy={statusBusy}
+          size="sm"
+          disabled={!can("orders.process", capabilities)}
+          titleAttr={can("orders.process", capabilities) ? undefined : "Kamu tidak punya akses memproses pesanan"}
+          className="shrink-0"
+          onConfirm={runPrimary}
+        />
+      ) : null}
+      {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
+        can("orders.cancel", capabilities) ? (
+          <ConfirmAction
+            trigger={
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                Batalkan pesanan
+              </Button>
+            }
+            title={ORDER_CANCEL_DIALOG.title}
+            description={ORDER_CANCEL_DIALOG.description}
+            confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
+            processing={statusBusy}
+            reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
+            reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
+            onConfirm={(reason) => updateStatus("cancelled", reason)}
+          />
+        ) : null
+      ) : null}
+    </div>
+  )
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: { waybill_number: "Nomor Resi J&T Cargo" },
+    requireChange: true,
+  }
 
   return (
     <AdminLayout
       title={`Pesanan ${order.order_number}`}
       description={order.customer_name}
-      actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.orders.index")}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke daftar
-          </Link>
-        </Button>
-      }
+      actions={pageActions}
+      backUrl={routeUrl("admin.orders.index")}
     >
       <Head title={`Pesanan ${order.order_number} | Admin`} />
 
-      <p className="text-xs text-muted-foreground">
-        <Link href={routeUrl("admin.orders.index")} className="hover:text-primary">
-          Pesanan
-        </Link>
-        <span className="mx-1.5">/</span>
-        <span className="font-semibold text-foreground">{order.order_number}</span>
-      </p>
-
-      <section className="mt-4 grid gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-            Nomor order
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="font-mono text-lg font-bold">{order.order_number}</p>
-            <button
-              type="button"
-              onClick={() => copyText(order.order_number)}
-              className="text-xs font-semibold text-primary hover:underline"
-            >
-              Salin
-            </button>
-          </div>
-          <div className="mt-2">
-            <StatusBadge status={order.order_status} />
-          </div>
-        </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-            Metode pembayaran
-          </p>
-          <p className="mt-2 text-sm font-bold">{order.payment_method_label}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusBadge status={order.payment_status} />
-            <span className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight text-muted-foreground">
-              {isCod ? "Alur COD" : "Alur Transfer"}
-            </span>
-          </div>
-        </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-            Penerima
-          </p>
-          <p className="mt-2 text-sm font-bold">{order.customer_name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{order.customer_phone || "-"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+      {/* Pengingat COD: uang ada di kurir sampai disetorkan ke toko, jadi
+          peringatan ini wajib paling atas supaya terlihat segera. */}
+      {isCod && order.order_status === "delivered" ? (
+        <div className="mb-4 rounded-lg border border-warning/25 bg-warning/10 px-5 py-3">
+          <p className="text-xs leading-5 text-warning-foreground">
+            Paket diterima. Pastikan pembayaran COD sudah disetorkan oleh kurir.
           </p>
         </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-            Ringkasan
-          </p>
-          <p className="mt-2 text-sm font-semibold">
-            {formatNumber(order.product_count)} produk · {formatNumber(order.unit_count)} unit
-          </p>
-          <p className="tabular-nums mt-1 text-xl font-bold">{formatCurrency(order.total_amount)}</p>
-        </div>
-      </section>
-
-      <section className="mt-4 grid gap-3 lg:grid-cols-3">
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Riwayat pesanan</h2>
-          <ol className="mt-3 space-y-2 text-xs">
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Waktu pemesanan</span>
-              <span className="font-semibold">{formatDateTime(order.created_at)}</span>
-            </li>
-            <li className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Update terakhir</span>
-              <span className="font-semibold">{formatDateTime(order.updated_at)}</span>
-            </li>
-          </ol>
-        </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Log perubahan status</h2>
-          {events.length ? (
-            <ul className="mt-3 space-y-2 text-xs">
-              {events.slice(0, 4).map((event, index) => (
-                <li key={`${event.event_type}-${index}`} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-semibold">{humanize(event.event_type)}</p>
-                  <p className="mt-0.5 text-muted-foreground">{formatDateTime(event.created_at)}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-xs text-muted-foreground">Belum ada log status.</p>
-          )}
-        </article>
-        <article className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Riwayat WA otomatis</h2>
-          {order.whatsapp_messages.length ? (
-            <ul className="mt-3 space-y-2 text-xs">
-              {order.whatsapp_messages.slice(0, 4).map((message) => (
-                <li key={message.id} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-semibold">
-                    {message.internal_template_key
-                      ? humanize(message.internal_template_key)
-                      : humanize(message.direction)}
-                  </p>
-                  <p className="mt-0.5 text-muted-foreground">
-                    <StatusBadge status={message.status} />
-                    <span className="ml-2">
-                      {formatDateTime(message.sent_at || message.received_at)}
-                    </span>
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
-          )}
-        </article>
-      </section>
-
-      {order.flow_hint ? (
-        <p className="mt-4 rounded-md border border-border bg-surface-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
-          {order.flow_hint}
-        </p>
       ) : null}
 
-      <section className="mt-4 flex flex-wrap gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm">
-        {primaryAction?.next_status ? (
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
-            <Button disabled={statusBusy} onClick={runPrimary}>
-              {statusBusy ? "Memproses..." : primaryAction.label}
-            </Button>
-            {primaryAction.hint ? (
-              <p className="text-[11px] text-muted-foreground">{primaryAction.hint}</p>
-            ) : null}
-          </div>
-        ) : null}
-        {order.whatsapp_url ? (
-          <Button asChild variant="secondary">
-            <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-              Chat WA
-            </a>
-          </Button>
-        ) : null}
-                <Button
-          type="button"
-          variant="secondary"
-          onClick={() => copyText(fullAddress(order))}
-        >
-          Salin alamat
-        </Button>
-        {workflowLinks.map((link) => (
-          <Button key={link.href} asChild variant="secondary">
-            <Link href={link.href}>{link.label}</Link>
-          </Button>
-        ))}
-        {order.order_status !== "cancelled" ? (
-          <ConfirmAction
-            trigger={<Button variant="destructive">Batalkan Pesanan</Button>}
-            title="Batalkan pesanan?"
-            description="Status akan berubah menjadi dibatalkan dan tercatat di event log."
-            confirmLabel="Batalkan"
-            processing={statusBusy}
-            onConfirm={() => updateStatus("cancelled")}
-          />
-        ) : null}
-      </section>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface shadow-sm">
-            <div className="border-b border-border p-4">
-              <h2 className="text-base font-bold">Isi pesanan</h2>
+      {/* Ringkasan order: EMPAT kartu terpisah (permintaan owner 2026-09-29).
+          Sebelumnya satu kartu berisi empat sel yang dipisah garis rambut 1px. */}
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="flex flex-col justify-between p-5">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Nomor order</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <p className="font-mono text-xl font-bold tracking-tight text-foreground">{order.order_number}</p>
+              <button
+                type="button"
+                onClick={() => copyText(order.order_number)}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label="Salin nomor order"
+                title="Salin nomor order"
+              >
+                <Icon name="copy" className="size-3.5" aria-hidden="true" />
+              </button>
             </div>
-            <ul className="divide-y divide-border">
-              {order.items.map((item) => (
-                <li key={item.id} className="flex gap-3 p-4">
-                  <div className="size-14 shrink-0 overflow-hidden rounded bg-muted">
-                    {item.image ? (
-                      <img src={item.image} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
-                        <Icon name="image" className="size-4" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{item.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {variationLabel(item) || item.variant_sku || "-"}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
-                    </p>
-                  </div>
-                  <p className="tabular-nums shrink-0 text-sm font-bold">
-                    {formatCurrency(item.line_total)}
+            <div className="mt-2">
+              <StatusBadge status={order.order_status} />
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-border/60 pt-2.5">
+            {order.admin_notes?.trim() ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-medium text-muted-foreground">Catatan admin:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesMode("edit")
+                      setNotesText(order.admin_notes ?? "")
+                      setNotesModalOpen(true)
+                    }}
+                    className="text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div
+                  onClick={() => {
+                    setNotesMode("view")
+                    setNotesText(order.admin_notes ?? "")
+                    setNotesModalOpen(true)
+                  }}
+                  className="cursor-pointer rounded-md border border-warning/25 bg-warning/10 p-2 transition hover:bg-warning/15"
+                  title="Klik untuk melihat catatan lengkap"
+                >
+                  <p className="line-clamp-2 overflow-hidden text-xs leading-snug text-warning break-all break-words">
+                    {order.admin_notes}
                   </p>
-                </li>
-              ))}
-            </ul>
-            <dl className="space-y-2 border-t border-border p-4 text-sm">
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNotesMode("edit")
+                  setNotesText("")
+                  setNotesModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Icon name="plus" className="size-3" aria-hidden="true" />
+                <span>Catatan Admin</span>
+              </button>
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-xs font-medium text-muted-foreground">Pembayaran</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">{order.payment_method_label}</span>
+            <span className="inline-flex min-h-6 items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+              {order.payment_label || statusMeta(order.payment_status).label}
+            </span>
+          </div>
+          {order.payments?.[0] ? (
+            <div className="mt-2 space-y-0.5 text-[13px]">
+              <p className="tabular-nums font-semibold text-foreground">
+                {formatCurrency(order.payments[0].amount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDateTime(order.payments[0].paid_at)}
+              </p>
+              {order.payments[0].evidence_url ? (
+                <a
+                  href={order.payments[0].evidence_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  Lihat bukti transfer
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-xs font-medium text-muted-foreground">Detail penerima</p>
+          <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customer_name}</p>
+          <span className="mt-0.5 flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">{order.customer_phone || "-"}</span>
+            {order.customer_phone ? (
+              <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+            ) : null}
+          </span>
+          <p className="mt-1.5 text-[13px] leading-5 text-foreground">
+            {fullAddress(order) || "-"}
+          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => copyText(fullAddress(order))}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="copy" className="size-3" aria-hidden="true" />
+              Salin
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="printer" className="size-3" aria-hidden="true" />
+              Cetak
+            </button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-xs font-medium text-muted-foreground">Detail pengiriman</p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
+            <span className="text-sm font-semibold text-foreground">
+              {latestShipping?.carrier_name || (latestShipping?.waybill_number ? "J&T Cargo" : "Pengiriman")}
+            </span>
+            <StatusBadge
+              status={
+                latestShipping?.status ||
+                (order.order_status === "awaiting_confirmation" || order.order_status === "pending"
+                  ? order.order_status
+                  : order.shipping_status || "tracking_pending")
+              }
+            />
+          </div>
+
+          <div className="mt-2 space-y-1 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">No. Resi:</span>
+              {latestShipping?.waybill_number ? (
+                <div className="inline-flex items-center gap-1">
+                  <span className="font-mono font-medium text-foreground">{latestShipping.waybill_number}</span>
+                  <CopyButton text={latestShipping.waybill_number} label="Salin nomor resi" />
+                </div>
+              ) : (
+                <span className="text-muted-foreground">Belum ada resi</span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setTrackingOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <Icon name="truck" className="size-3.5" aria-hidden="true" />
+              <span>Lacak pesanan</span>
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Aksi utama */}
+      {liveChangedNotice ? (
+        <div
+          role="status"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span className="flex items-center gap-2">
+            <Icon name="info" className="size-3.5 shrink-0 text-warning" aria-hidden="true" />
+            {liveChangedNotice}
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLiveChangedNotice(null)}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
+            >
+              Tutup
+            </button>
+            <button
+              type="button"
+              onClick={() => router.get(window.location.pathname, {}, { preserveScroll: true })}
+              className="rounded-md border border-border bg-surface px-2 py-1 font-semibold text-foreground transition hover:bg-muted"
+            >
+              Perbarui
+            </button>
+          </div>
+        </div>
+      ) : null}
+      
+
+      {/* Popup input resi: form + verifikasi alamat & pelanggan.
+          Sistem tidak menilai benar/salah; admin memastikan data sebelum menyimpan. */}
+      <DialogPrimitive.Root open={resiOpen} onOpenChange={setResiOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[70] flex max-h-[min(90dvh,38rem)] w-[min(calc(100%-2rem),32rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Input nomor resi</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Input Resi Pengiriman</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {order.order_number} · {order.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResiOpen(false)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup resi"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <section className="rounded-lg border border-border bg-surface/80 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+                    <Icon name="user" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    Detail Penerima & Alamat
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                  <span className="text-muted-foreground">Penerima:</span>
+                  <span className="font-medium text-foreground">
+                    {order.customer_name}
+                    {order.customer_phone ? (
+                      <span className="inline-flex items-center gap-1">
+                        {order.whatsapp_url ? (
+                          <a
+                            href={order.whatsapp_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
+                            title="Buka WhatsApp penerima"
+                          >
+                            <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                            <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{order.customer_phone}</span>
+                          </a>
+                        ) : (
+                          <span className="ml-1 font-mono">({order.customer_phone})</span>
+                        )}
+                        <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+                      </span>
+                    ) : " (-)"}
+                  </span>
+                  <span className="text-muted-foreground align-top">Alamat:</span>
+                  <span className="font-medium leading-5 text-foreground">{fullAddress(order) || "-"}</span>
+                </div>
+              </section>
+
+              <form onSubmit={jagaGerbang(gerbang, shippingForm, storeShipping)} className="space-y-4">
+                <FormErrorSummary errors={shippingForm.errors} />
+
+                <Field id="popup-waybill" label="Nomor Resi J&T Cargo" required error={shippingForm.errors.waybill_number}>
+                  <Input
+                    value={shippingForm.data.waybill_number}
+                    onChange={(event) => shippingForm.setData("waybill_number", event.target.value)}
+                    placeholder="Masukan Resi Pengiriman..."
+                  />
+                </Field>
+
+                <p className="rounded-md border border-border bg-surface/80 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  Biaya J&T Cargo diisi otomatis dari pelacakan resi, jadi tidak perlu
+                  diketik. Setelah resi disimpan, tekan Refresh J&T bila angkanya belum
+                  muncul.
+                </p>
+
+                
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setResiOpen(false)}
+                  >
+                    Batal
+                  </Button>
+                  <SubmitGateButton
+                    form={shippingForm}
+                    {...gerbang}
+                    size="sm"
+                  >
+                    Simpan Resi
+                  </SubmitGateButton>
+                </div>
+              </form>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
+      {/* Isi pesanan: section kedua, di atas riwayat dan log (owner 2026-09-29). */}
+      <div className="mt-4 space-y-4">
+          <SectionCard
+            title="Isi pesanan"
+            contentClassName="p-0"
+            action={
+              editPolicy?.allowed ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {editing ? "Tutup edit" : "Edit pesanan"}
+                </button>
+              ) : editPolicy?.reason ? (
+                <span className="text-xs text-muted-foreground" title={editPolicy.reason}>
+                  Terkunci
+                </span>
+              ) : null
+            }
+          >
+            {/* Mode edit merender daftar produknya sendiri dengan layout baris yang
+                sama, jadi daftar read-only ini disembunyikan supaya produk tidak
+                tampil dua kali di kartu yang sama. */}
+            {editing ? null : (
+              <ul className="divide-y divide-border">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex gap-3.5 px-5 py-4">
+                    <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-muted-foreground">
+                          <Icon name="image" className="size-4" aria-hidden="true" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-1.5">
+                        <p className="text-sm font-normal leading-5 text-foreground">{item.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => copyText(item.name)}
+                          className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          aria-label={`Salin ukuran & nama: ${item.name}`}
+                          title="Salin ukuran & nama produk"
+                        >
+                          <Icon name="copy" className="size-3" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {variationLabel(item) || item.variant_sku || "-"}
+                      </p>
+                      {item.note ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Catatan: <span className="font-medium text-foreground">{item.note}</span>
+                        </p>
+                      ) : null}
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
+                      </p>
+                    </div>
+                    <p className="tabular-nums shrink-0 text-sm font-semibold">
+                      {formatCurrency(item.line_total)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {editing && editUrl ? (
+              <OrderEditPanel
+                order={order}
+                editUrl={editUrl}
+                requireNote={Boolean(editPolicy?.require_note)}
+                onCancel={() => setEditing(false)}
+                onCopy={copyText}
+                onTotals={setRingkasanEdit}
+              />
+            ) : null}
+
+            {order.notes?.trim() ? (
+              <div className="border-t border-border px-5 py-2.5 text-xs text-muted-foreground">
+                Catatan: <span className="font-medium text-foreground">{order.notes}</span>
+              </div>
+            ) : null}
+
+            <dl id="biaya-ongkir" className="scroll-mt-20 space-y-2 border-t border-border bg-muted/40 px-5 py-4 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total produk</dt>
-                <dd className="font-semibold">{formatNumber(order.product_count)} Produk</dd>
+                <dd className="font-medium">
+                  {formatNumber(ringkasanEdit?.produk ?? order.product_count)} produk
+                </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total unit</dt>
-                <dd className="font-semibold">{formatNumber(order.unit_count)} Unit</dd>
+                <dd className="font-medium">
+                  {formatNumber(ringkasanEdit?.unit ?? order.unit_count)} unit
+                </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Total harga produk</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(order.subtotal_amount)}</dd>
+                <dd className="tabular-nums font-medium">
+                  {formatCurrency(ringkasanEdit?.hargaProduk ?? order.subtotal_amount)}
+                </dd>
               </div>
+              {/* Ongkir, asuransi, dan biaya COD datang dari hitungan server yang
+                  ikut berubah bila isi pesanan berubah (berat, nilai). Angkanya
+                  tidak bisa dihitung di layar, jadi diberi tahu apa adanya
+                  supaya tidak dibaca sebagai total akhir. */}
+              {ringkasanEdit ? (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Angka produk di atas mengikuti isian. Ongkir, asuransi, dan total tagihan
+                  dihitung ulang server saat disimpan.
+                </p>
+              ) : null}
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Ongkir dibayar</dt>
-                <dd className="tabular-nums font-semibold">{formatCurrency(order.shipping_amount)}</dd>
+                <dd className="tabular-nums font-medium">{formatCurrency(order.shipping_amount)}</dd>
               </div>
               {(order.shipping_subsidy_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Subsidi ongkir</dt>
-                  <dd className="tabular-nums font-semibold text-muted-foreground">
+                  <dd className="tabular-nums font-medium text-muted-foreground">
                     −{formatCurrency(order.shipping_subsidy_amount ?? 0)}
                   </dd>
                 </div>
               ) : null}
+              {(order.shipping_insurance_amount ?? 0) > 0 ? (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Asuransi pengiriman</dt>
+                  <dd className="tabular-nums font-medium">
+                    {formatCurrency(order.shipping_insurance_amount ?? 0)}
+                  </dd>
+                </div>
+              ) : null}
+              {order.jnt_ongkir_actual != null ? (
+                <>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">Tagihan J&T Cargo</dt>
+                    <dd className="tabular-nums font-medium">
+                      {formatCurrency(order.jnt_ongkir_actual)}
+                    </dd>
+                  </div>
+                  {order.jnt_freight_actual != null ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Ongkir</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {formatCurrency(order.jnt_freight_actual)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {(order.jnt_insured_fee_actual ?? 0) > 0 ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Asuransi dari J&T</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {formatCurrency(order.jnt_insured_fee_actual ?? 0)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {order.jnt_chargeable_weight_kg != null ? (
+                    <div className="flex justify-between gap-3 text-xs">
+                      <dt className="pl-3 text-muted-foreground">Berat tagih J&T</dt>
+                      <dd className="tabular-nums text-muted-foreground">
+                        {order.jnt_chargeable_weight_kg} kg
+                      </dd>
+                    </div>
+                  ) : null}
+                  {(order.jnt_ongkir_selisih ?? 0) !== 0 ? (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">
+                        Selisih tagihan{" "}
+                        <span className="text-[11px]">
+                          {(order.jnt_ongkir_selisih ?? 0) > 0
+                            ? "(ditanggung toko)"
+                            : "(lebih hemat)"}
+                        </span>
+                      </dt>
+                      <dd
+                        className={`tabular-nums font-medium ${
+                          (order.jnt_ongkir_selisih ?? 0) > 0
+                            ? "text-destructive"
+                            : "text-success"
+                        }`}
+                      >
+                        {(order.jnt_ongkir_selisih ?? 0) > 0 ? "+" : "−"}
+                        {formatCurrency(Math.abs(order.jnt_ongkir_selisih ?? 0))}
+                      </dd>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Tagihan J&T Cargo</dt>
+                  <dd className="text-xs text-muted-foreground">
+                    Belum dilaporkan J&T
+                  </dd>
+                </div>
+              )}
               {order.discount_amount > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Potongan harga (promo item)</dt>
-                  <dd className="tabular-nums font-semibold text-muted-foreground">
+                  <dd className="tabular-nums font-medium text-muted-foreground">
                     −{formatCurrency(order.discount_amount)}
                   </dd>
                 </div>
               ) : null}
               {(order.voucher_discount_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground text-destructive">
+                  <dt className="text-muted-foreground">
                     Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
                   </dt>
-                  <dd className="tabular-nums font-semibold text-destructive">
+                  <dd className="tabular-nums font-medium text-destructive">
                     −{formatCurrency(order.voucher_discount_amount ?? 0)}
                   </dd>
                 </div>
@@ -517,287 +1467,613 @@ export default function OrderShow({
               {(order.cod_fee_amount ?? 0) > 0 ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Biaya COD</dt>
-                  <dd className="tabular-nums font-semibold">
+                  <dd className="tabular-nums font-medium">
                     {formatCurrency(order.cod_fee_amount ?? 0)}
                   </dd>
                 </div>
               ) : null}
-              <div className="flex justify-between gap-3 border-t border-border pt-2 text-base">
-                <dt className="font-bold">{isCod ? "Total tagihan COD" : "Total tagihan"}</dt>
-                <dd className="tabular-nums font-bold">{formatCurrency(order.total_amount)}</dd>
+              <div className="flex justify-between gap-3 border-t border-border pt-2.5 text-sm">
+                <dt className="font-semibold">
+                  {isCod ? "Total tagihan (COD)" : "Total tagihan"}
+                  {ringkasanEdit ? (
+                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                      (sebelum perubahan disimpan)
+                    </span>
+                  ) : null}
+                </dt>
+                <dd
+                  className={`tabular-nums font-semibold ${
+                    ringkasanEdit ? "text-muted-foreground" : ""
+                  }`}
+                >
+                  {formatCurrency(order.total_amount)}
+                </dd>
               </div>
             </dl>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold">Alamat pengiriman</h2>
-              <button
-                type="button"
-                onClick={() => copyText(fullAddress(order))}
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Salin alamat
-              </button>
-            </div>
-            <p className="mt-3 text-sm font-semibold">{order.customer_name}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{order.customer_phone}</p>
-            <p className="mt-3 text-sm leading-6">{fullAddress(order) || "-"}</p>
-          </section>
+      </div>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-base font-bold">Pembayaran tercatat</h2>
-            {order.payments.length ? (
-              <ul className="mt-3 divide-y divide-border">
-                {order.payments.map((payment) => (
-                  <li key={payment.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                    <div>
-                      <p className="font-semibold">{humanize(payment.payment_method)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {payment.transaction_reference || formatDateTime(payment.paid_at)}
+      {/* Riwayat - 3 kolom */}
+      <section className="mt-4 grid items-start gap-4 lg:grid-cols-3">
+        <SectionCard
+          title="Riwayat pesanan"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("riwayat")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
+          <ol className="space-y-2.5 text-[13px]">
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Waktu pemesanan</span>
+              <span className="font-medium">{formatDateTime(order.created_at)}</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Update terakhir</span>
+              <span className="font-medium">{formatDateTime(order.updated_at)}</span>
+            </li>
+            {liveState !== "unavailable" && liveState !== "connected" ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Pembaruan langsung</span>
+                <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
+              </li>
+            ) : null}
+            {lastEventAt ? (
+              <li className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Event terakhir</span>
+                <span className="font-medium">{formatDateTime(lastEventAt)}</span>
+              </li>
+            ) : null}
+          </ol>
+        </SectionCard>
+        <SectionCard
+          title="Log perubahan status"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("status")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-y-auto"
+        >
+          {events.length ? (
+            <ul className="space-y-2.5 text-[13px]">
+              {events.map((event, index) => (
+                <li
+                  key={`${event.event_type}-${index}`}
+                  className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                >
+                  <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                  {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Alasan: {event.payload.reason}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatDateTime(event.created_at)}
+                  </p>
+                </li>
+              ))}
+            
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada log status.</p>
+          )}
+        </SectionCard>
+        <div id="percakapan-whatsapp" className="scroll-mt-20">
+        <SectionCard
+          title="Log WhatsApp"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDetailDrawer("wa")}>
+              Detail
+            </Button>
+          }
+          contentClassName="h-[420px] overflow-hidden p-0"
+        >
+          {order.whatsapp_messages.length ? (
+            <>
+            <div ref={waLogRef} className="h-full overflow-y-auto p-5">
+            <ul className="space-y-2.5 pr-1">
+              {order.whatsapp_messages.map((message) => {
+                const outbound = message.direction !== "inbound"
+                const isExpanded = expandedWaIds.has(message.id)
+                const waStatus = waMessageStatus(message.status)
+
+                // 1. Pesan Otomatis (Template): tampilkan ringkas sebagai list event + status checklist (owner 2026-09-16)
+                if (message.is_automated) {
+                  return (
+                    <li key={message.id} className="flex justify-end">
+                      <div className="w-full max-w-[92%] rounded-lg border border-border bg-card p-3 shadow-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {message.label || "WA Otomatis"}
+                            </span>
+                            <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">
+                              Otomatis
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 text-xs">
+                            {waStatus ? (
+                              <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                                <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                                <span>{waStatus.label}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground capitalize">{message.status}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span>
+                            {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                          </span>
+                          {message.text ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleWaExpand(message.id)}
+                              className="text-[11px] text-primary hover:underline font-medium"
+                            >
+                              {isExpanded ? "Sembunyikan isi" : "Lihat isi pesan"}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {isExpanded && message.text ? (
+                          <p className="mt-2 border-t border-border pt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+                            {message.text}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  )
+                }
+
+                // 2. Pesan Manual / Non-Template / Balasan Pelanggan: tampilkan teks pesan lengkap
+                return (
+                  <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
+                    <div
+                      className={`max-w-[85%] rounded-lg border px-3 py-2.5 ${
+                        outbound
+                          ? "border-border bg-muted/40"
+                          : "border-success/30 bg-success/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
+                        <span>{outbound ? "Toko (Pesan Manual)" : "Pelanggan"}</span>
+                      </div>
+
+                      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
+                        {message.text || message.label || humanize(message.direction)}
                       </p>
-                    </div>
-                    <div className="text-right">
-                      <StatusBadge status={payment.status} />
-                      <p className="tabular-nums mt-1 font-bold">{formatCurrency(payment.amount)}</p>
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                          {message.date_label ? `${message.date_label}, ${message.time_label}` : formatDateTime(message.sent_at || message.received_at)}
+                        </span>
+                        {outbound && waStatus ? (
+                          <span className={cn("inline-flex items-center gap-1", waStatus.className)}>
+                            <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span>{waStatus.label}</span>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Belum ada pembayaran.</p>
-            )}
-          </section>
+                )
+              })}
+            </ul>
+            </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
+          )}
+        </SectionCard>
         </div>
+      </section>
 
-        <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">Catatan internal</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {order.notes?.trim() || "Belum ada catatan."}
-            </p>
-          </section>
 
-          <section
-            ref={lacakRef}
-            id="lacak-pesanan"
-            className="rounded-lg border border-border bg-surface p-4 shadow-sm"
+      {printing ? (
+        <PrintOrderArea
+          data={{
+            ...order,
+            items: order.items.map((item) => ({
+              id: item.id,
+              name: item.name,
+              variant_sku: item.variant_sku,
+              variation_1_name: item.variation_1_name,
+              variation_1_option: item.variation_1_option,
+              variation_2_name: item.variation_2_name,
+              variation_2_option: item.variation_2_option,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+              note: item.note,
+            })),
+          }}
+        />
+      ) : null}
+      {/* Dialog Modal Catatan Internal Admin */}
+      <DialogPrimitive.Root open={notesModalOpen} onOpenChange={setNotesModalOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,34rem)] w-[min(calc(100%-2rem),30rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
           >
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-sm font-bold">Lacak pesanan</h2>
-              {latestShipping?.waybill_number ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  disabled={refreshBusy}
-                  onClick={refreshShipping}
-                >
-                  {refreshBusy ? "Memuat..." : "Refresh J&T"}
-                </Button>
-              ) : null}
+            <DialogPrimitive.Title className="sr-only">Catatan internal admin</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Catatan Internal Admin</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {order.order_number} · {order.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesModalOpen(false)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup catatan"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
             </div>
 
-            {latestShipping?.waybill_number ? (
-              <div className="mt-3 space-y-2 text-sm">
-                <p className="font-semibold">{latestShipping.carrier_name || "J&T Cargo"}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-mono text-xs">{latestShipping.waybill_number}</p>
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                    onClick={() => copyText(latestShipping.waybill_number || "")}
-                  >
-                    Salin resi
-                  </button>
-                </div>
-                <StatusBadge status={latestShipping.status} />
-                {latestShipping.status_raw ? (
-                  <p className="text-xs text-muted-foreground">{latestShipping.status_raw}</p>
-                ) : null}
-                <p className="text-xs text-muted-foreground">
-                  Update: {formatDateTime(latestShipping.last_status_at)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Status order shipping: {humanize(order.shipping_status)}
-                </p>
-                {latestShipping.tracking_url ? (
-                  <a
-                    href={latestShipping.tracking_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex text-xs font-semibold text-primary hover:underline"
-                  >
-                    Buka tracking kurir
-                  </a>
-                ) : null}
-                {isCod && order.order_status === "delivered" ? (
-                  <p className="text-xs font-semibold text-foreground">
-                    Paket diterima — pastikan pembayaran COD sudah dikonfirmasi.
+            {notesMode === "view" ? (
+              <div className="p-5 space-y-4">
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-warning" aria-hidden="true" />
+                    <span>Isi Catatan Lengkap:</span>
+                  </div>
+                  <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">
+                    {order.admin_notes}
                   </p>
-                ) : null}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <ConfirmAction
+                    trigger={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 text-xs"
+                        disabled={notesBusy}
+                      >
+                        Hapus Catatan
+                      </Button>
+                    }
+                    title="Hapus catatan internal?"
+                    description="Isi catatan internal pesanan ini akan dihapus permanen dan tidak bisa dikembalikan."
+                    confirmLabel="Hapus Catatan"
+                    processing={notesBusy}
+                    onConfirm={deleteAdminNotes}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setNotesModalOpen(false)}
+                    >
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setNotesText(order.admin_notes ?? "")
+                        setNotesMode("edit")
+                      }}
+                    >
+                      Edit Catatan
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Belum ada resi. Status shipping: {humanize(order.shipping_status)}
-              </p>
-            )}
-
-            {needsResi || order.order_status === "processing" ? (
-              <form onSubmit={storeShipping} className="mt-4 space-y-3 border-t border-border pt-4">
-                <p className="text-xs font-semibold uppercase tracking-tight text-muted-foreground">
-                  Input resi
-                </p>
-                <FormErrorSummary errors={shippingForm.errors} />
-                <Field id="shipping-mode" label="Sumber" required error={shippingForm.errors.mode}>
-                  <Select
-                    value={shippingForm.data.mode}
-                    onChange={(event) => shippingForm.setData("mode", event.target.value)}
-                  >
-                    <option value="jnt" disabled={!shippingActions.jntEnabled}>
-                      Buat via J&T{shippingActions.jntEnabled ? "" : " (nonaktif)"}
-                    </option>
-                    <option value="manual">Input nomor resi manual</option>
-                  </Select>
-                </Field>
-                {shippingForm.data.mode === "manual" ? (
-                  <Field
-                    id="waybill"
-                    label="Nomor resi"
-                    required
-                    error={shippingForm.errors.waybill_number}
-                  >
-                    <Input
-                      value={shippingForm.data.waybill_number}
-                      onChange={(event) =>
-                        shippingForm.setData("waybill_number", event.target.value)
-                      }
-                      placeholder="Mis. JT1234567890"
-                    />
-                  </Field>
-                ) : (
-                  <Field id="weight" label="Berat (kg)" error={shippingForm.errors.weight_kg}>
-                    <Input
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      value={shippingForm.data.weight_kg}
-                      onChange={(event) => shippingForm.setData("weight_kg", event.target.value)}
-                    />
-                  </Field>
-                )}
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(shippingForm.data.mark_shipped)}
-                    onChange={(event) =>
-                      shippingForm.setData("mark_shipped", event.target.checked)
-                    }
-                  />
-                  Tandai pesanan sebagai dikirim setelah resi tersimpan
-                </label>
-                <Button type="submit" className="w-full" disabled={shippingForm.processing}>
-                  {shippingForm.processing
-                    ? "Menyimpan..."
-                    : shippingForm.data.mode === "jnt"
-                      ? "Buat resi J&T"
-                      : "Simpan resi"}
-                </Button>
-              </form>
-            ) : null}
-          </section>
-
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">Ubah status</h2>
-            <Select
-              value={statusForm.data.order_status}
-              onChange={(event) => statusForm.setData("order_status", event.target.value)}
-              className="mt-3"
-            >
-              {orderStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {statusMeta(status).label}
-                </option>
-              ))}
-            </Select>
-            {statusForm.errors.order_status ? (
-              <p className="mt-2 text-xs text-destructive">{statusForm.errors.order_status}</p>
-            ) : null}
-            <Button
-              className="mt-3 w-full"
-              disabled={statusBusy || statusForm.data.order_status === order.order_status}
-              onClick={() => updateStatus()}
-            >
-              {statusBusy ? "Menyimpan..." : "Simpan status"}
-            </Button>
-          </section>
-
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <h2 className="text-sm font-bold">
-              {isCod ? "Pembayaran COD" : "Konfirmasi transfer"}
-            </h2>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              {isCod
-                ? "Tagihan COD biasanya dikonfirmasi saat paket sampai (Tandai Sampai / Selesaikan)."
-                : "Isi referensi bukti transfer, status selesai, lalu simpan — atau pakai tombol Proses Pesanan."}
-            </p>
-            <form onSubmit={storePayment} className="mt-3 space-y-3">
-              <FormErrorSummary errors={paymentForm.errors} />
-              <Field id="payment-method" label="Metode" required error={paymentForm.errors.payment_method}>
-                <Select
-                  value={paymentForm.data.payment_method}
-                  onChange={(event) => paymentForm.setData("payment_method", event.target.value)}
-                >
-                  <option value="cod">COD</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="gateway">Gateway</option>
-                </Select>
-              </Field>
-              <Field id="payment-amount" label="Jumlah" required error={paymentForm.errors.amount}>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={paymentForm.data.amount}
-                  onChange={(event) => paymentForm.setData("amount", event.target.value)}
-                />
-              </Field>
-              <Field id="payment-status" label="Status" required error={paymentForm.errors.status}>
-                <Select
-                  value={paymentForm.data.status}
-                  onChange={(event) => paymentForm.setData("status", event.target.value)}
-                >
-                  {["pending", "completed", "failed", "refunded"].map((status) => (
-                    <option key={status} value={status}>
-                      {statusMeta(status).label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                id="payment-reference"
-                label={isCod ? "Catatan COD (opsional)" : "No. referensi / bukti transfer"}
-                error={paymentForm.errors.transaction_reference}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  saveAdminNotes(notesText)
+                }}
+                className="p-5 space-y-4"
               >
-                <Input
-                  value={paymentForm.data.transaction_reference}
-                  onChange={(event) =>
-                    paymentForm.setData("transaction_reference", event.target.value)
-                  }
-                  placeholder={isCod ? "Mis. kurir konfirmasi lunas" : "Mis. TRX123 / jam transfer"}
-                />
-              </Field>
-              <Button type="submit" className="w-full" disabled={paymentForm.processing}>
-                {paymentForm.processing
-                  ? "Menyimpan..."
-                  : isCod
-                    ? "Catat pembayaran COD"
-                    : "Konfirmasi transfer"}
-              </Button>
-            </form>
-          </section>
-        </aside>
-      </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="show-notes-textarea" className="text-xs font-semibold text-foreground">
+                    Catatan Internal (Khusus Tim Admin & Gudang)
+                  </label>
+                  <Textarea
+                    id="show-notes-textarea"
+                    rows={4}
+                    value={notesText}
+                    onChange={(event) => setNotesText(event.target.value)}
+                    placeholder="Tulis instruksi khusus, riwayat kendala pelanggan, atau catatan pengerjaan..."
+                    maxLength={5000}
+                    className="resize-y"
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Maksimal 5.000 karakter. Catatan ini bersifat privat dan tidak dapat dibaca oleh pembeli.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={notesBusy}
+                    onClick={() => {
+                      if (order.admin_notes?.trim()) {
+                        setNotesMode("view")
+                      } else {
+                        setNotesModalOpen(false)
+                      }
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={notesBusy || (!notesText.trim() && !order.admin_notes)}
+                  >
+                    {notesBusy ? "Menyimpan..." : "Simpan Catatan"}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
+      {/* Sheet Samping Khusus: Status Pengiriman & Lacak Pesanan J&T */}
+      <Sheet open={trackingOpen} onOpenChange={setTrackingOpen}>
+        <SheetContent
+          side="right"
+          title="Status Pengiriman & Lacak Pesanan"
+          className="w-[min(90vw,28rem)] sm:max-w-md p-0"
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Status Pengiriman & Lacak Pesanan</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Pesanan {order.order_number} · {order.customer_name}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <ShippingTrackPanel
+              track={
+                tracking ?? {
+                  shipping_status: order.shipping_status,
+                  carrier_name: latestShipping?.carrier_name,
+                  waybill_number: latestShipping?.waybill_number,
+                  record_status: latestShipping?.status,
+                  status_raw: latestShipping?.status_raw,
+                  last_status_at: latestShipping?.last_status_at,
+                  tracking_url: latestShipping?.tracking_url,
+                  order_status: order.order_status,
+                  payment_status: order.payment_status,
+                  payment_method: order.payment_method,
+                  total_amount: order.total_amount,
+                }
+              }
+              timeline={tracking?.timeline}
+              jntEnabled={shippingActions.jntEnabled}
+              refreshBusy={refreshBusy}
+              onRefresh={latestShipping?.waybill_number ? refreshShipping : undefined}
+              onCopyWaybill={copyText}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Drawer Detail kartu log: riwayat pesanan, log perubahan status, dan
+          log WhatsApp. Kartu di halaman ber-tinggi tetap dengan isi ringkas;
+          isi lengkapnya dibuka lewat tombol Detail di header kartu. */}
+      <Sheet
+        open={detailDrawer !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailDrawer(null)
+        }}
+      >
+        <SheetContent
+          side="right"
+          title={
+            detailDrawer === "riwayat"
+              ? "Riwayat Pesanan"
+              : detailDrawer === "status"
+                ? "Log Perubahan Status"
+                : "Log WhatsApp"
+          }
+          className="w-[min(90vw,28rem)] sm:max-w-md p-0"
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                {detailDrawer === "riwayat"
+                  ? "Riwayat Pesanan"
+                  : detailDrawer === "status"
+                    ? "Log Perubahan Status"
+                    : "Log WhatsApp"}
+              </h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Pesanan {order.order_number} · {order.customer_name}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {detailDrawer === "riwayat" ? (
+              <div className="space-y-5 text-[13px]">
+                <div>
+                  <p className="text-xs font-semibold tracking-tight text-muted-foreground">
+                    Data Pesanan
+                  </p>
+                  <ol className="mt-2.5 space-y-2.5">
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Nomor pesanan</span>
+                      <span className="font-medium">{order.order_number}</span>
+                    </li>
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Waktu pemesanan</span>
+                      <span className="font-medium">{formatDateTime(order.created_at)}</span>
+                    </li>
+                    <li className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Update terakhir</span>
+                      <span className="font-medium">{formatDateTime(order.updated_at)}</span>
+                    </li>
+                    {lastEventAt ? (
+                      <li className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Event terakhir</span>
+                        <span className="font-medium">{formatDateTime(lastEventAt)}</span>
+                      </li>
+                    ) : null}
+                    {liveState !== "unavailable" && liveState !== "connected" ? (
+                      <li className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Pembaruan langsung</span>
+                        <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
+                      </li>
+                    ) : null}
+                  </ol>
+                </div>
+
+                {order.payments?.length ? (
+                  <div>
+                    <p className="text-xs font-semibold tracking-tight text-muted-foreground">
+                      Pembayaran
+                    </p>
+                    <ol className="mt-2.5 space-y-2.5">
+                      {order.payments.map((payment) => (
+                        <li key={payment.id} className="border-b border-border pb-2.5 last:border-0 last:pb-0">
+                          <p className="font-medium">
+                            {payment.payment_method} · {formatCurrency(payment.amount)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Status: {payment.status}
+                            {payment.paid_at ? ` · Dibayar ${formatDateTime(payment.paid_at)}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                {order.shipping_records.length ? (
+                  <div>
+                    <p className="text-xs font-semibold tracking-tight text-muted-foreground">
+                      Pengiriman
+                    </p>
+                    <ol className="mt-2.5 space-y-2.5">
+                      {order.shipping_records.map((record) => (
+                        <li key={record.id} className="border-b border-border pb-2.5 last:border-0 last:pb-0">
+                          <p className="font-medium">
+                            {record.carrier_name || "Kurir"}
+                            {record.waybill_number ? ` · ${record.waybill_number}` : ""}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Status: {record.status || "-"}
+                            {record.last_status_at ? ` · ${formatDateTime(record.last_status_at)}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+              </div>
+            ) : detailDrawer === "status" ? (
+              events.length ? (
+                <ol className="space-y-2.5 text-[13px]">
+                  {events.map((event, index) => (
+                    <li
+                      key={`${event.event_type}-${index}`}
+                      className="border-b border-border pb-2.5 last:border-0 last:pb-0"
+                    >
+                      <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                      {typeof event.payload?.reason === "string" && event.payload.reason ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">Alasan: {event.payload.reason}</p>
+                      ) : null}
+                      <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(event.created_at)}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-xs text-muted-foreground">Belum ada log status.</p>
+              )
+            ) : order.whatsapp_messages.length ? (
+              <ol className="space-y-2.5">
+                {order.whatsapp_messages.map((message) => {
+                  const outbound = message.direction !== "inbound"
+                  const waStatus = waMessageStatus(message.status)
+                  return (
+                    <li key={message.id} className={outbound ? "flex justify-end" : "flex justify-start"}>
+                      <div
+                        className={`w-full max-w-[95%] rounded-lg border px-3 py-2.5 ${
+                          outbound
+                            ? message.is_automated
+                              ? "border-border bg-card shadow-xs"
+                              : "border-border bg-muted/40"
+                            : "border-success/30 bg-success/5"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-xs font-semibold text-foreground">
+                              {message.label || (outbound ? "Toko (Pesan Manual)" : "Pelanggan")}
+                            </span>
+                            {message.is_automated ? (
+                              <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Otomatis
+                              </span>
+                            ) : null}
+                          </div>
+                          {waStatus ? (
+                            <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs", waStatus.className)}>
+                              <Icon name={waStatus.icon as never} className="size-3.5 shrink-0" aria-hidden="true" />
+                              <span>{waStatus.label}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                        {!message.is_automated && message.text ? (
+                          <p className="mt-1.5 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+                            {message.text}
+                          </p>
+                        ) : null}
+                        <div className="mt-1.5 text-[11px] text-muted-foreground">
+                          {message.date_label
+                            ? `${message.date_label}, ${message.time_label}`
+                            : formatDateTime(message.sent_at || message.received_at)}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : (
+              <p className="text-xs text-muted-foreground">Belum ada pesan WhatsApp.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Popup balas ulasan pelanggan. Komponennya sama dengan yang dipakai
+          daftar ulasan, jadi balasan bisa ditulis dari dua tempat. */}
+      <ReviewReplyDialog
+        row={reviewReplyOpen && order.testimonial ? order.testimonial : null}
+        onClose={() => setReviewReplyOpen(false)}
+      />
     </AdminLayout>
   )
 }
+

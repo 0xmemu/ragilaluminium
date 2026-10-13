@@ -94,19 +94,28 @@ The website is the **transaction engine** at the center of an ecosystem:
   catalog changes go through this module — no ad-hoc bulk scripts.
 
 ### 2.6 Media Module
-**Source of truth for product images/media URLs.**
-- Table: `product_media`.
-- Reads image URLs from Shopee source files, downloads and stores them in internal
-  storage/CDN, and exposes `stored_url`. Frontend consumes `stored_url` and respects
-  `visibility`. Uses archive-style flags (`visibility = archived` / `hidden`) instead
-  of deleting media.
+**Source of truth for product media attachments and physical assets.**
+- Tables: `media_assets` (one immutable shared image/video object) and
+  `product_media` (product/variant attachment flags).
+- Reads image URLs from Shopee source files, resolves repeated URLs/checksums to
+  one asset, and exposes derived URLs from the configured media disk. Frontend
+  respects attachment and asset visibility. Uses archive-style flags instead of
+  deleting media.
+- **Direct upload (admin, produk):** browser meminta presigned PUT URL
+  (`POST /admin/media/presign`, validasi mime/ukuran di server), mengunggah file
+  **langsung ke R2** (bucket CORS mengizinkan PUT dari `ra.333labs.tech`), lalu
+  `POST /admin/media/finalize` membuat `media_assets` + `product_media` dan
+  mengantrekan `ProcessUploadedMediaAsset` (queue `media`) untuk derivatif WebP
+  thumb/card/pdp async. File besar tidak pernah menetap di VPS; banner tetap
+  stream langsung ke R2 tanpa presign (tidak perlu diproses).
 
 ### 2.7 WhatsApp Module
 **Source of truth for messaging logs; notification & communication channel.**
 - Tables: `whatsapp_templates`, `whatsapp_messages`.
-- Uses WhatsApp Business API. Templates map internal keys
-  (`order_created`, `payment_confirmed`, `order_shipped`, `order_delivered`,
-  `order_issue_followup`) to provider templates.
+- Uses dual-provider gateway: `meta` resmi and optional `baileys`.
+  Templates map internal keys (`order_created`, `payment_confirmed`,
+  `order_shipped`, `order_delivered`, `order_issue_followup`) to Meta templates;
+  BAILEYS sends rendered `body_preview` text for compare/switch mode.
 - Reflects order/payment/shipping state; does **not** own business state or perform
   verification. Logs outbound and inbound messages, linked to `orders` where applicable.
 
@@ -119,7 +128,7 @@ The website is the **transaction engine** at the center of an ecosystem:
 
 ### 2.9 Public UI Module
 **Customer-facing frontend** (catalog, cart, checkout, basic order status).
-- Routes under `/` (home, `/windows`, `/doors`, `/bouven`, `/search`,
+- Routes under `/` (home, `/products/{category}`, canonical model/design paths, legacy category redirects, `/search`,
   `/product/{parent_sku}`, `/cart`, `/checkout`, `/order/...`).
 - Reads catalog via Catalog Module; creates orders via Order Module. Does not touch
   imports, media processing internals, or WhatsApp logs.
@@ -140,10 +149,10 @@ Admin uploads Shopee file
   → Job: ProcessCatalogImport (queued; holds only jobId + storedPath)
       → parses rows → import_job_rows
       → writes products / product_variants / product_attributes
-      → creates product_media (status: pending, source_url from Shopee)
-  → Job: DownloadProductMedia (queued per media row)
-      → downloads image → stored_path / stored_url
-      → product_media.status: downloaded
+      → creates media_assets + product_media attachments (pending, source_url from Shopee)
+  → Job: DownloadMediaAsset (queued per shared asset)
+      → downloads image/video → checksum-based media-assets/{sha256}/...
+      → asset.status: ready; attachments.status: downloaded
   → import_jobs.status: completed (success_rows / failed_rows tallied)
 ```
 Failed rows stay as `import_job_rows` with `error_reason`; admins download
@@ -154,8 +163,9 @@ corrections. No hard deletes — archive flags instead.
 Customer: POST /cart/add → CartService (session/cookie)
 Customer: POST /checkout/validate → validation + shipping estimate
 Customer: POST /checkout/place-order
-  → CheckoutController@placeOrder
+  → CheckoutController@placeOrder (session idempotency key)
   → OrderService::createFromCart()
+      → unique orders.checkout_idempotency_key guards retries/concurrency
       → writes orders, order_items, initial payments
       → dispatches OrderCreated event
   → Listener: SendOrderCreatedWhatsApp
@@ -169,13 +179,20 @@ row or no API token exists.
 ### 3.3 Payment → Order → WhatsApp
 ```
 Admin: POST /admin/orders/{id}/payments (manual transfer confirmation)
-  → PaymentController@store → payments (completed, evidence_url)
+  → PaymentController@store → PaymentService (row locks + settlement sum)
+  → only full settlement marks order paid/processing
   → PaymentConfirmed event
   → Listener: SendPaymentConfirmedWhatsApp
       → whatsapp_messages (outbound), order status advances
 ```
 
-### 3.4 Shipping → Order / WhatsApp (two directions)
+### 3.4 Cancellation → Inventory
+
+`PUT /admin/orders/{id}/status` with `cancelled` routes through
+`OrderService::cancel()`: lock order, aggregate item quantities per variant,
+restore stock once, write the status event, then commit cancellation.
+
+### 3.5 Shipping → Order / WhatsApp (two directions)
 - **Outbound (admin-initiated):** `POST /admin/shipping/{id}/refresh` →
   `ShippingService::applyCarrierUpdate` re-queries carrier; updates
   `shipping_records` and cascades `orders.shipping_status`; customer is notified
@@ -185,10 +202,12 @@ Admin: POST /admin/orders/{id}/payments (manual transfer confirmation)
   `shipping_records` + cascades `orders.shipping_status` (graceful when waybill
   missing).
 
-### 3.5 WhatsApp Inbound (customer)
+### 3.6 WhatsApp Inbound (customer)
 ```
 POST /webhook/whatsapp → WhatsAppController@handle
-  → parses payload → whatsapp_messages (inbound)
+  → parses payload Meta → whatsapp_messages (inbound, provider=meta)
+POST /webhook/whatsapp/baileys → WhatsAppController@handleBaileys
+  → parses BAILEYS events → whatsapp_messages (inbound, provider=baileys)
   → linked to orders where applicable (manual comms: proof, confirmations)
 GET /webhook/whatsapp  → verification handshake (hub.challenge)
 ```
@@ -205,12 +224,15 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
 - **Contract:** `products.parent_sku` / `product_variants.variant_sku` are the
   official SKU references; no parallel SKU system is created.
 
-### 4.2 WhatsApp Business API (bidirectional)
+### 4.2 WhatsApp Gateway (bidirectional)
 - **Outbound:** transactional/notification messages triggered by domain events
   (OrderCreated, PaymentConfirmed, shipping updates). Templates owned in
   `whatsapp_templates`; sends/receipts logged in `whatsapp_messages`.
-- **Inbound:** webhook (`/webhook/whatsapp`) logs customer messages and links them
-  to orders. Manual channel for payment proof, confirmations, complaints.
+- **Provider switch:** `WHATSAPP_PROVIDER` selects active provider; optional
+  `WHATSAPP_COMPARE_PROVIDER` + `WHATSAPP_COMPARE_ALLOWLIST` duplicate sends only
+  to nomor uji for direct comparison.
+- **Inbound:** webhook Meta (`/webhook/whatsapp`) and webhook BAILEYS
+  (`/webhook/whatsapp/baileys`) log customer messages and link them to orders.
 - **Boundaries:** WhatsApp Module reflects state; it never decides order/payment/
   shipping actions.
 
@@ -283,7 +305,7 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
 ## 7. Route Surface Summary (per `api-and-routes-ragil-aluminium.md`)
 
 - **Public web:** `/`, `/about`, `/faq`, `/contact`, `/cara-pemesanan`,
-  `/policy/privacy`, `/policy/terms`, `/windows`, `/doors`, `/bouven`, `/search`,
+  `/policy/privacy`, `/policy/terms`, `/products/{category}`, legacy category redirects, `/search`,
   `/product/{parent_sku}`, `/cart*`, `/checkout*`, `/order/*`.
 - **Auth:** `/login`, `/logout` (admin only).
 - **Admin (`/admin`, auth+role):** dashboard, products/variants/attributes/media,
@@ -293,7 +315,7 @@ GET /webhook/whatsapp  → verification handshake (hub.challenge)
   category, product detail (`Product::toApiArray()` / `ProductVariant::toApiArray()`),
   search.
 - **Webhooks (CSRF-exempt):** `GET/POST /webhook/whatsapp`,
-  `POST /webhook/shipping/jnt`.
+  `POST /webhook/whatsapp/baileys`, `POST /webhook/shipping/jnt`.
 
 ---
 

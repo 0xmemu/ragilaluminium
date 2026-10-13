@@ -23,13 +23,15 @@ class AdminProductStockInputTest extends TestCase
         $response = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Jendela manual',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'active',
+            // Create tanpa checklist publish harus tetap menjadi draf arsip.
+            'status' => 'archived',
             'homepage_popular' => false,
             'homepage_popular_sort' => 0,
             'create_initial_variant' => true,
+            'randomize_stock' => false,
             'initial_price' => 1500000,
             'initial_stock' => 5000,
         ]);
@@ -48,12 +50,19 @@ class AdminProductStockInputTest extends TestCase
             strspn(substr($product->parent_sku, strlen($prefix)), ShopeeStyleSku::RANDOM_ALPHABET),
         );
 
-        $this->assertDatabaseHas('product_variants', [
-            'variant_sku' => $product->parent_sku,
-            'price' => 1500000,
-            'stock' => 5000,
-            'status' => 'active',
-        ]);
+        // Varian awal punya SKU opak independen RA + 6..8 acak (tanpa dash),
+        // diasosiasikan ke produk via product_id FK - tidak pernah sama dengan parent.
+        $initial = ProductVariant::where('product_id', $product->id)->first();
+        $this->assertNotNull($initial);
+        $this->assertStringStartsWith(ShopeeStyleSku::WEBSITE_PREFIX, $initial->variant_sku);
+        $this->assertStringNotContainsString('-', $initial->variant_sku);
+        $this->assertNotSame($product->parent_sku, $initial->variant_sku);
+        $tokenLen = strlen($initial->variant_sku) - strlen(ShopeeStyleSku::WEBSITE_PREFIX);
+        $this->assertGreaterThanOrEqual(ShopeeStyleSku::VARIANT_RANDOM_MIN, $tokenLen);
+        $this->assertLessThanOrEqual(ShopeeStyleSku::VARIANT_RANDOM_MAX, $tokenLen);
+        $this->assertEquals(1500000, (float) $initial->price);
+        $this->assertEquals(5000, (int) $initial->stock);
+        $this->assertEquals('active', $initial->status);
     }
 
     public function test_admin_variant_store_auto_generates_unique_variant_sku(): void
@@ -66,10 +75,11 @@ class AdminProductStockInputTest extends TestCase
         $create = $this->actingAs($admin)->post(route('admin.products.store'), [
             'name' => 'Produk varian',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'SLIDING',
             'design_variant' => 'POLOS',
-            'status' => 'active',
+            // Create tanpa checklist publish harus tetap menjadi draf arsip.
+            'status' => 'archived',
             'homepage_popular' => false,
             'homepage_popular_sort' => 0,
             'create_initial_variant' => false,
@@ -85,7 +95,7 @@ class AdminProductStockInputTest extends TestCase
             'price' => 2000000,
             'stock' => 10,
             'status' => 'active',
-        ])->assertRedirect(route('admin.products.variants.index', $product));
+        ])->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
 
         $this->actingAs($admin)->post(route('admin.products.variants.store', $product), [
             'variation_1_name' => 'Ukuran',
@@ -93,21 +103,30 @@ class AdminProductStockInputTest extends TestCase
             'price' => 2500000,
             'stock' => 5,
             'status' => 'active',
-        ])->assertRedirect(route('admin.products.variants.index', $product));
+        ])->assertRedirect(route('admin.products.edit', ['product' => $product, 'tab' => 'varian']));
 
-        // Varian pertama memakai parent ID; berikutnya parent + suffix acak 6 karakter.
-        $this->assertDatabaseHas('product_variants', ['variant_sku' => $parentSku]);
-
-        $suffixed = ProductVariant::query()
+        // Setiap varian: SKU opak independen RA + 6..8 acak (tanpa dash), tidak ada
+        // yang sama dengan parent, asosiasi via product_id (bukan parse SKU).
+        $variants = ProductVariant::query()
             ->where('product_id', $product->id)
-            ->where('variant_sku', '!=', $parentSku)
-            ->firstOrFail();
+            ->orderBy('id')
+            ->get();
 
-        $this->assertStringStartsWith($parentSku.'-', $suffixed->variant_sku);
-        $this->assertSame(strlen($parentSku) + 7, strlen($suffixed->variant_sku));
+        $this->assertCount(2, $variants);
+        foreach ($variants as $variant) {
+            $this->assertStringStartsWith(ShopeeStyleSku::WEBSITE_PREFIX, $variant->variant_sku);
+            $this->assertStringNotContainsString('-', $variant->variant_sku);
+            $this->assertNotSame($parentSku, $variant->variant_sku);
+            $tokenLen = strlen($variant->variant_sku) - strlen(ShopeeStyleSku::WEBSITE_PREFIX);
+            $this->assertGreaterThanOrEqual(ShopeeStyleSku::VARIANT_RANDOM_MIN, $tokenLen);
+            $this->assertLessThanOrEqual(ShopeeStyleSku::VARIANT_RANDOM_MAX, $tokenLen);
+        }
         $this->assertSame(
-            6,
-            strspn(substr($suffixed->variant_sku, strlen($parentSku) + 1), ShopeeStyleSku::RANDOM_ALPHABET),
+            2,
+            ProductVariant::query()
+                ->where('product_id', $product->id)
+                ->distinct('variant_sku')
+                ->count('variant_sku'),
         );
     }
 }

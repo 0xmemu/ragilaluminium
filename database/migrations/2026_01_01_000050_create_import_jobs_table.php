@@ -10,7 +10,10 @@ return new class extends Migration
     {
         Schema::create('import_jobs', function (Blueprint $table) {
             $table->id();
-            $table->enum('type', ['shopee_mass_upload', 'shopee_mass_update', 'internal_bulk_update']);
+            // Nilai diselaraskan dgn 2026_08_27_000001 agar fresh install (sqlite/test)
+            // menerima catalog_import & stock_price_update; DB MySQL lama dihandle
+            // oleh migration 2026_08_27_000001.
+            $table->enum('type', ['catalog_import', 'stock_price_update', 'internal_bulk_update', 'shopee_mass_upload', 'shopee_mass_update']);
             $table->string('source_file_name');
             $table->string('source_file_path')->nullable();
             $table->integer('total_rows')->nullable();

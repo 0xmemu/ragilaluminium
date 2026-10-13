@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CatalogTaxonomy
 {
-    private const CACHE_KEY = 'catalog.taxonomy.v3';
+    private const CACHE_KEY = 'catalog.taxonomy.v4';
 
     private const CACHE_TTL_SECONDS = 300;
 
@@ -31,7 +31,10 @@ class CatalogTaxonomy
                         DB::raw('count(*) as total')
                     )
                     ->groupBy('product_category', 'product_model', 'design_variant')
-                    ->get();
+                    ->get()
+                    // Kategori data lama (WINDOW/DOOR/BOUVEN) dinormalisasi ke
+                    // kanonik Indonesia agar kartu & konsumen membandingkan satu kode.
+                    ->each(fn ($r) => $r->product_category = \App\Support\CatalogLabels::normalizeCategory((string) $r->product_category));
             } catch (\Throwable) {
                 return collect();
             }
@@ -47,6 +50,11 @@ class CatalogTaxonomy
         Cache::forget('catalog.taxonomy.v2.megaNav');
         Cache::forget('catalog.taxonomy.v2.modelCards.8');
         Cache::forget('catalog.taxonomy.v2.modelCards.v2.8');
+        // Home & katalog cache (2026-08-21) - invalidasi saat CMS produk berubah.
+        Cache::forget('home.popular_cards');
+        Cache::forget('home.featured_products');
+        Cache::forget('home.promo_slides');
+        Cache::forget('catalog.category_menu');
     }
 
     /**
@@ -54,12 +62,12 @@ class CatalogTaxonomy
      *
      * @return list<array{title: string, count: string, meta: string, desc: string, image: ?string, href: string, model: string, category: string, designs: list<string>}>
      */
-    public static function modelCards(int $limit = 0, ?string $design = null): array
+    public static function modelCards(int $limit = 0, ?string $design = null, ?string $category = null): array
     {
         $design = CatalogLabels::normalizeDesign($design);
-        $cacheKey = self::CACHE_KEY.'.modelCards.'.($limit ?: 'all').'.'.($design ?? 'any');
+        $cacheKey = self::CACHE_KEY.'.modelCards.'.($limit ?: 'all').'.'.($design ?? 'any').'.'.($category ?? 'any');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design) {
+        $cards = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($limit, $design, $category) {
             $rows = self::rows();
             if ($rows->isEmpty()) {
                 return [];
@@ -69,11 +77,18 @@ class CatalogTaxonomy
                 $rows = $rows->where('design_variant', $design);
             }
 
+            if ($category) {
+                $rows = $rows->where('product_category', $category);
+            }
+
             if ($rows->isEmpty()) {
                 return [];
             }
 
-            $categoryOrder = ['WINDOW', 'DOOR', 'BOUVEN'];
+            $categoryOrder = array_values(array_unique(array_merge(
+                CategoryUrl::productCategoryCodes(),
+                $rows->pluck('product_category')->all(),
+            )));
             $wanted = [];
 
             foreach ($categoryOrder as $category) {
@@ -128,18 +143,21 @@ class CatalogTaxonomy
             }
 
             $cards = [];
+            $pairs = [];
             foreach ($wanted as $w) {
                 $sample = $samples->get($w['model'].'|'.$w['category']);
-                $route = match ($w['category']) {
-                    'DOOR' => 'catalog.doors',
-                    'BOUVEN' => 'catalog.bouven',
-                    default => 'catalog.windows',
-                };
-
+                $categorySlug = CategoryUrl::categoryToSlug((string) $w['category']);
+                $route = $design ? 'catalog.design' : 'catalog.model';
                 $params = array_filter([
-                    'model' => $w['model'],
-                    'design' => $design,
+                    'category' => $categorySlug,
+                    'model' => strtolower(str_replace('_', '-', $w['model'])),
+                    'design' => $design ? strtolower(str_replace('_', '-', $design)) : null,
                 ]);
+
+                $pairs[] = [
+                    'category' => $w['category'],
+                    'model' => $w['model'],
+                ];
 
                 $cards[] = [
                     'title' => CatalogLabels::modelCardTitle($w['category'], $w['model']),
@@ -154,8 +172,61 @@ class CatalogTaxonomy
                 ];
             }
 
-            return $cards;
+            $inspiration = ModelProductPresentation::inspirationByPair($pairs);
+
+            return array_map(
+                fn (array $card) => ModelProductPresentation::enrichCard($card, $inspiration),
+                $cards,
+            );
         });
+
+        // Sortir default "popular" - dihitung segar tiap request agar tidak stale di cache.
+        return self::sortByPopularity($cards);
+    }
+
+    /**
+     * Total kuantitas terjual (validOrderItems) per model untuk sortir "popular".
+     *
+     * @return array<string, int>
+     */
+    protected static function modelPopularity(): array
+    {
+        return Product::visible()
+            ->withPopularityScore()
+            ->get()
+            ->groupBy(
+                fn (Product $p) => strtoupper((string) $p->product_category).'|'.strtoupper((string) $p->product_model)
+            )
+            ->map(fn (Collection $group) => (int) $group->sum(fn (Product $product) => (int) ($product->sold_count ?? 0) + (int) ($product->popularity_seed ?? 0)))
+            ->all();
+    }
+
+    /**
+     * Urutkan kartu model: total penjualan tertinggi di depan (default "popular").
+     *
+     * @param  list<array<string, mixed>>  $cards
+     * @return list<array<string, mixed>>
+     */
+    protected static function sortByPopularity(array $cards): array
+    {
+        if ($cards === []) {
+            return $cards;
+        }
+
+        $popularity = self::modelPopularity();
+        $score = static fn (array $card) => (int) (
+            $popularity[
+                strtoupper((string) ($card['category'] ?? '')).'|'.strtoupper((string) ($card['model'] ?? ''))
+            ] ?? 0
+        );
+
+        usort(
+            $cards,
+            fn (array $a, array $b): int => $score($b) <=> $score($a)
+                ?: strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+        );
+
+        return $cards;
     }
 
     /**
@@ -254,83 +325,81 @@ class CatalogTaxonomy
     private static function buildMegaMenuNav(): array
     {
         $rows = self::rows();
-        $columns = [
-            'WINDOW' => ['title' => 'Jendela Aluminium', 'route' => 'catalog.windows', 'icon' => 'layout-grid'],
-            'DOOR' => ['title' => 'Pintu Aluminium', 'route' => 'catalog.doors', 'icon' => 'door-open'],
-            'BOUVEN' => ['title' => 'Boven Aluminium', 'route' => 'catalog.bouven', 'icon' => 'columns-3'],
-        ];
+
+        // Kategori kanonik dari tabel categories (bukan daftar tetap WINDOW/DOOR/BOUVEN).
+        // Admin dapat menambah kategori → otomatis muncul di mega menu / nav.
+        $columns = [];
+        $samplesCategories = [];
+        foreach (CategoryUrl::categoryLinks() as $link) {
+            $code = (string) $link["code"];
+            $columns[$code] = [
+                "title" => trim(((string) $link["label"])." Aluminium"),
+                "slug" => (string) $link["slug"],
+                "icon" => self::categoryIcon($code),
+            ];
+            $samplesCategories[] = $code;
+        }
+
+        if ($columns === []) {
+            return self::fallbackMegaNav();
+        }
 
         $sidebar = [];
         $panels = [];
-        $samplesByCategory = self::sampleProductsByCategory(array_keys($columns), 6);
+        $samplesByCategory = self::sampleProductsByCategory($samplesCategories, 6);
 
         foreach ($columns as $category => $meta) {
-            $catRows = $rows->where('product_category', $category);
+            $catRows = $rows->where("product_category", $category);
             if ($catRows->isEmpty() && $rows->isNotEmpty()) {
                 continue;
             }
 
-            if ($rows->isEmpty()) {
-                $fallback = collect(config('sitemap.navigation.mega_menu', []))
-                    ->firstWhere('route', $meta['route']);
-                $items = collect($fallback['items'] ?? [])->map(function (array $item) use ($meta) {
-                    $params = array_filter([
-                        'model' => CatalogLabels::normalizeModel($item['model'] ?? null),
-                        'design' => CatalogLabels::normalizeDesign($item['design'] ?? null),
-                    ], fn ($v) => filled($v));
-
-                    return [
-                        'label' => $item['label'],
-                        'model' => $params['model'] ?? null,
-                        'design' => $params['design'] ?? null,
-                        'href' => route($meta['route'], $params, absolute: false),
-                    ];
-                })->all();
-            } else {
-                $items = [];
+            $items = [];
+            if ($rows->isNotEmpty()) {
                 foreach (CatalogLabels::MODEL_ORDER as $model) {
-                    $modelRows = $catRows->where('product_model', $model);
+                    $modelRows = $catRows->where("product_model", $model);
                     if ($modelRows->isEmpty()) {
                         continue;
                     }
 
                     foreach (CatalogLabels::DESIGN_ORDER as $design) {
-                        $hit = $modelRows->firstWhere('design_variant', $design);
+                        $hit = $modelRows->firstWhere("design_variant", $design);
                         if (! $hit) {
                             continue;
                         }
 
                         $params = array_filter([
-                            'model' => $model,
-                            'design' => $design === 'POLOS' ? null : $design,
+                            "category" => $meta["slug"],
+                            "model" => $model,
+                            "design" => $design === "POLOS" ? null : $design,
                         ], fn ($v) => filled($v));
 
                         $items[] = [
-                            'label' => CatalogLabels::productLine($category, $model, $design),
-                            'model' => $model,
-                            'design' => $design === 'POLOS' ? null : $design,
-                            'href' => route($meta['route'], $params, absolute: false),
+                            "label" => CatalogLabels::productLine($category, $model, $design),
+                            "model" => $model,
+                            "design" => $design === "POLOS" ? null : $design,
+                            "href" => PublicNavigation::canonicalHref("catalog.category", $params, false),
                         ];
                     }
                 }
             }
 
-            if ($items === []) {
+            if ($items === [] && $rows->isNotEmpty()) {
                 continue;
             }
 
             $sidebar[] = [
-                'key' => $category,
-                'label' => $meta['title'],
-                'icon' => $meta['icon'],
+                "key" => $category,
+                "label" => $meta["title"],
+                "icon" => $meta["icon"],
             ];
 
             $panels[$category] = [
-                'title' => $meta['title'],
-                'route' => $meta['route'],
-                'shop_all' => route($meta['route'], absolute: false),
-                'items' => $items,
-                'samples' => $samplesByCategory[$category] ?? [],
+                "title" => $meta["title"],
+                "route" => "catalog.category",
+                "shop_all" => PublicNavigation::canonicalHref("catalog.category", ["category" => $meta["slug"]], false),
+                "items" => $items,
+                "samples" => $samplesByCategory[$category] ?? [],
             ];
         }
 
@@ -338,7 +407,20 @@ class CatalogTaxonomy
             return self::fallbackMegaNav();
         }
 
-        return compact('sidebar', 'panels');
+        return compact("sidebar", "panels");
+    }
+
+    private static function categoryIcon(string $code): string
+    {
+        $key = strtolower($code);
+        if (in_array($key, ["door", "pintu"], true)) {
+            return "door-open";
+        }
+        if (in_array($key, ["bouven", "boven"], true)) {
+            return "columns-3";
+        }
+
+        return "layout-grid";
     }
 
     /**
@@ -396,13 +478,14 @@ class CatalogTaxonomy
         $panels = [];
 
         foreach (config('sitemap.navigation.mega_menu', []) as $column) {
-            $key = match ($column['route'] ?? '') {
-                'catalog.doors' => 'DOOR',
-                'catalog.bouven' => 'BOUVEN',
-                default => 'WINDOW',
-            };
+            // Kategori canonical berasal dari slug konfigurasi/database.
+            // Tidak ada lagi ketergantungan pada route kategori statis.
+            $key = CategoryUrl::categoryFromSlug((string) ($column['category'] ?? '')) ?? 'JENDELA';
 
-            $items = collect($column['items'] ?? [])->map(function (array $item) use ($column) {
+            $slug = CategoryUrl::categoryToSlug($key);
+            $baseParams = ['category' => $slug];
+
+            $items = collect($column['items'] ?? [])->map(function (array $item) use ($baseParams) {
                 $params = array_filter([
                     'model' => CatalogLabels::normalizeModel($item['model'] ?? null),
                     'design' => CatalogLabels::normalizeDesign($item['design'] ?? null),
@@ -412,7 +495,7 @@ class CatalogTaxonomy
                     'label' => $item['label'],
                     'model' => $params['model'] ?? null,
                     'design' => $params['design'] ?? null,
-                    'href' => route($column['route'], $params, absolute: false),
+                    'href' => PublicNavigation::canonicalHref('catalog.category', $baseParams + $params, false),
                 ];
             })->all();
 
@@ -420,16 +503,16 @@ class CatalogTaxonomy
                 'key' => $key,
                 'label' => $column['title'],
                 'icon' => match ($key) {
-                    'DOOR' => 'door-open',
-                    'BOUVEN' => 'columns-3',
+                    'PINTU' => 'door-open',
+                    'BOVEN' => 'columns-3',
                     default => 'layout-grid',
                 },
             ];
 
             $panels[$key] = [
                 'title' => $column['title'],
-                'route' => $column['route'],
-                'shop_all' => route($column['route'], absolute: false),
+                'route' => 'catalog.category',
+                'shop_all' => PublicNavigation::canonicalHref('catalog.category', $baseParams, false),
                 'items' => $items,
                 'samples' => [],
             ];

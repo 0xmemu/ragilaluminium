@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Announcement;
 use App\Models\CmsBanner;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -13,11 +14,12 @@ use Illuminate\Support\Str;
  * Flash Sale di ticker = event jangka waktu (cms_pages.flash-sale.content.period),
  * bukan daftar produk. Produk Flash Sale dipilih pelanggan di /flash-sale atau hasil cari.
  *
- * Copy: jangan pakai "obral" / "stok terbatas" — stok selalu ada;
+ * Copy: jangan pakai "obral" / "stok terbatas" - stok selalu ada;
  * yang boleh limited-time hanya promo, diskon, flash sale (periode), subsidi ongkir.
  */
 class ActiveAnnouncements
 {
+    private const MAX_TICKER_CHARACTERS = 64;
     private const BANNED_PATTERN = '/\b(obral|stok\s+terbatas|kuota\s+habis|stok\s+menipis)\b/iu';
 
     /** Ticker umum tidak boleh teriak Flash Sale berulang; satu slot periode saja. */
@@ -31,6 +33,26 @@ class ActiveAnnouncements
         $cfg = config('sitemap.announcement', []);
         if (! ($cfg['enabled'] ?? false)) {
             return [];
+        }
+
+        // Bar promo yang dikelola admin (dashboard) lebih diutamakan.
+        // Begitu tabel pernah terisi, hasil DB otoritatif: item yang tidak aktif
+        // atau periode berakhir berarti bar tidak menampilkan apa pun (tidak
+        // kembali ke sumber lama) - "nonaktifkan semua" benar-benar menyembunyikan bar.
+        if (Announcement::query()->exists()) {
+            $adminItems = self::fromAdminAnnouncements();
+
+            // Bar promo kampanye (sync_bar_promo) tetap paling atas.
+            try {
+                $campaignBar = CampaignBannerSync::activeBarPromo();
+                if ($campaignBar !== null) {
+                    array_unshift($adminItems, $campaignBar);
+                }
+            } catch (\Throwable) {
+                // Kolom sync mungkin belum ada di sebagian environment.
+            }
+
+            return self::uniqueByText(array_values($adminItems));
         }
 
         $now = Carbon::now();
@@ -72,7 +94,53 @@ class ActiveAnnouncements
             array_unshift($out, $item);
         }
 
+        // Bar promo kampanye (sync_bar_promo): paling atas, hanya saat live.
+        try {
+            $campaignBar = CampaignBannerSync::activeBarPromo();
+            if ($campaignBar !== null) {
+                array_unshift($out, $campaignBar);
+            }
+        } catch (\Throwable) {
+            // Sync banner table column may not exist in some environments.
+        }
+
         return self::uniqueByText(array_values($out));
+    }
+
+    /**
+     * Item bar promo dari tabel `announcements` (dikelola di dashboard admin).
+     * Urutan tampil = urutan `sort_order`; hanya item aktif + dalam periode.
+     *
+     * @return list<array{text: string, href: string}>
+     */
+    private static function fromAdminAnnouncements(): array
+    {
+        try {
+            $rows = Announcement::query()
+                ->published()
+                ->active()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+        } catch (\Throwable) {
+            // Tabel belum tersedia di sebagian environment.
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            $text = self::limitTickerText((string) $row->text);
+            if ($text === '' || self::isBannedCopy($text)) {
+                continue;
+            }
+            $href = trim((string) $row->href);
+            $out[] = [
+                'text' => $text,
+                'href' => $href !== '' ? $href : route('catalog.index'),
+            ];
+        }
+
+        return $out;
     }
 
     /**
@@ -128,7 +196,7 @@ class ActiveAnnouncements
             if (($slide['source'] ?? null) === 'automatic') {
                 continue;
             }
-            if (($slide['layout'] ?? null) === 'landing') {
+            if (($slide['layout'] ?? null) === 'landing' || ($slide['layout'] ?? null) === 'placeholder') {
                 continue;
             }
 
@@ -147,7 +215,7 @@ class ActiveAnnouncements
     }
 
     /**
-     * Model-first ticker line — sentence case, no ALL CAPS dump / Flash Sale shout.
+     * Model-first ticker line - sentence case, no ALL CAPS dump / Flash Sale shout.
      *
      * @param  array<string, mixed>  $slide
      */
@@ -236,6 +304,7 @@ class ActiveAnnouncements
         }
 
         $params = is_array($raw['params'] ?? null) ? $raw['params'] : [];
+        [$routeName, $params] = PublicNavigation::canonicalRoute($routeName, $params);
 
         return route($routeName, $params);
     }
@@ -265,6 +334,13 @@ class ActiveAnnouncements
         return (bool) preg_match(self::FLASH_SHOUT_PATTERN, $text);
     }
 
+    private static function limitTickerText(string $text): string
+    {
+        $normalized = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+
+        return Str::limit($normalized, self::MAX_TICKER_CHARACTERS, '...');
+    }
+
     /**
      * @param  list<array{text: string, href: string}>  $items
      * @return list<array{text: string, href: string}>
@@ -274,12 +350,17 @@ class ActiveAnnouncements
         $seen = [];
         $out = [];
         foreach ($items as $item) {
-            $key = Str::lower($item['text']);
+            $text = self::limitTickerText((string) ($item['text'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+
+            $key = Str::lower($text);
             if (isset($seen[$key])) {
                 continue;
             }
             $seen[$key] = true;
-            $out[] = $item;
+            $out[] = [...$item, 'text' => $text];
         }
 
         return $out;

@@ -15,8 +15,7 @@ class ShippingController extends Controller
     public function __construct(
         protected ShippingService $shipping,
         protected JntCargoClient $jnt,
-    ) {
-    }
+    ) {}
 
     /**
      * Push status dari J&T Cargo.
@@ -30,16 +29,22 @@ class ShippingController extends Controller
         $signature = $request->header(config('jnt.webhook.signature_header'))
             ?? $request->input('digest');
 
-        // Verifikasi tanda tangan bila private key tersedia (lepas dari JNT_ENABLED).
-        if (filled(config('jnt.webhook.private_key'))) {
-            if (! $this->jnt->verifyWebhookSignature($rawJson, $signature)) {
-                Log::channel('jnt')->warning('JNT webhook signature invalid', [
-                    'ip' => $request->ip(),
-                    'has_signature' => (bool) $signature,
-                ]);
+        // Jika credential belum dikonfigurasi, terima webhook secara diam
+        // (ACK success) agar J&T berhenti me-retry. Tidak ada yang bisa
+        // diproses tanpa credential, tapi retry tanpa henti lebih merugikan.
+        if (blank(config('jnt.webhook.private_key'))) {
+            Log::channel('jnt')->debug('JNT webhook acknowledged (integration not configured)');
 
-                return $this->ack(false, 'invalid signature');
-            }
+            return $this->ack(true);
+        }
+
+        if (! $this->jnt->verifyWebhookSignature($rawJson, $signature)) {
+            Log::channel('jnt')->warning('JNT webhook signature invalid', [
+                'source_ip_ref' => $this->logReference($request->ip()),
+                'has_signature' => (bool) $signature,
+            ]);
+
+            return $this->ack(false, 'invalid signature');
         }
 
         $payload = $rawJson !== '' ? json_decode($rawJson, true) : $request->all();
@@ -47,17 +52,22 @@ class ShippingController extends Controller
             return $this->ack(false, 'invalid payload');
         }
 
-        Log::channel('jnt')->info('JNT webhook received', ['payload' => $payload]);
-
         $waybill = $payload['billCode'] ?? $payload['waybillNo'] ?? null;
         $txlogisticId = $payload['txlogisticId'] ?? $payload['customerOrderId'] ?? null;
+
+        Log::channel('jnt')->info('JNT webhook received', [
+            'waybill_ref' => $this->logReference($waybill),
+            'customer_order_ref' => $this->logReference($txlogisticId),
+            'detail_count' => is_array($payload['details'] ?? null) ? count($payload['details']) : 0,
+        ]);
 
         // Push trajektori membawa details[]; ambil scan terbaru. Push status
         // order membawa scanType di root.
         $details = $payload['details'] ?? null;
         $scan = is_array($details) && ! empty($details) ? end($details) : $payload;
 
-        $scanType = (string) ($scan['scanType'] ?? $scan['scanCode'] ?? '');
+        // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
+        $scanType = (string) ($scan['scanCode'] ?? $scan['scanType'] ?? '');
         $scanTypeCode = isset($scan['scanTypeCode']) ? (string) $scan['scanTypeCode'] : null;
         $desc = $scan['desc'] ?? $scan['remark'] ?? null;
         $occurredAt = $scan['scanTime'] ?? $scan['time'] ?? null;
@@ -75,11 +85,28 @@ class ShippingController extends Controller
             return $this->ack(true);
         }
 
+        // Simpan seluruh riwayat scan push (idempoten) lalu majukan status.
+        if (is_array($details) && ! empty($details)) {
+            $this->shipping->persistTraceEvents($record, $details, 'webhook');
+            // Push J&T juga membawa rincian tagihan (totalFreight/freight/
+            // insuredFee/weight); simpan supaya pembukuan memakai angka asli.
+            $this->shipping->syncActualCost($record, $details);
+        }
+
         if ($scanType !== '' || $scanTypeCode !== null) {
-            $this->shipping->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode);
+            $this->shipping->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, 'webhook');
         }
 
         return $this->ack(true);
+    }
+
+    protected function logReference(?string $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        return substr(hash('sha256', $value), 0, 12);
     }
 
     protected function ack(bool $success, ?string $message = null): JsonResponse

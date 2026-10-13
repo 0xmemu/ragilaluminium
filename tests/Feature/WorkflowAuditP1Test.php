@@ -21,7 +21,7 @@ class WorkflowAuditP1Test extends TestCase
             'parent_sku' => 'WIN-FLASH-1',
             'name' => 'Jendela Flash',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -88,7 +88,7 @@ class WorkflowAuditP1Test extends TestCase
             'parent_sku' => 'WIN-STK-1',
             'name' => 'Jendela Stok',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -101,20 +101,30 @@ class WorkflowAuditP1Test extends TestCase
             'status' => 'active',
         ]);
 
-        $this->post(route('cart.add'), [
-            'parent_sku' => 'WIN-STK-1',
-            'variant_sku' => 'WIN-STK-1-V1',
-            'quantity' => 5,
-        ])->assertRedirect(route('cart.index'));
+        // Tetap di halaman produk (bukan ke keranjang) supaya animasi "produk terbang" terlihat.
+        $this->from('/product/WIN-STK-1')
+            ->post(route('cart.add'), [
+                'parent_sku' => 'WIN-STK-1',
+                'variant_sku' => 'WIN-STK-1-V1',
+                'quantity' => 5,
+            ])
+            ->assertRedirect('/product/WIN-STK-1');
 
         $cart = app(CartService::class)->get();
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['quantity']);
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['stock']);
 
-        $this->post(route('cart.update'), [
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->post(route('cart.update'), [
             'line_id' => 'WIN-STK-1-V1',
             'quantity' => 9,
-        ])->assertRedirect(route('cart.index'));
+        ])->assertOk()->assertJson([
+            'line_id' => 'WIN-STK-1-V1',
+            'quantity' => 2,
+            'stock' => 2,
+        ]);
 
         $cart = app(CartService::class)->get();
         $this->assertSame(2, (int) $cart['WIN-STK-1-V1']['quantity']);

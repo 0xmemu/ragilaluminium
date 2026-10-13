@@ -18,7 +18,7 @@ Admin UI must always:
 - Admin base URL: `/admin` (or similar).  
 - Default landing page: **Dashboard / Beranda**.  
 - Authentication:
-  - Only `users` with appropriate roles (super_admin, admin, staff, viewer, etc.) can access.  
+  - Only authenticated active `users` with canonical role `admin` can access. Legacy role values are normalized; see `docs/contracts/ROLE-AND-STATUS-CONTRACT.md`.
   - Role definitions follow Stage 2 (Actors & Roles).
 
 ### 1.2 Sidebar Layout

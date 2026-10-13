@@ -2,12 +2,14 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/admin/ui/button"
+import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { Textarea } from "@/components/admin/ui/textarea"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { gerbangBolehLanjut } from "@/lib/submit-gate"
 
 interface CmsPageRecord {
   id: number
@@ -20,9 +22,11 @@ interface CmsPageRecord {
 export default function CmsPageForm({
   page,
   submitUrl,
+  backUrl,
 }: {
   page: CmsPageRecord | null
   submitUrl: string
+  backUrl?: string | null
 }) {
   const editing = Boolean(page)
   const form = useForm({
@@ -33,6 +37,12 @@ export default function CmsPageForm({
     },
     published: page?.published ?? false,
   })
+
+
+  function batal() {
+    form.resetAndClearErrors()
+  }
+
   const preview = React.useMemo(
     () =>
       DOMPurify.sanitize(form.data.content.html, {
@@ -43,29 +53,65 @@ export default function CmsPageForm({
     [form.data.content.html],
   )
 
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan
+  // `required` controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"slug": "Slug", "title": "Judul"},
+    requireChange: editing,
+  }
+
   return (
     <AdminLayout
+      backUrl={backUrl}
       title={editing ? "Edit halaman CMS" : "Tambah halaman CMS"}
       description={editing ? page?.slug : "Konten publik disimpan sebagai HTML terstruktur."}
       actions={
-        <Button asChild variant="secondary">
-          <Link href={routeUrl("admin.pages.index")}>Batal</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {editing && form.isDirty ? (
+            <Button type="button" variant="secondary" size="sm" onClick={batal}>
+              Batal
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={routeUrl("admin.pages.index")}>Kembali</Link>
+            </Button>
+          )}
+          <SubmitGateButton
+            form={form}
+            {...gerbang}
+            formId="cms-page-form"
+            size="sm"
+          >
+            Simpan halaman
+          </SubmitGateButton>
+        </div>
       }
     >
       <Head title={`${editing ? "Edit" : "Tambah"} Halaman CMS | Admin`} />
 
       <form
+        id="cms-page-form"
         onSubmit={(event) => {
+          if (!gerbangBolehLanjut(event, form, gerbang)) return
           event.preventDefault()
-          if (editing) form.put(submitUrl)
-          else form.post(submitUrl)
+          if (editing) {
+            form.put(submitUrl, {
+              preserveScroll: true,
+              onSuccess: () => {
+                // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+                form.setDefaults()
+              },
+            })
+          } else {
+            form.post(submitUrl)
+          }
         }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] xl:items-start"
       >
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6">
           <FormErrorSummary errors={form.errors} />
-          <div className="mt-1 grid gap-5 sm:grid-cols-2">
+          <div className="mt-1 grid gap-4 sm:grid-cols-2">
             <Field id="cms-title" label="Judul" required error={form.errors.title}>
               <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
             </Field>
@@ -97,37 +143,28 @@ export default function CmsPageForm({
                 className="font-mono text-xs"
               />
             </Field>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.data.published}
-                onChange={(event) => form.setData("published", event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Terbitkan halaman
-            </label>
-          </div>
-          <div className="mt-6 flex justify-end gap-2 border-t border-border pt-5">
-            <Button asChild variant="secondary">
-              <Link href={routeUrl("admin.pages.index")}>Batal</Link>
-            </Button>
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan halaman"}
-            </Button>
+            <CheckboxField
+              id="cms-published"
+              checked={form.data.published}
+              onChange={(checked) => form.setData("published", checked)}
+              label="Terbitkan halaman"
+              standalone
+              className="sm:col-span-2"
+            />
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border bg-surface p-5 shadow-sm xl:sticky xl:top-24">
+        <aside className="rounded-lg border border-border bg-card p-5 shadow-sm xl:sticky xl:top-24">
           <p className="text-xs font-bold tracking-tight text-muted-foreground">
             Preview aman
           </p>
           {preview ? (
             <article
-              className="cms-content mt-5 text-sm"
+              className="cms-content mt-4 text-sm"
               dangerouslySetInnerHTML={{ __html: preview }}
             />
           ) : (
-            <p className="mt-5 text-sm text-muted-foreground">Mulai menulis untuk melihat preview.</p>
+            <p className="mt-4 text-sm text-muted-foreground">Mulai menulis untuk melihat preview.</p>
           )}
         </aside>
       </form>

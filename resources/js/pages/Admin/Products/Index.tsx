@@ -1,19 +1,33 @@
 import { Head, Link, router } from "@inertiajs/react"
+import { navigateFilter } from "@/lib/filter-url"
 import * as React from "react"
 
-import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
+import { RowActions, RowActionsMenu } from "@/components/admin/row-actions"
+import { CopyButton } from "@/components/admin/ui/copy-button"
+import { Button } from "@/components/admin/ui/button"
+import { Card } from "@/components/admin/ui/card"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { DropdownMenuItem } from "@/components/admin/ui/dropdown-menu"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
+import { HintTip } from "@/components/admin/ui/hint-tip"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/admin/ui/table"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import { ManageProductsTabs } from "@/components/admin/manage-products-tabs"
+import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { routeUrl } from "@/lib/routes"
+import { can, useAdminCapabilities } from "@/lib/capabilities"
 import type { Pagination as PaginationData } from "@/types"
 
 interface FilterOption {
@@ -37,6 +51,7 @@ interface ProductCard {
   stock_total: number
   variants_count: number
   active_variants_count: number
+  sold_count: number
   image?: string | null
   updated_at: string | null
   href: string
@@ -45,14 +60,16 @@ interface ProductCard {
   media_href: string
   archive_url: string
   unarchive_url: string
+  duplicate_url: string
+  destroy_url?: string
   public_href: string
 }
 
 interface ProductsIndexProps {
   title: string
   description: string
-  viewMode: "list" | "grid"
   searchQuery: string
+  activeSort: string
   filters: {
     product_category: string
     product_model: string
@@ -62,12 +79,14 @@ interface ProductsIndexProps {
     categories: FilterOption[]
     models: FilterOption[]
     statuses: FilterOption[]
+    sorts: FilterOption[]
   }
   products: ProductCard[]
   pagination: PaginationData
   createHref: string
   exportUrl: string
   importHref: string
+  importPerformanceHref: string
   mediaHref: string
 }
 
@@ -88,7 +107,12 @@ function ProductRowActions({
 
   return (
     <RowActions className={dense ? "w-full" : "flex-nowrap"}>
-      <Button asChild variant="secondary" size="xs" className={dense ? "min-w-0 flex-1 sm:flex-none" : undefined}>
+      <Button
+        asChild
+        variant="secondary"
+        size="xs"
+        className={dense ? "min-w-0 flex-1 sm:flex-none" : undefined}
+      >
         <Link href={product.edit_href}>Edit</Link>
       </Button>
       <RowActionsMenu>
@@ -103,27 +127,73 @@ function ProductRowActions({
             Lihat di toko
           </a>
         </DropdownMenuItem>
-      </RowActionsMenu>
-      {archived ? (
-        <Button size="xs" disabled={busy} onClick={onUnarchive}>
-          Pulihkan
-        </Button>
-      ) : (
-        <ConfirmAction
-          trigger={
-            <button type="button" className={cn(rowActionTextClass, "text-destructive")} disabled={busy}>
-              Arsipkan
+
+        {archived ? (
+          <DropdownMenuItem asChild>
+            <button
+              type="button"
+              className="w-full text-left"
+              disabled={busy}
+              onClick={onUnarchive}
+            >
+              Pulihkan
             </button>
-          }
-          title="Arsipkan produk?"
-          description={`${product.name} tidak akan tampil di katalog publik.`}
-          confirmLabel="Arsipkan"
-          processing={busy}
-          onConfirm={onArchive}
-        />
-      )}
+          </DropdownMenuItem>
+        ) : (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                disabled={busy}
+              >
+                Arsipkan
+              </button>
+            }
+            title="Arsipkan produk?"
+            description={`${product.name} tidak akan tampil di katalog publik.`}
+            confirmLabel="Arsipkan"
+            processing={busy}
+            onConfirm={onArchive}
+          />
+        )}
+
+        {archived && product.destroy_url ? (
+          <ConfirmAction
+            trigger={
+              <button
+                type="button"
+                className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+              >
+                Hapus Permanen
+              </button>
+            }
+            title="Hapus permanen produk?"
+            description={`Produk "${product.name}" yang belum pernah memiliki pesanan akan dihapus permanen dari database. Aksi ini tidak dapat dibatalkan.`}
+            confirmLabel="Hapus Permanen"
+            onConfirm={() => {
+              router.delete(product.destroy_url!, {
+                preserveScroll: true,
+              })
+            }}
+          />
+        ) : null}
+      </RowActionsMenu>
     </RowActions>
   )
+}
+
+function useProductActions(setBusyId: (id: number | null) => void) {
+  return {
+    archive: (product: ProductCard) => {
+      setBusyId(product.id)
+      router.post(product.archive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+    },
+    unarchive: (product: ProductCard) => {
+      setBusyId(product.id)
+      router.post(product.unarchive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
+    },
+  }
 }
 
 function ProductListRow({
@@ -136,22 +206,13 @@ function ProductListRow({
   setBusyId: (id: number | null) => void
 }) {
   const busy = busyId === product.id
-
-  function archive() {
-    setBusyId(product.id)
-    router.post(product.archive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-  }
-
-  function unarchive() {
-    setBusyId(product.id)
-    router.post(product.unarchive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-  }
+  const actions = useProductActions(setBusyId)
 
   return (
-    <tr className="border-b border-border last:border-0">
-      <td className="min-w-[14rem] px-3 py-3">
+    <TableRow className="hover:bg-muted/50">
+      <TableCell className="min-w-[16rem]">
         <div className="flex items-center gap-3">
-          <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
+          <div className="size-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
             {product.image ? (
               <img src={product.image} alt="" className="size-full object-cover" />
             ) : (
@@ -161,116 +222,52 @@ function ProductListRow({
             )}
           </div>
           <div className="min-w-0">
-            <Link href={product.href} className="line-clamp-2 text-sm font-semibold hover:text-primary">
+            <Link
+              href={product.href}
+              className="line-clamp-2 text-[13px] font-normal leading-5 text-foreground hover:text-primary"
+            >
               {product.name}
             </Link>
-            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
+            <span className="mt-0.5 flex items-center gap-1">
+              <span className="font-mono text-xs text-muted-foreground">{product.parent_sku}</span>
+              <CopyButton text={product.parent_sku} label="Salin SKU" compact showTextInTitle />
+            </span>
           </div>
         </div>
-      </td>
-      <td className="whitespace-nowrap px-3 py-3 text-sm">{product.product_category_label}</td>
-      <td className="whitespace-nowrap px-3 py-3 text-sm">{product.product_model_label}</td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell className="whitespace-nowrap">{product.product_category_label}</TableCell>
+      <TableCell className="whitespace-nowrap">{product.product_model_label}</TableCell>
+      <TableCell className="whitespace-nowrap">{product.design_variant_label || "-"}</TableCell>
+      <TableCell>
         <StatusBadge status={product.status} />
-      </td>
-      <td className="whitespace-nowrap tabular-nums px-3 py-3 text-sm font-semibold">
+      </TableCell>
+      <TableCell className="tabular-nums whitespace-nowrap font-semibold">
         {product.min_price !== null ? formatCurrency(product.min_price) : "-"}
-      </td>
-      <td className="tabular-nums px-3 py-3 text-sm">{formatNumber(product.stock_total)}</td>
-      <td className="tabular-nums px-3 py-3 text-sm">{formatNumber(product.variants_count)}</td>
-      <td className="w-[1%] whitespace-nowrap px-3 py-3 text-right align-middle">
+      </TableCell>
+      <TableCell className="tabular-nums">{formatNumber(product.stock_total)}</TableCell>
+      <TableCell className="tabular-nums">{formatNumber(product.variants_count)}</TableCell>
+      <TableCell className="tabular-nums">{formatNumber(product.sold_count)}</TableCell>
+      <TableCell className="w-[1%] whitespace-nowrap text-right">
         <ProductRowActions
           product={product}
           busy={busy}
-          onArchive={archive}
-          onUnarchive={unarchive}
+          onArchive={() => actions.archive(product)}
+          onUnarchive={() => actions.unarchive(product)}
         />
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }
 
-function ProductGridCard({
-  product,
-  busyId,
-  setBusyId,
-}: {
-  product: ProductCard
-  busyId: number | null
-  setBusyId: (id: number | null) => void
-}) {
-  const busy = busyId === product.id
 
-  function archive() {
-    setBusyId(product.id)
-    router.post(product.archive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-  }
-
-  function unarchive() {
-    setBusyId(product.id)
-    router.post(product.unarchive_url, {}, { preserveScroll: true, onFinish: () => setBusyId(null) })
-  }
-
-  return (
-    <article className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-      <Link href={product.href} className="block aspect-[4/3] bg-muted">
-        {product.image ? (
-          <img src={product.image} alt="" className="size-full object-cover" />
-        ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground">
-            <Icon name="image" className="size-8" aria-hidden="true" />
-          </div>
-        )}
-      </Link>
-      <div className="space-y-3 p-4">
-        <div>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <Link href={product.href} className="line-clamp-2 text-sm font-bold hover:text-primary">
-              {product.name}
-            </Link>
-            <StatusBadge status={product.status} />
-          </div>
-          <p className="mt-1 font-mono text-[11px] text-muted-foreground">{product.parent_sku}</p>
-        </div>
-        <dl className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <dt className="text-muted-foreground">Kategori</dt>
-            <dd className="font-semibold">{product.product_category_label}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Model</dt>
-            <dd className="font-semibold">{product.product_model_label}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Harga</dt>
-            <dd className="tabular-nums font-semibold">
-              {product.min_price !== null ? formatCurrency(product.min_price) : "-"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Stok</dt>
-            <dd className="tabular-nums font-semibold">{formatNumber(product.stock_total)}</dd>
-          </div>
-        </dl>
-        <div className="border-t border-border pt-3">
-          <ProductRowActions
-            product={product}
-            busy={busy}
-            onArchive={archive}
-            onUnarchive={unarchive}
-            dense
-          />
-        </div>
-      </div>
-    </article>
-  )
-}
+/** Harus sama dengan ProductController::DEFAULT_SORT di sisi server. */
+const DEFAULT_SORT = "updated_desc"
 
 export default function ProductsIndex({
   title,
   description,
-  viewMode,
   searchQuery,
+  activeSort,
   filters,
   filterOptions,
   products,
@@ -278,28 +275,127 @@ export default function ProductsIndex({
   createHref,
   exportUrl,
   importHref,
+  importPerformanceHref: _importPerformanceHref,
   mediaHref,
 }: ProductsIndexProps) {
   const [q, setQ] = React.useState(searchQuery)
   const [busyId, setBusyId] = React.useState<number | null>(null)
+  // Galat muat ulang daftar: tampil sebagai ErrorState di area daftar, supaya
+  // admin punya tombol "Coba lagi" di tempat yang sama. Penanda muat ulang
+  // dipakai agar kegagalan aksi lain (mis. arsip produk) tidak ikut memicu panel.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  const [refreshing, setRefreshing] = React.useState(false)
+  const reloadInFlight = React.useRef(false)
+  const capabilities = useAdminCapabilities()
+  const canManage = can("products.manage", capabilities)
+
+  /**
+   * Tombol Tambah untuk kedua tempat di halaman ini (header dan keadaan kosong).
+   *
+   * `disabled` pada `<Button asChild>` jatuh ke elemen tautan, sedangkan atribut
+   * `disabled` tidak berlaku untuk tautan dan gaya visual mati memakai selektor
+   * `:disabled` yang juga tidak pernah cocok pada tautan. Akibatnya tombolnya
+   * tampil normal dan tetap bisa diklik. Karena itu saat izinnya tidak ada yang
+   * dirender adalah tombol sungguhan yang mati, bukan tautan.
+   */
+  function tombolTambah(
+    { ukuran = "md", ikon = false }: { ukuran?: "sm" | "md"; ikon?: boolean } = {},
+  ) {
+    const isi = (
+      <>
+        {ikon ? <Icon name="plus" className="size-4" aria-hidden="true" /> : null}
+        Tambah
+      </>
+    )
+
+    if (canManage) {
+      return (
+        <Button asChild size={ukuran}>
+          <Link href={createHref}>{isi}</Link>
+        </Button>
+      )
+    }
+
+    return (
+      <HintTip
+        label={
+          <Button size={ukuran} disabled>
+            {isi}
+          </Button>
+        }
+        hint="Kamu tidak punya izin menambah produk."
+        side="bottom"
+        align="right"
+        className="no-underline"
+      />
+    )
+  }
+
+  const activeFilters = React.useMemo(() => {
+    const chips: Array<{ label: string; clear: () => void }> = []
+    if (filters.product_category && filters.product_category !== "all") {
+      const option = filterOptions.categories.find((o) => o.value === filters.product_category)
+      chips.push({ label: `Kategori: ${option?.label ?? filters.product_category}`, clear: () => visit({ product_category: "all" }) })
+    }
+    if (filters.product_model && filters.product_model !== "all") {
+      const option = filterOptions.models.find((o) => o.value === filters.product_model)
+      chips.push({ label: `Model: ${option?.label ?? filters.product_model}`, clear: () => visit({ product_model: "all" }) })
+    }
+    if (filters.status && filters.status !== "all") {
+      const option = filterOptions.statuses.find((o) => o.value === filters.status)
+      chips.push({ label: `Status: ${option?.label ?? humanize(filters.status)}`, clear: () => visit({ status: "all" }) })
+    }
+    if (searchQuery?.trim()) {
+      chips.push({ label: `Cari: ${searchQuery}`, clear: () => visit({ q: "" }) })
+    }
+    return chips
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.product_category, filters.product_model, filters.status, searchQuery])
+
+  const hasActiveFilters = activeFilters.length > 0
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshProducts() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Daftar produk belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
+    })
+  }
+
+  // Respons 500 atau koneksi putus tidak masuk ke onError, tetapi Inertia tetap
+  // memancarkan event. Keduanya dipetakan ke panel galat, hanya saat muat ulang
+  // memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Daftar produk belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
+
+  function resetAllFilters() {
+    router.get(routeUrl("admin.products.index"), {}, { preserveState: false, preserveScroll: true })
+  }
 
   function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      view: viewMode,
-      q: searchQuery,
-      product_category: filters.product_category,
-      product_model: filters.product_model,
-      status: filters.status,
-      ...params,
-    }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all") return
-      if (key === "view" && value === "list") return
-      if (key === "q" && !value.trim()) return
-      next[key] = value
-    })
-    router.get("/admin/products", next, { preserveState: true, replace: true })
+    navigateFilter(
+      "admin.products.index",
+      { q: searchQuery, product_category: filters.product_category, product_model: filters.product_model, status: filters.status, sort: activeSort },
+      params,
+      { defaults: { sort: DEFAULT_SORT } },
+    )
   }
 
   return (
@@ -307,190 +403,199 @@ export default function ProductsIndex({
       title={title}
       description={description}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <a href={exportUrl}>Export CSV</a>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <a href={exportUrl}>Ekspor</a>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={importHref}>Import</Link>
+          <Button asChild variant="secondary" size="sm">
+            <Link href={mediaHref}>Media Library</Link>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={mediaHref}>Media</Link>
-          </Button>
-          <Button asChild>
-            <Link href={createHref}>
-              <Icon name="plus" className="size-4" aria-hidden="true" />
-              Tambah Produk
-            </Link>
-          </Button>
+          {tombolTambah({ ukuran: "sm", ikon: true })}
         </div>
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <form
-            className="min-w-0 flex-1"
-            onSubmit={(event) => {
-              event.preventDefault()
-              visit({ q })
-            }}
+      <ManageProductsTabs active="products" />
+
+      {/* Pencarian dan filter kategori/model/status */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: () => visit({ q }),
+          placeholder: "Cari nama produk atau parent SKU…",
+        }}
+        sort={
+          <Select
+            value={activeSort}
+            onChange={(event) => visit({ sort: event.target.value })}
+            className="w-auto"
+            aria-label="Urutan daftar produk"
           >
-            <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Cari produk
-            </label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                value={q}
-                onChange={(event) => setQ(event.target.value)}
-                placeholder="Nama atau parent SKU"
-              />
-              <Button type="submit" variant="secondary">
-                Cari
-              </Button>
-            </div>
-          </form>
-
-          <div className="grid gap-3 sm:grid-cols-3 lg:w-[28rem]">
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Kategori
-              </label>
-              <Select
-                className="mt-1.5"
-                value={filters.product_category}
-                onChange={(event) => visit({ product_category: event.target.value })}
-              >
-                {filterOptions.categories.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Model
-              </label>
-              <Select
-                className="mt-1.5"
-                value={filters.product_model}
-                onChange={(event) => visit({ product_model: event.target.value })}
-              >
-                {filterOptions.models.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Status
-              </label>
-              <Select
-                className="mt-1.5"
-                value={filters.status}
-                onChange={(event) => visit({ status: event.target.value })}
-              >
-                {filterOptions.statuses.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex gap-1 rounded-md border border-border p-1">
-            <button
-              type="button"
-              onClick={() => visit({ view: "list" })}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
-                viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Icon name="menu" className="size-3.5" aria-hidden="true" />
-              List
-            </button>
-            <button
-              type="button"
-              onClick={() => visit({ view: "grid" })}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold",
-                viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Icon name="layout-grid" className="size-3.5" aria-hidden="true" />
-              Grid
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {!products.length ? (
-        <EmptyState
-          className="mt-6"
-          title="Belum ada produk"
-          description="Tambah produk baru atau impor katalog dari menu Produk → Import."
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href={createHref}>Tambah Produk</Link>
-              </Button>
-              <Button asChild variant="secondary">
-                <Link href={importHref}>Import</Link>
-              </Button>
-            </div>
-          }
-        />
-      ) : viewMode === "grid" ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {products.map((product) => (
-            <ProductGridCard
-              key={product.id}
-              product={product}
-              busyId={busyId}
-              setBusyId={setBusyId}
-            />
+            {filterOptions.sorts.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
+        summary={
+          <span>
+            <span className="tabular-nums font-semibold text-foreground">
+              {formatNumber(pagination.total)}
+            </span>{" "}
+            produk
+          </span>
+        }
+        className="mb-4"
+      >
+        <Select
+          className="flex-1 min-w-0"
+          value={filters.product_category}
+          onChange={(event) => visit({ product_category: event.target.value })}
+          aria-label="Filter kategori"
+        >
+          {filterOptions.categories.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
-        </div>
-      ) : (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
-          <table className="w-full min-w-[56rem] text-left">
-            <thead className="border-b border-border bg-surface-muted/50 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              <tr>
-                <th className="px-3 py-3">Produk</th>
-                <th className="px-3 py-3">Kategori</th>
-                <th className="px-3 py-3">Model</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3">Harga</th>
-                <th className="px-3 py-3">Stok</th>
-                <th className="px-3 py-3">Varian</th>
-                <th className="px-3 py-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <ProductListRow
-                  key={product.id}
-                  product={product}
-                  busyId={busyId}
-                  setBusyId={setBusyId}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        </Select>
+        <Select
+          className="flex-1 min-w-0"
+          value={filters.product_model}
+          onChange={(event) => visit({ product_model: event.target.value })}
+          aria-label="Filter model"
+        >
+          {filterOptions.models.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="flex-1 min-w-0"
+          value={filters.status}
+          onChange={(event) => visit({ status: event.target.value })}
+          aria-label="Filter status"
+        >
+          {filterOptions.statuses.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </ListToolbar>
 
-      {pagination.last_page > 1 ? (
-        <div className="mt-6">
-          <Pagination pagination={pagination} />
+      {/* Konten */}
+      {activeFilters.length ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Filter aktif
+          </span>
+          {activeFilters.map((filter) => (
+            <span
+              key={filter.label}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
+            >
+              {filter.label}
+              <button
+                type="button"
+                onClick={filter.clear}
+                className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                aria-label={`Hapus filter ${filter.label}`}
+              >
+                <Icon name="x" className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+            >
+              Reset Filter
+            </button>
+          ) : null}
         </div>
       ) : null}
+
+      <Card className="mt-4 overflow-hidden border border-border bg-card">
+        {refreshError ? (
+          <ErrorState
+            className="border-0"
+            title="Daftar produk gagal dimuat ulang"
+            description={refreshError}
+            action={
+              <Button variant="outline" size="sm" onClick={refreshProducts} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : !products.length ? (
+          hasActiveFilters ? (
+            <EmptyState
+              className="p-8 border-0"
+              icon="package"
+              title="Tidak ada produk yang cocok"
+              description="Coba ubah atau hapus filter untuk melihat produk lain."
+              action={
+                <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                  Reset Filter
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              className="p-8 border-0"
+              title="Belum ada produk"
+              description="Tambah produk baru atau impor katalog dari menu Produk → Import."
+              action={
+                <div className="flex flex-wrap gap-2">
+                  {tombolTambah()}
+                  <Button asChild variant="secondary">
+                    <Link href={importHref}>Import</Link>
+                  </Button>
+                </div>
+              }
+            />
+          )
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="min-w-[68rem]">
+              <TableHeader>
+                <TableRow className="border-b border-border bg-surface/80 text-[11px] font-semibold text-muted-foreground hover:bg-transparent">
+                  <TableHead>Produk</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Sub Model</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Harga</TableHead>
+                  <TableHead>Stok</TableHead>
+                  <TableHead>Varian</TableHead>
+                  <TableHead>Terjual</TableHead>
+                  <TableHead className="w-[1%] whitespace-nowrap text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((product) => (
+                  <ProductListRow
+                    key={product.id}
+                    product={product}
+                    busyId={busyId}
+                    setBusyId={setBusyId}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {pagination.last_page > 1 ? <Pagination pagination={pagination} /> : null}
     </AdminLayout>
   )
 }
+

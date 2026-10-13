@@ -44,13 +44,26 @@ class WorkflowAuditP2Test extends TestCase
     {
         $nav = config('admin-sitemap.navigation');
         $coreRoutes = collect($nav['core']['items'])->pluck('route')->all();
-        $komunikasiRoutes = collect($nav['komunikasi']['items'])->pluck('route')->all();
-        $monitoringRoutes = collect($nav['monitoring']['items'])->pluck('route')->all();
+        $komunikasiRoutes = collect($nav['pelanggan_komunikasi']['items'])->pluck('route')->all();
+        $productRoutes = collect($nav['produk']['items'])
+            ->flatMap(fn ($item) => array_merge(
+                [$item['route'] ?? null],
+                collect($item['children'] ?? [])->pluck('route')->all(),
+            ))
+            ->filter()
+            ->all();
+        $accountRoutes = collect($nav['akun_sistem']['items'])->pluck('route')->all();
 
         $this->assertContains('admin.payments.index', $coreRoutes);
         $this->assertContains('admin.shipping.index', $coreRoutes);
-        $this->assertContains('admin.whatsapp.messages.index', $komunikasiRoutes);
-        $this->assertContains('admin.analytics.import-performance', $monitoringRoutes);
+        $this->assertContains('admin.analytics.store-performance', $coreRoutes);
+        $this->assertContains('admin.imports.index', $productRoutes);
+        $this->assertContains('admin.hasil-pemasangan.index', $productRoutes);
+        $this->assertNotContains('admin.hasil-pemasangan.index', $komunikasiRoutes);
+        $this->assertNotContains('admin.analytics.import-performance', $productRoutes); // Fase 13: Import Performance hidup di halaman Import, bukan nav terpisah.
+        // Menu WhatsApp membuka halaman pilihan (Live Chat, Template Pesan, Sambungkan Nomor).
+        $this->assertContains('admin.whatsapp.dashboard', $komunikasiRoutes);
+        $this->assertContains('admin.activity-logs.index', $accountRoutes);
     }
 
     public function test_orders_index_filters_payment_shipping_and_date(): void
@@ -68,7 +81,7 @@ class WorkflowAuditP2Test extends TestCase
             'order_number' => 'ORD-UNPAID-1',
             'customer_name' => 'Unpaid Buyer',
             'customer_phone' => '08222222222',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
         ]);
         $unpaid->forceFill(['created_at' => now(), 'updated_at' => now()])->save();
@@ -92,6 +105,37 @@ class WorkflowAuditP2Test extends TestCase
                 ->where('orders.0.order_number', 'ORD-UNPAID-1'));
     }
 
+    public function test_orders_status_filter_exposes_count_and_value_summary(): void
+    {
+        $admin = $this->admin();
+
+        $this->makeOrder([
+            'order_number' => 'ORD-SHIPPED-1',
+            'order_status' => 'shipped',
+            'total_amount' => 125000,
+        ]);
+        $this->makeOrder([
+            'order_number' => 'ORD-SHIPPED-2',
+            'order_status' => 'shipped',
+            'total_amount' => 875000,
+        ]);
+        $this->makeOrder([
+            'order_number' => 'ORD-PROCESSING-1',
+            'order_status' => 'processing',
+            'total_amount' => 500000,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.index', ['order_status' => 'shipped']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Orders/Index')
+                ->where('activeStatus', 'shipped')
+                ->where('summary.count', 2)
+                ->where('summary.total_value', 1000000)
+                ->has('orders', 2));
+    }
+
     public function test_media_hub_rows_include_operational_actions(): void
     {
         $admin = $this->admin();
@@ -100,15 +144,25 @@ class WorkflowAuditP2Test extends TestCase
             'parent_sku' => 'WIN-MED-1',
             'name' => 'Media Product',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
         ]);
 
+        $asset = \App\Models\MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'Media test',
+            'object_key' => 'media-assets/test/card.webp',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+
         ProductMedia::create([
             'product_id' => $product->id,
+            'media_asset_id' => $asset->id,
             'source_url' => 'https://cdn.example.com/a.jpg',
+            'stored_url' => 'media-assets/test/card.webp',
             'status' => 'downloaded',
             'visibility' => 'visible',
             'is_main_image' => false,
@@ -116,12 +170,10 @@ class WorkflowAuditP2Test extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.media.index'))
+            ->get(route('admin.media.library'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/ResourceIndex')
-                ->has('rows', 1)
-                ->has('rows.0.actions')
-                ->where('rows.0.actions.0.label', 'Kelola'));
+                ->component('Admin/Media/Library')
+                ->has('assets', 1));
     }
 }

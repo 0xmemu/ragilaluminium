@@ -10,21 +10,26 @@ use App\Models\CmsPage;
  * content.layout.sections[] = { key, enabled, sort_order }
  * content.service_highlights = { title, subtitle, items[] }
  * content.how_to_order = { title, subtitle, steps[] }
- * content.auto_promotions preserved via HomepagePromotionSettings.
  */
 class HomepageLayoutSettings
 {
     public const PAGE_SLUG = 'beranda';
 
-    public const SECTION_KEYS = ['banner', 'how_to_order'];
+    public const SECTION_KEYS = ['category_menu', 'banner', 'how_to_order'];
 
     /** @var list<array{key:string,enabled:bool,sort_order:int}> */
     public const DEFAULT_SECTIONS = [
-        ['key' => 'banner', 'enabled' => true, 'sort_order' => 0],
-        ['key' => 'how_to_order', 'enabled' => true, 'sort_order' => 1],
+        ['key' => 'category_menu', 'enabled' => false, 'sort_order' => 0],
+        ['key' => 'banner', 'enabled' => true, 'sort_order' => 1],
+        ['key' => 'how_to_order', 'enabled' => true, 'sort_order' => 2],
     ];
 
     public const SECTION_META = [
+        'category_menu' => [
+            'label' => 'Menu Kategori',
+            'description' => 'Menu kategori horizontal di atas banner. Urutan & isi diatur di Model Produk.',
+            'icon' => 'layout-grid',
+        ],
         'banner' => [
             'label' => 'Banner Utama',
             'description' => 'Kelola slide promo berputar di bagian atas beranda.',
@@ -37,7 +42,7 @@ class HomepageLayoutSettings
         ],
     ];
 
-    /** Legacy CMS payload only — tidak ditampilkan di beranda publik. */
+    /** Legacy CMS payload only - tidak ditampilkan di beranda publik. */
     public const DEFAULT_SERVICE_HIGHLIGHTS = [
         'title' => 'Sorotan layanan',
         'subtitle' => 'Keunggulan yang membuat belanja aluminium lebih tenang.',
@@ -50,12 +55,11 @@ class HomepageLayoutSettings
 
     public const DEFAULT_HOW_TO_ORDER = [
         'title' => 'Cara pesan jendela Anda',
-        'subtitle' => 'Alur singkat dari memilih model hingga pesanan terkirim.',
+        'subtitle' => 'Tiga langkah mudah dari memilih model sampai konfirmasi WhatsApp.',
         'steps' => [
             ['title' => 'Pilih model', 'description' => 'Tentukan model jendela, pintu, atau bouven yang sesuai kebutuhan.'],
             ['title' => 'Pilih ukuran & varian', 'description' => 'Atur ukuran, desain, dan opsi di halaman produk.'],
-            ['title' => 'Checkout', 'description' => 'Isi data pengiriman, pilih pembayaran, lalu buat pesanan.'],
-            ['title' => 'Lacak pesanan', 'description' => 'Pantau status tanpa login lewat menu Pesanan.'],
+            ['title' => 'Proses pesanan & konfirmasi WhatsApp', 'description' => 'Checkout, lalu tim kami proses pesanan dan konfirmasi lewat WhatsApp.'],
         ],
     ];
 
@@ -84,6 +88,15 @@ class HomepageLayoutSettings
      */
     public static function presentSections(array $sections): array
     {
+        // Kontrol 'category_menu' tidak lagi ditampilkan di admin: seksi ini
+        // tidak pernah dirender beranda (renderManagedSection hanya menangani
+        // banner), jadi on/off-nya tidak berpengaruh apa pun. Data tetap
+        // disimpan di DB demi kompatibilitas payload lama.
+        $sections = array_values(array_filter(
+            $sections,
+            static fn (array $section): bool => ($section['key'] ?? '') !== 'category_menu',
+        ));
+
         return array_map(function (array $section) {
             $meta = self::SECTION_META[$section['key']] ?? [
                 'label' => $section['key'],
@@ -94,6 +107,7 @@ class HomepageLayoutSettings
             $editHref = match ($section['key']) {
                 'banner' => route('admin.banners.index'),
                 'how_to_order' => route('admin.beranda.how-to-order.edit'),
+                'category_menu' => route('admin.model-products.index'),
                 default => null,
             };
 
@@ -213,7 +227,7 @@ class HomepageLayoutSettings
             return $content;
         }
 
-        foreach (['layout', 'service_highlights', 'how_to_order', 'auto_promotions'] as $key) {
+        foreach (['layout', 'service_highlights', 'how_to_order'] as $key) {
             $existing = $page?->content[$key] ?? null;
             if ($existing !== null && ! array_key_exists($key, $content)) {
                 $content[$key] = $existing;
@@ -224,7 +238,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return list<array{key:string,enabled:bool,sort_order:int}>
      */
     public static function normalizeSections(mixed $raw): array
@@ -262,7 +275,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return array{title:string,subtitle:string,items:list<array{icon:string,title:string,description:string}>}
      */
     public static function normalizeServiceHighlights(mixed $raw): array
@@ -296,7 +308,6 @@ class HomepageLayoutSettings
     }
 
     /**
-     * @param  mixed  $raw
      * @return array{title:string,subtitle:string,steps:list<array{title:string,description:string}>}
      */
     public static function normalizeHowToOrder(mixed $raw): array
@@ -351,7 +362,7 @@ class HomepageLayoutSettings
 
     private static function page(bool $create = false): ?CmsPage
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         if ($page || ! $create) {
             return $page;
         }
@@ -360,7 +371,6 @@ class HomepageLayoutSettings
             'slug' => self::PAGE_SLUG,
             'title' => 'Beranda',
             'content' => [
-                'auto_promotions' => HomepagePromotionSettings::DEFAULTS,
                 'layout' => [
                     'sections' => array_map(fn (array $s) => [
                         'key' => $s['key'],

@@ -56,10 +56,12 @@ export function FormErrorSummary({
   title = "Periksa kembali data berikut",
   errors,
   className,
+  hideMessages = false,
 }: {
   title?: string
   errors: Record<string, string>
   className?: string
+  hideMessages?: boolean
 }) {
   const messages = Object.values(errors).filter(Boolean)
   if (!messages.length) return null
@@ -73,11 +75,13 @@ export function FormErrorSummary({
       )}
     >
       <p className="font-semibold">{title}</p>
-      <ul className="mt-2 list-disc space-y-1 pl-5">
-        {messages.map((message, index) => (
-          <li key={`${message}-${index}`}>{message}</li>
-        ))}
-      </ul>
+      {!hideMessages ? (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {messages.map((message, index) => (
+            <li key={`${message}-${index}`}>{message}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

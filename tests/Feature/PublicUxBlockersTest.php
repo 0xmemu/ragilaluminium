@@ -4,19 +4,40 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PublicUxBlockersTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Nomor uji dianggap terdaftar WhatsApp agar alur checkout tidak
+        // tersandung cek pra-kirim (pengujian ceknya ada di kelas lain).
+        Http::fake([
+            // Respons dinamis: nomor yang dicek selalu dianggap terdaftar.
+            '*/api/on-whatsapp' => function ($request) {
+                $body = json_decode($request->body(), true) ?: [];
+                $numbers = $body['numbers'] ?? [];
+
+                return Http::response([
+                    'results' => array_map(fn ($n) => ['jid' => $n, 'exists' => true], $numbers),
+                ], 200);
+            },
+        ]);
+    }
+
     public function test_validation_messages_use_indonesian_field_labels(): void
     {
         $this->assertSame('id', config('app.locale'));
 
         $response = $this->from('/checkout')->post('/checkout/validate', []);
+        // Nama wilayah adalah sumber otoritatif (wajib); *_id hanya penanda dropdown (nullable).
         $response->assertSessionHasErrors([
-            'city_id',
+            'city',
             'address_line1',
             'name',
             'phone',
@@ -45,5 +66,43 @@ class PublicUxBlockersTest extends TestCase
                 ->component('Public/Error')
                 ->where('status', 404)
             );
+    }
+
+    public function test_unknown_admin_url_renders_admin_branded_error(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/halaman-yang-pasti-tidak-ada-xyz')
+            ->assertNotFound()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Error')
+                ->where('status', 404)
+            );
+    }
+
+    public function test_import_file_mimes_message_is_indonesian(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'imp');
+        file_put_contents($tmp, 'not-an-excel');
+        $upload = new \Illuminate\Http\UploadedFile($tmp, 'notes.txt', 'text/plain', null, true);
+
+        $response = $this->actingAs($admin)->post(route('admin.imports.store'), [
+            'file' => $upload,
+        ]);
+
+        $response->assertSessionHasErrors(['file']);
+        $joined = implode(' ', session('errors')->getBag('default')->all());
+        $this->assertStringContainsString('Excel', $joined);
+        $this->assertStringNotContainsString('validation.mimes', strtolower($joined));
+        $this->assertStringNotContainsString('must be a file of type', strtolower($joined));
     }
 }

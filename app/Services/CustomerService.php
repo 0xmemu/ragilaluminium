@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Support\PhoneNumber;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -124,7 +125,7 @@ class CustomerService
         ]);
 
         if ($orders->isEmpty()) {
-            return ['score' => 0, 'label' => 'RISIKO RENDAH', 'tone' => 'success'];
+            return ['score' => 0, 'label' => 'Risiko Rendah', 'tone' => 'success'];
         }
 
         $score = 5;
@@ -143,16 +144,16 @@ class CustomerService
         $score = min(100, $score);
 
         return match (true) {
-            $score >= 60 => ['score' => $score, 'label' => 'RISIKO TINGGI', 'tone' => 'danger'],
-            $score >= 30 => ['score' => $score, 'label' => 'RISIKO SEDANG', 'tone' => 'warning'],
-            default => ['score' => $score, 'label' => 'RISIKO RENDAH', 'tone' => 'success'],
+            $score >= 60 => ['score' => $score, 'label' => 'Risiko Tinggi', 'tone' => 'danger'],
+            $score >= 30 => ['score' => $score, 'label' => 'Risiko Sedang', 'tone' => 'warning'],
+            default => ['score' => $score, 'label' => 'Risiko Rendah', 'tone' => 'success'],
         };
     }
 
     /**
      * @return array{key: string, label: string}
      */
-    public function statusFor(Customer $customer, int $orderCount, ?\Carbon\Carbon $lastOrderAt): array
+    public function statusFor(Customer $customer, int $orderCount, ?Carbon $lastOrderAt): array
     {
         if ($orderCount === 0) {
             return ['key' => 'baru', 'label' => 'Baru'];
@@ -166,25 +167,63 @@ class CustomerService
     }
 
     /**
+     * Nomor pelanggan yang punya pesanan pada rentang waktu tertentu.
+     *
+     * Dipakai filter periode halaman Pelanggan. Nilai dikembalikan dalam dua
+     * bentuk, apa adanya dan bentuk ternormalisasi, karena data lama bisa
+     * menyimpan nomor pelanggan pada salah satu bentuk saja sementara
+     * customers.phone hanya menyimpan satu bentuk. Hasilnya inilah definisi
+     * tunggal "pelanggan yang berbelanja pada periode" untuk daftar, kartu
+     * ringkasan, dan ekspor.
+     *
+     * @return list<string>
+     */
+    public function phonesWithOrdersIn(?Carbon $from = null, ?Carbon $to = null): array
+    {
+        return Order::query()
+            ->whereNotNull('customer_phone')
+            ->where('customer_phone', '!=', '')
+            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
+            ->distinct()
+            ->pluck('customer_phone')
+            ->flatMap(fn ($phone) => array_filter([
+                (string) $phone,
+                PhoneNumber::normalize((string) $phone),
+            ]))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    public function metricsFor(Customer $customer): array
+    public function metricsFor(Customer $customer, ?Carbon $from = null, ?Carbon $to = null): array
     {
         $orders = Order::query()->where('customer_phone', $customer->phone);
-        $orderCount = (clone $orders)->count();
-        $totalSpent = (float) (clone $orders)->whereIn('order_status', self::REVENUE_STATUSES)->sum('total_amount');
+
+        // Angka yang ditampilkan boleh dibatasi periode (filter halaman
+        // daftar), tetapi STATUS keaktifan tetap seumur hidup: status menjawab
+        // "kapan terakhir berbelanja", bukan "berapa kali pada periode ini".
+        // Karena itu jumlah pesanan seumur hidup dan tanggal pesanan terakhir
+        // tetap dihitung terpisah dari angka per periode.
+        $scoped = (clone $orders)
+            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('created_at', '<=', $to));
+
+        $orderCount = (clone $scoped)->count();
+        $totalSpent = (float) (clone $scoped)->whereIn('order_status', self::REVENUE_STATUSES)->sum('total_amount');
+
+        $lifetimeCount = (clone $orders)->count();
         $lastOrderAt = (clone $orders)->max('created_at');
-        $lastAt = $lastOrderAt ? \Carbon\Carbon::parse($lastOrderAt) : null;
+        $lastAt = $lastOrderAt ? Carbon::parse($lastOrderAt) : null;
         $fraud = $this->fraudAssessment($customer);
-        $status = $this->statusFor($customer, $orderCount, $lastAt);
+        $status = $this->statusFor($customer, $lifetimeCount, $lastAt);
         $nameVariants = (clone $orders)->distinct()->pluck('customer_name')->filter()->unique()->values();
-        $addressVariants = (clone $orders)
-            ->select(['shipping_address_line1', 'shipping_city'])
-            ->get()
-            ->map(fn ($o) => trim(($o->shipping_address_line1 ?? '').'|'.($o->shipping_city ?? '')))
-            ->filter()
-            ->unique()
-            ->values();
+        // Satu sumber untuk dua pemakai: peringatan duplikat dan daftar alamat
+        // di halaman detail, supaya angkanya tidak pernah berbeda dari daftar.
+        $addressList = $this->addressListFor($orders);
 
         return [
             'order_count' => $orderCount,
@@ -193,34 +232,50 @@ class CustomerService
             'status' => $status,
             'fraud' => $fraud,
             'name_variants' => $nameVariants->all(),
-            'address_variant_count' => $addressVariants->count(),
-            'duplicate_warning' => $nameVariants->count() > 1 || $addressVariants->count() > 1
+            'address_variant_count' => count($addressList),
+            'address_list' => $addressList,
+            'duplicate_warning' => $nameVariants->count() > 1 || count($addressList) > 1
                 ? sprintf(
                     'Peringatan Duplikat: Terdeteksi %d Nama & %d Alamat',
                     max(1, $nameVariants->count()),
-                    max(1, $addressVariants->count())
+                    max(1, count($addressList))
                 )
                 : null,
         ];
     }
 
     /**
+     * Kartu ringkasan halaman Pelanggan.
+     *
+     * Tanpa rentang waktu, seluruh kartu menghitung basis pelanggan seumur
+     * hidup (perilaku lama). Dengan rentang waktu, seluruh kartu menghitung
+     * himpunan yang sama dengan daftar di bawahnya, yaitu pelanggan yang
+     * berbelanja pada periode itu, supaya angka kartu dan tabel tidak saling
+     * bertentangan di satu layar.
+     *
      * @return array<string, mixed>
      */
-    public function summaryStats(): array
+    public function summaryStats(?Carbon $from = null, ?Carbon $to = null): array
     {
-        $total = Customer::query()->count();
-        $prevMonth = Customer::query()
+        $periodeAktif = $from !== null || $to !== null;
+
+        $base = Customer::query()->when(
+            $periodeAktif,
+            fn ($q) => $q->whereIn('phone', $this->phonesWithOrdersIn($from, $to))
+        );
+
+        $total = (int) (clone $base)->count();
+        $prevMonth = (clone $base)
             ->where('created_at', '<', now()->startOfMonth())
             ->count();
-        $thisMonthNew = Customer::query()
+        $thisMonthNew = (clone $base)
             ->where('created_at', '>=', now()->startOfMonth())
             ->count();
         $growth = $prevMonth > 0
             ? round(($thisMonthNew / max(1, $prevMonth)) * 100, 1)
             : ($thisMonthNew > 0 ? 100.0 : 0.0);
 
-        $topProvince = Customer::query()
+        $topProvince = (clone $base)
             ->select('default_province', DB::raw('COUNT(*) as total'))
             ->whereNotNull('default_province')
             ->where('default_province', '!=', '')
@@ -231,6 +286,8 @@ class CustomerService
         $multiAddress = Order::query()
             ->select(['customer_phone', 'shipping_address_line1', 'shipping_city'])
             ->whereNotNull('customer_phone')
+            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('created_at', '<=', $to))
             ->get()
             ->groupBy('customer_phone')
             ->filter(function ($group) {
@@ -242,18 +299,21 @@ class CustomerService
             })
             ->count();
 
-        $scores = Customer::query()->limit(200)->get()->map(fn (Customer $c) => $this->fraudAssessment($c)['score']);
+        $scores = (clone $base)->limit(200)->get()->map(fn (Customer $c) => $this->fraudAssessment($c)['score']);
         $avgFraud = $scores->isEmpty() ? 0.0 : round((float) $scores->avg(), 0);
 
         return [
             'top_province' => [
-                'name' => $topProvince?->default_province ?? '—',
+                'name' => $topProvince?->default_province ?? '-',
                 'share_percent' => $total > 0 && $topProvince
                     ? round(((int) $topProvince->total / $total) * 100)
                     : 0,
             ],
             'total_customers' => $total,
             'growth_percent' => $growth,
+            // Penanda bagi halaman: angka kartu sedang dibatasi periode, jadi
+            // keterangan "dari bulan lalu" tidak lagi bermakna.
+            'period_scoped' => $periodeAktif,
             'multi_address_customers' => $multiAddress,
             'avg_fraud_score' => (int) $avgFraud,
             'avg_fraud_label' => $avgFraud >= 60 ? 'Berisiko' : ($avgFraud >= 30 ? 'Waspada' : 'Aman'),
@@ -263,6 +323,68 @@ class CustomerService
     /**
      * @return Collection<int, array<string, mixed>>
      */
+    /**
+     * Daftar alamat berbeda dari pesanan pelanggan ini, terbaru dulu.
+     *
+     * Dipakai untuk peringatan duplikat DAN untuk daftar alamat di halaman
+     * detail, supaya jumlah pada peringatan selalu sama dengan jumlah baris
+     * yang tampil. Satu entri berarti satu tujuan kirim yang berbeda; alamat
+     * dibandingkan lengkap (jalan, desa, kecamatan, kota, provinsi, kode pos)
+     * karena dua pesanan di jalan yang sama bisa ditujukan ke desa berbeda.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Order>  $orders
+     * @return list<array<string, mixed>>
+     */
+    protected function addressListFor($orders): array
+    {
+        return (clone $orders)
+            ->orderByDesc('id')
+            ->get([
+                'shipping_address_line1',
+                'shipping_address_line2',
+                'shipping_village',
+                'shipping_district',
+                'shipping_city',
+                'shipping_province',
+                'shipping_postal_code',
+                'shipping_country',
+                'created_at',
+            ])
+            ->groupBy(fn (Order $order) => implode('|', array_map(
+                fn ($bagian) => trim((string) $bagian),
+                [
+                    $order->shipping_address_line1,
+                    $order->shipping_address_line2,
+                    $order->shipping_village,
+                    $order->shipping_district,
+                    $order->shipping_city,
+                    $order->shipping_province,
+                    $order->shipping_postal_code,
+                ],
+            )))
+            ->reject(fn ($group, $kunci) => trim((string) $kunci, '|') === '')
+            ->map(function ($group) {
+                // Pesanan diurut id menurun, jadi elemen pertama grup = paling baru.
+                /** @var Order $terbaru */
+                $terbaru = $group->first();
+
+                return [
+                    'line1' => $terbaru->shipping_address_line1,
+                    'line2' => $terbaru->shipping_address_line2,
+                    'village' => $terbaru->shipping_village,
+                    'district' => $terbaru->shipping_district,
+                    'city' => $terbaru->shipping_city,
+                    'province' => $terbaru->shipping_province,
+                    'postal_code' => $terbaru->shipping_postal_code,
+                    'country' => $terbaru->shipping_country,
+                    'order_count' => $group->count(),
+                    'last_used_at' => optional($terbaru->created_at)?->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     public function orderRows(Customer $customer, int $limit = 20): Collection
     {
         return Order::query()

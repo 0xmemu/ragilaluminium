@@ -19,7 +19,7 @@ class OrderConfirmationTest extends TestCase
     {
         [$order] = $this->makeOrder('transfer', 'RA-CONF-TF-1', 1050000);
 
-        $this->withSession(['confirmed_orders' => [$order->order_number]])
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
             ->get(route('order.confirmation', $order->order_number))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -35,7 +35,7 @@ class OrderConfirmationTest extends TestCase
     {
         [$order] = $this->makeOrder('cod', 'RA-CONF-COD-1', 500000);
 
-        $this->withSession(['confirmed_orders' => [$order->order_number]])
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
             ->get(route('order.confirmation', $order->order_number))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -44,11 +44,41 @@ class OrderConfirmationTest extends TestCase
                 ->where('payment_instructions', null));
     }
 
+    public function test_whatsapp_url_contains_order_reference_for_transfer_and_cod(): void
+    {
+        [$tf] = $this->makeOrder('transfer', 'RA-CONF-TF-2', 100000);
+
+        foreach (['RA-CONF-TF-2' => $tf] as $number => $order) {
+            $this->withSession(['confirmed_orders' => [$number], 'confirmation_pending' => [$number]])
+                ->get(route('order.confirmation', $number))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Public/OrderConfirmation')
+                    ->where('whatsapp_url', fn ($url) => is_string($url)
+                        && str_contains($url, 'wa.me/')
+                        && str_contains($url, rawurlencode($number))));
+        }
+    }
+
+    public function test_confirmation_props_include_whatsapp_cta_data(): void
+    {
+        [$order] = $this->makeOrder('transfer', 'RA-CONF-TF-3', 100000);
+
+        $this->withSession(['confirmed_orders' => [$order->order_number], 'confirmation_pending' => [$order->order_number]])
+            ->get(route('order.confirmation', $order->order_number))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Public/OrderConfirmation')
+                // Copy yang dibekukan Phase A2/B: COD bayar saat diterima, transfer rekening via WA.
+                ->where('order.payment_method', 'transfer')
+                ->where('whatsapp_url', fn ($url) => is_string($url) && $url !== ''));
+    }
+
     public function test_dashboard_status_chips_use_order_status_query(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        Order::create([
+        $pending = Order::create([
             'order_number' => 'RA-DASH-1',
             'customer_name' => 'A',
             'customer_phone' => '0812',
@@ -61,12 +91,16 @@ class OrderConfirmationTest extends TestCase
             'discount_amount' => 0,
             'total_amount' => 1,
             'payment_method' => 'transfer',
-            'order_status' => 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
             'updated_at' => now()->subDays(2),
             'created_at' => now()->subDays(2),
         ]);
+        $pending->forceFill([
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ])->save();
 
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
@@ -74,7 +108,7 @@ class OrderConfirmationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Dashboard')
                 ->where('statusOrder.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status='))
-                ->where('attention.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status=pending_payment')));
+                ->where('attention.0.href', fn ($href) => is_string($href) && str_contains($href, 'order_status=awaiting_confirmation')));
     }
 
     /** @return array{0: Order, 1: Product} */
@@ -84,7 +118,7 @@ class OrderConfirmationTest extends TestCase
             'parent_sku' => 'WIN-CONF-1',
             'name' => 'Jendela Test',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -111,7 +145,7 @@ class OrderConfirmationTest extends TestCase
             'total_amount' => $total,
             'payment_method' => $paymentMethod,
             'cod_flag' => $paymentMethod === 'cod',
-            'order_status' => $paymentMethod === 'cod' ? 'pending' : 'pending_payment',
+            'order_status' => 'awaiting_confirmation',
             'payment_status' => 'pending',
             'shipping_status' => 'pending',
         ]);

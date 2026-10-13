@@ -1,0 +1,434 @@
+import { Link } from "@inertiajs/react"
+import { SealCheck, ShieldCheck, Tag, Truck } from "@phosphor-icons/react"
+import * as React from "react"
+
+import { CarouselNavButton } from "@/components/public/carousel-controls"
+import { ResponsiveImage } from "@/components/ui/responsive-image"
+import { cn } from "@/lib/utils"
+import { routeUrl } from "@/lib/routes"
+import type { PromoSlide } from "@/types"
+
+// Poin layanan yang ditampilkan satu per satu di slider promo (tidak menampilkan
+// ulang announcement yang sudah ada di bar paling atas). Gaya mengikuti bar promo
+// header: ikon Phosphor + copy marketing.
+const PROMO_ITEMS: { icon: React.ElementType; text: string }[] = [
+  { icon: SealCheck, text: "Bayar Di Tempat (COD), Aman & Mudah" },
+  { icon: ShieldCheck, text: "Garansi 100% Resmi Pabrik" },
+  { icon: Truck, text: "Kirim Ke Seluruh Indonesia" },
+  { icon: Tag, text: "Harga Pabrik Langsung, Tanpa Perantara" },
+]
+
+/** Banner promosi solid, persis contoh: 3 baris teks rata kiri (baris kecil di atas,
+    headline besar bold di tengah, subteks regular di bawah). Seluruh banner adalah
+    link, tanpa tombol / chip / disclaimer. */
+function HeroPromoCard({ slide }: { slide: PromoSlide }) {
+  const headlineLines = (slide.headline || "").split("\n").filter(Boolean)
+  const label = [slide.eyebrow, slide.headline, slide.subheadline]
+    .filter(Boolean)
+    .join(" · ")
+
+  return (
+    <Link
+      href={slide.href}
+      className="group relative flex h-full w-full items-center overflow-hidden rounded-md bg-primary transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      aria-label={label || "Lihat promo"}
+    >
+      <div className="flex w-full flex-col justify-center px-4 sm:px-8 lg:px-10">
+        {slide.eyebrow ? (
+          <p className="text-xs font-medium text-white/90">
+            {slide.eyebrow}
+          </p>
+        ) : null}
+        <p className="mt-0.5 whitespace-pre-line font-display text-xl font-extrabold leading-[1.15] tracking-[-0.02em] text-white sm:mt-1 sm:text-3xl lg:text-4xl">
+          {headlineLines.length ? headlineLines.join("\n") : slide.headline}
+        </p>
+        {slide.subheadline ? (
+          <p className="mt-1 text-xs leading-4 text-white/90 sm:mt-1.5">
+            {slide.subheadline}
+          </p>
+        ) : null}
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * Strip promo merah di atas banner, full-width (edge-to-edge, tanpa rounded dan
+ * tanpa padding horizontal). Desktop: semua promo tampil sekaligus dalam satu
+ * baris (3–4 per slide). Mobile: maksimal 2 promo per slide, slide berganti
+ * otomatis untuk menampilkan sisanya (tanpa pagination dots).
+ */
+export function PromoSlider() {
+  const items = PROMO_ITEMS
+  const [desktopIndex, setDesktopIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
+
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  const safeDesktopIndex = desktopIndex % items.length
+  const renderPromoText = (text: string) =>
+    text.split(/(\d+%)/g).map((part, index) =>
+      /\d+%/.test(part) ? (
+        <span key={`${part}-${index}`} className="inline-flex rounded-full bg-white px-1.5 text-primary">
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    )
+
+  React.useEffect(() => {
+    if (items.length < 2 || paused || reduceMotion) return
+    const id = window.setInterval(() => {
+      setDesktopIndex((current) => (current + 1) % items.length)
+    }, 5000)
+    return () => window.clearInterval(id)
+  }, [items.length, paused, reduceMotion])
+
+  return (
+    <div
+      className="relative h-8 w-full overflow-hidden bg-primary text-primary-foreground"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      aria-label="Pengumuman promo"
+    >
+      {/* Desktop: semua promo sekaligus dalam satu baris (4 kolom). */}
+      <div className="hidden h-8 w-full items-center justify-center sm:flex" style={{ background: "none" }}>
+        <div
+          key={`${items[safeDesktopIndex].text}-${safeDesktopIndex}`}
+          className="flex min-w-max items-center justify-center px-4 transition-opacity duration-300"
+        >
+          <span className="flex min-w-0 items-center justify-center gap-2 text-xs font-semibold leading-none tracking-tight">
+            {React.createElement(items[safeDesktopIndex].icon, { weight: "fill", className: "size-3.5 shrink-0 text-primary-foreground/90", "aria-hidden": true })}
+            <span className="whitespace-nowrap text-primary-foreground">{renderPromoText(items[safeDesktopIndex].text)}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Mobile memakai promo yang sama dengan desktop, satu teks per slide. */}
+      <div className="flex h-8 w-full items-center justify-center sm:hidden" style={{ background: "none" }}>
+        <div
+          key={`mobile-${items[safeDesktopIndex].text}-${safeDesktopIndex}`}
+          className="flex min-w-max items-center justify-center px-2 transition-opacity duration-300"
+        >
+          <span className="flex min-w-0 items-center justify-center gap-1.5 text-xs font-semibold leading-none tracking-tight">
+            {React.createElement(items[safeDesktopIndex].icon, { weight: "fill", className: "size-3.5 shrink-0 text-primary-foreground/90", "aria-hidden": true })}
+            <span className="whitespace-nowrap text-primary-foreground">{renderPromoText(items[safeDesktopIndex].text)}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Konten tiap slide:
+ * - layout "placeholder" → blok polos (slot banner yang belum diisi admin).
+ * - punya gambar → gambar full-bleed (banner buatan admin).
+ * - selain itu → kartu teks solid (fallback).
+ */
+function HeroSlideContent({
+  slide,
+  priority,
+}: {
+  slide: PromoSlide
+  priority: boolean
+}) {
+  if (slide.layout === "placeholder") {
+    return (
+      <div
+        className="flex h-full w-full items-center justify-center rounded-[5px] bg-secondary pt-5"
+        aria-hidden="true"
+      />
+    )
+  }
+
+  // Banner gambar dari admin TETAP clickable: seluruh slide dibungkus link ke
+  // link_url banner (sama seperti kartu teks). Swipe tetap jalan karena drag
+  // handler men-suppress click hanya saat benar-benar dragged.
+  const content = slide.image ? (
+    <div className="relative h-full w-full overflow-hidden rounded-[5px]">
+      <ResponsiveImage
+        src={slide.image}
+        alt={slide.image_alt ?? slide.headline}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
+        wrapperClassName="absolute inset-0"
+        className="object-cover object-center"
+      />
+    </div>
+  ) : (
+    <HeroPromoCard slide={slide} />
+  )
+
+  return (
+    <Link
+      href={slide.href}
+      className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      aria-label={slide.image_alt ?? (slide.headline || "Lihat promo")}
+    >
+      {content}
+    </Link>
+  )
+}
+
+/** Section banner homepage: slider promo full-width di atas + carousel slot banner. */
+export function HomeHero({ slides }: { slides: PromoSlide[] }) {
+  const [activeIndex, setActiveIndex] = React.useState(0)
+  const [paused, setPaused] = React.useState(false)
+  // Reset timer tiap kali user berpindah manual (klik dot/panah), supaya slide
+  // tidak langsung berpindah lagi setelah interaksi.
+  const [interactionKey, setInteractionKey] = React.useState(0)
+  // Banner sepenuhnya dari backend (promoSlides = HomepagePromotions::slides():
+  // banner CMS manual + slot placeholder sampai 10). Fallback polos hanya dipakai
+  // bila backend tidak mengirim slide sama sekali.
+  // Rasio banner PATEN: 1024/426 (±2.4:1), standar design system & hint form
+  // admin. Tinggi otomatis = lebar ÷ rasio, jadi proporsional di semua layar.
+
+  const fallbackSlide: PromoSlide = {
+    id: -2,
+    headline: "",
+    layout: "placeholder",
+    href: routeUrl("catalog.index"),
+  }
+  const bannerSlides = slides.length > 0 ? slides : [fallbackSlide]
+  // Carousel hanya menampilkan banner asli (konten/gambar); slot placeholder
+  // hanya jadi fallback saat belum ada banner sama sekali. Dengan begitu
+  // urutannya: banner 1 → … → banner terakhir → kembali ke banner 1.
+  const realSlides = bannerSlides.filter((slide) => slide.layout !== "placeholder")
+  const carouselSlides = realSlides.length > 0 ? realSlides : bannerSlides
+  const total = carouselSlides.length
+  const dotCount = total
+  const visibleIndex = Math.min(activeIndex, total - 1)
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  const dragRef = React.useRef<{
+    pointerId: number | null
+    startX: number
+    dragged: boolean
+  }>({ pointerId: null, startX: 0, dragged: false })
+
+  // Autoplay: tiap promo diam 5 detik, lalu bergeser cepat (350ms) ke berikutnya.
+  React.useEffect(() => {
+    if (total < 2 || paused) return
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (media.matches) return
+    const id = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % total)
+    }, 5000)
+    return () => window.clearInterval(id)
+  }, [total, paused, interactionKey])
+
+  function goTo(index: number) {
+    setActiveIndex((index + total) % total)
+    setInteractionKey((key) => key + 1)
+  }
+
+  // Swipe from middle of promo card / CTA (pointer when available, else touch).
+  React.useEffect(() => {
+    const el = surfaceRef.current
+    if (!el || total < 2) return
+
+    const state = dragRef.current
+    let suppressClick = false
+    let startX = 0
+    let active = false
+    let dragged = false
+    const usePointer = typeof window.PointerEvent === "function"
+
+    const begin = (clientX: number, pointerId: number | null = null) => {
+      active = true
+      dragged = false
+      startX = clientX
+      state.pointerId = pointerId
+      state.startX = clientX
+      state.dragged = false
+    }
+
+    const markDrag = (clientX: number, event?: Event) => {
+      if (!active) return
+      if (Math.abs(clientX - startX) < 28) return
+      if (!dragged) {
+        dragged = true
+        state.dragged = true
+        suppressClick = true
+        if (state.pointerId !== null && event instanceof PointerEvent) {
+          try {
+            el.setPointerCapture(state.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+      event?.preventDefault()
+    }
+
+    const finish = (clientX: number) => {
+      if (!active) return
+      const dx = clientX - startX
+      const wasDragged = dragged
+      active = false
+      dragged = false
+      state.pointerId = null
+      state.dragged = false
+      if (!wasDragged || Math.abs(dx) < 40) return
+      setActiveIndex((current) => {
+        const next = current + (dx < 0 ? 1 : -1)
+        return ((next % total) + total) % total
+      })
+    }
+
+    const onClickCapture = (event: MouseEvent) => {
+      if (!suppressClick) return
+      event.preventDefault()
+      event.stopPropagation()
+      suppressClick = false
+    }
+
+    el.addEventListener("click", onClickCapture, true)
+
+    if (usePointer) {
+      const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return
+        begin(event.clientX, event.pointerId)
+      }
+      const onPointerMove = (event: PointerEvent) => {
+        if (state.pointerId !== event.pointerId) return
+        markDrag(event.clientX, event)
+      }
+      const onPointerUp = (event: PointerEvent) => {
+        if (state.pointerId !== null && state.pointerId !== event.pointerId) return
+        finish(event.clientX)
+      }
+      el.addEventListener("pointerdown", onPointerDown)
+      el.addEventListener("pointermove", onPointerMove, { passive: false })
+      el.addEventListener("pointerup", onPointerUp)
+      el.addEventListener("pointercancel", onPointerUp)
+      return () => {
+        el.removeEventListener("pointerdown", onPointerDown)
+        el.removeEventListener("pointermove", onPointerMove)
+        el.removeEventListener("pointerup", onPointerUp)
+        el.removeEventListener("pointercancel", onPointerUp)
+        el.removeEventListener("click", onClickCapture, true)
+      }
+    }
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      begin(event.touches[0].clientX)
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (!active || event.touches.length !== 1) return
+      markDrag(event.touches[0].clientX, event)
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      finish(event.changedTouches[0]?.clientX ?? startX)
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true })
+    el.addEventListener("touchmove", onTouchMove, { passive: false })
+    el.addEventListener("touchend", onTouchEnd)
+    el.addEventListener("touchcancel", onTouchEnd)
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart)
+      el.removeEventListener("touchmove", onTouchMove)
+      el.removeEventListener("touchend", onTouchEnd)
+      el.removeEventListener("touchcancel", onTouchEnd)
+      el.removeEventListener("click", onClickCapture, true)
+    }
+  }, [total])
+
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  return (
+    <section id="promo" className="scroll-mt-20 bg-surface lg:pt-2" aria-label="Promo dan campaign">
+      {/* Slider promo full-width: keluar dari container ber-padding, tanpa rounded. */}
+      <div className="container-page !px-2.5 md:!px-8 lg:!px-12 py-4">
+        {/* Pembungkus posisi: tombol outset WAJIB di luar pembungkus
+            overflow-hidden, kalau tidak sisi menjoroknya terpotong (13-09). */}
+        <div
+          ref={surfaceRef}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={() => setPaused(false)}
+          className="relative"
+        >
+          <div className="relative w-full overflow-hidden [touch-action:pan-y]">
+          <div
+            className={cn(
+              // Rasio paten 1024/426 (±2.4:1): tinggi otomatis = lebar / rasio.
+              "flex aspect-[1024/426] w-full items-stretch",
+              // Perpindahan antar-promo cepat (350ms) dengan transform translateX.
+              !reduceMotion && "transition-transform duration-[350ms] ease-emphasized",
+            )}
+            style={{ transform: `translateX(-${visibleIndex * 100}%)` }}
+          >
+            {carouselSlides.map((slide, index) => {
+              const hidden = index !== visibleIndex
+              return (
+                <div
+                  key={slide.id}
+                  className="h-full w-full shrink-0 basis-full"
+                  aria-hidden={hidden ? "true" : undefined}
+                  // Hidden carousel slides must not keep focusable CTAs in tab order (axe aria-hidden-focus).
+                  {...(hidden ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
+                >
+                  <HeroSlideContent slide={slide} priority={index === 0} />
+                </div>
+              )
+            })}
+          </div>
+
+          {total > 1 ? (
+            <>
+              <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
+                {Array.from({ length: dotCount }).map((_, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    onClick={() => goTo(index)}
+                    className="relative flex size-6 items-center justify-center rounded-full transition-colors before:absolute before:-inset-2 before:content-['']"
+                    aria-label={`Slide ${index + 1}`}
+                    aria-current={index === visibleIndex ? "true" : undefined}
+                  >
+                    <span
+                      className={cn(
+                        "h-1 rounded-full shadow-[0_0_0_1px_rgba(15,15,15,0.25)] transition-[width,background-color]",
+                        index === visibleIndex ? "w-4 bg-white mix-blend-difference opacity-80" : "w-1 bg-white mix-blend-difference opacity-80",
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+          </div>
+
+          {total > 1 ? (
+            <>
+              <CarouselNavButton
+                side="left"
+                label="Slide sebelumnya"
+                enabled
+                sideOffset="outset"
+                onClick={() => goTo(visibleIndex - 1)}
+              />
+              <CarouselNavButton
+                side="right"
+                label="Slide berikutnya"
+                enabled
+                sideOffset="outset"
+                onClick={() => goTo(visibleIndex + 1)}
+              />
+            </>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}

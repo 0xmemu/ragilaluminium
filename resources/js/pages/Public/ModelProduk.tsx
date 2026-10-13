@@ -1,161 +1,72 @@
-import { Head, Link, router } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import * as React from "react"
 
-import { ModelProdukListingSidebar } from "@/components/public/catalog-listing-sidebar"
-import { ModelCard } from "@/components/public/model-card"
-import { FilterSheetContent } from "@/components/public/filter-sidebar"
-import { Icon } from "@/components/shared/icon"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { Button } from "@/components/ui/button"
+import { SortMenu } from "@/components/public/model-sort-menu"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Sheet, SheetTrigger } from "@/components/ui/sheet"
+import { ModelCategoryCard } from "@/components/public/model-category-card"
+import { ShowcaseListingFrame } from "@/components/public/showcase-listing-frame"
 import PublicLayout from "@/layouts/public-layout"
 import { formatNumber } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { ModelCardData, SelectOption } from "@/types"
+import type { ModelCardData } from "@/types"
 
 interface ModelProdukProps {
   models: ModelCardData[]
-  filterDesigns: SelectOption[]
-  activeDesign?: string | null
+  activeSort?: "admin" | "latest" | "oldest"
 }
 
-export default function ModelProduk({
-  models = [],
-  filterDesigns = [],
-  activeDesign = null,
-}: ModelProdukProps) {
-  const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false)
-  const [design, setDesign] = React.useState<string | null>(activeDesign ?? null)
+export default function ModelProduk({ models = [], activeSort = "admin" }: ModelProdukProps) {
+  const [sort, setSort] = React.useState<string>(activeSort)
 
   React.useEffect(() => {
-    setDesign(activeDesign ?? null)
-  }, [activeDesign])
+    // Inertia navigation can replace the active sort while this page instance remains mounted.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSort(activeSort)
+  }, [activeSort])
 
-  function selectDesign(value: string | null) {
-    setDesign(value)
-    setMobileFiltersOpen(false)
+  function selectSort(value: string) {
+    setSort(value)
     router.get(
       routeUrl("catalog.index"),
-      value ? { design: value } : {},
+      value ? { sort: value } : {},
       { preserveState: true, preserveScroll: true, replace: true },
     )
   }
 
-  function clearDesign() {
-    selectDesign(null)
-  }
-
-  const hasActiveFilter = Boolean(design)
+  const totalCount = models.reduce((sum, model) => sum + (Number(model.count) || 0), 0)
 
   return (
     <PublicLayout>
-      <Head title="Semua Model Produk">
+      <Head title="Model Produk">
         <meta
           name="description"
           content="Bandingkan model jendela, pintu, dan boven aluminium berdasarkan jenis bukaan dan desain."
         />
       </Head>
 
-      <section className="border-b border-border bg-surface">
-        <div className="container-page py-8 lg:py-10">
-          <Breadcrumbs
-            items={[
-              { label: "Home", href: routeUrl("home") },
-              { label: "Semua Model Produk" },
-            ]}
+      <ShowcaseListingFrame
+        title="Model Produk"
+        breadcrumbs={[
+          { label: "Beranda", href: routeUrl("home") },
+          { label: "Model Produk" },
+        ]}
+        countLabel={`${formatNumber(totalCount)} model produk ditemukan`}
+        toolbar={<SortMenu value={sort} onChange={selectSort} />}
+      >
+        {models.length ? (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {models.map((model) => (
+              <ModelCategoryCard key={`${model.category}-${model.model}`} model={model} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon="funnel"
+            title="Belum ada model yang cocok"
+            description="Model produk belum tersedia pada katalog aktif."
           />
-
-          <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Semua Model Produk</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatNumber(models.length)} model ditemukan
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 lg:hidden">
-              <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="secondary" className="min-h-11 px-4">
-                    <Icon name="sliders" className="h-4 w-4" aria-hidden="true" />
-                    Filter
-                    {hasActiveFilter ? (
-                      <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-                        1
-                      </span>
-                    ) : null}
-                  </Button>
-                </SheetTrigger>
-                <FilterSheetContent
-                  title="Filter Model"
-                  description="Saring model berdasarkan desain atau pilih kategori produk."
-                >
-                  <ModelProdukListingSidebar
-                    filterDesigns={filterDesigns}
-                    activeDesign={design}
-                    onSelectDesign={selectDesign}
-                    onClearDesign={clearDesign}
-                  />
-                </FilterSheetContent>
-              </Sheet>
-              {hasActiveFilter ? (
-                <button
-                  type="button"
-                  onClick={clearDesign}
-                  className="min-h-11 px-2 text-xs font-semibold text-primary"
-                >
-                  Hapus filter
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-page py-8 lg:py-10">
-        <div className="grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
-          <aside className="hidden lg:block">
-            <div className="sticky top-28">
-              <ModelProdukListingSidebar
-                filterDesigns={filterDesigns}
-                activeDesign={design}
-                onSelectDesign={selectDesign}
-                onClearDesign={clearDesign}
-              />
-            </div>
-          </aside>
-
-          <div>
-            {models.length ? (
-              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
-                {models.map((model) => (
-                  <ModelCard key={`${model.category}-${model.model}`} model={model} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon="funnel"
-                title="Belum ada model yang cocok"
-                description={
-                  design
-                    ? "Desain ini belum tersedia pada model aktif. Hapus filter untuk melihat pilihan lain."
-                    : "Model produk belum tersedia pada katalog aktif."
-                }
-                action={
-                  design ? (
-                    <Button onClick={clearDesign}>Hapus filter</Button>
-                  ) : (
-                    <Button asChild>
-                      <Link href={routeUrl("contact")}>Hubungi kami</Link>
-                    </Button>
-                  )
-                }
-              />
-            )}
-          </div>
-        </div>
-      </section>
+        )}
+      </ShowcaseListingFrame>
     </PublicLayout>
   )
 }

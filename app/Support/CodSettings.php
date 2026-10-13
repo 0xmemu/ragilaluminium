@@ -9,14 +9,15 @@ use App\Models\CmsPage;
  *
  * content.cod = {
  *   enabled: bool,
- *   fee_type: percent|fixed,
+ *   fee_type: percent,
  *   fee_value: number,
- *   max_order_amount: number|null  // 0/null = no limit
+ *   max_order_amount: number|null
  * }
  */
 class CodSettings
 {
     public const PAGE_SLUG = 'checkout';
+    public const SETTING_KEY = OperationalSettings::COD;
 
     public const DEFAULTS = [
         'enabled' => true,
@@ -25,36 +26,37 @@ class CodSettings
         'max_order_amount' => null,
     ];
 
-    /**
-     * @return array{enabled: bool, fee_type: string, fee_value: float, max_order_amount: float|null}
-     */
+    /** @return array{enabled: bool, fee_type: string, fee_value: float, max_order_amount: float|null} */
     public static function get(): array
+    {
+        $versioned = OperationalSettings::current(self::SETTING_KEY);
+
+        return is_array($versioned)
+            ? OperationalSettings::normalize(self::SETTING_KEY, $versioned)
+            : self::readCms();
+    }
+
+    /** @return array{enabled: bool, fee_type: string, fee_value: float, max_order_amount: float|null} */
+    private static function readCms(): array
     {
         $page = self::page();
         $stored = is_array($page?->content['cod'] ?? null) ? $page->content['cod'] : [];
-
-        $feeType = ($stored['fee_type'] ?? self::DEFAULTS['fee_type']) === 'fixed' ? 'fixed' : 'percent';
         $max = $stored['max_order_amount'] ?? null;
         $maxOrder = $max === null || $max === '' ? null : max(0, (float) $max);
 
         return [
             'enabled' => (bool) ($stored['enabled'] ?? self::DEFAULTS['enabled']),
-            'fee_type' => $feeType,
-            'fee_value' => max(0, (float) ($stored['fee_value'] ?? self::DEFAULTS['fee_value'])),
+            'fee_type' => 'percent',
+            'fee_value' => max(0, min(100, (float) ($stored['fee_value'] ?? self::DEFAULTS['fee_value']))),
             'max_order_amount' => $maxOrder,
         ];
     }
 
-    public static function enabled(): bool
-    {
-        return self::get()['enabled'];
-    }
-
     /**
-     * @param  array{enabled?: bool, fee_type?: string, fee_value?: float|int|string, max_order_amount?: float|int|string|null}  $settings
-     * @return array{enabled: bool, fee_type: string, fee_value: float, max_order_amount: float|null}
+     * @param array{enabled?: bool, fee_type?: string, fee_value?: float|int|string, max_order_amount?: float|int|string|null} $settings
+     * @param array{source?: string, reason?: string|null, reference_type?: string|null, reference_id?: string|null} $audit
      */
-    public static function update(array $settings, ?int $adminId = null): array
+    public static function update(array $settings, ?int $adminId = null, array $audit = []): array
     {
         $page = self::page(create: true);
         $content = is_array($page->content) ? $page->content : [];
@@ -64,20 +66,14 @@ class CodSettings
             $merged['enabled'] = (bool) $settings['enabled'];
         }
         if (array_key_exists('fee_type', $settings)) {
-            $merged['fee_type'] = $settings['fee_type'] === 'fixed' ? 'fixed' : 'percent';
+            $merged['fee_type'] = 'percent';
         }
         if (array_key_exists('fee_value', $settings)) {
-            $value = max(0, (float) $settings['fee_value']);
-            if (($merged['fee_type'] ?? 'percent') === 'percent') {
-                $value = min(100, $value);
-            }
-            $merged['fee_value'] = $value;
+            $merged['fee_value'] = min(100, max(0, (float) $settings['fee_value']));
         }
         if (array_key_exists('max_order_amount', $settings)) {
             $max = $settings['max_order_amount'];
-            $merged['max_order_amount'] = ($max === null || $max === '')
-                ? null
-                : max(0, (float) $max);
+            $merged['max_order_amount'] = ($max === null || $max === '') ? null : max(0, (float) $max);
         }
 
         $content['cod'] = $merged;
@@ -88,27 +84,50 @@ class CodSettings
         }
         $page->save();
 
-        return self::get();
+        $after = self::readCms();
+        if (OperationalSettings::available()) {
+            OperationalSettings::record(
+                self::SETTING_KEY,
+                $after,
+                $adminId,
+            (string) ($audit['source'] ?? 'admin'),
+            $audit['reason'] ?? null,
+            $audit['reference_type'] ?? CmsPage::class,
+            $audit['reference_id'] ?? (string) $page->id,
+            );
+
+        }
+        return $after;
+    }
+
+    public static function enabled(): bool
+    {
+        return self::get()['enabled'];
     }
 
     /**
-     * Handling fee for a COD order. Base = goods subtotal after voucher.
+     * ATURAN BASIS (keputusan owner 2026-09-18):
+     * biaya COD = persen x TOTAL PEMBAYARAN SEBELUM biaya COD.
+     *
+     * Total pembayaran sebelum biaya COD = subtotal produk setelah voucher
+     * + ongkos kirim yang dibayar pembeli.
+     *
+     * Ongkos kirim yang dibayar adalah NET setelah subsidi (subsidi bukan
+     * bagian nilai yang ditagih ke penerima, keputusan owner 2026-09-03) DAN
+     * sudah memuat asuransi. Perlakuannya SAMA dengan atau tanpa asuransi:
+     * yang jadi basis selalu angka ongkos kirim yang benar-benar dibayar
+     * pembeli, sehingga biaya COD dapat diverifikasi dari ringkasan checkout.
      */
-    public static function calculateFee(float $subtotalAfterVoucher): float
+    public static function calculateFee(float $subtotalAfterVoucher, float $shippingNet = 0): float
     {
         $settings = self::get();
         if (! $settings['enabled'] || $settings['fee_value'] <= 0) {
             return 0.0;
         }
 
-        $base = max(0, $subtotalAfterVoucher);
-        if ($settings['fee_type'] === 'fixed') {
-            return round((float) $settings['fee_value'], 2);
-        }
+        $basis = max(0, $subtotalAfterVoucher) + max(0, $shippingNet);
 
-        $percent = max(0, min(100, (float) $settings['fee_value']));
-
-        return round($base * ($percent / 100), 2);
+        return round($basis * ($settings['fee_value'] / 100), 2);
     }
 
     public static function assertAllowedForSubtotal(float $subtotalAfterVoucher): void
@@ -120,17 +139,11 @@ class CodSettings
 
         $max = $settings['max_order_amount'];
         if ($max !== null && $max > 0 && $subtotalAfterVoucher > $max) {
-            $label = number_format($max, 0, ',', '.');
-            throw new \DomainException("COD hanya untuk belanja maksimal Rp {$label}.");
+            throw new \DomainException('COD hanya untuk belanja maksimal Rp '.number_format($max, 0, ',', '.').'.');
         }
     }
 
-    /**
-     * Preserve reserved cod settings when CMS editor updates checkout page.
-     *
-     * @param  array<string, mixed>|null  $incoming
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed>|null $incoming */
     public static function mergePreserving(?array $incoming, ?CmsPage $page): array
     {
         $content = is_array($incoming) ? $incoming : [];
@@ -148,7 +161,7 @@ class CodSettings
 
     private static function page(bool $create = false): ?CmsPage
     {
-        $page = CmsPage::query()->where('slug', self::PAGE_SLUG)->first();
+        $page = CmsSettings::pageBySlug(self::PAGE_SLUG);
         if ($page || ! $create) {
             return $page;
         }
@@ -158,7 +171,7 @@ class CodSettings
             'title' => 'Checkout',
             'content' => [
                 'cod' => self::DEFAULTS,
-                'shipping_subsidy' => \App\Support\ShippingSubsidySettings::DEFAULTS,
+                'shipping_subsidy' => ShippingSubsidySettings::DEFAULTS,
             ],
             'published' => true,
         ]);

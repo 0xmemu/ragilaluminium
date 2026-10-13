@@ -269,6 +269,8 @@ During import jobs that touch media (e.g., `catalog_media` or `catalog_variants`
 
 This establishes a **trace link** between `product_media` and the import job that introduced it.
 
+**Shopee `mass_update_media_info`:** `ShopeeMediaExport` maps `product_id` → cover (col 4) + item images (cols 5–12). Re-import **must** set cover as `is_main_image` and hide prior catalog `source_url`s not in the file (otherwise stale/wrong covers — e.g. boven photo on jendela — remain on cards). Repair existing DB: `php artisan catalog:resync-shopee-media --download`.
+
 ### 7.2 Media Download Worker
 
 Media Module uses Laravel queue workers:

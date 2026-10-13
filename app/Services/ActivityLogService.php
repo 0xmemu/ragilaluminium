@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EventLog;
+use App\Support\OrderEventLabels;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class ActivityLogService
     {
         return [
             ['key' => 'all', 'label' => 'Semua Log'],
-            ['key' => 'attendance', 'label' => 'Kehadiran'],
+            ['key' => 'attendance', 'label' => 'Keamanan & Akses'],
             ['key' => 'product', 'label' => 'Produk & Harga'],
             ['key' => 'order', 'label' => 'Pesanan & Biaya'],
             ['key' => 'whatsapp', 'label' => 'WhatsApp Otomatis'],
@@ -43,7 +44,7 @@ class ActivityLogService
         $q = trim((string) $request->input('q', ''));
         $sort = (string) $request->input('sort', 'newest');
 
-        $query = EventLog::query()->with('createdBy:id,name,email');
+        $query = EventLog::query()->with('createdBy:id,name,username');
 
         $this->applyCategoryFilter($query, $category);
 
@@ -54,7 +55,7 @@ class ActivityLogService
                     ->orWhere('payload', 'like', '%'.$q.'%')
                     ->orWhereHas('createdBy', function (Builder $user) use ($q) {
                         $user->where('name', 'like', '%'.$q.'%')
-                            ->orWhere('email', 'like', '%'.$q.'%');
+                            ->orWhere('username', 'like', '%'.$q.'%');
                     });
             });
         }
@@ -107,7 +108,7 @@ class ActivityLogService
         $category = $this->normalizeCategory((string) $request->input('category', 'all'));
         $q = trim((string) $request->input('q', ''));
 
-        $query = EventLog::query()->with('createdBy:id,name,email');
+        $query = EventLog::query()->with('createdBy:id,name,username');
         $this->applyCategoryFilter($query, $category);
 
         if ($q !== '') {
@@ -117,7 +118,7 @@ class ActivityLogService
                     ->orWhere('payload', 'like', '%'.$q.'%')
                     ->orWhereHas('createdBy', function (Builder $user) use ($q) {
                         $user->where('name', 'like', '%'.$q.'%')
-                            ->orWhere('email', 'like', '%'.$q.'%');
+                            ->orWhere('username', 'like', '%'.$q.'%');
                     });
             });
         }
@@ -161,7 +162,7 @@ class ActivityLogService
         $actor = $this->actorLabel($log);
 
         return match ($log->event_type) {
-            'auth.login' => sprintf('%s login ke sistem%s', $actor, isset($payload['ip']) ? ' dari IP '.$payload['ip'] : ''),
+            'auth.login' => sprintf('%s login ke sistem', $actor),
             'auth.profile_updated' => sprintf(
                 '%s memperbarui profil%s',
                 $actor,
@@ -170,19 +171,19 @@ class ActivityLogService
             'auth.logout' => sprintf('%s logout dari sistem', $actor),
             'auth.user_created' => sprintf(
                 'Akun admin dibuat%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_updated' => sprintf(
                 'Akun admin diperbarui%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_activated' => sprintf(
                 'Akun admin diaktifkan%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'auth.user_deactivated' => sprintf(
                 'Akun admin dinonaktifkan%s',
-                isset($payload['email']) ? ' · '.$payload['email'] : ''
+                isset($payload['username']) ? ' · '.$payload['username'] : ''
             ),
             'order.created' => sprintf(
                 'Pesanan %s dibuat%s',
@@ -190,9 +191,10 @@ class ActivityLogService
                 isset($payload['total']) ? ' (total '.number_format((float) $payload['total'], 0, ',', '.').')' : ''
             ),
             'order_status_changed' => sprintf(
-                'Status pesanan diubah dari %s menjadi %s',
-                $payload['from'] ?? '—',
-                $payload['order_status'] ?? $payload['to'] ?? '—'
+                'Status pesanan diubah dari %s menjadi %s%s',
+                OrderEventLabels::orderStatus(isset($payload['from']) ? (string) $payload['from'] : null),
+                OrderEventLabels::orderStatus(isset($payload['order_status']) ? (string) $payload['order_status'] : (isset($payload['to']) ? (string) $payload['to'] : null)),
+                filled($payload['reason'] ?? null) ? ' · alasan: '.$payload['reason'] : ''
             ),
             'payment.confirmed' => sprintf(
                 'Pembayaran dikonfirmasi untuk pesanan #%s%s',
@@ -210,7 +212,12 @@ class ActivityLogService
                 $log->entity_id,
                 $payload['type'] ?? $payload['file'] ?? 'katalog'
             ),
-            'import.retried' => sprintf('Import #%s diulang', $log->entity_id),
+            'product.voucher.created' => sprintf('Voucher dibuat%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.updated' => sprintf('Voucher diperbarui%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.published' => sprintf('Voucher diaktifkan%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.unpublished' => sprintf('Voucher dinonaktifkan%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.duplicated' => sprintf('Voucher diduplikasi%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
+            'product.voucher.ended' => sprintf('Voucher diakhiri%s', isset($payload['code']) ? ': '.$payload['code'] : ''),
             'whatsapp.template_updated' => sprintf(
                 'Template WhatsApp diperbarui%s',
                 isset($payload['internal_key']) ? ': '.$payload['internal_key'] : ''
@@ -264,9 +271,136 @@ class ActivityLogService
             'cms.ketentuan_layanan_updated' => 'Dokumen Ketentuan Layanan diperbarui',
             'cms.kebijakan_privasi_updated' => 'Dokumen Kebijakan Privasi diperbarui',
             'cms.apa_kata_pelanggan_meta_updated' => 'Meta halaman Apa Kata Pelanggan diperbarui',
+            // Balasan admin atas ulasan pelanggan (owner 2026-09-18).
+            'cms.testimonial_replied' => sprintf(
+                'Balasan ulasan disimpan%s',
+                filled($payload['customer_name'] ?? null) ? ' · '.$payload['customer_name'] : ''
+            ),
+            'cms.testimonial_reply_deleted' => sprintf(
+                'Balasan ulasan dihapus%s',
+                filled($payload['customer_name'] ?? null) ? ' · '.$payload['customer_name'] : ''
+            ),
             'cms.hasil_pemasangan_meta_updated' => 'Meta halaman Hasil Pemasangan diperbarui',
-            default => $log->event_type.($log->entity_type ? ' · '.$log->entity_type.' #'.$log->entity_id : ''),
+            'cms.beranda_how_to_order_updated' => sprintf(
+                'Cara pemesanan di beranda diperbarui (%s langkah)',
+                $payload['step_count'] ?? 0
+            ),
+            'order.edited' => sprintf(
+                'Pesanan %s diedit%s',
+                $payload['order_number'] ?? '#'.$log->entity_id,
+                filled($payload['note'] ?? null) ? ' · catatan: '.$payload['note'] : ''
+            ),
+            'payment.reconciled' => sprintf(
+                'Status pembayaran pesanan #%s disinkronkan: %s → %s',
+                $log->entity_id,
+                $this->paymentStatusLabel(isset($payload['from']) ? (string) $payload['from'] : null),
+                $this->paymentStatusLabel(isset($payload['payment_status']) ? (string) $payload['payment_status'] : null)
+            ),
+            'system/cod_completion' => sprintf(
+                'Pembayaran COD pesanan #%s otomatis dilunasi%s',
+                $log->entity_id,
+                isset($payload['amount']) ? ' (Rp '.number_format((float) $payload['amount'], 0, ',', '.').')' : ''
+            ),
+            'product.promotion.created' => sprintf('Kampanye promo dibuat%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.promotion.activated' => sprintf('Kampanye promo diaktifkan%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.promotion.ended' => sprintf('Kampanye promo diakhiri%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.sub_model_created' => sprintf(
+                'Sub model ditambahkan%s',
+                isset($payload['name']) ? ': '.$payload['name'].(isset($payload['code']) ? ' ('.$payload['code'].')' : '') : ''
+            ),
+            'product.sub_model_reordered' => sprintf('Urutan sub model diperbarui (%s item)', $payload['count'] ?? 0),
+            'product.category_updated' => sprintf('Kategori diperbarui%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'product.duplicated' => sprintf('Produk diduplikasi%s', isset($payload['name']) ? ': '.$payload['name'] : ''),
+            'settings.version_created' => $this->describeSettingVersion($log, $payload, $actor),
+            'whatsapp.logged_out' => sprintf(
+                'Gateway WhatsApp keluar dari sesi%s',
+                isset($payload['source']) ? ' · sumber: '.$payload['source'] : ''
+            ),
+            default => $this->humanizeEventType($log->event_type),
         };
+    }
+
+    /**
+     * Deskripsi perubahan pengaturan operasional — tampilkan field yang berubah (before → after).
+     */
+    protected function describeSettingVersion(EventLog $log, array $payload, string $actor): string
+    {
+        $key = $payload['setting_key'] ?? null;
+        $label = $key === 'cod' ? 'Biaya COD' : (string) $key;
+
+        $before = is_array($log->before) ? $log->before : [];
+        $after = is_array($log->after) ? $log->after : [];
+
+        // Format nilai biar mudah dibaca
+        $fmt = function (mixed $v, string $field): string {
+            if (is_array($v)) {
+                return json_encode($v, JSON_UNESCAPED_UNICODE);
+            }
+            if ($field === 'enabled') {
+                return $v ? 'aktif' : 'nonaktif';
+            }
+            if ($field === 'fee_value') {
+                return is_numeric($v) ? number_format((float) $v, 0, ',', '.').'%' : (string) $v;
+            }
+            if ($field === 'max_order_amount') {
+                return ($v === null || $v === '') ? 'tanpa batas' : 'Rp '.number_format((float) $v, 0, ',', '.');
+            }
+            if ($field === 'subsidy_value') {
+                return is_numeric($v) ? number_format((float) $v, 2, ',', '.') : (string) $v;
+            }
+
+            return $v === null ? '-' : (string) $v;
+        };
+
+        $changes = [];
+        foreach (array_unique(array_merge(array_keys($before), array_keys($after))) as $field) {
+            $b = $before[$field] ?? null;
+            $a = $after[$field] ?? null;
+            if ($b !== $a) {
+                $fieldLabel = match ($field) {
+                    'enabled' => 'status',
+                    'fee_type' => 'jenis biaya',
+                    'fee_value' => 'nilai biaya',
+                    'max_order_amount' => 'batas belanja',
+                    'subsidy_type' => 'skema subsidi',
+                    'subsidy_value' => 'nilai subsidi',
+                    'jnt_enabled' => 'kurir J&T',
+                    'carriers' => 'kurir',
+                    default => $field,
+                };
+                $changes[] = $fieldLabel.' '.$this->fmtLog($fmt($b, $field)).' → '.$this->fmtLog($fmt($a, $field));
+            }
+        }
+
+        $base = sprintf('%s memperbarui pengaturan %s (versi %s)', $actor, $label, $payload['version'] ?? '?');
+        if ($changes) {
+            return $base.' · '.implode('; ', $changes);
+        }
+
+        return $base;
+    }
+
+    protected function fmtLog(string $v): string
+    {
+        return $v;
+    }
+
+    protected function paymentStatusLabel(?string $code): string
+    {
+        return match ($code) {
+            'pending' => 'Menunggu',
+            'paid' => 'Lunas',
+            'refunded' => 'Dikembalikan',
+            null, '' => '-',
+            default => str_replace('_', ' ', $code),
+        };
+    }
+
+    protected function humanizeEventType(string $eventType): string
+    {
+        $text = trim((string) preg_replace('/\s+/', ' ', str_replace(['_', '/', '.'], ' ', $eventType)));
+
+        return ucfirst($text);
     }
 
     /**
@@ -287,7 +421,11 @@ class ActivityLogService
     public function actorLabel(EventLog $log): string
     {
         if ($log->createdBy) {
-            return $log->createdBy->name ?: $log->createdBy->email;
+            $label = trim((string) ($log->createdBy->name ?: $log->createdBy->username));
+
+            if ($label !== '') {
+                return $label;
+            }
         }
 
         return 'Sistem';
@@ -417,6 +555,12 @@ class ActivityLogService
         ?int $entityId = null,
         ?array $payload = null,
         ?int $userId = null,
+        string $source = 'system',
+        ?array $before = null,
+        ?array $after = null,
+        ?string $reason = null,
+        ?string $referenceType = null,
+        ?string $referenceId = null,
     ): EventLog {
         return EventLog::create([
             'event_type' => $eventType,
@@ -425,6 +569,12 @@ class ActivityLogService
             'payload' => $payload,
             'created_by_user_id' => $userId,
             'created_at' => now(),
+            'source' => $source,
+            'before' => $before,
+            'after' => $after,
+            'reason' => $reason,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
         ]);
     }
 }

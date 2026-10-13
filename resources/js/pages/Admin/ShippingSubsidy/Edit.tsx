@@ -1,16 +1,18 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
-import { Field, FormErrorSummary } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Button } from "@/components/admin/ui/button"
+import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
+import { Input } from "@/components/admin/ui/input"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
 
 interface SubsidySettings {
   enabled: boolean
-  subsidy_type: "percent" | "fixed"
+  /** Persentase dari tarif kurir. Skema lain tidak didukung. */
   subsidy_value: number
   jnt_enabled: boolean
 }
@@ -20,123 +22,175 @@ export default function ShippingSubsidyEdit({
   description,
   settings,
   submitUrl,
-  jntConfigured,
 }: {
   title: string
   description: string
   settings: SubsidySettings
   submitUrl: string
-  jntConfigured: boolean
 }) {
+  // Nilai angka dipegang sebagai STRING agar input bebas editing (menghapus
+  // "0" tidak langsung menjadi 0 lagi). Konversi Number hanya saat submit.
+  const [subsidyValue, setSubsidyValue] = React.useState(String(settings.subsidy_value ?? 0))
+  const [subsidyTypeError, setSubsidyTypeError] = React.useState("")
+
   const form = useForm({
     enabled: settings.enabled,
-    subsidy_type: settings.subsidy_type,
     subsidy_value: settings.subsidy_value,
     jnt_enabled: settings.jnt_enabled,
   })
 
+  // Kontrak halaman pengaturan: dibuka dalam keadaan terkunci. Isian baru bisa
+  // diubah setelah admin menekan Edit, supaya halaman tidak rawan tersunting
+  // tanpa sengaja saat hanya ingin membaca kondisi aktif.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    // Jangan router.reload(): pada Inertia versi repo ini state komponen
+    // dipertahankan sehingga mode edit bertahan walau sudah dibatalkan.
+    form.resetAndClearErrors()
+    setSubsidyValue(String(settings.subsidy_value ?? 0))
+    setSubsidyTypeError("")
+    setMode("view")
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    form.put(submitUrl)
+    const numeric = Number(subsidyValue)
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      setSubsidyTypeError("Nilai subsidi harus berupa angka 0 atau lebih.")
+      return
+    }
+    if (numeric > 100) {
+      setSubsidyTypeError("Persentase subsidi maksimal 100.")
+      return
+    }
+    setSubsidyTypeError("")
+    form.setData("subsidy_value", numeric)
+    form.put(submitUrl, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
+        form.setDefaults()
+        setMode("view")
+      },
+    })
+  }
+
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbang = {
+    fields: {"subsidy_value": "Persentase subsidi ongkir"},
+    requireChange: true,
   }
 
   return (
     <AdminLayout
       title={title}
       description={description}
-      actions={<StatusBadge status={form.data.enabled ? "active" : "inactive"} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={form.data.enabled ? "active" : "inactive"} />
+          {mode === "view" ? (
+            <Button type="button" size="sm" className="h-8 px-4" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" size="sm" className="h-8 px-4" onClick={batal}>
+                Batal
+              </Button>
+                            <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="subsidy-form"
+                size="sm"
+                className="h-8 px-4"
+              >
+                Simpan
+              </SubmitGateButton>
+            </>
+          )}
+        </div>
+      }
     >
       <Head title={`${title} | Admin`} />
 
-      <form
-        onSubmit={submit}
-        className="mx-auto max-w-2xl space-y-6 rounded-lg border border-border bg-surface p-5 shadow-sm"
-      >
+      <form id="subsidy-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">Status subsidi ongkir</h2>
-          <p className="text-sm text-muted-foreground">
-            Aktifkan untuk memberikan potongan biaya pengiriman kepada pembeli.
-          </p>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={form.data.enabled}
-              onChange={(event) => form.setData("enabled", event.target.checked)}
-            />
-            Subsidi ongkir aktif
-          </label>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-base font-bold">Skema subsidi</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="subsidy_type" label="Jenis" error={form.errors.subsidy_type}>
-              <Select
-                id="subsidy_type"
-                value={form.data.subsidy_type}
-                onChange={(event) =>
-                  form.setData("subsidy_type", event.target.value as "percent" | "fixed")
-                }
-              >
-                <option value="percent">Persentase dari ongkir (%)</option>
-                <option value="fixed">Nominal tetap (Rp)</option>
-              </Select>
-            </Field>
-            <Field
-              id="subsidy_value"
-              label={form.data.subsidy_type === "percent" ? "Nilai persentase" : "Nilai nominal"}
-              error={form.errors.subsidy_value}
-            >
-              <Input
-                id="subsidy_value"
-                type="number"
-                min={0}
-                step="0.01"
-                max={form.data.subsidy_type === "percent" ? 100 : undefined}
-                value={form.data.subsidy_value}
-                onChange={(event) => form.setData("subsidy_value", Number(event.target.value))}
-                required
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">Kurir terhubung</h2>
-          <p className="text-sm text-muted-foreground">
-            Hanya kurir yang dicentang yang mendapat subsidi. Saat ini toko memakai J&T Cargo.
-          </p>
-          <div className="rounded-lg border border-border p-4">
-            <label className="flex items-start gap-3 text-sm font-semibold">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-border"
-                checked={form.data.jnt_enabled}
-                onChange={(event) => form.setData("jnt_enabled", event.target.checked)}
-              />
-              <span>
-                J&T Cargo
-                <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                  {jntConfigured
-                    ? "Kredensial J&T terdeteksi di konfigurasi."
-                    : "API key belum di-set — estimasi memakai tarif lokal."}
-                </span>
-              </span>
-            </label>
-          </div>
-        </section>
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-          </Button>
-          <Button asChild type="button" variant="secondary">
-            <Link href="/admin/cod-settings">Ke Biaya COD</Link>
-          </Button>
+        {/* Table-first: satu baris per pengaturan */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Status subsidi ongkir
+                </th>
+                <td className="px-4 py-2.5">
+                  <CheckboxField
+                    id="subsidy-enabled"
+                    checked={form.data.enabled}
+                    onChange={(checked) => form.setData("enabled", checked)}
+                    label="Subsidi ongkir aktif"
+                    standalone
+                    disabled={terkunci}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Persentase subsidi
+                </th>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="subsidy_value"
+                      type="number"
+                      aria-label="Persentase subsidi ongkir"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={subsidyValue}
+                      onChange={(event) => {
+                        setSubsidyValue(event.target.value)
+                        setSubsidyTypeError("")
+                      }}
+                      className={`h-8 w-28 text-xs ${subsidyTypeError ? "border-destructive" : ""}`}
+                      disabled={terkunci}
+                      required
+                    />
+                    <span className="text-xs font-semibold text-muted-foreground">%</span>
+                  </div>
+                  {subsidyTypeError ? (
+                    <p className="mt-1 text-xs text-destructive">{subsidyTypeError}</p>
+                  ) : null}
+                  {form.errors.subsidy_value ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.subsidy_value}</p>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kurir terhubung
+                </th>
+                <td className="px-4 py-2.5">
+                  <CheckboxField
+                    id="subsidy-jnt-enabled"
+                    checked={form.data.jnt_enabled}
+                    onChange={(checked) => form.setData("jnt_enabled", checked)}
+                    standalone
+                    disabled={terkunci}
+                    label="J&T Cargo"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
       </form>
     </AdminLayout>
   )

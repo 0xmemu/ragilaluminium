@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CmsGalleryItem;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
+use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,7 +29,7 @@ class UlasanAdminTest extends TestCase
             'parent_sku' => 'WIN-ULASAN-1',
             'name' => 'Jendela Ulasan',
             'category_id' => 1,
-            'product_category' => 'WINDOW',
+            'product_category' => 'JENDELA',
             'product_model' => 'JUNGKIT',
             'design_variant' => 'POLOS',
             'status' => 'active',
@@ -40,6 +41,7 @@ class UlasanAdminTest extends TestCase
             'customer_name' => 'Budi Santoso',
             'message' => 'Kualitas bagus',
             'rating' => 5,
+            'image_url' => 'https://cdn.example.com/budi.jpg',
             'source' => 'shopee',
             'published' => true,
             'sort_order' => 0,
@@ -50,7 +52,6 @@ class UlasanAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Testimonials/Index')
-                ->where('tab', 'website')
                 ->has('rows', 1)
                 ->where('rows.0.customer_name', 'Budi Santoso'));
 
@@ -62,11 +63,11 @@ class UlasanAdminTest extends TestCase
                 'source' => 'whatsapp',
                 'location' => 'Kudus',
                 'product_id' => '',
-                'image_url' => '',
+                'image_url' => 'https://cdn.example.com/ani-wa.jpg',
                 'sort_order' => 1,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website']));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
 
         $this->assertDatabaseHas('cms_testimonials', [
             'customer_name' => 'Ani',
@@ -74,6 +75,46 @@ class UlasanAdminTest extends TestCase
             'published' => 1,
             'product_id' => null,
         ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Screenshot Only',
+                'message' => '',
+                'rating' => '',
+                'source' => 'shopee',
+                'location' => '',
+                'product_id' => '',
+                'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+                'sort_order' => 2,
+                'published' => true,
+            ])
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
+
+        $this->assertDatabaseHas('cms_testimonials', [
+            'customer_name' => 'Screenshot Only',
+            'source' => 'shopee',
+            'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'No Screenshot',
+                'message' => 'tanpa gambar',
+                'source' => 'whatsapp',
+                'image_url' => '',
+                'published' => true,
+            ])
+            ->assertSessionHasErrors(['image', 'image_url']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Empty',
+                'message' => '',
+                'source' => 'website',
+                'image_url' => '',
+                'published' => true,
+            ])
+            ->assertSessionHasErrors(['message', 'image_url']);
     }
 
     public function test_admin_ulasan_foto_tab_lists_and_creates_gallery_item(): void
@@ -94,14 +135,10 @@ class UlasanAdminTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        // tab=foto dialihkan ke menu Hasil Pemasangan Kami (satu pintu untuk galeri).
         $this->actingAs($admin)
             ->get(route('admin.testimonials.index', ['tab' => 'foto']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Testimonials/Index')
-                ->where('tab', 'foto')
-                ->has('rows', 1)
-                ->where('rows.0.label', 'Pemasangan Kudus'));
+            ->assertRedirect(route('admin.hasil-pemasangan.index'));
 
         $this->actingAs($admin)
             ->get(route('admin.gallery-items.create'))
@@ -115,13 +152,46 @@ class UlasanAdminTest extends TestCase
                 'sort_order' => 2,
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'foto']));
+            ->assertRedirect(route('admin.hasil-pemasangan.index'));
 
         $this->assertDatabaseHas('cms_gallery_items', [
             'label' => 'Pemasangan Semarang',
             'image_url' => 'https://cdn.example.com/b.jpg',
             'published' => 1,
         ]);
+    }
+
+    public function test_endpoint_ubah_sumber_ulasan_tetap_tervalidasi(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $page = CmsPage::create([
+            'slug' => 'testimoni',
+            'title' => 'Testimoni',
+            'content' => [],
+            'published' => true,
+        ]);
+
+        $testimonial = CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Pelanggan Screenshot',
+            'source' => 'website',
+            'image_url' => 'https://cdn.example.com/ss.jpg',
+            'published' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.source', $testimonial), ['source' => 'shopee'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('cms_testimonials', [
+            'id' => $testimonial->id,
+            'source' => 'shopee',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.source', $testimonial), ['source' => 'bukan-sumber'])
+            ->assertSessionHasErrors('source');
     }
 
     public function test_admin_can_publish_and_unpublish_ulasan(): void
@@ -155,6 +225,55 @@ class UlasanAdminTest extends TestCase
         $this->assertFalse($testimonial->fresh()->published);
     }
 
+    /**
+     * Keputusan owner 2026-09-29: toggle "Tampilkan di storefront" dihapus dari
+     * form, ulasan langsung aktif saat dibuat. Menyembunyikan tetap bisa lewat
+     * aksi di daftar.
+     */
+    public function test_ulasan_baru_langsung_aktif_tanpa_toggle(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Form baru tidak mengirim kunci published sama sekali.
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Langsung Aktif',
+                'message' => 'Tanpa toggle',
+                'source' => 'website',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $ulasan = CmsTestimonial::query()->firstOrFail();
+        $this->assertTrue((bool) $ulasan->published, 'ulasan baru langsung aktif');
+    }
+
+    /**
+     * Menyunting ulasan yang sudah disembunyikan TIDAK boleh menyalakannya lagi
+     * hanya karena form tidak mengirim published.
+     */
+    public function test_menyunting_ulasan_tersembunyi_tidak_menyalakannya_lagi(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $halaman = CmsPage::create(['slug' => 'testimoni-sembunyi', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $ulasan = CmsTestimonial::create([
+            'cms_page_id' => $halaman->id,
+            'customer_name' => 'Disembunyikan',
+            'message' => 'Teks lama',
+            'source' => 'website',
+            'published' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.testimonials.update', $ulasan), [
+                'customer_name' => 'Disembunyikan',
+                'message' => 'Teks baru',
+                'source' => 'website',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse((bool) $ulasan->fresh()->published, 'status sembunyi dipertahankan');
+    }
+
     public function test_pengaturan_apa_kata_pelanggan_lists_and_updates_meta(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
@@ -171,24 +290,37 @@ class UlasanAdminTest extends TestCase
         CmsTestimonial::create([
             'cms_page_id' => $page->id,
             'customer_name' => 'Siti',
-            'message' => 'Bagus sekali',
-            'source' => 'website',
+            'message' => null,
+            'image_url' => 'https://cdn.example.com/ss-shopee.jpg',
+            'source' => 'shopee',
             'published' => true,
             'sort_order' => 0,
         ]);
 
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Web Only',
+            'message' => 'Beli di website',
+            'source' => 'website',
+            'published' => true,
+            'sort_order' => 1,
+        ]);
+
         $this->actingAs($admin)
             ->get(route('admin.apa-kata-pelanggan.index'))
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'eksternal']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Testimonials/Index')
-                ->where('title', 'Apa Kata Pelanggan Kami')
-                ->where('tab', 'website')
-                ->where('indexRoute', 'admin.apa-kata-pelanggan.index')
-                ->has('pageMeta')
-                ->where('pageMeta.heading', 'Apa kata pelanggan kami.')
+                ->where('title', 'Ulasan Pelanggan')
+                ->where('canReorder', true)
+                ->has('reorderUrl')
                 ->has('rows', 1)
-                ->where('rows.0.customer_name', 'Siti'));
+                ->where('rows.0.customer_name', 'Siti')
+                ->where('rows.0.source', 'shopee'));
 
         $this->actingAs($admin)
             ->put(route('admin.apa-kata-pelanggan.meta.update'), [
@@ -197,7 +329,31 @@ class UlasanAdminTest extends TestCase
                 'subtitle' => 'Dari Shopee dan WhatsApp.',
                 'published' => true,
             ])
-            ->assertRedirect(route('admin.apa-kata-pelanggan.index'));
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
+
+        $first = CmsTestimonial::query()->where('customer_name', 'Siti')->firstOrFail();
+        $second = CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'customer_name' => 'Budi WA',
+            'message' => null,
+            'image_url' => 'https://cdn.example.com/ss-wa.jpg',
+            'source' => 'whatsapp',
+            'published' => true,
+            'sort_order' => 5,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.apa-kata-pelanggan.reorder'), [
+                'rows' => [
+                    ['id' => $second->id, 'sort_order' => 1],
+                    ['id' => $first->id, 'sort_order' => 2],
+                ],
+            ])
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'eksternal']));
+
+        // Nomor urut 1-based (kontrak nomor urut admin).
+        $this->assertSame(1, $second->fresh()->sort_order);
+        $this->assertSame(2, $first->fresh()->sort_order);
 
         $this->assertDatabaseHas('cms_pages', [
             'slug' => 'testimoni',
@@ -231,18 +387,15 @@ class UlasanAdminTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        // Penggabungan e2e: menu Hasil Pemasangan dipulihkan sebagai halaman galeri penuh.
         $this->actingAs($admin)
             ->get(route('admin.hasil-pemasangan.index'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Testimonials/Index')
-                ->where('title', 'Hasil Pemasangan Kami')
-                ->where('tab', 'foto')
-                ->where('indexRoute', 'admin.hasil-pemasangan.index')
-                ->has('pageMeta')
-                ->where('pageMeta.heading', 'Hasil pemasangan')
-                ->has('rows', 1)
-                ->where('rows.0.label', 'Pemasangan Kudus'));
+            ->assertInertia(fn (Assert $page) => $page->component('Admin/InstallationGallery/Index'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'foto']))
+            ->assertRedirect(route('admin.hasil-pemasangan.index'));
 
         $this->actingAs($admin)
             ->put(route('admin.hasil-pemasangan.meta.update'), [
@@ -263,4 +416,341 @@ class UlasanAdminTest extends TestCase
         $this->assertSame('Dokumentasi pemasangan kami.', $fresh->content['heading'] ?? null);
         $this->assertSame('Foto dari pelanggan Kudus dan Semarang.', $fresh->content['subtitle'] ?? null);
     }
+    public function test_customer_review_text_is_immutable_but_admin_can_moderate_and_add_media(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $page = CmsPage::create(['slug' => 'testimoni', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $review = CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'customer_name' => 'Pelanggan Asli', 'message' => 'Teks asli pelanggan',
+            'rating' => 5, 'source' => 'website', 'published' => true, 'moderation_status' => 'approved',
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.testimonials.update', $review), [
+            '_method' => 'put', 'customer_name' => 'Nama Diubah', 'message' => 'Teks dipalsukan', 'rating' => 1,
+            'source' => 'website', 'image_url' => '', 'image_urls' => [], 'published' => true,
+        ])->assertRedirect();
+        $this->assertSame('Teks asli pelanggan', $review->fresh()->message);
+        $this->assertSame('Pelanggan Asli', $review->fresh()->customer_name);
+
+        $this->actingAs($admin)->post(route('admin.testimonials.media', $review), [
+            'media_url' => 'https://cdn.example.com/wa-screen.jpg', 'media_type' => 'image', 'media_source' => 'whatsapp',
+        ])->assertRedirect();
+        $this->assertSame('https://cdn.example.com/wa-screen.jpg', $review->fresh()->mediaPayload()[0]['url']);
+
+        $this->actingAs($admin)->post(route('admin.testimonials.moderate', $review), [
+            'moderation_status' => 'rejected',
+        ])->assertRedirect();
+        $this->assertSame('rejected', $review->fresh()->moderation_status);
+        $this->assertFalse($review->fresh()->published);
+        $this->assertDatabaseHas('event_logs', ['event_type' => 'cms.testimonial_moderated', 'entity_id' => $review->id]);
+    }
+
+
+    public function test_admin_can_switch_between_three_tabs_in_ulasan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'website']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Index')
+                ->where('tab', 'website')
+                ->has('tabs', 2));
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'eksternal']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Index')
+                ->where('tab', 'eksternal')
+                ->has('tabs', 2));
+
+        // Halaman Ulasan hanya punya dua tab; tab foto tidak lagi tampil di sini.
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'foto']))
+            ->assertRedirect(route('admin.hasil-pemasangan.index'));
+    }
+
+    // =====================================================================
+    // Banyak foto per ulasan (permintaan owner 2026-09-29).
+    //
+    // Sebelumnya form admin hanya menerima SATU gambar dari Media Library,
+    // sehingga ulasan berfoto banyak harus diisi dengan menempel URL satu per
+    // satu, padahal server dan storefront sudah mendukung banyak foto.
+    // =====================================================================
+
+    private function asetMedia(string $kunci): MediaAsset
+    {
+        return MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'Aset '.$kunci,
+            'checksum' => hash('sha256', $kunci),
+            'object_key' => 'media-assets/'.$kunci.'/card.webp',
+            'status' => 'ready',
+            'visibility' => 'visible',
+        ]);
+    }
+
+    public function test_ulasan_bisa_menyimpan_banyak_foto_dari_media_library_berurutan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $pertama = $this->asetMedia('foto-pertama');
+        $kedua = $this->asetMedia('foto-kedua');
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Rina',
+                'message' => 'Fotonya banyak',
+                'source' => 'website',
+                'published' => true,
+                // Skema kanonik: daftar id aset berurutan + URL tempelan.
+                // Foto pertama jadi gambar utama.
+                'media_asset_ids' => [$pertama->id, $kedua->id],
+                'image_urls' => ['https://cdn.example.com/foto-luar.jpg'],
+            ])
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
+
+        $ulasan = CmsTestimonial::query()->firstOrFail();
+        $urlPertama = (string) $pertama->urlFor('pdp');
+        $urlKedua = (string) $kedua->urlFor('pdp');
+
+        // Gambar utama = foto pertama; sisanya tersimpan sebagai foto tambahan
+        // berurutan (kolom image_url/image_urls tetap dipakai supaya seluruh
+        // konsumen lama tidak perlu berubah). Urutan simpan mengikuti skema
+        // form admin lain: foto Library dulu berurutan, lalu URL tempelan.
+        $this->assertSame($urlPertama, $ulasan->image_url);
+        $this->assertSame([$urlKedua, 'https://cdn.example.com/foto-luar.jpg'], $ulasan->image_urls);
+        $this->assertSame(
+            [$urlPertama, $urlKedua, 'https://cdn.example.com/foto-luar.jpg'],
+            $ulasan->imagesPayload(),
+            'foto library berurutan lebih dulu, lalu URL tempelan',
+        );
+    }
+
+    public function test_menghapus_semua_foto_saat_edit_benar_benar_mengosongkan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $halaman = CmsPage::create(['slug' => 'testimoni-sari', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $ulasan = CmsTestimonial::create([
+            'cms_page_id' => $halaman->id,
+            'customer_name' => 'Sari',
+            'message' => 'Dengan foto',
+            'source' => 'website',
+            'image_url' => 'https://cdn.example.com/awal.jpg',
+            'image_urls' => ['https://cdn.example.com/kedua.jpg'],
+            'published' => true,
+        ]);
+
+        // Form baru selalu mengirim kunci daftar foto; daftar kosong berarti
+        // admin menghapus semua foto dan tidak boleh diisi ulang dari nilai lama.
+        $this->actingAs($admin)
+            ->put(route('admin.testimonials.update', $ulasan), [
+                'customer_name' => 'Sari',
+                'message' => 'Dengan foto',
+                'source' => 'website',
+                'published' => true,
+                'media_asset_ids' => [],
+                'image_urls' => [],
+            ])
+            ->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
+
+        $ulasan->refresh();
+        $this->assertNull($ulasan->image_url);
+        $this->assertNull($ulasan->image_urls);
+        $this->assertSame([], $ulasan->imagesPayload());
+    }
+
+    public function test_jumlah_foto_ulasan_dibatasi_max_photos(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Masing-masing daftar masih di bawah batas, tetapi gabungannya
+        // melebihi batas total foto per ulasan.
+        $aset = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $aset[] = $this->asetMedia('aset-'.$i)->id;
+        }
+        $urls = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $urls[] = 'https://cdn.example.com/foto-'.$i.'.jpg';
+        }
+
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Terlalu Banyak',
+                'source' => 'website',
+                'published' => true,
+                'media_asset_ids' => $aset,
+                'image_urls' => $urls,
+            ])
+            ->assertSessionHasErrors('media_asset_ids');
+
+        $this->assertSame(0, CmsTestimonial::query()->count());
+    }
+
+    public function test_form_edit_menampilkan_semua_foto_tersimpan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $halaman = CmsPage::create(['slug' => 'testimoni-dewi', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $ulasan = CmsTestimonial::create([
+            'cms_page_id' => $halaman->id,
+            'customer_name' => 'Dewi',
+            'message' => 'Foto dari tiga sumber',
+            'source' => 'website',
+            'image_url' => 'https://cdn.example.com/utama.jpg',
+            // Foto kiriman pelanggan tersimpan di media_items; dulu tidak
+            // pernah tampil di form admin sehingga tidak bisa dikelola.
+            'media_items' => [['type' => 'image', 'url' => 'https://cdn.example.com/pelanggan.jpg', 'source' => 'customer']],
+            'published' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.edit', $ulasan))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Testimonials/Form')
+                ->where('maxPhotos', CmsTestimonial::MAX_PHOTOS)
+                ->where('testimonial.photos', [
+                    'https://cdn.example.com/utama.jpg',
+                    'https://cdn.example.com/pelanggan.jpg',
+                ]));
+    }
+
+    public function test_payload_lama_image_url_tetap_berjalan(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Tanpa kunci photos, jalur lama (image_url + image_urls) tidak berubah.
+        $this->actingAs($admin)
+            ->post(route('admin.testimonials.store'), [
+                'customer_name' => 'Lama',
+                'message' => 'Pakai image_url',
+                'source' => 'website',
+                'image_url' => 'https://cdn.example.com/lama-utama.jpg',
+                'image_urls' => ['https://cdn.example.com/lama-kedua.jpg'],
+                'published' => true,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $ulasan = CmsTestimonial::query()->firstOrFail();
+        $this->assertSame('https://cdn.example.com/lama-utama.jpg', $ulasan->image_url);
+        $this->assertSame(['https://cdn.example.com/lama-kedua.jpg'], $ulasan->image_urls);
+    }
+
+
+    /**
+     * Penjaga kontrak "ulasan pelanggan":
+     *
+     * 1. Halaman edit WAJIB mengirim author_type. Tanpa itu frontend tidak bisa
+     *    tahu ulasan ini kiriman pelanggan, sehingga nama/rating/teks tampil
+     *    sebagai isian yang bisa diketik padahal server membuang perubahannya
+     *    (dilaporkan owner 2026-10-06: "ga fungsional").
+     * 2. Simpan mengembalikan ke DAFTAR ulasan. Halaman baca ulasan sudah
+     *    diganti popup (owner 2026-10-06), jadi halaman edit bukan tempat
+     *    mendarat setelah menyimpan.
+     */
+    public function test_edit_mengirim_author_type_dan_simpan_kembali_ke_daftar(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $page = CmsPage::create(['slug' => 'testimoni', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $review = CmsTestimonial::create([
+            'cms_page_id' => $page->id, 'customer_name' => 'Pelanggan Asli', 'message' => 'Teks asli pelanggan',
+            'rating' => 5, 'source' => 'website', 'published' => true, 'moderation_status' => 'approved',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.edit', $review))
+            ->assertOk()
+            ->assertInertia(fn (Assert $inertia) => $inertia
+                ->component('Admin/Testimonials/Form')
+                ->where('testimonial.author_type', 'customer'));
+
+        $this->actingAs($admin)->put(route('admin.testimonials.update', $review), [
+            '_method' => 'put', 'customer_name' => 'Pelanggan Asli', 'message' => 'Teks asli pelanggan', 'rating' => 5,
+            'source' => 'website', 'location' => 'Bandung', 'image_url' => '', 'image_urls' => [], 'published' => true,
+        ])->assertRedirect(route('admin.testimonials.index', ['tab' => 'website', 'channel' => 'website']));
+
+        // Lokasi memang bidang yang boleh diubah admin pada ulasan pelanggan.
+        $this->assertSame('Bandung', $review->fresh()->location);
+    }
+
+
+
+    /**
+     * Popup detail ulasan (owner 2026-10-06) membaca seluruh isinya dari baris
+     * daftar, jadi baris WAJIB membawa rincian produk dan seluruh media. Bila
+     * salah satu kunci hilang, popup menampilkan bagian kosong tanpa error.
+     *
+     * Nama produk wajib nama LENGKAP katalog: `short_name` hanya berisi
+     * dimensi ("140x50"), bukan nama, dan pernah tampil telanjang di layar.
+     */
+    public function test_baris_daftar_membawa_rincian_untuk_popup_detail(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $page = CmsPage::create(['slug' => 'testimoni-popup', 'title' => 'Testimoni', 'content' => [], 'published' => true]);
+        $product = Product::create([
+            'parent_sku' => 'WIN-POPUP-1',
+            'name' => 'Jendela Popup Detail',
+            'short_name' => '140x50',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+        CmsTestimonial::create([
+            'cms_page_id' => $page->id,
+            'product_id' => $product->id,
+            'customer_name' => 'Sari Popup',
+            'message' => 'Pengiriman cepat',
+            'rating' => 5,
+            'image_url' => 'https://cdn.example.com/popup-1.jpg',
+            'image_urls' => ['https://cdn.example.com/popup-2.jpg'],
+            'source' => 'website',
+            'published' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.testimonials.index', ['tab' => 'website']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $inertia) => $inertia
+                ->component('Admin/Testimonials/Index')
+                ->has('rows', 1)
+                ->where('rows.0.product_name', 'Jendela Popup Detail')
+                ->where('rows.0.product_sku', 'WIN-POPUP-1')
+                ->has('rows.0.product_image')
+                ->where('rows.0.photos', [
+                    'https://cdn.example.com/popup-1.jpg',
+                    'https://cdn.example.com/popup-2.jpg',
+                ]));
+    }
+
+
+
+    /**
+     * Daftar ulasan TIDAK boleh lagi menyediakan dropdown ubah Sumber.
+     *
+     * Ulasan #129 (Sari Dewi) berubah jadi "other" lewat dropdown itu pada
+     * 2026-10-08, dan karena halaman publik /reviews/web memakai
+     * published()->website(), ulasan terverifikasi itu langsung hilang dari
+     * storefront. Sumber adalah fakta asal ulasan yang ditetapkan saat dibuat,
+     * bukan pilihan cepat di daftar.
+     *
+     * Kontrak ini hidup di TSX, jadi diperiksa dari sumber.
+     */
+    public function test_daftar_tidak_lagi_menyediakan_ubah_sumber(): void
+    {
+        $isi = file_get_contents(base_path('resources/js/pages/Admin/Testimonials/Index.tsx'));
+        $this->assertNotFalse($isi, 'halaman daftar ulasan harus terbaca');
+        $isi = (string) $isi;
+
+        $this->assertStringNotContainsString('source_url', $isi, 'Baris daftar tidak boleh lagi membawa source_url.');
+        $this->assertStringNotContainsString('admin.testimonials.source', $isi, 'Daftar tidak boleh memanggil endpoint ubah sumber.');
+        $this->assertStringNotContainsString('aria-label={"Sumber " + row.customer_name}', $isi, 'Dropdown Sumber di baris harus tetap dicabut.');
+        // Sumber tetap terlihat sebagai teks.
+        $this->assertStringContainsString('{row.source_label ?? humanize(row.source)}', $isi, 'Sumber tetap harus tampil sebagai teks.');
+    }
+
+
 }

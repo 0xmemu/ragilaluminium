@@ -3,24 +3,42 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
+use App\Observers\ProductObserver;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
+#[ObservedBy([ProductObserver::class])]
 class Product extends Model
 {
     protected $fillable = [
         'parent_sku',
         'name',
         'short_name',
+        'search_keywords',
         'description',
+        // category_id = kolom warisan ID kategori Shopee, dipensiunkan
+        // (keputusan owner 2026-09-03), tidak lagi ditulis dan tidak dipakai
+        // relasi apa pun. Sumber kebenaran kategori: product_category.
         'category_id',
         'product_category',
         'product_model',
         'design_variant',
+        // ADR-021: dimensi/berat milik produk.
+        'weight_kg',
+        'width_cm',
+        'height_cm',
+        'depth_cm',
         'status',
         'homepage_popular',
         'homepage_popular_sort',
+        'homepage_popular_since',
+        'popularity_seed',
+        'popularity_seed_source_product_id',
+        'popularity_seed_applied_at',
+        'popularity_seed_applied_by_user_id',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -28,6 +46,9 @@ class Product extends Model
     protected $casts = [
         'homepage_popular' => 'boolean',
         'homepage_popular_sort' => 'integer',
+        'homepage_popular_since' => 'datetime',
+        'popularity_seed' => 'integer',
+        'popularity_seed_applied_at' => 'datetime',
     ];
 
     public function variants(): HasMany
@@ -47,7 +68,7 @@ class Product extends Model
 
     public function media(): HasMany
     {
-        return $this->hasMany(ProductMedia::class);
+        return $this->hasMany(ProductMedia::class)->with('mediaAsset');
     }
 
     public function installationMedia(): HasMany
@@ -60,19 +81,52 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    /** Order items that represent valid website demand for commercial ranking. */
+    public function validOrderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class)
+            ->whereHas('order', fn ($query) => $query->whereIn('order_status', [
+                'processing',
+                'shipped',
+                'delivered',
+                'completed',
+            ]));
+    }
+
     /** Manual ulasan (Shopee/WA/dll) linked to this product for PDP. */
     public function testimonials(): HasMany
     {
         return $this->hasMany(CmsTestimonial::class);
     }
 
+    public function popularityBoostsAsSource(): HasMany
+    {
+        return $this->hasMany(ProductPopularityBoost::class, 'source_product_id');
+    }
+
+    public function popularityBoostsAsTarget(): HasMany
+    {
+        return $this->hasMany(ProductPopularityBoost::class, 'target_product_id');
+    }
+
+    /**
+     * Gambar utama katalog.
+     *
+     * Kontrak (2026-09-17): gambar utama HANYA boleh berasal dari media katalog
+     * (product_variant_id NULL). Media milik varian tidak pernah jadi gambar
+     * utama produk, jadi baris itu wajib disaring - kalau tidak, foto varian
+     * bisa muncul sebagai cover storefront (bug position seri).
+     */
     public function mainImage()
     {
         return $this->hasOne(ProductMedia::class)
+            ->with('mediaAsset')
             ->where('is_main_image', true)
+            ->whereNull('product_variant_id')
             ->where('show_in_catalog', true)
             ->where('visibility', 'visible')
-            ->oldestOfMany('position');
+            ->orderBy('position')
+            ->orderBy('id');
     }
 
     public function createdBy(): BelongsTo
@@ -87,12 +141,7 @@ class Product extends Model
 
     public function scopeVisible(Builder $query): Builder
     {
-        return $query->where('status', 'active');
-    }
-
-    public function scopeCategory(Builder $query, string $category): Builder
-    {
-        return $query->where('product_category', $category);
+        return $query->where('status', 'active')->whereHas('activeVariants');
     }
 
     /** Admin-curated picks for Home “Paling Banyak Dipesan”. */
@@ -101,13 +150,69 @@ class Product extends Model
         return $query->where('homepage_popular', true);
     }
 
-    /** Rank by website order quantity (catalog Terlaris / fallback Home). */
-    public function scopeOrderByWebsiteSales(Builder $query): Builder
+    /** Rank by valid website sales plus an explicit popularity seed. */
+    public static function popularitySeedColumnAvailable(): bool
+    {
+        return Schema::hasColumn("products", "popularity_seed");
+    }
+
+    public static function popularityBoostTableAvailable(): bool
+    {
+        return Schema::hasTable("product_popularity_boosts");
+    }
+
+    public static function popularityScoreSql(): string
+    {
+        return self::popularitySeedColumnAvailable()
+            ? "COALESCE(products.popularity_seed, 0) + COALESCE(sold_count, 0)"
+            : "COALESCE(sold_count, 0)";
+    }
+
+    public function scopeWithPopularityScore(Builder $query): Builder
+    {
+        return $query->withSum('validOrderItems as sold_count', 'quantity');
+    }
+
+    public function scopeOrderByPopularity(Builder $query): Builder
     {
         return $query
-            ->withSum('orderItems as sold_count', 'quantity')
-            ->orderByDesc('sold_count')
-            ->orderByDesc('id');
+            ->withPopularityScore()
+            ->orderByRaw(Product::popularityScoreSql().' DESC');
+    }
+
+    /** Rank by website sales plus popularity seed (catalog / related products). */
+    public function scopeOrderByWebsiteSales(Builder $query): Builder
+    {
+        return $query->orderByPopularity()->orderByDesc('id');
+    }
+
+    /**
+     * Fragmen ORDER BY "Paling Banyak Dipesan" (satu sumber kebenaran).
+     *
+     * `homepage_popular_sort` = posisi kurasi 1-based; 0 berarti belum pernah
+     * dikurasi (default kolom), sehingga produk itu mengikuti skor penjualan.
+     * Dipakai bersama oleh galeri /products/all?from=paling-banyak-dipesan dan
+     * carousel beranda/katalog supaya 10 produk teratas galeri SELALU identik
+     * dengan isi carousel.
+     *
+     * Butuh withPopularityScore() + withSum('activeVariants as stock_sort','stock').
+     */
+    public static function palingBanyakDipesanOrderSql(): string
+    {
+        // Sengaja TIDAK memakai flag `homepage_popular` sebagai penanda: flag itu
+        // hanya "10 teratas" dan bisa tertinggal dari data lama, sedangkan kolom
+        // sort > 0 adalah bukti produk benar-benar pernah disusun admin.
+        return 'CASE WHEN products.homepage_popular_sort > 0 THEN products.homepage_popular_sort ELSE 2147483647 END ASC, '
+            .self::popularityScoreSql().' DESC, stock_sort DESC, id DESC';
+    }
+
+    /** Terapkan urutan "Paling Banyak Dipesan" lengkap dengan kolom pendukungnya. */
+    public function scopeOrderByPalingBanyakDipesan(Builder $query): Builder
+    {
+        return $query
+            ->withPopularityScore()
+            ->withSum('activeVariants as stock_sort', 'stock')
+            ->orderByRaw(self::palingBanyakDipesanOrderSql());
     }
 
     public function getMinPriceAttribute(): ?float
@@ -149,6 +254,7 @@ class Product extends Model
                     ->filter(fn ($m) => $m->show_in_catalog)
                     ->map(fn ($m) => [
                         'id' => $m->id,
+                        'kind' => $m->mediaAsset?->kind ?? (str_starts_with((string) $m->mime_type, 'video/') ? 'video' : 'image'),
                         'position' => $m->position,
                         'is_main_image' => $m->is_main_image,
                         'is_installation' => (bool) $m->is_installation,
@@ -160,13 +266,13 @@ class Product extends Model
                             'thumb' => $m->urlFor('thumb'),
                             'card' => $m->urlFor('card'),
                             'pdp' => $m->urlFor('pdp'),
+                            'video' => $m->urlFor('video'),
                         ],
                         'status' => $m->status,
                     ])->values()->all()
                 : [],
-            'installation_media' => $this->relationLoaded('media')
-                ? $this->media
-                    ->filter(fn ($m) => $m->is_installation)
+            'installation_media' => $this->relationLoaded('installationMedia')
+                ? $this->getRelation('installationMedia')
                     ->map(fn ($m) => [
                         'id' => $m->id,
                         'position' => $m->position,
@@ -178,7 +284,21 @@ class Product extends Model
                         ],
                         'status' => $m->status,
                     ])->values()->all()
-                : [],
+                : ($this->relationLoaded('media')
+                    ? $this->media
+                        ->filter(fn ($m) => $m->is_installation)
+                        ->map(fn ($m) => [
+                            'id' => $m->id,
+                            'position' => $m->position,
+                            'display_url' => $m->display_url,
+                            'urls' => [
+                                'thumb' => $m->urlFor('thumb'),
+                                'card' => $m->urlFor('card'),
+                                'pdp' => $m->urlFor('pdp'),
+                            ],
+                            'status' => $m->status,
+                        ])->values()->all()
+                    : []),
         ];
     }
 }

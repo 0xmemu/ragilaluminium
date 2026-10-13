@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Support\ShippingSubsidySettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,32 +18,27 @@ class ShippingSubsidyController extends Controller
         return Inertia::render('Admin/ShippingSubsidy/Edit', [
             'title' => 'Subsidi Ongkir',
             'description' => 'Potongan biaya pengiriman untuk pelanggan, dan kurir yang ikut skema subsidi.',
+            'submitUrl' => route('admin.shipping-subsidy.update'),
             'settings' => [
                 'enabled' => $settings['enabled'],
-                'subsidy_type' => $settings['subsidy_type'],
                 'subsidy_value' => $settings['subsidy_value'],
                 'jnt_enabled' => $settings['carriers']['jnt'],
             ],
-            'submitUrl' => route('admin.shipping-subsidy.update'),
-            'jntConfigured' => filled(config('jnt.api.customer_code')) || filled(config('services.shipping.jnt.api_key')),
         ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
+        // Skema subsidi ongkir hanya persentase (keputusan owner 2026-09-18),
+        // jadi tidak ada lagi pilihan tipe yang divalidasi.
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
-            'subsidy_type' => ['required', 'in:percent,fixed'],
-            'subsidy_value' => [
-                'required',
-                'numeric',
-                'min:0',
-                Rule::when($request->input('subsidy_type') === 'percent', ['max:100']),
-            ],
+            'subsidy_value' => ['required', 'numeric', 'min:0', 'max:100'],
             'jnt_enabled' => ['required', 'boolean'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        ShippingSubsidySettings::update($validated, (int) $request->user()->id);
+        ShippingSubsidySettings::update($validated, (int) $request->user()->id, ['reason' => $validated['reason'] ?? null]);
 
         return redirect()->route('admin.shipping-subsidy.edit')
             ->with('success', 'Pengaturan Subsidi Ongkir disimpan.');

@@ -1,8 +1,28 @@
-# Integrasi J&T Cargo — Ragil Aluminium (`website_3.0`)
+.env
+ENV_IGNORED
+# Integrasi J&T Cargo — Ragil Aluminium
 
 > **Sumber:** [J&T Cargo Open Platform](https://open.jtcargo.co.id/#/apiDoc) (spesifikasi resmi console).
-> **Status:** Implementasi backend selesai (2026-07-12), siap joint-debugging sandbox.
+> **Status:** Implementasi backend selesai; aktivasi menunggu kredensial sandbox/production dari console.
 > **Lingkup:** transport, tanda tangan, buat/batal resi, cek tarif, tracking, push (webhook).
+> **Provider decision (2026-07-26):** jalur resmi **Open Platform langsung**. Aggregator Biteship **ditolak** (hanya J&T Express `jnt`/`ez`, bukan Cargo). KiriminAja / rate-only API tidak dipakai kecuali SoT diubah eksplisit.
+
+---
+
+## 0. Provider yang didukung
+
+| Provider | Status di Ragil |
+|----------|-----------------|
+| **J&T Cargo Open Platform** | **Aktif sebagai SoT shipping** — `config/jnt.php` + `JntCargoClient` |
+| Biteship | Tidak — katalog `jnt` = Express, bukan Cargo |
+| KiriminAja / AgenWebsite Rate | Tidak diintegrasikan (opsional bisnis terpisah) |
+
+Cek kesiapan env:
+
+```bash
+php artisan jnt:status
+php artisan jnt:joint-debug --times=3   # setelah kredensial + JNT_ENABLED=true
+```
 
 ---
 
@@ -11,13 +31,14 @@
 | Komponen | File | Fungsi |
 |----------|------|--------|
 | Config terpusat | `config/jnt.php` | endpoint, kredensial, default field, pemetaan status, ACK |
-| Client transport | `app/Services/Shipping/JntCargoClient.php` | signing (2 digest), POST form, retry, logging penuh |
+| Client transport | `app/Services/Shipping/JntCargoClient.php` | signing (2 digest), POST form, retry aman, log metadata |
 | Response wrapper | `app/Services/Shipping/JntResponse.php` | sukses transport vs bisnis, ambil `billCode` (list) |
 | Orkestrasi domain | `app/Services/ShippingService.php` | estimasi ongkir, buat/batal resi, refresh, cascade status |
 | Webhook | `app/Http/Controllers/Webhook/ShippingController.php` | verifikasi tanda tangan, parse push, ACK |
 | Event | `app/Events/ShippingStatusUpdated.php` + listener WA | notifikasi milestone ke pelanggan |
 | Joint-debug | `app/Console/Commands/JntJointDebug.php` | uji sandbox (bukti sukses ≥3×) |
-| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | request/response penuh |
+| Status / readiness | `app/Console/Commands/JntStatus.php` + `App\Support\JntReadiness` | checklist kredensial + pengirim |
+| Audit log | `config/logging.php` channel `jnt` → `storage/logs/jnt-*.log` | allowlist metadata; order/waybill/IP sebagai hash 12 karakter; tanpa credential, payload, provider message, atau exception message mentah |
 
 **Prinsip:** semua nilai spesifik akun (endpoint path, field, kode status) ada di `config/jnt.php` dan bisa di-override lewat `.env` **tanpa mengubah kode**.
 
@@ -93,7 +114,7 @@ Route: `POST /webhook/shipping/jnt` (CSRF dikecualikan, throttle 120/mnt).
 
 Alur `ShippingController::handleJnt`:
 1. Ambil `bizContent` (JSON) + header `digest`.
-2. Jika `JNT_ENABLED` & kunci webhook ada → verifikasi `verifyWebhookSignature()` (Base64 & hex, `hash_equals`). Gagal → tolak.
+2. Kunci webhook wajib tersedia dan signature diverifikasi secara aman. Kunci kosong atau signature gagal akan ditolak. Jika J&T diaktifkan pada `APP_ENV=production` tanpa signing key, application boot gagal.
 3. Parse: `details[]` (push trajektori) ambil scan terbaru, atau field root (push status order). Ambil `scanType`, `scanTypeCode`, `desc`, `scanTime`.
 4. Cari `ShippingRecord` via `billCode` atau `txlogisticId`.
 5. `applyCarrierUpdate()` (idempoten, transaksional, cascade + event).
@@ -116,7 +137,7 @@ php artisan jnt:joint-debug --interface=track --times=3
 
 - Berjalan hanya saat `JNT_ENV=sandbox` (kecuali `--force`).
 - Menembak `tariff, address, create, track, cancel` masing-masing N kali.
-- Semua request/response tercatat di `storage/logs/jnt-*.log` (bukti untuk pengajuan).
+- Metadata request/response tercatat di channel log J&T tanpa digest, credential, alamat, nomor telepon, payload pelanggan, provider message, atau exception message mentah.
 - Mencetak ringkasan rasio sukses per interface.
 
 ---
@@ -126,7 +147,9 @@ php artisan jnt:joint-debug --interface=track --times=3
 Lihat blok **J&T Cargo Open Platform** di `.env.example`. Minimal yang wajib diisi dari console:
 `JNT_ENABLED=true`, `JNT_ENV`, `JNT_API_ACCOUNT`, `JNT_PRIVATE_KEY`, `JNT_CUSTOMER_CODE`, `JNT_CUSTOMER_PASSWORD`, data `JNT_SENDER_*`, dan default order (`JNT_EXPRESS_TYPE`, `JNT_GOODS_TYPE`, dll — sesuaikan dengan tipe layanan akun).
 
-> **Catatan `goodsType`:** produk aluminium (jendela/pintu) → default `bm000010` (bahan bangunan). Konfirmasi kategori yang benar dengan outlet J&T dan sesuaikan `JNT_GOODS_TYPE`.
+> **Catatan `goodsType` & `expressType` (terverifikasi 2026-08-21):** contoh resmi doc `agingCost/get` memakai `expressType="FT"`, `goodsType="bm000005"`, `paymentType=1`. Kombinasi inilah yang mengembalikan tarif nyata untuk akun ini (Banjarnegara→Semarang 1 kg = freight 60.000, ETA 1-3 hari). **`expressType="FTAIR"` mengembalikan `estimateSumFreight=0`** (SUCCESS tapi 0) — jangan dipakai. Nilai ini sudah menjadi default `config/jnt.php`; hanya ubah bila kontrak akun berbeda (konfirmasi ke outlet J&T).
+>
+> **Asuransi pengiriman (opsional, pilihan pembeli, 2026-08-21):** `offerFee` (mis. `"200"`) mengaktifkan komponen `estimateInsuranceCost` (contoh rute di atas: 5.000). App mengirim `offerFee` **hanya saat pembeli mencentang asuransi di checkout**; snapshot order disimpan terpisah di `orders.shipping_insurance_amount` (subsidi ongkir hanya atas freight; asuransi ditambahkan di atas ongkir net).
 
 ---
 

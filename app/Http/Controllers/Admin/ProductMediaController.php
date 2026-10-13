@@ -3,12 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DownloadMediaAsset;
 use App\Jobs\DownloadProductMedia;
+use App\Jobs\ProcessUploadedMediaAsset;
+use App\Models\CmsBanner;
+use App\Models\CmsGalleryItem;
+use App\Models\MediaAsset;
+use App\Models\MediaProcessingLog;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
-use App\Services\MediaDerivativeService;
+use App\Services\MediaAssetResolver;
 use App\Support\InertiaAdmin;
+use App\Support\LikeSearch;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,130 +26,149 @@ use Inertia\Response;
 
 class ProductMediaController extends Controller
 {
-    public function index(Request $request): Response
+    /**
+     * Sumber klik yang dikenal, dipetakan ke nama route tujuan tombol Kembali.
+     * Hanya asal yang terdaftar di sini yang memunculkan tombol; masuk lewat
+     * sidebar (tanpa penanda) atau penanda asing tetap tanpa tombol, sesuai
+     * aturan owner 2026-10-11: tombol mengikuti sumber klik, bukan struktur menu.
+     */
+    private const BACK_ORIGINS = [
+        'products' => 'admin.products.index',
+        'dashboard' => 'admin.dashboard',
+        'testimonials' => 'admin.testimonials.index',
+    ];
+
+    /** URL tombol Kembali untuk penanda asal, null bila asal tidak dikenal. */
+    private function backUrlFor(string $origin): ?string
     {
-        $media = ProductMedia::with(['product', 'productVariant'])
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('visibility'), fn ($q) => $q->where('visibility', $request->visibility))
-            ->latest()
-            ->paginate(24)
+        $route = self::BACK_ORIGINS[$origin] ?? null;
+
+        return $route !== null ? route($route) : null;
+    }
+
+    /** Penanda asal yang dikenal, null bila kosong atau asing. */
+    private function knownOrigin(string $origin): ?string
+    {
+        return isset(self::BACK_ORIGINS[$origin]) ? $origin : null;
+    }
+
+    public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse
+    {
+        // Halaman media khusus dihapus (redundan dgn tab Media di halaman edit).
+        // GET browser dan Inertia sama-sama dialihkan ke tab Media.
+        $params = ['product' => $product, 'tab' => 'media'];
+        if (filled($request->query('variant'))) {
+            $params['variant'] = $request->query('variant');
+        }
+
+        return redirect()->route('admin.products.edit', $params);
+    }
+
+    /**
+     * Halaman Media Library global: browse semua shared asset dengan filter
+     * konteks/pencarian + attach lintas produk (tanpa harus buka media produk).
+     */
+    public function library(Request $request): Response
+    {
+        $assets = MediaAsset::query()
+            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
+            ->when($request->filled('folder_id'), function ($query) use ($request): void {
+                $folderId = (int) $request->query('folder_id');
+                if ($folderId === 0) {
+                    $query->whereNull('folder_id'); // Inbox
+                } else {
+                    $query->where('folder_id', $folderId);
+                }
+            })
+            ->when(! $request->filled('visibility'), fn ($query) => $query->where('visibility', '!=', 'archived'))
+            // Status arsip (duplikat dedup) tidak punya file/derivatives; sembunyikan
+            // kecuali filter status dipilih eksplisit.
+            ->when(! $request->filled('status'), fn ($query) => $query->where('status', '!=', 'archived'))
+            ->when($request->filled('q'), function ($query) use ($request): void {
+                $q = trim((string) $request->query('q'));
+                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'label', $q)->orWhereRaw('source_url LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
+            })
+            ->when($request->filled('kind'), fn ($query) => $query->where('kind', $request->query('kind')))
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))
+            ->when($request->filled('visibility'), fn ($query) => $query->where('visibility', $request->query('visibility')))
+            ->orderByDesc('id')
+            ->paginate(30)
             ->withQueryString();
 
-        return Inertia::render('Admin/ResourceIndex', [
-            'title' => 'Media',
-            'description' => 'Status unduh & kelola foto produk. Bagian dari menu Produk.',
-            'createHref' => null,
-            'columns' => [
-                ['key' => 'id', 'label' => 'ID'],
-                ['key' => 'product', 'label' => 'Produk', 'hrefKey' => 'product_href'],
-                ['key' => 'variant', 'label' => 'Varian'],
-                ['key' => 'position', 'label' => 'Posisi'],
-                ['key' => 'status', 'label' => 'Status'],
-                ['key' => 'visibility', 'label' => 'Visibilitas'],
-                ['key' => 'is_main', 'label' => 'Utama'],
-            ],
-            'rows' => $media->getCollection()->map(function (ProductMedia $m) {
-                $actions = [];
-                if ($m->product) {
-                    $actions[] = [
-                        'label' => 'Kelola',
-                        'method' => 'get',
-                        'href' => route('admin.products.media.byProduct', $m->product),
-                    ];
-                }
-                $actions[] = [
-                    'label' => 'Unduh ulang',
-                    'method' => 'post',
-                    'url' => route('admin.media.redownload', $m),
-                ];
-                if (! $m->is_main_image && $m->visibility !== 'archived') {
-                    $actions[] = [
-                        'label' => 'Jadikan utama',
-                        'method' => 'post',
-                        'url' => route('admin.media.set-main', $m),
-                    ];
-                }
-                if ($m->visibility !== 'archived') {
-                    $actions[] = [
-                        'label' => 'Arsipkan',
-                        'method' => 'post',
-                        'url' => route('admin.media.archive', $m),
-                        'confirm' => 'Arsipkan media #'.$m->id.'?',
-                    ];
-                }
+        $folderTree = $this->folderTree();
 
-                return [
-                    'id' => $m->id,
-                    'product' => $m->product?->parent_sku ?? '-',
-                    'product_href' => $m->product ? route('admin.products.media.byProduct', $m->product) : '',
-                    'variant' => $m->productVariant
-                        ? $this->variantLabel($m->productVariant)
-                        : 'Semua (produk)',
-                    'position' => $m->position,
-                    'status' => $m->status,
-                    'visibility' => $m->visibility,
-                    'is_main' => $m->is_main_image ? 'ya' : 'tidak',
-                    'actions' => $actions,
-                ];
-            })->all(),
-            'pagination' => InertiaAdmin::pagination($media),
+        // Tombol Kembali mengikuti sumber klik: muncul hanya bila halaman ini
+        // dibuka dari tautan di dalam aplikasi yang membawa penanda asal.
+        // Masuk lewat sidebar tidak membawa penanda, jadi tanpa tombol.
+        $origin = (string) $request->query('origin', '');
+        $knownOrigin = $this->knownOrigin($origin);
+
+        return Inertia::render('Admin/Media/Library', [
+            'backUrl' => $this->backUrlFor($origin),
+            // Penanda diteruskan ke halaman supaya ikut terbawa saat filter
+            // dipakai dan saat membuka Riwayat Media, jadi tombolnya tidak
+            // hilang di tengah kerja.
+            'origin' => $knownOrigin,
+            'assets' => $assets->getCollection()->map(fn (MediaAsset $asset) => [
+                'id' => $asset->id,
+                'label' => $asset->label ?: 'Media #'.$asset->id,
+                'kind' => $asset->kind,
+                'status' => $asset->status,
+                'usage_count' => (int) $asset->usage_count,
+                'folder_id' => $asset->folder_id,
+                'thumb_url' => $asset->urlFor('thumb'),
+                'media_url' => $asset->urlFor($asset->kind === 'video' ? 'video' : 'thumb'),
+                'public_url' => $asset->publicUrlForPath((string) $asset->object_key),
+                'error_reason' => $asset->error_reason,
+                'context' => self::libraryContext($asset->label),
+                'created_at' => optional($asset->created_at)?->toIso8601String(),
+            ])->values()->all(),
+            'folders' => $folderTree,
+            'pagination' => InertiaAdmin::pagination($assets),
+            'filters' => [
+                'q' => (string) $request->query('q', ''),
+                'kind' => (string) $request->query('kind', ''),
+                'status' => (string) $request->query('status', ''),
+                'visibility' => (string) $request->query('visibility', ''),
+                'folder_id' => (string) $request->query('folder_id', ''),
+            ],
+            'historyHref' => route('admin.media.history', array_filter(['origin' => $knownOrigin])),
         ]);
     }
 
-    public function byProduct(Request $request, Product $product): Response
+    protected function folderTree(): array
     {
-        $product->load(['variants' => fn ($q) => $q->orderBy('id'), 'media.productVariant']);
+        $folders = \App\Models\MediaFolder::query()
+            ->withCount('assets')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+        $build = function (?int $parentId) use ($folders, &$build): array {
+            return $folders->where('parent_id', $parentId)->values()->map(fn ($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'assets_count' => (int) $f->assets_count,
+                'children' => $build((int) $f->id),
+            ])->all();
+        };
 
-        $filterVariant = $request->query('variant');
-        $filterVariantId = is_numeric($filterVariant) ? (int) $filterVariant : null;
+        return $build(null);
+    }
 
-        $mediaQuery = $product->media->sortBy('position')->values();
-        if ($filterVariantId) {
-            $mediaQuery = $mediaQuery->where('product_variant_id', $filterVariantId)->values();
-        } elseif ($filterVariant === 'shared') {
-            $mediaQuery = $mediaQuery->whereNull('product_variant_id')->values();
+    protected static function libraryContext(?string $label): string
+    {
+        $label = strtolower((string) $label);
+        if (str_starts_with($label, 'hasil-pemasangan')) {
+            return 'hasil-pemasangan';
+        }
+        if (str_starts_with($label, 'banner')) {
+            return 'banner';
+        }
+        if (str_starts_with($label, 'media')) {
+            return 'media';
         }
 
-        return Inertia::render('Admin/Products/Media', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'parent_sku' => $product->parent_sku,
-                'show_href' => route('admin.products.show', $product),
-                'variants_href' => route('admin.products.variants.index', $product),
-            ],
-            'variants' => $product->variants->map(fn (ProductVariant $variant) => [
-                'id' => $variant->id,
-                'label' => $this->variantLabel($variant),
-                'variant_sku' => $variant->variant_sku,
-                'status' => $variant->status,
-            ])->values()->all(),
-            'filters' => [
-                'variant' => $filterVariantId
-                    ? (string) $filterVariantId
-                    : ($filterVariant === 'shared' ? 'shared' : ''),
-            ],
-            'storeUrl' => route('admin.products.media.store', $product),
-            'indexUrl' => route('admin.products.media.byProduct', $product),
-            'rows' => $mediaQuery->map(fn (ProductMedia $m) => [
-                'id' => $m->id,
-                'position' => $m->position,
-                'status' => $m->status,
-                'visibility' => $m->visibility,
-                'is_main_image' => (bool) $m->is_main_image,
-                'show_in_catalog' => (bool) $m->show_in_catalog,
-                'is_installation' => (bool) $m->is_installation,
-                'product_variant_id' => $m->product_variant_id,
-                'variant_label' => $m->productVariant
-                    ? $this->variantLabel($m->productVariant)
-                    : 'Semua (produk)',
-                'thumb_url' => $m->urlFor('thumb') ?? $m->stored_url,
-                'update_url' => route('admin.media.update', $m),
-                'set_main_url' => route('admin.media.set-main', $m),
-                'archive_url' => route('admin.media.archive', $m),
-                'redownload_url' => route('admin.media.redownload', $m),
-            ])->values()->all(),
-        ]);
+        return 'lainnya';
     }
 
     public function store(Request $request, Product $product): RedirectResponse
@@ -151,13 +178,18 @@ class ProductMediaController extends Controller
         }
 
         $validated = $request->validate([
+            'kind' => ['sometimes', 'in:image,video'],
             'source_url' => ['nullable', 'url'],
+            'media_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'position' => ['required', 'integer', 'min:1', 'max:109'],
             'is_main_image' => ['boolean'],
             'show_in_catalog' => ['boolean'],
             'is_installation' => ['boolean'],
+            'installation_caption' => ['nullable', 'string', 'max:280'],
             'visibility' => ['required', 'in:visible,archived,hidden'],
-            'upload' => ['nullable', 'file', 'image', 'max:10240'],
+            // §6 boundary: batasi jenis file, bukan sekadar ukuran. File arbitrer
+            // tidak boleh masuk R2 (admin-only, tapi mimes menutup celah upload bebas).
+            'upload' => ['nullable', 'file', 'max:51200', 'mimes:jpeg,png,webp,gif,mp4,webm'],
             'product_variant_id' => [
                 'nullable',
                 'integer',
@@ -165,49 +197,44 @@ class ProductMediaController extends Controller
             ],
         ]);
 
-        $data = [
-            'product_id' => $product->id,
+        $kind = $validated['kind'] ?? 'image';
+        if ($kind === 'video' && ! empty($validated['is_main_image'])) {
+            return redirect()->back()->withErrors(['kind' => 'Video tidak dapat dijadikan gambar utama.']);
+        }
+
+        $resolver = app(MediaAssetResolver::class);
+        try {
+            $asset = ! empty($validated['media_asset_id'])
+                ? MediaAsset::where('visibility', '!=', 'archived')->findOrFail((int) $validated['media_asset_id'])
+                : ($request->hasFile('upload')
+                    ? $resolver->fromUploadedFile($request->file('upload'), $kind, (int) $request->user()->id)
+                    : (! empty($validated['source_url'])
+                        ? $resolver->fromSourceUrl((string) $validated['source_url'], $kind, (int) $request->user()->id)
+                        : null));
+        } catch (\Throwable $e) {
+            return redirect()->back()->withErrors(['upload' => $e->getMessage()]);
+        }
+
+        if (! $asset) {
+            return redirect()->back()->withErrors(['source_url' => 'Pilih media library, upload file, atau isi source URL.']);
+        }
+
+        if ($asset->kind !== $kind) {
+            return redirect()->back()->withErrors(['kind' => 'Jenis media tidak cocok dengan aset yang dipilih.']);
+        }
+
+        $media = $resolver->attach($product, $asset, [
             'product_variant_id' => $validated['product_variant_id'] ?? null,
             'position' => $validated['position'],
-            'is_main_image' => $validated['is_main_image'] ?? false,
+            'is_main_image' => $kind === 'image' && ($validated['is_main_image'] ?? false),
             'show_in_catalog' => $validated['show_in_catalog'] ?? true,
             'is_installation' => $validated['is_installation'] ?? false,
+            'installation_caption' => filled($validated['installation_caption'] ?? null) ? trim($validated['installation_caption']) : null,
             'visibility' => $validated['visibility'],
-            'source_url' => $validated['source_url'] ?? null,
-            'status' => 'pending',
-            'created_by_user_id' => $request->user()->id,
-        ];
+        ], (int) $request->user()->id);
 
-        if ($request->hasFile('upload')) {
-            $file = $request->file('upload');
-            $path = $file->store("products/{$product->id}", 'media');
-            $data['stored_path'] = $path;
-            $data['stored_url'] = Storage::disk(config('media.disk', 'media'))->url($path);
-            $data['mime_type'] = $file->getMimeType();
-            $data['size_bytes'] = $file->getSize();
-            $data['status'] = 'downloaded';
-
-            try {
-                $derivatives = app(MediaDerivativeService::class);
-                $built = $derivatives->regenerateFromStored($path, (int) $product->id);
-                $data['derivatives'] = $built;
-                $promoted = $derivatives->promoteMasterAndDiscardOriginal($path, $built);
-                if ($promoted !== null) {
-                    $data = array_merge($data, $promoted);
-                }
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
-
-        if (! empty($data['is_main_image'])) {
-            ProductMedia::where('product_id', $product->id)->update(['is_main_image' => false]);
-        }
-
-        $media = ProductMedia::create($data);
-
-        if ($data['status'] === 'pending' && ! empty($data['source_url'])) {
-            DownloadProductMedia::dispatch($media->id);
+        if ($asset->status === 'pending') {
+            DownloadMediaAsset::dispatch($asset->id);
         }
 
         $params = ['product' => $product];
@@ -218,6 +245,635 @@ class ProductMediaController extends Controller
         return redirect()
             ->route('admin.products.media.byProduct', $params)
             ->with('success', 'Media ditambahkan.');
+    }
+
+            // Nama route wajib berawalan `admin.`: seluruh route admin
+            // didaftarkan di dalam grup ->name('admin.'). Tanpa awalan itu
+            // `media.attach` tidak pernah terdaftar dan pemanggilnya gagal.
+    public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'product_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
+            'product_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            'position' => ['required', 'integer', 'min:1', 'max:109'],
+            'show_in_catalog' => ['boolean'],
+            'is_installation' => ['boolean'],
+            'is_main_image' => ['boolean'],
+            'visibility' => ['required', 'in:visible,hidden,archived'],
+        ], [
+            'product_ids.required' => 'Pilih produk tujuan terlebih dahulu.',
+            'position.required' => 'Isi posisi media dengan angka 1 sampai 109.',
+            'position.min' => 'Posisi minimal 1.',
+            'position.max' => 'Posisi maksimal 109.',
+            'product_variant_id.exists' => 'Varian yang dipilih tidak ditemukan.',
+        ]);
+
+        $fail = fn (string $message) => $request->expectsJson()
+            ? response()->json(['message' => $message], 422)
+            : redirect()->back()->with('error', $message);
+
+        if ($asset->visibility === 'archived') {
+            return $fail('Shared asset yang sudah diarsipkan tidak dapat dipasang.');
+        }
+        if ($asset->kind === 'video' && ! empty($validated['is_main_image'])) {
+            return $fail('Video tidak dapat dijadikan gambar utama.');
+        }
+
+        $variantId = isset($validated['product_variant_id']) ? (int) $validated['product_variant_id'] : null;
+        if ($variantId !== null) {
+            $variant = ProductVariant::find($variantId);
+            $productIds = array_map('intval', $validated['product_ids']);
+            if ($variant === null || count($productIds) !== 1 || (int) $variant->product_id !== $productIds[0]) {
+                return $fail('Varian tidak sesuai dengan produk tujuan.');
+            }
+        }
+
+        $resolver = app(MediaAssetResolver::class);
+        $isInstallation = (bool) ($validated['is_installation'] ?? false);
+        $products = Product::query()->whereIn('id', $validated['product_ids'])->get();
+        foreach ($products as $product) {
+            // Sisip, bukan nomor kembar: media lain dalam lingkup yang sama
+            // (produk, varian, jenis pemasangan) bergeser satu langkah, lalu
+            // baris untuk aset ini ditulis pada posisi yang diisi.
+            $occupied = ProductMedia::query()
+                ->where('product_id', $product->id)
+                ->where('media_asset_id', $asset->id)
+                ->where('is_installation', $isInstallation)
+                ->when($variantId !== null,
+                    fn ($query) => $query->where('product_variant_id', $variantId),
+                    fn ($query) => $query->whereNull('product_variant_id'),
+                )
+                ->first();
+            $this->makeRoomForInsert($product, $variantId, $isInstallation, (int) $validated['position'], $occupied?->id);
+            $resolver->attach($product, $asset, [
+                'position' => $validated['position'],
+                'product_variant_id' => $variantId,
+                'is_main_image' => $asset->kind === 'image' && ($validated['is_main_image'] ?? false),
+                'show_in_catalog' => $validated['show_in_catalog'] ?? true,
+                'is_installation' => $isInstallation,
+                'visibility' => $validated['visibility'],
+            ], (int) $request->user()->id);
+        }
+
+        $message = "Media dipasang ke {$products->count()} produk.";
+
+        return $request->expectsJson()
+            ? response()->json(['attached' => $products->count(), 'message' => $message])
+            : redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Sisip posisi: geser media lain dalam lingkup yang sama (produk, lingkup
+     * varian, jenis pemasangan) yang posisinya >= posisi tujuan, supaya media
+     * baru tidak bernomor kembar dengan media eksisting. Baris milik aset yang
+     * sedang dipasang dikecualikan karena akan ditulis ulang oleh attach().
+     */
+    private function makeRoomForInsert(Product $product, ?int $variantId, bool $isInstallation, int $position, ?int $ignoreMediaId = null): void
+    {
+        $query = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('is_installation', $isInstallation)
+            ->where('position', '>=', $position);
+
+        if ($variantId !== null) {
+            $query->where('product_variant_id', $variantId);
+        } else {
+            $query->whereNull('product_variant_id');
+        }
+
+        if ($ignoreMediaId !== null) {
+            $query->where('id', '!=', $ignoreMediaId);
+        }
+
+        $query->increment('position');
+    }
+
+    /**
+     * Opsi popup "Pasang ke produk" di Media Library: varian aktif produk
+     * tujuan dan status keterpasangan aset ini pada produk itu, supaya admin
+     * melihat media eksisting sebelum memasang.
+     */
+    public function attachOptions(Request $request, MediaAsset $asset): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+        ]);
+
+        $product = Product::query()->findOrFail($validated['product_id']);
+        $variants = $product->activeVariants()
+            ->orderBy('id')
+            ->get()
+            ->map(fn (ProductVariant $variant): array => [
+                'id' => (int) $variant->id,
+                'sku' => $variant->variant_sku,
+                'label' => $variant->optionLabel(),
+            ])
+            ->values();
+
+        $existing = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->where('media_asset_id', $asset->id)
+            ->where('visibility', '!=', 'archived')
+            ->orderBy('position')
+            ->get()
+            ->map(fn (ProductMedia $media): array => [
+                'product_variant_id' => $media->product_variant_id !== null ? (int) $media->product_variant_id : null,
+                'position' => (int) $media->position,
+                'is_installation' => (bool) $media->is_installation,
+                'show_in_catalog' => (bool) $media->show_in_catalog,
+            ])
+            ->values();
+
+        return response()->json([
+            'variants' => $variants,
+            'existing' => $existing,
+        ]);
+    }
+
+
+    /**
+     * Aksi massal pada shared assets di Media Library: archive atau delete.
+     * Delete hanya berlaku untuk aset yang tidak dipakai entitas lain
+     * (produk/banner/galeri); yang masih dipakai otomatis di-archive.
+     */
+    public function bulkAction(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'in:archive,delete,restore'],
+            'asset_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'asset_ids.*' => ['integer', 'distinct', 'exists:media_assets,id'],
+        ]);
+
+        $assets = MediaAsset::query()->whereIn('id', $validated['asset_ids'])->get();
+        $deleted = 0;
+        $archived = 0;
+        $restored = 0;
+
+        foreach ($assets as $asset) {
+            if ($validated['action'] === 'restore') {
+                if ($asset->visibility === 'archived') {
+                    $asset->update(['visibility' => 'visible']);
+                    $restored++;
+                }
+
+                continue;
+            }
+            if ($asset->visibility === 'archived') {
+                continue;
+            }
+            if ($validated['action'] === 'archive') {
+                $asset->update(['visibility' => 'archived']);
+                $archived++;
+
+                continue;
+            }
+            $usedElsewhere = ProductMedia::where('media_asset_id', $asset->id)->exists()
+                || CmsBanner::where('media_asset_id', $asset->id)->exists()
+                || CmsGalleryItem::where('media_asset_id', $asset->id)->exists();
+            if ($usedElsewhere) {
+                $asset->update(['visibility' => 'archived']);
+                $archived++;
+
+                continue;
+            }
+            $this->deleteAssetFiles($asset);
+            $asset->delete();
+            $deleted++;
+        }
+
+        return redirect()->back()->with('success', "{$deleted} aset dihapus, {$archived} diarsipkan, {$restored} dipulihkan.");
+    }
+
+    /**
+     * Hapus permanen aset tunggal dari Media Library (hanya jika tidak digunakan di mana pun).
+     */
+    /**
+     * Pencarian produk untuk panel attach di Media Library (live, debounce).
+     */
+    public function searchProducts(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $products = Product::query()
+            ->where('status', '!=', 'archived')
+            ->when($q !== '', function ($query) use ($q): void {
+                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'name', $q)
+                    ->orWhereRaw('parent_sku LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'parent_sku']);
+
+        return response()->json([
+            'products' => $products->map(fn (Product $p) => [
+                'id' => $p->id,
+                'label' => $p->name.' · '.$p->parent_sku,
+            ])->values()->all(),
+        ]);
+    }
+
+    private function deleteAssetFiles(MediaAsset $asset): void
+    {
+        $disk = Storage::disk(config('media.disk', 'media'));
+        $keys = [];
+        $derivatives = is_array($asset->derivatives) ? $asset->derivatives : [];
+        foreach (['thumb', 'card', 'pdp', 'poster', 'video'] as $variant) {
+            $path = $derivatives[$variant]['path'] ?? null;
+            if ($path && $disk->exists($path)) {
+                $keys[] = $path;
+            }
+        }
+        if ($asset->object_key && ! in_array($asset->object_key, $keys, true) && $disk->exists($asset->object_key)) {
+            $keys[] = $asset->object_key;
+        }
+        foreach ($keys as $key) {
+            $disk->delete($key);
+        }
+    }
+
+    /**
+     * Aksi massal pada media milik satu produk (halaman byProduct):
+     * archive -> visibility=archived; delete -> mengikuti semantik destroy
+     * single (hanya status failed yang dihapus permanen; failed+shared asset
+     * di-archive; selain itu di-archive).
+     */
+
+    /**
+     * Jenis event yang punya tab di halaman Riwayat Media. Dipakai untuk
+     * memvalidasi filter status sekaligus menjaga daftarnya sinkron dengan
+     * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
+     */
+    private const HISTORY_EVENT_TABS = [
+        'success',
+        'failed',
+    ];
+
+    /**
+     * Riwayat pemrosesan media (queued -> processing -> success / failed / dedup)
+     * untuk audit job WebP yang gagal. Filter event, pencarian label/pesan, dan rentang tanggal.
+     */
+    public function history(Request $request): Response
+    {
+        // Filter dibaca apa adanya lalu dinormalkan, mengikuti pola filter di Order,
+        // Payment, dan Shipping: nilai yang tidak dikenal dibuat kosong, bukan
+        // ditolak dengan galat. Menolaknya membuat tautan lama seperti
+        // ?event=dedup memantul ke halaman sebelumnya, padahal yang diinginkan
+        // hanyalah filter itu diabaikan.
+        $event = (string) $request->input('event', '');
+        $q = trim((string) $request->input('q', ''));
+        $datePreset = trim((string) $request->input('date_preset', ''));
+        $dateFrom = trim((string) $request->input('date_from', ''));
+        $dateTo = trim((string) $request->input('date_to', ''));
+
+        // Status hanya menerima nilai yang punya tab. Nilai lain, misalnya
+        // ?event=dedup dari tautan lama, dibuang supaya halaman tidak pernah
+        // tampil tanpa tab aktif: keadaan yang tidak bisa diwakili tombol filter
+        // akan terbaca seperti halaman rusak.
+        if (! in_array($event, self::HISTORY_EVENT_TABS, true)) {
+            $event = '';
+        }
+
+        // Periode memakai pola yang sama dengan halaman daftar admin lain: satu
+        // pilihan periode, dan rentang tanggal hanya berlaku saat periode rentang
+        // yang dipilih. Dasar perbandingannya created_at.
+        if (! in_array($datePreset, ['today', '3d', '7d', '30d', 'range'], true)) {
+            $datePreset = '';
+        }
+        if (strlen($q) > 120) {
+            $q = mb_substr($q, 0, 120);
+        }
+
+        $baseQuery = MediaProcessingLog::query()
+            ->when($q !== '', function ($builder) use ($q) {
+                $search = LikeSearch::escape($q);
+
+                return $builder->where(function ($sub) use ($search) {
+                    $sub->where('entity_label', 'like', "%{$search}%")
+                        ->orWhere('message', 'like', "%{$search}%");
+                });
+            })
+            ->when($datePreset === 'today', fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+            ->when($datePreset === '3d', fn ($q) => $q->where('created_at', '>=', now()->subDays(3)->startOfDay()))
+            ->when($datePreset === '7d', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)->startOfDay()))
+            ->when($datePreset === '30d', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)->startOfDay()))
+            ->when($datePreset === 'range' && $dateFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
+            ->when($datePreset === 'range' && $dateTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $dateTo));
+
+        $countsByEvent = (clone $baseQuery)
+            ->selectRaw('event, count(*) as count')
+            ->groupBy('event')
+            ->pluck('count', 'event')
+            ->all();
+
+        $tabCounts = [
+            '' => (int) array_sum($countsByEvent),
+            'failed' => (int) ($countsByEvent['failed'] ?? 0),
+            'success' => (int) ($countsByEvent['success'] ?? 0),
+        ];
+
+        $query = (clone $baseQuery)
+            ->when($event !== '', fn ($builder) => $builder->where('event', $event));
+
+        $paginator = (clone $query)->latest('created_at')->paginate(30)->withQueryString();
+
+        $logs = $this->historyRows($paginator->items());
+
+        $pruneDays = (int) config('media.log_retention_days', 30);
+
+        // Riwayat Media berada di bawah Media Library (lihat daftar active
+        // pada config/admin-sitemap.php), jadi Kembali menuju Media Library.
+        // Penanda asal diteruskan supaya saat kembali lagi ke Media Library
+        // tombol Kembali ke Produk tetap ada.
+        $origin = (string) $request->query('origin', '');
+
+        return Inertia::render('Admin/Media/History', [
+            'backUrl' => route('admin.media.library', array_filter(['origin' => $this->knownOrigin($origin)])),
+            'logs' => $logs,
+            'pagination' => InertiaAdmin::pagination($paginator),
+            'filters' => [
+                'event' => $event,
+                'q' => $q,
+            ],
+            'tabCounts' => $tabCounts,
+            'activeDatePreset' => $datePreset,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'periodLabel' => $this->periodLabel($datePreset, $dateFrom, $dateTo),
+            'prune' => [
+                'days' => $pruneDays,
+                'count' => MediaProcessingLog::where('created_at', '<', now()->subDays($pruneDays))->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Baris log siap tampil: tautan ke medianya, dan untuk penggabungan duplikat
+     * tautan ke aset TUJUANNYA.
+     *
+     * Status aset diambil sekali untuk semua baris karena tautan ke Media Library
+     * bergantung padanya: aset yang diarsipkan disembunyikan Library secara bawaan,
+     * jadi tanpa parameter status tautannya berakhir di daftar kosong.
+     *
+     * @param  array<int, MediaProcessingLog>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function historyRows(array $items): array
+    {
+        $assetIds = [];
+        foreach ($items as $log) {
+            if ($log->loggable_type === MediaAsset::class) {
+                $assetIds[] = (int) $log->loggable_id;
+            }
+            $target = data_get($log->meta, 'merged_into_asset_id');
+            if ($target) {
+                $assetIds[] = (int) $target;
+            }
+        }
+
+        $assets = $assetIds === []
+            ? collect()
+            : MediaAsset::query()->whereIn('id', array_unique($assetIds))->get()->keyBy('id');
+
+        $mediaIds = collect($items)
+            ->filter(fn (MediaProcessingLog $log) => $log->loggable_type === ProductMedia::class)
+            ->map(fn (MediaProcessingLog $log) => (int) $log->loggable_id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $productMedias = $mediaIds === []
+            ? collect()
+            : ProductMedia::query()->whereIn('id', $mediaIds)->with('mediaAsset')->get()->keyBy('id');
+
+        return collect($items)->map(function (MediaProcessingLog $log) use ($assets, $productMedias): array {
+            $row = $log->toArray();
+            $row['retry_url'] = $log->event === 'failed' ? route('admin.media.logs.retry', $log) : null;
+            $row['delete_url'] = route('admin.media.logs.destroy', $log);
+
+            $asset = null;
+            $productMedia = null;
+            if ($log->loggable_type === MediaAsset::class) {
+                $asset = $assets->get((int) $log->loggable_id);
+            } elseif ($log->loggable_type === ProductMedia::class) {
+                $productMedia = $productMedias->get((int) $log->loggable_id);
+                $asset = $productMedia?->mediaAsset;
+            }
+
+            $row['thumb_url'] = $asset?->urlFor('thumb') ?? $productMedia?->urlFor('thumb');
+            $row['media_kind'] = $asset?->kind ?? ($productMedia ? 'image' : null);
+            $row['size_bytes'] = $asset?->size_bytes ? (int) $asset->size_bytes : null;
+            $row['dimensions'] = null;
+            if ($asset) {
+                if ($asset->kind === 'video' && $asset->duration_ms) {
+                    $secs = (int) round($asset->duration_ms / 1000);
+                    $row['dimensions'] = sprintf('%02d:%02d', floor($secs / 60), $secs % 60);
+                } elseif ($asset->width_px && $asset->height_px) {
+                    $row['dimensions'] = "{$asset->width_px} × {$asset->height_px}";
+                }
+            }
+
+            // Aset yang sudah dihapus tetap punya baris riwayat: tabel ini jejak
+            // audit, dan audit memang bertahan setelah subjeknya hilang. Yang
+            // tidak boleh adalah barisnya berpura-pura masih bisa dibuka, jadi
+            // penandanya dikirim ke tampilan untuk diberi keterangan apa adanya.
+            $row['media_missing'] = match ($log->loggable_type) {
+                MediaAsset::class => $asset === null,
+                ProductMedia::class => $productMedia === null,
+                default => false,
+            };
+
+            $row['media_href'] = $this->mediaHrefFor($log, $assets, $productMedias);
+
+            $targetId = data_get($log->meta, 'merged_into_asset_id');
+            $targetLabel = (string) data_get($log->meta, 'merged_into_label', '');
+            $targetAsset = $targetId ? $assets->get((int) $targetId) : null;
+            $row['merged_into'] = $targetId
+                ? [
+                    'asset_id' => (int) $targetId,
+                    'label' => $targetLabel !== '' ? $targetLabel : ('Aset #'.$targetId),
+                    'href' => $this->libraryHrefFor($targetLabel, $targetAsset?->status),
+                ]
+                : null;
+
+            return $row;
+        })->values()->all();
+    }
+
+    /**
+     * Tautan baris ke medianya.
+     *
+     * Hanya aset Media Library yang bisa ditautkan lewat pencarian label. Media
+     * produk tidak: labelnya berbentuk "Media: <nama produk>", dan mencarinya di
+     * Media Library tidak akan menemukan apa pun, jadi tautannya langsung ke tab
+     * media produknya.
+     */
+    private function mediaHrefFor(MediaProcessingLog $log, $assets, $productMedias): ?string
+    {
+        if ($log->loggable_type === MediaAsset::class) {
+            $asset = $assets->get((int) $log->loggable_id);
+
+            // Aset yang sudah dihapus tidak bisa ditautkan: pencarian di Media
+            // Library tidak akan menemukan apa pun, jadi tautannya hanya
+            // menyesatkan pembaca seolah medianya masih ada.
+            if (! $asset) {
+                return null;
+            }
+
+            return $this->libraryHrefFor((string) $log->entity_label, $asset->status);
+        }
+
+        if ($log->loggable_type === ProductMedia::class) {
+            $pm = $productMedias->get((int) $log->loggable_id);
+            $productId = $pm?->product_id;
+
+            return $productId ? route('admin.products.show', ['product' => $productId, 'tab' => 'media']) : null;
+        }
+
+        return null;
+    }
+
+    /** Tautan ke Media Library yang sudah tersaring ke satu label. */
+    private function libraryHrefFor(string $label, ?string $status): ?string
+    {
+        if (trim($label) === '') {
+            return null;
+        }
+
+        $params = ['q' => $label];
+
+        // Aset arsip disembunyikan Library secara bawaan, jadi tautannya wajib
+        // menyertakan statusnya atau daftarnya kosong.
+        if ($status === 'archived') {
+            $params['status'] = 'archived';
+        }
+
+        return route('admin.media.library', $params);
+    }
+
+    /**
+     * Label periode aktif untuk chip "Filter aktif" di halaman Riwayat Media.
+     * Selaras dengan label periode di halaman daftar admin lain.
+     */
+    private function periodLabel(string $preset, string $from, string $to): string
+    {
+        return match ($preset) {
+            'today' => 'Hari ini',
+            '3d' => '3 hari terakhir',
+            '7d' => '7 hari terakhir',
+            '30d' => '30 hari terakhir',
+            'range' => trim(
+                ($from !== '' ? \Carbon\Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                .' sampai '.
+                ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang'),
+            ),
+            default => 'Semua waktu',
+        };
+    }
+
+    /**
+     * Status terkini batch media (ProductMedia / MediaAsset) untuk polling
+     * live di halaman media produk & Media Library (pending -> ready tanpa reload).
+     */
+    public function status(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'kind' => ['required', 'in:product,asset'],
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $statuses = [];
+        if ($validated['kind'] === 'product') {
+            $rows = ProductMedia::query()
+                ->whereIn('id', $validated['ids'])
+                ->get(['id', 'status', 'error_reason']);
+            foreach ($rows as $row) {
+                $statuses[] = [
+                    'id' => $row->id,
+                    'status' => $row->status,
+                    'error_reason' => $row->error_reason,
+                    'thumb_url' => $row->urlFor('thumb') ?? $row->stored_url,
+                ];
+            }
+        } else {
+            $rows = MediaAsset::query()
+                ->whereIn('id', $validated['ids'])
+                ->get(['id', 'status', 'error_reason']);
+            foreach ($rows as $row) {
+                $statuses[] = [
+                    'id' => $row->id,
+                    'status' => $row->status,
+                    'error_reason' => $row->error_reason,
+                    'thumb_url' => $row->urlFor('thumb'),
+                ];
+            }
+        }
+
+        return response()->json(['statuses' => $statuses]);
+    }
+
+    public function bulkProductMedia(Request $request, Product $product): RedirectResponse
+    {
+        $validated = $request->validate([
+            'action' => ['required', 'in:archive,delete'],
+            'media_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'media_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $rows = ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->whereIn('id', $validated['media_ids'])
+            ->get();
+
+        $archived = 0;
+        $deleted = 0;
+        $skipped = 0;
+        $disk = Storage::disk(config('media.disk', 'media'));
+
+        foreach ($rows as $media) {
+            if ($validated['action'] === 'archive') {
+                $media->update(['visibility' => 'archived']);
+                $archived++;
+
+                continue;
+            }
+
+            // delete: hanya media failed yang bisa dihapus permanen
+            if ($media->status !== 'failed') {
+                $media->update(['visibility' => 'archived']);
+                $archived++;
+
+                continue;
+            }
+            if ($media->media_asset_id) {
+                $media->update(['visibility' => 'archived']);
+                $archived++;
+
+                continue;
+            }
+            $paths = array_filter([
+                $media->stored_path,
+                ...collect($media->derivatives ?? [])->pluck('path')->filter()->all(),
+            ]);
+            foreach ($paths as $path) {
+                try {
+                    if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                        $disk->delete($path);
+                    }
+                } catch (\Throwable) {
+                    // Abaikan kegagalan cleanup storage; row tetap dihapus.
+                }
+            }
+            $media->delete();
+            $deleted++;
+        }
+
+        $message = $validated['action'] === 'archive'
+            ? "{$archived} media diarsipkan."
+            : "{$deleted} media dihapus permanen, {$archived} diarsipkan (hanya berstatus gagal yang bisa dihapus).";
+
+        return redirect()->back()->with('success', $message);
     }
 
     public function update(Request $request, ProductMedia $media): RedirectResponse
@@ -231,6 +887,7 @@ class ProductMediaController extends Controller
             'visibility' => ['sometimes', 'in:visible,archived,hidden'],
             'show_in_catalog' => ['sometimes', 'boolean'],
             'is_installation' => ['sometimes', 'boolean'],
+            'installation_caption' => ['nullable', 'string', 'max:280'],
             'product_variant_id' => [
                 'sometimes',
                 'nullable',
@@ -246,6 +903,10 @@ class ProductMediaController extends Controller
 
     public function setMain(ProductMedia $media): RedirectResponse
     {
+        if (($media->mediaAsset?->kind ?? (str_starts_with((string) $media->mime_type, 'video/') ? 'video' : 'image')) === 'video') {
+            return redirect()->back()->with('error', 'Video tidak dapat dijadikan gambar utama.');
+        }
+
         ProductMedia::where('product_id', $media->product_id)->update(['is_main_image' => false]);
         $media->update(['is_main_image' => true]);
 
@@ -259,12 +920,137 @@ class ProductMediaController extends Controller
         return redirect()->back()->with('success', 'Media diarsipkan.');
     }
 
+    public function restore(ProductMedia $media): RedirectResponse
+    {
+        $media->update(['visibility' => 'visible']);
+
+        return redirect()->back()->with('success', 'Media dipulihkan.');
+    }
+
     public function redownload(ProductMedia $media): RedirectResponse
     {
         $media->update(['status' => 'pending', 'error_reason' => null]);
-        DownloadProductMedia::dispatch($media->id);
+        if ($media->media_asset_id) {
+            $media->mediaAsset?->update(['status' => 'pending', 'error_reason' => null]);
+            DownloadMediaAsset::dispatch($media->media_asset_id);
+        } else {
+            DownloadProductMedia::dispatch($media->id);
+        }
 
         return redirect()->back()->with('success', 'Download media dijadwalkan ulang.');
+    }
+
+    /**
+     * Retry pemrosesan media dari baris log (event=failed): set status pending
+     * dan jadwalkan ulang job yang sesuai (upload asset / unduh dari URL).
+     */
+    /**
+     * Hapus permanen satu baris log riwayat.
+     */
+    public function destroyLog(MediaProcessingLog $log): RedirectResponse
+    {
+        $log->delete();
+
+        return redirect()->back()->with('success', 'Log riwayat dihapus.');
+    }
+
+    /**
+     * Hapus permanen log yang lebih tua dari N hari (default 30).
+     */
+    public function pruneLogs(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+        $days = (int) ($validated['days'] ?? config('media.log_retention_days', 30));
+
+        $deleted = MediaProcessingLog::where('created_at', '<', now()->subDays($days))->delete();
+
+        return redirect()->back()->with(
+            'success',
+            $deleted > 0
+                ? "{$deleted} log riwayat lebih tua dari {$days} hari dihapus."
+                : "Tidak ada log lebih tua dari {$days} hari.",
+        );
+    }
+
+    public function retryLog(MediaProcessingLog $log): RedirectResponse
+    {
+        $loggable = $log->loggable;
+
+        // Arsip adalah keputusan final; memproses ulang akan membatalkan arsip
+        // karena status aset di-reset ke pending.
+        if ($loggable instanceof MediaAsset && $loggable->status === 'archived') {
+            return redirect()->back()->with('error', 'Aset sudah diarsipkan sehingga tidak dapat diproses ulang.');
+        }
+
+        if ($loggable instanceof MediaAsset) {
+            if ($loggable->source_url) {
+                $loggable->update(['status' => 'pending', 'error_reason' => null]);
+                MediaProcessingLog::record($loggable, 'queued', 'Retry: mengunduh ulang media dari URL sumber.');
+                DownloadMediaAsset::dispatch($loggable->id);
+
+                return redirect()->back()->with('success', 'Pemrosesan media dijadwalkan ulang.');
+            }
+
+            if ($loggable->object_key) {
+                $loggable->update(['status' => 'pending', 'error_reason' => null]);
+                MediaProcessingLog::record($loggable, 'queued', 'Retry: memproses ulang derivatif WebP.');
+                ProcessUploadedMediaAsset::dispatch($loggable->id);
+
+                return redirect()->back()->with('success', 'Pemrosesan media dijadwalkan ulang.');
+            }
+
+            return redirect()->back()->with('error', 'Aset tidak memiliki sumber untuk diproses ulang.');
+        }
+
+        if ($loggable instanceof ProductMedia) {
+            $loggable->update(['status' => 'pending', 'error_reason' => null]);
+            MediaProcessingLog::record($loggable, 'queued', 'Retry: mengunduh ulang media produk.');
+            if ($loggable->media_asset_id) {
+                $loggable->mediaAsset?->update(['status' => 'pending', 'error_reason' => null]);
+                DownloadMediaAsset::dispatch($loggable->media_asset_id);
+            } else {
+                DownloadProductMedia::dispatch($loggable->id);
+            }
+
+            return redirect()->back()->with('success', 'Pemrosesan media dijadwalkan ulang.');
+        }
+
+        return redirect()->back()->with('error', 'Entitas media tidak ditemukan untuk diproses ulang.');
+    }
+
+    public function destroy(ProductMedia $media): RedirectResponse
+    {
+        if ($media->status !== 'failed') {
+            return redirect()->back()->with('error', 'Hanya media berstatus gagal yang dapat dihapus permanen. Arsipkan media lain.');
+        }
+
+        if ($media->media_asset_id) {
+            $media->update(['visibility' => 'archived']);
+
+            return redirect()->back()->with('success', 'Attachment media diarsipkan tanpa menghapus shared asset.');
+        }
+
+        $paths = array_filter([
+            $media->stored_path,
+            ...collect($media->derivatives ?? [])->pluck('path')->filter()->all(),
+        ]);
+
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'));
+        foreach ($paths as $path) {
+            try {
+                if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                    $disk->delete($path);
+                }
+            } catch (\Throwable) {
+                // Ignore storage cleanup errors; DB row still removed.
+            }
+        }
+
+        $media->delete();
+
+        return redirect()->back()->with('success', 'Media gagal dihapus.');
     }
 
     protected function variantLabel(ProductVariant $variant): string

@@ -9,6 +9,7 @@ class CmsBanner extends Model
     protected $fillable = [
         'title',
         'image_url',
+        'media_asset_id',
         'link_url',
         'sort_order',
         'published',
@@ -22,5 +23,10 @@ class CmsBanner extends Model
     public function scopePublished($query)
     {
         return $query->where('published', true)->orderBy('sort_order');
+    }
+
+    public function mediaAsset()
+    {
+        return $this->belongsTo(MediaAsset::class);
     }
 }

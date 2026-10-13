@@ -28,20 +28,21 @@ class ProfileAdminTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Profile/Edit')
                 ->where('profile.name', 'Admin Lama')
-                ->where('profile.email', 'admin@example.com')
-                ->where('profile.role_label', 'Admin'));
+                ->where('profile.username', $admin->username)
+                ->where('profile.role_label', 'Admin')
+                ->missing('profile.email'));
 
         $this->actingAs($admin)
             ->put(route('admin.profile.update'), [
                 'name' => 'Admin Baru',
-                'email' => 'baru@example.com',
+                'username' => 'admin.baru',
             ])
             ->assertRedirect(route('admin.profile.edit'));
 
         $this->assertDatabaseHas('users', [
             'id' => $admin->id,
             'name' => 'Admin Baru',
-            'email' => 'baru@example.com',
+            'username' => 'admin.baru',
         ]);
     }
 
@@ -57,7 +58,7 @@ class ProfileAdminTest extends TestCase
             ->from(route('admin.profile.edit'))
             ->put(route('admin.profile.update'), [
                 'name' => $admin->name,
-                'email' => $admin->email,
+                'username' => $admin->username,
                 'password' => 'newpass123',
                 'password_confirmation' => 'newpass123',
             ])
@@ -66,7 +67,7 @@ class ProfileAdminTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.profile.update'), [
                 'name' => $admin->name,
-                'email' => $admin->email,
+                'username' => $admin->username,
                 'current_password' => 'password123',
                 'password' => 'newpass123',
                 'password_confirmation' => 'newpass123',

@@ -1,18 +1,39 @@
 import { Head, Link, router } from "@inertiajs/react"
+import { ReviewReplyDialog, type ReviewReplyTarget } from "@/components/admin/review-reply-dialog"
+import { ReturnCreateDialog } from "@/components/admin/order-return-create-dialog"
+import {
+  OrderReturnCaseDialog,
+  type ReturnAdjustment,
+  type ReturnCaseRow,
+} from "@/components/admin/order-return-case-dialog"
 import * as React from "react"
 
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+
+import { Button } from "@/components/admin/ui/button"
+import { CopyButton } from "@/components/admin/ui/copy-button"
+import { ListToolbar } from "@/components/admin/ui/list-toolbar"
+import { StatusConfirmButton } from "@/components/admin/order-status-confirm"
+import { ConfirmAction } from "@/components/admin/ui/confirm-action"
+import { EmptyState, ErrorState } from "@/components/admin/ui/empty-state"
+import { Input } from "@/components/admin/ui/input"
+import { Pagination } from "@/components/admin/ui/pagination"
+import { Select } from "@/components/admin/ui/select"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { ConfirmAction } from "@/components/ui/confirm-action"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
-import { Pagination } from "@/components/ui/pagination"
-import { Select } from "@/components/ui/select"
-import { StatusBadge } from "@/components/ui/status-badge"
+import {
+  PrintOrderArea,
+  type OrderPrintData,
+  usePrintOrder,
+} from "@/components/shared/print-order-customer"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { formatCurrency, formatDate, formatNumber, humanize } from "@/lib/format"
+import { ORDER_CANCEL_DIALOG } from "@/lib/order-cancel-dialog"
 import { routeUrl } from "@/lib/routes"
-import { statusMeta } from "@/lib/status"
+import { navigateFilter } from "@/lib/filter-url"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
+import { jagaGerbang } from "@/lib/submit-gate"
+// import { statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { Pagination as PaginationData } from "@/types"
 
@@ -25,7 +46,13 @@ interface OrderItemPreview {
   variation_2_name?: string | null
   variation_2_option?: string | null
   quantity: number
+  unit_price: number
+  line_total: number
   image?: string | null
+  note?: string | null
+  /** Dipakai popup retur untuk memetakan barang pengganti. */
+  product_id?: number
+  variant_id?: number | null
 }
 
 interface PrimaryAction {
@@ -33,6 +60,7 @@ interface PrimaryAction {
   next_status: string | null
   kind?: string
   hint?: string | null
+  href?: string
 }
 
 interface OrderCard {
@@ -40,15 +68,33 @@ interface OrderCard {
   order_number: string
   order_status: string
   payment_status: string
+  payment_bucket?: string
+  payment_label?: string
   payment_method?: string | null
   payment_method_label?: string
+  shipping_status?: string
   cod_flag?: boolean
   flow?: "cod" | "transfer"
   customer_name: string
   customer_phone?: string | null
+  /** Penanda perhatian admin (mis. riwayat paket ditolak). Null bila bersih. */
+  attention?: {
+    kind: string
+    count: number
+    label: string
+    hint: string
+  } | null
+  /** Penanda pesanan baru / belum dilihat admin pada statusnya saat ini. */
+  is_unseen?: boolean
+  shipping_address_line1?: string | null
+  shipping_address_line2?: string | null
+  shipping_village?: string | null
+  shipping_district?: string | null
   shipping_city?: string | null
   shipping_province?: string | null
+  shipping_postal_code?: string | null
   notes?: string | null
+  admin_notes?: string | null
   total_amount: number
   product_count: number
   unit_count: number
@@ -56,15 +102,49 @@ interface OrderCard {
   updated_at: string | null
   href: string
   whatsapp_url?: string | null
+    /** Tautan chat WA berisi naskah template sesuai status pesanan. */
+    whatsapp_status_url?: string | null
+  whatsapp_failed_count?: number
   primary_action: PrimaryAction | null
+  secondary_action?: PrimaryAction | null
+  shipping_track?: {
+    shipping_status: string
+    carrier_name?: string | null
+    waybill_number?: string | null
+    record_status?: string | null
+    status_raw?: string | null
+    last_status_at?: string | null
+    tracking_url?: string | null
+    order_status?: string
+    payment_status?: string
+    payment_method?: string | null
+    total_amount?: number
+    paid?: boolean
+    latest_message?: string | null
+    latest_at?: string | null
+  }
   items: OrderItemPreview[]
   items_total: number
+  /**
+   * Ulasan pelanggan untuk pesanan ini, bila sudah ada; null bila belum diulas.
+   * Dipakai tombol Balas ulasan di kolom Aksi.
+   */
+  review?: ReviewReplyTarget | null
+  /** Data kasus retur, dipakai popup penyelesaian yang dibuka dari daftar. */
+  return_cases?: ReturnCaseRow[]
+  return_adjustments?: ReturnAdjustment[]
+  /** Jumlah pembayaran yang sudah lunas, untuk batas refund di popup. */
+  paid_amount?: number
 }
 
 interface StatusTab {
   key: string
   label: string
   count: number
+  /** Jumlah pesanan baru atau belum dilihat/ditangani admin pada status ini. 0 = tidak ada penanda. */
+  new_count?: number
+  /** Jumlah ulasan pelanggan pada status ini yang belum dibalas. 0 = tidak ada penanda. */
+  awaiting_review_count?: number
 }
 
 interface OrdersIndexProps {
@@ -75,10 +155,15 @@ interface OrdersIndexProps {
   activeSort: string
   activePaymentStatus?: string
   activeShippingStatus?: string
+  activeOlderThan?: string
   activeDatePreset?: string
   dateFrom?: string
   dateTo?: string
   searchQuery: string
+  summary: {
+    count: number
+    total_value: number
+  }
   orders: OrderCard[]
   pagination: PaginationData
   exportUrl: string
@@ -103,13 +188,14 @@ function formatRelativeAge(iso: string | null | undefined): string {
   if (Number.isNaN(then)) return "-"
   const diffMs = Math.max(Date.now() - then, 0)
   const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 60) return `${minutes} Menit`
+  if (minutes < 60) return `${minutes} menit`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} Jam`
+  if (hours < 24) return `${hours} jam`
   const days = Math.floor(hours / 24)
   const remHours = hours % 24
-  return remHours > 0 ? `${days} Hari ${remHours} Jam` : `${days} Hari`
+  return remHours > 0 ? `${days} hari ${remHours} jam` : `${days} hari`
 }
+
 
 function variationLabel(item: OrderItemPreview): string {
   return [
@@ -121,23 +207,75 @@ function variationLabel(item: OrderItemPreview): string {
       : null,
   ]
     .filter(Boolean)
-    .join(" · ")
+    .join(", ")
+}
+
+/** Grid 7 kolom desktop berimbang: produk & subtotal | status | pembayaran | pengiriman | update | catatan admin | aksi */
+const orderRowGridClass =
+  "xl:grid xl:grid-cols-[minmax(0,2.65fr)_minmax(7.5rem,0.75fr)_minmax(8rem,0.85fr)_minmax(8.5rem,1fr)_minmax(7.5rem,0.8fr)_minmax(8.5rem,1fr)_minmax(6.5rem,0.75fr)] xl:items-start xl:gap-x-4"
+
+function OrderListColumnHeader() {
+  return (
+    <div
+      className={cn(
+        orderRowGridClass,
+        "hidden px-4 pb-2 text-xs font-medium text-muted-foreground xl:grid",
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex items-baseline justify-between pr-2">
+        <span>Produk</span>
+        <span>Subtotal</span>
+      </div>
+      <span className="text-center">Status pesanan</span>
+      <span className="text-center">Pembayaran</span>
+      <span className="text-center">Pengiriman</span>
+      <span className="text-center">Update terakhir</span>
+      <span className="text-center">Catatan admin</span>
+      <span className="text-right">Aksi</span>
+    </div>
+  )
 }
 
 function OrderCardRow({
   order,
   queryState,
+  onInputResi,
+  onEditNotes,
+  onReplyReview,
+  onRetur,
+  onSelesaikanRetur,
 }: {
   order: OrderCard
-  queryState: { order_status: string; q: string; sort: string }
+  onInputResi?: (order: OrderCard) => void
+  onEditNotes?: (order: OrderCard) => void
+  onReplyReview?: (order: OrderCard) => void
+  /** Buka popup pengisian detail retur untuk pesanan ini. */
+  onRetur?: (order: OrderCard) => void
+  /** Buka popup penyelesaian kasus retur (selesaikan, void, koreksi). */
+  onSelesaikanRetur?: (order: OrderCard) => void
+  queryState: {
+    order_status: string
+    q: string
+    sort: string
+    payment_status: string
+    shipping_status: string
+    older_than: string
+    date_preset: string
+    date_from: string
+    date_to: string
+  }
 }) {
   const [expanded, setExpanded] = React.useState(false)
+
   const [busy, setBusy] = React.useState(false)
+  const [resendBusy, setResendBusy] = React.useState(false)
+  const { printing, handlePrint } = usePrintOrder()
 
   const visibleItems = expanded ? order.items : order.items.slice(0, 2)
   const hiddenCount = Math.max(order.items_total - visibleItems.length, 0)
 
-  function applyStatus(nextStatus: string) {
+  function applyStatus(nextStatus: string, cancelReason?: string) {
     setBusy(true)
     router.put(
       routeUrl("admin.orders.status", { order: order.id }),
@@ -147,6 +285,13 @@ function OrderCardRow({
         filter_status: queryState.order_status,
         filter_q: queryState.q,
         filter_sort: queryState.sort,
+        filter_payment_status: queryState.payment_status,
+        filter_shipping_status: queryState.shipping_status,
+        filter_older_than: queryState.older_than,
+        filter_date_preset: queryState.date_preset,
+        filter_date_from: queryState.date_from,
+        filter_date_to: queryState.date_to,
+        ...(nextStatus === "cancelled" && cancelReason ? { cancel_reason: cancelReason } : {}),
       },
       {
         preserveScroll: true,
@@ -157,177 +302,428 @@ function OrderCardRow({
 
   function applyPrimary() {
     if (order.primary_action?.kind === "input_resi") {
-      router.visit(`${order.href}#lacak-pesanan`)
+      onInputResi?.(order)
       return
     }
     if (!order.primary_action?.next_status) return
     applyStatus(order.primary_action.next_status)
   }
 
-  function cancelOrder() {
-    applyStatus("cancelled")
-  }
-
   return (
-    <article className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_13rem]">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link href={order.href} className="font-mono text-base font-bold hover:text-primary">
-                  {order.order_number}
-                </Link>
-                <StatusBadge status={order.order_status} />
-              </div>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <p className="flex items-center gap-2 text-foreground">
-                  <Icon name="user" className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="font-semibold">{order.customer_name}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <Icon name="home" className="size-3.5 shrink-0" aria-hidden="true" />
-                  {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
-                </p>
-                <p className="flex items-center gap-2">
-                  <Icon name="whatsapp" className="size-3.5 shrink-0" aria-hidden="true" />
-                  {order.customer_phone || "-"}
-                </p>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-1",
-                    order.flow === "cod" || order.cod_flag
-                      ? "border-amber-300 bg-amber-50 text-amber-900"
-                      : "border-border bg-surface-muted text-foreground",
-                  )}
-                >
-                  {order.payment_method_label ||
-                    (order.payment_method ? humanize(order.payment_method) : "Metode -")}
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {statusMeta(order.payment_status).label}
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {formatNumber(order.product_count)} Produk
-                </span>
-                <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1">
-                  {formatNumber(order.unit_count)} Unit
-                </span>
-              </div>
-            </div>
+    <article className="overflow-hidden rounded-lg border border-border bg-card shadow-soft transition-colors hover:border-foreground/10">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="truncate font-medium text-foreground">{order.customer_name}</span>
+          {order.is_unseen ? (
+            <span
+              className="inline-flex shrink-0 items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive"
+              title="Pesanan baru pada status ini, belum dilihat/ditangani admin"
+            >
+              Baru
+            </span>
+          ) : null}
+          {order.attention ? (
+            <span
+              className="inline-flex shrink-0 items-center text-warning"
+              title={order.attention.hint}
+              aria-label={order.attention.label + ": " + order.attention.hint}
+              role="img"
+            >
+              <Icon name="warning" className="size-3.5" aria-hidden="true" />
+            </span>
+          ) : null}
+          <span className="hidden sm:inline">
+            · {[order.shipping_city, order.shipping_province].filter(Boolean).join(", ") || "-"}
+          </span>
+          {order.customer_phone ? (
+            <span className="hidden md:inline-flex items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground">
+              · {order.customer_phone}
+              <CopyButton text={order.customer_phone} label="Salin nomor HP" compact showTextInTitle />
+            </span>
+          ) : null}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {(order.whatsapp_failed_count ?? 0) > 0 ? (
+            <Button
+              variant="destructive"
+              size="xs"
+              disabled={resendBusy}
+              onClick={() => {
+                setResendBusy(true)
+                router.post(
+                  routeUrl("admin.orders.whatsapp.resend", { order: order.id }),
+                  {},
+                  { preserveScroll: true, onFinish: () => setResendBusy(false) },
+                )
+              }}
+              title="Ada pemberitahuan status pesanan yang gagal terkirim. Tekan untuk kirim ulang lewat gateway."
+            >
+              Kirim ulang WA ({order.whatsapp_failed_count})
+            </Button>
+          ) : order.whatsapp_status_url || order.whatsapp_url ? (
+            <a
+              href={order.whatsapp_status_url || order.whatsapp_url || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+              aria-label={`Chat WhatsApp ${order.customer_name}`}
+              title="Chat WhatsApp pelanggan"
+            >
+              <Icon name="whatsapp" className="size-3.5 text-success" aria-hidden="true" />
+              <span className="hidden xl:inline">Chat WA</span>
+            </a>
+          ) : null}
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            aria-label={`Cetak detail konsumen ${order.customer_name}`}
+            title="Cetak detail konsumen"
+          >
+            <Icon name="printer" className="size-3.5" aria-hidden="true" />
+            <span className="hidden xl:inline">Cetak</span>
+          </button>
+          <Link
+            href={order.href}
+            className="group/order inline-flex shrink-0 items-center gap-1.5 font-mono text-[15px] font-bold tracking-tight text-foreground transition hover:text-primary"
+          >
+            <span>{order.order_number}</span>
+            <Icon
+              name="chevron-right"
+              className="size-3.5 text-muted-foreground transition group-hover/order:text-primary"
+              aria-hidden="true"
+            />
+          </Link>
+      </div>
+      </div>
 
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-                Total tagihan
-              </p>
-              <p className="tabular-nums mt-1 text-xl font-bold">{formatCurrency(order.total_amount)}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Terakhir: {formatDateTime(order.updated_at)}
-              </p>
-              <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                <Icon name="history" className="size-3.5" aria-hidden="true" />
-                {formatRelativeAge(order.updated_at)}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-md border border-border bg-surface-muted/40">
-            <div className="border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-              Produk ({Math.min(visibleItems.length, order.items_total)} dari {order.items_total})
-            </div>
-            <ul className="divide-y divide-border">
-              {visibleItems.map((item) => (
-                <li key={item.id} className="flex gap-3 px-3 py-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
-                    {item.image ? (
-                      <img src={item.image} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
-                        <Icon name="image" className="size-4" aria-hidden="true" />
+      <div className={cn(orderRowGridClass, "gap-y-3 divide-y divide-border p-4 xl:divide-y-0")}>
+        {/* Kolom 1: Produk & Subtotal Per Item */}
+        <div className="min-w-0 space-y-2">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Produk
+          </p>
+          <ul className="space-y-3">
+            {visibleItems.map((item) => {
+              const itemSubtotal = item.line_total ?? (item.unit_price * item.quantity)
+              return (
+                <li key={item.id} className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 gap-2.5">
+                    <div className="size-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-muted-foreground">
+                          <Icon name="image" className="size-3.5" aria-hidden="true" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-xs font-normal leading-5 text-foreground">
+                        {item.name}
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <span className="line-clamp-1 text-xs text-muted-foreground">
+                          {variationLabel(item) || item.variant_sku || "-"}
+                        </span>
+                        {item.variant_sku ? (
+                          <CopyButton text={item.variant_sku} label="Salin SKU" compact showTextInTitle />
+                        ) : null}
                       </div>
-                    )}
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Catatan:{" "}
+                        <span className={item.note?.trim() ? "font-medium text-foreground" : "text-muted-foreground/60"}>
+                          {item.note?.trim() || "-"}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm font-semibold">{item.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {variationLabel(item) || item.variant_sku || "-"}
+
+                  {/* Matrik Subtotal Per Produk (setelah diskon/promo) */}
+                  <div className="shrink-0 text-right self-start pl-2">
+                    <p className="tabular-nums text-xs font-semibold text-foreground">
+                      {formatCurrency(itemSubtotal)}
+                    </p>
+                    <p className="mt-0.5 tabular-nums text-[11px] text-muted-foreground">
+                      {formatNumber(item.quantity)} × {formatCurrency(item.unit_price)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-xs font-semibold">{formatNumber(item.quantity)} Unit</p>
                 </li>
-              ))}
-            </ul>
-            {order.notes ? (
-              <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">Catatan: </span>
-                {order.notes}
-              </p>
-            ) : null}
-            {order.items_total > 2 ? (
-              <button
-                type="button"
-                onClick={() => setExpanded((value) => !value)}
-                className="w-full border-t border-border px-3 py-2 text-left text-xs font-semibold text-primary hover:underline"
-              >
-                {expanded
-                  ? "Sembunyikan produk"
-                  : hiddenCount > 0
-                    ? `Tampilkan semua produk (+${hiddenCount})`
-                    : "Tampilkan semua produk"}
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <aside className="flex flex-col gap-2 border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-          {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
-            <div className="space-y-1">
-              <Button className="w-full" disabled={busy} onClick={applyPrimary}>
-                {busy ? "Memproses..." : order.primary_action.label}
-              </Button>
-              {order.primary_action.hint ? (
-                <p className="text-[10px] leading-4 text-muted-foreground">{order.primary_action.hint}</p>
-              ) : null}
-            </div>
+              )
+            })}
+          </ul>
+          {order.items_total > 2 ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-left text-xs font-semibold text-primary hover:bg-primary/20 hover:underline"
+            >
+              {expanded
+                ? "Sembunyikan produk"
+                : hiddenCount > 0
+                  ? `+${hiddenCount} produk lainnya`
+                  : "Tampilkan semua produk"}
+            </button>
           ) : null}
 
-          {order.whatsapp_url ? (
-            <Button asChild variant="secondary" className="w-full">
-              <a href={order.whatsapp_url} target="_blank" rel="noreferrer">
-                <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-                Chat WA
-              </a>
+          {order.notes?.trim() ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Catatan: <span className="font-medium text-foreground">{order.notes}</span>
+            </p>
+          ) : null}
+        </div>
+
+        {/* Kolom 2: Status Pesanan (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Status pesanan
+          </p>
+          <StatusBadge status={order.order_status} />
+        </div>
+
+        {/* Kolom 3: Pembayaran (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Pembayaran
+          </p>
+          <p className="text-xs font-medium text-foreground">
+            {order.payment_method_label ||
+              (order.payment_method ? humanize(order.payment_method) : "Metode -")}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {order.flow === "cod" || (order.payment_method || "").toLowerCase() === "cod" ? (
+              order.order_status === "completed" || order.payment_status === "paid" ? (
+                <span className="font-medium text-success">Dibayar saat tiba</span>
+              ) : (
+                <span>Bayar saat tiba</span>
+              )
+            ) : order.payment_status === "paid" ? (
+              <span className="font-medium text-success">Lunas</span>
+            ) : (
+              <span>Belum lunas</span>
+            )}
+          </p>
+        </div>
+
+        {/* Kolom 4: Pengiriman (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Pengiriman
+          </p>
+          <p className="text-xs font-medium text-foreground">
+            {order.shipping_track?.carrier_name || "Pengiriman"}
+          </p>
+          {order.shipping_track?.waybill_number ? (
+            <div className="mt-0.5 flex items-center justify-center gap-1">
+              <span className="font-mono text-xs text-foreground font-medium">
+                {order.shipping_track.waybill_number}
+              </span>
+              <CopyButton text={order.shipping_track.waybill_number} label="Salin resi" compact showTextInTitle />
+            </div>
+          ) : (
+            <p className="mt-0.5 text-xs text-muted-foreground">Belum ada resi</p>
+          )}
+          {order.shipping_track?.tracking_url ? (
+            <a
+              href={order.shipping_track.tracking_url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-flex items-center justify-center gap-1 text-xs text-primary hover:underline"
+            >
+              Lacak
+              <Icon name="external-link" className="size-3" aria-hidden="true" />
+            </a>
+          ) : null}
+        </div>
+
+        {/* Kolom 5: Usia Pesanan / Update Terakhir (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:text-center">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Update terakhir
+          </p>
+          <p className="text-xs font-medium leading-snug text-foreground">
+            {formatRelativeAge(order.updated_at)}
+          </p>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground/80">
+            Dipesan {formatDateTime(order.created_at)}
+          </p>
+        </div>
+
+        {/* Kolom 6: Catatan Admin (Rata Tengah) */}
+        <div className="min-w-0 pt-3 xl:pt-0 xl:flex xl:flex-col xl:items-center xl:text-center">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Catatan admin
+          </p>
+          {order.admin_notes?.trim() ? (
+            <button
+              type="button"
+              onClick={() => onEditNotes?.(order)}
+              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-warning/50 bg-warning/15 px-2.5 py-1.5 text-xs font-semibold text-warning transition hover:bg-warning/25 "
+              title="Klik untuk melihat catatan lengkap dan edit catatan"
+            >
+              <Icon name="clipboard-text" className="size-3.5 text-warning" aria-hidden="true" />
+              <span>Catatan Admin</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onEditNotes?.(order)}
+              className="flex w-full max-w-[140px] items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface/60 px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/60 hover:bg-muted hover:text-foreground"
+              title="Tambah catatan internal admin"
+            >
+              <Icon name="plus" className="size-3 text-muted-foreground" aria-hidden="true" />
+              <span>Catatan Admin</span>
+            </button>
+          )}
+        </div>
+
+        {/* Kolom 7: Aksi */}
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 pt-3 xl:items-end xl:pt-0">
+          <p className="text-xs font-semibold tracking-tight text-muted-foreground xl:sr-only">
+            Aksi
+          </p>
+          {/* Balas ulasan pelanggan: hanya bila pesanan ini sudah diulas.
+              Ditandai titik merah saat balasannya belum ditulis, supaya
+              admin tahu ada yang menunggu tanpa membuka pesanannya. */}
+          {order.review ? (
+            <Button
+              variant="secondary"
+              size="xs"
+              className="relative w-full xl:w-auto"
+              onClick={() => onReplyReview?.(order)}
+            >
+              {order.review.has_reply ? "Edit balasan ulasan" : "Balas ulasan"}
+              {order.review.awaiting_reply ? (
+                <span
+                  className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive ring-2 ring-card"
+                  aria-label="Balasan ulasan belum ditulis"
+                />
+              ) : null}
             </Button>
           ) : null}
 
-          <Button asChild variant="secondary" className="w-full">
-            <Link href={order.href}>Detail</Link>
-          </Button>
+          {order.primary_action?.next_status || order.primary_action?.kind === "input_resi" ? (
+            <StatusConfirmButton
+              action={order.primary_action}
+              totalAmount={order.total_amount}
+              busy={busy}
+              size="xs"
+              className="w-full xl:w-auto"
+              onConfirm={applyPrimary}
+            />
+          ) : order.primary_action?.kind === "complete_return" ? (
+            // Penyelesaian retur dibuka sebagai popup DI TEMPAT, bukan tautan ke
+            // halaman detail (owner 2026-09-29: "langsung muncul popup, tanpa
+            // direct ke halaman detail pesanan").
+            <Button
+              size="xs"
+              className="w-full xl:w-auto"
+              onClick={() => onSelesaikanRetur?.(order)}
+            >
+              {order.primary_action.label}
+            </Button>
+          ) : order.primary_action?.href ? (
+            // Aksi utama lain yang hanya menautkan tetap dirender sebagai
+            // tautan; tanpa cabang ini kolom Aksi kosong untuknya.
+            <Button asChild size="xs" className="w-full xl:w-auto">
+              <Link href={order.primary_action.href}>{order.primary_action.label}</Link>
+            </Button>
+          ) : null}
 
-          {order.order_status !== "cancelled" && order.order_status !== "completed" ? (
+          {order.secondary_action ? (
+            order.secondary_action.kind === "start_return" ? (
+              // Retur dibuka sebagai popup pengisian di tempat (owner 2026-09-28),
+              // bukan tautan ke halaman detail.
+              <Button
+                variant="destructive"
+                size="xs"
+                className="w-full xl:w-auto"
+                onClick={() => onRetur?.(order)}
+              >
+                {order.secondary_action.label}
+              </Button>
+            ) : order.secondary_action.href ? (
+              <Button
+                asChild
+                variant={order.secondary_action.kind === "start_return" ? "destructive" : "secondary"}
+                size="xs"
+                className="w-full xl:w-auto"
+              >
+                <Link href={order.secondary_action.href}>{order.secondary_action.label}</Link>
+              </Button>
+            ) : order.secondary_action.next_status ? (
+              <StatusConfirmButton
+                action={order.secondary_action}
+                totalAmount={order.total_amount}
+                busy={busy}
+                size="xs"
+                variant="secondary"
+                className="w-full xl:w-auto"
+                onConfirm={() => applyStatus(order.secondary_action!.next_status!)}
+              />
+            ) : null
+          ) : null}
+
+
+
+          {(order.return_cases?.length ?? 0) > 0 &&
+          order.primary_action?.kind !== "complete_return" ? (
+            // Jalan masuk kasus retur yang sudah selesai (koreksi data dan void).
+            // Panel di halaman detail sudah dihapus, jadi popup ini satu-satunya
+            // tempat kasus retur bisa dilihat dan ditindaklanjuti.
+            <Button
+              variant="secondary"
+              size="xs"
+              className="w-full xl:w-auto"
+              onClick={() => onSelesaikanRetur?.(order)}
+            >
+              Lihat retur
+            </Button>
+          ) : null}
+
+          {order.order_status === "awaiting_confirmation" || order.order_status === "processing" ? (
             <ConfirmAction
               trigger={
                 <button
                   type="button"
-                  className="mt-1 min-h-10 text-left text-xs font-semibold text-destructive hover:underline"
+                  className="mt-1 text-xs text-destructive hover:underline xl:text-right"
                 >
-                  Batalkan Pesanan
+                  Batalkan
                 </button>
               }
-              title="Batalkan pesanan?"
-              description={`Pesanan ${order.order_number} akan berstatus dibatalkan.`}
-              confirmLabel="Batalkan"
+              title={ORDER_CANCEL_DIALOG.title}
+              description={ORDER_CANCEL_DIALOG.description}
+              confirmLabel={ORDER_CANCEL_DIALOG.confirmLabel}
               processing={busy}
-              onConfirm={cancelOrder}
+              reasonLabel={ORDER_CANCEL_DIALOG.reasonLabel}
+              reasonPlaceholder={ORDER_CANCEL_DIALOG.reasonPlaceholder}
+              variant="destructive"
+              onConfirm={(reason) => applyStatus("cancelled", reason)}
             />
           ) : null}
-        </aside>
+
+        </div>
       </div>
+
+      {/* Baris Bawah Kartu: Rincian Unit & Penjualan Gross di Kanan Bawah */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-surface/40 px-4 py-2.5 text-xs">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span>Pesanan: <strong className="text-foreground">{formatNumber(order.product_count)}</strong> produk ({formatNumber(order.unit_count)} unit)</span>
+        </div>
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs text-muted-foreground">Penjualan Gross:</span>
+          <span className="text-sm font-bold tabular-nums text-foreground">
+            {formatCurrency(order.total_amount)}
+          </span>
+        </div>
+      </div>
+
+      {printing ? <PrintOrderArea data={order as OrderPrintData} /> : null}
     </article>
   )
 }
+
 
 export default function OrdersIndex({
   title,
@@ -337,47 +733,173 @@ export default function OrdersIndex({
   activeSort,
   activePaymentStatus = "",
   activeShippingStatus = "",
+  activeOlderThan = "",
   activeDatePreset = "",
   dateFrom = "",
   dateTo = "",
   searchQuery,
+  summary,
   orders,
   pagination,
   exportUrl,
 }: OrdersIndexProps) {
+  const [exportOpen, setExportOpen] = React.useState(false)
+  // Pesanan yang ulasannya sedang dibalas. Satu dialog untuk seluruh daftar,
+  // bukan satu per baris.
+  const [replyTarget, setReplyTarget] = React.useState<ReviewReplyTarget | null>(null)
+  // Pesanan yang popup returnya sedang terbuka. Satu dialog untuk seluruh
+  // daftar; klik tombol Retur di kolom Aksi mengisinya.
+  const [returTarget, setReturTarget] = React.useState<OrderCard | null>(null)
+  // Pesanan yang popup penyelesaian returnya sedang terbuka. Disimpan sebagai
+  // ID, bukan salinan kartu, supaya setelah aksi tersimpan popupnya menampilkan
+  // data terbaru dari server tanpa perlu ditutup dan dibuka lagi.
+  const [caseDialogOrderId, setCaseDialogOrderId] = React.useState<number | null>(null)
+  const caseDialogOrder = React.useMemo(
+    () => orders.find((order) => order.id === caseDialogOrderId) ?? null,
+    [orders, caseDialogOrderId],
+  )
+  const [refreshing, setRefreshing] = React.useState(false)
+  // Galat muat ulang daftar: muncul sebagai ErrorState di area daftar, bukan
+  // sekadar teks, supaya admin punya tombol coba lagi di tempat yang sama.
+  const [refreshError, setRefreshError] = React.useState<string | null>(null)
+  // Penanda muat ulang sedang berjalan. Dipakai supaya kegagalan aksi lain di
+  // halaman ini tidak ikut memunculkan panel galat daftar.
+  const reloadInFlight = React.useRef(false)
+  const [exportRange, setExportRange] = React.useState<"screen" | "custom">("screen")
+  const [exportFrom, setExportFrom] = React.useState("")
+  const [exportTo, setExportTo] = React.useState("")
   const [q, setQ] = React.useState(searchQuery)
   const [rangeFrom, setRangeFrom] = React.useState(dateFrom)
   const [rangeTo, setRangeTo] = React.useState(dateTo)
+  // Pilihan preset yang belum diterapkan. Dipakai supaya memilih "Rentang
+  // tanggal" membuka panel tanggal DI DALAM dropdown tanpa langsung
+  // memindahkan halaman dengan rentang kosong.
+  const [dateDraft, setDateDraft] = React.useState<string | null>(null)
+  // Controller mengirim string kosong saat filter tidak aktif, jadi fallback
+  // ke "all" wajib supaya label trigger tidak jatuh ke placeholder.
+  const pendingDatePreset = dateDraft ?? (activeDatePreset || "all")
+  const rangePanelOpen = pendingDatePreset === "range"
   const queryState = {
     order_status: activeStatus,
     q: searchQuery,
     sort: activeSort,
+    payment_status: activePaymentStatus,
+    shipping_status: activeShippingStatus,
+    older_than: activeOlderThan,
+    date_preset: activeDatePreset,
+    date_from: activeDatePreset === "range" ? dateFrom : "",
+    date_to: activeDatePreset === "range" ? dateTo : "",
   }
 
-  function visit(params: Record<string, string | undefined>) {
-    const next: Record<string, string> = {}
-    const merged = {
-      order_status: activeStatus,
-      q: searchQuery,
-      sort: activeSort,
-      payment_status: activePaymentStatus,
-      shipping_status: activeShippingStatus,
-      date_preset: activeDatePreset,
-      date_from: activeDatePreset === "range" ? dateFrom : "",
-      date_to: activeDatePreset === "range" ? dateTo : "",
-      ...params,
+  const visit = React.useCallback((params: Record<string, string | undefined>) => {
+    // Setiap navigasi filter membatalkan pilihan preset yang masih menggantung.
+    setDateDraft(null)
+    navigateFilter(
+      "admin.orders.index",
+      {
+        order_status: activeStatus,
+        q: searchQuery,
+        sort: activeSort,
+        payment_status: activePaymentStatus,
+        shipping_status: activeShippingStatus,
+        older_than: activeOlderThan,
+        date_preset: activeDatePreset,
+        date_from: activeDatePreset === "range" ? dateFrom : "",
+        date_to: activeDatePreset === "range" ? dateTo : "",
+      },
+      params,
+      {
+        shouldDrop: (key, value, merged) =>
+          (key === "sort" && value === "newest") ||
+          ((key === "date_from" || key === "date_to") && merged.date_preset !== "range"),
+      },
+    )
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, activeSort, dateFrom, dateTo, searchQuery])
+
+
+  const hasActiveFilters = React.useMemo(() => {
+    return (
+      (activeStatus && activeStatus !== "all") ||
+      (activePaymentStatus && activePaymentStatus !== "all") ||
+      (activeShippingStatus && activeShippingStatus !== "all") ||
+      (activeOlderThan && activeOlderThan !== "all") ||
+      (activeDatePreset && activeDatePreset !== "all" && activeDatePreset !== "today") ||
+      searchQuery?.trim()
+    )
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, searchQuery])
+
+  const activeFilters = React.useMemo(() => {
+    const chips: Array<{ label: string; clear: () => void }> = []
+    if (activeStatus && activeStatus !== "all") {
+      const tab = tabs.find((t) => t.key === activeStatus)
+      if (tab) chips.push({ label: tab.label, clear: () => visit({ order_status: "all" }) })
     }
-    Object.entries(merged).forEach(([key, value]) => {
-      if (!value || value === "all" || (key === "sort" && value === "newest")) return
-      if (key === "q" && !value.trim()) return
-      if ((key === "date_from" || key === "date_to") && merged.date_preset !== "range") return
-      next[key] = value
+    if (activePaymentStatus && activePaymentStatus !== "all") {
+      chips.push({ label: `Pembayaran: ${humanize(activePaymentStatus)}`, clear: () => visit({ payment_status: "all" }) })
+    }
+    if (activeShippingStatus && activeShippingStatus !== "all") {
+      chips.push({ label: `Pengiriman: ${humanize(activeShippingStatus)}`, clear: () => visit({ shipping_status: "all" }) })
+    }
+    if (activeOlderThan && activeOlderThan !== "all") {
+      chips.push({ label: `Umur: ${humanize(activeOlderThan)}`, clear: () => visit({ older_than: "all" }) })
+    }
+    if (activeDatePreset && activeDatePreset !== "all" && activeDatePreset !== "today") {
+      chips.push({ label: `Tanggal: ${humanize(activeDatePreset)}`, clear: () => visit({ date_preset: "today" }) })
+    }
+    if (searchQuery?.trim()) {
+      chips.push({ label: `Cari: ${searchQuery}`, clear: () => visit({ q: "" }) })
+    }
+    return chips
+  }, [activeStatus, activePaymentStatus, activeShippingStatus, activeOlderThan, activeDatePreset, searchQuery, tabs, visit])
+
+  function resetAllFilters() {
+    router.get(routeUrl("admin.orders.index"), {}, { preserveState: false, preserveScroll: true })
+  }
+
+  // Satu jalur muat ulang untuk tombol header dan tombol "Coba lagi" pada
+  // ErrorState, supaya keduanya berperilaku identik.
+  function refreshOrders() {
+    setRefreshing(true)
+    reloadInFlight.current = true
+    router.reload({
+      only: ["orders", "summary", "tabs"],
+      onSuccess: () => setRefreshError(null),
+      onError: () => setRefreshError("Daftar pesanan belum berhasil dimuat ulang."),
+      onFinish: () => {
+        reloadInFlight.current = false
+        setRefreshing(false)
+      },
     })
-    router.get(routeUrl("admin.orders.index"), next, {
-      preserveState: true,
-      preserveScroll: true,
-      replace: true,
-    })
+  }
+
+  // Kegagalan yang bukan galat validasi (respons 500 atau koneksi putus) tidak
+  // masuk ke onError, tetapi Inertia tetap memancarkan event. Keduanya dipetakan
+  // ke panel galat daftar, dan hanya saat muat ulang memang sedang berjalan.
+  React.useEffect(() => {
+    const fail = () => {
+      if (!reloadInFlight.current) return
+      setRefreshError("Daftar pesanan belum berhasil dimuat ulang.")
+    }
+    const offInvalid = router.on("invalid", fail)
+    const offException = router.on("exception", fail)
+    return () => {
+      offInvalid()
+      offException()
+    }
+  }, [])
+
+  function buildExportUrl(): string {
+    try {
+      const url = new URL(exportUrl, window.location.origin)
+      if (exportRange === "custom" && exportFrom && exportTo) {
+        url.searchParams.set("date_preset", "range")
+        url.searchParams.set("date_from", exportFrom)
+        url.searchParams.set("date_to", exportTo)
+      }
+      return url.toString()
+    } catch {
+      return exportUrl
+    }
   }
 
   function submitSearch(event: React.FormEvent) {
@@ -394,88 +916,330 @@ export default function OrdersIndex({
     })
   }
 
+  // Popup input resi langsung dari daftar: form + verifikasi pelanggan & alamat.
+  // Sistem tidak menilai benar/salah; admin yang memastikan sebelum menyimpan.
+  const [resiOrder, setResiOrder] = React.useState<OrderCard | null>(null)
+  const [resiForm, setResiForm] = React.useState({ waybill_number: "" })
+  const [resiBusy, setResiBusy] = React.useState(false)
+  const [resiError, setResiError] = React.useState<string | null>(null)
+
+  // Popup catatan internal admin langsung dari daftar: lihat lengkap & edit
+  const [notesModalOrder, setNotesModalOrder] = React.useState<OrderCard | null>(null)
+  const [notesMode, setNotesMode] = React.useState<"view" | "edit">("view")
+  const [notesText, setNotesText] = React.useState("")
+  const [notesBusy, setNotesBusy] = React.useState(false)
+
+  function openNotesModal(order: OrderCard) {
+    setNotesModalOrder(order)
+    setNotesText(order.admin_notes ?? "")
+    setNotesMode(order.admin_notes?.trim() ? "view" : "edit")
+  }
+
+  function submitAdminNotes(e: React.FormEvent) {
+    e.preventDefault()
+    if (!notesModalOrder) return
+    setNotesBusy(true)
+    const nextNote = notesText.trim() || null
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
+      { admin_notes: nextNote },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setNotesModalOrder(null)
+          setNotesText("")
+          setNotesMode("view")
+        },
+        onFinish: () => setNotesBusy(false),
+      },
+    )
+  }
+
+  function deleteAdminNotes() {
+    if (!notesModalOrder) return
+    setNotesBusy(true)
+    router.put(
+      routeUrl("admin.orders.admin-notes.update", { order: notesModalOrder.id }),
+      { admin_notes: null },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setNotesModalOrder(null)
+          setNotesText("")
+          setNotesMode("view")
+        },
+        onFinish: () => setNotesBusy(false),
+      },
+    )
+  }
+
+  function submitResi(event: React.FormEvent) {
+    event.preventDefault()
+    if (!resiOrder) return
+    setResiBusy(true)
+    setResiError(null)
+    router.post(
+      routeUrl("admin.orders.shipping.store", { order: resiOrder.id }),
+      {
+        waybill_number: resiForm.waybill_number,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setResiOrder(null)
+          setResiForm({ waybill_number: "" })
+        },
+        onError: (errors) => {
+          const map = (errors ?? {}) as Record<string, string>
+          setResiError(map.waybill_number ?? "Gagal menyimpan resi. Periksa kembali isian.")
+        },
+        onFinish: () => setResiBusy(false),
+      },
+    )
+  }
+
+  function resiAddress(order: OrderCard): string {
+    return [
+      order.shipping_address_line1,
+      order.shipping_address_line2,
+      order.shipping_village,
+      order.shipping_district,
+      order.shipping_city,
+      order.shipping_province,
+      order.shipping_postal_code,
+    ].filter(Boolean).join(", ")
+  }
+
+  // Gerbang isi tombol simpan: kolom wajibnya mengikuti aturan `required`
+  // controller, jadi frontend tidak menciptakan aturan baru.
+  const gerbangResi = { fields: { waybill_number: "Nomor resi" } }
+
+  // Isian resi memakai state biasa, bukan `useForm`, jadi bentuk yang dibutuhkan
+  // gerbang disusun di sini. `isDirty` selalu true karena resi memang diketik
+  // dari kosong setiap kali, sehingga yang relevan hanya syarat kolom wajib.
+  const gerbangFormResi = { processing: resiBusy, isDirty: true, data: resiForm }
+
   return (
-    <AdminLayout title={title} description={description}>
+    <AdminLayout
+      title={title}
+      description={description}
+      actions={
+        <div className="flex items-center gap-2">
+
+          <div className="relative">
+            <Button variant="secondary" onClick={() => setExportOpen((v) => !v)}>
+              <Icon name="download" className="size-3.5" aria-hidden="true" />
+              Unduh Laporan
+            </Button>
+            {exportOpen ? (
+              <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-border bg-card p-3 shadow-lg">
+                <p className="text-xs font-bold text-foreground">Rentang waktu export</p>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                  <input type="radio" name="orders_export_range" checked={exportRange === "screen"} onChange={() => setExportRange("screen")} />
+                  Ikuti filter di layar
+                </label>
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                  <input type="radio" name="orders_export_range" checked={exportRange === "custom"} onChange={() => setExportRange("custom")} />
+                  Kustom
+                </label>
+                {exportRange === "custom" ? (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-8 w-32 text-xs" aria-label="Dari tanggal" />
+                    <span className="text-xs text-muted-foreground">s/d</span>
+                    <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-8 w-32 text-xs" aria-label="Sampai tanggal" />
+                  </div>
+                ) : null}
+                <a
+                  href={buildExportUrl()}
+                  onClick={() => setExportOpen(false)}
+                  className="mt-3 flex h-9 w-full items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  Ekspor
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      }
+    >
       <Head title={`${title} | Admin`} />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
-        {tabs.map((tab) => {
-          const active = tab.key === activeStatus
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => visit({ order_status: tab.key })}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition",
-                active
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.label}
-              <span
-                className={cn(
-                  "tabular-nums rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                  active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
-                )}
-              >
-                {formatNumber(tab.count)}
-              </span>
-            </button>
-          )
-        })}
+      {/* Tabs status pesanan + Ringkasan Pesanan & Nilai sejajar di kanan */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Dulu overflow-x-auto + scrollbar-none: isi 1089px di wadah 884px pada
+            layar 1440px, sehingga tab "Retur Selesai" terpotong dan "Perlu
+            Perhatian" sepenuhnya tersembunyi tanpa petunjuk gulir. Sekarang tab
+            membungkus baris, jadi tidak ada filter yang hilang. */}
+        <div className="min-w-0 flex-1">
+          <div
+            className="inline-flex flex-wrap items-center gap-0.5 rounded-lg border border-border bg-card p-1"
+            role="tablist"
+            aria-label="Filter status pesanan"
+          >
+            {tabs.map((tab) => {
+              const active = tab.key === activeStatus
+              // Penanda notifikasi merah menumpuk di pojok kanan atas tab.
+              // Mengindikasikan ada pesanan yang "baru" masuk ke status ini dan
+              // belum pernah dilihat atau ditindaklanjuti oleh admin.
+              // Kontrak owner 2026-09-26: letak di kanan atas tab (-right-1 -top-1),
+              // bertambah saat pesanan masuk/berganti status, dan hanya berkurang bila
+              // pesanan tersebut dilihat detailnya atau ditindaklanjuti.
+              // Tab "Semua" (all) satu-satunya yang tanpa badge merah. Tab lain
+              // memakai penanda "ada pesanan yang baru berganti status dan belum
+              // dibuka admin" (kontrak owner 2026-09-29).
+              const badgeCount = tab.key === "all" ? 0 : (tab.new_count ?? 0)
+              const badgeTitle = `${formatNumber(badgeCount)} pesanan baru di status ${tab.label}`
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => visit({ order_status: tab.key, older_than: undefined })}
+                  className={cn(
+                    "relative inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
+                    active
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  )}
+                >
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "tabular-nums rounded-full px-1.5 py-px text-[11px] font-semibold",
+                      active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {formatNumber(tab.count)}
+                  </span>
+                  {/* Badge notifikasi: menumpuk di pojok kanan atas tab */}
+                  {badgeCount > 0 ? (
+                    <span
+                      className="pointer-events-none absolute -right-1 -top-1 z-10 flex h-4 min-w-4"
+                      aria-label={badgeTitle}
+                      title={badgeTitle}
+                    >
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
+                        {badgeCount > 99 ? "99+" : formatNumber(badgeCount)}
+                      </span>
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-xs">
+          <span>Total Nilai: <strong className="tabular-nums font-semibold text-foreground">{formatCurrency(summary.total_value)}</strong></span>
+        </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <form onSubmit={submitSearch} className="relative min-w-0 flex-1">
-          <Icon
-            name="search"
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Cari nomor order, nama penerima, no. HP, provinsi, kota..."
-            className="pl-10"
-            data-admin-search
-          />
-        </form>
-        <Select
-          value={activeSort}
-          onChange={(event) => visit({ sort: event.target.value })}
-          className="sm:w-40"
-          aria-label="Urutan"
-        >
-          <option value="newest">Terbaru</option>
-          <option value="oldest">Terlama</option>
-        </Select>
-        <Button asChild variant="secondary">
-          <a href={exportUrl}>Export</a>
-        </Button>
-      </div>
-
-      <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+      {/* Baris kontrol seragam: search | sort/filter | summary | actions */}
+      <ListToolbar
+        search={{
+          value: q,
+          onChange: setQ,
+          onSubmit: submitSearch,
+          placeholder: "Cari nomor order, penerima, atau kota...",
+        }}
+        sort={
+          <Select
+            // Remount saat urutan, preset, atau rentang berganti supaya popover ikut tertutup.
+            key={`urutan-waktu-${activeSort}-${activeDatePreset}-${dateFrom}-${dateTo}`}
+            value={
+              dateDraft ??
+              (activeDatePreset && activeDatePreset !== "all"
+                ? activeDatePreset
+                : activeSort || "newest")
+            }
+            keepOpenOnSelect={(value) => value === "range"}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value === "range") {
+                // Buka panel tanggal di dalam dropdown, jangan pindah halaman
+                // sebelum admin menekan Terapkan.
+                setDateDraft("range")
+                return
+              }
+              setDateDraft(null)
+              if (value === "newest" || value === "oldest") {
+                visit({
+                  sort: value,
+                  date_preset: undefined,
+                  date_from: undefined,
+                  date_to: undefined,
+                })
+                return
+              }
+              visit({ date_preset: value === "all" ? undefined : value, date_from: undefined, date_to: undefined })
+            }}
+            className="w-auto"
+            aria-label="Urutan & waktu"
+            popoverFooter={
+              rangePanelOpen ? (
+                <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    Dari tanggal
+                    <Input
+                      type="date"
+                      value={rangeFrom}
+                      onChange={(event) => setRangeFrom(event.target.value)}
+                      className="h-8 w-36 min-h-8 text-xs"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    Sampai tanggal
+                    <Input
+                      type="date"
+                      value={rangeTo}
+                      onChange={(event) => setRangeTo(event.target.value)}
+                      className="h-8 w-36 min-h-8 text-xs"
+                    />
+                  </label>
+                  <Button type="submit" variant="secondary" size="sm" className="h-8 min-h-8">
+                    Terapkan
+                  </Button>
+                </form>
+              ) : null
+            }
+          >
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+            <option value="today">Hari ini</option>
+            <option value="3d">3 hari terakhir</option>
+            <option value="7d">7 hari terakhir</option>
+            <option value="30d">30 hari terakhir</option>
+            <option value="range">
+              {activeDatePreset === "range" && dateFrom && dateTo
+                ? `${formatDate(dateFrom)} - ${formatDate(dateTo)}`
+                : "Rentang tanggal"}
+            </option>
+          </Select>
+        }
+        className="mb-4 pb-[10px]"
+      >
         <Select
           value={activePaymentStatus || "all"}
           onChange={(event) =>
             visit({ payment_status: event.target.value === "all" ? undefined : event.target.value })
           }
-          className="lg:w-44"
+          className="w-auto"
           aria-label="Filter status pembayaran"
         >
           <option value="all">Semua pembayaran</option>
           <option value="pending">Belum lunas</option>
           <option value="paid">Lunas</option>
           <option value="refunded">Refund</option>
+          <option value="cancelled">Dibatalkan</option>
         </Select>
         <Select
           value={activeShippingStatus || "all"}
           onChange={(event) =>
             visit({ shipping_status: event.target.value === "all" ? undefined : event.target.value })
           }
-          className="lg:w-48"
+          className="w-auto"
           aria-label="Filter status pengiriman"
         >
           <option value="all">Semua pengiriman</option>
@@ -486,86 +1250,384 @@ export default function OrdersIndex({
           <option value="cancelled">Dibatalkan</option>
         </Select>
         <Select
-          value={activeDatePreset || "all"}
-          onChange={(event) => {
-            const value = event.target.value
-            if (value === "all") {
-              visit({ date_preset: undefined, date_from: undefined, date_to: undefined })
-              return
-            }
-            if (value === "range") {
-              visit({
-                date_preset: "range",
-                date_from: rangeFrom || undefined,
-                date_to: rangeTo || undefined,
-              })
-              return
-            }
-            visit({ date_preset: value, date_from: undefined, date_to: undefined })
-          }}
-          className="lg:w-44"
-          aria-label="Filter waktu"
+          value={activeOlderThan || "all"}
+          onChange={(event) =>
+            visit({ older_than: event.target.value === "all" ? undefined : event.target.value })
+          }
+          className="w-auto"
+          aria-label="Filter umur status"
         >
-          <option value="all">Semua waktu</option>
-          <option value="today">Hari ini</option>
-          <option value="7d">7 hari terakhir</option>
-          <option value="range">Rentang tanggal</option>
+          <option value="all">Semua umur</option>
+          <option value="24h">Status &gt; 24 jam</option>
+          <option value="2d">Status &gt; 2 hari</option>
+          <option value="7d">Status &gt; 7 hari</option>
         </Select>
-        {activeDatePreset === "range" ? (
-          <form onSubmit={applyDateRange} className="flex flex-wrap items-end gap-2">
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Dari
-              <Input
-                type="date"
-                value={rangeFrom}
-                onChange={(event) => setRangeFrom(event.target.value)}
-                className="w-40"
-              />
-            </label>
-            <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
-              Sampai
-              <Input
-                type="date"
-                value={rangeTo}
-                onChange={(event) => setRangeTo(event.target.value)}
-                className="w-40"
-              />
-            </label>
-            <Button type="submit" variant="secondary">
-              Terapkan
-            </Button>
-          </form>
-        ) : null}
-      </div>
+      </ListToolbar>
 
-      <div className="mt-5 space-y-4">
-        {orders.length ? (
-          orders.map((order) => (
-            <OrderCardRow key={order.id} order={order} queryState={queryState} />
-          ))
+      {/* Daftar pesanan */}
+      <div className="mt-4">
+
+        {/* Baris Filter Aktif (hanya tampil jika ada filter aktif) */}
+        {activeFilters.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs" aria-label="Filter aktif">
+            <span className="font-medium text-muted-foreground">
+              Filter Aktif:
+            </span>
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.label}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-foreground"
+              >
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.clear}
+                  className="rounded-full p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                  aria-label={`Hapus filter ${filter.label}`}
+                >
+                  <Icon name="x" className="size-3" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="ml-1 text-xs font-medium text-primary hover:underline"
+            >
+              Reset Semua
+            </button>
+          </div>
+        ) : null}
+
+        {refreshError ? (
+          <ErrorState
+            title="Daftar pesanan gagal dimuat ulang"
+            description={refreshError}
+            action={
+              <Button variant="outline" size="sm" onClick={refreshOrders} disabled={refreshing}>
+                {refreshing ? "Memuat..." : "Coba lagi"}
+              </Button>
+            }
+          />
+        ) : orders.length ? (
+          <>
+            <div className="overflow-x-auto">
+              <div className="space-y-3 xl:min-w-[60rem]">
+                <OrderListColumnHeader />
+                {orders.map((order) => (
+                  <OrderCardRow
+                    key={order.id}
+                    order={order}
+                    queryState={queryState}
+                    onInputResi={setResiOrder}
+                    onEditNotes={openNotesModal}
+                    onReplyReview={(order) => setReplyTarget(order.review ?? null)}
+                    onRetur={setReturTarget}
+                    onSelesaikanRetur={(order) => setCaseDialogOrderId(order.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        ) : hasActiveFilters ? (
+          <EmptyState
+            icon="clipboard-list"
+            title="Tidak ada pesanan yang cocok"
+            description="Coba ubah atau hapus filter untuk melihat pesanan lain."
+            action={
+              <Button variant="outline" size="sm" onClick={resetAllFilters}>
+                Reset Filter
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon="clipboard-list"
             title="Belum ada pesanan"
-            description="Pesanan yang cocok dengan filter saat ini akan tampil di sini."
+            description="Pesanan yang masuk akan tampil di sini."
           />
         )}
       </div>
 
       {pagination?.total ? (
-        <p className="mt-6 text-sm text-muted-foreground">
+        <p className="mt-4 text-xs text-muted-foreground">
           Menampilkan{" "}
-          <span className="font-semibold text-foreground">
+          <span className="tabular-nums font-semibold text-foreground">
             {(pagination.current_page - 1) * (pagination.per_page ?? 10) + 1}
             {" - "}
             {Math.min(pagination.current_page * (pagination.per_page ?? 10), pagination.total)}
           </span>{" "}
-          dari <span className="font-semibold text-foreground">{formatNumber(pagination.total)}</span>{" "}
+          dari{" "}
+          <span className="tabular-nums font-semibold text-foreground">
+            {formatNumber(pagination.total)}
+          </span>{" "}
           pesanan
         </p>
       ) : null}
 
       <Pagination pagination={pagination} />
+
+      {/* Dialog input resi desktop: kartu terpadu, adaptif tema, zero text-contrast bug */}
+      <DialogPrimitive.Root open={Boolean(resiOrder)} onOpenChange={(open) => { if (!open) setResiOrder(null) }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,38rem)] w-[min(calc(100%-2rem),32rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Input nomor resi</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Input Resi Pengiriman</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {resiOrder?.order_number} · {resiOrder?.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResiOrder(null)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup resi"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {resiOrder ? (
+                <>
+                <section className="rounded-lg border border-border bg-surface/80 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+                      <Icon name="user" className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      Detail Penerima & Alamat
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                    <span className="text-muted-foreground">Penerima:</span>
+                    <span className="font-medium text-foreground">
+                      {resiOrder.customer_name}
+                      {resiOrder.customer_phone ? (
+                        resiOrder.whatsapp_url ? (
+                          <a
+                            href={resiOrder.whatsapp_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-1.5 inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-success"
+                            title="Buka WhatsApp penerima"
+                          >
+                            <Icon name="whatsapp" className="size-3 text-success" aria-hidden="true" />
+                            <span className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-success">{resiOrder.customer_phone}</span>
+                          </a>
+                        ) : (
+                          <span className="ml-1 font-mono">({resiOrder.customer_phone})</span>
+                        )
+                      ) : " (-)"}
+                    </span>
+                    <span className="text-muted-foreground align-top">Alamat:</span>
+                    <span className="font-medium leading-5 text-foreground">{resiAddress(resiOrder) || "-"}</span>
+                  </div>
+                </section>
+
+                <form onSubmit={jagaGerbang(gerbangResi, gerbangFormResi, submitResi)} className="space-y-4">
+                  {resiError ? (
+                    <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{resiError}</p>
+                  ) : null}
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="index-modal-waybill" className="text-xs font-semibold text-foreground">
+                      Nomor Resi J&T Cargo *
+                    </label>
+                    <input
+                      id="index-modal-waybill"
+                      type="text"
+                      required
+                      value={resiForm.waybill_number}
+                      onChange={(event) => setResiForm((prev) => ({ ...prev, waybill_number: event.target.value }))}
+                      placeholder="Masukan Resi Pengiriman..."
+                      className="h-9 w-full rounded-md border border-border bg-surface px-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setResiOrder(null)}
+                    >
+                      Batal
+                    </Button>
+                    <SubmitGateButton
+                      form={gerbangFormResi}
+                      {...gerbangResi}
+                      size="sm"
+                      processing={resiBusy}
+                    >
+                      Simpan Resi
+                    </SubmitGateButton>
+                  </div>
+                </form>
+                </>
+              ) : null}
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
+      {/* Dialog Catatan Internal Admin: lihat catatan lengkap & kelola langsung di popup */}
+      <DialogPrimitive.Root open={Boolean(notesModalOrder)} onOpenChange={(open) => { if (!open) setNotesModalOrder(null) }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-1/2 top-1/2 z-[80] flex max-h-[min(90dvh,34rem)] w-[min(calc(100%-2rem),30rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl duration-200",
+              "data-[state=open]:animate-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95",
+            )}
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Catatan internal admin</DialogPrimitive.Title>
+
+            <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Catatan Internal Admin</h3>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  Pesanan {notesModalOrder?.order_number} · {notesModalOrder?.customer_name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesModalOrder(null)}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Tutup popup catatan"
+              >
+                <Icon name="x" className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            {notesMode === "view" ? (
+              <div className="p-5 space-y-4">
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-warning ">
+                    <Icon name="clipboard-text" className="size-4 shrink-0 text-warning" aria-hidden="true" />
+                    <span>Isi Catatan Lengkap:</span>
+                  </div>
+                  <p className="mt-2.5 whitespace-pre-wrap break-all break-words text-xs leading-relaxed text-foreground">
+                    {notesModalOrder?.admin_notes}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <ConfirmAction
+                    trigger={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        disabled={notesBusy}
+                      >
+                        Hapus Catatan
+                      </Button>
+                    }
+                    title="Hapus catatan internal?"
+                    description="Isi catatan internal pesanan ini akan dihapus permanen dan tidak bisa dikembalikan."
+                    confirmLabel="Hapus Catatan"
+                    processing={notesBusy}
+                    onConfirm={deleteAdminNotes}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setNotesModalOrder(null)}
+                    >
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setNotesMode("edit")}
+                    >
+                      <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+                      Edit Catatan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={submitAdminNotes} className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="modal-admin-notes-textarea" className="text-xs font-semibold text-foreground">
+                    {notesModalOrder?.admin_notes?.trim() ? "Edit Catatan Internal" : "Tulis Catatan Internal"}
+                  </label>
+                  <textarea
+                    id="modal-admin-notes-textarea"
+                    rows={5}
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="Tulis catatan internal untuk pesanan ini (mis. permintaan jadwal kirim khusus, DP transfer manual, catatan spesifikasi khusus)..."
+                    className="w-full resize-none rounded-md border border-border bg-surface p-3 text-xs leading-5 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    maxLength={5000}
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Catatan khusus internal tim admin dan gudang, tidak ditampilkan ke pembeli.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (notesModalOrder?.admin_notes?.trim()) {
+                        setNotesText(notesModalOrder.admin_notes)
+                        setNotesMode("view")
+                      } else {
+                        setNotesModalOrder(null)
+                      }
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={notesBusy || !notesText.trim()}
+                  >
+                    {notesBusy ? "Menyimpan..." : "Simpan Catatan"}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+
+      {/* Popup balas ulasan. Komponennya sama dengan halaman detail pesanan
+          dan daftar ulasan, jadi balasan bisa ditulis dari mana saja. */}
+      <ReviewReplyDialog row={replyTarget} onClose={() => setReplyTarget(null)} />
+
+      {/* Popup pengisian detail retur dari daftar (owner 2026-09-28). Formnya
+          sama dengan halaman detail, jadi kontrak kiriman tidak bisa beda. */}
+      <ReturnCreateDialog order={returTarget} onClose={() => setReturTarget(null)} />
+
+      {/* Popup penanganan kasus retur: menyelesaikan, menutup kasus (void),
+          dan mengoreksi kasus selesai. Panel "Retur & penyelesaian" di halaman
+          detail sudah dihapus, jadi seluruh aksi retur ada di sini. */}
+      <OrderReturnCaseDialog
+        order={caseDialogOrder}
+        onClose={() => setCaseDialogOrderId(null)}
+      />
     </AdminLayout>
   )
 }

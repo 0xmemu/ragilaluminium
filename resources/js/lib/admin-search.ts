@@ -8,6 +8,7 @@ export type AdminSearchHit = {
   href: string
   icon?: string
   route: string
+  capability?: string
 }
 
 export function flattenAdminNav(
@@ -27,6 +28,7 @@ export function flattenAdminNav(
         href: routeUrl(item.route, item.params),
         icon: item.icon,
         route: item.route,
+        capability: item.capability,
       })
     })
   })

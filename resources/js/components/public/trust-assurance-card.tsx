@@ -1,7 +1,32 @@
 import { Icon } from "@/components/shared/icon"
+import { CTA_CONTENT } from "@/lib/cta-content"
 import { cn } from "@/lib/utils"
 
-export function TrustAssuranceCard({ className }: { className?: string }) {
+/** Teks cadangan bila blok CTA_CONTENT tidak memuatnya. */
+const FALLBACK_TITLE = "Belanja Aman & Terpercaya"
+const FALLBACK_BODY = "Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik."
+
+/**
+ * Kartu jaminan belanja - dipakai berulang di halaman transaksi (keranjang,
+ * checkout, konfirmasi pesanan, daftar pesanan, pelacakan).
+ *
+ * Teksnya dibaca dari CTA_CONTENT, blok "trust". Props title/body tetap
+ * diterima sebagai cadangan dan tetap ada demi reusable: halaman lain bisa
+ * memakai kartu ini dengan kalimatnya sendiri.
+ */
+export function TrustAssuranceCard({
+  className,
+  title,
+  body,
+}: {
+  className?: string
+  title?: string
+  body?: string
+}) {
+  const content = CTA_CONTENT.trust
+  const resolvedTitle = content?.eyebrow || title || FALLBACK_TITLE
+  const resolvedBody = content?.heading || body || FALLBACK_BODY
+
   return (
     <div
       className={cn(
@@ -11,15 +36,13 @@ export function TrustAssuranceCard({ className }: { className?: string }) {
     >
       <Icon
         name="shield-check"
-        className="mt-0.5 h-6 w-6 shrink-0 text-foreground"
+        className="mt-0.5 h-6 w-6 shrink-0 text-copper"
         weight="regular"
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="text-xs font-bold tracking-tight text-foreground">Belanja Aman & Terpercaya</p>
-        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-          Garansi jika produk rusak, pengiriman aman, dan pelayanan terbaik.
-        </p>
+        <p className="text-xs font-bold tracking-tight text-foreground">{resolvedTitle}</p>
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{resolvedBody}</p>
       </div>
     </div>
   )

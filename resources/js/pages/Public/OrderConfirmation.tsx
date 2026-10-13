@@ -1,208 +1,137 @@
-import { Head, Link, usePage } from "@inertiajs/react"
-import * as React from "react"
+import { Head, Link } from "@inertiajs/react"
 
+import { TrustAssuranceCard } from "@/components/public/trust-assurance-card"
 import { Icon } from "@/components/shared/icon"
-import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import PublicLayout from "@/layouts/public-layout"
 import { formatCurrency } from "@/lib/format"
 import { routeUrl } from "@/lib/routes"
-import type { PublicOrder, SharedPageProps } from "@/types"
-
-interface PaymentInstructions {
-  bank_name: string
-  account_name: string
-  account_number: string
-  notes: string
-}
+import type { PublicOrder } from "@/types"
 
 function paymentMethodLabel(method: string | undefined): string {
-  if (method === "transfer") return "Transfer bank"
-  if (method === "cod") return "COD (bayar di tempat)"
-  return method ? method : "—"
+  if (method === "transfer") return "Transfer Bank"
+  if (method === "cod") return "COD"
+  return method ? method : "-"
 }
 
+function formatOrderTime(value?: string): string {
+  if (!value) return "-"
+  try {
+    return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+  } catch {
+    return value
+  }
+}
+
+// Recipe visual mengikuti patokan canvas ILOTu-COD (b3meZk) / ILOTu-Transfer (y6gSKM).
 export default function OrderConfirmation({
   order,
-  payment_instructions = null,
   whatsapp_url = null,
 }: {
   order: PublicOrder
-  payment_instructions?: PaymentInstructions | null
   whatsapp_url?: string | null
 }) {
-  const { brand } = usePage<SharedPageProps>().props
-  const [copied, setCopied] = React.useState(false)
-  const [copiedAccount, setCopiedAccount] = React.useState(false)
+  const orderTime = formatOrderTime(order.created_at)
   const isTransfer = order.payment_method === "transfer"
-
-  async function copyText(value: string, kind: "order" | "account") {
-    try {
-      await navigator.clipboard.writeText(value)
-      if (kind === "order") {
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1800)
-      } else {
-        setCopiedAccount(true)
-        window.setTimeout(() => setCopiedAccount(false), 1800)
-      }
-    } catch {
-      // ignore clipboard failures
-    }
-  }
+  const statusLabel = isTransfer ? "Menunggu Pembayaran" : "Menunggu Konfirmasi"
+  const helperCopy = isTransfer
+    ? "Terima kasih sudah belanja di Ragil Aluminium. Admin kami akan segera menghubungi Anda melalui WhatsApp untuk mengirim info nomor rekening dan konfirmasi pesanan."
+    : "Terima kasih sudah belanja di Ragil Aluminium. Admin kami akan menghubungi Anda melalui WhatsApp untuk konfirmasi pesanan."
+  const noticeText = isTransfer
+    ? `Transfer '${formatCurrency(order.total_amount)}' ke nomor rekening yang kami kirim melalui WhatsApp dan kirim bukti pembayaran. Admin akan konfirmasi pesanan setelah pembayaran diterima.`
+    : "Anda memilih pembayaran COD. Siapkan pembayaran tunai saat barang tiba. Balas pesan WhatsApp kami agar pesanan segera diproses."
 
   return (
     <PublicLayout>
       <Head title={`Pesanan ${order.order_number}`} />
 
-      <section className="container-page py-12 lg:py-20">
-        <div className="mx-auto max-w-4xl">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success text-success-foreground">
-            <Icon name="check-circle" className="h-7 w-7" weight="fill" aria-hidden="true" />
+      <section className="border-b border-border bg-surface">
+        <div className="container-page hidden md:block py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <Breadcrumbs items={[{ label: "Beranda", href: routeUrl("home") }, { label: "Pesanan berhasil" }]} />
+        </div>
+        <div className="container-page py-2 !px-2.5 md:!px-8 lg:!px-12">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="-ml-2 flex size-11 shrink-0 items-center justify-center md:hidden"
+              aria-label="Kembali"
+            >
+              <Icon name="arrow-left" className="size-5" aria-hidden="true" />
+            </button>
+            <h1 className="text-base font-bold tracking-tight text-[#333333]">
+              Pesanan Berhasil
+            </h1>
           </div>
-          <p className="mt-6 text-xs font-bold tracking-tight text-success">
-            Pesanan berhasil dibuat
-          </p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-            Terima kasih, {order.customer_name}.
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-            Simpan nomor pesanan berikut. Nomor ini dipakai bersama nomor HP atau email untuk
-            melihat status pesanan.
-          </p>
+        </div>
+      </section>
 
-          <div className="precision-frame mt-9">
-            <div className="rounded-lg bg-foreground p-6 text-background sm:p-8">
-              <p className="text-xs font-semibold tracking-tight text-background/60">
-                Nomor pesanan
-              </p>
-              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="tabular-nums break-all font-mono text-2xl font-semibold sm:text-3xl">
-                  {order.order_number}
-                </p>
-                <Button variant="secondary" onClick={() => copyText(order.order_number, "order")}>
-                  <Icon name={copied ? "check" : "clipboard-list"} className="h-4 w-4" aria-hidden="true" />
-                  {copied ? "Tersalin" : "Salin nomor"}
-                </Button>
+      <section className="container-page !px-2.5 pt-2 pb-[calc(var(--mobile-bottom-nav-height)+1rem)] md:!px-8 lg:!px-12 sm:pt-6 lg:pb-10">
+        <div className="mx-auto max-w-xl">
+          {/* Hero sukses */}
+          <div className="flex flex-col items-center pt-2 text-center">
+            <Icon name="check-circle" weight="fill" className="size-[100px] text-[#2a734d]" aria-hidden="true" />
+            <p className="mt-8 text-xl font-bold tracking-tight text-[#121212]">
+              Pesanan Anda berhasil dibuat!
+            </p>
+            <p className="mt-4 w-full text-[13px] leading-[1.78] text-[#666666]">{helperCopy}</p>
+          </div>
+
+          {/* Ringkasan Pesanan card */}
+          <div className="mt-9 rounded-2xl border border-[#dee3e0] bg-surface p-5 sm:p-6">
+            <span className="inline-block rounded-full bg-[#d9d9d9] px-3 py-1.5 text-xs font-bold text-[#121212]">
+              {statusLabel}
+            </span>
+            <h2 className="mt-3 text-base font-bold text-[#121212]">Ringkasan Pesanan</h2>
+            <dl className="mt-4 divide-y divide-[#dee3e0]">
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">No. Pesanan</dt>
+                <dd className="font-bold text-[#c20000]">{order.order_number}</dd>
               </div>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">Metode Pembayaran</dt>
+                <dd className="font-bold text-[#121212]">{paymentMethodLabel(order.payment_method)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-2.5">
+                <dt className="text-[13px] text-[#6B7280]">Waktu Pemesanan</dt>
+                <dd className="font-bold text-[#121212]">{orderTime}</dd>
+              </div>
+            </dl>
+          </div>
+
+          {/* Notice metode (kotak merah) */}
+          <div className="mt-5 rounded-2xl border border-[#bd1111] bg-[#bd11110d] p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#ffd9d9]">
+                <Icon name="info" className="size-5 text-[#bd1111]" weight="bold" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-[1.71] text-[#c20000]">{noticeText}</p>
             </div>
           </div>
 
-          <div className="mt-8 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-            {[
-              ["Metode bayar", null, paymentMethodLabel(order.payment_method)],
-              ["Pesanan", order.order_status, null],
-              ["Pembayaran", order.payment_status, null],
-              ["Pengiriman", order.shipping_status, null],
-            ].map(([label, status, text]) => (
-              <div key={String(label)} className="bg-surface p-5">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <div className="mt-3">
-                  {status ? <StatusBadge status={String(status)} /> : (
-                    <p className="text-sm font-semibold">{text}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Trustline Belanja Aman: komponen bersama supaya warna ikon,
+              radius, dan tokennya seragam dengan cart, checkout, dan lacak. */}
+          <TrustAssuranceCard className="mt-5" />
 
-          {isTransfer && payment_instructions ? (
-            <section className="mt-8 rounded-lg border border-border bg-surface p-5 sm:p-7">
-              <h2 className="text-xl font-semibold">Instruksi transfer</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Transfer tepat <span className="font-semibold text-foreground">{formatCurrency(order.total_amount)}</span> ke rekening berikut.
-              </p>
-              <dl className="mt-5 grid gap-4 sm:grid-cols-3">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Bank</dt>
-                  <dd className="mt-1 font-semibold">{payment_instructions.bank_name}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Atas nama</dt>
-                  <dd className="mt-1 font-semibold">{payment_instructions.account_name}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Nomor rekening</dt>
-                  <dd className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-lg font-semibold tabular-nums">
-                      {payment_instructions.account_number}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-8 px-2 text-xs"
-                      onClick={() => copyText(payment_instructions.account_number, "account")}
-                    >
-                      {copiedAccount ? "Tersalin" : "Salin"}
-                    </Button>
-                  </dd>
-                </div>
-              </dl>
-              <Alert tone="info" className="mt-5">
-                {payment_instructions.notes}
-              </Alert>
-            </section>
-          ) : null}
-
-          {order.payment_method === "cod" ? (
-            <Alert tone="info" className="mt-8">
-              Anda memilih COD. Siapkan pembayaran tunai sebesar {formatCurrency(order.total_amount)} saat barang tiba.
-              Tim {brand.short_name} akan menghubungi Anda via WhatsApp untuk konfirmasi.
-            </Alert>
-          ) : null}
-
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
-            <section>
-              <h2 className="text-2xl font-semibold">Item pesanan</h2>
-              <ul className="mt-4 divide-y divide-border border-y border-border">
-                {order.items.map((item, index) => (
-                  <li key={`${item.product_name}-${index}`} className="flex justify-between gap-4 py-4 text-sm">
-                    <span>
-                      <span className="font-semibold">{item.product_name ?? item.name}</span>
-                      <span className="tabular-nums mt-1 block text-xs text-muted-foreground">
-                        {item.quantity} item
-                      </span>
-                    </span>
-                    {item.line_total !== undefined ? (
-                      <span className="tabular-nums shrink-0 font-semibold">
-                        {formatCurrency(item.line_total)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <aside className="rounded-lg bg-surface-muted p-5">
-              <p className="text-sm text-muted-foreground">Total pesanan</p>
-              <p className="tabular-nums mt-2 text-2xl font-bold">{formatCurrency(order.total_amount)}</p>
-              <Alert tone="info" className="mt-5 bg-surface">
-                {isTransfer
-                  ? "Setelah transfer, kirim bukti pembayaran via WhatsApp agar pesanan diproses."
-                  : "Status berikutnya mengikuti proses pembayaran dan pengiriman."}
-              </Alert>
-            </aside>
-          </div>
-
-          <div className="mt-10 flex flex-wrap gap-3 border-t border-border pt-7">
+          {/* CTA: WhatsApp primer, lalu Cek Pesanan & Beranda */}
+          <div className="mt-5 flex flex-col gap-3 border-t border-[#dee3e0] pt-7">
             {whatsapp_url ? (
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="w-full">
                 <a href={whatsapp_url} target="_blank" rel="noreferrer">
-                  <Icon name="whatsapp" className="h-5 w-5" aria-hidden="true" />
-                  {isTransfer ? "Kirim bukti via WhatsApp" : "Chat WhatsApp"}
+                  <Icon name="whatsapp" className="size-5" aria-hidden="true" />
+                  Buka WhatsApp
                 </a>
               </Button>
             ) : null}
-            <Button asChild size="lg" variant={whatsapp_url ? "secondary" : undefined}>
-              <Link href={routeUrl("order.status")}>
-                Cek status pesanan
-                <Icon name="arrow-right" className="h-5 w-5" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <Link href={routeUrl("home")}>Kembali ke beranda</Link>
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild variant="secondary" size="lg" className="flex-1">
+                <Link href={routeUrl("order.status")}>Cek Pesanan</Link>
+              </Button>
+              <Button asChild variant="secondary" size="lg" className="flex-1">
+                <Link href={routeUrl("home")}>Beranda</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

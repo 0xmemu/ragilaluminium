@@ -34,14 +34,13 @@ return [
             'notes' => 'Hub model (card-model-produk). Bukan daftar SKU.',
         ],
         'Halaman Semua Produk' => [
-            'route' => 'catalog.index',
-            'path' => '/products',
+            'route' => 'catalog.all',
+            'path' => '/products/all',
             'view' => 'Public/Catalog',
-            'query' => ['sort' => 'newest'],
             'controller' => 'CatalogController@index',
             'group' => 'catalog',
             'status' => 'implemented',
-            'notes' => 'Listing seluruh SKU (card-produk). Wajib ?sort= (default newest).',
+            'notes' => 'Listing seluruh SKU (card-produk). Default popular tanpa query sort.',
         ],
         'Halaman Promo' => [
             'route' => 'catalog.promo',
@@ -52,14 +51,7 @@ return [
             'status' => 'implemented',
             'notes' => 'Listing SKU dengan atribut promo eksplisit (card-produk).',
         ],
-        'Halaman Tampilan Model Produk' => [
-            'route' => 'catalog.windows',
-            'path' => '/windows',
-            'view' => 'Public/Catalog',
-            'controller' => 'CatalogController@windows',
-            'group' => 'catalog',
-            'status' => 'implemented',
-        ],
+
         'Halaman Produk Satuan' => [
             'route' => 'product.show',
             'path' => '/product/{parent_sku}',
@@ -75,26 +67,29 @@ return [
             'query' => ['sort' => 'popular'],
             'group' => 'catalog',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan /products?sort=popular (Catalog). Berbeda view dari Halaman Semua Model Produk (ModelProduk).',
         ],
         'Halaman Apa Kata Pelanggan kami' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
+            'route' => 'reviews.screenshots',
+            'path' => '/reviews/ss',
             'view' => 'Public/Reviews',
-            'controller' => 'PageController@reviews',
+            'controller' => 'PageController@reviewsScreenshots',
             'group' => 'core',
             'status' => 'implemented',
         ],
         'Halaman Ulasan Pembeli' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
+            'route' => 'reviews.website',
+            'path' => '/reviews/web',
             'view' => 'Public/Reviews',
+            'controller' => 'PageController@reviewsWebsite',
             'group' => 'core',
             'status' => 'implemented',
         ],
         'Halaman Hasil Pemasangan Kami' => [
-            'route' => 'reviews',
-            'path' => '/reviews',
-            'view' => 'Public/Reviews',
+            'route' => 'installation.index',
+            'path' => '/hasil-pemasangan',
+            'view' => 'Public/Installations',
+            'controller' => 'PageController@installations',
             'group' => 'core',
             'status' => 'implemented',
         ],
@@ -137,6 +132,7 @@ return [
             'view' => 'Public/OrderConfirmation',
             'group' => 'transaction',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan Halaman Setelah CO TF (route order.confirmation, view OrderConfirmation).',
         ],
         'Pesanan Saya' => [
             'route' => 'order.status',
@@ -152,6 +148,7 @@ return [
             'view' => 'Public/OrderStatus',
             'group' => 'transaction',
             'status' => 'implemented',
+            'notes' => 'Alias IA: runtime sama dengan Pesanan Saya (route order.status, view OrderStatus).',
         ],
         'Halaman Cara Pemesanan' => [
             'route' => 'cara-pemesanan',
@@ -168,6 +165,14 @@ return [
             'view' => 'Public/CmsPage',
             'controller' => 'PageController@faq',
             'cms_slug' => 'faq',
+            'group' => 'info',
+            'status' => 'implemented',
+        ],
+        'Kebijakan Retur' => [
+            'route' => 'kebijakan-retur',
+            'path' => '/kebijakan-retur',
+            'view' => 'Public/ReturnPolicy',
+            'controller' => 'PageController@returnPolicy',
             'group' => 'info',
             'status' => 'implemented',
         ],
@@ -218,7 +223,7 @@ return [
             'view' => null,
             'group' => 'core',
             'status' => 'planned',
-            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan + /hasil-pemasangan/{parent_sku}',
+            'note' => 'Customer submit form planned; public listing is /hasil-pemasangan (model) → /hasil-pemasangan/{category}/{model} (produk) → /hasil-pemasangan/{parent_sku} (galeri)',
         ],
     ],
 
@@ -239,78 +244,121 @@ return [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
                 'icon' => 'package',
-                'active' => ['catalog.*', 'product.show'],
+                'active' => ['catalog.index', 'catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Pesanan',
-                'route' => 'order.status',
+                'route' => 'order.index',
                 'icon' => 'clipboard-list',
-                'active' => ['order.status', 'order.status.lookup'],
+                'active' => ['order.index', 'order.status', 'order.status.lookup'],
             ],
             [
-                'label' => 'Tentang',
+                'label' => 'Tentang Kami',
                 'route' => 'about',
-                'icon' => 'user-round',
-                'active' => ['about', 'contact'],
+                'icon' => 'info',
+                'active' => ['about'],
             ],
         ],
 
         /*
-        | Drawer utama (mobile + desktop). Hanya route implemented.
+        | Drawer mobile — dipisah per grup IA (produk vs informasi/bantuan).
         | Model submenu berasal dari CatalogTaxonomy::modelCards() di Inertia share.
+        | `hamburger` digabung di HandleInertiaRequests untuk kompatibilitas.
         */
-        'hamburger' => [
+        'hamburger_product' => [
             [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
-                'active' => ['catalog.index', 'catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'icon' => 'package',
+                'active' => ['catalog.index', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Semua Produk',
-                'route' => 'catalog.index',
-                'params' => ['sort' => 'newest'],
-                'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
-            ],
-            [
-                'label' => 'Flash Sale',
-                'route' => 'catalog.flash-sale',
-                'icon' => 'lightning',
-                'active' => ['catalog.flash-sale'],
+                'route' => 'catalog.all',
+                'icon' => 'grid-2x2',
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'icon' => 'image',
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
                 'label' => 'Ulasan',
-                'route' => 'reviews',
-                'active' => ['reviews'],
+                'route' => 'reviews.website',
+                'icon' => 'star',
+                'active' => ['reviews.website', 'reviews.screenshots'],
             ],
             [
-                'label' => 'Informasi Toko',
-                'route' => 'about',
-                'active' => ['about'],
+                'label' => 'Flash Sale',
+                'route' => 'catalog.flash-sale',
+                'icon' => 'bolt',
+                'active' => ['catalog.flash-sale'],
             ],
+            [
+                // Promo = semua diskon selain Flash Sale. Ditaruh tepat setelah
+                // Flash Sale supaya dua pintu diskon berdampingan di drawer.
+                'label' => 'Promo',
+                'route' => 'catalog.promo',
+                'icon' => 'ticket-percent',
+                'active' => ['catalog.promo'],
+            ],
+        ],
+
+        'hamburger_info' => [
             [
                 'label' => 'Lacak Pengiriman',
                 'route' => 'order.status',
+                'hash' => 'lacak-pengiriman',
+                'icon' => 'truck',
                 'active' => ['order.status', 'order.status.lookup'],
             ],
             [
                 'label' => 'Konsultasi Gratis',
                 'route' => 'contact',
+                'icon' => 'headset',
                 'active' => ['contact'],
+            ],
+            [
+                'label' => 'Cara Pemesanan',
+                'route' => 'cara-pemesanan',
+                'icon' => 'info',
+                'active' => ['cara-pemesanan'],
+            ],
+            [
+                'label' => 'Sering Ditanyakan',
+                'route' => 'faq',
+                'icon' => 'circle-help',
+                'active' => ['faq'],
+            ],
+            [
+                'label' => 'Masalah & Solusi',
+                'route' => 'masalah-dan-solusi',
+                'icon' => 'warning',
+                'active' => ['masalah-dan-solusi'],
+            ],
+            [
+                'label' => 'Tentang Kami',
+                'route' => 'about',
+                'icon' => 'storefront',
+                'active' => ['about'],
             ],
         ],
 
-        'desktop_main' => [
+        'hamburger_footer' => [
             [
-                'label' => 'Flash Sale',
-                'route' => 'catalog.flash-sale',
-                'icon' => 'lightning',
-                'active' => ['catalog.flash-sale'],
+                'label' => 'Ketentuan Layanan',
+                'route' => 'terms',
             ],
+            [
+                'label' => 'Kebijakan Privasi',
+                'route' => 'privacy',
+            ],
+        ],
+        'hamburger_copyright' => 'Copyright @2026',
+
+        'desktop_main' => [
             [
                 'label' => 'Model Produk',
                 'route' => 'catalog.index',
@@ -318,22 +366,21 @@ return [
             ],
             [
                 'label' => 'Produk',
-                'route' => 'catalog.index',
-                'params' => ['sort' => 'newest'],
-                'active' => ['catalog.windows', 'catalog.doors', 'catalog.bouven', 'product.show'],
+                'route' => 'catalog.all',
+                'active' => ['catalog.all', 'catalog.category', 'catalog.model', 'catalog.design', 'product.show'],
             ],
             [
-                'label' => 'Testimoni',
-                'route' => 'reviews',
-                'active' => ['reviews'],
+                'label' => 'Ulasan',
+                'route' => 'reviews.website',
+                'active' => ['reviews.website', 'reviews.screenshots'],
             ],
             [
                 'label' => 'Hasil Pemasangan',
                 'route' => 'installation.index',
-                'active' => ['installation.index', 'installation.show'],
+                'active' => ['installation.index', 'installation.model', 'installation.show'],
             ],
             [
-                'label' => 'Informasi Toko',
+                'label' => 'Tentang Kami',
                 'route' => 'about',
                 'active' => ['about'],
             ],
@@ -348,7 +395,8 @@ return [
         'mega_menu' => [
             [
                 'title' => 'Jendela Aluminium',
-                'route' => 'catalog.windows',
+                'route' => 'catalog.category',
+                'category' => 'jendela',
                 'items' => [
                     ['label' => 'Jendela Sliding', 'model' => 'SLIDING', 'design' => null],
                     ['label' => 'Jendela Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
@@ -363,7 +411,8 @@ return [
             ],
             [
                 'title' => 'Boven Aluminium',
-                'route' => 'catalog.bouven',
+                'route' => 'catalog.category',
+                'category' => 'boven',
                 'items' => [
                     ['label' => 'Boven Sliding', 'model' => 'SLIDING', 'design' => null],
                     ['label' => 'Boven Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
@@ -372,6 +421,18 @@ return [
                     ['label' => 'Boven Swing', 'model' => 'SWING', 'design' => null],
                     ['label' => 'Boven Swing Ornamen', 'model' => 'SWING', 'design' => 'ORNAMEN'],
                     ['label' => 'Boven Zigzag', 'model' => 'ZIGZAG', 'design' => null],
+                ],
+            ],
+            [
+                'title' => 'Pintu Aluminium',
+                'route' => 'catalog.category',
+                'category' => 'pintu',
+                'items' => [
+                    ['label' => 'Pintu Sliding', 'model' => 'SLIDING', 'design' => null],
+                    ['label' => 'Pintu Sliding Ornamen', 'model' => 'SLIDING', 'design' => 'ORNAMEN'],
+                    ['label' => 'Pintu Swing', 'model' => 'SWING', 'design' => null],
+                    ['label' => 'Pintu Swing Ornamen', 'model' => 'SWING', 'design' => 'ORNAMEN'],
+                    ['label' => 'Pintu Kaca Mati', 'model' => 'KACA_MATI', 'design' => null],
                 ],
             ],
         ],
@@ -388,8 +449,8 @@ return [
             'links' => [
                 ['label' => 'Model Produk', 'route' => 'catalog.index'],
                 ['label' => 'Paling Banyak Dipesan', 'route' => 'catalog.index', 'params' => ['sort' => 'popular']],
-                ['label' => 'Jendela', 'route' => 'catalog.windows'],
-                ['label' => 'Boven', 'route' => 'catalog.bouven'],
+                ['label' => 'Jendela', 'route' => 'catalog.category', 'params' => ['category' => 'jendela']],
+                ['label' => 'Boven', 'route' => 'catalog.category', 'params' => ['category' => 'boven']],
             ],
         ],
         'help' => [
@@ -405,7 +466,7 @@ return [
             'title' => 'Informasi Toko',
             'links' => [
                 ['label' => 'Profil Perusahaan', 'route' => 'about'],
-                ['label' => 'Ulasan', 'route' => 'reviews'],
+                ['label' => 'Ulasan', 'route' => 'reviews.website'],
                 ['label' => 'Hasil Pemasangan', 'route' => 'installation.index'],
                 ['label' => 'Pesanan', 'route' => 'order.status'],
             ],
@@ -417,7 +478,7 @@ return [
         'social' => [
             ['key' => 'facebook', 'label' => 'Facebook', 'href' => env('SOCIAL_FACEBOOK', '#'), 'icon' => '/images/icons/social/facebook.svg'],
             ['key' => 'instagram', 'label' => 'Instagram', 'href' => env('SOCIAL_INSTAGRAM', '#'), 'icon' => '/images/icons/social/instagram.svg'],
-            ['key' => 'tiktok', 'label' => 'TikTok', 'href' => env('SOCIAL_TIKTOK', '#'), 'icon' => '/images/icons/social/tiktok.svg'],
+            ['key' => 'tiktok', 'label' => 'TikTok', 'href' => env('SOCIAL_TIKTOK', '#'), 'icon' => '/images/icons/social/tiktok.svg?v=2'],
             ['key' => 'shopee', 'label' => 'Shopee', 'href' => env('SOCIAL_SHOPEE', '#'), 'icon' => '/images/icons/social/shopee.svg'],
             ['key' => 'lazada', 'label' => 'Lazada', 'href' => env('SOCIAL_LAZADA', '#'), 'icon' => '/images/icons/social/lazada.png'],
             ['key' => 'youtube', 'label' => 'YouTube', 'href' => env('SOCIAL_YOUTUBE', '#'), 'icon' => '/images/icons/social/youtube.svg'],
@@ -430,18 +491,25 @@ return [
         'short_name' => 'Ragil Aluminium',
         'tagline' => 'Pusat Belanja Jendela Aluminium',
         'email' => 'ragilaluminium29@gmail.com',
-        'phone' => '+62 81234598065',
+        'phone' => env('BRAND_PHONE', '0851-9966-6810'),
         'address' => env(
             'BRAND_ADDRESS',
             'Jln. Raya Mandiraja Wetan, Samping Barat Pom Bensin Mandiraja, Desa Mandiraja Wetan, Kec. Mandiraja, Kab. Banjarnegara, Jawa Tengah 53473'
         ),
-        'hours' => env('BRAND_HOURS', 'Senin – Sabtu, 08.00 – 17.00 WIB'),
+        'hours' => env('BRAND_HOURS', 'Senin - Sabtu, 08.00 - 17.00 WIB'),
         // Query untuk embed + tautan Google Maps (override via .env bila pin lebih akurat).
         'maps_query' => env(
             'BRAND_MAPS_QUERY',
-            'Toko Ragil Aluminium Jln. Raya Mandiraja Wetan Samping Barat Pom Bensin Mandiraja Banjarnegara'
+            'Toko Ragil Aluminium Mandiraja Banjarnegara'
         ),
-        'maps_url' => env('BRAND_MAPS_URL'),
+        'maps_url' => env(
+            'BRAND_MAPS_URL',
+            'https://www.google.com/maps/place/Toko+Ragil+Aluminium+(Interior,+Furniture%E2%80%A6/@-7.44972,109.5314384,17z/data=!4m6!3m5!1s0x2e65530ecf16e515:0x9c84f69c3e0477df!8m2!3d-7.44972!4d109.5314384!16s%2Fg%2F11b6d13_2h'
+        ),
+        'maps_embed_url' => env(
+            'BRAND_MAPS_EMBED_URL',
+            'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3956.273646849492!2d109.5288635!3d-7.44972!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e65530ecf16e515%3A0x9c84f69c3e0477df!2sToko%20Ragil%20Aluminium%20(Interior%2C%20Furniture)!5e0!3m2!1sid!2sid!4v1'
+        ),
         // Social proof beranda (teks); logo marketplace → platforms + Informasi Toko/Footer.
         'units_installed_label' => env(
             'BRAND_UNITS_INSTALLED_LABEL',
@@ -469,7 +537,7 @@ return [
     | Marketplace: Shopee / Tokopedia / Lazada / TikTok Shop.
     | Facebook / YouTube / Instagram / TikTok = social, bukan marketplace.
     | Tampil di: Informasi Toko (/about) + Footer.
-    | Edit URL: Admin → Pengaturan Website → Marketplace & Media Sosial
+    | Edit URL: Admin → Pengaturan Website → Profil & Kontak Toko
     |   (`admin.storefront-platforms.*` → cms_pages.storefront-platforms.content.links).
     | Catalog key/label/channel/icon tetap di sini; env SOCIAL_* = fallback awal saja.
     |--------------------------------------------------------------------------
@@ -478,9 +546,9 @@ return [
         ['key' => 'shopee', 'label' => 'Shopee', 'channel' => 'marketplace', 'href' => env('SOCIAL_SHOPEE', '#'), 'icon' => '/images/icons/social/shopee.svg'],
         ['key' => 'tokopedia', 'label' => 'Tokopedia', 'channel' => 'marketplace', 'href' => env('SOCIAL_TOKOPEDIA', '#'), 'icon' => '/images/icons/social/tokopedia.png'],
         ['key' => 'lazada', 'label' => 'Lazada', 'channel' => 'marketplace', 'href' => env('SOCIAL_LAZADA', '#'), 'icon' => '/images/icons/social/lazada.png'],
-        ['key' => 'tiktok_shop', 'label' => 'TikTok Shop', 'channel' => 'marketplace', 'href' => env('SOCIAL_TIKTOK_SHOP', '#'), 'icon' => '/images/icons/social/tiktok.svg'],
+        ['key' => 'tiktok_shop', 'label' => 'TikTok Shop', 'channel' => 'marketplace', 'href' => env('SOCIAL_TIKTOK_SHOP', '#'), 'icon' => '/images/icons/social/tiktok.svg?v=2'],
         ['key' => 'instagram', 'label' => 'Instagram', 'channel' => 'social', 'href' => env('SOCIAL_INSTAGRAM', '#'), 'icon' => '/images/icons/social/instagram.svg'],
-        ['key' => 'tiktok', 'label' => 'TikTok', 'channel' => 'social', 'href' => env('SOCIAL_TIKTOK', '#'), 'icon' => '/images/icons/social/tiktok.svg'],
+        ['key' => 'tiktok', 'label' => 'TikTok', 'channel' => 'social', 'href' => env('SOCIAL_TIKTOK', '#'), 'icon' => '/images/icons/social/tiktok.svg?v=2'],
         ['key' => 'youtube', 'label' => 'YouTube', 'channel' => 'social', 'href' => env('SOCIAL_YOUTUBE', '#'), 'icon' => '/images/icons/social/youtube.svg'],
         ['key' => 'facebook', 'label' => 'Facebook', 'channel' => 'social', 'href' => env('SOCIAL_FACEBOOK', '#'), 'icon' => '/images/icons/social/facebook.svg'],
     ],
@@ -514,21 +582,22 @@ return [
         'items' => [
             [
                 'text' => 'Promo Boven Jungkit: harga miring untuk model favorit rumah Indonesia',
-                'route' => 'catalog.bouven',
-                'params' => ['model' => 'JUNGKIT'],
+                'route' => 'catalog.model',
+                'params' => ['category' => 'boven', 'model' => 'jungkit'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],
             [
                 'text' => 'Diskon model Swing dan Sliding: jendela aluminium siap pilih dan bisa custom',
-                'route' => 'catalog.windows',
-                'params' => ['sort' => 'newest'],
+                'route' => 'catalog.category',
+                'params' => ['category' => 'jendela', 'sort' => 'newest'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],
             [
                 'text' => 'Pintu aluminium promo aktif. Bandingkan model di katalog sekarang',
-                'route' => 'catalog.doors',
+                'route' => 'catalog.category',
+                'params' => ['category' => 'pintu'],
                 'starts_at' => '2026-07-01',
                 'ends_at' => '2026-09-30',
             ],

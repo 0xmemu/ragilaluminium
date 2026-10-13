@@ -1,0 +1,644 @@
+import { useForm } from "@inertiajs/react"
+import * as React from "react"
+
+import type { WilayahOption } from "@/components/public/wilayah-search-select"
+import { routeUrl } from "@/lib/routes"
+import type { CheckoutDetails } from "@/types"
+
+export interface CheckoutCodConfig {
+  enabled: boolean
+  allowed: boolean
+  block_reason?: string | null
+  fee_type: "percent"
+  fee_value: number
+  fee_amount: number
+  max_order_amount?: number | null
+}
+
+export interface CheckoutVoucher {
+  code: string
+  name: string
+  discount: number
+  stackable?: boolean
+  target_type?: "general" | "model" | "product"
+  target_label?: string
+  discount_percent?: number | null
+  vouchers?: Array<{
+    code: string
+    name: string
+    discount: number
+    stackable?: boolean
+    target_type?: "general" | "model" | "product"
+    target_label?: string
+    discount_percent?: number | null
+  }>
+}
+
+export interface CheckoutShippingQuote {
+  gross: number
+  subsidy: number
+  /** Persentase subsidi ongkir dari setelan toko (mis. 10 untuk 10%). */
+  subsidy_percent?: number
+  net: number
+  applied: boolean
+  status: string
+  provisional: boolean
+  freight?: number
+  /** Biaya asuransi dari J&T; sudah termasuk di dalam `gross` dan `net`. */
+  insurance?: number
+  /** Nilai barang yang diasuransikan (dikirim ke J&T sebagai offerFee). */
+  insured_value?: number
+  message?: string | null
+  carrier_eta?: string | null
+}
+
+export interface UseCheckoutOptions {
+  details?: CheckoutDetails | null
+  cod?: CheckoutCodConfig
+  defaultPayment?: string | null
+  voucher?: CheckoutVoucher | null
+  voucherDiscount?: number
+  applyVoucherUrl?: string | null
+  removeVoucherUrl?: string | null
+  shippingQuoteUrl?: string | null
+  shippingWeightKg?: number
+}
+
+const emptyDetails: CheckoutDetails = {
+  name: "",
+  phone: "",
+  province: "",
+  city: "",
+  district: "",
+  village: "",
+  province_id: "",
+  city_id: "",
+  district_id: "",
+  village_id: "",
+  address_line1: "",
+  address_line2: "",
+  postal_code: "",
+}
+
+export async function fetchWilayah(path: string, signal?: AbortSignal): Promise<WilayahOption[]> {
+  if (signal?.aborted) throw new DOMException("Wilayah request dibatalkan", "AbortError")
+  const cached = wilayahResponseCache.get(path)
+  if (cached) return cached
+
+  const response = await fetch(`/api/wilayah/${path}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  })
+  if (!response.ok) {
+    throw new Error(`Wilayah ${path} gagal dimuat (${response.status})`)
+  }
+  const payload = (await response.json()) as { data?: WilayahOption[] }
+  if (!Array.isArray(payload.data)) {
+    throw new Error("Respons wilayah tidak valid")
+  }
+  wilayahResponseCache.set(path, payload.data)
+  return payload.data
+}
+
+const wilayahResponseCache = new Map<string, WilayahOption[]>()
+
+/**
+ * Seluruh state & aksi halaman checkout: form detail pengiriman, metode bayar,
+ * voucher, daftar wilayah (provinsi→kecamatan, fetch + abort), map picker, dan
+ * submit (validasi detail → buat pesanan). Section hanya menerima hasil hook (§5 R).
+ */
+export function useCheckout({
+  details = null,
+  cod = {
+    enabled: true,
+    allowed: true,
+    block_reason: null,
+    fee_type: "percent",
+    fee_value: 0,
+    fee_amount: 0,
+    max_order_amount: null,
+  },
+  defaultPayment = null,
+  voucher = null,
+  voucherDiscount = 0,
+  applyVoucherUrl = routeUrl("checkout.voucher.apply"),
+  removeVoucherUrl = routeUrl("checkout.voucher.remove"),
+  shippingQuoteUrl = null,
+  shippingWeightKg = 1,
+}: UseCheckoutOptions) {
+  const [editingDetails, setEditingDetails] = React.useState(!details)
+  const detailForm = useForm<CheckoutDetails>({ ...emptyDetails, ...(details ?? {}) })
+  const paymentDefault =
+    defaultPayment ?? (cod.enabled && cod.allowed ? "cod" : "transfer")
+  const paymentForm = useForm({ payment_method: paymentDefault })
+  const hasVoucher = Boolean(voucher?.code) && voucherDiscount > 0
+  const showCodFee =
+    paymentForm.data.payment_method === "cod" && cod.enabled && cod.allowed && cod.fee_amount > 0
+  const [voucherCode, setVoucherCode] = React.useState(voucher?.code ?? "")
+  const [voucherOpen, setVoucherOpen] = React.useState(false)
+  const voucherForm = useForm({ code: voucher?.code ?? "" })
+
+  function applyVoucher(event: React.FormEvent) {
+    event.preventDefault()
+    const code = voucherCode.trim()
+    if (!code) {
+      voucherForm.setError("code", "Masukkan kode voucher terlebih dahulu.")
+      return
+    }
+    voucherForm.setData("code", code)
+    voucherForm.post(applyVoucherUrl || routeUrl("checkout.voucher.apply"), { preserveScroll: true })
+  }
+
+  function removeVoucher(code?: string) {
+    voucherForm.setData("code", code ?? "")
+    voucherForm.post(removeVoucherUrl || routeUrl("checkout.voucher.remove"), { preserveScroll: true })
+  }
+
+  const [provinces, setProvinces] = React.useState<WilayahOption[]>([])
+  const [regencies, setRegencies] = React.useState<WilayahOption[]>([])
+  const [districts, setDistricts] = React.useState<WilayahOption[]>([])
+  const [villages, setVillages] = React.useState<WilayahOption[]>([])
+  const [loadingProvinces, setLoadingProvinces] = React.useState(false)
+  const [loadingRegencies, setLoadingRegencies] = React.useState(false)
+  const [loadingDistricts, setLoadingDistricts] = React.useState(false)
+  const [loadingVillages, setLoadingVillages] = React.useState(false)
+  const [wilayahError, setWilayahError] = React.useState<string | null>(null)
+  const [wilayahRetry, setWilayahRetry] = React.useState(0)
+  const [shippingQuote, setShippingQuote] = React.useState<CheckoutShippingQuote | null>(null)
+  const [shippingQuoteLoading, setShippingQuoteLoading] = React.useState(false)
+  const [shippingQuoteAttempted, setShippingQuoteAttempted] = React.useState(false)
+  const [prefillNotice, setPrefillNotice] = React.useState<string | null>(null)
+  const [prefillLoading, setPrefillLoading] = React.useState(false)
+  const prefillAbortRef = React.useRef<AbortController | null>(null)
+  const shippingQuoteAbortRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+    // Loading flags describe the external wilayah request lifecycle.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadingProvinces(true)
+    setWilayahError(null)
+    fetchWilayah("provinces", controller.signal)
+      .then((data) => {
+        if (!cancelled) setProvinces(data)
+      })
+      .catch((error) => {
+        if (cancelled || (error as Error)?.name === "AbortError") return
+        setProvinces([])
+        setWilayahError("Daftar wilayah gagal dimuat. Periksa koneksi lalu coba lagi.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProvinces(false)
+      })
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [wilayahRetry])
+
+  React.useEffect(() => {
+    const provinceId = detailForm.data.province_id
+    if (!provinceId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRegencies([])
+      return
+    }
+    let cancelled = false
+    const controller = new AbortController()
+    setLoadingRegencies(true)
+    fetchWilayah(`regencies/${provinceId}`, controller.signal)
+      .then((data) => {
+        if (!cancelled) {
+          setRegencies(data)
+          setWilayahError(null)
+        }
+      })
+      .catch((error) => {
+        if (cancelled || (error as Error)?.name === "AbortError") return
+        setRegencies([])
+        setWilayahError("Kota/kabupaten gagal dimuat. Coba pilih provinsi lagi atau muat ulang.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRegencies(false)
+      })
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [detailForm.data.province_id])
+
+  React.useEffect(() => {
+    const cityId = detailForm.data.city_id
+    if (!cityId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDistricts([])
+      return
+    }
+    let cancelled = false
+    const controller = new AbortController()
+    setLoadingDistricts(true)
+    fetchWilayah(`districts/${cityId}`, controller.signal)
+      .then((data) => {
+        if (!cancelled) {
+          setDistricts(data)
+          setWilayahError(null)
+        }
+      })
+      .catch((error) => {
+        if (cancelled || (error as Error)?.name === "AbortError") return
+        setDistricts([])
+        setWilayahError("Kecamatan gagal dimuat. Coba pilih kota lagi atau muat ulang.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDistricts(false)
+      })
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [detailForm.data.city_id])
+
+  React.useEffect(() => {
+    const districtId = detailForm.data.district_id
+    if (!districtId) {
+      // Clear dependent choices when their parent is cleared.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVillages([])
+      return
+    }
+    let cancelled = false
+    const controller = new AbortController()
+    setLoadingVillages(true)
+    fetchWilayah(`villages/${districtId}`, controller.signal)
+      .then((data) => {
+        if (!cancelled) {
+          setVillages(data)
+          setWilayahError(null)
+        }
+      })
+      .catch((error) => {
+        if (cancelled || (error as Error)?.name === "AbortError") return
+        setVillages([])
+        setWilayahError("Desa/kelurahan gagal dimuat. Coba pilih kecamatan lagi atau muat ulang.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingVillages(false)
+      })
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [detailForm.data.district_id])
+
+  React.useEffect(() => {
+    const data = detailForm.data
+    // A postal mapping may be temporarily unavailable before the versioned
+    // dataset is imported. Geographic names are still sufficient to request
+    // a local/J&T quote; checkout submission keeps postal_code required.
+    const complete = Boolean(
+      data.province?.trim() &&
+        data.city?.trim() &&
+        data.district?.trim() &&
+        data.village?.trim() &&
+        data.address_line1?.trim(),
+    )
+    let timer: ReturnType<typeof setTimeout> | null = null
+    shippingQuoteAbortRef.current?.abort()
+
+    if (!complete) {
+      // Quote state follows address completeness; this reset is intentional.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShippingQuote(null)
+      setShippingQuoteLoading(false)
+      setShippingQuoteAttempted(false)
+      return () => {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    const controller = new AbortController()
+    shippingQuoteAbortRef.current = controller
+    setShippingQuoteAttempted(true)
+    setShippingQuoteLoading(true)
+    timer = setTimeout(async () => {
+      try {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
+        const response = await fetch(
+          shippingQuoteUrl || routeUrl("shipping.quote", undefined, "/api/shipping/quote"),
+          {
+            method: "POST",
+            credentials: "same-origin",
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+              ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
+            },
+            body: JSON.stringify({
+              weight_kg: shippingWeightKg > 0 ? shippingWeightKg : 1,
+              destination_city: data.city,
+              destination_province: data.province,
+              destination_area: data.district,
+              village_id: data.village_id,
+              village_name: data.village,
+              district_id: data.district_id,
+              district_name: data.district,
+              province_id: data.province_id,
+              province: data.province,
+              city_id: data.city_id,
+              city: data.city,
+              district: data.district,
+              village: data.village,
+              postal_code: data.postal_code,
+              address_line1: data.address_line1,
+            }),
+          },
+        )
+        if (!response.ok) {
+          setShippingQuote(null)
+          return
+        }
+        const payload = (await response.json()) as Record<string, unknown>
+        const source = (payload.data ?? payload.quote ?? payload.shipping_quote ?? payload.shipping ?? payload) as Record<string, unknown>
+        const status = String(source.status ?? source.state ?? "confirmed")
+        const provisional = Boolean(
+          source.provisional ??
+            source.is_provisional ??
+            source.manual_review ??
+            ["provisional", "manual_review", "estimate", "fallback"].includes(status.toLowerCase()),
+        )
+        const number = (value: unknown) => {
+          const parsed = Number(value)
+          return Number.isFinite(parsed) ? parsed : null
+        }
+        const provisionalAmount = number(
+          source.estimated_amount ??
+            source.rough_estimate ??
+            source.net ??
+            source.shipping_amount ??
+            source.amount ??
+            source.cost ??
+            source.total,
+        )
+        if (provisional) {
+          if (provisionalAmount === null) {
+            setShippingQuote(null)
+            return
+          }
+          setShippingQuote({
+            gross: provisionalAmount,
+            subsidy: 0,
+            subsidy_percent: 0,
+            net: provisionalAmount,
+            applied: false,
+            status,
+            provisional: true,
+            freight: provisionalAmount,
+            insurance: 0,
+            message: typeof source.message === "string" ? source.message : null,
+          })
+          return
+        }
+        const net = number(source.net ?? source.shipping_amount ?? source.amount ?? source.cost ?? source.total)
+        if (net === null) {
+          setShippingQuote(null)
+          return
+        }
+        const gross = number(source.gross ?? source.original ?? source.base) ?? net
+        const subsidy = number(source.subsidy ?? source.discount) ?? Math.max(0, gross - net)
+        const insuranceAmount = number(source.insurance) ?? 0
+        // insured_value ikut dipetakan supaya ringkasan bisa menjelaskan
+        // pertanggungan tanpa membuka kembali pilihan asuransi.
+        const insuredValue = number(source.insured_value) ?? 0
+        setShippingQuote({
+          gross,
+          subsidy,
+          subsidy_percent: number(source.subsidy_percent) ?? 0,
+          net,
+          applied: Boolean(source.applied),
+          status,
+          provisional: false,
+          freight: number(source.freight) ?? undefined,
+          insurance: insuranceAmount,
+          insured_value: insuredValue,
+          message: typeof source.message === "string" ? source.message : null,
+          carrier_eta: typeof source.carrier_eta === "string" ? source.carrier_eta : null,
+        })
+      } catch (error) {
+        if ((error as Error)?.name !== "AbortError") setShippingQuote(null)
+      } finally {
+        if (!controller.signal.aborted) setShippingQuoteLoading(false)
+      }
+    }, 350)
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      controller.abort()
+      if (shippingQuoteAbortRef.current === controller) shippingQuoteAbortRef.current = null
+    }
+  }, [
+    detailForm.data.address_line1,
+    detailForm.data.city,
+    detailForm.data.city_id,
+    detailForm.data.district,
+    detailForm.data.district_id,
+    detailForm.data.postal_code,
+    detailForm.data.province,
+    detailForm.data.province_id,
+    detailForm.data.village,
+    detailForm.data.village_id,
+    detailForm.data,
+    shippingQuoteUrl,
+    shippingWeightKg,
+  ])
+
+  function selectProvince(option: WilayahOption | null) {
+    detailForm.setData({
+      ...detailForm.data,
+      province_id: option?.id ?? "",
+      province: option?.name ?? "",
+      city_id: "",
+      city: "",
+      district_id: "",
+      district: "",
+      village_id: "",
+      village: "",
+      postal_code: "",
+    })
+    setRegencies([])
+    setDistricts([])
+    setVillages([])
+  }
+
+  function selectCity(option: WilayahOption | null) {
+    detailForm.setData({
+      ...detailForm.data,
+      city_id: option?.id ?? "",
+      city: option?.name ?? "",
+      district_id: "",
+      district: "",
+      village_id: "",
+      village: "",
+      postal_code: "",
+    })
+    setDistricts([])
+    setVillages([])
+  }
+
+  function selectDistrict(option: WilayahOption | null) {
+    detailForm.setData({
+      ...detailForm.data,
+      district_id: option?.id ?? "",
+      district: option?.name ?? "",
+      village_id: "",
+      village: "",
+      postal_code: "",
+    })
+    setVillages([])
+  }
+
+  function selectVillage(option: WilayahOption | null) {
+    detailForm.setData({
+      ...detailForm.data,
+      village_id: option?.id ?? "",
+      village: option?.name ?? "",
+      postal_code: option?.postal_code ?? "",
+    })
+  }
+
+  function submitDetails(event: React.FormEvent) {
+    event.preventDefault()
+    // Bawa metode pembayaran yang sedang dipilih agar tersimpan saat redirect balik.
+    detailForm.transform((data) => ({
+      ...data,
+      payment_method: paymentForm.data.payment_method,
+    }))
+    detailForm.post(routeUrl("checkout.validate"), {
+      preserveScroll: true,
+      onSuccess: () => setEditingDetails(false),
+    })
+  }
+
+  function placeOrder(event: React.FormEvent) {
+    event.preventDefault()
+    if (!details || paymentForm.processing) return
+    paymentForm.post(routeUrl("checkout.place-order"))
+  }
+
+  async function prefillFromLastOrder() {
+    const phone = detailForm.data.phone.trim()
+    if (phone.length < 9) {
+      setPrefillNotice(null)
+      return
+    }
+    prefillAbortRef.current?.abort()
+    const controller = new AbortController()
+    prefillAbortRef.current = controller
+    setPrefillLoading(true)
+    try {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? ""
+      const response = await fetch(
+        routeUrl("checkout.last-details", undefined, "/checkout/last-details"),
+        {
+          method: "POST",
+          credentials: "same-origin",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            ...(csrf ? { "X-CSRF-TOKEN": csrf } : {}),
+          },
+          body: JSON.stringify({ phone }),
+        },
+      )
+      if (!response.ok) return
+      const payload = (await response.json()) as { found?: boolean; details?: Partial<CheckoutDetails> }
+      if (!payload.found || !payload.details) {
+        setPrefillNotice(null)
+        return
+      }
+      const d = payload.details
+      detailForm.setData({
+        ...detailForm.data,
+        name: d.name ?? detailForm.data.name,
+        phone: d.phone ?? phone,
+        province: d.province ?? "",
+        city: d.city ?? "",
+        district: d.district ?? "",
+        village: d.village ?? "",
+        province_id: d.province_id ?? "",
+        city_id: d.city_id ?? "",
+        district_id: d.district_id ?? "",
+        village_id: d.village_id ?? "",
+        address_line1: d.address_line1 ?? "",
+        address_line2: d.address_line2 ?? "",
+        postal_code: d.postal_code ?? "",
+      })
+      setPrefillNotice("Detail diisi otomatis dari pesanan sebelumnya. Ubah jika perlu.")
+    } catch (error) {
+      if ((error as Error)?.name !== "AbortError") setPrefillNotice(null)
+    } finally {
+      if (!controller.signal.aborted) setPrefillLoading(false)
+    }
+  }
+
+  const addressSummary = details
+    ? [
+        details.address_line1,
+        details.address_line2,
+        details.village,
+        details.district,
+        details.city,
+        details.province,
+        details.postal_code,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : ""
+
+  return {
+    editingDetails,
+    setEditingDetails,
+    detailForm,
+    paymentForm,
+    hasVoucher,
+    showCodFee,
+    voucherCode,
+    setVoucherCode,
+    voucherOpen,
+    setVoucherOpen,
+    voucherForm,
+    applyVoucher,
+    removeVoucher,
+    provinces,
+    regencies,
+    districts,
+    villages,
+    loadingProvinces,
+    loadingRegencies,
+    loadingDistricts,
+    loadingVillages,
+    wilayahError,
+    setWilayahRetry,
+    prefillFromLastOrder,
+    prefillNotice,
+    prefillLoading,
+    shippingQuote,
+    shippingQuoteLoading,
+    shippingQuoteAttempted,
+    selectProvince,
+    selectCity,
+    selectDistrict,
+    selectVillage,
+    submitDetails,
+    placeOrder,
+    addressSummary,
+  }
+}
+
+export type CheckoutController = ReturnType<typeof useCheckout>

@@ -30,7 +30,7 @@ class UserController extends Controller
         if ($q !== '') {
             $query->where(function ($builder) use ($q) {
                 $builder->where('name', 'like', '%'.$q.'%')
-                    ->orWhere('email', 'like', '%'.$q.'%');
+                    ->orWhere('username', 'like', '%'.$q.'%');
             });
         }
 
@@ -74,7 +74,7 @@ class UserController extends Controller
                     'id' => $user->id,
                     'no' => $no,
                     'name' => $user->name,
-                    'email' => $user->email,
+                    'username' => $user->username,
                     'status' => $user->status,
                     'is_self' => $isSelf,
                     'created_at' => optional($user->created_at)?->toIso8601String(),
@@ -100,12 +100,13 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
         $validated['role'] = self::STORE_ADMIN_ROLE;
+        $validated['username'] = strtolower(trim((string) $validated['username']));
 
         $user = User::create($validated);
 
@@ -113,11 +114,15 @@ class UserController extends Controller
             'auth.user_created',
             'user',
             $user->id,
-            ['email' => $user->email, 'role' => $user->role],
+            [
+                'username' => $user->username,
+                'role' => $user->role,
+            ],
             $request->user()?->id,
         );
 
-        return redirect()->route('admin.users.index')->with('success', 'Akun admin dibuat.');
+        return redirect()->route('admin.users.index')
+            ->with('success', 'Akun admin dibuat. Bagikan username dan password langsung ke penerima.');
     }
 
     public function edit(Request $request, User $user): Response
@@ -126,7 +131,7 @@ class UserController extends Controller
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
-                'email' => $user->email,
+                'username' => $user->username,
                 'status' => $user->status,
             ],
             'submitUrl' => route('admin.users.update', $user),
@@ -140,7 +145,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
@@ -167,6 +172,7 @@ class UserController extends Controller
 
         // Equal-admin: never persist hierarchical roles from the form.
         $validated['role'] = self::STORE_ADMIN_ROLE;
+        $validated['username'] = strtolower(trim((string) $validated['username']));
 
         $user->update($validated);
 
@@ -175,7 +181,7 @@ class UserController extends Controller
             'user',
             $user->id,
             [
-                'email' => $user->email,
+                'username' => $user->username,
                 'role' => $user->role,
                 'status' => $user->status,
                 'password_changed' => array_key_exists('password', $validated),
@@ -197,7 +203,7 @@ class UserController extends Controller
             'auth.user_activated',
             'user',
             $user->id,
-            ['email' => $user->email],
+            ['username' => $user->username],
             $request->user()?->id,
         );
 
@@ -224,7 +230,7 @@ class UserController extends Controller
             'auth.user_deactivated',
             'user',
             $user->id,
-            ['email' => $user->email],
+            ['username' => $user->username],
             $request->user()?->id,
         );
 

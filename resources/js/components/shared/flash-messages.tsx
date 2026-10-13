@@ -2,28 +2,28 @@ import { usePage } from "@inertiajs/react"
 import * as React from "react"
 
 import { Alert } from "@/components/ui/alert"
+import { TOAST_CARD_CLASS } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 import type { SharedPageProps } from "@/types"
 
 const AUTO_DISMISS_MS = 4000
 
 type FlashKey = "success" | "status" | "error"
 
-export function FlashMessages() {
-  const { flash } = usePage<SharedPageProps>().props
+function FlashMessagesInner({
+  success,
+  status,
+  error,
+}: {
+  success: string | null
+  status: string | null
+  error: string | null
+}) {
   const [dismissed, setDismissed] = React.useState<Record<FlashKey, boolean>>({
     success: false,
     status: false,
     error: false,
   })
-
-  const success = flash?.success ?? null
-  const status = flash?.status ?? null
-  const error = flash?.error ?? null
-  const signature = [success, status, error].join("|")
-
-  React.useEffect(() => {
-    setDismissed({ success: false, status: false, error: false })
-  }, [signature])
 
   React.useEffect(() => {
     if (!success && !status && !error) return
@@ -33,7 +33,7 @@ export function FlashMessages() {
     }, AUTO_DISMISS_MS)
 
     return () => window.clearTimeout(timer)
-  }, [signature, success, status, error])
+  }, [success, status, error])
 
   const visibleSuccess = Boolean(success) && !dismissed.success
   const visibleStatus = Boolean(status) && !dismissed.status
@@ -43,7 +43,7 @@ export function FlashMessages() {
 
   return (
     <div
-      className="container-page fixed left-1/2 top-20 z-toast -translate-x-1/2 space-y-2"
+      className="fixed inset-x-3 top-[var(--toast-top)] z-toast mx-auto flex w-auto max-w-xl flex-col space-y-2 lg:container-page lg:inset-x-auto lg:left-1/2 lg:w-full lg:-translate-x-1/2"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -51,7 +51,7 @@ export function FlashMessages() {
         <Alert
           tone="success"
           title={success ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, success: true }))}
         />
       ) : null}
@@ -59,7 +59,7 @@ export function FlashMessages() {
         <Alert
           tone="info"
           title={status ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, status: true }))}
         />
       ) : null}
@@ -67,10 +67,28 @@ export function FlashMessages() {
         <Alert
           tone="danger"
           title={error ?? undefined}
-          className="ml-auto max-w-xl bg-surface shadow-float"
+          className={cn(TOAST_CARD_CLASS, "ml-auto w-fit max-w-full")}
           onDismiss={() => setDismissed((prev) => ({ ...prev, error: true }))}
         />
       ) : null}
     </div>
+  )
+}
+
+export function FlashMessages() {
+  const { flash } = usePage<SharedPageProps>().props
+  const success = flash?.success ?? null
+  const status = flash?.status ?? null
+  const error = flash?.error ?? null
+  const signature = [success, status, error].join("|")
+
+  // Remount on new flash payload instead of resetting dismiss state in an effect.
+  return (
+    <FlashMessagesInner
+      key={signature}
+      success={success}
+      status={status}
+      error={error}
+    />
   )
 }

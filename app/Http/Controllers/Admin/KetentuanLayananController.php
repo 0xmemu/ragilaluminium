@@ -28,7 +28,7 @@ class KetentuanLayananController extends Controller
             ],
             'submitUrl' => route('admin.ketentuan-layanan.update'),
             'previewUrl' => route('terms'),
-            'hubUrl' => route('admin.dashboard'),
+            'hubUrl' => route('admin.documents.index'),
             'saveLabel' => 'Simpan Pembaruan Dokumen',
         ]);
     }
@@ -58,8 +58,9 @@ class KetentuanLayananController extends Controller
             $request->user()?->id,
         );
 
+        // Simpan sukses = keluar dari editor ke daftar Dokumen Halaman.
         return redirect()
-            ->route('admin.ketentuan-layanan.edit')
+            ->route('admin.documents.index')
             ->with('success', 'Dokumen Ketentuan Layanan disimpan.');
     }
 }

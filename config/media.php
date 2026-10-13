@@ -15,9 +15,11 @@ return [
     // semua host publik (private/reserved IP tetap diblokir).
     'allowed_source_hosts' => array_filter(explode(',', (string) env('MEDIA_ALLOWED_HOSTS', 'cf.shopee.co.id,down-id.img.susercontent.com,cvws.img.susercontent.com,deo.shopeemobile.com'))),
 
-    'max_bytes' => (int) env('MEDIA_MAX_BYTES', 10 * 1024 * 1024), // 10 MB
+    'max_bytes' => (int) env('MEDIA_MAX_BYTES', 10 * 1024 * 1024), // 10 MB image
+    'max_video_bytes' => (int) env('MEDIA_MAX_VIDEO_BYTES', 50 * 1024 * 1024), // 50 MB video
     'download_timeout' => (int) env('MEDIA_DOWNLOAD_TIMEOUT', 60),
     'allowed_mime' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    'allowed_video_mime' => ['video/mp4', 'video/webm', 'video/quicktime'],
 
     // Disk name in config/filesystems.php (`media` switches local vs s3 via MEDIA_DISK).
     'disk' => 'media',
@@ -45,4 +47,7 @@ return [
 
     // Public path under /public used when no stored media (relative to app URL via asset()).
     'placeholder' => env('MEDIA_PLACEHOLDER', 'images/home/product-flash.png'),
+
+    // Retensi log riwayat pemrosesan media (hari) — otomatis dipangkas oleh media:prune-logs
+    'log_retention_days' => (int) env('MEDIA_LOG_RETENTION_DAYS', 30),
 ];

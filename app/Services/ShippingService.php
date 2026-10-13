@@ -2,20 +2,54 @@
 
 namespace App\Services;
 
+use App\Domain\Orders\OrderStateMachine;
 use App\Events\ShippingStatusUpdated;
 use App\Models\EventLog;
 use App\Models\Order;
 use App\Models\ShippingRecord;
+use App\Models\ShippingTrackingEvent;
 use App\Services\Shipping\JntCargoClient;
 use App\Services\Shipping\JntResponse;
 use App\Support\ShippingSubsidySettings;
+use App\Support\JntAddressResolver;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ShippingService
 {
-    public function __construct(protected JntCargoClient $jnt)
+    public function __construct(
+        protected JntCargoClient $jnt,
+        protected OrderStateMachine $states,
+        protected ReturnService $returns,
+        protected JntAddressResolver $jntAddresses,
+        protected CartService $cart,
+    ) {}
+
+    /**
+     * Nilai barang yang diasuransikan (dasar `offerFee` ke J&T).
+     *
+     * Diambil dari subtotal keranjang, bukan angka tetap: pertanggungan harus
+     * mengikuti nilai barang yang berisiko. Pemanggil yang tidak memakai
+     * keranjang (mis. admin mengubah pesanan) boleh mengirim nilai eksplisit.
+     */
+    protected function resolveInsuredValue(?float $insuredValue): float
     {
+        if ($insuredValue !== null) {
+            return max(0.0, round($insuredValue, 2));
+        }
+
+        if (! config('jnt.insurance_enabled', true)) {
+            return 0.0;
+        }
+
+        try {
+            return max(0.0, round($this->cart->subtotal(), 2));
+        } catch (Throwable) {
+            // Tanpa sesi keranjang (queue/CLI): asuransi tidak ditawarkan.
+            return 0.0;
+        }
     }
 
     /**
@@ -29,7 +63,7 @@ class ShippingService
     }
 
     /**
-     * @return array{gross: float, subsidy: float, net: float, applied: bool, carrier: string}
+     * @return array<string, mixed>
      */
     public function estimateBreakdown(
         float $weightKg,
@@ -37,13 +71,190 @@ class ShippingService
         ?string $destinationProvince = null,
         ?string $postalCode = null,
         ?string $destinationArea = null,
+        ?float $insuredValue = null,
     ): array {
-        $gross = $this->estimateGrossCost($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea);
-        $applied = ShippingSubsidySettings::apply($gross, 'jnt');
+        return $this->quote($weightKg, $destinationCity, $destinationProvince, $postalCode, $destinationArea, $insuredValue);
+    }
+
+    /**
+     * Customer-facing quote contract shared by checkout and the quote endpoint.
+     * Provisional states never pretend to be a final carrier tariff.
+     *
+     * Asuransi pengiriman TIDAK LAGI opsional (keputusan owner 2026-09-18):
+     * pembeli tidak memilih apa pun, toko mengirim barang dengan asuransi, dan
+     * biayanya menyatu ke tarif ongkir. Karena itu tidak ada flag pilihan:
+     * `offerFee` = NILAI BARANG yang diasuransikan (dokumen J&T: 保价金额)
+     * dikirim selama nilai barang diketahui, dan biaya yang J&T kembalikan
+     * SELALU ikut ke tagihan ongkir.
+     *
+     * @return array<string, mixed>
+     */
+    public function quote(
+        float $weightKg,
+        string $destinationCity,
+        ?string $destinationProvince = null,
+        ?string $postalCode = null,
+        ?string $destinationArea = null,
+        ?float $insuredValue = null,
+    ): array {
+        $weightKg = max($weightKg, 1.0);
+        $insuredValue = $this->resolveInsuredValue($insuredValue);
+
+        $jntAddress = $this->jntAddresses->resolve(
+            $destinationProvince,
+            $destinationCity,
+            $destinationArea,
+            null,
+        );
+        if ($jntAddress['status'] === 'verified') {
+            $destinationProvince = $jntAddress['province_name'];
+            $destinationCity = $jntAddress['city_name'] ?? $destinationCity;
+            $destinationArea = $jntAddress['area_name'] ?? $destinationArea;
+        }
+
+        // Area J&T berasal dari master lokal yang disinkronkan. Bila form
+        // belum mengirimnya tetapi postal_code tersedia, resolusi dari
+        // dataset postal (level kecamatan) supaya tarif REAL dihitung,
+        // bukan jatuh ke estimasi provisional.
+        if (($destinationArea === null || trim($destinationArea) === '') && filled($postalCode)) {
+            $resolved = DB::table('postal_code_mappings')
+                ->where('postal_code', trim((string) $postalCode))
+                ->distinct()
+                ->orderBy('district_name')
+                ->value('district_name');
+            if (is_string($resolved) && $resolved !== '') {
+                $destinationArea = $resolved;
+            }
+        }
+
+        if (! $this->jnt->isEnabled()) {
+            $freight = $this->localEstimate($weightKg);
+            $applied = ShippingSubsidySettings::apply($freight, 'jnt');
+
+            return [
+                ...$applied,
+                'freight' => $freight,
+                'insurance' => 0.0,
+                'carrier' => 'jnt',
+                'state' => 'fallback',
+                'is_final' => false,
+                'rough_estimate' => (float) $applied['net'],
+                'manual_review' => false,
+                'message' => 'Estimasi ongkir sementara berdasarkan rumus lokal.',
+            ];
+        }
+
+        try {
+            $payload = [
+                'paymentType' => config('jnt.defaults.payment_type'),
+                'expressType' => config('jnt.defaults.express_type'),
+                'deliveryType' => config('jnt.defaults.delivery_type'),
+                'goodsType' => config('jnt.defaults.goods_type'),
+                'weight' => (string) $weightKg,
+                'totalQuantity' => 1,
+                'sendProv' => config('jnt.sender.prov'),
+                'sendCity' => config('jnt.sender.city'),
+                'sendArea' => config('jnt.sender.area'),
+                'receiveProv' => $destinationProvince,
+                'receiveCity' => $destinationCity,
+                'receiveArea' => $destinationArea ?? $destinationCity,
+            ];
+            // offerFee = nilai barang yang diasuransikan. Selalu dikirim bila
+            // nilai barang diketahui: tanpa ini J&T tidak mengembalikan biaya
+            // asuransinya, padahal pengiriman toko selalu diasuransikan.
+            if ($insuredValue > 0) {
+                $payload['offerFee'] = (string) (int) round($insuredValue);
+            }
+
+            $resp = $this->jnt->tariff($payload);
+
+            if ($resp->ok) {
+                // Semua angka uang diambil dari J&T apa adanya.
+                $insuranceCost = max(0, round((float) ($resp->get('estimateInsuranceCost') ?? 0), 2));
+                $sumFromJnt = $resp->get('estimateSumFreight');
+
+                // ONGKIR selalu berasal dari angka J&T, TIDAK PERNAH dari rumus
+                // tarif sendiri. Utamakan ongkos standar (estimateCustomerCost).
+                // Bila J&T hanya memberi TOTAL, kurangkan komponen asuransi
+                // yang ikut di dalamnya: total J&T SUDAH memuat asuransi saat
+                // offerFee dikirim, jadi memakainya mentah-mentah lalu menambah
+                // asuransi lagi akan menagih asuransi dua kali (ongkir
+                // membengkak). Keduanya angka J&T, bukan hitungan kita.
+                $freight = $resp->get('estimateCustomerCost');
+                if (! is_numeric($freight) || (float) $freight <= 0) {
+                    $freight = is_numeric($sumFromJnt)
+                        ? (float) $sumFromJnt - $insuranceCost
+                        : null;
+                }
+
+                // Guard: ongkir kosong/0 dianggap tarif tidak valid (J&T dapat
+                // mengembalikan 0 untuk kombinasi produk/area yang tidak
+                // tersedia) -> estimasi provisional + manual review; ongkir
+                // Rp 0 tidak pernah tampil ke pembeli. Kalau J&T tidak memberi
+                // angka sama sekali, sistem tidak menebak tarif sendiri.
+                if (is_numeric($freight) && (float) $freight > 0) {
+                    $freight = round((float) $freight, 2);
+                    // Asuransi SELALU ditagihkan bersama ongkir: pengiriman toko
+                    // selalu diasuransikan, pembeli tidak memilih.
+                    $gross = $insuranceCost > 0 && is_numeric($sumFromJnt)
+                        ? round((float) $sumFromJnt, 2)
+                        : round($freight + $insuranceCost, 2);
+                    // Subsidi dihitung dari TOTAL ongkir, yaitu tarif kurir
+                    // DITAMBAH asuransi (keputusan owner 2026-09-18): 10 persen
+                    // berlaku atas seluruh ongkos kirim, ada asuransi ataupun
+                    // tidak. Sebelumnya hanya tarif dasar yang disubsidi,
+                    // sehingga persentase di label tidak cocok dengan selisih
+                    // angka yang terlihat pembeli.
+                    $applied = ShippingSubsidySettings::apply($gross, 'jnt');
+                    $net = round(max(0, (float) $applied['net']), 2);
+
+                    return [
+                        ...$applied,
+                        'gross' => $gross,
+                        'net' => $net,
+                        // Ongkir setelah subsidi TANPA asuransi: nilai inilah
+                        // yang disimpan sebagai shipping_amount, supaya kolom
+                        // "Ongkir" tidak bercampur dengan asuransi dan total
+                        // pesanan menjumlahkan keduanya secara eksplisit.
+                        // Asuransi tetap ditagihkan PENUH sesuai angka J&T
+                        // (uang titipan), sehingga seluruh subsidi jatuh ke
+                        // komponen ongkir. Yang dibayar pembeli: `net`.
+                        'net_ongkir' => round(max(0, $net - $insuranceCost), 2),
+                        'freight' => $freight,
+                        'insurance' => $insuranceCost,
+                        'insurance_charged' => $insuranceCost,
+                        'insured_value' => $insuredValue,
+                        'carrier' => 'jnt',
+                        'state' => 'ready',
+                        'is_final' => true,
+                        'rough_estimate' => $net,
+                        'manual_review' => false,
+                        'message' => 'Tarif ongkir J&T berhasil dihitung.',
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            // Gunakan debug agar tidak spam log saat J&T belum siap atau down.
+            // Warning hanya dicatat saat integration benar-benar aktif.
+            Log::channel('jnt')->debug('JNT tariff unavailable; using provisional local estimate', [
+                'exception_class' => $e::class,
+                'exception_message' => $e->getMessage(),
+                'jnt_enabled' => config('jnt.enabled'),
+            ]);
+        }
+
+        $provisional = ShippingSubsidySettings::apply($this->localEstimate($weightKg), 'jnt');
 
         return [
-            ...$applied,
+            ...$provisional,
+            'freight' => (float) $this->localEstimate($weightKg),
+            'insurance' => 0.0,
             'carrier' => 'jnt',
+            'state' => 'manual_review',
+            'is_final' => false,
+            'rough_estimate' => (float) $provisional['net'],
+            'manual_review' => true,
+            'message' => 'Estimasi sementara berdasarkan area akan dikonfirmasi admin.',
         ];
     }
 
@@ -58,7 +269,7 @@ class ShippingService
 
         if ($this->jnt->isEnabled()) {
             try {
-                // agingCost/get — cek tarif & estimasi waktu.
+                // agingCost/get, cek tarif dan estimasi waktu.
                 $resp = $this->jnt->tariff([
                     'paymentType' => config('jnt.defaults.payment_type'),
                     'expressType' => config('jnt.defaults.express_type'),
@@ -75,15 +286,17 @@ class ShippingService
                 ]);
 
                 if ($resp->ok) {
-                    $cost = $resp->get('estimateSumFreight')
-                        ?? $resp->get('estimateCustomerCost')
+                    // Ongkos standar J&T lebih dulu, konsisten dengan quote():
+                    // estimateSumFreight bisa memuat asuransi.
+                    $cost = $resp->get('estimateCustomerCost')
+                        ?? $resp->get('estimateSumFreight')
                         ?? $resp->get('totalFreight');
                     if (is_numeric($cost)) {
                         return round((float) $cost, 2);
                     }
                 }
-            } catch (\Throwable $e) {
-                Log::channel('jnt')->warning('JNT tariff failed, fallback to local estimate', ['error' => $e->getMessage()]);
+            } catch (Throwable $e) {
+                Log::channel('jnt')->debug('JNT tariff failed, fallback to local estimate', ['error' => $e->getMessage()]);
             }
         }
 
@@ -110,7 +323,7 @@ class ShippingService
         }
 
         if (! $this->jnt->isEnabled()) {
-            throw new \RuntimeException('Integrasi J&T belum aktif (JNT_ENABLED=false / kredensial kosong).');
+            throw new \RuntimeException('Integrasi J&T belum aktif. Lengkapi kredensial di .env (JNT_ENABLED, JNT_API_ACCOUNT, JNT_PRIVATE_KEY, JNT_CUSTOMER_CODE, JNT_CUSTOMER_PASSWORD).');
         }
 
         $bizContent = $this->buildCreateOrderPayload($order, $weightKg);
@@ -120,7 +333,7 @@ class ShippingService
             $this->logEvent('shipping.create_failed', $order, [
                 'request_id' => $resp->requestId,
                 'message' => $resp->message(),
-                'body' => $resp->data,
+                'http_status' => $resp->httpStatus,
             ]);
 
             throw new \RuntimeException('Gagal membuat resi J&T: '.($resp->message() ?? 'unknown error'));
@@ -129,10 +342,13 @@ class ShippingService
         return DB::transaction(function () use ($order, $resp, $weightKg) {
             $record = ShippingRecord::create([
                 'order_id' => $order->id,
-                'carrier_name' => 'J&T Cargo',
+                'carrier_name' => ShippingRecord::CARRIER_JNT,
                 'service_name' => config('jnt.defaults.express_type'),
                 'waybill_number' => $resp->billCode(),
-                'shipping_cost' => $order->shipping_amount,
+                // createOrder J&T tidak mengembalikan biaya ongkir aslinya,
+                // jadi dibiarkan kosong (bukan diisi harga tagihan pembeli).
+                // Admin melengkapinya dari konsol J&T saat resi dicatat.
+                'shipping_cost' => null,
                 'status' => 'pending_pickup',
                 'status_raw' => 'created',
                 'last_status_at' => now(),
@@ -158,48 +374,69 @@ class ShippingService
     public function attachManualWaybill(
         Order $order,
         string $waybillNumber,
-        string $carrierName = 'J&T Cargo',
+        string $carrierName = ShippingRecord::CARRIER_JNT,
     ): ShippingRecord {
         $waybillNumber = trim($waybillNumber);
         $existing = $order->shippingRecords()->whereNotIn('status', ['cancelled'])->first();
         if ($existing) {
+            // Ganti nomor resi = baseline polling lama tidak berlaku lagi
+            // (milik resi sebelumnya); null agar event J&T resi baru tidak
+            // dianggap stale oleh guard di applyCarrierUpdate.
+            $waybillChanged = $existing->waybill_number !== $waybillNumber;
             $existing->update([
                 'waybill_number' => $waybillNumber,
                 'carrier_name' => $carrierName,
-                'last_status_at' => now(),
+                'last_status_at' => $waybillChanged ? null : $existing->last_status_at,
             ]);
 
-            return $existing->fresh();
+            $record = $existing->fresh();
+        } else {
+            $record = DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
+                $record = ShippingRecord::create([
+                    'order_id' => $order->id,
+                    'carrier_name' => $carrierName,
+                    'service_name' => config('jnt.defaults.express_type'),
+                    'waybill_number' => $waybillNumber,
+                    // Biaya J&T diisi otomatis dari endpoint pelacakan saat
+                    // resi ini di-refresh (syncActualCost), bukan input manual.
+                    'status' => 'pending_pickup',
+                    'status_raw' => 'manual',
+                ]);
+
+                $order->update(['shipping_status' => 'pending_pickup']);
+
+                $this->logEvent('shipping.created', $order, [
+                    'waybill' => $record->waybill_number,
+                    'source' => 'manual',
+                ]);
+
+                return $record;
+            });
         }
 
-        return DB::transaction(function () use ($order, $waybillNumber, $carrierName) {
-            $record = ShippingRecord::create([
-                'order_id' => $order->id,
-                'carrier_name' => $carrierName,
-                'service_name' => config('jnt.defaults.express_type'),
-                'waybill_number' => $waybillNumber,
-                'shipping_cost' => $order->shipping_amount,
-                'status' => 'pending_pickup',
-                'status_raw' => 'manual',
-                'last_status_at' => now(),
-            ]);
-
-            $order->update(['shipping_status' => 'pending_pickup']);
-
-            $this->logEvent('shipping.created', $order, [
+        // Tarik status terkini dari J&T segera (best-effort) agar timeline
+        // tracking langsung terisi; kegagalan tidak menggagalkan penyimpanan.
+        try {
+            $this->refreshStatus($record);
+            $record->refresh();
+        } catch (\Throwable $exception) {
+            Log::channel('jnt')->warning('manual waybill initial refresh failed', [
                 'waybill' => $record->waybill_number,
-                'source' => 'manual',
+                'message' => $exception->getMessage(),
             ]);
+        }
 
-            return $record;
-        });
+        return $record;
     }
 
     public function refreshStatus(ShippingRecord $record): void
     {
         if (! $this->jnt->isEnabled()) {
-            $record->update(['last_status_at' => now()]);
-
+            // Integrasi mati: tidak ada kabar kurir, jadi tidak ada yang
+            // dicatat. Dulu waktu status terakhir distempel dengan waktu
+            // sekarang, sehingga riwayat terlihat seperti baru diperbarui
+            // padahal tidak ada data yang diambil, dan pagar "baru saja
+            // disegarkan" di para pemanggil ikut menjadi buta.
             return;
         }
 
@@ -216,10 +453,144 @@ class ShippingService
             return;
         }
 
-        [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTrace($resp);
+        $peta = $this->traceDetailsByBillCode($resp);
+        $kunci = (string) $record->waybill_number;
+        // Peta kosong = respons tidak membawa penanda resi (bentuk lama atau
+        // payload uji), jadi isinya dianggap milik resi yang diminta.
+        $details = $peta[$kunci] ?? ($peta === [] ? $this->traceDetailsTunggal($resp) : []);
+
+        $this->terapkanDetailResi($record, $details, 'poll', $resp);
+    }
+
+    /**
+     * Tarik status BANYAK resi sekaligus.
+     *
+     * Endpoint pelacakan J&T menerima sampai 30 nomor resi per panggilan dan
+     * mengembalikan satu elemen data per nomor resi. Terbukti pada akun
+     * produksi 29 Sep 2026: dua nomor resi menghasilkan dua elemen, nomor tak
+     * dikenal menghasilkan elemen dengan daftar scan kosong (bukan galat).
+     *
+     * Aman bila kelak perilaku J&T berubah: resi yang tidak punya elemen pada
+     * respons gabungan ditarik sendiri-sendiri seperti cara lama, jadi tidak
+     * ada kabar kurir yang hilang, paling banyak kehilangan penghematannya.
+     *
+     * @param  iterable<int, ShippingRecord>  $records
+     * @return array<int, Throwable|null>  kunci id resi, nilai null bila sukses
+     */
+    public function refreshMany(iterable $records, int $chunkSize = 30): array
+    {
+        $hasil = [];
+        $chunkSize = max(1, $chunkSize);
+
+        foreach (collect($records)->values()->chunk($chunkSize) as $potongan) {
+            $kode = $potongan
+                ->pluck('waybill_number')
+                ->filter(fn ($nomor) => filled($nomor))
+                ->unique()
+                ->values();
+
+            if ($kode->isEmpty()) {
+                foreach ($potongan as $record) {
+                    $hasil[$record->id] = null;
+                }
+
+                continue;
+            }
+
+            $gagalGabungan = null;
+            $resp = null;
+
+            try {
+                $resp = $this->jnt->track(['billCodes' => $kode->implode(',')]);
+
+                if ($resp->failed()) {
+                    $gagalGabungan = new \RuntimeException(
+                        'J&T menolak permintaan pelacakan: '.($resp->message() ?? 'tanpa pesan')
+                    );
+                }
+            } catch (Throwable $exception) {
+                $gagalGabungan = $exception;
+            }
+
+            // Panggilan gabungan gagal: tandai seluruh potongan gagal tanpa
+            // mencoba satu per satu. Menembak resi yang sama berulang ke kurir
+            // yang sedang bermasalah menambah beban tanpa menambah hasil.
+            if ($gagalGabungan !== null) {
+                foreach ($potongan as $record) {
+                    $hasil[$record->id] = $gagalGabungan;
+                }
+
+                continue;
+            }
+
+            $peta = $this->traceDetailsByBillCode($resp);
+
+            foreach ($potongan as $record) {
+                $kunci = (string) $record->waybill_number;
+
+                if (! isset($peta[$kunci])) {
+                    // Respons gabungan tidak menyebut resi ini. Jangan menebak
+                    // elemen mana miliknya, tarik sendiri supaya tidak
+                    // ketinggalan kabar kurir.
+                    try {
+                        $this->refreshStatus($record);
+                        $hasil[$record->id] = null;
+                    } catch (Throwable $exception) {
+                        $hasil[$record->id] = $exception;
+                    }
+
+                    continue;
+                }
+
+                try {
+                    $this->terapkanDetailResi($record, $peta[$kunci], 'poll');
+                    $hasil[$record->id] = null;
+                } catch (Throwable $exception) {
+                    $hasil[$record->id] = $exception;
+                }
+            }
+
+            // Jeda antar potongan agar ramah terhadap batas laju kurir.
+            usleep(150000);
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Terapkan satu daftar scan milik SATU resi: simpan riwayat scan, simpan
+     * rincian tagihan, lalu majukan status pengiriman.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @param  JntResponse|null  $respUntukRoot  hanya diisi pada panggilan
+     *         satu resi, tempat isi root respons boleh dipakai sebagai
+     *         cadangan bila daftar scan kosong. Pada panggilan gabungan isi
+     *         root milik semua resi sekaligus, jadi tidak boleh dipakai.
+     */
+    protected function terapkanDetailResi(
+        ShippingRecord $record,
+        array $details,
+        string $source,
+        ?JntResponse $respUntukRoot = null,
+    ): void {
+        if (! empty($details)) {
+            // Simpan SELURUH riwayat scan (dedup idempoten per event_hash) agar
+            // timeline tracking langsung lengkap, bukan hanya scan terakhir.
+            $this->persistTraceEvents($record, $details, $source);
+            // Rincian tagihan J&T yang sebenarnya (totalFreight/freight/
+            // insuredFee/weight) datang pada respons yang sama, supaya
+            // pembukuan tidak lagi memakai asumsi ongkir checkout.
+            $this->syncActualCost($record, $details);
+
+            [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractLatestTraceFrom($details);
+        } elseif ($respUntukRoot !== null) {
+            [$scanType, $scanTypeCode, $desc, $occurredAt] = $this->extractRootTrace($respUntukRoot);
+        } else {
+            return;
+        }
 
         if ($scanType !== null) {
-            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode);
+            $this->applyCarrierUpdate($record, $scanType, $desc, null, $occurredAt, $scanTypeCode, $source);
         }
     }
 
@@ -240,7 +611,7 @@ class ShippingService
         ]);
 
         if ($resp->ok) {
-            $this->applyCarrierUpdate($record, '104', $reason);
+            $this->applyCarrierUpdate($record, '104', $reason, null, null, null, 'manual');
         }
 
         return $resp->ok;
@@ -258,30 +629,100 @@ class ShippingService
         ?string $trackingUrl = null,
         ?string $occurredAt = null,
         ?string $scanTypeCode = null,
+        string $source = 'manual',
     ): void {
         $mapped = $this->mapCarrierStatus($rawStatus, $scanTypeCode);
-        $previous = $record->status;
+        $providerStatus = $statusRaw ?? $rawStatus;
+        $eventTime = $this->carrierEventTime($occurredAt);
+        $eventHash = $this->traceEventHash(
+            $record->waybill_number,
+            $rawStatus,
+            $scanTypeCode,
+            $statusRaw,
+            $occurredAt,
+        );
 
-        if ($mapped === null) {
-            // Status tak dikenal: simpan mentahnya untuk audit, jangan cascade.
-            $record->update([
-                'status_raw' => $statusRaw ?? $rawStatus,
-                'last_status_at' => now(),
-                'tracking_url' => $trackingUrl ?? $record->tracking_url,
-            ]);
+        DB::transaction(function () use (
+            $record,
+            $mapped,
+            $providerStatus,
+            $rawStatus,
+            $trackingUrl,
+            $eventTime,
+            $eventHash,
+            $source,
+        ): void {
+            $record = ShippingRecord::query()->lockForUpdate()->findOrFail($record->id);
 
-            return;
-        }
+            try {
+                ShippingTrackingEvent::firstOrCreate(
+                    [
+                        'shipping_record_id' => $record->id,
+                        'event_hash' => $eventHash,
+                    ],
+                    [
+                        'order_id' => $record->order_id,
+                        'provider' => 'jnt',
+                        'waybill_number' => $record->waybill_number,
+                        'provider_status' => (string) ($rawStatus ?? ''), // label pendek, varchar(80)
+                        'normalized_status' => $mapped,
+                        'source' => in_array($source, ['webhook', 'poll', 'manual'], true) ? $source : 'manual',
+                        'description' => $statusRaw ?? $rawStatus,
+                        'occurred_at' => $eventTime,
+                    ],
+                );
+            } catch (\Illuminate\Database\QueryException $exception) {
+                if (! str_contains($exception->getMessage(), 'uniq_shipping_tracking_event')) {
+                    throw $exception;
+                }
+            }
 
-        DB::transaction(function () use ($record, $mapped, $statusRaw, $rawStatus, $trackingUrl, $previous, $occurredAt) {
+            $previous = $record->status;
+            if ($record->last_status_at !== null && $eventTime->lt($record->last_status_at)) {
+                Log::warning('carrier_update_ignored_stale', [
+                    'shipping_record_id' => $record->id,
+                    'from' => $previous,
+                    'to' => $mapped,
+                    'event_time' => $eventTime->toIso8601String(),
+                    'last_status_at' => $record->last_status_at->toIso8601String(),
+                ]);
+
+                return;
+            }
+
+            if ($mapped === null) {
+                $record->update([
+                    'status_raw' => $providerStatus,
+                    'last_status_at' => $eventTime,
+                    'tracking_url' => $trackingUrl ?? $record->tracking_url,
+                ]);
+
+                return;
+            }
+
+            if (! $this->states->canTransitionShipping($previous, $mapped)) {
+                $record->update([
+                    'status_raw' => $providerStatus,
+                    'last_status_at' => $eventTime,
+                    'tracking_url' => $trackingUrl ?? $record->tracking_url,
+                ]);
+                Log::warning('carrier_update_ignored_regression', [
+                    'shipping_record_id' => $record->id,
+                    'from' => $previous,
+                    'to' => $mapped,
+                ]);
+
+                return;
+            }
+
             $record->update([
                 'status' => $mapped,
-                'status_raw' => $statusRaw ?? $rawStatus,
-                'last_status_at' => $occurredAt ? \Illuminate\Support\Carbon::parse($occurredAt) : now(),
+                'status_raw' => $providerStatus,
+                'last_status_at' => $eventTime,
                 'tracking_url' => $trackingUrl ?? $record->tracking_url,
             ]);
 
-            $order = $record->order;
+            $order = $record->order()->lockForUpdate()->first();
             if ($order) {
                 $order->update(['shipping_status' => $mapped]);
                 $this->cascadeOrderStatus($order, $mapped);
@@ -292,7 +733,7 @@ class ShippingService
                     'waybill' => $record->waybill_number,
                     'from' => $previous,
                     'to' => $mapped,
-                    'raw' => $statusRaw ?? $rawStatus,
+                    'raw' => $providerStatus,
                 ]);
 
                 if ($order) {
@@ -305,14 +746,87 @@ class ShippingService
     protected function cascadeOrderStatus(Order $order, string $shippingStatus): void
     {
         $target = match ($shippingStatus) {
-            'in_transit' => in_array($order->order_status, ['pending_payment', 'processing'], true) ? 'shipped' : null,
+            'in_transit' => 'shipped',
             'delivered' => 'delivered',
             'returned' => 'return_in_process',
             default => null,
         };
 
         if ($target && $order->order_status !== $target) {
-            $order->update(['order_status' => $target]);
+            if ($this->states->canTransition($order, $target, 'carrier')) {
+                $transitioned = $this->states->transition(
+                    $order,
+                    $target,
+                    null,
+                    'carrier',
+                    ['shipping_status' => $shippingStatus],
+                );
+
+                // Kontrak (revisi 2026-08-25): COD lunas saat shipping
+                // DELIVERED via ReturnService::markDeliveredAndSettleCod
+                // (primary; idempotent; menulis payments record).
+                if ($transitioned && $target === 'delivered') {
+                    $this->returns->markDeliveredAndSettleCod($order->fresh());
+                }
+
+                if ($transitioned && $target === 'return_in_process') {
+                    // Pesanan ditolak/dikembalikan kurir sebelum lunas: buat
+                    // kasus retur otomatis supaya penutupan terdokumentasi.
+                    $this->returns->openRefusedReturnCase($order->fresh());
+                }
+
+                return;
+            }
+
+            Log::warning('carrier_order_transition_rejected', [
+                'order_id' => $order->id,
+                'from' => $order->order_status,
+                'to' => $target,
+                'shipping_status' => $shippingStatus,
+            ]);
+
+            $this->notifyCarrierReturnRejected($order, $target);
+        }
+    }
+
+    /**
+     * Item 4 antrean (owner 2026-09-27): transisi kurir yang ditolak tidak
+     * boleh hanya masuk log teknis. Admin diberi tahu sekali per pesanan
+     * supaya paket kembali ditangani manual lewat WhatsApp.
+     */
+    public function notifyCarrierReturnRejected(Order $order, string $target): void
+    {
+        $sudahAda = \App\Models\AdminNotification::query()
+            ->where('type', 'carrier_return_rejected')
+            ->where('order_id', $order->id)
+            ->exists();
+        if ($sudahAda) {
+            return;
+        }
+
+        \App\Models\AdminNotification::create([
+            'type' => 'carrier_return_rejected',
+            'title' => 'Paket Kembali Tak Tercatat '.$order->order_number,
+            'body' => 'Scan returned J&T diterima saat status pesanan '.$order->order_status.', sehingga kasus retur tidak bisa dibuat otomatis. Tangani manual lewat WhatsApp.',
+            'order_id' => $order->id,
+            'href' => route('admin.orders.show', $order),
+        ]);
+    }
+
+    protected function carrierEventTime(?string $occurredAt): Carbon
+    {
+        if (blank($occurredAt)) {
+            return now();
+        }
+
+        try {
+            return Carbon::parse($occurredAt);
+        } catch (Throwable $exception) {
+            Log::warning('carrier_event_time_invalid', [
+                'exception_class' => $exception::class,
+            ]);
+
+            return now();
         }
     }
 
@@ -339,36 +853,252 @@ class ShippingService
     }
 
     /**
-     * Ambil trace terbaru dari respons trace J&T.
-     * data.details[] : { scanType, scanCode, scanTypeCode, desc, scanTime }.
+     * Peta nomor resi -> daftar scan dari satu respons pelacakan.
+     *
+     * Respons pelacakan menyimpan data sebagai DAFTAR elemen, satu elemen per
+     * nomor resi yang diminta, masing-masing membawa billCode sendiri. Kunci
+     * peta diambil dari situ supaya hasil banyak resi bisa dibagi per resi
+     * tanpa tertukar. Elemen tanpa billCode dilewati karena tidak bisa
+     * dipastikan milik resi mana.
+     *
+     * Catatan penting: membaca hanya elemen pertama (data.0.details) membuat
+     * panggilan gabungan membuang kabar resi kedua dan seterusnya tanpa suara.
+     *
+     * @return array<string, array<int|string, mixed>>
      */
-    protected function extractLatestTrace(JntResponse $resp): array
+    protected function traceDetailsByBillCode(JntResponse $resp): array
     {
-        $details = $resp->get('details')
-            ?? data_get($resp->data, 'data.0.details')
-            ?? data_get($resp->data, 'data.details')
-            ?? [];
+        $list = data_get($resp->data, 'data');
 
-        if (! is_array($details) || empty($details)) {
-            $status = $resp->get('scanType') ?? $resp->get('scanCode');
-
-            return [$status !== null ? (string) $status : null, $resp->get('scanTypeCode'), $resp->get('desc'), $resp->get('scanTime')];
+        if (! is_array($list)) {
+            return [];
         }
 
+        $peta = [];
+
+        foreach (array_is_list($list) ? $list : [$list] as $elemen) {
+            if (! is_array($elemen)) {
+                continue;
+            }
+
+            $kode = $elemen['billCode'] ?? $elemen['waybillNo'] ?? null;
+
+            if ($kode === null || $kode === '') {
+                continue;
+            }
+
+            $peta[(string) $kode] = is_array($elemen['details'] ?? null) ? $elemen['details'] : [];
+        }
+
+        return $peta;
+    }
+
+    /**
+     * Daftar scan untuk respons yang hanya punya satu kemungkinan pemilik:
+     * bentuk lama (data berupa objek berisi details) atau respons tanpa
+     * penanda resi sama sekali.
+     *
+     * @return array<int|string, mixed>
+     */
+    protected function traceDetailsTunggal(JntResponse $resp): array
+    {
+        $list = data_get($resp->data, 'data');
+
+        if (is_array($list)) {
+            $elemen = array_is_list($list) ? ($list[0] ?? null) : $list;
+
+            if (is_array($elemen) && is_array($elemen['details'] ?? null)) {
+                return $elemen['details'];
+            }
+        }
+
+        $details = $resp->get('details');
+
+        return is_array($details) ? $details : [];
+    }
+
+    /**
+     * Scan terbaru dari daftar scan (untuk memajukan status pengiriman).
+     *
+     * J&T mengembalikan details urut TERBARU dahulu; jangan andalkan urutan,
+     * pilih scan dengan scanTime paling akhir.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @return array{0: string|null, 1: mixed, 2: mixed, 3: mixed}
+     */
+    protected function extractLatestTraceFrom(array $details): array
+    {
+        usort($details, fn ($a, $b) => strcmp(
+            (string) ($a['scanTime'] ?? $a['time'] ?? ''),
+            (string) ($b['scanTime'] ?? $b['time'] ?? ''),
+        ));
         $latest = end($details);
 
         return [
-            (string) (data_get($latest, 'scanType') ?? data_get($latest, 'scanCode') ?? ''),
+            // scanCode numerik = kunci status_map (1/3/4/5/10...); scanType teks
+            // sebagai fallback untuk payload yang tidak membawa scanCode.
+            (string) (data_get($latest, 'scanCode') ?? data_get($latest, 'scanType') ?? ''),
             data_get($latest, 'scanTypeCode'),
             data_get($latest, 'desc'),
             data_get($latest, 'scanTime') ?? data_get($latest, 'time'),
         ];
     }
 
+    /**
+     * Cadangan untuk respons tanpa daftar scan: kunci status ada di root.
+     *
+     * @return array{0: string|null, 1: mixed, 2: mixed, 3: mixed}
+     */
+    protected function extractRootTrace(JntResponse $resp): array
+    {
+        // Kunci mapping = scanCode numerik (status_map), fallback teks scanType.
+        $status = $resp->get('scanCode') ?? $resp->get('scanType');
+
+        return [$status !== null ? (string) $status : null, $resp->get('scanTypeCode'), $resp->get('desc'), $resp->get('scanTime')];
+    }
+
+    /**
+     * Simpan seluruh riwayat scan sebagai tracking events (idempoten via
+     * event_hash, hash sama dengan applyCarrierUpdate, jadi tidak duplikat).
+     * Urutan lama -> baru agar timeline konsisten.
+     */
+    public function persistTraceEvents(ShippingRecord $record, array $details, string $source = 'poll'): void
+    {
+        if (empty($details)) {
+            return;
+        }
+
+        $details = array_values($details);
+        usort($details, fn ($a, $b) => strcmp(
+            (string) ($a['scanTime'] ?? $a['time'] ?? ''),
+            (string) ($b['scanTime'] ?? $b['time'] ?? ''),
+        ));
+
+        foreach ($details as $detail) {
+            $raw = (string) ($detail['scanCode'] ?? $detail['scanType'] ?? '');
+            if ($raw === '') {
+                continue;
+            }
+            $code = isset($detail['scanTypeCode']) ? (string) $detail['scanTypeCode'] : null;
+            $desc = $detail['desc'] ?? null;
+            $at = $detail['scanTime'] ?? $detail['time'] ?? null;
+
+            ShippingTrackingEvent::firstOrCreate(
+                [
+                    'shipping_record_id' => $record->id,
+                    'event_hash' => $this->traceEventHash($record->waybill_number, $raw, $code, $desc, $at),
+                ],
+                [
+                    'order_id' => $record->order_id,
+                    'provider' => 'jnt',
+                    'waybill_number' => $record->waybill_number,
+                    'provider_status' => $raw, // label pendek (scanCode/scanType)
+                    'normalized_status' => $this->mapCarrierStatus($raw, $code),
+                    'source' => in_array($source, ['webhook', 'poll', 'manual'], true) ? $source : 'manual',
+                    'description' => $desc,
+                    'occurred_at' => $this->carrierEventTime($at),
+                ],
+            );
+        }
+    }
+
+    /**
+     * Simpan rincian tagihan ASLI dari J&T Cargo (endpoint pelacakan).
+     *
+     * Setiap scan pada respons `logistics/trace` membawa:
+     *   totalFreight = total tagihan (SUDAH termasuk asuransi)
+     *   freight      = ongkir saja
+     *   insuredFee   = asuransi
+     *   weight       = berat tagih versi J&T (angka final, bukan hitungan kami)
+     *
+     * Ini satu-satunya sumber biaya ekspedisi: tidak ada input manual dan
+     * tidak ada perhitungan sendiri. Kalau J&T belum melaporkan angkanya,
+     * kolomnya dibiarkan kosong dan pembukuan memakai asumsi checkout.
+     *
+     * @param  array<int|string, mixed>  $details
+     * @return bool  true bila rincian biaya tersimpan
+     */
+    public function syncActualCost(ShippingRecord $record, array $details): bool
+    {
+        $best = null;
+        $bestAt = '';
+
+        foreach ($details as $detail) {
+            if (! is_array($detail) || ! isset($detail['totalFreight']) || ! is_numeric($detail['totalFreight'])) {
+                continue;
+            }
+
+            $at = (string) ($detail['scanTime'] ?? $detail['time'] ?? '');
+            if ($best === null || $at >= $bestAt) {
+                $best = $detail;
+                $bestAt = $at;
+            }
+        }
+
+        if ($best === null) {
+            return false;
+        }
+
+        $total = round((float) $best['totalFreight'], 2);
+        // Rp 0 bukan tagihan yang sah; perlakukan sebagai data belum ada.
+        if ($total <= 0) {
+            return false;
+        }
+
+        $number = fn (string $key): ?float => isset($best[$key]) && is_numeric($best[$key])
+            ? round((float) $best[$key], 2)
+            : null;
+
+        $record->update([
+            'shipping_cost' => $total,
+            'shipping_freight' => $number('freight'),
+            'shipping_insured_fee' => $number('insuredFee'),
+            'shipping_chargeable_weight_kg' => $number('weight'),
+            'shipping_cost_synced_at' => now(),
+        ]);
+
+        Log::channel('jnt')->info('Shipping actual cost synced from J&T', [
+            'waybill_ref' => substr(hash('sha256', (string) $record->waybill_number), 0, 12),
+            'total_freight' => $total,
+            'freight' => $number('freight'),
+            'insured_fee' => $number('insuredFee'),
+            'chargeable_weight_kg' => $number('weight'),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Hash identitas event (dipakai applyCarrierUpdate & persistTraceEvents).
+     */
+    protected function traceEventHash(
+        string $waybill,
+        ?string $rawStatus,
+        ?string $scanTypeCode,
+        ?string $statusRaw,
+        ?string $occurredAt,
+    ): string {
+        return hash('sha256', implode('|', [
+            $waybill,
+            (string) ($rawStatus ?? ''),
+            (string) ($scanTypeCode ?? ''),
+            (string) ($statusRaw ?? ''),
+            (string) ($occurredAt ?? ''),
+        ]));
+    }
+
     /** bizContent untuk /api/order/addOrder (spesifikasi resmi J&T Cargo). */
     protected function buildCreateOrderPayload(Order $order, float $weightKg): array
     {
         $currency = config('jnt.defaults.price_currency');
+        $snapshot = is_array($order->shipping_package_snapshot ?? null)
+            ? $order->shipping_package_snapshot
+            : [];
+        $snapshotWeight = (float) ($order->shipping_chargeable_weight_kg ?? $snapshot['chargeable_weight_kg'] ?? 0);
+        if ($snapshotWeight > 0) {
+            $weightKg = $snapshotWeight;
+        }
+        $packageCount = max(1, (int) ($snapshot['package_count'] ?? $snapshot['total_quantity'] ?? 1));
 
         $items = $order->items->map(fn ($i) => [
             'itemName' => $i->name,
@@ -382,7 +1112,7 @@ class ShippingService
         $receiverPhone = $order->customer_phone;
         $receiverAddress = trim($order->shipping_address_line1.' '.($order->shipping_address_line2 ?? ''));
 
-        return [
+        $payload = [
             'txlogisticId' => $order->order_number,
             'operateType' => 1, // 1=add, 2=modify
             'expressType' => config('jnt.defaults.express_type'),
@@ -394,7 +1124,11 @@ class ShippingService
                 : config('jnt.defaults.pay_type'),
             'goodsType' => config('jnt.defaults.goods_type'),
             'weight' => (string) $weightKg,
-            'totalQuantity' => max(1, (int) $order->items->sum('quantity')),
+            'totalQuantity' => $packageCount,
+            'length' => $snapshot['length_cm'] ?? null,
+            'width' => $snapshot['width_cm'] ?? null,
+            'height' => $snapshot['height_cm'] ?? null,
+            'volume' => $snapshot['volume_cm3'] ?? null,
             'remark' => $order->notes,
             'sender' => [
                 'name' => config('jnt.sender.name'),
@@ -422,6 +1156,8 @@ class ShippingService
             ],
             'items' => $items,
         ];
+
+        return array_filter($payload, static fn ($value): bool => $value !== null);
     }
 
     protected function logEvent(string $type, $entity, array $payload): void

@@ -2,10 +2,15 @@ import { Head, Link, router } from "@inertiajs/react"
 import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/ui/status-badge"
+import {
+  WhatsAppConnectionCard,
+  type WhatsAppConnectionSummary,
+} from "@/components/admin/whatsapp-connection-card"
+import { Button } from "@/components/admin/ui/button"
+import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { Switch } from "@/components/admin/ui/switch"
+import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
 import AdminLayout from "@/layouts/admin-layout"
-import { cn } from "@/lib/utils"
 
 interface AutomationRow {
   id: number
@@ -21,20 +26,23 @@ interface AutomationRow {
   deactivateUrl: string
 }
 
+
 export default function WhatsAppIndex({
   title,
   description,
   automations = [],
-  connectionUrl,
-  messagesUrl,
   totalTemplates = 0,
+  replySignature = "",
+  connection,
+  pairingUrl,
 }: {
   title: string
   description: string
   automations: AutomationRow[]
-  connectionUrl: string
-  messagesUrl: string
   totalTemplates?: number
+  replySignature?: string
+  connection?: WhatsAppConnectionSummary
+  pairingUrl?: string
 }) {
   const [busyId, setBusyId] = React.useState<number | null>(null)
 
@@ -49,23 +57,35 @@ export default function WhatsAppIndex({
       title={title}
       description={description}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <Link href={messagesUrl}>Log pesan</Link>
-          </Button>
-          <Button asChild>
-            <Link href={connectionUrl}>
-              <Icon name="whatsapp" className="size-4" aria-hidden="true" />
-              Status Koneksi
+        pairingUrl ? (
+          <Button asChild variant="secondary" size="sm">
+            <Link href={pairingUrl}>
+              <Icon name="link" className="size-3.5" aria-hidden="true" />
+              {connection?.connected ? "Kelola sambungan" : "Sambungkan nomor"}
             </Link>
           </Button>
-        </div>
+        ) : undefined
       }
     >
       <Head title={`${title} | Admin`} />
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="hidden grid-cols-[minmax(0,1fr)_8rem_5rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-tight text-muted-foreground sm:grid">
+      <WhatsAppTabs active="templates" />
+
+      {/* Ringkasan status sambungan WhatsApp (owner 2026-09-17) */}
+      {connection ? (
+        <WhatsAppConnectionCard connection={connection} className="mb-4" actionHref={null} />
+      ) : null}
+
+      <div className="mb-3 space-y-1 text-xs leading-5 text-muted-foreground">
+        <p>
+          Urutan daftar mengikuti alur pesanan: pesanan dibuat, instruksi pembayaran, pesanan diproses, resi dikirim,
+          pesanan sampai, lalu tindak lanjut masalah dan retur.
+        </p>
+        {replySignature ? <p>Setiap pesan otomatis ditutup footer: {replySignature}</p> : null}
+      </div>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+        <div className="hidden grid-cols-[minmax(0,1fr)_7rem_9rem] gap-4 border-b border-border px-4 py-3 text-xs font-semibold tracking-tight text-muted-foreground sm:grid">
           <span>Trigger event</span>
           <span>Status</span>
           <span className="text-right">Aksi</span>
@@ -82,7 +102,7 @@ export default function WhatsAppIndex({
               return (
                 <li
                   key={row.id}
-                  className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_8rem_5rem] sm:items-center sm:gap-4"
+                  className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_7rem_9rem] sm:items-center sm:gap-4"
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-primary">
@@ -97,31 +117,17 @@ export default function WhatsAppIndex({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 sm:justify-start">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={active}
-                      aria-label={`${active ? "Nonaktifkan" : "Aktifkan"} ${row.label}`}
-                      disabled={busy}
-                      onClick={() => toggle(row)}
-                      className={cn(
-                        "relative h-7 w-12 shrink-0 rounded-full transition-colors",
-                        active ? "bg-foreground" : "bg-muted",
-                        busy && "opacity-60",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 size-6 rounded-full bg-surface shadow transition-transform",
-                          active ? "translate-x-5" : "translate-x-0.5",
-                        )}
-                      />
-                    </button>
+                  <div>
                     <StatusBadge status={active ? "active" : "inactive"} />
                   </div>
 
-                  <div className="flex sm:justify-end">
+                  <div className="flex items-center gap-2 sm:justify-end">
+                    <Switch
+                      checked={active}
+                      disabled={busy}
+                      label={`${active ? "Nonaktifkan" : "Aktifkan"} ${row.label}`}
+                      onCheckedChange={() => toggle(row)}
+                    />
                     <Button asChild variant="secondary" className="h-9 px-3">
                       <Link href={row.editUrl} aria-label={`Edit ${row.label}`}>
                         <Icon name="pencil" className="size-4" aria-hidden="true" />
@@ -140,6 +146,7 @@ export default function WhatsAppIndex({
           <p>Halaman 1 dari 1</p>
         </div>
       </section>
+
     </AdminLayout>
   )
 }
