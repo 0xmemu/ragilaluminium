@@ -77,3 +77,9 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - Media lewat pipeline resmi dengan dedupe checksum; aset bersama (banner dan video) dipakai ulang.
 - Temuan: syncFromCatalog() mengarsipkan model tanpa produk tetapi tidak mereaktivasi; 7 model yang kini berisi produk diaktifkan kembali lewat skrip (aktifkan_model.php). Semua halaman model menjawab 200.
 - Untuk impor XLSX nanti: setelah impor, jalankan reaktivasi model (syncFromCatalog hanya membuat baris baru dan mengarsipkan wadah kosong).
+
+## Uji fitur impor XLSX katalog (13 Okt 2026, lanjutan)
+
+- 10 produk (uji katalog) masuk lewat alur impor resmi: login admin, Periksa file (0 galat), Simpan; job selesai 120/120 baris, 0 gagal; produk aktif dengan SKU sistem; katalog 11 produk, 132 varian, 172 lampiran; semua halaman produk dan model 200.
+- Pakai-ulang media terbukti: dengan URL menunjuk object_key pustaka yang ada, impor kedua menambah 0 aset baru (172 lampiran menunjuk 75 aset lama).
+- Catatan: URL di berkas impor wajib menunjuk berkas pustaka yang benar-benar ada (resolver mempercayai URL internal tanpa cek keberadaan); dan baris model yang pernah draft tidak aktif otomatis setelah impor, jalankan skrip reaktivasi (aktifkan_model.php).
