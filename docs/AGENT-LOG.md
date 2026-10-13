@@ -4773,3 +4773,9 @@ jadi yang live sama dengan yang ter-commit.
 Catatan koordinasi: commit 271b12ce belum di-push oleh pemiliknya dan saya
 tidak mendorong push-nya; entri log ini di-commit tanpa push supaya tidak
 membawa commit orang lain ke origin lebih awal.
+
+## 2026-10-13 01:19 UTC | zcode | Standard | 8a456835 | selesai
+Lingkup: Redesain struktur informasi halaman Profil & Kontak Toko (`resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx`) ke satu permukaan tabel terpadu tanpa `SectionCard` terpisah; kelompok Identitas Toko, Kontak & Operasional, dan Tautan Resmi (marketplace + media sosial dalam satu tabel dengan Buka/Salin URL).
+Dampak spec: tidak berubah
+Untuk agent berikutnya: Jaga struktur satu permukaan tabel, jangan kembalikan ke `SectionCard` per kategori, dan hindari kelas `uppercase` pada subheader pembagi tabel (dijaga `uppercase-guard.test.ts`).
+Bukti: `npx eslint resources/js/pages/Admin/StorefrontPlatforms/Edit.tsx` (0 error/warning), `npm run typecheck` (lulus), `npx vitest run tests/frontend/platforms.test.ts tests/frontend/admin-edit-guard.test.ts tests/frontend/uppercase-guard.test.ts` (14 lulus), `php artisan test --filter=StorefrontPlatformsAdminTest` (2 lulus, 24 assertions), `npm run build` (selesai 19.61s).
