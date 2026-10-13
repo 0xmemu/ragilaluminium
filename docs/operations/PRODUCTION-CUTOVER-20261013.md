@@ -31,3 +31,12 @@ Rilis aktif tetap 20261013-v1.0.1 ditambah hotfix dua berkas dari commit e788b20
 - Media: MEDIA_DISK=s3 memakai bucket ra-media dengan kredensial yang sudah ada di server, URL publik media.333labs.tech; media:disk-check PASS (tulis, baca, hapus).
 - WhatsApp: layanan baileys-bot aktif di port 3005 dengan program dan dependensi selaras dengan 209; menunggu pemindaian QR oleh owner di panel admin, satu-satunya langkah yang butuh pemilik.
 - Sisa langkah owner: pemindaian QR WhatsApp, rotasi kata sandi admin (sandi lama pernah tampil di percakapan), dan verifikasi login browser.
+
+## Sisir keselarasan 202 vs 209 (13 Okt 2026, lanjutan)
+
+Hash isi kode rilis 202 selaras dengan repo 209 (selisih yang tersisa hanya akhir baris CRLF dan dua dokumen baru). Tabel referensi basis data selaras; master alamat J&T 202 lebih baru. Ditambal dalam sesi ini:
+
+- Env bisnis disalin dari 209: BRAND_PHONE, SHIPPING_LOCAL_BASE_RATE 15000, SHIPPING_LOCAL_PER_KG 2000, SHIPPING_DEFAULT_ITEM_WEIGHT 1.0, STOREFRONT_PRODUCT_CARD_DISCOUNT_PERCENT 0, SESSION_LIFETIME 7200, WHATSAPP_LANGUAGE id. Sebelum ini beranda menampilkan nomor default 0851-9966-6810.
+- Reverb dipasang (laravel-reverb.service, port 8080, autostart) dengan kunci baru; proxy /app sudah ada di vhost sejak persiapan; frontend dibangun ulang agar kunci masuk bundel; handshake WebSocket 101 lewat origin maupun Cloudflare.
+- Aset media hasil uji unggah owner dipulihkan: tiga varian webp dinaikkan ke R2, URL publik 200, dan model media membangun ulang URL dari disk aktif sehingga tidak perlu ubah basis data.
+- Belum diport (butuh keputusan owner): cron health-check 5 menit dan agregator alert milik 209; kanal notifikasi harus dipilih lebih dulu.
