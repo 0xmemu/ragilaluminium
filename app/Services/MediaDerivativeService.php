@@ -209,8 +209,12 @@ class MediaDerivativeService
         $target = $tmpPoster . '.webp';
         @rename($tmpPoster, $target);
 
+        // Kutip harus diteruskan ke ffmpeg agar koma di dalam ekspresi
+        // min(400,iw) tidak dianggap pemisah filter; tanpa escapeshellarg
+        // shell menghapus kutip dan ffmpeg gagal ("No such filter", temuan 202).
+        $scaleFilter = "scale='min(400,iw)':-2";
         $cmd = $ffmpeg . ' -y -ss 0.5 -i ' . escapeshellarg($absoluteSourcePath)
-            . ' -frames:v 1 -vf scale=\'min(400,iw)\':-2 '
+            . ' -frames:v 1 -vf ' . escapeshellarg($scaleFilter) . ' '
             . escapeshellarg($target) . ' 2>&1';
         shell_exec($cmd);
 
