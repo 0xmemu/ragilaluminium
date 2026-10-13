@@ -170,6 +170,7 @@ export default function CategoryForm({
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">
                       /products/
                     </span>
+                    {/* Padding kiri harus melewati awalan /products/ (sekitar 66px) supaya ketikan tidak menumpuk di atasnya. */}
                     <Input
                       id="cat-slug"
                       value={form.data.slug}
@@ -181,7 +182,7 @@ export default function CategoryForm({
                           ? form.data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
                           : "otomatis-dari-nama"
                       }
-                      className="pl-22 font-mono text-xs"
+                      className="pl-24 font-mono text-xs"
                     />
                   </div>
                 </Field>

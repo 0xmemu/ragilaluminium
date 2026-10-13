@@ -120,7 +120,7 @@ function CheckoutItemNoteRow({
   return (
     <div className="py-3.5 space-y-2.5">
       <div className="flex gap-3 items-start">
-        <div className="size-16 sm:size-18 shrink-0 overflow-hidden rounded-md border border-border/80 bg-surface-muted">
+        <div className="size-16 sm:size-[4.5rem] shrink-0 overflow-hidden rounded-md border border-border/80 bg-surface-muted">
           {item.image ? (
             <img
               src={item.image}
