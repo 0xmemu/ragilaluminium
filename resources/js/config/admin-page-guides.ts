@@ -66,6 +66,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
       "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
       "Logo dan favicon diganti dari Media Library pada seksi Aset Brand, dan ikut tersimpan saat menekan Simpan.",
+      "Perubahan logo dan favicon langsung terlihat setelah disimpan. Bila ikon tab belum berganti, muat ulang halaman: browser menyimpan favicon cukup agresif.",
     ],
   },
   "admin.storefront-platforms.edit": {
@@ -80,6 +81,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Tautan marketplace tampil pada badge kepercayaan etalase, informasi toko, dan footer publik.",
       "Nomor WhatsApp terhubung langsung dengan tombol konsultasi cepat pembeli.",
       "Logo dan favicon diganti dari Media Library pada seksi Aset Brand, dan ikut tersimpan saat menekan Simpan.",
+      "Perubahan logo dan favicon langsung terlihat setelah disimpan. Bila ikon tab belum berganti, muat ulang halaman: browser menyimpan favicon cukup agresif.",
     ],
   },
   "admin.testimonials.index": {

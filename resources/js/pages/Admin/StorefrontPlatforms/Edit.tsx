@@ -345,7 +345,8 @@ export default function StorefrontPlatformsEdit({
         {/* 2. Kontak & Jam Kerja */}
         <div className="space-y-4">
           <FormErrorSummary errors={kontakForm.errors} />
-          <div className="grid items-start gap-6 lg:grid-cols-2">
+          {/* Tanpa items-start supaya dua kartu berbagi tinggi sama dan tepi bawah rata. */}
+          <div className="grid gap-6 lg:grid-cols-2">
             <SectionCard
               title="Informasi Kontak & Komunikasi"
               description="Saluran komunikasi utama untuk pembeli dan layanan pelanggan."
@@ -450,14 +451,8 @@ export default function StorefrontPlatformsEdit({
         <div className="space-y-4">
           <FormErrorSummary errors={brandForm.errors} />
 
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-            Logo dan favicon adalah identitas toko yang tampil di header situs,
-            tab browser, dan ikon aplikasi di layar ponsel. Perubahan langsung
-            terlihat setelah disimpan; muat ulang halaman bila ikon tab belum
-            berganti karena browser menyimpannya cukup agresif.
-          </div>
-
-          <div className="grid items-start gap-6 lg:grid-cols-2">
+          {/* Tanpa items-start supaya dua kartu berbagi tinggi sama dan tepi bawah rata. */}
+          <div className="grid gap-6 lg:grid-cols-2">
             {/* Logo */}
             <SectionCard
               title="Logo Toko"
