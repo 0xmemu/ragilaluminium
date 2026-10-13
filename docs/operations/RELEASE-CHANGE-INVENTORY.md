@@ -12,7 +12,7 @@ Klasifikasi di bawah berdasarkan fungsi dan letak berkas, **bukan** otorisasi un
 | Kandidat sementara | 6 | Empat skrip patch, satu arsip CTA, satu test `.bak`; dipertahankan sampai fungsi dan pemilik diverifikasi. |
 | Belum diketahui berdasarkan lokasi | 0 | Kategori file dapat ditentukan, tetapi asal, pemilik, dan kelengkapan banyak perubahan tetap belum diketahui. |
 
-**Batas rilis:** `git diff --check` menemukan spasi akhir pada `resources/js/components/shared/shipping-track-panel.tsx:132`. Empat migrasi belum dilacak sementara dokumen skema kanonik tidak berubah; jangan mengasumsikan spesifikasi telah lengkap. VPS 202 masih NO-GO menurut `PRODUCTION-READINESS-REPORT.md`. Tidak ada build penuh, commit, pembersihan, merge, tag, atau deploy selama inventaris ini.
+**Batas rilis saat inventaris awal:** spasi akhir pada `resources/js/components/shared/shipping-track-panel.tsx:132` telah dibetulkan dan `git diff --check` kini lulus. Empat migrasi belum dilacak sementara dokumen skema kanonik tidak berubah; jangan mengasumsikan spesifikasi telah lengkap. VPS 202 masih NO-GO menurut `PRODUCTION-READINESS-REPORT.md`. Tidak ada build penuh, commit, pembersihan, merge, tag, atau deploy selama inventaris ini.
 
 ## Daftar lengkap menurut kategori
 
