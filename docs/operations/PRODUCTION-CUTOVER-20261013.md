@@ -70,3 +70,10 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - Dua bug diperbaiki di kode: job media kini menyimpan referensi poster (derivatives) dan kutip filter ffmpeg diteruskan lewat escapeshellarg (commit 9400c3ad dan 0368883c, terpasang di rilis aktif 202).
 - ffmpeg dipasang di 202 sebagai dependency wajib untuk thumbnail video (checklist server baru: wajib ffmpeg).
 - Aset video 966 diproses ulang: poster 10.962 byte menjawab 200, tampil sebagai thumb video di halaman produk dan kartu Media Library.
+
+## Katalog uji 10 produk (13 Okt 2026, lanjutan)
+
+- 10 produk disalin dari 209 (6 JENDELA, 4 BOVEN), masing-masing 12 varian, 6 atribut, 8 lampiran media. Katalog produksi kini 11 produk, 132 varian, 92 lampiran; /products/all menampilkan 11 SKU.
+- Media lewat pipeline resmi dengan dedupe checksum; aset bersama (banner dan video) dipakai ulang.
+- Temuan: syncFromCatalog() mengarsipkan model tanpa produk tetapi tidak mereaktivasi; 7 model yang kini berisi produk diaktifkan kembali lewat skrip (aktifkan_model.php). Semua halaman model menjawab 200.
+- Untuk impor XLSX nanti: setelah impor, jalankan reaktivasi model (syncFromCatalog hanya membuat baris baru dan mengarsipkan wadah kosong).
