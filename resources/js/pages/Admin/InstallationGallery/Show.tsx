@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from "@inertiajs/react"
+import { Head, router, useForm } from "@inertiajs/react"
 import * as React from "react"
 
 import { RowActions, RowActionsMenu, rowActionTextClass } from "@/components/admin/row-actions"
@@ -107,7 +107,7 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((row, index) => (
+                {rows.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-muted/40">
                     {/* Thumbnail */}
                     <td className="px-4 py-3 align-middle">
@@ -178,7 +178,7 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
                               className="size-3"
                               aria-hidden="true"
                             />
-                            {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "—"}
+                            {row.is_video ? "Video" : "Foto"} · {row.created_at ?? "-"}
                           </p>
                         </div>
                       )}
@@ -264,14 +264,7 @@ export default function InstallationGalleryShow({ title, group, backUrl }: ShowP
         )}
       </SectionCard>
 
-      <div className="mt-5">
-        <Button asChild variant="secondary">
-          <Link href={backUrl}>
-            <Icon name="arrow-left" className="size-4" aria-hidden="true" />
-            Kembali ke daftar grup
-          </Link>
-        </Button>
-      </div>
+
     </AdminLayout>
   )
 }

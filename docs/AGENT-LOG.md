@@ -4636,3 +4636,9 @@ lulus, pengukuran live dari browser dalam aplikasi sebelum dan sesudah
 untuk Logo & Favicon, tepi bawah rata), catatan Panduan tampil.
 
 Spec tidak berubah.
+
+## 2026-10-13 00:22 UTC | zcode | Trivial | - | selesai
+Lingkup: perbaikan anomali tombol kembali redundan dan fallback keterangan media di detail hasil pemasangan (InstallationGalleryShow, InstallationGallery, InstallationGalleryController)
+Dampak spec: tidak berubah
+Untuk agent berikutnya: tombol Kembali di header ditangani otomatis oleh AdminLayout backUrl; caption media di InstallationGallery::installationMedia mengirim installation_caption asli (tanpa fallback nama produk).
+Bukti: InstallationProjectAdminTest lulus (14 passed, 162 assertions), typecheck lulus, build-assets sukses.

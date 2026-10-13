@@ -78,7 +78,7 @@ class InstallationGalleryController extends Controller
         $standaloneByGroup = $standalone->groupBy('installation_group_id');
         foreach ($standaloneByGroup as $groupId => $rows) {
             $groupTitle = \App\Models\InstallationGroup::find($groupId)?->title
-                ?: ($rows->first()['caption'] ?: 'Grup mandiri');
+                ?: ($rows->first()['caption'] ?: ($rows->first()['fallback_label'] ?? 'Grup mandiri'));
 
             $groups->push([
                 'key' => 'group|'.$groupId,
