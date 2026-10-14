@@ -2,10 +2,12 @@
 """Umur objek terbaru di bucket backup R2, untuk pemeriksaan kebasian.
 
 Mencetak dua angka detik ke stdout: <umur_dump> <umur_binlog>.
-Keluar 0 kalau berhasil, 1 kalau gagal (kredensial hilang, jaringan, dsb).
+Keluar 0 kalau berhasil, 1 kalau gagal (kredensial hilang, jaringan, timeout).
 
-Kredensial dibaca dari .env aplikasi, sama seperti proses backup lain, supaya
-tidak ada salinan rahasia baru di disk. Skrip ini hanya membaca daftar objek.
+Batas waktu dipasang pada klien S3 supaya jaringan yang menggantung tidak
+membekukan monitor. Skrip ini hanya membaca daftar objek, tidak menulis apa pun
+ke bucket. Kredensial dibaca dari .env aplikasi, sama seperti proses backup
+lain, sehingga tidak ada salinan rahasia baru di disk.
 """
 import sys
 from datetime import datetime, timezone
@@ -14,6 +16,8 @@ ENV_FILE = '/var/www/ragilaluminium/shared/.env'
 BUCKET = 'ra-backup-prod'
 DUMP_PREFIX = 'mysql/'
 BINLOG_PREFIX = 'binlogs/'
+CONNECT_TIMEOUT = 10
+READ_TIMEOUT = 20
 
 
 def load_env(path):
@@ -45,6 +49,7 @@ def newest_age_seconds(s3, bucket, prefix):
 def main():
     try:
         import boto3
+        from botocore.config import Config
 
         env = load_env(ENV_FILE)
         s3 = boto3.client(
@@ -53,6 +58,11 @@ def main():
             aws_access_key_id=env['CLOUDFLARE_R2_ACCESS_KEY_ID'],
             aws_secret_access_key=env['CLOUDFLARE_R2_SECRET_ACCESS_KEY'],
             region_name='auto',
+            config=Config(
+                connect_timeout=CONNECT_TIMEOUT,
+                read_timeout=READ_TIMEOUT,
+                retries={'max_attempts': 2, 'mode': 'standard'},
+            ),
         )
         dump_age = newest_age_seconds(s3, BUCKET, DUMP_PREFIX)
         binlog_age = newest_age_seconds(s3, BUCKET, BINLOG_PREFIX)

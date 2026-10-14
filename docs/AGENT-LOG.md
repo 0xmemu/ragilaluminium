@@ -5865,3 +5865,64 @@ Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji brows
 Deploy ke 202: berkas dari `origin/main`, build ulang 70 detik, bundel `Library-DwKt5wmD.js` memuat area gulir baru (`overscroll-contain` 1, `max-h-40` 0) dan fitur sebelumnya tetap utuh (Pilih semua, pilihan hapus folder, penyaring berkas sistem). Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-modal-scroll-20261014-212041`.
 
 INSIDEN (jenis kedua, penyebab berbeda dari 14:05). Commit pertama saya menangkap 5 berkas: 1 milik saya + 4 `scripts/prod/backup/*` milik agent lain yang SUDAH ADA DI INDEX (staging area) karena agent itu menjalankan `git add` beberapa detik sebelumnya. `git commit` tanpa path menyapu SELURUH index, bukan hanya berkas yang saya `git add`. Diperbaiki sebelum push: `git reset --soft HEAD~1` (berkas agent kembali staged, tidak hilang) lalu `git commit --only <berkas saya>`. Pelajaran: periksa `git status` SEBELUM commit, dan pakai `--only <path>` bila index mungkin memuat pekerjaan agent lain.
+## 2026-10-14 14:45 UTC | zcode-backup-audit | Deep | paket A tuntas: monitor final + harness final
+
+Penuntasan paket A dari kondisi aktual server. Versi sebelumnya sudah terpasang dan
+berjalan; pekerjaan ini menutup empat cacat yang terbukti pada versi itu, lalu
+menjalankan satu harness final.
+
+Empat cacat yang diperbaiki:
+1. State alarm diset SEBELUM pengiriman, sehingga kegagalan kirim membuat alarm
+   hilang permanen dan tidak pernah dicoba ulang. Sekarang state baru diset
+   setelah pengiriman berhasil; notifikasi pulih juga membersihkan state setelah
+   terkirim.
+2. Hasil pemeriksaan R2 dipakai tanpa validasi, sehingga keluaran kosong terbaca
+   sebagai 0 (sehat). Sekarang keluaran tidak sah menghasilkan kode OFFSITE-CHECK,
+   bukan sehat.
+3. Tidak ada kunci, sehingga eksekusi bersamaan bisa menggandakan notifikasi.
+   Ditambah flock.
+4. Tidak ada batas waktu pada pemeriksaan R2, sehingga jaringan yang menggantung
+   membekukan monitor. Ditambah timeout pada pembungkus dan batas connect/read
+   pada klien S3.
+
+Tambahan pemeriksaan yang membedakan jenis kegagalan: OFFSITE-CHECK (pemeriksaan
+gagal atau timeout), DRILL-RUN (eksekusi drill terakhir tidak berhasil, dibaca
+dari blok terakhir restore-drill.log), ALARM-CONFIG, dan ALARM-KIRIM. Umur drill
+tetap merujuk keberhasilan terakhir (last-drill hanya ditulis saat drill lulus).
+
+Harness final, seluruh pengiriman dialihkan ke stub, data sintetis lokal, tanpa
+write ke bucket produksi. Sembilan skenario lulus: sehat (tanpa alarm), off-site
+basi (OFFSITE-DUMP+OFFSITE-BINLOG), akses R2 gagal (OFFSITE-CHECK), pemeriksaan
+R2 timeout (OFFSITE-CHECK, monitor berhenti di batas waktu 2 detik bukan 30),
+drill gagal (DRILL-RUN), kirim gagal (state tetap kosong lalu terkirim saat
+dicoba ulang), kegagalan berulang (kirim sekali, tidak spam), pemulihan
+(notifikasi pulih terkirim, state bersih), dan eksekusi bersamaan (3 serentak,
+1 mengirim, 2 dilewati kunci).
+
+CATATAN KEJUJURAN: semua PASS di atas adalah PASS dengan pengirim stub, BUKAN
+bukti pengiriman Telegram sungguhan. Tidak ada Telegram tambahan yang dikirim
+pada penuntasan ini.
+
+Cron terverifikasi: satu entri `20 * * * *` di crontab root, dijalankan sebagai
+root (perlu baca /root/backups dan kredensial R2). Permission 750 root:root pada
+kedua skrip. Bukti eksekusi otomatis: journalctl 21:20:01 mencatat
+`(root) CMD (/root/backups/backup-alert.sh ...)`, dan log monitor 21:20:01
+menunjukkan pemeriksaan berjalan. Perintah cron dijalankan manual dengan pengirim
+asli: keluaran bersih, nol pesan Telegram terkirim karena keadaan sehat.
+
+Keadaan aktual: semua pemeriksaan sehat, state bersih. Penanda ALERT-r2-upload
+dan ALERT-stale-or-restore hanya dicatat sebagai catatan, tidak dijadikan alarm,
+karena kontrak penanda di 202 memang ambigu (jalur sehat dan jalur gagal sama-sama
+meninggalkan berkas 0 byte).
+
+Alarm palsu 21:07 sudah dikoreksi: revisi pertama memakai penanda sebagai alarm
+dan mengirim kode MARKER yang keliru. Revisi final tidak lagi memakai penanda.
+
+Batas yang masih ada: (1) pemasangan /etc/logrotate.d/ragil-backups dan
+perbaikan kontrak penanda di /root/ragil-backup/*.sh DIBLOKIR guard, tidak
+dikerjakan dan tidak dicari jalan pintas; (2) pengiriman Telegram sungguhan tidak
+diuji ulang pada penuntasan ini sesuai batas cakupan.
+
+Checksum versi final (repo 209 dan terpasang di 202 identik):
+- backup-alert.sh 0fa79998dac3621ff1b8461d975543b7
+- r2_freshness.py fe774ae17ffea1f3c8ed01af4e411ca6
