@@ -1,0 +1,19 @@
+# Rotasi log backup dan alarm produksi 202.
+#
+# Mengapa ada: log ini ditulis dengan penambahan (>>) oleh skrip cron dan tidak
+# pernah dipangkas, sehingga tumbuh tanpa batas. ragil-binlog.log sudah melewati
+# 11 MB pada 14 Oktober 2026.
+#
+# copytruncate dipakai karena skrip menulis dengan >> ke berkas yang sama tanpa
+# menutup dan membukanya kembali, jadi rotasi dengan pemindahan nama berkas akan
+# membuat penulisan tetap mengarah ke berkas lama.
+/root/backups/*.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}

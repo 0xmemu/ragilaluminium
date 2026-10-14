@@ -5801,3 +5801,53 @@ Catatan yang perlu diingat agent berikutnya: hasil gerbang harus dibaca dengan a
 gerbang repo dijalankan tadi, ia melaporkan `AGENTS.md` dan `docs/AGENT-COLLABORATION.md`
 kotor, dan yang kotor memang berkas perubahan ini sendiri. Berkas kotor belum tentu milik
 agent lain; periksa dulu apakah itu pekerjaan Anda yang belum di-commit.
+
+## 2026-10-14 14:15 UTC | zcode-backup-audit | Deep | paket A: monitoring kegagalan backup 202
+
+Lanjutan audit ketahanan. Paket A dikerjakan lebih dulu karena tanpa monitoring,
+paket B sampai E bisa gagal tanpa terlihat.
+
+Yang ditemukan dan diperbaiki: skrip backup 202 sudah menulis penanda ALERT-*
+saat gagal, tetapi TIDAK ADA pembacanya di 202. Pemeriksa kebasian lama hanya
+melihat dump LOKAL yang segar, sehingga kegagalan unggah off-site ke R2 tidak
+pernah terlihat sampai salinan off-site benar-benar dibutuhkan. Pembacanya
+(scripts_alert_aggregator.sh) hanya ada di 209 dan memantau /root/backups milik
+209, bukan 202.
+
+Dipasang di 202:
+- `/root/backups/backup-alert.sh`: memeriksa kesegaran salinan OFF-SITE di R2,
+  umur dump lokal, umur drill restore, dan kelengkapan konfigurasi alarm.
+- `/root/backups/r2_freshness.py`: membaca umur objek terbaru di bucket backup R2.
+- cron root: `20 * * * *` tiap jam. Crontab lama dicadangkan ke
+  `/root/backups/crontab-before-backup-alert.txt` sebelum diubah.
+
+TEMUAN PENTING saat uji: penanda ALERT-* di 202 tidak pernah bisa bersih. Skrip
+di 202 memakai penulisan kosong (colon spasi lebih besar) untuk menyatakan sehat,
+sedangkan penandaan gagal memakai touch; keduanya meninggalkan berkas 0 byte,
+sehingga keberadaan berkas tidak membedakan gagal dari sehat. Di 209 kontraknya
+benar: skrip di sana MENGHAPUS berkas penanda saat sukses. Karena itu monitor
+ini mengambil alarm dari HASIL (kesegaran off-site, umur dump, umur drill),
+bukan dari penanda. Penanda hanya dicatat sebagai catatan. Dua penanda yang ada
+sekarang (ALERT-r2-upload, ALERT-stale-or-restore) sebenarnya menandai keadaan
+SEHAT, karena dibuat oleh jalur sukses.
+
+Kesalahan saya yang perlu dicatat: versi pertama monitor menjadikan penanda
+sebagai alarm, sehingga saat dijalankan terhadap keadaan nyata ia mengirim alarm
+palsu ke Telegram owner. Sudah dikoreksi, dan monitor dijalankan ulang dengan
+hasil bersih (tanpa alarm).
+
+Verifikasi: harness terisolasi di /tmp dengan ALERT_DIR, BACKUP_DIR, dan TG
+dialihkan ke stub, jadi backup asli dan bucket produksi tidak tersentuh. Enam
+skenario diuji: sehat (tanpa alarm), penanda+dump basi+drill basi (tiga alarm),
+masih rusak (tanpa kirim ulang), pulih (tiga alarm PULIH), off-site basi
+(OFFSITE-DUMP + OFFSITE-BINLOG), konfigurasi alarm hilang (ALARM-CONFIG).
+Keadaan nyata sekarang: semua pemeriksaan sehat, state bersih.
+
+Skrip versi terkontrol ditambahkan di `scripts/prod/backup/` beserta README dan
+konfigurasi logrotate. Dua langkah pemasangan DIBLOKIR guard dan menunggu owner:
+pemasangan `/etc/logrotate.d/ragil-backups` dan perbaikan konvensi penanda di
+`/root/ragil-backup/*.sh`.
+
+Paket B (backup konfigurasi terenkripsi), C (ketahanan Redis), D (backup media),
+dan E (drill database/PITR) belum dikerjakan, menunggu persetujuan tindakan
+spesifik.
