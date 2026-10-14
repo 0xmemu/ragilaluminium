@@ -391,12 +391,12 @@ export default function OrderStatus({
                   label="Nomor pesanan"
                   required
                   error={form.errors.order_number}
-                  hint="Contoh format: ORDYYMMNNNN, yaitu ORD lalu tanggal dan nomor urut. Nomor ini tertera di halaman konfirmasi setelah checkout."
+                  hint="Contoh format: ORD00000000, yaitu ORD lalu tanggal dan nomor urut. Nomor ini tertera di halaman konfirmasi setelah checkout."
                 >
                   <Input
                     value={form.data.order_number}
                     onChange={(event) => form.setData("order_number", event.target.value)}
-                    placeholder="ORDYYMMNNNN"
+                    placeholder="ORD00000000"
                     autoComplete="off"
                     className="font-mono"
                   />
