@@ -83,3 +83,12 @@ Entri "terhalang pemisahan akun" dikoreksi. Kredensial akun pemilik domain sudah
 - 10 produk (uji katalog) masuk lewat alur impor resmi: login admin, Periksa file (0 galat), Simpan; job selesai 120/120 baris, 0 gagal; produk aktif dengan SKU sistem; katalog 11 produk, 132 varian, 172 lampiran; semua halaman produk dan model 200.
 - Pakai-ulang media terbukti: dengan URL menunjuk object_key pustaka yang ada, impor kedua menambah 0 aset baru (172 lampiran menunjuk 75 aset lama).
 - Catatan: URL di berkas impor wajib menunjuk berkas pustaka yang benar-benar ada (resolver mempercayai URL internal tanpa cek keberadaan); dan baris model yang pernah draft tidak aktif otomatis setelah impor, jalankan skrip reaktivasi (aktifkan_model.php).
+
+## Pengujian End-to-End Import & Update XLSX (14 Okt 2026)
+
+Pengujian menyeluruh 3 skema XLSX (import katalog, update harga/stok, update media):
+- Bug yang ditemukan dan diperbaiki: previewUpdate 500 ($manualStock), normalisasi header v2 di verifier & diff, validasi kolom media v2, dan flush cache otomatis saat job selesai (commit 1a3128fb & 38eeba64).
+- Uji Update Harga: file invalid ditolak; file valid sukses (DB, UI, publik, partial safety terbukti).
+- Uji Update Media: file invalid ditolak; file valid sukses (gambar utama berubah, R2 200, harga/stok tidak terganggu).
+- Uji Import Produk Baru: file invalid ditolak; file valid sukses (produk aktif, varian & media terhubung, publik 200); import ulang ditolak (idempotensi V8).
+- Seluruh data uji telah dibersihkan dan produk baseline dipulihkan sempurna.

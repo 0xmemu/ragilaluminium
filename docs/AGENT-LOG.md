@@ -5094,3 +5094,29 @@ Temuan selama pengujian:
 3. Gambar per varian menempel pada tiap baris varian (perilaku resmi 19 September); berkas uji yang menaruh gambar warna yang sama di tiga baris kaca menghasilkan tiga lampiran per warna, bukan bug.
 
 Arsip: berkas uji /tmp/katalog-uji-10b.xlsx beserta skrip builder dan pembersih di 202; riwayat job impor nomor 1 (percobaan pertama, hasilnya dibersihkan) dan nomor 2 (sukses) tetap tercatat di tabel import_jobs sebagai jejak audit.
+
+## 2026-10-14 05:00 UTC | zcode | Deep | pengujian end-to-end import dan update via XLSX (skema v2)
+
+Menjawab permintaan owner untuk menguji menyeluruh 3 skema XLSX (import produk baru, update harga/stok, update media):
+
+1. Temuan & Perbaikan Kode:
+   - Endpoint previewUpdate (/admin/imports/preview-update) sebelumnya melempar HTTP 500 karena variabel $manualStock tidak terdefinisi.
+   - Lapisan verifikasi (UpdateImportVerifier) dan pembuat selisih (UpdatePreviewDiff) belum melakukan normalisasi kolom v2 (header Bahasa Indonesia), sehingga membaca kunci Inggris lama dan mengabaikan baris.
+   - Update media: kolom v2 (Gambar per Varian, Media Bersama) belum dihitung pada pre-scan M4 sehingga salah diklasifikasi sebagai baris kosong.
+   - Cache produk (ProductCache::flushProducts): tidak dipanggil saat job import/update selesai, menyebabkan halaman publik mempertahankan data lama selama 5 menit.
+   Semua diperbaiki pada commit 1a3128fb dan 38eeba64, dipasang ke VPS 202, dan lulus test regresi UpdateImportPreviewV2Test (3 test / 10 assertions) serta 125 test suite impor.
+
+2. Hasil Uji Aktual di Produksi 202:
+   - Uji Update Harga (stock_price_update):
+     * File invalid (harga <= 0 dan SKU tak dikenal): verifier menolak tepat dengan menyebut nomor baris dan jenis galat.
+     * File valid: preview 0 error, diff mendeteksi perubahan; job #3 selesai 132/132 baris; DB terupdate (harga 3.360.000 -> 3.550.000, stok 5500; baris sel kosong harga tetap 3.360.000 dan stok 8888); HTML publik terbukti menyajikan 3550000; partial safety terbukti (media produk 1 tetap 12 item).
+   - Uji Update Media (media_update):
+     * File invalid (URL bukan http dan SKU salah): verifier menolak dengan menyebut kolom image_1 dan barisnya.
+     * File valid: preview 0 error, diff mendeteksi perubahan; job #4 selesai 1/132 baris sukses (131 baris kosong di-skip sesuai kontrak M4); DB terupdate (media posisi 1 diganti ke aset JJU1D01 P Aplikasi.png dengan is_main_image=1, media lama jadi 0, gambar per varian posisi 50 terpasang); file R2 diakses via HTTPS 200; partial safety terbukti (harga & stok varian tetap utuh); flush cache membuat gambar langsung muncul di PDP.
+   - Uji Import Produk Baru (catalog_import):
+     * File invalid (harga <= 0 dan kombinasi opsi duplikat): verifier menolak dengan menyebut aturan V5 dan V2.
+     * File valid: 1 produk baru (Jendela Casement Uji E2E 100x120), 2 varian; job #5 selesai 2/2 baris sukses; produk id 32 (SKU RAMC9H4YDTL9) aktif; 2 varian & 2 media terpasang; publik /product/RAMC9H4YDTL9 200.
+     * Uji Idempotensi / Re-import: file yang sama diunggah ulang langsung ditolak verifier V8 ("produk sudah ada dengan SKU RAMC9H4YDTL9").
+   - Pembersihan:
+     * Produk uji RAMC9H4YDTL9 beserta varian & media dihapus; URL publik kembali 404.
+     * Produk #1 (RAP7FG346AJA) dipulihkan ke baseline awal (harga 3.360.000, stok 11.313 & 10.523, media 12 item dengan aset 955 sebagai gambar utama).
