@@ -5445,3 +5445,35 @@ Perbaikan: berkas baru `resources/js/lib/media-upload-filter.ts` menyaring nama 
 Verifikasi: typecheck bersih, lint 0 warning, Vitest 374 lulus (45 berkas, termasuk 8 test penyaring baru). Uji browser Playwright dengan folder tiruan berisi 7 gambar + Thumbs.db + desktop.ini: daftar unggah berisi 7 gambar, NOL berkas sistem, dan notis menyebut kedua berkas yang dilewati.
 
 Deploy ke produksi 202: rilis aktif saat itu baru berganti menjadi `20261014-media-history-tabs` (dibuat agent lain 17:50); berkas saya dipasang 17:52 sehingga masuk ke rilis tersebut. Backup di `/root/backups/pre-media-filter-20261014-175251`. Build ulang di 202 (69 detik), bundel `Library-By0EVHCm.js` memuat penyaring, izin storage tetap OK, halaman publik HTTP 200.
+## 2026-10-14 11:05 UTC | zcode-media-cascade | Standard | bersihkan impor 209 dari bucket produksi
+
+Membersihkan sisa impor dari bucket dev 209 yang menumpuk di `ra-media-prod` (202).
+Pembeda yang dipakai: berkas yang TIDAK dirujuk database produksi mana pun.
+
+Verifikasi sebelum hapus, tiga lapis:
+1. 2.733 berkas di bucket produksi tidak dirujuk database produksi.
+2. Seluruh 2.733 berkas itu ADA di bucket dev `ra-media` 209 (2.733 dari 2.733, nol
+   yang tidak cocok), jadi terbukti impor 209.
+3. Persinggungan daftar hapus dengan aset Media Library produksi = 0, baik terhadap
+   berkas aset berfolder (346 berkas) maupun seluruh aset media_assets (349 berkas).
+
+Hasil: 2.733 berkas / 319,78 MB terhapus, 0 error. Bucket `ra-media-prod` kini 353
+berkas / 28,17 MB dari sebelumnya 3.086 berkas / 347,95 MB.
+
+Yang dipertahankan dan terverifikasi utuh setelah pembersihan:
+- 116 aset Media Library produksi di 21 folder dan subfolder (Boven Sliding Polos,
+  Jendela Sliding Polos, custom), seluruh 345 berkasnya masih ada di bucket
+- 8 kartu galeri produk 51 sampai 58, semuanya ada di bucket
+- 4 aset arsip yang berkasnya memang sudah tidak ada sejak sebelum pembersihan ini
+
+Uji akses: aset Media Library (folder custom dan K) menjawab HTTP 200 dengan ukuran
+byte utuh, seluruh halaman storefront (beranda, products, cart, login, hasil-pemasangan,
+flash-sale, faq, contact, order/status) menjawab HTTP 200.
+
+Catatan: 4 baris `media_assets` berstatus arsip menunjuk ke `media/library/2026/10/`
+yang berkasnya tidak ada. Itu catatan basi dari pemrosesan yang tidak tuntas, sudah
+begitu sejak sebelum pembersihan, dan tidak tampil di Media Library karena diarsipkan.
+
+Aturan yang dikunci di kode (commit d6f85401): awalan `media/library/` dan
+`media-assets/` dilindungi dari pemindaian yatim `media:reconcile`, karena berkas
+Media Library sering ada lebih dulu daripada baris database yang merujuknya.
