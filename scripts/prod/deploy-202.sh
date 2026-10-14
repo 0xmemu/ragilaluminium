@@ -159,7 +159,12 @@ run $SUDO mkdir -p "$NEW_RELEASE/storage/framework/cache/data" \
                     "$NEW_RELEASE/storage/logs" \
                     "$NEW_RELEASE/bootstrap/cache"
 # storage/app disimpan bersama antar rilis supaya data seperti berkas wilayah
-# tidak hilang setiap deploy.
+# tidak hilang setiap deploy. Subfolder yang dibutuhkan aplikasi dipastikan ada
+# di shared lebih dulu, karena setelah symlink dipasang, isi storage/app rilis
+# mengikuti shared dan folder yang tidak ada di sana ikut hilang.
+run $SUDO mkdir -p "$SHARED/storage/app/public" \
+                    "$SHARED/storage/app/private" \
+                    "$SHARED/storage/app/imports"
 run $SUDO rm -rf "$NEW_RELEASE/storage/app"
 run $SUDO ln -sfn "$SHARED/storage/app" "$NEW_RELEASE/storage/app"
 run $SUDO ln -sfn "$SHARED/storage/app/public" "$NEW_RELEASE/public/storage"

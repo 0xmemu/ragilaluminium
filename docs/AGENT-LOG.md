@@ -5621,3 +5621,34 @@ yang butuh kredensial GitHub di 202.
 Belum selesai: 202 belum punya repository mirror, jadi `--ref` belum bisa dipakai. Butuh token
 GitHub (fine-grained, Contents: Read, repo 0xmemu/ragilaluminium) atau deploy key SSH, karena
 202 tidak bisa menjangkau GitHub sedangkan 209 bisa lewat kunci SSH-nya.
+
+## 2026-10-14 13:20 UTC | zcode-deploy-202 | Deep | repository mirror 202 + pemangkasan rilis nyata
+
+Temuan yang mengubah rencana: repo `0xmemu/ragilaluminium` berstatus PUBLIK (dicek lewat API
+GitHub tanpa autentikasi, HTTP 200, `private: false`). Akibatnya 202 bisa clone lewat HTTPS
+tanpa kredensial sama sekali, sehingga token GitHub yang tadinya disiapkan tidak diperlukan.
+Paparan kunci privat J&T di GitHub juga sudah bersih: di HEAD hanya tersisa NAMA variabel
+`JNT_PRIVATE_KEY` di dokumen dan kode, tanpa materi kuncinya.
+
+Repository mirror dipasang di `/var/www/ragilaluminium/repository` (owner deploy), HEAD
+`15ac59d9` mengikuti `origin/main`.
+
+Pemangkasan rilis dijalankan nyata lewat `deploy-202.sh --prune-only`: 4 rilis lama dihapus
+(`media-folder-menu`, `v1.0.1`, `v1.0.0`, `snapshot-6630f927`), menyisakan `media-dedup-batch`
+(aktif) dan `media-history-tabs`. Ruang terpakai turun dari 11 GB ke 8,1 GB, folder releases
+dari 3,1 GB ke 1,1 GB. Situs dan layanan diperiksa sesudahnya: beranda, products,
+hasil-pemasangan, cart, login semua HTTP 200; nginx, php8.3-fpm, ragil-queue, laravel-reverb
+semuanya aktif.
+
+Sebelum pemangkasan, drift rilis aktif terhadap main diperiksa: hanya 4 berkas berbeda
+(kode cascade media: `ReconcileMediaObjects`, `PurgeMediaAssetFiles`, `MediaAsset`,
+`ProductMediaController`), nol beda di resources/routes/config/database, nol migrasi baru, dan
+TIDAK ADA berkas yang hanya ada di rilis aktif. Jadi main lebih maju dari produksi dan
+pemangkasan tidak menghilangkan kode apa pun.
+
+Skrip deploy diperbaiki: subfolder `storage/app/{public,private,imports}` dipastikan ada di
+`shared/storage/app` sebelum symlink dipasang. Tanpa ini, `imports/` dan `private/` yang ada di
+rilis lama bisa hilang setelah `storage/app` diarahkan ke shared, karena isinya mengikuti shared.
+
+Belum dikerjakan: deploy uji nyata lewat flow baru untuk memasang kode cascade media (commit
+`bf9b49fc`, `d6f85401`, `15ac59d9`) yang sampai sekarang hanya ada di 209.
