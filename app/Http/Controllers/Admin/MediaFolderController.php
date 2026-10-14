@@ -8,6 +8,7 @@ use App\Models\CmsGalleryItem;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
 use App\Models\ProductMedia;
+use App\Support\MediaLibraryFilter;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -128,11 +129,22 @@ class MediaFolderController extends Controller
     {
         $validated = $request->validate([
             'folder_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
-            'asset_ids' => ['required', 'array', 'min:1', 'max:200'],
+            // Sama seperti aksi massal lain: daftar id eksplisit ATAU `scope_all`
+            // untuk seluruh aset pada folder + filter aktif.
+            'asset_ids' => ['nullable', 'array', 'max:200'],
             'asset_ids.*' => ['integer', 'distinct', 'exists:media_assets,id'],
+            'scope_all' => ['sometimes', 'boolean'],
         ]);
 
-        MediaAsset::query()->whereIn('id', $validated['asset_ids'])
+        $assetIds = $request->boolean('scope_all')
+            ? MediaLibraryFilter::apply($request)->pluck('id')->all()
+            : ($validated['asset_ids'] ?? []);
+
+        if ($assetIds === []) {
+            return redirect()->back()->with('error', 'Tidak ada aset yang dipilih.');
+        }
+
+        MediaAsset::query()->whereIn('id', $assetIds)
             ->update(['folder_id' => $validated['folder_id'] ?? null]);
 
         return redirect()->back()->with('success', 'Aset dipindahkan.');
