@@ -5499,3 +5499,15 @@ mendapat `Access-Control-Allow-Origin: https://ragilaluminium.com`; permintaan d
 Catatan: CORS produksi sengaja tidak memuat metode PUT. Alur presigned PUT (unggah langsung
 browser ke R2) ada di kode tetapi tidak dipakai UI. Kalau alur itu diaktifkan nanti, PUT dan
 origin yang sesuai harus ditambahkan lebih dulu, kalau tidak browser akan memblokir unggahan.
+
+## 2026-10-14 19:05 UTC | zcode | Standard | ringkas mode unggah media + pemulihan commit rusak
+
+Owner meminta ringkasan: tombol "Pilih File" dibuat bisa memilih banyak berkas sekaligus, dan tombol "Pilih Banyak File" ditiadakan. Mode unggah kini tiga: Pilih File, Unggah Folder, Dari URL. Perubahan pada `resources/js/pages/Admin/Media/Library.tsx` (state mode, daftar tombol, `multiple` pada input, label tombol pemicu).
+
+INSIDEN (disebabkan agent ini, sudah diperbaiki). Commit `104ae939` memakai `git add` pada Library.tsx sehingga IKUT menyapu perubahan agent lain yang belum di-commit (refactor dialog duplikat: `dilewati` -> `kembar`, `partitionByDuplicate` -> `partitionWithinBatch`). Akibatnya berkas ter-commit mengimpor `partitionWithinBatch` padahal `media-duplicate.ts` versi ter-commit belum mengekspornya, sehingga `main` TIDAK BISA DI-BUILD (typecheck gagal, pre-push hook akan menolak). Dibuktikan lewat `git worktree` bersih di HEAD.
+
+Pemulihan: Library.tsx dikembalikan ke versi bersih terakhir (`ff946a70`) ditambah HANYA perubahan mode yang disengaja, lalu di-commit sebagai `3c285784`. Sebelum push, HEAD diuji di worktree bersih: typecheck lulus dan `vite build` sukses. Perubahan agent lain dikembalikan utuh ke working tree sehingga pekerjaan mereka tidak hilang. Saat push, remote ternyata sudah maju (`6f28ce47` dari agent `zcode-media-cascade`) dan tidak menyentuh Library.tsx, jadi tidak ada konflik.
+
+Pelajaran untuk agent lain: **jangan `git add` berkas yang mungkin disentuh agent lain tanpa memeriksa diff-nya lebih dulu.** Di repo ini working tree sering memuat pekerjaan agent lain yang belum di-commit. Periksa `git diff <berkas>` sebelum `git add`, dan bila perubahan itu bukan milik sendiri, commit berkas dari versi HEAD + perubahan sendiri, bukan dari working tree.
+
+Verifikasi: typecheck + build lulus di HEAD bersih; uji browser Playwright di dev menunjukkan tombol mode tinggal tiga (`Pilih Banyak File` hilang), mode "Pilih File" menerima 3 berkas sekaligus, dan mode folder tetap ada. Di produksi 202: bundel `Library-4DNS91Fi.js` tidak lagi memuat "Pilih Banyak File", penyaring Thumbs.db tetap ada, izin storage OK, halaman publik HTTP 200.
