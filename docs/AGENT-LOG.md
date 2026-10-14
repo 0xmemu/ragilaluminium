@@ -5217,3 +5217,48 @@ Owner melaporkan tombol di halaman Tambah Produk tidak berfungsi dan muncul laya
 Perbaikan: default dipindahkan ke konstanta tingkat modul `TANPA_HASIL_PEMASANGAN` di ProductForm.tsx, dan pola identik `items = []` di Checkout.tsx diperbaiki dengan `TANPA_ITEM`. Penjaga regresi baru `tests/frontend/stable-prop-default.test.ts` menolak prop yang dibandingkan referensinya tapi berdefault literal (membaca sumber, membuang komentar lebih dulu).
 
 Verifikasi: typecheck bersih, lint 0 warning, Vitest 361 lulus (44 berkas, termasuk 3 test penjaga baru), build sukses. Uji browser Playwright di ra.333labs.tech: keempat tombol Tambah tidak lagi crash, alur isi nama + spesifikasi + varian + opsi + harga berjalan tanpa error JS, halaman edit dan checkout tidak mengalami regresi.
+
+## 2026-10-14 16:05 UTC | zcode-media-folder-menu | Standard | 3abe795e | selesai
+
+Owner melaporkan menu aksi folder (tombol titik tiga) di sidebar Media Library muncul
+tidak sesuai posisi tombol, lalu setelah itu melaporkan panelnya terpotong. Dua sebab
+terpisah, keduanya diperbaiki di `resources/js/pages/Admin/Media/Library.tsx`.
+
+1. Titik jangkar. Panel menu dipasang sebagai anak langsung `<li>` folder dan memakai
+   `top-full`, yang artinya 100 persen tinggi wadah penempatan. `<li>` itu juga memuat
+   daftar subfolder yang sedang terbentang, jadi begitu ada subfolder yang terbuka,
+   tinggi wadahnya ikut membesar dan panel melompat jauh ke bawah. Sekarang tombol dan
+   panel dibungkus satu `div` berposisi relative yang tingginya hanya setinggi baris
+   folder (`relative mr-1 flex shrink-0 items-center self-stretch`), dipasang di dua
+   tempat: pohon folder dan hasil pencarian folder.
+
+2. Kliping. Kontainer pembungkus sidebar dan galeri memakai `overflow-hidden`, sehingga
+   panel yang turun melewati batas bawah kontainer terpotong. Diganti `overflow-x-clip`:
+   tetap memotong mendatar (perilaku yang memang dibutuhkan kontainer itu) tetapi
+   membiarkan isi turun tampil. Kelas ini sudah dipakai di `public-layout.tsx`, jadi
+   bukan pola baru di repo ini.
+
+Ditambah penutup luar yang sebelumnya belum ada: klik di luar panel atau tombol Escape
+menutup menu. Penangan sengaja MELEWATI interaksi di dalam dialog Radix (Arsipkan,
+Hapus folder, Ganti nama) supaya dialog tidak ikut tertutup saat dibuka dari menu.
+
+Verifikasi live di produksi 202 (release baru `20261014-media-folder-menu`), pada folder
+yang benar-benar punya subfolder: jarak atas panel ke bawah tombol 5px (nilai `mt-1`),
+sisi kanan panel sejajar sisi kanan tombol (selisih 0px), panel setinggi 112px dan
+terlihat penuh (titik uji di tombol "Hapus folder" mengembalikan tombol itu sendiri,
+bukan elemen lain), klik di luar menutup menu, Escape menutup menu, dan dialog Arsipkan
+tetap terbuka dengan judul serta tombol Batal/Arsipkan utuh.
+
+Bukti: `npm run typecheck` bersih; `npx vitest run tests/frontend/media-folder-menu-anchor.test.ts`
+4 lulus; penjaga diuji menggigit dengan sengaja mengembalikan pembungkus ke bentuk lama
+(2 dari 3 test gagal); `npm run build` sukses di 209 dan di release 202; `curl` chunk
+`Library-C_PFR4kk.js` dari situs live memuat `self-stretch` dan `overflow-x-clip`, dan
+CSS hasil build memuat aturan `overflow-x:clip` serta `align-self:stretch` (tidak dibuang
+Tailwind).
+
+Untuk agent berikutnya: kalau menyunting blok menu folder ini, JANGAN mengembalikan panel
+ke luar pembungkus tombol dan JANGAN memakai `overflow-hidden` pada kontainer sidebar,
+karena penjaga `media-folder-menu-anchor.test.ts` akan gagal. Catatan lingkungan: ada
+berkas probe milik agent lain (`tests/frontend/zz-probe-*.test.ts(x)`) di working tree 209
+yang membuat `npm run lint` melaporkan 8 warning `no-explicit-any`; berkas itu BUKAN milik
+saya dan sengaja tidak saya sentuh. Lint berkas yang saya ubah bersih dengan `--max-warnings=0`.
