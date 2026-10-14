@@ -5477,3 +5477,25 @@ begitu sejak sebelum pembersihan, dan tidak tampil di Media Library karena diars
 Aturan yang dikunci di kode (commit d6f85401): awalan `media/library/` dan
 `media-assets/` dilindungi dari pemindaian yatim `media:reconcile`, karena berkas
 Media Library sering ada lebih dulu daripada baris database yang merujuknya.
+
+## 2026-10-14 11:20 UTC | zcode-media-cascade | Trivial | buang origin dev dari CORS bucket produksi
+
+Bucket `ra-media-prod` (202) masih memuat origin dev `https://ra.333labs.tech` di kebijakan
+CORS-nya, sisa dari masa penyiapan sebelum domain produksi aktif. Entri itu tidak dipakai:
+situs dev tidak memuat satu pun berkas dari bucket produksi (0 rujukan ke
+`media.ragilaluminium.com` di beranda, `/products`, dan `/hasil-pemasangan`), dan unggah
+media di produksi lewat server Laravel (POST `admin.media.upload`), bukan PUT langsung ke R2.
+
+Dihapus lewat `put_bucket_cors`. Tiga domain produksi dipertahankan apa adanya
+(`ragilaluminium.com`, `www.ragilaluminium.com`, `api.ragilaluminium.com`), metode tetap
+`GET/HEAD`, header tetap `*`, `MaxAgeSeconds` tetap 86400.
+
+Verifikasi: kebijakan dibaca ulang, `ra.333labs.tech` tidak ada lagi. Berkas media masih
+publik (HTTP 200, ukuran byte utuh). Permintaan dengan `Origin: https://ragilaluminium.com`
+mendapat `Access-Control-Allow-Origin: https://ragilaluminium.com`; permintaan dengan
+`Origin: https://ra.333labs.tech` tidak mendapat header itu. Halaman storefront produksi
+(beranda, products, cart, hasil-pemasangan) tetap HTTP 200.
+
+Catatan: CORS produksi sengaja tidak memuat metode PUT. Alur presigned PUT (unggah langsung
+browser ke R2) ada di kode tetapi tidak dipakai UI. Kalau alur itu diaktifkan nanti, PUT dan
+origin yang sesuai harus ditambahkan lebih dulu, kalau tidak browser akan memblokir unggahan.
