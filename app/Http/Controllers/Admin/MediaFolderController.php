@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CmsBanner;
+use App\Models\CmsGalleryItem;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
+use App\Models\ProductMedia;
 use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -140,8 +143,71 @@ class MediaFolderController extends Controller
      * Jika folder memiliki aset atau subfolder, seluruh aset otomatis dipindahkan
      * ke folder "Semua Media" (folder_id = null) sebelum folder dihapus.
      */
+    /**
+     * Hapus folder dengan dua pilihan (permintaan owner 2026-10-14).
+     *
+     * `with_assets = false` (bawaan, perilaku lama): folder dihapus, seluruh
+     * aset di dalamnya dipindahkan ke Semua Media (`folder_id` menjadi null).
+     *
+     * `with_assets = true`: folder DAN isinya dibersihkan. Aset yang masih
+     * terpakai produk/banner/galeri DIARSIPKAN, bukan dihapus permanen, supaya
+     * halaman yang memakainya tidak kehilangan gambar. Aset yang tidak dipakai
+     * mana pun dihapus permanen; berkas di bucket ikut terhapus lewat event
+     * deleting/deleted MediaAsset.
+     *
+     * Kedua cabang juga menghapus seluruh subfolder di bawahnya.
+     */
     public function destroy(Request $request, MediaFolder $folder): RedirectResponse
     {
+        $withAssets = $request->boolean('with_assets');
+
+        if ($withAssets) {
+            [$deletedCount, $archivedCount] = DB::transaction(function () use ($folder, $request): array {
+                $folderIds = $this->allDescendantIds($folder);
+                $folderIds[] = $folder->id;
+
+                $deletedCount = 0;
+                $archivedCount = 0;
+
+                foreach (MediaAsset::query()->whereIn('folder_id', $folderIds)->get() as $asset) {
+                    if ($this->assetMasihTerpakai($asset)) {
+                        // Terlampir di produk/banner/galeri: jangan hapus, cukup
+                        // sembunyikan supaya halaman yang memakainya tetap utuh.
+                        $asset->update(['visibility' => 'archived']);
+                        $archivedCount++;
+
+                        continue;
+                    }
+
+                    // Tidak dipakai mana pun: hapus permanen beserta berkasnya.
+                    $asset->delete();
+                    $deletedCount++;
+                }
+
+                ActivityLogService::record('media.folder_deleted', 'media_folder', (int) $folder->id, [
+                    'name' => $folder->name,
+                    'with_assets' => true,
+                    'deleted_assets_count' => $deletedCount,
+                    'archived_assets_count' => $archivedCount,
+                    'deleted_folders_count' => count($folderIds),
+                ], (int) $request->user()->id);
+
+                MediaFolder::query()->whereIn('id', $folderIds)->delete();
+
+                return [$deletedCount, $archivedCount];
+            });
+
+            $pesan = "Folder {$folder->name} dan isinya dihapus.";
+            if ($deletedCount > 0) {
+                $pesan .= " {$deletedCount} aset dihapus permanen.";
+            }
+            if ($archivedCount > 0) {
+                $pesan .= " {$archivedCount} aset masih dipakai produk sehingga diarsipkan, bukan dihapus.";
+            }
+
+            return redirect()->back()->with('success', $pesan);
+        }
+
         $movedCount = DB::transaction(function () use ($folder, $request): int {
             // Kumpulkan ID folder ini dan seluruh subfoldernya secara rekursif
             $folderIds = $this->allDescendantIds($folder);
@@ -169,6 +235,19 @@ class MediaFolderController extends Controller
             : "Folder {$folder->name} dihapus.";
 
         return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Apakah aset masih dipakai di tempat lain (produk, banner, atau galeri).
+     *
+     * Aturannya sama dengan penjaga hapus aset di ProductMediaController:
+     * aset yang masih terlampir tidak boleh dihapus permanen.
+     */
+    private function assetMasihTerpakai(MediaAsset $asset): bool
+    {
+        return ProductMedia::where('media_asset_id', $asset->id)->exists()
+            || CmsBanner::where('media_asset_id', $asset->id)->exists()
+            || CmsGalleryItem::where('media_asset_id', $asset->id)->exists();
     }
 
     /**

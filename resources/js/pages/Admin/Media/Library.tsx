@@ -186,9 +186,15 @@ function FolderTreeList({
     persistOrder(next)
   }
 
-  function submitFolderAction(folderId: number, action: "rename" | "archive" | "delete", name?: string) {
+  function submitFolderAction(
+    folderId: number,
+    action: "rename" | "archive" | "delete",
+    name?: string,
+    withAssets = false,
+  ) {
     if (action === "delete") {
-      router.delete(routeUrl("admin.media.folders.destroy", { folder: folderId }), {
+      const url = routeUrl("admin.media.folders.destroy", { folder: folderId })
+      router.delete(withAssets ? `${url}?with_assets=1` : url, {
         preserveState: true,
         onSuccess: () => {
           if (currentFolderId === String(folderId)) {
@@ -370,9 +376,13 @@ function FolderTreeList({
                         </button>
                       }
                       title={`Hapus folder "${node.name}"?`}
-                      description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
-                      confirmLabel="Hapus Folder"
-                      onConfirm={() => submitFolderAction(node.id, "delete")}
+                      description="Pilih caranya: hapus foldernya saja dengan isi dipindahkan ke Semua Media, atau hapus folder sekaligus isinya."
+                      confirmLabel="Hapus Folder & Isi"
+                      onConfirm={() => submitFolderAction(node.id, "delete", undefined, true)}
+                      secondaryAction={{
+                        label: "Hapus Foldernya Saja",
+                        onConfirm: () => submitFolderAction(node.id, "delete"),
+                      }}
                     />
                   </div>
                 ) : null}
@@ -631,9 +641,15 @@ function FolderTree({
     return flattened.filter((f) => f.path.toLowerCase().includes(q))
   }, [flattened, folderQuery])
 
-  function submitSearchFolderAction(folderId: number, action: "rename" | "archive" | "delete", name?: string) {
+  function submitSearchFolderAction(
+    folderId: number,
+    action: "rename" | "archive" | "delete",
+    name?: string,
+    withAssets = false,
+  ) {
     if (action === "delete") {
-      router.delete(routeUrl("admin.media.folders.destroy", { folder: folderId }), {
+      const url = routeUrl("admin.media.folders.destroy", { folder: folderId })
+      router.delete(withAssets ? `${url}?with_assets=1` : url, {
         preserveState: true,
         onSuccess: () => {
           if (currentFolderId === String(folderId)) {
@@ -812,9 +828,13 @@ function FolderTree({
                           </button>
                         }
                         title={`Hapus folder "${f.name}"?`}
-                        description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
-                        confirmLabel="Hapus Folder"
-                        onConfirm={() => submitSearchFolderAction(f.id, "delete")}
+                        description="Pilih caranya: hapus foldernya saja dengan isi dipindahkan ke Semua Media, atau hapus folder sekaligus isinya."
+                        confirmLabel="Hapus Folder & Isi"
+                        onConfirm={() => submitSearchFolderAction(f.id, "delete", undefined, true)}
+                        secondaryAction={{
+                          label: "Hapus Foldernya Saja",
+                          onConfirm: () => submitSearchFolderAction(f.id, "delete"),
+                        }}
                       />
                     </div>
                   ) : null}

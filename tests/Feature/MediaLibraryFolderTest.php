@@ -82,6 +82,74 @@ class MediaLibraryFolderTest extends TestCase
         $this->assertNull($assetChild->fresh()->folder_id);
     }
 
+    public function test_hapus_folder_beserta_isi_menghapus_aset_yang_tidak_terpakai(): void
+    {
+        $this->actingAs($this->admin());
+        $folder = MediaFolder::create(['name' => 'Berisi']);
+        $asset = MediaAsset::create([
+            'kind' => 'image', 'label' => 'a.jpg', 'object_key' => 'k/a.jpg',
+            'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $folder->id,
+        ]);
+
+        $this->delete(route('admin.media.folders.destroy', $folder).'?with_assets=1')->assertRedirect();
+
+        $this->assertNull(MediaFolder::find($folder->id), 'Folder harus terhapus');
+        $this->assertNull(MediaAsset::find($asset->id), 'Aset tak terpakai harus terhapus permanen');
+    }
+
+    public function test_hapus_folder_beserta_isi_mengarsipkan_aset_yang_masih_dipakai_produk(): void
+    {
+        $this->actingAs($this->admin());
+        $folder = MediaFolder::create(['name' => 'Dipakai']);
+
+        $asset = MediaAsset::create([
+            'kind' => 'image', 'label' => 'dipakai.jpg', 'object_key' => 'k/dipakai.jpg',
+            'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $folder->id,
+        ]);
+
+        // Lampirkan ke produk supaya dianggap masih dipakai.
+        $product = \App\Models\Product::create([
+            'name' => 'Uji Folder', 'parent_sku' => 'RAUJIFOLDER1',
+            'product_category' => 'JENDELA', 'product_model' => 'SLIDING_2_DAUN',
+            'status' => 'archived',
+        ]);
+        \App\Models\ProductMedia::create([
+            'product_id' => $product->id,
+            'media_asset_id' => $asset->id,
+            'position' => 1,
+            'is_main_image' => true,
+            'show_in_catalog' => true,
+            'visibility' => 'visible',
+            'status' => 'ready',
+        ]);
+
+        $this->delete(route('admin.media.folders.destroy', $folder).'?with_assets=1')->assertRedirect();
+
+        $this->assertNull(MediaFolder::find($folder->id), 'Folder harus terhapus');
+        $sisa = MediaAsset::find($asset->id);
+        $this->assertNotNull($sisa, 'Aset terpakai TIDAK boleh dihapus permanen');
+        $this->assertSame('archived', $sisa->visibility, 'Aset terpakai harus diarsipkan');
+    }
+
+    public function test_hapus_folder_tanpa_with_assets_tetap_memindahkan_isi(): void
+    {
+        $this->actingAs($this->admin());
+        $folder = MediaFolder::create(['name' => 'Pindah']);
+        $asset = MediaAsset::create([
+            'kind' => 'image', 'label' => 'pindah.jpg', 'object_key' => 'k/pindah.jpg',
+            'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'status' => 'ready', 'visibility' => 'visible', 'folder_id' => $folder->id,
+        ]);
+
+        // Tanpa parameter: perilaku lama (isi dipindahkan, aset tetap ada).
+        $this->delete(route('admin.media.folders.destroy', $folder))->assertRedirect();
+
+        $this->assertNull(MediaFolder::find($folder->id));
+        $this->assertNotNull(MediaAsset::find($asset->id), 'Aset harus tetap ada');
+        $this->assertNull($asset->fresh()->folder_id, 'Aset dipindahkan ke Semua Media');
+    }
     public function test_upload_tanpa_folder_masuk_inbox_dan_url_immutable(): void
     {
         Storage::fake('media');

@@ -22,6 +22,7 @@ export function ConfirmAction({
   reasonLabel,
   reasonPlaceholder,
   reasonRequired = false,
+  secondaryAction,
 }: {
   trigger: React.ReactNode
   title: string
@@ -34,6 +35,13 @@ export function ConfirmAction({
   reasonLabel?: string
   reasonPlaceholder?: string
   reasonRequired?: boolean
+  /**
+   * Tombol keputusan kedua, mis. pada hapus folder: tombol utama "Hapus Folder"
+   * (folder beserta isinya) dan tombol kedua "Hapus foldernya saja" (isi
+   * dipindahkan ke Semua Media). Bila diisi, tombol ini tampil di sebelah kiri
+   * tombol utama memakai gaya sekunder.
+   */
+  secondaryAction?: { label: string; onConfirm: () => void }
 }) {
   const [open, setOpen] = React.useState(false)
   const [reason, setReason] = React.useState("")
@@ -69,6 +77,19 @@ export function ConfirmAction({
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={processing}>
             Batal
           </Button>
+          {secondaryAction ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                secondaryAction.onConfirm()
+                setOpen(false)
+                setReason("")
+              }}
+              disabled={processing}
+            >
+              {secondaryAction.label}
+            </Button>
+          ) : null}
           <Button
             variant={variant === "destructive" ? "destructive-solid" : variant}
             onClick={() => {
