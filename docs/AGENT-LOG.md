@@ -5763,3 +5763,41 @@ Untuk agent berikutnya: jangan kembali ke pola "tambah baris per tahap" untuk lo
 media, dan jangan memberi tab pada status sementara. Kalau menambah jenis event baru,
 tentukan dulu apakah ia status tetap (layak bertab) atau status sementara (tampil di daftar
 Semua saja).
+
+## 2026-10-14 21:10 UTC | zcode-kontrak-gerbang | Standard | 19b34a26 | selesai
+
+Owner meminta aturan baru: "kamu harus mendeteksi dulu apakah ada deploy atau commit yang
+sedang berjalan yang bisa beresiko menggagalkan proses mu, kalau sudah aman baru eksekusi
+penuh. terapkan ini ke kontrak kerja."
+
+Latar, dua insiden nyata hari ini: (1) menyalin `ProductMediaController` dari working tree
+209 ke produksi membawa rujukan ke `MediaStoragePurger` yang belum ada di sana, sehingga
+aksi hapus media gagal; (2) rilis produksi buatan agent lain berasal dari titik SEBELUM
+commit terkini, sehingga perubahan saya tidak ikut terbawa dan harus di-deploy ulang.
+
+Yang ditambahkan:
+- `docs/AGENT-COLLABORATION.md` bagian 2b "Gerbang pra-eksekusi": empat gerbang dengan
+  perintah dan ambang jelas. Gerbang 1 sebelum mulai, gerbang 2 sebelum commit (commit
+  hanya berkas sendiri, per-hunk bila bercampur), gerbang 3 sebelum push (fetch, rebase
+  `--autostash`, lalu BUKTIKAN md5sum berkas kotor agent lain tidak berubah), gerbang 4
+  sebelum dan sesudah deploy.
+- Tiga larangan yang lahir dari insiden: jangan menyalin berkas pilihan dari working tree,
+  jangan menganggap rilis dasar sudah memuat commit Anda, dan jangan menimpa rilis yang
+  sedang live.
+- `scripts/agent-state-prod.sh` BARU: briefing pra-deploy, dijalankan dari MESIN LOKAL
+  karena butuh kunci SSH produksi (209 tidak bisa menyambung ke 202). Memeriksa proses
+  deploy yang masih hidup, umur symlink `current`, rilis terbaru, apakah rilis live sudah
+  memuat commit terkini (bandingkan md5sum berkas kunci antara rilis live dan repo kerja),
+  dan aktivitas log terakhir.
+- `AGENTS.md`: butir 5 di papan kolaborasi menunjuk kedua perintah deteksi.
+
+Bukti: `agent-state-prod.sh` dijalankan dari lokal dan melaporkan tidak ada proses deploy
+berjalan, symlink `current` berumur 20:50, dan ketiga berkas kunci (`MediaProcessingLog.php`,
+`ProductMediaController.php`, `History.tsx`) SAMA antara rilis live dan repo kerja. Gerbang 3
+dijalankan sungguhan saat push: hash `Library.tsx` dan `UpdateImportPreviewV2Test.php` milik
+agent lain identik sebelum dan sesudah push, dan commit `19b34a26` terbukti ada di origin/main.
+
+Catatan yang perlu diingat agent berikutnya: hasil gerbang harus dibaca dengan akal. Saat
+gerbang repo dijalankan tadi, ia melaporkan `AGENTS.md` dan `docs/AGENT-COLLABORATION.md`
+kotor, dan yang kotor memang berkas perubahan ini sendiri. Berkas kotor belum tentu milik
+agent lain; periksa dulu apakah itu pekerjaan Anda yang belum di-commit.
