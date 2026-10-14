@@ -5652,3 +5652,44 @@ rilis lama bisa hilang setelah `storage/app` diarahkan ke shared, karena isinya 
 
 Belum dikerjakan: deploy uji nyata lewat flow baru untuk memasang kode cascade media (commit
 `bf9b49fc`, `d6f85401`, `15ac59d9`) yang sampai sekarang hanya ada di 209.
+
+## 2026-10-14 20:20 UTC | zcode-media-dedup-batch | Standard | - | selesai
+
+Lanjutan dari commit `902a2428`: owner meminta sisa fitur dedup dibersihkan TUNTAS,
+bukan hanya kodenya. Pembersihan data di produksi 202, dengan daftar id EKSPLISIT
+(tanpa wildcard) dan pengaman sebelum eksekusi.
+
+Yang dihapus dari `media_processing_logs` dan `media_assets` (produksi):
+- 6 baris log `event=dedup` (id 180, 194, 208, 222, 236, 284).
+- 4 baris log `processing` milik 4 aset hasil penggabungan (id 179, 193, 207, 283).
+- 4 aset berstatus `archived` hasil penggabungan (id 1103, 1110, 1117, 1187).
+
+Pengaman yang dijalankan sebelum hapus: backup DB segar (dump slot-1, gzip terverifikasi),
+lalu DRY RUN yang memindai SELURUH tabel untuk kolom apa pun yang menunjuk `media_assets`
+(termasuk `poster_asset_id`) dan menemukan 0 rujukan ke keempat aset itu. Keempatnya juga
+0 berkas di bucket (berkasnya sudah dihapus saat penggabungan), sehingga tidak ada objek
+yatim yang ditinggalkan.
+
+Yang SENGAJA tidak disentuh, dan alasannya:
+- Aset tujuan #1180 (status ready, punya berkas) tetap utuh. Ia satu-satunya aset tujuan
+  yang masih hidup; lima kejadian dedup lain menunjuk aset #1096 yang sudah tidak ada.
+- 98 baris log yatim dari pembersihan data uji (media yang dihapus sengaja pada 14 Okt)
+  TIDAK dihapus: itu jejak audit yang memang ditampilkan sebagai "Media sudah dihapus",
+  bukan residu fitur dedup. Semuanya bertanggal 14 Okt.
+
+Hasil: selisih angka tab Riwayat Media menjadi 0. Semua 326 = Berhasil 162 + Gagal 0 +
+Diproses 164 + Antre 0, dan tab Duplikat tidak ada lagi. Aset siap tetap 115, aset arsip 0.
+
+Tambahan: dua berkas residu dari uji verifikasi kontrak saya sendiri
+(`media-assets/23a6e05e.../card.webp` dan `thumb.webp`, 98 byte, dibuat 19:26 oleh job
+antrean sebelum transaksi uji di-rollback) juga dihapus dengan daftar eksplisit setelah
+dipastikan tidak dirujuk aset mana pun. Bucket kini 353 berkas, 0 berkas tanpa rujukan.
+
+Bukti: halaman Riwayat Media live menunjukkan pil "Semua(326) Berhasil(162) Gagal(0)
+Diproses(164) Antre(0)" dengan angka menutup; halaman 1, 5, dan 11 menjawab 200 tanpa galat
+JS; `/`, `/products`, `/cart`, `/about`, `/faq`, `/login`, `/up` semuanya 200; layanan nginx,
+php8.3-fpm, dan ragil-queue aktif; 115 aset siap semuanya masih punya berkasnya di bucket.
+
+Catatan: satu entri `production.ERROR: Class "Schema" not found` pukul 20:10 di log produksi
+berasal dari skrip diagnostik saya sendiri (lupa mengimpor facade Schema), bukan dari
+aplikasi. Tidak ada error aplikasi baru setelah deploy.
