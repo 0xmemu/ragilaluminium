@@ -901,134 +901,158 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
+      {/* Susunan bertingkat: kepala dan kaki tetap, dan SATU area gulir di
+          tengah yang mengisi seluruh tinggi tersisa. Sebelumnya daftar berkas
+          dikurung kotak setinggi 160 px di dalam wadah yang juga bisa
+          menggulir, sehingga pada berkas banyak hanya beberapa baris yang
+          tampak dan gulirnya membingungkan. Sekarang daftar berkas memakai
+          tinggi penuh popup, sama sebelum maupun saat unggahan berjalan. */}
+      <div
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-surface shadow-float"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3">
           <h3 className="text-sm font-semibold">Unggah Media</h3>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Tutup jendela unggah"
+          >
             <Icon name="x" className="size-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {(["file", "folder", "url"] as const).map((m) => (
-            <Button key={m} type="button" variant={mode === m ? "primary" : "secondary"} size="sm" onClick={() => { setMode(m); reset() }}>
-              {m === "file" ? "Pilih File" : m === "folder" ? "Unggah Folder" : "Dari URL"}
-            </Button>
-          ))}
+        {/* Pemilih mode dan pemilih berkas tidak ikut tergulir: keduanya
+            dipakai sekali di awal, jadi lebih baik selalu terlihat. */}
+        <div className="shrink-0 space-y-3 border-b border-border px-5 py-3">
+          <div className="flex flex-wrap gap-2">
+            {(["file", "folder", "url"] as const).map((m) => (
+              <Button key={m} type="button" variant={mode === m ? "primary" : "secondary"} size="sm" onClick={() => { setMode(m); reset() }}>
+                {m === "file" ? "Pilih File" : m === "folder" ? "Unggah Folder" : "Dari URL"}
+              </Button>
+            ))}
+          </div>
+
+          {mode !== "url" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Input berkas asli disembunyikan. Tombol bawaan peramban menolak
+                  transform, bayangan, dan opacity, jadi tidak bisa diberi animasi
+                  tekan; karena itu pemicunya tombol admin sungguhan. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                {...(mode === "folder"
+                  ? ({ webkitdirectory: "" } as React.InputHTMLAttributes<HTMLInputElement>)
+                  : {})}
+                accept="image/*,video/*"
+                className="sr-only"
+                onChange={(e) => {
+                  // Pemilih folder mengabaikan `accept`, jadi berkas sistem ikut
+                  // terbawa dan harus dibuang di sini, bukan dibiarkan ditolak
+                  // server dengan pesan yang membingungkan.
+                  const { diterima, dilewati } = saringBerkasMedia(Array.from(e.target.files ?? []))
+                  setFiles(diterima)
+                  setDilewatiSaatPilih(dilewati.map((f) => f.name))
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="active:scale-[0.97] active:bg-muted"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon name="upload" className="size-4" aria-hidden="true" />
+                {mode === "folder" ? "Pilih Folder" : "Pilih Berkas"}
+              </Button>
+              <span className="text-[13px] text-muted-foreground">
+                {files.length > 0 ? files.length + " berkas dipilih" : "Belum ada berkas dipilih"}
+              </span>
+            </div>
+          ) : (
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+          )}
         </div>
 
-        {mode !== "url" ? (
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {/* Input berkas asli disembunyikan. Tombol bawaan peramban menolak
-                transform, bayangan, dan opacity, jadi tidak bisa diberi animasi
-                tekan; karena itu pemicunya tombol admin sungguhan. */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              {...(mode === "folder"
-                ? ({ webkitdirectory: "" } as React.InputHTMLAttributes<HTMLInputElement>)
-                : {})}
-              accept="image/*,video/*"
-              className="sr-only"
-              onChange={(e) => {
-                // Pemilih folder mengabaikan `accept`, jadi berkas sistem ikut
-                // terbawa dan harus dibuang di sini, bukan dibiarkan ditolak
-                // server dengan pesan yang membingungkan.
-                const { diterima, dilewati } = saringBerkasMedia(Array.from(e.target.files ?? []))
-                setFiles(diterima)
-                setDilewatiSaatPilih(dilewati.map((f) => f.name))
-              }}
-            />
+        {/* Area gulir tunggal. overscroll-contain menahan gulir di sini supaya
+            halaman di belakang tidak ikut bergerak saat daftar mencapai ujung. */}
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-5 py-4">
+          {mode !== "url" && dilewatiSaatPilih.length > 0 ? (
+            <div className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground" role="status">
+              <span className="font-medium text-foreground">
+                {dilewatiSaatPilih.length} berkas sistem dilewati:
+              </span>{" "}
+              {dilewatiSaatPilih.join(", ")}
+              <span className="mt-0.5 block text-[11px]">
+                Berkas seperti Thumbs.db dan desktop.ini dibuat sistem operasi, bukan foto produk.
+              </span>
+            </div>
+          ) : null}
+
+          {mode !== "url" && files.length > 0 ? (
+            <div className="rounded border border-border p-2 text-xs">
+              {files.map((f) => (
+                <div key={f.name} className="flex items-center justify-between py-0.5">
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 text-muted-foreground">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {mode !== "url" && uploads.length > 0 ? (
+            <div className="rounded border border-border p-2 text-xs">
+              {uploads.map((r) => (
+                <div key={r.id} className="flex items-center gap-2 py-0.5">
+                  <span className="truncate">{r.name}</span>
+                  {r.status === "memeriksa" ? (
+                    <span className="shrink-0 text-muted-foreground">memeriksa…</span>
+                  ) : r.status === "uploading" ? (
+                    <span className="flex w-28 shrink-0 items-center gap-1.5">
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                        <span className="block h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${r.progress}%` }} />
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">{r.progress}%</span>
+                    </span>
+                  ) : r.status === "ditolak" ? (
+                    <span className="shrink-0 text-muted-foreground">kembar</span>
+                  ) : (
+                    <span className={cn("shrink-0", r.status === "sukses" ? "text-success" : "text-destructive")}>
+                      {r.status === "sukses" ? "✓" : `✗ ${r.error ?? ""}`}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {mode === "url" && urlResult ? (
+            <div className={cn("rounded border border-border p-2 text-xs", urlResult.status === "sukses" ? "text-success" : urlResult.status === "gagal" ? "text-destructive" : "text-muted-foreground")}>
+              {urlResult.status === "uploading" ? "Mengambil URL…" : urlResult.status === "sukses" ? "✓ Media berhasil ditambahkan" : `✗ ${urlResult.error ?? "Gagal"}`}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="shrink-0 border-t border-border px-5 py-3">
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>Batal</Button>
             <Button
               type="button"
-              variant="secondary"
               size="sm"
-              className="active:scale-[0.97] active:bg-muted"
-              onClick={() => fileInputRef.current?.click()}
+              disabled={mode === "url" ? !url.trim() : !files.length}
+              onClick={mode === "url" ? importUrl : () => { onStart(files); setFiles([]) }}
             >
-              <Icon name="upload" className="size-4" aria-hidden="true" />
-              {mode === "folder" ? "Pilih Folder" : "Pilih Berkas"}
+              {uploading > 0 ? `Mengunggah ${uploading}…` : "Mulai Unggah"}
             </Button>
-            <span className="text-[13px] text-muted-foreground">
-              {files.length > 0 ? files.length + " berkas dipilih" : "Belum ada berkas dipilih"}
-            </span>
           </div>
-        ) : (
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="mb-3" />
-        )}
-
-        {mode !== "url" && dilewatiSaatPilih.length > 0 ? (
-          <div className="mb-3 rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground" role="status">
-            <span className="font-medium text-foreground">
-              {dilewatiSaatPilih.length} berkas sistem dilewati:
-            </span>{" "}
-            {dilewatiSaatPilih.join(", ")}
-            <span className="mt-0.5 block text-[11px]">
-              Berkas seperti Thumbs.db dan desktop.ini dibuat sistem operasi, bukan foto produk.
-            </span>
-          </div>
-        ) : null}
-
-        {mode !== "url" && files.length > 0 ? (
-          <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
-            {files.map((f) => (
-              <div key={f.name} className="flex items-center justify-between py-0.5">
-                <span className="truncate">{f.name}</span>
-                <span className="shrink-0 text-muted-foreground">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {mode !== "url" && uploads.length > 0 ? (
-          <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
-            {uploads.map((r) => (
-              <div key={r.id} className="flex items-center gap-2 py-0.5">
-                <span className="truncate">{r.name}</span>
-                {r.status === "memeriksa" ? (
-                  <span className="shrink-0 text-muted-foreground">memeriksa…</span>
-                ) : r.status === "uploading" ? (
-                  <span className="flex w-28 shrink-0 items-center gap-1.5">
-                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
-                      <span className="block h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${r.progress}%` }} />
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">{r.progress}%</span>
-                  </span>
-                ) : r.status === "ditolak" ? (
-                  <span className="shrink-0 text-muted-foreground">kembar</span>
-                ) : (
-                  <span className={cn("shrink-0", r.status === "sukses" ? "text-success" : "text-destructive")}>
-                    {r.status === "sukses" ? "✓" : `✗ ${r.error ?? ""}`}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {mode === "url" && urlResult ? (
-          <div className={cn("mb-3 rounded border border-border p-2 text-xs", urlResult.status === "sukses" ? "text-success" : urlResult.status === "gagal" ? "text-destructive" : "text-muted-foreground")}>
-            {urlResult.status === "uploading" ? "Mengambil URL…" : urlResult.status === "sukses" ? "✓ Media berhasil ditambahkan" : `✗ ${urlResult.error ?? "Gagal"}`}
-          </div>
-        ) : null}
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>Batal</Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={mode === "url" ? !url.trim() : !files.length}
-            onClick={mode === "url" ? importUrl : () => { onStart(files); setFiles([]) }}
-          >
-            {uploading > 0 ? `Mengunggah ${uploading}…` : "Mulai Unggah"}
-          </Button>
+          {uploading > 0 ? (
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Boleh tutup jendela ini, progress tetap berjalan di panel kanan bawah.
+            </p>
+          ) : null}
         </div>
-        {uploading > 0 ? (
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            Boleh tutup jendela ini, progress tetap berjalan di panel kanan bawah.
-          </p>
-        ) : null}
       </div>
     </div>
   )
