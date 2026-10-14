@@ -5693,3 +5693,20 @@ php8.3-fpm, dan ragil-queue aktif; 115 aset siap semuanya masih punya berkasnya 
 Catatan: satu entri `production.ERROR: Class "Schema" not found` pukul 20:10 di log produksi
 berasal dari skrip diagnostik saya sendiri (lupa mengimpor facade Schema), bukan dari
 aplikasi. Tidak ada error aplikasi baru setelah deploy.
+
+## 2026-10-14 20:40 UTC | zcode | Deep | Pilih semua lintas folder + toolbar aksi Media Library
+
+Owner: "pilih semua ya pilih semua". Sebelumnya kotak centang hanya memilih aset di halaman yang tampil (30 per halaman), bukan seluruh isi folder. Empat permintaan sekaligus: (1) Pilih semua menyasar SELURUH folder + filter aktif, (2) label dipangkas jadi "Pilih semua (N)", (3) tombol Hapus/Arsipkan/Pindah ke/Batal selalu tampil tanpa memilih dulu, (4) tombol Pilih Media pindah dari header kanan ke area galeri.
+
+Perubahan:
+- **Filter daftar disatukan** di `App\Support\MediaLibraryFilter`, dipakai bersama oleh `library()` (daftar yang dilihat admin) dan sasaran aksi massal, supaya keduanya tidak pernah berbeda aturan. Filter dibaca lewat `input()`, BUKAN `query()`: dipakai untuk GET (halaman) sekaligus POST (aksi massal), dan `query()` hanya membaca query string sehingga seluruh filter pada POST akan terlewat.
+- **`scope_all`** pada `ProductMediaController::bulkAction` dan `MediaFolderController::moveAssets`: sasaran adalah seluruh aset pada folder + filter aktif, diselesaikan di server. Daftar id eksplisit tetap dibatasi 200 karena dikirim dari peramban; sasaran besar lewat `scope_all` supaya tidak ada batas halaman yang diam-diam memotong aksi.
+- Endpoint pindah memakai **`scope_folder_id`** untuk folder asal, karena `folder_id` di sana berarti TUJUAN. Ini bug yang ditemukan sendiri saat menulis test: memakai nama sama membuat filter menyasar folder tujuan, bukan asal.
+- **Toolbar seleksi selalu tampil** di atas galeri; tombol aksi `disabled` saat kosong (bukan disembunyikan). Label ringkas "Pilih semua (N)" dengan N = total scope. Tombol "Pilih Media" pindah dari header ke toolbar (rancangan saklar dipertahankan sesuai pilihan owner: klik kartu membuka pratinjau saat saklar mati).
+- "Pulihkan" tampil hanya saat filter Diarsipkan aktif, karena ini satu-satunya jalan memulihkan massal dan tidak boleh hilang.
+
+Verifikasi: typecheck bersih, lint 0 warning, Vitest 371 lulus, 6 test baru `MediaLibraryBulkScopeTest` + 10 test folder lulus (67 assertion). Uji browser: label "Pilih semua (854)" sesuai format, tombol aksi ada tapi abu saat kosong, "Pilih Media" tidak lagi di header, dan mencentang Pilih semua menghasilkan "854 dipilih" (bukan 30). Uji menemukan aturan pengaman yang sudah ada: aset di dalam folder dianggap masih dipakai, jadi "Hapus" mengARSIPKAN; hanya aset Inbox tak terlampir yang dihapus permanen.
+
+INSIDEN yang diperbaiki: commit agent lain (`15ac59d9`) menyapu perubahan `ProductMediaController` untuk fitur ini tanpa kelas `MediaLibraryFilter`, sehingga `main` memakai kelas yang belum ada dan halaman Media Library produksi mengembalikan **500 pada 20:27**. Saya lengkapi kelasnya di commit `ff4b1993`. Setelah deploy, tidak ada lagi 500 dan halaman render normal (diverifikasi baca-saja: global 115 aset, folder "custom" 6 aset).
+
+Deploy ke 202: rilis aktif saat itu baru (`20261014202431-cascade-media`, dibuat agent lain 20:24). Build sempat gagal karena `public/build` di rilis baru tidak memberi izin tulis ke group; diperbaiki dengan `chown`+`chmod` artefak build (langkah standar repo ini). Bundel `Library-kCnuyNqp.js` memuat seluruh fitur baru dan fitur lama (pilihan hapus folder, penyaring berkas sistem) tetap utuh. Backup: `/root/backups/pre-pilih-semua-20261014-202835`.
