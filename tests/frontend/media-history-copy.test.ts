@@ -287,6 +287,29 @@ describe("urutan daftar Riwayat Media", () => {
   })
 })
 
+describe("penyegaran status baris tunggu", () => {
+  it("hanya kegagalan yang menulis ulang tampilan baris", () => {
+    // Sebelum 14 Okt 2026, setiap baris milik aset yang sudah siap diubah menjadi
+    // "Berhasil", termasuk baris "Diproses". Akibatnya satu aset tampil dua baris
+    // kembar berlabel sama, dan tab Diproses berisi baris berlabel Berhasil.
+    // Sekarang hanya status failed yang boleh menulis ulang.
+    const teks = sumber()
+
+    expect(teks).toContain('if (info.status === "failed") {')
+    expect(teks).not.toContain(`event: "success"`)
+  })
+
+  it("penyegaran berhenti setelah seluruh entitas tunggu diketahui hasilnya", () => {
+    // Baris "Diproses" dan "Antre" tidak pernah berubah statusnya di database,
+    // jadi tanpa penanda ini badge Live dan polling tidak akan pernah berhenti.
+    const teks = sumber()
+
+    expect(teks).toContain("const [settledEntities, setSettledEntities]")
+    expect(teks).toContain("settledEntities[`${r.loggable_type}:${r.loggable_id}`]")
+    expect(teks).toContain("pending.every((r) => settledEntities[")
+  })
+})
+
 describe("baris dengan media yang sudah dihapus", () => {
   it("diberi keterangan apa adanya, bukan dibiarkan tampak biasa", () => {
     // Tanpa keterangan, barisnya tampak seperti media biasa yang kebetulan tanpa
