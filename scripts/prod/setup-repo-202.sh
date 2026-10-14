@@ -52,15 +52,25 @@ chown deploy:www-data "$CRED_FILE"
 chmod 600 "$CRED_FILE"
 echo "   tersimpan di $CRED_FILE"
 
-echo "== 2. Bersihkan repository lama bila ada =="
-rm -rf "$REPO_DIR"
-mkdir -p "$REPO_DIR"
-chown deploy:www-data "$REPO_DIR"
+echo "== 2. Siapkan repository =="
+# Kalau sudah ada mirror yang sehat, cukup pasang kredensialnya dan tarik
+# pembaruan. Menghapus lalu clone ulang tidak perlu, dan direktori itu milik
+# user deploy sehingga penghapusan hanya menambah risiko.
+if sudo -u deploy git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "   mirror sudah ada, dipakai ulang"
+  sudo -u deploy git -C "$REPO_DIR" config credential.helper "store --file=$CRED_FILE"
+  sudo -u deploy git -C "$REPO_DIR" fetch --quiet origin "$BRANCH"
+else
+  rm -rf "$REPO_DIR"
+  mkdir -p "$REPO_DIR"
+  chown deploy:www-data "$REPO_DIR"
 
-echo "== 3. Clone mirror =="
-sudo -u deploy git -c credential.helper="store --file=$CRED_FILE" \
-  clone --quiet "https://github.com/$REPO_SLUG.git" "$REPO_DIR"
-sudo -u deploy git -C "$REPO_DIR" config credential.helper "store --file=$CRED_FILE"
+  echo "== 3. Clone mirror =="
+  sudo -u deploy git -c credential.helper="store --file=$CRED_FILE" \
+    clone --quiet "https://github.com/$REPO_SLUG.git" "$REPO_DIR"
+  sudo -u deploy git -C "$REPO_DIR" config credential.helper "store --file=$CRED_FILE"
+fi
+
 sudo -u deploy git -C "$REPO_DIR" remote set-url origin "https://github.com/$REPO_SLUG.git"
 echo "   HEAD: $(sudo -u deploy git -C "$REPO_DIR" rev-parse --short HEAD)"
 

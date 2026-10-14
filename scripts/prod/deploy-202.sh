@@ -125,15 +125,25 @@ fi
 
 # --- 1. Ambil sumber dari repository mirror ---------------------------------
 [ -d "$REPO_DIR" ] || die "repository mirror belum ada di $REPO_DIR (lihat catatan pemasangan)"
+
+# Mirror dimiliki user deploy, sedangkan skrip ini berjalan sebagai root. Git
+# menolak repo dengan pemilik berbeda (dubious ownership), jadi semua perintah
+# git dijalankan sebagai deploy, bukan sebagai root.
+if [ "$(id -u)" = 0 ]; then
+  GIT=(sudo -u deploy git -C "$REPO_DIR")
+else
+  GIT=(git -C "$REPO_DIR")
+fi
+
 log "fetch dari origin..."
-run git -C "$REPO_DIR" remote update --prune
+run "${GIT[@]}" remote update --prune
 
 if [ -z "$REF" ]; then
   REF="origin/$BRANCH"
 fi
 if [ "$DRY" = 0 ]; then
-  SHA="$(git -C "$REPO_DIR" rev-parse --verify "$REF^{commit}")" || die "ref tidak ditemukan: $REF"
-  SHORT="$(git -C "$REPO_DIR" rev-parse --short "$SHA")"
+  SHA="$("${GIT[@]}" rev-parse --verify "$REF^{commit}")" || die "ref tidak ditemukan: $REF"
+  SHORT="$("${GIT[@]}" rev-parse --short "$SHA")"
 else
   SHA="dryrun"; SHORT="dryrun"
 fi
@@ -148,7 +158,7 @@ NEW_RELEASE="$RELEASES/${STAMP}-${SLUG}"
 log "rilis baru: $(basename "$NEW_RELEASE")"
 run $SUDO mkdir -p "$NEW_RELEASE"
 if [ "$DRY" = 0 ]; then
-  git -C "$REPO_DIR" archive "$SHA" | $SUDO tar -x -C "$NEW_RELEASE"
+  "${GIT[@]}" archive "$SHA" | $SUDO tar -x -C "$NEW_RELEASE"
 fi
 
 # --- 3. Sambungkan berkas bersama -------------------------------------------
