@@ -5120,3 +5120,49 @@ Menjawab permintaan owner untuk menguji menyeluruh 3 skema XLSX (import produk b
    - Pembersihan:
      * Produk uji RAMC9H4YDTL9 beserta varian & media dihapus; URL publik kembali 404.
      * Produk #1 (RAP7FG346AJA) dipulihkan ke baseline awal (harga 3.360.000, stok 11.313 & 10.523, media 12 item dengan aset 955 sebagai gambar utama).
+
+
+## 2026-10-14 04:55 UTC | zcode | Standard | aa3a9f04 | selesai
+
+Lingkup: menyamarkan contoh data sensitif di permukaan publik dan mengarsipkan mockup nyasar.
+
+Latar: halaman /order/status dan form checkout memampang contoh yang menunjuk data NYATA.
+Contoh nomor pesanan ORD26090011 memang ada di basis data 209 (pesanan 19 Sep 2026 atas nama
+pelanggan), dan contoh nomor HP 085725116817 adalah nomor uji owner. Pasangan keduanya bisa
+dipakai siapa pun membuka data pesanan nyata lewat form lacak pesanan (nama, alamat, isi pesanan).
+
+Perubahan:
+1. resources/js/pages/Public/OrderStatus.tsx: hint + placeholder nomor pesanan jadi ORDYYMMNNNN,
+   placeholder nomor HP jadi 08XXXXXXXXXX, kalimat "Contoh: 085725116817" dihapus.
+2. resources/js/components/public/checkout-address-form.tsx: placeholder nomor HP jadi 08XXXXXXXXXX.
+3. app/Http/Controllers/Admin/ShippingRecordController.php: contoh nomor di komentar disamarkan
+   (hanya komentar, tidak mengubah perilaku).
+4. public/test_header.html (mockup header internal, terlacak git) dipindahkan ke
+   _archive/mockups/test_header.html supaya tidak lagi disajikan publik. Sebelumnya
+   https://ragilaluminium.com/test_header.html menjawab 200 dan memuat nomor +62 81234589065.
+
+Dampak spec: tidak berubah (tidak ada route, kolom, enum, status, atau bentuk JSON baru).
+
+Untuk agent berikutnya:
+- JANGAN memakai nomor pesanan atau nomor HP nyata sebagai contoh/placeholder di kode, docs,
+  atau UI. Pakai format tersamar (ORDYYMMNNNN, 08XXXXXXXXXX) atau nomor fiktif yang jelas dummy.
+- Kontrak NOMOR TEST WHATSAPP (085725116817) tetap berlaku untuk PENGUJIAN internal dan seeder;
+  yang dilarang adalah memampangkannya ke publik.
+- Slot build (public/build-slot-*) berada DI DALAM web root dan disajikan nginx. Slot yang
+  menyimpan build lama tetap bisa diakses publik, jadi slot basi harus dikeluarkan dari
+  public/ setelah swap, bukan dibiarkan.
+- Berkas mockup/prototipe jangan ditaruh di public/. Taruh di _archive/ atau di luar web root.
+
+Bukti:
+- Basis data 209: SELECT order_number, customer_name, customer_phone FROM orders WHERE
+  order_number="ORD26090011" -> ada (febrian afik, 2026-09-19), jadi pasangan contoh itu nyata.
+- npm run typecheck: lulus. npm run lint --max-warnings=0: lulus (0 warning).
+- npm run test: 42 berkas, 354 test lulus. npm run build: sukses.
+- 209 (dev): grep '085725116817|ORD26090011' public/build -> kosong; bundel memuat ORDYYMMNNNN
+  dan 08XXXXXXXXXX.
+- 202 (prod): sumber rilis dipatch, build ulang lewat scripts/prod/build-assets.sh, lalu
+  chown build kembali ke deploy. Bundel live OrderStatus-Cr1SBj0I.js dan Checkout-CDcfnew4.js
+  bersih dari nilai bocor. Slot basi build-slot-a (memuat berkas bocor, disajikan 200)
+  dipindahkan keluar web root. test_header.html kini 404.
+- Kesehatan prod: /, /order/status, /cart, /login masing-masing 200.
+- Commit aa3a9f04 di-push ke origin/main (pre-push hook menjalankan typecheck + build, lulus).
