@@ -50,13 +50,13 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        MediaProcessingLog::record($asset, 'processing', 'Memulai proses derivatif WebP.');
+        MediaProcessingLog::transition($asset, 'processing', 'Memulai proses derivatif WebP.');
 
         $disk = Storage::disk(config('media.disk', 'media'));
         $key = $asset->object_key;
         if (! $key || ! $disk->exists($key)) {
             $asset->update(['status' => 'failed', 'error_reason' => 'File upload tidak ditemukan di penyimpanan media.']);
-            MediaProcessingLog::record($asset, 'failed', 'File upload tidak ditemukan di penyimpanan media.');
+            MediaProcessingLog::transition($asset, 'failed', 'File upload tidak ditemukan di penyimpanan media.');
             MediaFailureNotifier::notify($asset, 'File upload tidak ditemukan di penyimpanan media.');
 
             return;
@@ -76,7 +76,7 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 : (int) config('media.max_bytes', 10 * 1024 * 1024);
             if ($size > $maxBytes) {
                 $asset->update(['status' => 'failed', 'error_reason' => "Ukuran file {$size}B melebihi batas {$maxBytes}B"]);
-                MediaProcessingLog::record($asset, 'failed', "Ukuran file {$size}B melebihi batas {$maxBytes}B.");
+                MediaProcessingLog::transition($asset, 'failed', "Ukuran file {$size}B melebihi batas {$maxBytes}B.");
                 MediaFailureNotifier::notify($asset, "Ukuran file {$size}B melebihi batas {$maxBytes}B.");
 
                 return;
@@ -88,7 +88,7 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 : config('media.allowed_mime', []);
             if (! in_array($mime, $allowedMime, true)) {
                 $asset->update(['status' => 'failed', 'error_reason' => "MIME tidak diizinkan: {$mime}"]);
-                MediaProcessingLog::record($asset, 'failed', "MIME tidak diizinkan: {$mime}.");
+                MediaProcessingLog::transition($asset, 'failed', "MIME tidak diizinkan: {$mime}.");
                 MediaFailureNotifier::notify($asset, "MIME tidak diizinkan: {$mime}.");
 
                 return;
@@ -142,7 +142,7 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 'status' => 'downloaded',
                 'error_reason' => null,
             ]);
-            MediaProcessingLog::record($asset, 'success', 'Derivatif WebP siap (thumb/card/pdp).');
+            MediaProcessingLog::transition($asset, 'success', 'Derivatif WebP siap (thumb/card/pdp).');
 
             // Banner promo & galeri hasil pemasangan: alihkan ke derivatif WebP.
             $pdpUrl = $asset->localUrlFor('pdp') ?: $asset->localUrlFor('card') ?: $asset->localUrlFor('thumb') ?: $asset->object_key;
@@ -156,7 +156,7 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
         } catch (\Throwable $e) {
             $reason = mb_substr($e->getMessage(), 0, 500);
             $asset->update(['status' => 'failed', 'error_reason' => $reason]);
-            MediaProcessingLog::record($asset, 'failed', $reason);
+            MediaProcessingLog::transition($asset, 'failed', $reason);
             MediaFailureNotifier::notify($asset, $reason);
             throw $e;
         } finally {

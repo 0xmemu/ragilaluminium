@@ -46,7 +46,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
         }
 
         $asset->update(['status' => 'downloading', 'error_reason' => null]);
-        MediaProcessingLog::record($asset, 'processing', 'Mengunduh media dari URL sumber.');
+        MediaProcessingLog::transition($asset, 'processing', 'Mengunduh media dari URL sumber.');
         $tmp = null;
 
         try {
@@ -127,7 +127,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                 'status' => 'downloaded',
                 'error_reason' => null,
             ]);
-            MediaProcessingLog::record($asset, 'success', 'Media berhasil diunduh dan derivatif WebP siap.');
+            MediaProcessingLog::transition($asset, 'success', 'Media berhasil diunduh dan derivatif WebP siap.');
         } catch (\Throwable $e) {
             $this->failAsset($asset, $e->getMessage());
             throw $e;
@@ -144,7 +144,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
             'status' => 'failed',
             'error_reason' => Str::limit($reason, 500),
         ]);
-        MediaProcessingLog::record($asset, 'failed', Str::limit($reason, 500));
+        MediaProcessingLog::transition($asset, 'failed', Str::limit($reason, 500));
         MediaFailureNotifier::notify($asset, $reason);
         ProductMedia::where('media_asset_id', $asset->id)->update([
             'status' => 'failed',

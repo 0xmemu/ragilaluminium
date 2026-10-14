@@ -282,6 +282,70 @@ class MediaAssetWorkflowTest extends TestCase
         );
     }
 
+    public function test_processing_row_is_updated_not_stacked(): void
+    {
+        // Kontrak owner 2026-10-14: "Diproses" adalah status SEMENTARA, jadi baris
+        // riwayatnya harus berhenti saat pekerjaannya selesai. Sebelumnya setiap
+        // tahap menambah baris baru, sehingga satu media meninggalkan dua baris
+        // (Diproses lalu Berhasil) dan halaman Riwayat Media menumpuk "Diproses"
+        // yang sudah lama selesai.
+        Storage::fake('media');
+        $disk = Storage::disk('media');
+
+        $content = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        $key = 'media/library/uji-transisi.png';
+        $disk->put($key, $content);
+
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'uji-transisi.png',
+            'object_key' => $key,
+            'status' => 'pending',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::transition($asset, 'queued', 'Menunggu antrean.');
+        MediaProcessingLog::transition($asset, 'processing', 'Memulai proses.');
+        MediaProcessingLog::transition($asset, 'success', 'Selesai.');
+
+        $baris = MediaProcessingLog::where('loggable_type', MediaAsset::class)
+            ->where('loggable_id', $asset->id)
+            ->get();
+
+        $this->assertCount(1, $baris, 'Satu pekerjaan harus meninggalkan satu baris.');
+        $this->assertSame('success', $baris->first()->event);
+        $this->assertSame('Selesai.', $baris->first()->message);
+    }
+
+    public function test_retry_after_failure_gets_its_own_row(): void
+    {
+        // Percobaan ulang sesudah gagal memang peristiwa baru, jadi baris gagal
+        // yang sudah berakhir tidak boleh ditimpa.
+        Storage::fake('media');
+
+        $asset = MediaAsset::create([
+            'kind' => 'image',
+            'label' => 'uji-retry.png',
+            'object_key' => 'media/library/uji-retry.png',
+            'status' => 'failed',
+            'visibility' => 'visible',
+        ]);
+
+        MediaProcessingLog::transition($asset, 'processing', 'Percobaan pertama.');
+        MediaProcessingLog::transition($asset, 'failed', 'Gagal pertama.');
+        MediaProcessingLog::transition($asset, 'queued', 'Percobaan kedua.');
+        MediaProcessingLog::transition($asset, 'success', 'Berhasil kedua.');
+
+        $baris = MediaProcessingLog::where('loggable_type', MediaAsset::class)
+            ->where('loggable_id', $asset->id)
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $baris, 'Gagal lalu dicoba ulang meninggalkan dua baris.');
+        $this->assertSame('failed', $baris[0]->event);
+        $this->assertSame('success', $baris[1]->event);
+    }
+
     private function makeAsset(string $seed): MediaAsset
     {
         return MediaAsset::create([

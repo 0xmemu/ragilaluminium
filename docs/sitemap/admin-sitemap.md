@@ -129,22 +129,28 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
     `2026_10_14_120000_relax_media_asset_checksum_unique`), sebab selama masih unik dua aset
     berisi sama tidak mungkin disimpan.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
-  - Filter: tab status (Semua, Berhasil, Gagal, Diproses, Antre), pencarian
+  - Filter: tab status TETAP (Semua, Berhasil, Gagal), pencarian
     label/pesan, SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang
     tanggal), dan SATU pilihan urutan (Terbaru, bawaan, atau Terlama).
     Rentang tanggal hanya muncul setelah "Rentang tanggal" dipilih, dan periode aktif
     ditandai chip beserta jalan melepasnya. Urutan memakai pola yang sama dengan halaman
     Log Aktivitas (`sort=newest|oldest`, nilai asing kembali ke bawaan).
-  - Angka tab WAJIB bisa ditutup: jumlah seluruh tab sama dengan angka tab Semua, karena
-    tiap jenis event yang ditulis aplikasi punya tabnya sendiri. Sebelum 14 Okt 2026 hanya
-    Berhasil dan Gagal yang punya tab, sehingga pada data nyata tab Semua 324 sementara
-    Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan yang tidak
-    tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat. Dijaga test
+  - Status TETAP dan status SEMENTARA dibedakan (owner 14 Okt 2026): hanya Berhasil dan
+    Gagal yang punya tab. "Diproses" dan "Antre" adalah status sementara, jadi keduanya
+    tampil di daftar Semua sebagai status berjalan, dan jumlahnya diringkas sebagai
+    `inProgressCount` di samping tab. Angka tab Semua = Berhasil + Gagal + yang sedang
+    berjalan, sehingga selalu bisa dijelaskan tanpa sisa. Dijaga test
     `test_angka_tab_selalu_bisa_ditutup`.
-  - Tab "Duplikat" ditambahkan lalu DIBUANG di hari yang sama, karena penggabungan otomatis
-    berkas kembar di server dihapus sehingga kejadian `dedup` tidak pernah ditulis lagi.
-    Baris `dedup` LAMA tetap tampil di tab Semua lewat labelnya, jadi satu-satunya selisih
-    yang sah antara tab Semua dan jumlah seluruh tab adalah baris dedup warisan itu.
+  - Akar masalah angkanya diperbaiki di pencatatannya: `MediaProcessingLog::transition()`
+    MEMPERBARUI baris berjalan alih-alih menambah baris baru, jadi satu pekerjaan
+    meninggalkan satu baris dan "Diproses" benar-benar berhenti saat selesai. Sebelumnya
+    setiap tahap menambah baris sendiri, sehingga 164 media meninggalkan 326 baris (dua
+    baris per media) dan angkanya terbaca seperti masih banyak pekerjaan berjalan.
+    Dijaga `test_processing_row_is_updated_not_stacked` dan
+    `test_retry_after_failure_gets_its_own_row`.
+  - Tab "Duplikat" juga dibuang: penggabungan otomatis berkas kembar di server dihapus,
+    sehingga kejadian `dedup` tidak pernah ditulis lagi. Labelnya tetap terpetakan supaya
+    baris dedup lama tampil bernada benar.
   - Daftar jenis event yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`
     dan `tabCounts` dihitung dari konstanta itu, sinkron dengan `EVENT_TABS` di
     `resources/js/pages/Admin/Media/History.tsx`. Nilai yang bukan kejadian sama sekali

@@ -61,16 +61,18 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"success", "failed"')
   })
 
-  it("setiap jenis event yang masih ditulis aplikasi punya tab", () => {
-    // Owner 14 Okt 2026: angka tab harus selalu bisa ditutup, dan itu hanya mungkin
-    // kalau setiap jenis event punya tabnya sendiri. Sebelumnya hanya success dan
-    // failed yang bertab, sehingga pada data nyata tab Semua menunjukkan 324
-    // sementara Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan
-    // yang tidak tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat.
+  it("hanya status tetap yang punya tab", () => {
+    // Owner 14 Okt 2026 memisahkan status TETAP dari status SEMENTARA: "kalau media
+    // sedang diproses maka di tab semua media yang sedang diproses statusnya adalah
+    // diproses". Jadi Diproses dan Antre tidak layak jadi tab tersendiri; keduanya
+    // tetap tampil di daftar Semua sebagai status berjalan, dan jumlahnya diringkas
+    // di samping tab.
     //
-    // dedup DIBUANG dari daftar ini di hari yang sama, karena penggabungan otomatis
-    // berkas kembar di server dihapus sehingga kejadian itu tidak pernah ditulis lagi.
-    expect(daftarEventKlien()).toEqual(["success", "failed", "processing", "queued"])
+    // Sebelumnya keduanya sempat diberi tab untuk menutup selisih angka, tetapi itu
+    // menutupi masalah sebenarnya: baris "Diproses" tidak pernah berhenti. Sesudah
+    // MediaProcessingLog::transition() memperbarui baris berjalan, status sementara
+    // benar-benar berhenti sehingga tidak ada tumpukan yang harus dijelaskan tab.
+    expect(daftarEventKlien()).toEqual(["success", "failed"])
   })
 
   it("kejadian berhasil dilabeli Berhasil, bukan Siap", () => {
@@ -97,7 +99,8 @@ describe("label status Riwayat Media", () => {
     expect(deskripsi).toBeDefined()
     expect(deskripsi).toContain("Berhasil")
     expect(deskripsi).toContain("Gagal")
-    expect(deskripsi).toContain("Diproses")
+    expect(deskripsi).not.toContain("Diproses")
+    expect(deskripsi).not.toContain("Antre")
     expect(deskripsi).not.toContain("Siap")
   })
 

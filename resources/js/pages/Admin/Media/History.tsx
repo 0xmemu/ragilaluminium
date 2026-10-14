@@ -112,31 +112,28 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
  * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
  *
- * Owner 14 Okt 2026: tab Diproses dan Antre DITAMBAHKAN. Sebelumnya hanya
- * Berhasil dan Gagal yang punya tab, sehingga angka Semua selalu lebih besar dari
- * jumlah seluruh tab dan selisihnya terbaca seperti kegagalan yang tidak tercatat.
- * Pada data nyata 14 Okt: Semua 324, sementara Berhasil 156 dan Gagal 0, padahal
- * sisa 168 itu 162 baris Diproses dan 6 baris Duplikat. Sekarang setiap jenis event
- * yang MASIH ditulis aplikasi punya tabnya sendiri, jadi angka tab selalu bisa
- * ditutup: Semua = Berhasil + Gagal + Diproses + Antre.
+ * Hanya status TETAP yang punya tab. Owner 14 Okt 2026: "Diproses" dan "Antre"
+ * adalah status SEMENTARA, jadi tidak layak jadi tab tersendiri. Keduanya tetap
+ * tampil di daftar Semua sebagai status yang sedang berjalan, dan jumlahnya
+ * diringkas di samping tab (lihat `inProgressCount`) supaya selisih angka tab
+ * Semua bisa dijelaskan, bukan ditebak.
  *
- * Tab "Duplikat" ada sebentar lalu DIBUANG di hari yang sama, karena penggabungan
- * otomatis berkas kembar di server dihapus (lihat resources/js/lib/media-duplicate.ts).
- * Tidak ada lagi kejadian dedup baru; labelnya tetap ada di EVENT_META supaya baris
- * dedup lama tampil bernada benar, tetapi angkanya nol dan tidak perlu tab.
+ * Sebelumnya tab Diproses dan Antre sempat ditambahkan untuk menutup selisih
+ * angka, tetapi itu menutupi masalah yang sebenarnya: baris "Diproses" TIDAK
+ * PERNAH berhenti karena setiap tahap menambah baris baru. Sesudah
+ * MediaProcessingLog::transition() memperbarui baris berjalan, status sementara
+ * benar-benar berhenti saat pekerjaannya selesai, sehingga tidak ada lagi
+ * tumpukan "Diproses" yang harus dijelaskan tab.
+ *
+ * Tab "Duplikat" juga dibuang: penggabungan otomatis berkas kembar di server
+ * dihapus, jadi kejadiannya tidak pernah ditulis lagi. Labelnya tetap ada di
+ * EVENT_META supaya baris dedup lama tampil bernada benar.
  *
  * "Terunduh" TIDAK punya tab dan tidak punya label: itu bukan event sama sekali,
  * melainkan STATUS pada tabel lampiran media, dan tidak ada satu pun kode yang
  * pernah menuliskannya sebagai event riwayat.
- *
- * Catatan arti "Diproses" dan "Antre": setiap tahap pemrosesan MENAMBAH baris
- * barunya sendiri dan tidak pernah memperbarui baris lama, jadi satu aset yang
- * selesai meninggalkan dua baris, satu "Diproses" dan satu "Berhasil". Angka pada
- * tab Diproses karena itu menghitung BARIS riwayat, bukan pekerjaan yang masih
- * berjalan. Untuk audit memang itu yang dibutuhkan, tetapi jangan dibaca sebagai
- * jumlah antrean aktif: pekerjaan yang benar-benar berjalan ditandai badge Live.
  */
-const EVENT_TABS = ["success", "failed", "processing", "queued"] as const
+const EVENT_TABS = ["success", "failed"] as const
 
 /** Pilihan urutan daftar. Juga dipakai sebagai bawaan bila server tidak mengirim. */
 const URUTAN_BAWAH: Array<{ value: string; label: string }> = [
@@ -165,6 +162,7 @@ export default function MediaHistory({
   periodLabel,
   sortOptions = URUTAN_BAWAH,
   tabCounts,
+  inProgressCount = 0,
   prune,
   backUrl,
 }: {
@@ -173,6 +171,8 @@ export default function MediaHistory({
   filters: { event: string; q: string; sort: string }
   sortOptions?: Array<{ value: string; label: string }>
   tabCounts?: Record<string, number>
+  /** Jumlah media yang statusnya masih berjalan (antre atau diproses). */
+  inProgressCount?: number
   activeDatePreset: string
   dateFrom: string
   dateTo: string
@@ -344,7 +344,7 @@ export default function MediaHistory({
   }, [logs, pollNonce, settledEntities])
 
   return (
-    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil, Gagal, Diproses, dan Antre">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil atau Gagal">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">
@@ -383,6 +383,11 @@ export default function MediaHistory({
           )
         })}
         </div>
+        {inProgressCount > 0 ? (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-info/15 px-2.5 py-1 text-[11px] font-medium text-info">
+            {inProgressCount} sedang berjalan
+          </span>
+        ) : null}
         {liveActive ? (
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-medium text-success">
             <span className="relative flex size-1.5">

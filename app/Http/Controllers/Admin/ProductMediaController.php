@@ -487,25 +487,22 @@ class ProductMediaController extends Controller
      * memvalidasi filter status sekaligus menjaga daftarnya sinkron dengan
      * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
      *
-     * Daftar ini memuat semua jenis event yang MASIH ditulis aplikasi (lihat
-     * MediaProcessingLog::record di ProcessUploadedMediaAsset dan
-     * DownloadMediaAsset). Owner 14 Okt 2026 menemukan angka tab tidak bisa
-     * ditutup: Semua 324 sementara Berhasil 156 dan Gagal 0, sehingga sisa 168
-     * terbaca seperti kegagalan yang tidak tercatat, padahal isinya 162 baris
-     * Diproses dan 6 baris Duplikat. Karena itu tabCounts dihitung dari konstanta
-     * ini, bukan dari daftar tetap, supaya menambah jenis event tidak bisa lupa
-     * menambah angkanya.
+     * Hanya status TETAP yang punya tab. Owner 14 Okt 2026: "Diproses" dan
+     * "Antre" adalah status SEMENTARA, jadi tidak layak jadi tab tersendiri; di
+     * daftar Semua keduanya tetap tampil sebagai status berjalan.
+     *
+     * Karena MediaProcessingLog::transition tidak lagi menumpuk baris, sisa
+     * "Diproses" yang sudah selesai tidak ada lagi, sehingga angka tab Semua
+     * sama dengan Berhasil + Gagal + yang sedang berjalan. Jumlah yang sedang
+     * berjalan dikirim terpisah sebagai `inProgressCount` supaya selisihnya
+     * terbaca jelas di layar, bukan ditebak.
      *
      * 'dedup' TIDAK ada di sini: penggabungan otomatis berkas kembar di server
-     * dihapus pada 14 Okt 2026, jadi tidak ada kejadian dedup baru. Baris dedup
-     * lama tetap tampil di tab Semua lewat labelnya di sisi tampilan, tetapi tidak
-     * perlu tabnya sendiri.
+     * dihapus pada 14 Okt 2026, jadi tidak ada kejadian dedup baru.
      */
     private const HISTORY_EVENT_TABS = [
         'success',
         'failed',
-        'processing',
-        'queued',
     ];
 
     /**
@@ -620,6 +617,9 @@ class ProductMediaController extends Controller
                 ['value' => 'oldest', 'label' => 'Terlama'],
             ],
             'tabCounts' => $tabCounts,
+            // Yang masih berjalan dipisahkan dari status tetap supaya selisih
+            // angka tab Semua bisa dijelaskan di layar, bukan ditebak pembaca.
+            'inProgressCount' => (int) (($countsByEvent['queued'] ?? 0) + ($countsByEvent['processing'] ?? 0)),
             'activeDatePreset' => $datePreset,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
@@ -998,7 +998,7 @@ class ProductMediaController extends Controller
         if ($loggable instanceof MediaAsset) {
             if ($loggable->source_url) {
                 $loggable->update(['status' => 'pending', 'error_reason' => null]);
-                MediaProcessingLog::record($loggable, 'queued', 'Retry: mengunduh ulang media dari URL sumber.');
+                MediaProcessingLog::transition($loggable, 'queued', 'Retry: mengunduh ulang media dari URL sumber.');
                 DownloadMediaAsset::dispatch($loggable->id);
 
                 return redirect()->back()->with('success', 'Pemrosesan media dijadwalkan ulang.');
@@ -1006,7 +1006,7 @@ class ProductMediaController extends Controller
 
             if ($loggable->object_key) {
                 $loggable->update(['status' => 'pending', 'error_reason' => null]);
-                MediaProcessingLog::record($loggable, 'queued', 'Retry: memproses ulang derivatif WebP.');
+                MediaProcessingLog::transition($loggable, 'queued', 'Retry: memproses ulang derivatif WebP.');
                 ProcessUploadedMediaAsset::dispatch($loggable->id);
 
                 return redirect()->back()->with('success', 'Pemrosesan media dijadwalkan ulang.');
@@ -1017,7 +1017,7 @@ class ProductMediaController extends Controller
 
         if ($loggable instanceof ProductMedia) {
             $loggable->update(['status' => 'pending', 'error_reason' => null]);
-            MediaProcessingLog::record($loggable, 'queued', 'Retry: mengunduh ulang media produk.');
+            MediaProcessingLog::transition($loggable, 'queued', 'Retry: mengunduh ulang media produk.');
             if ($loggable->media_asset_id) {
                 $loggable->mediaAsset?->update(['status' => 'pending', 'error_reason' => null]);
                 DownloadMediaAsset::dispatch($loggable->media_asset_id);

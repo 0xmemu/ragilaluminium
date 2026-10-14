@@ -72,7 +72,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
         }
 
         $media->update(['status' => 'downloading']);
-        MediaProcessingLog::record($media, 'processing', 'Mengunduh media produk dari URL sumber.');
+        MediaProcessingLog::transition($media, 'processing', 'Mengunduh media produk dari URL sumber.');
         $tmp = null;
 
         try {
@@ -149,7 +149,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             }
 
             $media->update($payload);
-            MediaProcessingLog::record(
+            MediaProcessingLog::transition(
                 $media,
                 'success',
                 empty($built) ? 'Media tersimpan tanpa derivatif WebP (periksa format).' : 'Media berhasil diunduh dan derivatif WebP siap.',
@@ -167,7 +167,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
     protected function fail(ProductMedia $media, string $reason): void
     {
         $media->update(['status' => 'failed', 'error_reason' => Str::limit($reason, 500)]);
-        MediaProcessingLog::record($media, 'failed', Str::limit($reason, 500));
+        MediaProcessingLog::transition($media, 'failed', Str::limit($reason, 500));
         MediaFailureNotifier::notify($media, $reason);
     }
 

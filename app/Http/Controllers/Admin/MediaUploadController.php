@@ -148,7 +148,7 @@ class MediaUploadController extends Controller
             ], (int) $request->user()->id);
         }
 
-        MediaProcessingLog::record($asset, 'queued', 'Upload diterima; menunggu antrean proses derivatif WebP.');
+        MediaProcessingLog::transition($asset, 'queued', 'Upload diterima; menunggu antrean proses derivatif WebP.');
         ProcessUploadedMediaAsset::dispatch($asset->id);
 
         if ($product) {
