@@ -23,7 +23,7 @@ class ReconcileMediaObjectsTest extends TestCase
 
     private const REFERENCED = 'media-assets/reconcile/card.webp';
 
-    private const ORPHAN = 'media-assets/reconcile/orphan-card.webp';
+    private const ORPHAN = 'products/reconcile/orphan-card.webp';
 
     private const REVIEW_PHOTO = 'reviews/ORD26080001/foto-ulasan.webp';
 
@@ -107,5 +107,29 @@ class ReconcileMediaObjectsTest extends TestCase
         $this->artisan('media:reconcile --orphans')->assertSuccessful();
 
         Storage::disk('media')->assertExists('healthchecks/probe.txt');
+    }
+
+    public function test_media_library_files_are_protected_from_pruning(): void
+    {
+        Storage::fake('media');
+        Storage::disk('media')->put('media-assets/tanpa-rujukan/card.webp', 'x');
+        Storage::disk('media')->put('media/library/2026/08/original.png', 'y');
+
+        $this->artisan('media:reconcile --prune-orphans')->assertSuccessful();
+
+        // Kontrak owner 2026-10-14: media library tidak dihapus walau belum ada
+        // baris database yang merujuknya, karena berkasnya disimpan untuk produk.
+        Storage::disk('media')->assertExists('media-assets/tanpa-rujukan/card.webp');
+        Storage::disk('media')->assertExists('media/library/2026/08/original.png');
+    }
+
+    public function test_include_library_flag_allows_scanning_protected_prefixes(): void
+    {
+        Storage::fake('media');
+        Storage::disk('media')->put('media-assets/tanpa-rujukan/card.webp', 'x');
+
+        $this->artisan('media:reconcile --prune-orphans --include-library')->assertSuccessful();
+
+        Storage::disk('media')->assertMissing('media-assets/tanpa-rujukan/card.webp');
     }
 }

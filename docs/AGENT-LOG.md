@@ -5325,3 +5325,27 @@ Belum dikerjakan: kode ini ada di 209, BELUM terpasang di produksi 202 yang mema
 berbasis rilis (`releases/20261013-v1.0.1`). Selama belum dipasang, penghapusan media di
 produksi masih bisa meninggalkan object yatim, dan `media:reconcile` belum tersedia di sana.
 Rencana retensi arsip (`--archived-days`) juga belum dijadwalkan di cron.
+
+## 2026-10-14 09:55 UTC | zcode-media-cascade | Standard | koreksi: Media Library dilindungi dari pemindaian yatim
+
+Koreksi atas entri sebelumnya di hari yang sama, setelah owner menegaskan bahwa media di
+Media Library produksi disimpan untuk produk dan tidak boleh dihapus.
+
+Masalahnya pada `media:reconcile --orphans`: berkas dianggap yatim kalau tidak ada baris
+database yang merujuknya. Aturan itu salah untuk awalan Media Library, karena berkasnya
+memang sering sudah ada sebelum baris `media_assets` atau `product_media` yang merujuknya
+dibuat. Akibatnya command menandai 2.032 berkas Media Library sebagai yatim di 209.
+
+Bukti bahwa aturan lama memang salah, dari database dev 209: 15 berkas di
+`media/library/2026/08/` dan satu video di `2026/09/` tercatat sebagai 15 baris
+`media_assets` berstatus siap, dan 133 baris `product_media` merujuknya. Jadi itu media
+produk yang sah, bukan sampah.
+
+Perbaikan: awalan `media/library/` dan `media-assets/` masuk daftar `PROTECTED_PREFIXES`,
+dilewati dari pemindaian yatim dan dilaporkan terpisah sebagai berkas yang dilindungi.
+Ditambah opsi `--include-library` bagi yang benar benar ingin memindai awalan itu, supaya
+aturan ini tidak mengunci selamanya. Dua test baru mengunci perilakunya.
+
+Verifikasi: `media:reconcile --orphans` di 209 kini melaporkan 3 yatim dari 2.739 berkas
+(turun dari 18), dengan 2.032 berkas Media Library dilewati karena dilindungi. Suite penuh
+1.436 test / 14.005 assertion hijau, Pint bersih.

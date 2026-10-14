@@ -15,8 +15,14 @@ use Illuminate\Support\Facades\Storage;
  * cascade: baris yang terhapus langsung lewat SQL, berkas yang tersalin dari
  * lingkungan lain, dan aset arsip yang berkasnya sengaja ditahan.
  *
+ * PENTING: awalan Media Library (media/library/ dan media-assets/) DILINDUNGI
+ * dari pemindaian yatim. Isinya disimpan untuk dipakai produk, jadi berkasnya
+ * sering ada sebelum baris database yang merujuknya dibuat. Tanpa perlindungan
+ * ini, pemindaian akan menghapus media produk hanya karena belum dirujuk.
+ *
  * Dua tugasnya:
- * 1. Object yatim: berkas di disk yang tidak dirujuk baris database mana pun.
+ * 1. Object yatim: berkas di disk yang tidak dirujuk baris database mana pun,
+ *    di luar awalan Media Library yang dilindungi.
  * 2. Retensi arsip: hapus berkas aset yang lama diarsipkan, karena
  *    pengarsipan sengaja tidak menghapus berkas supaya masih bisa dipulihkan.
  */
@@ -27,12 +33,24 @@ class ReconcileMediaObjects extends Command
                             {--prune-orphans : Hapus object yatim (pakai bersama --orphans)}
                             {--archived-days=0 : Hapus berkas aset arsip lebih dari N hari (0 = lewati)}
                             {--dry-run : Tampilkan rencana tanpa menghapus apa pun}
-                            {--force : Lewati pengaman ambang batas saat menghapus yatim}';
+                            {--force : Lewati pengaman ambang batas saat menghapus yatim}
+                            {--include-library : Ikut sertakan awalan Media Library dalam pemindaian yatim}';
 
     protected $description = 'Temukan object media yatim di disk dan bersihkan berkas aset arsip yang kedaluwarsa';
 
     /** Awalan yang bukan media aplikasi, jadi tidak pernah dianggap yatim. */
     private const IGNORED_PREFIXES = ['healthchecks/', 'test/'];
+
+    /**
+     * Awalan Media Library yang dilindungi dari pemindaian yatim.
+     *
+     * Isinya disimpan untuk dipakai produk, jadi TIDAK pernah dianggap yatim
+     * walaupun belum ada baris database yang merujuknya. Kontrak owner
+     * 2026-10-14: jangan hapus media di Media Library produksi.
+     *
+     * @var list<string>
+     */
+    private const PROTECTED_PREFIXES = ['media/library/', 'media-assets/'];
 
     /**
      * Kolom database yang menyimpan penunjuk ke berkas media.
@@ -197,31 +215,64 @@ class ReconcileMediaObjects extends Command
         return false;
     }
 
+    /**
+     * Berkas yang berada di awalan Media Library.
+     *
+     * Isinya disimpan untuk dipakai produk, jadi tidak pernah dianggap yatim
+     * walaupun belum ada baris database yang merujuknya.
+     */
+    private function isProtected(string $key): bool
+    {
+        foreach (self::PROTECTED_PREFIXES as $prefix) {
+            if (str_starts_with($key, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function handleOrphans(Filesystem $disk, array $referenced, bool $dryRun): int
     {
+        $includeLibrary = (bool) $this->option('include-library');
         $orphans = [];
         $bytes = 0;
         $total = 0;
+        $protected = 0;
 
         foreach ($disk->allFiles() as $key) {
             if ($this->isIgnored($key)) {
                 continue;
             }
             $total++;
+
+            if (! $includeLibrary && $this->isProtected($key)) {
+                $protected++;
+
+                continue;
+            }
+
             if (isset($referenced[$key])) {
                 continue;
             }
+
             $orphans[] = $key;
             $bytes += (int) $disk->size($key);
         }
 
         if ($orphans === []) {
-            $this->info('Tidak ada object yatim. Disk bersih.');
+            $this->info('Tidak ada object yatim di luar Media Library.');
+            if ($protected > 0) {
+                $this->line(sprintf('%d berkas Media Library dilewati karena dilindungi.', $protected));
+            }
 
             return self::SUCCESS;
         }
 
         $this->warn(sprintf('%d object yatim dari %d berkas, %.2f MB.', count($orphans), $total, $bytes / 1048576));
+        if ($protected > 0) {
+            $this->line(sprintf('%d berkas Media Library dilewati karena dilindungi.', $protected));
+        }
         foreach (array_slice($orphans, 0, 50) as $key) {
             $this->line('  '.$key);
         }
