@@ -70,67 +70,70 @@ final class UpdatePreviewDiff
                 $productMedia = $variant->product?->media
                     ? $variant->product->media->sortBy('position')
                     : collect();
+                // Kelompokkan media lama per posisi mengikuti pemetaan importer:
+                // Gambar 1..9 = posisi 1..9, Media Bersama N = posisi 80+N,
+                // hasil pemasangan N = posisi 100+N, gambar per varian = baris
+                // milik varian tersebut. Perbandingan memakai keanggotaan
+                // daftar, bukan satu URL terakhir, supaya baris kembar pada
+                // posisi sama tidak memicu perubahan palsu (temuan 14 Okt 2026).
                 $byMain = [];
                 $byInst = [];
                 $byShared = [];
-                $byOpt = [];
+                $byVariant = [];
                 foreach ($productMedia as $m) {
                     $u = (string) ($m->urlFor('pdp') ?? $m->mediaAsset?->urlFor('pdp') ?? '');
                     if ($u === '') { continue; }
-                    // Klasifikasi memakai penanda asli media, bukan band posisi:
-                    // urutan form kini murni 1..N sehingga band tidak lagi akurat.
-                    $isVariant = $m->product_variant_id !== null
-                        || ($m->position >= 50 && $m->position <= 79);
-                    $isInstallation = (bool) $m->is_installation || $m->position >= 101;
-
-                    // $byMain/$byShared/$byInst memakai indeks 1-based (dibaca
-                    // sebagai image_1..image_9, shared_media_1..4, installation_1..9),
-                    // sedangkan $byOpt 0-based (slot opsi = (slot-1)*4 + (opsi-1)).
-                    if ($isInstallation) {
-                        $byInst[count($byInst) + 1] = $u;
+                    $pos = (int) $m->position;
+                    if ($m->product_variant_id !== null || ($pos >= 50 && $pos <= 79)) {
+                        $byVariant[(int) $m->product_variant_id][] = $u;
                         continue;
                     }
-                    if ($isVariant) {
-                        $byOpt[] = $u;
+                    if ((bool) $m->is_installation || $pos >= 101) {
+                        $byInst[$pos - 100][] = $u;
                         continue;
                     }
-                    if (count($byMain) < 9) {
-                        $byMain[count($byMain) + 1] = $u;
+                    if ($pos >= 81 && $pos <= 90) {
+                        $byShared[$pos - 80][] = $u;
                         continue;
                     }
-                    $byShared[count($byShared) + 1] = $u;
+                    $byMain[$pos][] = $u;
                 }
                 $real = 0;
                 for ($n = 1; $n <= 9; $n++) {
                     $url = trim((string) ($r['image_'.$n] ?? ''));
                     if ($url === '') { continue; }
-                    if (($byMain[$n] ?? null) !== $url) {
-                        $rowChanges[] = 'image_'.$n.' diubah';
+                    if (! in_array($url, $byMain[$n] ?? [], true)) {
+                        $rowChanges[] = 'Gambar '.$n.' diubah';
                         $real++;
                     }
                 }
                 for ($n = 1; $n <= 9; $n++) {
                     $url = trim((string) ($r['installation_image_'.$n] ?? ''));
                     if ($url === '') { continue; }
-                    if (($byInst[$n] ?? null) !== $url) {
-                        $rowChanges[] = 'installation_image_'.$n.' diubah';
+                    if (! in_array($url, $byInst[$n] ?? [], true)) {
+                        $rowChanges[] = 'Gambar Hasil Pemasangan '.$n.' diubah';
                         $real++;
                     }
                 }
                 for ($n = 1; $n <= 4; $n++) {
                     $url = trim((string) ($r['shared_media_'.$n] ?? ''));
                     if ($url === '') { continue; }
-                    if (($byShared[$n] ?? null) !== $url) {
-                        $rowChanges[] = 'shared_media_'.$n.' diubah';
+                    if (! in_array($url, $byShared[$n] ?? [], true)) {
+                        $rowChanges[] = 'Media Bersama '.$n.' diubah';
                         $real++;
                     }
+                }
+                // Template v2 memakai satu kolom Gambar per Varian per baris.
+                $optUrl = trim((string) ($r['image_variation_option'] ?? ''));
+                if ($optUrl !== '' && ! in_array($optUrl, $byVariant[(int) $variant->id] ?? [], true)) {
+                    $rowChanges[] = 'Gambar per Varian diubah';
+                    $real++;
                 }
                 foreach ($r as $col => $val) {
                     if (is_string($col) && preg_match('/^image_variation_(\d+)_option_(\d+)$/', $col, $mm)) {
                         $url = trim((string) $val);
                         if ($url === '') { continue; }
-                        $slot = ((int) $mm[1] - 1) * 4 + ((int) $mm[2] - 1);
-                        if (($byOpt[$slot] ?? null) !== $url) {
+                        if (! in_array($url, $byVariant[(int) $variant->id] ?? [], true)) {
                             $rowChanges[] = $col.' diubah';
                             $real++;
                         }

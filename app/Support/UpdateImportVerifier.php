@@ -52,6 +52,19 @@ final class UpdateImportVerifier
                         $hasImage = true; break;
                     }
                 }
+                // Kolom media template v2 ikut dihitung; tanpa ini baris yang
+                // hanya mengisi Media Bersama / Gambar per Varian salah
+                // diklasifikasi "tanpa gambar" (temuan 14 Okt 2026).
+                if (! $hasImage) {
+                    for ($n = 1; $n <= 4; $n++) {
+                        if (trim((string) ($r['shared_media_'.$n] ?? '')) !== '') {
+                            $hasImage = true; break;
+                        }
+                    }
+                }
+                if (! $hasImage && trim((string) ($r['image_variation_option'] ?? '')) !== '') {
+                    $hasImage = true;
+                }
                 if (! $hasImage) { $mediaSkipRows[] = $i; }
             }
             $skipped = count($mediaSkipRows);
@@ -139,6 +152,17 @@ final class UpdateImportVerifier
                             $errors[] = 'Baris '.$rowNo.': URL pada kolom '.$col.' tidak valid.';
                         }
                     }
+                }
+                for ($n = 1; $n <= 4; $n++) {
+                    $col = 'shared_media_'.$n;
+                    $url = trim((string) ($rows[$rowNo - 2][$col] ?? ''));
+                    if ($url !== '' && ! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = 'Baris '.$rowNo.': URL pada kolom '.$col.' tidak valid.';
+                    }
+                }
+                $optUrl = trim((string) ($rows[$rowNo - 2]['image_variation_option'] ?? ''));
+                if ($optUrl !== '' && ! filter_var($optUrl, FILTER_VALIDATE_URL)) {
+                    $errors[] = 'Baris '.$rowNo.': URL pada kolom Gambar per Varian tidak valid.';
                 }
                 // M7: installation_slots
                 $slots = trim((string) ($rows[$rowNo - 2]['installation_slots'] ?? ''));

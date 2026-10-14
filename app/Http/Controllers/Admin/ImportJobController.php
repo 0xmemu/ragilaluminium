@@ -821,8 +821,17 @@ class ImportJobController extends Controller
         )[0] ?? [];
         $rows = array_slice($rows, 0, 2000);
 
+        // Selaraskan header template v2 (SKU Produk, Harga, Gambar 2, dst) ke
+        // kunci internal sebelum diverifikasi dan dibedakan. Tanpa ini verifier
+        // dan diff membaca kunci Inggris yang tidak ada di berkas v2 sehingga
+        // pratinjau selalu tampak tanpa perubahan (temuan 14 Okt 2026).
+        $rows = array_map(
+            fn (array $row): array => \App\Support\UpdateImportColumnMap::normalize($row),
+            $rows
+        );
+
         // Stok selalu dari berkas, sehingga tidak ada stok manual yang perlu
-        // dioper ke verifier.
+        // dioper ke verifier maupun diff.
         $result = \App\Support\UpdateImportVerifier::verify(
             $rows,
             $validated['type'],
@@ -834,7 +843,7 @@ class ImportJobController extends Controller
         $changes = \App\Support\UpdatePreviewDiff::compute(
             $rows,
             $validated['type'],
-            $manualStock
+            null
         );
 
         return response()->json([

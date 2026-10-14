@@ -168,6 +168,13 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
                     $path
                 )[0] ?? [];
                 $manualStock = $job->stock_mode === 'manual' ? (int) $job->manual_stock : null;
+                // Selaraskan header v2 ke kunci internal dulu; tanpa ini
+                // pengaman verifikasi tidak melihat baris apa pun pada berkas v2
+                // (temuan 14 Okt 2026).
+                $updateRows = array_map(
+                    fn (array $row): array => \App\Support\UpdateImportColumnMap::normalize($row),
+                    $updateRows
+                );
                 $result = \App\Support\UpdateImportVerifier::verify(
                     array_slice($updateRows, 0, 2000),
                     $job->type,
