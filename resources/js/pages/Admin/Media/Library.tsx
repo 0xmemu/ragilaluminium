@@ -25,6 +25,7 @@ import {
   partitionByDuplicate,
   type MediaDuplicate,
 } from "@/lib/media-duplicate"
+import { saringBerkasMedia } from "@/lib/media-upload-filter"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
 // --- Status mapper media khusus (bukan shipping) ---
@@ -857,13 +858,16 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
 }) {
   const [mode, setMode] = React.useState<"file" | "multiple" | "folder" | "url">("file")
   const [files, setFiles] = React.useState<File[]>([])
+  // Berkas sistem / bukan media yang dibuang saat pemilihan, ditampilkan
+  // sebagai pemberitahuan supaya admin tahu kenapa jumlahnya berkurang.
+  const [dilewatiSaatPilih, setDilewatiSaatPilih] = React.useState<string[]>([])
   const [url, setUrl] = React.useState("")
   const [urlResult, setUrlResult] = React.useState<{ name: string; status: string; error?: string } | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { csrf } = usePage<SharedPageProps>().props
   const uploading = uploads.filter((u) => u.status === "uploading" || u.status === "memeriksa").length
 
-  const reset = () => { setFiles([]); setUrl(""); setUrlResult(null) }
+  const reset = () => { setFiles([]); setUrl(""); setUrlResult(null); setDilewatiSaatPilih([]) }
 
   async function importUrl() {
     if (!url.trim()) return
@@ -914,7 +918,14 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
                 : {})}
               accept="image/*,video/*"
               className="sr-only"
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              onChange={(e) => {
+                // Pemilih folder mengabaikan `accept`, jadi berkas sistem ikut
+                // terbawa dan harus dibuang di sini, bukan dibiarkan ditolak
+                // server dengan pesan yang membingungkan.
+                const { diterima, dilewati } = saringBerkasMedia(Array.from(e.target.files ?? []))
+                setFiles(diterima)
+                setDilewatiSaatPilih(dilewati.map((f) => f.name))
+              }}
             />
             <Button
               type="button"
@@ -933,6 +944,18 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
         ) : (
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="mb-3" />
         )}
+
+        {mode !== "url" && dilewatiSaatPilih.length > 0 ? (
+          <div className="mb-3 rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground" role="status">
+            <span className="font-medium text-foreground">
+              {dilewatiSaatPilih.length} berkas sistem dilewati:
+            </span>{" "}
+            {dilewatiSaatPilih.join(", ")}
+            <span className="mt-0.5 block text-[11px]">
+              Berkas seperti Thumbs.db dan desktop.ini dibuat sistem operasi, bukan foto produk.
+            </span>
+          </div>
+        ) : null}
 
         {mode !== "url" && files.length > 0 ? (
           <div className="mb-3 max-h-40 overflow-y-auto rounded border border-border p-2 text-xs">
