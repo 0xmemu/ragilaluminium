@@ -5272,3 +5272,56 @@ Langkah: backup berkas lama ke `/root/backups/pre-fix-rerender-20261014-155454`,
 Verifikasi di 202: repro jsdom yang sebelumnya GAGAL kini LULUS (klik tombol Tambah menghasilkan 8 input, bukan crash), penjaga `stable-prop-default.test.ts` 3 test lulus, izin tulis `storage/logs` dan `bootstrap/cache` sebagai www-data tetap OK, manifest menunjuk bundel baru `ProductForm-CF5lQx5a.js`, dan halaman beranda/produk/login menjawab HTTP 200. Berkas probe sementara sudah dihapus dari rilis.
 
 Catatan: uji klik browser langsung di ragilaluminium.com belum dijalankan karena kredensial admin produksi tidak dipegang agent; bukti diambil dari repro jsdom terhadap kode yang sudah terpasang dan dari integritas bundel yang disajikan.
+## 2026-10-14 09:21 UTC | zcode-media-cascade | Deep | cascade hapus berkas media + pembersihan bucket ra-media-prod
+
+Menghapus media di Media Library dulu tidak selalu menghapus berkasnya di bucket. Logika
+hapus tersebar di beberapa tempat: satu method privat `deleteAssetFiles` untuk aset library,
+satu blok inline di `destroy` lampiran produk, dan dua blok inline di aksi massal media
+produk. Jalur mana pun yang lupa memanggilnya meninggalkan object yatim di R2, dan object
+yatim tidak bisa dilacak lagi karena baris DB-nya sudah hilang.
+
+Akibatnya terlihat di produksi: bucket `ra-media-prod` (202) berisi 2.987 object / 348,52 MB
+padahal DB produksi hampir kosong (0 produk, 0 lampiran media). 2.710 object bertanggal
+9 September 2026, menumpuk di `media-assets/` dan `products/`, sisa salinan dari bucket dev.
+Hanya 11 kolom DB yang merujuk path media, dan tidak satu pun menunjuk ke sana.
+
+Yang dikerjakan:
+
+1. `MediaStoragePurger` (service baru): satu pintu pengumpulan key dan penghapusan berkas.
+2. `PurgeMediaAssetFiles` (job baru, queue `media`): hapus berkas di latar belakang supaya
+   permintaan admin tidak menunggu latensi R2, dengan 3 kali percobaan ulang.
+3. `MediaAsset::booted()`: event `deleting` mengumpulkan key, event `deleted` menjadwalkan
+   job. Jadi penghapusan dari jalur mana pun (controller, artisan, tinker, kode baru)
+   otomatis membersihkan bucket. Pengarsipan sengaja TIDAK menghapus berkas.
+4. `ProductMediaController`: tiga blok inline diganti pemanggilan service, method privat
+   `deleteAssetFiles` dihapus, satu variabel `$disk` yang jadi tidak terpakai dibuang.
+5. `media:reconcile` (command baru): jaring pengaman untuk celah yang tidak bisa dicegah
+   cascade (baris terhapus lewat SQL langsung, berkas tersalin dari lingkungan lain, aset
+   arsip yang berkasnya ditahan). Mode `--orphans` lapor, `--prune-orphans` hapus,
+   `--archived-days=N` retensi arsip, `--dry-run` rencana saja, `--force` lewati pengaman.
+
+Jebakan yang ditemukan saat membangun command dan penting untuk agent berikutnya: foto
+ulasan pelanggan TIDAK lewat tabel `media_assets`. `CustomerReviewController` menulis
+langsung ke awalan `reviews/` lalu menyimpan URL-nya di tiga kolom `cms_testimonials`
+(`image_url`, `image_urls`, `media_items`). Versi pertama command hanya membaca
+`media_assets` dan `product_media`, sehingga dua foto ulasan asli ditandai yatim dan hampir
+terhapus. Karena itu `REFERENCE_COLUMNS` di command disusun dari penyisiran seluruh 287
+kolom teks database, bukan dari tebakan, dan kolom JSON dibaca rekursif. Pengaman tambahan:
+penghapusan dibatalkan otomatis kalau proporsi yatim di atas 30 persen, karena itu biasanya
+tanda daftar kolom rujukan kurang, bukan tanda disknya benar benar penuh.
+
+Pembersihan bucket produksi (disetujui owner): 16 PNG yatim dihapus dulu (14 di
+`media/library/2026/08/` plus 2 di `banners/`, 47,33 MB), lalu 2.932 object sisa warisan dev
+dihapus (298,63 MB). Bucket `ra-media-prod` kini 39 object / 2,55 MB dari sebelumnya 2.987
+object / 348,52 MB. Yang dipertahankan: 37 berkas `-card.webp` produk 51 sampai 58 yang
+dipakai galeri halaman hasil pemasangan, plus `healthchecks/` dan `test/`.
+
+Bukti: `phpunit --filter=MediaCascadeDeleteTest` 5 lulus; `--filter=ReconcileMediaObjectsTest`
+4 lulus; `--filter=Media` 129 lulus; suite penuh 1.434 test / 14.000 assertion hijau; Pint
+bersih. `media:reconcile --orphans` diuji terhadap R2 nyata 209 (18 yatim dari 2.739 berkas,
+2,67 MB) dan tidak menghapus apa pun.
+
+Belum dikerjakan: kode ini ada di 209, BELUM terpasang di produksi 202 yang memakai deploy
+berbasis rilis (`releases/20261013-v1.0.1`). Selama belum dipasang, penghapusan media di
+produksi masih bisa meninggalkan object yatim, dan `media:reconcile` belum tersedia di sana.
+Rencana retensi arsip (`--archived-days`) juga belum dijadwalkan di cron.

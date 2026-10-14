@@ -9,17 +9,19 @@ use App\Jobs\ProcessUploadedMediaAsset;
 use App\Models\CmsBanner;
 use App\Models\CmsGalleryItem;
 use App\Models\MediaAsset;
+use App\Models\MediaFolder;
 use App\Models\MediaProcessingLog;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Services\MediaAssetResolver;
+use App\Services\MediaStoragePurger;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,7 +54,7 @@ class ProductMediaController extends Controller
         return isset(self::BACK_ORIGINS[$origin]) ? $origin : null;
     }
 
-    public function byProduct(Request $request, Product $product): \Illuminate\Http\RedirectResponse
+    public function byProduct(Request $request, Product $product): RedirectResponse
     {
         // Halaman media khusus dihapus (redundan dgn tab Media di halaman edit).
         // GET browser dan Inertia sama-sama dialihkan ke tab Media.
@@ -138,7 +140,7 @@ class ProductMediaController extends Controller
 
     protected function folderTree(): array
     {
-        $folders = \App\Models\MediaFolder::query()
+        $folders = MediaFolder::query()
             ->withCount('assets')
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -247,9 +249,9 @@ class ProductMediaController extends Controller
             ->with('success', 'Media ditambahkan.');
     }
 
-            // Nama route wajib berawalan `admin.`: seluruh route admin
-            // didaftarkan di dalam grup ->name('admin.'). Tanpa awalan itu
-            // `media.attach` tidak pernah terdaftar dan pemanggilnya gagal.
+    // Nama route wajib berawalan `admin.`: seluruh route admin
+    // didaftarkan di dalam grup ->name('admin.'). Tanpa awalan itu
+    // `media.attach` tidak pernah terdaftar dan pemanggilnya gagal.
     public function bulkAttach(Request $request, MediaAsset $asset): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
@@ -391,7 +393,6 @@ class ProductMediaController extends Controller
         ]);
     }
 
-
     /**
      * Aksi massal pada shared assets di Media Library: archive atau delete.
      * Delete hanya berlaku untuk aset yang tidak dipakai entitas lain
@@ -437,7 +438,8 @@ class ProductMediaController extends Controller
 
                 continue;
             }
-            $this->deleteAssetFiles($asset);
+            // Berkas di disk dihapus otomatis lewat event deleting/deleted
+            // MediaAsset (lihat MediaAsset::booted), jadi cukup hapus barisnya.
             $asset->delete();
             $deleted++;
         }
@@ -471,25 +473,6 @@ class ProductMediaController extends Controller
                 'label' => $p->name.' · '.$p->parent_sku,
             ])->values()->all(),
         ]);
-    }
-
-    private function deleteAssetFiles(MediaAsset $asset): void
-    {
-        $disk = Storage::disk(config('media.disk', 'media'));
-        $keys = [];
-        $derivatives = is_array($asset->derivatives) ? $asset->derivatives : [];
-        foreach (['thumb', 'card', 'pdp', 'poster', 'video'] as $variant) {
-            $path = $derivatives[$variant]['path'] ?? null;
-            if ($path && $disk->exists($path)) {
-                $keys[] = $path;
-            }
-        }
-        if ($asset->object_key && ! in_array($asset->object_key, $keys, true) && $disk->exists($asset->object_key)) {
-            $keys[] = $asset->object_key;
-        }
-        foreach ($keys as $key) {
-            $disk->delete($key);
-        }
     }
 
     /**
@@ -763,9 +746,9 @@ class ProductMediaController extends Controller
             '7d' => '7 hari terakhir',
             '30d' => '30 hari terakhir',
             'range' => trim(
-                ($from !== '' ? \Carbon\Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
+                ($from !== '' ? Carbon::parse($from)->translatedFormat('j M Y') : 'awal')
                 .' sampai '.
-                ($to !== '' ? \Carbon\Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang'),
+                ($to !== '' ? Carbon::parse($to)->translatedFormat('j M Y') : 'sekarang'),
             ),
             default => 'Semua waktu',
         };
@@ -829,7 +812,6 @@ class ProductMediaController extends Controller
         $archived = 0;
         $deleted = 0;
         $skipped = 0;
-        $disk = Storage::disk(config('media.disk', 'media'));
 
         foreach ($rows as $media) {
             if ($validated['action'] === 'archive') {
@@ -852,19 +834,7 @@ class ProductMediaController extends Controller
 
                 continue;
             }
-            $paths = array_filter([
-                $media->stored_path,
-                ...collect($media->derivatives ?? [])->pluck('path')->filter()->all(),
-            ]);
-            foreach ($paths as $path) {
-                try {
-                    if (is_string($path) && $path !== '' && $disk->exists($path)) {
-                        $disk->delete($path);
-                    }
-                } catch (\Throwable) {
-                    // Abaikan kegagalan cleanup storage; row tetap dihapus.
-                }
-            }
+            app(MediaStoragePurger::class)->purgeAttachment($media);
             $media->delete();
             $deleted++;
         }
@@ -1032,21 +1002,7 @@ class ProductMediaController extends Controller
             return redirect()->back()->with('success', 'Attachment media diarsipkan tanpa menghapus shared asset.');
         }
 
-        $paths = array_filter([
-            $media->stored_path,
-            ...collect($media->derivatives ?? [])->pluck('path')->filter()->all(),
-        ]);
-
-        $disk = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'));
-        foreach ($paths as $path) {
-            try {
-                if (is_string($path) && $path !== '' && $disk->exists($path)) {
-                    $disk->delete($path);
-                }
-            } catch (\Throwable) {
-                // Ignore storage cleanup errors; DB row still removed.
-            }
-        }
+        app(MediaStoragePurger::class)->purgeAttachment($media);
 
         $media->delete();
 

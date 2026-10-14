@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Jobs\PurgeMediaAssetFiles;
+use App\Services\MediaStoragePurger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +43,41 @@ class MediaAsset extends Model
         'height_px' => 'integer',
         'duration_ms' => 'integer',
     ];
+
+    /**
+     * Key penyimpanan yang menunggu dihapus.
+     *
+     * Dikumpulkan saat event `deleting`, karena pada saat itu atribut model
+     * masih terbaca, lalu dipakai saat event `deleted` untuk menjadwalkan
+     * pembersihan storage. Tanpa penampung ini, key-nya hilang bersamaan
+     * dengan barisnya dan berkas di bucket menjadi yatim.
+     *
+     * @var list<string>
+     */
+    public array $purgeKeysOnDelete = [];
+
+    /**
+     * Cascade hapus: setiap penghapusan baris aset, dari jalur mana pun
+     * (controller, perintah artisan, tinker, atau kode baru di kemudian hari),
+     * otomatis menjadwalkan penghapusan berkasnya di disk.
+     *
+     * Penghapusan berkas dijalankan lewat antrean, bukan langsung, supaya
+     * permintaan admin tidak menunggu latensi R2 dan kegagalan jaringan bisa
+     * dicoba ulang. Perhatikan bahwa arsip sengaja TIDAK menghapus berkas:
+     * aset yang diarsipkan masih bisa dipulihkan.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (MediaAsset $asset): void {
+            $asset->purgeKeysOnDelete = app(MediaStoragePurger::class)->keysForAsset($asset);
+        });
+
+        static::deleted(function (MediaAsset $asset): void {
+            if ($asset->purgeKeysOnDelete !== []) {
+                PurgeMediaAssetFiles::dispatch($asset->purgeKeysOnDelete);
+            }
+        });
+    }
 
     public function attachments(): HasMany
     {
