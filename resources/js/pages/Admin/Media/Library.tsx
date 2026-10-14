@@ -1159,10 +1159,11 @@ export default function MediaLibrary({
   >(null)
   const [folderSaving, setFolderSaving] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
-  // Owner 2026-09-24: pemilihan massal default tidak aktif; klik kartu
-  // membuka pratinjau gambar, bukan memilih. Pemilihan hanya lewat mode
-  // "Pilih Media" yang dinyalakan lewat tombol di header.
-  const [selectMode, setSelectMode] = React.useState(false)
+  // Pemilihan massal SELALU aktif (owner 14 Okt 2026: "checkbox dan panel
+  // tidak langsung aktif, tapi harus klik tombol 'pilih media'"). Tidak ada
+  // lagi mode terpisah: kotak centang kartu selalu tampil, dan klik kartu
+  // langsung memilih/membatalkan pilihan. Pratinjau dipindah ke tombol
+  // tersendiri di kartu supaya kemampuan itu tidak hilang.
   const [previewAsset, setPreviewAsset] = React.useState<(typeof assets)[number] | null>(null)
   // Aset yang info singkatnya (titik tiga) sedang terbuka.
   const [infoAsset, setInfoAsset] = React.useState<(typeof assets)[number] | null>(null)
@@ -1558,9 +1559,10 @@ export default function MediaLibrary({
             </Button>
           </div>
 
-          {/* Toolbar seleksi & aksi massal, selalu tampil di atas galeri:
-              tombol aksi tidak disembunyikan sampai ada yang dipilih. "Pilih
-              semua" menyasar seluruh folder + filter aktif, bukan satu halaman. */}
+          {/* Toolbar seleksi & aksi massal, selalu tampil dan langsung bisa
+              dipakai tanpa mode perantara. Tombol aksi tidak disembunyikan
+              sampai ada yang dipilih; "Pilih semua" menyasar seluruh folder +
+              filter aktif, bukan satu halaman. */}
           <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 px-3">
             <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-foreground">
               <input
@@ -1573,9 +1575,6 @@ export default function MediaLibrary({
                 disabled={totalInScope === 0}
                 onChange={(event) => {
                   if (event.target.checked) {
-                    // Menyalakan "Pilih semua" sekaligus masuk mode pilih, supaya
-                    // tidak perlu menekan "Pilih Media" lebih dulu.
-                    setSelectMode(true)
                     setSelectAllScope(true)
                     setSelectedIds([])
                   } else {
@@ -1594,21 +1593,6 @@ export default function MediaLibrary({
             ) : null}
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant={selectMode ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSelectMode((v) => {
-                    if (v) clearSelection()
-                    return !v
-                  })
-                }}
-              >
-                <Icon name={selectMode ? "check" : "selection"} className="size-3.5" aria-hidden="true" />
-                {selectMode ? "Selesai" : "Pilih Media"}
-              </Button>
-
               <ConfirmAction
                 trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Hapus</Button>}
                 title="Hapus aset terpilih?"
@@ -1666,24 +1650,22 @@ export default function MediaLibrary({
               return (
                 <div
                   key={asset.id}
-                  role={selectMode ? "checkbox" : "button"}
-                  aria-checked={selectMode ? isSelected(asset.id) : undefined}
-                  aria-label={selectMode ? `Pilih ${asset.label}` : `Lihat pratinjau ${asset.label}`}
+                  role="checkbox"
+                  aria-checked={isSelected(asset.id)}
+                  aria-label={`Pilih ${asset.label}`}
                   tabIndex={0}
                   onClick={(e) => {
                     // Tombol/link di dalam card tetap berfungsi normal.
                     const target = e.target as HTMLElement
                     if (target.closest('button, a, input, [data-no-select]')) return
-                    if (selectMode) toggleSelected(asset.id)
-                    else setPreviewAsset(asset)
+                    toggleSelected(asset.id)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       const target = e.target as HTMLElement
                       if (target.closest('button, a, input, [data-no-select]')) return
                       e.preventDefault()
-                      if (selectMode) toggleSelected(asset.id)
-                      else setPreviewAsset(asset)
+                      toggleSelected(asset.id)
                     }
                   }}
                   className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md ${isSelected(asset.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
@@ -1705,18 +1687,20 @@ export default function MediaLibrary({
                       }`}
                       title={meta.label}
                     />
+                    {/* Pratinjau: dulu lewat klik kartu, kini lewat tombol
+                        sendiri karena klik kartu dipakai untuk memilih. */}
                     <button
                       type="button"
                       data-no-select
                       onClick={(e) => {
                         e.stopPropagation()
-                        setInfoAsset(asset)
+                        setPreviewAsset(asset)
                       }}
-                      aria-label={`Info ${asset.label}`}
-                      title="Info media"
-                      className="absolute left-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
+                      aria-label={`Lihat pratinjau ${asset.label}`}
+                      title="Lihat pratinjau"
+                      className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
                     >
-                      <Icon name="dots-three-vertical" className="size-3.5" aria-hidden="true" />
+                      <Icon name="expand" className="size-3.5" aria-hidden="true" />
                     </button>
                     {asset.status === "ready" ? (
                       <button
@@ -1724,7 +1708,7 @@ export default function MediaLibrary({
                         onClick={() => handleCopyUrl(asset)}
                         aria-label={`Salin URL publik ${asset.label}`}
                         title="Salin URL publik"
-                        className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
+                        className="absolute right-10 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
                       >
                         <Icon name={isCopied ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
                       </button>
@@ -1739,16 +1723,14 @@ export default function MediaLibrary({
                         <Icon name="rotate-cw" className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
-                    {selectMode ? (
-                      <input
-                        type="checkbox"
-                        checked={isSelected(asset.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={() => toggleSelected(asset.id)}
-                        className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
-                        aria-label={`Pilih ${asset.label}`}
-                      />
-                    ) : null}
+                    <input
+                      type="checkbox"
+                      checked={isSelected(asset.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelected(asset.id)}
+                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
+                      aria-label={`Pilih ${asset.label}`}
+                    />
                   </div>
                   {/* Kartu sengaja hanya memuat nama aset. Jumlah pemakaian
                       dipindahkan ke dialog info (ikon titik tiga) supaya baris
@@ -1758,6 +1740,21 @@ export default function MediaLibrary({
                       <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      {/* Info media: dipindah ke baris bawah karena posisi
+                          kiri-atas kartu kini dipakai kotak centang. */}
+                      <button
+                        type="button"
+                        data-no-select
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setInfoAsset(asset)
+                        }}
+                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
+                        title="Info media"
+                        aria-label={`Info ${asset.label}`}
+                      >
+                        <Icon name="dots-three-vertical" className="size-3.5" aria-hidden="true" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setAttachingId(asset.id)}
