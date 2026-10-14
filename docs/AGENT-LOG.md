@@ -5166,3 +5166,25 @@ Bukti:
   dipindahkan keluar web root. test_header.html kini 404.
 - Kesehatan prod: /, /order/status, /cart, /login masing-masing 200.
 - Commit aa3a9f04 di-push ke origin/main (pre-push hook menjalankan typecheck + build, lulus).
+
+
+## 2026-10-14 05:15 UTC | zcode | Trivial | 2f77c201 | selesai
+
+Lingkup: permintaan owner, mengganti penanda contoh nomor pesanan dari ORDYYMMNNNN menjadi ORD00000000.
+
+Perubahan: resources/js/pages/Public/OrderStatus.tsx (hint + placeholder nomor pesanan).
+Contoh nomor HP tetap 08XXXXXXXXXX. Tidak ada perubahan perilaku.
+
+Dampak spec: tidak berubah.
+
+Untuk agent berikutnya: setelah tiap build rilis 202, periksa lagi public/build-slot-*.
+Slot basi muncul kembali setiap kali build-assets.sh dijalankan dan tetap dapat disajikan
+publik lewat lokasi umum nginx 202 (di 209 tidak, karena vhost 209 hanya membuka /build/).
+
+Bukti:
+- typecheck lulus, lint 0 warning, 354 test lulus, build sukses.
+- Bundel live prod ragilaluminium.com/build/assets/OrderStatus-C9Oz2hql.js memuat ORD00000000
+  dan 08XXXXXXXXXX, tidak lagi ORDYYMMNNNN, tanpa nilai bocor.
+- Slot basi build-slot-a 202 dikeluarkan dari public/.
+- ragilaluminium.com/order/status 200, ra.333labs.tech/order/status 200.
+- Push e89f74f2..2f77c201 ke origin/main, pre-push hook lulus.
