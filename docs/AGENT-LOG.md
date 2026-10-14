@@ -5926,3 +5926,21 @@ diuji ulang pada penuntasan ini sesuai batas cakupan.
 Checksum versi final (repo 209 dan terpasang di 202 identik):
 - backup-alert.sh 0fa79998dac3621ff1b8461d975543b7
 - r2_freshness.py fe774ae17ffea1f3c8ed01af4e411ca6
+
+## 2026-10-14 22:45 UTC | zcode | Standard | pemilihan aset langsung aktif tanpa gerbang Pilih Media
+
+Owner: "checkbox dan panel tidak langsung aktif, tapi harus klik tombol Pilih Media ... hanya text dan frame, tidak ada panel jika tombol ini tidak di klik". Ini menegur rancangan sebelumnya: saya menahan pemilihan di balik mode perantara, padahal owner meminta panel dan kotak centang langsung bisa dipakai.
+
+Akar masalah: pemilihan massal butuh menekan tombol `Pilih Media` lebih dulu (state `selectMode`). Sebelum ditekan, kotak centang tidak dirender dan klik kartu hanya membuka pratinjau, jadi panel aksi tampak seperti hiasan.
+
+Perbaikan:
+- state `selectMode` dan tombol `Pilih Media`/`Selesai` DIHAPUS;
+- kotak centang di setiap kartu selalu tampil dan langsung bisa diklik;
+- klik kartu = memilih/membatalkan pilihan, tanpa mode perantara;
+- pratinjau dipindah ke tombol tersendiri di kartu (ikon `expand`, kanan atas) supaya kemampuan itu tidak hilang, karena klik kartu kini dipakai untuk memilih;
+- tombol info (titik tiga) dipindah ke baris bawah kartu karena posisinya di kiri atas bertabrakan dengan kotak centang; tombol salin URL digeser (kanan 10) agar tidak berdesakan dengan tombol pratinjau;
+- `role="checkbox"` dan `aria-checked` kartu kini selalu aktif (bukan lagi bergantung mode).
+
+Verifikasi: typecheck bersih, lint 0 warning. Uji browser: tombol Pilih Media/Selesai 0, toolbar langsung aktif dengan label "Pilih semua (863)", 30 kotak centang langsung terlihat tanpa klik apa pun, klik kartu -> "1 dipilih" dan tombol Hapus aktif, klik lagi -> batal, Pilih semua -> "863 dipilih", tombol pratinjau 30 dan dialognya terbuka, tombol info 30. Tanpa error JS. HEAD diuji di worktree bersih (typecheck + build lulus) sebelum push.
+
+Deploy ke 202: bundel `Library-jj_AvU4k.js` memuat perubahan (Pilih Media 0, Lihat pratinjau 2) dan seluruh fitur sebelumnya tetap utuh (area gulir popup, Pilih semua, pilihan hapus folder, penyaring berkas sistem). Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-no-mode-20261014-224021`.
