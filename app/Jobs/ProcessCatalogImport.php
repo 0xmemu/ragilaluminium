@@ -8,6 +8,7 @@ use App\Imports\ImportMediaUpdate;
 use App\Imports\ImportStockPriceUpdate;
 use App\Models\ImportJob;
 use App\Support\CatalogTaxonomy;
+use App\Support\ProductCache;
 use App\Support\ImportFailureNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -244,5 +245,8 @@ class ProcessCatalogImport implements ShouldBeUnique, ShouldQueue
         }
 
         CatalogTaxonomy::forgetCache();
+        // Flush cache produk dan PDP agar perubahan media/harga langsung terlihat
+        // di halaman publik tanpa harus menunggu TTL 5 menit habis (temuan 14 Okt 2026).
+        ProductCache::flushProducts();
     }
 }
