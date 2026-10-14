@@ -5576,3 +5576,20 @@ menambah jalur unggah baru, panggil `storeAssetDerivatives`/`storeVideoAsset` DE
 karena tanpa itu dua berkas kembar akan berebut kunci objek. Catatan: baris `dedup` lama masih
 ada di `media_processing_logs`, jadi selisih tab Semua dengan jumlah seluruh tab yang sah
 hanya sebesar baris itu.
+
+## 2026-10-14 19:45 UTC | zcode | Standard | pilihan hapus folder Media Library
+
+Owner meminta dialog hapus folder memberi PILIHAN: hapus folder beserta isinya, atau hapus foldernya saja dengan isi dipindahkan ke Semua Media. Sebelumnya hanya ada satu perilaku (isi selalu dipindahkan).
+
+Perubahan:
+- `MediaFolderController::destroy` menerima `with_assets`. Tanpa parameter: perilaku LAMA (isi dipindahkan, `folder_id` menjadi null). Dengan `with_assets=1`: folder dan isinya dibersihkan.
+- Aturan pengaman sesuai pilihan owner ("aman: yang terpakai diarsipkan"): aset yang masih terlampir ke produk/banner/galeri DIARSIPKAN, bukan dihapus permanen, supaya halaman yang memakainya tidak kehilangan gambar. Aset tak terpakai dihapus permanen; berkas di bucket ikut terhapus lewat event deleting/deleted MediaAsset.
+- `ConfirmAction` mendapat prop opsional `secondaryAction` untuk tombol keputusan kedua (21 baris, aditif; pemakai lama tidak berubah).
+- Kedua dialog (sidebar folder dan hasil pencarian folder) memakai pilihan yang sama. Nilai `with_assets` dikirim lewat query string karena method HTTP-nya DELETE dan repo belum punya pola DELETE berbadan.
+- 3 test baru di `MediaLibraryFolderTest` mengunci: hapus-beserta-isi menghapus aset bebas, MENGARSIPKAN aset terpakai, dan tanpa parameter tetap memindahkan isi.
+
+Verifikasi: typecheck bersih, lint 0 warning, Vitest 371 lulus, `MediaLibraryFolderTest` 10 lulus (51 assertion), build sukses. Verifikasi perilaku lewat pemanggilan controller nyata dengan bahan uji (folder + subfolder + aset bebas + aset terpakai): 12 dari 12 pemeriksaan benar untuk kedua cabang. Uji browser: dialog menampilkan tiga tombol (Batal, Hapus Foldernya Saja, Hapus Folder & Isi). HEAD diuji di worktree bersih (typecheck + build lulus) SEBELUM push, mengikuti pelajaran dari commit rusak sebelumnya.
+
+Deploy ke 202: rilis aktif berganti lagi menjadi `20261014-media-dedup-batch` (dibuat agent lain); berkas dipasang ke rilis tersebut. Backup di `/root/backups/pre-folder-choice-20261014-193943`. Bundel `Library-Bj8fNXvu.js` memuat kedua tombol dan penyaring Thumbs.db, izin storage OK, halaman publik HTTP 200.
+
+Catatan: uji klik end-to-end lewat browser pada folder ujung daftar tidak berhasil karena dialog tidak terbuka di area tampilan; perilaku server diverifikasi lewat pemanggilan controller langsung (bukti lebih kuat untuk logika backend).
