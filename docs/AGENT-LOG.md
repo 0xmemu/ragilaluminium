@@ -5378,3 +5378,60 @@ masuk `PROTECTED_PREFIXES` di `media:reconcile`, jadi berkas di awalan itu tidak
 dianggap yatim walaupun belum ada baris database yang merujuknya. Aturan pembersihan berbasis
 "tidak ada rujukan database" tidak boleh dipakai untuk media yang disimpan untuk dipakai
 produk, karena berkasnya memang sering ada lebih dulu daripada rujukannya.
+
+## 2026-10-14 17:45 UTC | zcode-media-history-tabs | Standard | f2e4786f | selesai
+
+Owner melaporkan angka tab di Riwayat Media tidak bisa ditutup: Semua 324 sementara
+Berhasil 156 dan Gagal 0, sehingga selisih 168 terbaca seperti kegagalan yang tidak
+tercatat. Owner benar, selisih itu bukan kegagalan.
+
+Data produksi 14 Okt (dihitung langsung dari `media_processing_logs`): 324 baris milik
+162 aset, terdiri dari 162 baris `processing`, 156 `success`, dan 6 `dedup`. Satu aset
+menulis DUA baris, satu "Diproses" lalu satu "Berhasil" (contoh aset #1268: 16.27.26 lalu
+16.27.32, selisih 6 detik). Akar masalahnya penyajian, bukan data: hanya `success` dan
+`failed` yang punya tab (keputusan 8 Okt), sehingga 168 baris sisanya tidak punya wadah
+dan angkanya harus ditebak pembaca.
+
+Perubahan (owner: "proses. lalu tambahkan filter sort terbaru atau terlama"):
+- Tab Diproses, Antre, dan Duplikat ditambahkan, jadi setiap jenis event yang benar-benar
+  ditulis aplikasi punya tabnya sendiri. Angka tab sekarang selalu bisa ditutup:
+  Semua = Berhasil + Gagal + Diproses + Antre + Duplikat. Live 202: 324 = 156 + 0 + 162 + 0 + 6.
+- `tabCounts` dihitung dari `HISTORY_EVENT_TABS`, bukan daftar tetap, supaya menambah
+  jenis event tidak bisa lupa menambah angkanya.
+- Filter urutan baru `sort=newest` (bawaan) atau `oldest`, pola sama dengan Log Aktivitas.
+  Nilai asing diabaikan, bukan ditolak. Urutan memakai `id` sebagai pemecah seri karena
+  dua baris impor curah bisa berbagi `created_at` yang sama persis.
+- Penyegaran status tidak lagi menulis ulang baris "Diproses" menjadi "Berhasil". Dulu
+  semua baris milik aset yang siap diubah jadi Berhasil, sehingga satu aset tampil dua
+  baris kembar berlabel sama dan tab Diproses berisi baris berlabel Berhasil. Sekarang
+  hanya kegagalan yang menulis ulang, dan penyegaran berhenti sendiri setelah seluruh
+  entitas tunggu diketahui hasilnya (tanpa itu badge Live tidak akan pernah padam, karena
+  baris processing tidak pernah berubah statusnya di database).
+
+Berkas: `resources/js/pages/Admin/Media/History.tsx`,
+`app/Http/Controllers/Admin/ProductMediaController.php`,
+`tests/Feature/MediaHistoryFilterTest.php`, `tests/frontend/media-history-copy.test.ts`.
+Dokumen kanonik: `docs/api-and-routes-ragil-aluminium.md` (baris route `media/history`
+beserta seluruh query param, sebelumnya belum terdokumentasi) dan
+`docs/sitemap/admin-sitemap.md`.
+
+Penjaga lama yang diperbarui secara sadar: `media-history-copy.test.ts` mengunci keputusan
+8 Okt (hanya Berhasil dan Gagal bertab, Duplikat tidak), dan perubahan ini membaliknya atas
+permintaan owner. `MediaHistoryFilterTest.php` juga diperbarui karena test lama menuntut
+`?event=dedup`/`processing`/`queued` dinormalkan menjadi kosong.
+
+Bukti: PHPUnit 1439 lulus 1 skip (seluruh suite); Vitest 366 lulus; typecheck bersih; lint
+berkas terkait bersih `--max-warnings=0`; build sukses di 209 dan di release 202. Penjaga
+baru diuji menggigit: menyisipkan penulisan `success` kembali ke blok override membuat
+`hanya kegagalan yang menulis ulang tampilan baris` gagal (berkas dipulihkan setelahnya).
+Verifikasi live 202: pil terbaca "Semua(324) Berhasil(156) Gagal(0) Diproses(162) Antre(0)
+Duplikat(6)"; memilih Terlama mengubah URL ke `?sort=oldest` dan baris teratas bergeser dari
+16.29.15 ke 14.17.02; pil Diproses menyaring ke `?event=processing&sort=newest` dengan 30
+baris semuanya berlabel "Diproses".
+
+Untuk agent berikutnya: arti tab Diproses dan Antre adalah BARIS riwayat, bukan pekerjaan
+yang masih berjalan, karena setiap tahap menambah barisnya sendiri. Kalau menyunting blok
+override di `History.tsx`, jangan kembalikan penulisan `success` ke sana.
+
+Catatan lingkungan: `docs/sitemap/admin-sitemap.md` masih memuat 21 em dash warisan lama di
+seluruh berkas (bukan dari perubahan ini, dan tidak saya sentuh supaya diff tetap fokus).
