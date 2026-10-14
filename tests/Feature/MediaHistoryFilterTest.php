@@ -14,9 +14,10 @@ use Tests\TestCase;
  *
  * Dua hal yang dijaga di sini, keduanya temuan nyata pada 8 Okt 2026:
  *
- * 1. Nilai event yang tidak punya tab lagi (mis. ?event=dedup dari tautan lama)
- *    membuat halaman tampil tanpa tab aktif dan daftar kosong, sehingga terbaca
- *    seperti halaman rusak. Nilai itu sekarang dinormalkan menjadi kosong.
+ * 1. Nilai event yang tidak punya tab (mis. ?event=downloaded dari tautan lama,
+ *    atau ?event=dedup setelah penggabungan otomatis berkas kembar dihapus pada
+ *    14 Okt 2026) membuat halaman tampil tanpa tab aktif dan daftar kosong,
+ *    sehingga terbaca seperti halaman rusak. Nilai itu dinormalkan menjadi kosong.
  * 2. Filter periode memakai pola yang sama dengan halaman daftar admin lain, dan
  *    rentang tanggal hanya berlaku saat periode rentang yang dipilih.
  */
@@ -46,16 +47,19 @@ class MediaHistoryFilterTest extends TestCase
         $this->log('dedup');
         $this->log('success');
 
-        // Dua nilai yang BUKAN kejadian, jadi tidak punya dan tidak boleh punya tab:
+        // Tiga nilai yang tidak punya dan tidak boleh punya tab:
         // - downloaded: status pada tabel lampiran media, tidak pernah ditulis sebagai
         //   event riwayat oleh kode mana pun.
+        // - dedup: kejadian penggabungan berkas kembar yang sudah TIDAK ditulis lagi,
+        //   karena penggabungan otomatis di server dihapus pada 14 Okt 2026. Baris
+        //   lamanya tetap tampil di tab Semua, tetapi tidak perlu tabnya sendiri.
         // - nilai asing: tautan lama atau salah ketik.
         // Tanpa normalisasi, halaman menyaring ke nilai itu dan tampil tanpa tab
         // aktif, terbaca seperti halaman rusak.
         //
-        // dedup, processing, dan queued TIDAK lagi ada di daftar ini: sejak 14 Okt 2026
-        // ketiganya punya tab sendiri, lihat test_setiap_kejadian_punya_tab_dan_menyaring.
-        foreach (['downloaded', 'kemarin'] as $event) {
+        // processing dan queued TIDAK ada di daftar ini: keduanya punya tab sendiri,
+        // lihat test_setiap_kejadian_punya_tab_dan_menyaring.
+        foreach (['downloaded', 'dedup', 'kemarin'] as $event) {
             $this->actingAs($this->admin())
                 ->get(route('admin.media.history', ['event' => $event]))
                 ->assertOk()
@@ -70,11 +74,11 @@ class MediaHistoryFilterTest extends TestCase
     public function test_setiap_kejadian_punya_tab_dan_menyaring(): void
     {
         // Owner 14 Okt 2026: angka tab harus selalu bisa ditutup, dan itu hanya
-        // mungkin kalau SETIAP jenis event yang ditulis aplikasi punya tabnya
-        // sendiri. Kelimanya diuji satu per satu di sini. Sebelumnya hanya success
+        // mungkin kalau setiap jenis event yang MASIH ditulis aplikasi punya tabnya
+        // sendiri. Keempatnya diuji satu per satu di sini. Sebelumnya hanya success
         // dan failed yang lolos; sisanya membuat angka Semua lebih besar dari
         // jumlah seluruh tab, dan selisihnya terbaca seperti kegagalan.
-        foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+        foreach (['success', 'failed', 'processing', 'queued'] as $event) {
             $this->log($event);
 
             $this->actingAs($this->admin())
@@ -318,18 +322,35 @@ class MediaHistoryFilterTest extends TestCase
         $this->log('failed');
         $this->log('processing');
         $this->log('queued');
-        $this->log('dedup');
 
         $this->actingAs($this->admin())
             ->get(route('admin.media.history'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tabCounts', fn ($v) => (int) $v[''] === 6)
+                ->where('tabCounts', fn ($v) => (int) $v[''] === 5)
                 ->where('tabCounts.failed', 1)
                 ->where('tabCounts.success', 2)
                 ->where('tabCounts.processing', 1)
-                ->where('tabCounts.queued', 1)
-                ->where('tabCounts.dedup', 1));
+                ->where('tabCounts.queued', 1));
+    }
+
+    public function test_tab_duplikat_dibuang_karena_kejadiannya_sudah_tidak_ditulis(): void
+    {
+        // Penggabungan otomatis berkas kembar di server dihapus 14 Okt 2026, jadi
+        // tidak ada lagi kejadian dedup baru. Baris dedup LAMA tetap muncul di tab
+        // Semua, tetapi tidak diberi tabnya sendiri supaya angka tab tetap rapi.
+        $this->log('dedup');
+        $this->log('success');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                // Baris lama tetap dihitung di tab Semua.
+                ->where('tabCounts', fn ($v) => (int) $v[''] === 2)
+                ->where('tabCounts.success', 1)
+                // Tidak ada kunci untuk dedup, jadi tidak ada tab yang menjanjikan nol.
+                ->where('tabCounts', fn ($v) => ! isset($v['dedup'])));
     }
 
     public function test_angka_tab_selalu_bisa_ditutup(): void
@@ -339,10 +360,16 @@ class MediaHistoryFilterTest extends TestCase
         // HARUS sama dengan angka tab Semua, sehingga tidak ada sisa yang harus
         // ditebak. Kalau kelak ada jenis event baru yang lupa diberi tab, test ini
         // gagal dan menyebut besar selisihnya.
-        foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+        //
+        // Baris dedup SENGAJA disertakan di sini sebagai satu-satunya pengecualian yang
+        // sah: kejadian itu sudah tidak pernah ditulis lagi, jadi selisih yang boleh
+        // tersisa HANYA sebesar baris dedup. Kalau muncul jenis event baru tanpa tab,
+        // selisihnya lebih besar dari itu dan test gagal.
+        foreach (['success', 'failed', 'processing', 'queued'] as $event) {
             $this->log($event);
             $this->log($event);
         }
+        $this->log('dedup');
 
         $this->actingAs($this->admin())
             ->get(route('admin.media.history'))
@@ -351,15 +378,15 @@ class MediaHistoryFilterTest extends TestCase
                 ->where('tabCounts', function ($counts) {
                     $semua = (int) $counts[''];
                     $jumlahTab = 0;
-                    foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+                    foreach (['success', 'failed', 'processing', 'queued'] as $event) {
                         $jumlahTab += (int) $counts[$event];
                     }
 
-                    $this->assertSame(10, $semua, 'Tab Semua harus menghitung seluruh baris.');
+                    $this->assertSame(9, $semua, 'Tab Semua harus menghitung seluruh baris.');
                     $this->assertSame(
-                        $semua,
-                        $jumlahTab,
-                        'Jumlah seluruh tab harus sama dengan tab Semua; selisih '.($semua - $jumlahTab).' berarti ada jenis event tanpa tab.'
+                        1,
+                        $semua - $jumlahTab,
+                        'Selisih tab Semua dengan jumlah seluruh tab harus tepat sebesar baris dedup warisan (1); selisih '.($semua - $jumlahTab).' berarti ada jenis event tanpa tab.'
                     );
 
                     return true;

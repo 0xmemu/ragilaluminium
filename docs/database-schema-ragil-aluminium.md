@@ -192,7 +192,9 @@ Indexes:
 - `kind` (`VARCHAR`), NN, default 'image'
 - `label` (`VARCHAR`), nullable
 - `source_url_hash` (`VARCHAR`), nullable, UQ
-- `checksum` (`VARCHAR`), nullable, UQ
+- `checksum` (`VARCHAR`), nullable, IDX (keunikan dilepas 2026-10-14: satu berkas
+  boleh dipakai lebih dari satu produk, jadi dua aset boleh punya sidik jari sama.
+  Lihat migration `2026_10_14_120000_relax_media_asset_checksum_unique`)
 - `source_url` (`TEXT`), nullable
 - `object_key` (`VARCHAR`), nullable, UQ
 - `derivatives` (`TEXT`), nullable

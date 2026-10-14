@@ -61,13 +61,16 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"success", "failed"')
   })
 
-  it("setiap jenis event yang ditulis aplikasi punya tab", () => {
+  it("setiap jenis event yang masih ditulis aplikasi punya tab", () => {
     // Owner 14 Okt 2026: angka tab harus selalu bisa ditutup, dan itu hanya mungkin
     // kalau setiap jenis event punya tabnya sendiri. Sebelumnya hanya success dan
     // failed yang bertab, sehingga pada data nyata tab Semua menunjukkan 324
     // sementara Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan
     // yang tidak tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat.
-    expect(daftarEventKlien()).toEqual(["success", "failed", "processing", "queued", "dedup"])
+    //
+    // dedup DIBUANG dari daftar ini di hari yang sama, karena penggabungan otomatis
+    // berkas kembar di server dihapus sehingga kejadian itu tidak pernah ditulis lagi.
+    expect(daftarEventKlien()).toEqual(["success", "failed", "processing", "queued"])
   })
 
   it("kejadian berhasil dilabeli Berhasil, bukan Siap", () => {
@@ -95,7 +98,6 @@ describe("label status Riwayat Media", () => {
     expect(deskripsi).toContain("Berhasil")
     expect(deskripsi).toContain("Gagal")
     expect(deskripsi).toContain("Diproses")
-    expect(deskripsi).toContain("Duplikat")
     expect(deskripsi).not.toContain("Siap")
   })
 
@@ -129,19 +131,17 @@ describe("label status Riwayat Media", () => {
     expect(daftarEventServer()).not.toContain("downloaded")
   })
 
-  it("Duplikat punya tab dan labelnya tetap terpetakan", () => {
-    // Keputusan 2026-10-08 hanya memberi tab pada Berhasil dan Gagal, dengan alasan
-    // penjagaan berkas kembar sudah berjalan di Media Library sebelum berkas
-    // dikirim. Owner 14 Okt 2026 membaliknya: baris dedup NYATA ada di riwayat
-    // (6 baris pada data produksi 14 Okt), dan tanpa tab angkanya ikut menjadi
-    // selisih yang tidak bisa dijelaskan pembaca.
-    // Labelnya tetap wajib ada supaya baris tampil sebagai Duplikat, bukan mentah.
+  it("Duplikat tidak punya tab, tetapi labelnya tetap terpetakan", () => {
+    // Tab Duplikat ada sebentar lalu dibuang 14 Okt 2026, karena penggabungan
+    // otomatis berkas kembar di server dihapus: kejadian dedup tidak pernah ditulis
+    // lagi. Baris dedup LAMA tetap muncul di tab Semua, jadi label dan nadanya wajib
+    // tetap terpetakan supaya baris itu tidak tampil mentah.
     const teks = sumber()
     const barisTab = teks
       .split(String.fromCharCode(10))
       .find((b) => b.includes("const EVENT_TABS")) as string
 
-    expect(barisTab).toContain("dedup")
+    expect(barisTab).not.toContain("dedup")
     expect(teks).toContain('dedup: { label: "Duplikat"')
   })
 })

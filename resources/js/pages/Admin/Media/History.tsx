@@ -112,13 +112,18 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
  * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
  *
- * Owner 14 Okt 2026: tab Diproses, Antre, dan Duplikat DITAMBAHKAN. Sebelumnya
- * hanya Berhasil dan Gagal yang punya tab, sehingga angka Semua selalu lebih besar
- * dari jumlah seluruh tab dan selisihnya terbaca seperti kegagalan yang tidak
- * tercatat. Pada data nyata 14 Okt: Semua 324, sementara Berhasil 156 dan Gagal 0,
- * padahal sisa 168 itu 162 baris Diproses dan 6 baris Duplikat. Sekarang SETIAP
- * jenis event yang benar-benar ditulis aplikasi punya tabnya sendiri, jadi angka
- * tab selalu bisa ditutup: Semua = Berhasil + Gagal + Diproses + Antre + Duplikat.
+ * Owner 14 Okt 2026: tab Diproses dan Antre DITAMBAHKAN. Sebelumnya hanya
+ * Berhasil dan Gagal yang punya tab, sehingga angka Semua selalu lebih besar dari
+ * jumlah seluruh tab dan selisihnya terbaca seperti kegagalan yang tidak tercatat.
+ * Pada data nyata 14 Okt: Semua 324, sementara Berhasil 156 dan Gagal 0, padahal
+ * sisa 168 itu 162 baris Diproses dan 6 baris Duplikat. Sekarang setiap jenis event
+ * yang MASIH ditulis aplikasi punya tabnya sendiri, jadi angka tab selalu bisa
+ * ditutup: Semua = Berhasil + Gagal + Diproses + Antre.
+ *
+ * Tab "Duplikat" ada sebentar lalu DIBUANG di hari yang sama, karena penggabungan
+ * otomatis berkas kembar di server dihapus (lihat resources/js/lib/media-duplicate.ts).
+ * Tidak ada lagi kejadian dedup baru; labelnya tetap ada di EVENT_META supaya baris
+ * dedup lama tampil bernada benar, tetapi angkanya nol dan tidak perlu tab.
  *
  * "Terunduh" TIDAK punya tab dan tidak punya label: itu bukan event sama sekali,
  * melainkan STATUS pada tabel lampiran media, dan tidak ada satu pun kode yang
@@ -131,7 +136,7 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * berjalan. Untuk audit memang itu yang dibutuhkan, tetapi jangan dibaca sebagai
  * jumlah antrean aktif: pekerjaan yang benar-benar berjalan ditandai badge Live.
  */
-const EVENT_TABS = ["success", "failed", "processing", "queued", "dedup"] as const
+const EVENT_TABS = ["success", "failed", "processing", "queued"] as const
 
 /** Pilihan urutan daftar. Juga dipakai sebagai bawaan bila server tidak mengirim. */
 const URUTAN_BAWAH: Array<{ value: string; label: string }> = [
@@ -339,7 +344,7 @@ export default function MediaHistory({
   }, [logs, pollNonce, settledEntities])
 
   return (
-    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil, Gagal, Diproses, dan Duplikat">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil, Gagal, Diproses, dan Antre">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">

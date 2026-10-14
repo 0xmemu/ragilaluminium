@@ -43,8 +43,18 @@ class SharedMediaAssetTest extends TestCase
         $this->assertStringStartsWith('media-assets/'.$asset->checksum.'/', $asset->object_key);
     }
 
-    public function test_different_source_urls_with_same_bytes_converge_to_one_asset(): void
+    public function test_different_source_urls_with_same_bytes_stay_separate_assets(): void
     {
+        // Kontrak owner 2026-10-14, menggantikan perilaku konvergensi sebelumnya:
+        // berkas dengan isi identik dari URL berbeda TIDAK lagi digabungkan menjadi
+        // satu aset. Admin toko sering sengaja memakai satu foto untuk dua produk
+        // yang dimensinya berdekatan, dan tiap produk harus punya asetnya sendiri
+        // supaya medianya muncul di foldernya masing-masing. Penggabungan lama juga
+        // membuat lampiran produk kedua menunjuk aset produk pertama, sehingga
+        // menghapus media produk pertama ikut menghilangkan media produk kedua.
+        //
+        // Yang masih dijaga: URL yang SAMA tetap idempoten lewat source_url_hash,
+        // karena itu yang membuat impor massal tidak menggandakan media.
         if (! extension_loaded('gd') || ! function_exists('imagewebp')) {
             $this->markTestSkipped('GD + WebP required');
         }
@@ -65,14 +75,59 @@ class SharedMediaAssetTest extends TestCase
         $resolver->attach($first, $one);
         $resolver->attach($second, $two);
 
+        $this->assertNotSame($one->id, $two->id, 'URL berbeda menghasilkan aset berbeda.');
+
         (new DownloadMediaAsset($one->id))->handle(app(MediaDerivativeService::class));
         (new DownloadMediaAsset($two->id))->handle(app(MediaDerivativeService::class));
 
-        $this->assertSame(1, MediaAsset::where('status', 'ready')->count());
-        $this->assertSame(2, ProductMedia::where('media_asset_id', $one->id)->count());
-        $this->assertSame(0, ProductMedia::where('media_asset_id', $two->id)->count());
+        $this->assertSame(2, MediaAsset::where('status', 'ready')->count());
+        $this->assertSame(1, ProductMedia::where('media_asset_id', $one->id)->count());
+        $this->assertSame(1, ProductMedia::where('media_asset_id', $two->id)->count());
         $this->assertSame($one->id, ProductMedia::where('product_id', $first->id)->value('media_asset_id'));
-        $this->assertSame($one->id, ProductMedia::where('product_id', $second->id)->value('media_asset_id'));
+        $this->assertSame($two->id, ProductMedia::where('product_id', $second->id)->value('media_asset_id'));
+
+        // Setiap aset menyimpan berkasnya sendiri, jadi kunci objek tidak boleh sama.
+        $this->assertNotSame($one->fresh()->object_key, $two->fresh()->object_key);
+    }
+
+    public function test_manual_upload_of_same_file_to_two_products_creates_two_assets(): void
+    {
+        // Skenario owner 2026-10-14: produk A (120 cm) dan produk B (110 cm)
+        // fotonya sama. Dulu unggahan kedua mengembalikan aset produk A, sehingga
+        // folder produk B kosong dan admin dipaksa memakai media folder A.
+        // Sekarang setiap unggahan manual menghasilkan asetnya sendiri, supaya
+        // media tiap produk muncul di foldernya masing-masing.
+        if (! extension_loaded('gd') || ! function_exists('imagewebp')) {
+            $this->markTestSkipped('GD + WebP required');
+        }
+
+        Storage::fake('media');
+        $resolver = app(MediaAssetResolver::class);
+
+        $first = $this->makeProduct('MANUAL-A');
+        $second = $this->makeProduct('MANUAL-B');
+
+        $isi = $this->makePngBytes();
+        $one = $resolver->fromUploadedFile($this->uploadedPng($isi, 'foto-jungkit.png'));
+        $two = $resolver->fromUploadedFile($this->uploadedPng($isi, 'foto-jungkit.png'));
+
+        $this->assertNotSame($one->id, $two->id, 'Unggahan kedua harus jadi aset baru.');
+        $this->assertSame($one->checksum, $two->checksum, 'Sidik jarinya memang sama.');
+
+        $resolver->attach($first, $one);
+        $resolver->attach($second, $two);
+
+        $this->assertSame($one->id, ProductMedia::where('product_id', $first->id)->value('media_asset_id'));
+        $this->assertSame($two->id, ProductMedia::where('product_id', $second->id)->value('media_asset_id'));
+    }
+
+    /** Berkas unggahan palsu berisi byte PNG tertentu. */
+    protected function uploadedPng(string $bytes, string $name)
+    {
+        $path = tempnam(sys_get_temp_dir(), 'uji_ung_');
+        file_put_contents($path, $bytes);
+
+        return new \Illuminate\Http\UploadedFile($path, $name, 'image/png', null, true);
     }
 
     protected function makeProduct(string $sku): Product

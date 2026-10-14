@@ -216,8 +216,14 @@ class MediaAssetWorkflowTest extends TestCase
         $this->assertFalse((bool) $rows[0]->show_in_catalog);
     }
 
-    public function test_process_uploaded_media_asset_records_dedup_meta_when_duplicate_found(): void
+    public function test_upload_with_identical_content_is_kept_not_merged(): void
     {
+        // Kontrak owner 2026-10-14: penggabungan otomatis berkas kembar di server
+        // DIHAPUS. Dulu berkas yang isinya identik dengan aset lain dihapus dari
+        // penyimpanan dan barisnya diarsipkan, sehingga folder produk yang sengaja
+        // memakai foto produk lain (dimensi berdekatan) jadi kosong. Sekarang setiap
+        // unggahan menyimpan berkasnya sendiri, dan lampirannya tetap menunjuk aset
+        // itu, bukan dialihkan ke aset lain.
         Storage::fake('media');
         $disk = Storage::disk('media');
 
@@ -238,9 +244,9 @@ class MediaAssetWorkflowTest extends TestCase
         $uploadKey = 'media/library/pending-upload.png';
         $disk->put($uploadKey, $content);
 
-        $duplicateAsset = MediaAsset::create([
+        $asset = MediaAsset::create([
             'kind' => 'image',
-            'label' => 'foto-duplikat.png',
+            'label' => 'foto-produk-lain.png',
             'checksum' => null,
             'object_key' => $uploadKey,
             'status' => 'pending',
@@ -249,31 +255,31 @@ class MediaAssetWorkflowTest extends TestCase
 
         $attachment = ProductMedia::create([
             'product_id' => $product->id,
-            'media_asset_id' => $duplicateAsset->id,
+            'media_asset_id' => $asset->id,
             'position' => 1,
             'status' => 'pending',
         ]);
 
-        (new ProcessUploadedMediaAsset($duplicateAsset->id))->handle(app(MediaDerivativeService::class));
+        (new ProcessUploadedMediaAsset($asset->id))->handle(app(MediaDerivativeService::class));
 
-        $duplicateAsset->refresh();
-        $this->assertSame('archived', $duplicateAsset->status);
-        $this->assertFalse($disk->exists($uploadKey), 'Berkas duplikat di R2 harus terhapus');
+        $asset->refresh();
+        $this->assertSame('ready', $asset->status, 'Aset tidak lagi diarsipkan karena kembar.');
+        $this->assertNotSame($canonical->id, $asset->id);
+        $this->assertNotSame('archived', $asset->status);
+        $this->assertSame($checksum, $asset->checksum, 'Sidik jari tetap dicatat pada asetnya sendiri.');
+        $this->assertNotNull($asset->object_key, 'Aset menyimpan berkasnya sendiri.');
 
         $attachment->refresh();
-        $this->assertSame($canonical->id, $attachment->media_asset_id, 'Attachment dialihkan ke canonical');
+        $this->assertSame($asset->id, $attachment->media_asset_id, 'Lampiran tetap menunjuk aset unggahannya.');
 
-        $dedupLogs = MediaProcessingLog::query()
-            ->where('loggable_type', MediaAsset::class)
-            ->where('loggable_id', $duplicateAsset->id)
-            ->where('event', 'dedup')
-            ->get();
-
-        $this->assertCount(1, $dedupLogs, 'Hanya 1 baris log dedup yang dicatat');
-        $meta = $dedupLogs->first()->meta;
-        $this->assertIsArray($meta);
-        $this->assertSame($canonical->id, $meta['merged_into_asset_id']);
-        $this->assertSame('foto-asli.png', $meta['merged_into_label']);
+        $this->assertSame(
+            0,
+            MediaProcessingLog::query()
+                ->where('loggable_id', $asset->id)
+                ->where('event', 'dedup')
+                ->count(),
+            'Tidak ada lagi baris log dedup dari jalur unggahan.'
+        );
     }
 
     private function makeAsset(string $seed): MediaAsset

@@ -81,12 +81,37 @@ class MediaDerivativeService
     }
 
     /**
+     * Ruang nama penyimpanan untuk turunan sebuah aset.
+     *
+     * Sidik jari tetap dipakai sebagai nama dasar supaya berkas dengan isi yang
+     * sama berbagi satu direktori. Sejak 14 Okt 2026 satu berkas boleh dipakai
+     * lebih dari satu produk, jadi dua aset boleh punya sidik jari yang sama.
+     * Agar keduanya tidak berebut kunci objek yang sama (kolom `object_key`
+     * masih unik), aset kedua dan seterusnya memakai ruang nama bersufiks id.
+     *
+     * Direktori kanonik dipertahankan untuk pemakai pertama, sehingga tata letak
+     * lama `media-assets/<sidik jari>/` tetap berlaku untuk berkas yang tidak
+     * kembar.
+     */
+    private function namespaceFor(string $checksum, ?int $assetId, string $probe): string
+    {
+        $kanonik = "media-assets/{$checksum}";
+        if ($assetId === null) {
+            return $kanonik;
+        }
+
+        $disk = Storage::disk(config('media.disk', 'media'));
+
+        return $disk->exists("{$kanonik}/{$probe}") ? "{$kanonik}-{$assetId}" : $kanonik;
+    }
+
+    /**
      * Store immutable derivatives for a shared asset. The checksum is the
      * storage namespace so different products never create duplicate bytes.
      *
      * @return array<string, array{path: string, url: string, width: int, height: int}>
      */
-    public function storeAssetDerivatives(string $absoluteSourcePath, string $checksum): array
+    public function storeAssetDerivatives(string $absoluteSourcePath, string $checksum, ?int $assetId = null): array
     {
         if (! extension_loaded('gd')) {
             throw new RuntimeException('PHP GD extension is required to generate media derivatives.');
@@ -99,6 +124,7 @@ class MediaDerivativeService
         ]);
         $quality = (int) config('media.webp_quality', 82);
         $disk = Storage::disk(config('media.disk', 'media'));
+        $namespace = $this->namespaceFor($checksum, $assetId, array_key_first($sizes).'.webp');
         $source = $this->loadImage($absoluteSourcePath);
 
         if ($source === false) {
@@ -132,7 +158,7 @@ class MediaDerivativeService
             }
             imagedestroy($canvas);
 
-            $path = "media-assets/{$checksum}/{$name}.webp";
+            $path = "{$namespace}/{$name}.webp";
             $disk->put($path, fopen($tmp, 'r'), ['visibility' => 'public']);
             @unlink($tmp);
             $out[$name] = [
@@ -154,7 +180,7 @@ class MediaDerivativeService
      *
      * @return array{path: string, url: string, mime_type: string, size_bytes: int}
      */
-    public function storeVideoAsset(string $absoluteSourcePath, string $checksum, string $mimeType): array
+    public function storeVideoAsset(string $absoluteSourcePath, string $checksum, string $mimeType, ?int $assetId = null): array
     {
         $disk = Storage::disk(config('media.disk', 'media'));
         $extension = match ($mimeType) {
@@ -162,7 +188,8 @@ class MediaDerivativeService
             'video/quicktime' => 'mov',
             default => 'mp4',
         };
-        $path = "media-assets/{$checksum}/video.{$extension}";
+        $namespace = $this->namespaceFor($checksum, $assetId, "video.{$extension}");
+        $path = "{$namespace}/video.{$extension}";
         $stream = fopen($absoluteSourcePath, 'r');
         if ($stream === false || ! $disk->put($path, $stream, ['visibility' => 'public'])) {
             if (is_resource($stream)) {
@@ -181,7 +208,7 @@ class MediaDerivativeService
 
         // Poster frame: Media Library menampilkan thumbnail via <img>; tanpa poster.webp
         // kartu video memakai file .mp4 sebagai img yang pasti gagal render (owner 2026-09-02).
-        $poster = $this->generateVideoPoster($absoluteSourcePath, $checksum, $disk);
+        $poster = $this->generateVideoPoster($absoluteSourcePath, $checksum, $disk, $namespace);
         if ($poster !== null) {
             $out['poster'] = $poster;
         }
@@ -195,7 +222,7 @@ class MediaDerivativeService
      *
      * @return array{path: string, url: string}|null
      */
-    public function generateVideoPoster(string $absoluteSourcePath, string $checksum, $disk = null): ?array
+    public function generateVideoPoster(string $absoluteSourcePath, string $checksum, $disk = null, ?string $namespace = null): ?array
     {
         $ffmpeg = trim((string) shell_exec('command -v ffmpeg'));
         if ($ffmpeg === '') {
@@ -224,7 +251,7 @@ class MediaDerivativeService
         }
 
         $disk = $disk ?? Storage::disk(config('media.disk', 'media'));
-        $posterPath = "media-assets/{$checksum}/poster.webp";
+        $posterPath = ($namespace ?? "media-assets/{$checksum}").'/poster.webp';
         $put = $disk->put($posterPath, fopen($target, 'r'), ['visibility' => 'public']);
         @unlink($target);
 

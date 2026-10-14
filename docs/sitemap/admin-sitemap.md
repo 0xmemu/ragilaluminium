@@ -111,14 +111,25 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - Bisa dinonaktifkan dengan alasan; audit dan notifikasi ambang masuk ke Akun & Sistem.
   - Route: admin.products.popularity-boosts.*.
 - **Media Library** (Tipe: Operational) — global shared asset, submenu Kelola Produk.
-  - Sebelum unggah, isi setiap berkas diperiksa lebih dulu lewat `POST /admin/media/check-duplicates`
-    (sidik jari SHA-256). Berkas yang isinya sudah ada ditahan dan admin diberi peringatan berisi aset
-    yang sama, dengan pilihan Lewati (bawaan) atau Tetap unggah. Aset berstatus arsip tidak dihitung
-    duplikat karena berkasnya sudah dihapus, jadi mengunggahnya lagi menghasilkan aset baru.
-  - Penggabungan otomatis di server tetap berlaku sebagai penjaga terakhir: kalau pemeriksaan di klien
-    tidak bisa dijalankan, berkas tetap dikirim dan digabungkan seperti sebelumnya.
+  - Penolakan berkas kembar berlaku HANYA DI DALAM SATU AKSI UNGGAH (satu kali admin memilih
+    berkas di dialog unggah). Bila satu aksi memuat berkas yang isinya sama dua kali, hanya
+    kemunculan pertama yang dikirim; sisanya ditandai "kembar" di panel unggah. Ini menangkap
+    salah pilih yang tidak disengaja.
+  - Berkas yang isinya sama dengan aset dari AKSI SEBELUMNYA DIBIARKAN (kontrak owner 2026-10-14,
+    menggantikan kontrak 2026-10-08). Admin toko sering sengaja memakai satu foto untuk dua produk
+    yang dimensinya berdekatan, mis. produk 120 cm dan 110 cm, dan tiap produk tetap harus punya
+    asetnya sendiri di foldernya masing-masing. Aturan lama menahan berkas yang sudah ada di Media
+    Library, sehingga folder produk kedua jadi kosong dan admin dipaksa memakai media folder pertama.
+  - Tidak ada dialog "Lewati atau Tetap unggah" dan tidak ada endpoint pemeriksaan duplikat ke
+    server. Pemeriksaan memakai sidik jari SHA-256 yang dihitung di browser, dibandingkan hanya
+    antar berkas di aksi yang sama.
+  - Penggabungan otomatis di server DIHAPUS: dulu berkas kembar dihapus dari penyimpanan dan
+    barisnya diarsipkan lalu lampirannya dialihkan ke aset lain, tanpa peduli pilihan admin.
+    Karena itu keunikan kolom `checksum` di `media_assets` dilepas (migration
+    `2026_10_14_120000_relax_media_asset_checksum_unique`), sebab selama masih unik dua aset
+    berisi sama tidak mungkin disimpan.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
-  - Filter: tab status (Semua, Berhasil, Gagal, Diproses, Antre, Duplikat), pencarian
+  - Filter: tab status (Semua, Berhasil, Gagal, Diproses, Antre), pencarian
     label/pesan, SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang
     tanggal), dan SATU pilihan urutan (Terbaru, bawaan, atau Terlama).
     Rentang tanggal hanya muncul setelah "Rentang tanggal" dipilih, dan periode aktif
@@ -130,6 +141,10 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
     Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan yang tidak
     tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat. Dijaga test
     `test_angka_tab_selalu_bisa_ditutup`.
+  - Tab "Duplikat" ditambahkan lalu DIBUANG di hari yang sama, karena penggabungan otomatis
+    berkas kembar di server dihapus sehingga kejadian `dedup` tidak pernah ditulis lagi.
+    Baris `dedup` LAMA tetap tampil di tab Semua lewat labelnya, jadi satu-satunya selisih
+    yang sah antara tab Semua dan jumlah seluruh tab adalah baris dedup warisan itu.
   - Daftar jenis event yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`
     dan `tabCounts` dihitung dari konstanta itu, sinkron dengan `EVENT_TABS` di
     `resources/js/pages/Admin/Media/History.tsx`. Nilai yang bukan kejadian sama sekali

@@ -22,12 +22,6 @@ use Illuminate\Validation\Rule;
  */
 class MediaLibraryUploadController extends Controller
 {
-    /**
-     * Batas jumlah sidik jari per permintaan pemeriksaan duplikat. Selaras
-     * MAX_CHECKSUMS_PER_REQUEST di resources/js/lib/media-duplicate.ts.
-     */
-    private const MAX_CHECKSUMS = 50;
-
     public function upload(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -104,21 +98,26 @@ class MediaLibraryUploadController extends Controller
             'folder_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
         ]);
 
+        // Kontrak owner 2026-10-14: impor URL dari Media Library SELALU membuat
+        // aset baru di folder yang dipilih. Dulu URL yang sudah ada dipakai ulang,
+        // dan aset lama itu bahkan dipindahkan ke folder baru, sehingga menambahkan
+        // media ke folder produk B bisa mengosongkan folder produk A tanpa disadari.
+        // Idempotensi impor massal (XLSX/Shopee) tetap dijaga di MediaAssetResolver,
+        // karena di sana satu berkas sumber memang harus dipakai ulang.
         $hash = hash('sha256', $validated['source_url']);
-        $existing = MediaAsset::where('source_url_hash', $hash)->first();
-        if ($existing) {
-            if (filled($validated['folder_id'] ?? null)) {
-                $existing->update(['folder_id' => (int) $validated['folder_id']]);
-            }
 
-            return response()->json(['message' => 'URL sudah ada di library; aset dikembalikan.', 'asset_id' => $existing->id], 200);
-        }
+        // Kolom source_url_hash masih unik karena dipakai jalur impor massal untuk
+        // memakai ulang berkas sumber yang sama (lihat MediaAssetResolver). Aset
+        // dari Media Library tidak boleh merebut hash itu: kalau URL-nya sudah
+        // pernah diimpor, hash dibiarkan kosong supaya penambahan media ke folder
+        // tetap berhasil dan impor lama tidak ikut terpengaruh.
+        $hashSudahDipakai = MediaAsset::where('source_url_hash', $hash)->exists();
 
         $asset = MediaAsset::create([
             'kind' => 'image',
             'label' => basename(parse_url($validated['source_url'], PHP_URL_PATH) ?: 'media'),
             'source_url' => $validated['source_url'],
-            'source_url_hash' => $hash,
+            'source_url_hash' => $hashSudahDipakai ? null : $hash,
             'status' => 'pending',
             'visibility' => 'visible',
             'folder_id' => $validated['folder_id'] ?? null,
@@ -146,35 +145,4 @@ class MediaLibraryUploadController extends Controller
      * Bentuk sidik jarinya divalidasi ketat supaya endpoint ini tidak bisa dipakai
      * menyisir nilai checksum sembarangan.
      */
-    public function checkDuplicates(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'checksums' => ['required', 'array', 'max:'.self::MAX_CHECKSUMS],
-            'checksums.*' => ['string', 'regex:/^[a-f0-9]{64}$/'],
-        ]);
-
-        $checksums = array_values(array_unique($validated['checksums']));
-
-        $duplikat = MediaAsset::query()
-            ->whereIn('checksum', $checksums)
-            ->whereNotNull('checksum')
-            ->where('checksum', '!=', '')
-            ->where('status', '!=', 'archived')
-            ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
-            ->get(['id', 'checksum', 'label', 'kind', 'status'])
-            ->keyBy('checksum');
-
-        return response()->json([
-            'duplicates' => $duplikat
-                ->map(fn (MediaAsset $asset) => [
-                    'id' => (int) $asset->id,
-                    'label' => (string) $asset->label,
-                    'kind' => (string) $asset->kind,
-                    'status' => (string) $asset->status,
-                    'usage_count' => (int) $asset->usage_count,
-                    'thumb_url' => $asset->urlFor('thumb'),
-                ])
-                ->all(),
-        ]);
-    }
 }

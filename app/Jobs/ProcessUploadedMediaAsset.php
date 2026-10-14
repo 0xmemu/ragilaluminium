@@ -15,7 +15,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -100,54 +99,15 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 throw new RuntimeException('Checksum media gagal dibuat.');
             }
 
-            // Deduplikasi: file identik sudah ada -> arahkan attachment ke asset canonical.
-            $canonical = MediaAsset::where('checksum', $checksum)
-                // Checksum kosong/null bukan fingerprint sah: upload direct (bukan
-                // dari source URL) memang tidak mengisi checksum. Tanpa guard ini,
-                // semua upload direct akan "identik" satu sama lain.
-                ->whereNotNull('checksum')
-                ->where('checksum', '!=', '')
-                ->where('id', '!=', $asset->id)
-                // Aset arsip bukan tujuan penggabungan yang sah: berkasnya sudah
-                // dihapus dari penyimpanan dan tampilannya disembunyikan, jadi
-                // mengarahkan lampiran ke sana membuat media hilang dari galeri.
-                ->where('status', '!=', 'archived')
-                ->first();
-            if ($canonical) {
-                DB::transaction(function () use ($asset, $canonical): void {
-                    ProductMedia::where('media_asset_id', $asset->id)
-                        ->get()
-                        ->each(function (ProductMedia $attachment) use ($canonical): void {
-                            $attachment->update([
-                                'media_asset_id' => $canonical->id,
-                                'source_url' => $canonical->source_url,
-                                'status' => $canonical->status === 'ready' ? 'downloaded' : 'pending',
-                            ]);
-                        });
-                    CmsBanner::where('media_asset_id', $asset->id)->update([
-                        'media_asset_id' => $canonical->id,
-                        'image_url' => $canonical->localUrlFor('pdp') ?: $canonical->localUrlFor('card') ?: $canonical->object_key,
-                    ]);
-                    CmsGalleryItem::where('media_asset_id', $asset->id)->update([
-                        'media_asset_id' => $canonical->id,
-                        'image_url' => $canonical->localUrlFor('pdp') ?: $canonical->localUrlFor('card') ?: $canonical->object_key,
-                    ]);
-                    $asset->update(['status' => 'archived', 'error_reason' => null]);
-                });
-                $disk->delete($key);
-                // Aset tujuan ikut dicatat: tanpa ini pesannya hanya bilang
-                // "aset lain" tanpa menyebut yang mana, sehingga berkas yang
-                // digabungkan tidak bisa ditelusuri dari halaman Riwayat Media.
-                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.', [
-                    'merged_into_asset_id' => (int) $canonical->id,
-                    'merged_into_label' => (string) $canonical->label,
-                ]);
-
-                return;
-            }
-
+            // Penggabungan otomatis berkas kembar DIHAPUS di sini (owner
+            // 2026-10-14). Dulu berkas yang isinya identik dengan aset lain
+            // dihapus dari penyimpanan dan barisnya diarsipkan, tanpa peduli
+            // admin sudah memilih "Tetap unggah". Akibatnya folder produk yang
+            // sengaja memakai foto produk lain (dimensi berdekatan) jadi kosong.
+            // Sekarang setiap unggahan menyimpan berkasnya sendiri; berkas kembar
+            // hanya dicegah di dalam satu aksi unggah, di sisi klien.
             if ($asset->kind === 'video') {
-                $stored = $derivatives->storeVideoAsset($tmp, $checksum, $mime);
+                $stored = $derivatives->storeVideoAsset($tmp, $checksum, $mime, (int) $asset->id);
                 $asset->update([
                     'checksum' => $checksum,
                     'object_key' => $stored['path'],
@@ -162,7 +122,7 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 ]);
             } else {
                 $dimensions = @getimagesize($tmp);
-                $built = $derivatives->storeAssetDerivatives($tmp, $checksum);
+                $built = $derivatives->storeAssetDerivatives($tmp, $checksum, (int) $asset->id);
                 $master = $derivatives->masterDerivative($built);
 
                 $asset->update([

@@ -162,11 +162,12 @@ final class MediaAssetResolver
             throw new RuntimeException('Checksum media gagal dibuat.');
         }
 
-        $existing = MediaAsset::where('checksum', $checksum)->first();
-        if ($existing) {
-            return $existing;
-        }
-
+        // Kontrak owner 2026-10-14: unggahan manual SELALU menghasilkan asetnya
+        // sendiri. Dulu berkas dengan sidik jari yang sudah ada dikembalikan apa
+        // adanya, sehingga admin yang mengunggah foto yang sama untuk produk lain
+        // diam-diam mendapat aset produk pertama, dan media produk kedua tidak
+        // pernah muncul di foldernya. Sidik jari tetap dihitung dan disimpan,
+        // tetapi tidak lagi dipakai untuk memakai ulang aset.
         $asset = MediaAsset::create([
             'kind' => $kind,
             'label' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
@@ -181,7 +182,7 @@ final class MediaAssetResolver
         try {
             $derivativeService = app(MediaDerivativeService::class);
             if ($kind === 'video') {
-                $stored = $derivativeService->storeVideoAsset($tmp, $checksum, $mime);
+                $stored = $derivativeService->storeVideoAsset($tmp, $checksum, $mime, (int) $asset->id);
                 $asset->update([
                     'object_key' => $stored['path'],
                     'derivatives' => null,
@@ -191,7 +192,7 @@ final class MediaAssetResolver
                     'error_reason' => null,
                 ]);
             } else {
-                $derivatives = $derivativeService->storeAssetDerivatives($tmp, $checksum);
+                $derivatives = $derivativeService->storeAssetDerivatives($tmp, $checksum, (int) $asset->id);
                 $master = $derivativeService->masterDerivative($derivatives);
                 $asset->update([
                     'object_key' => $master['path'] ?? null,

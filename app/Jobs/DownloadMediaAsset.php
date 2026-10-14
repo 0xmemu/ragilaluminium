@@ -14,7 +14,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -93,55 +92,11 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                 throw new \RuntimeException('Checksum asset gagal dibuat.');
             }
 
-            $canonical = MediaAsset::where('checksum', $checksum)
-                ->where('id', '!=', $asset->id)
-                // Aset arsip bukan tujuan penggabungan yang sah: berkasnya sudah
-                // dihapus dari penyimpanan dan tampilannya disembunyikan, jadi
-                // mengarahkan lampiran ke sana membuat media hilang dari galeri.
-                ->where('status', '!=', 'archived')
-                ->first();
-            if ($canonical) {
-                DB::transaction(function () use ($asset, $canonical): void {
-                    ProductMedia::where('media_asset_id', $asset->id)
-                        ->get()
-                        ->each(function (ProductMedia $attachment) use ($canonical): void {
-                            $duplicate = ProductMedia::query()
-                                ->where('product_id', $attachment->product_id)
-                                ->where('media_asset_id', $canonical->id)
-                                ->when(
-                                    $attachment->product_variant_id === null,
-                                    fn ($query) => $query->whereNull('product_variant_id'),
-                                    fn ($query) => $query->where('product_variant_id', $attachment->product_variant_id),
-                                )
-                                ->where('id', '!=', $attachment->id)
-                                ->first();
-
-                            if ($duplicate) {
-                                $attachment->update(['visibility' => 'archived', 'status' => 'downloaded']);
-
-                                return;
-                            }
-
-                            $attachment->update([
-                                'media_asset_id' => $canonical->id,
-                                'source_url' => $canonical->source_url,
-                                'status' => $canonical->status === 'ready' ? 'downloaded' : 'pending',
-                            ]);
-                        });
-                    $asset->update(['status' => 'archived', 'error_reason' => null]);
-                });
-                // Aset tujuan ikut dicatat, sama seperti jalur unggahan: tanpa ini
-                // penggabungan tidak bisa ditelusuri dari halaman Riwayat Media.
-                MediaProcessingLog::record($asset, 'dedup', 'File identik dengan aset lain; diarsipkan dan attachment dialihkan.', [
-                    'merged_into_asset_id' => (int) $canonical->id,
-                    'merged_into_label' => (string) $canonical->label,
-                ]);
-
-                return;
-            }
-
+            // Penggabungan otomatis berkas kembar DIHAPUS di sini (owner
+            // 2026-10-14), sama seperti jalur unggahan: satu foto boleh dipakai
+            // untuk beberapa produk, dan setiap produk menyimpan berkasnya sendiri.
             if ($asset->kind === 'video') {
-                $stored = $derivatives->storeVideoAsset($tmp, $checksum, $mime);
+                $stored = $derivatives->storeVideoAsset($tmp, $checksum, $mime, (int) $asset->id);
                 $asset->update([
                     'checksum' => $checksum,
                     'object_key' => $stored['path'],
@@ -153,7 +108,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                 ]);
             } else {
                 $dimensions = @getimagesize($tmp);
-                $built = $derivatives->storeAssetDerivatives($tmp, $checksum);
+                $built = $derivatives->storeAssetDerivatives($tmp, $checksum, (int) $asset->id);
                 $master = $derivatives->masterDerivative($built);
 
                 $asset->update([

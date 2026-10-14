@@ -487,21 +487,25 @@ class ProductMediaController extends Controller
      * memvalidasi filter status sekaligus menjaga daftarnya sinkron dengan
      * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
      *
-     * Daftar ini memuat SEMUA jenis event yang benar-benar ditulis aplikasi
-     * (lihat MediaProcessingLog::record di ProcessUploadedMediaAsset dan
+     * Daftar ini memuat semua jenis event yang MASIH ditulis aplikasi (lihat
+     * MediaProcessingLog::record di ProcessUploadedMediaAsset dan
      * DownloadMediaAsset). Owner 14 Okt 2026 menemukan angka tab tidak bisa
      * ditutup: Semua 324 sementara Berhasil 156 dan Gagal 0, sehingga sisa 168
      * terbaca seperti kegagalan yang tidak tercatat, padahal isinya 162 baris
      * Diproses dan 6 baris Duplikat. Karena itu tabCounts dihitung dari konstanta
      * ini, bukan dari daftar tetap, supaya menambah jenis event tidak bisa lupa
      * menambah angkanya.
+     *
+     * 'dedup' TIDAK ada di sini: penggabungan otomatis berkas kembar di server
+     * dihapus pada 14 Okt 2026, jadi tidak ada kejadian dedup baru. Baris dedup
+     * lama tetap tampil di tab Semua lewat labelnya di sisi tampilan, tetapi tidak
+     * perlu tabnya sendiri.
      */
     private const HISTORY_EVENT_TABS = [
         'success',
         'failed',
         'processing',
         'queued',
-        'dedup',
     ];
 
     /**
