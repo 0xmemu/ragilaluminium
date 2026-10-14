@@ -5188,3 +5188,32 @@ Bukti:
 - Slot basi build-slot-a 202 dikeluarkan dari public/.
 - ragilaluminium.com/order/status 200, ra.333labs.tech/order/status 200.
 - Push e89f74f2..2f77c201 ke origin/main, pre-push hook lulus.
+
+
+## 2026-10-14 12:45 UTC | zcode | Standard | pembersihan data uji dan ulasan di VPS 202
+
+Sesuai instruksi dan konfirmasi owner, seluruh data hasil pengujian dan ulasan di server produksi (VPS 202) telah dibersihkan:
+- Tabel produk (products 11 baris), varian produk (product_variants 132 baris), atribut produk (product_attributes 66 baris), lampiran media (product_media 172 baris), dan riwayat harga (product_price_logs 1 baris) telah dihapus bersih (0 baris).
+- Tabel ulasan pelanggan / testimoni (cms_testimonials 78 baris) telah dikosongkan (0 baris).
+- Wadah model produk tanpa produk (cms_model_products 8 baris) dihapus bersih (akan dibuat ulang otomatis saat produk baru diimpor).
+- Riwayat tugas impor (import_jobs 5 baris) dan detail baris impor (import_job_rows 506 baris) telah dihapus bersih, serta berkas fisiknya di storage/app/imports/catalog/ dibersihkan.
+- Satu aset media duplikat sementara yang dibuat job uji (MediaAsset ID 1089) telah dihapus; 75 aset media pustaka resmi (ID <= 1026) tetap aman.
+- Berkas uji sementara di direktori sementara (/tmp) VPS 202 telah dihapus bersih.
+- Cache aplikasi dan tampilan dibersihkan (php artisan cache:clear & view:clear).
+- Verifikasi: hitungan tabel produk, varian, ulasan, dan impor = 0; tabel metadata sistem (categories, sub_models) dan pustaka aset media (75 aset) tetap aman; halaman utama, /products/all, dan /reviews/web merespons HTTP 200 OK.
+
+## 2026-10-14 13:00 UTC | zcode | Standard | pengosongan media library dan banner promo di VPS 202
+
+Sesuai permintaan owner, Media Library dan Banner Promo di VPS 202 telah dikosongkan:
+- Tabel media_assets (75 baris) dan media_processing_logs (152 baris) dihapus bersih (0 baris).
+- Tabel cms_banners (3 baris) dihapus bersih (0 baris).
+- Cache aplikasi dan view dibersihkan.
+- Verifikasi: media_assets = 0, cms_banners = 0; halaman beranda dan katalog merespons HTTP 200 OK.
+
+## 2026-10-14 15:05 UTC | zcode | Standard | perbaikan crash halaman Tambah Produk
+
+Owner melaporkan tombol di halaman Tambah Produk tidak berfungsi dan muncul layar "Terjadi gangguan sementara" (500). Akar masalah BUKAN server: React error #301 "Too many re-renders" pada ProductForm. Prop opsional `installationMedia = []` memakai default array literal sehingga referensinya BARU setiap render, padahal komponen membandingkan referensi itu saat render (`syncedInstallationMedia !== installationMedia`) lalu memanggil setState. Render pertama lolos, setiap perubahan state berikutnya (klik tombol apa pun) memicu setState tanpa henti sampai React menyerah dan ErrorBoundary menampilkan layar 500. Hanya halaman create yang kena karena halaman edit menerima prop stabil dari server.
+
+Perbaikan: default dipindahkan ke konstanta tingkat modul `TANPA_HASIL_PEMASANGAN` di ProductForm.tsx, dan pola identik `items = []` di Checkout.tsx diperbaiki dengan `TANPA_ITEM`. Penjaga regresi baru `tests/frontend/stable-prop-default.test.ts` menolak prop yang dibandingkan referensinya tapi berdefault literal (membaca sumber, membuang komentar lebih dulu).
+
+Verifikasi: typecheck bersih, lint 0 warning, Vitest 361 lulus (44 berkas, termasuk 3 test penjaga baru), build sukses. Uji browser Playwright di ra.333labs.tech: keempat tombol Tambah tidak lagi crash, alur isi nama + spesifikasi + varian + opsi + harga berjalan tanpa error JS, halaman edit dan checkout tidak mengalami regresi.

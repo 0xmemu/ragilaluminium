@@ -58,6 +58,31 @@ type VariantDef = { name: string; options: VariationOption[]; locked?: boolean }
 
 const emptyOption = (): VariationOption => ({ value: "" })
 
+/** Satu baris media hasil pemasangan seperti dikirim controller. */
+type InstallationMediaRow = {
+  id: number
+  media_asset_id: number
+  label?: string | null
+  url?: string | null
+  position: number
+  show_in_catalog: boolean
+  installation_caption?: string | null
+  update_url: string
+  archive_url: string
+}
+
+/**
+ * Default stabil untuk prop `installationMedia`.
+ *
+ * Array literal langsung di daftar parameter (`installationMedia = []`) membuat
+ * referensi BARU setiap render. Perbandingan referensi di dalam komponen
+ * (`syncedInstallationMedia !== installationMedia`) karena itu selalu dianggap
+ * berubah, memicu setState saat render tanpa henti, dan halaman gagal render
+ * ("Too many re-renders") begitu ada satu perubahan state. Satu konstanta
+ * tingkat modul menjaga referensinya tetap sama antar render.
+ */
+const TANPA_HASIL_PEMASANGAN: InstallationMediaRow[] = []
+
 /** Produk kartesian dari definisi varian: [Warna(Hitam,Putih) x Kaca(Bening,Es)] -> 4 kombinasi. */
 function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label: string }> {
   if (!defs.length || defs.some((d) => !d.options.length)) return []
@@ -99,7 +124,7 @@ export default function ProductForm({
   submitUrl,
   publishUrl,
   options,
-  installationMedia = [],
+  installationMedia = TANPA_HASIL_PEMASANGAN,
   mediaActionUrls,
   attributes = [],
 }: {

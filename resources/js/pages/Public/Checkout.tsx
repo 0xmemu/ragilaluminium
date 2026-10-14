@@ -47,8 +47,17 @@ interface CheckoutProps {
   shippingWeightKg?: number
 }
 
+/**
+ * Default stabil untuk prop `items`.
+ *
+ * Alasannya sama dengan `TANPA_HASIL_PEMASANGAN` di ProductForm: array literal
+ * di daftar parameter membuat referensi baru tiap render, sehingga perbandingan
+ * referensi saat render selalu dianggap berubah dan memicu setData tanpa henti.
+ */
+const TANPA_ITEM: CheckoutItem[] = []
+
 export default function Checkout({
-  items = [],
+  items = TANPA_ITEM,
   subtotal = 0,
   discount_total = 0,
   voucher = null,
