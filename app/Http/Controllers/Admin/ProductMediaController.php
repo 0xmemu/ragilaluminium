@@ -18,6 +18,7 @@ use App\Services\MediaAssetResolver;
 use App\Services\MediaStoragePurger;
 use App\Support\InertiaAdmin;
 use App\Support\LikeSearch;
+use App\Support\MediaLibraryFilter;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -72,27 +73,8 @@ class ProductMediaController extends Controller
      */
     public function library(Request $request): Response
     {
-        $assets = MediaAsset::query()
+        $assets = MediaLibraryFilter::apply($request)
             ->withCount(['attachments as usage_count' => fn ($query) => $query->where('visibility', '!=', 'archived')])
-            ->when($request->filled('folder_id'), function ($query) use ($request): void {
-                $folderId = (int) $request->query('folder_id');
-                if ($folderId === 0) {
-                    $query->whereNull('folder_id'); // Inbox
-                } else {
-                    $query->where('folder_id', $folderId);
-                }
-            })
-            ->when(! $request->filled('visibility'), fn ($query) => $query->where('visibility', '!=', 'archived'))
-            // Status arsip (duplikat dedup) tidak punya file/derivatives; sembunyikan
-            // kecuali filter status dipilih eksplisit.
-            ->when(! $request->filled('status'), fn ($query) => $query->where('status', '!=', 'archived'))
-            ->when($request->filled('q'), function ($query) use ($request): void {
-                $q = trim((string) $request->query('q'));
-                $query->where(fn ($inner) => LikeSearch::whereLike($inner, 'label', $q)->orWhereRaw('source_url LIKE ? ESCAPE ?', [LikeSearch::pattern($q), '\\']));
-            })
-            ->when($request->filled('kind'), fn ($query) => $query->where('kind', $request->query('kind')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))
-            ->when($request->filled('visibility'), fn ($query) => $query->where('visibility', $request->query('visibility')))
             ->orderByDesc('id')
             ->paginate(30)
             ->withQueryString();
@@ -402,11 +384,25 @@ class ProductMediaController extends Controller
     {
         $validated = $request->validate([
             'action' => ['required', 'in:archive,delete,restore'],
-            'asset_ids' => ['required', 'array', 'min:1', 'max:200'],
+            // Dua cara menyebut sasaran: daftar id eksplisit (pilihan yang
+            // diklik satu per satu) atau `scope_all` untuk SELURUH aset pada
+            // folder + filter aktif. Daftar id dibatasi 200 karena dikirim dari
+            // peramban; sasaran besar lewat `scope_all` supaya tidak ada batas
+            // halaman yang diam-diam memotong aksi.
+            'asset_ids' => ['nullable', 'array', 'max:200'],
             'asset_ids.*' => ['integer', 'distinct', 'exists:media_assets,id'],
+            'scope_all' => ['sometimes', 'boolean'],
         ]);
 
-        $assets = MediaAsset::query()->whereIn('id', $validated['asset_ids'])->get();
+        $assetIds = $request->boolean('scope_all')
+            ? MediaLibraryFilter::apply($request)->pluck('id')->all()
+            : ($validated['asset_ids'] ?? []);
+
+        if ($assetIds === []) {
+            return redirect()->back()->with('error', 'Tidak ada aset yang dipilih.');
+        }
+
+        $assets = MediaAsset::query()->whereIn('id', $assetIds)->get();
         $deleted = 0;
         $archived = 0;
         $restored = 0;
@@ -431,7 +427,11 @@ class ProductMediaController extends Controller
             }
             $usedElsewhere = ProductMedia::where('media_asset_id', $asset->id)->exists()
                 || CmsBanner::where('media_asset_id', $asset->id)->exists()
-                || CmsGalleryItem::where('media_asset_id', $asset->id)->exists();
+                || CmsGalleryItem::where('media_asset_id', $asset->id)->exists()
+                // Aset yang sudah dirapikan ke folder dianggap masih dipakai.
+                // Folder adalah tanda berkas disimpan untuk dipakai produk,
+                // jadi jangan dihapus permanen hanya karena belum terlampir.
+                || $asset->folder_id !== null;
             if ($usedElsewhere) {
                 $asset->update(['visibility' => 'archived']);
                 $archived++;

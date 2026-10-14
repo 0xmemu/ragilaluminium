@@ -320,8 +320,11 @@ class ReconcileMediaObjects extends Command
         $db = app('db');
         $cutoff = now()->subDays($days);
 
+        // Aset yang masih berada di folder tidak ikut dibersihkan: folder adalah
+        // tanda berkas dirapikan untuk dipakai, jadi retensi arsip tidak berlaku.
         $rows = $db->table('media_assets')
             ->where('visibility', 'archived')
+            ->whereNull('folder_id')
             ->where('updated_at', '<', $cutoff)
             ->select(['id', 'object_key', 'derivatives'])
             ->get();

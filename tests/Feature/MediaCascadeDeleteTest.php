@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MediaAsset;
+use App\Models\MediaFolder;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\User;
@@ -157,5 +158,29 @@ class MediaCascadeDeleteTest extends TestCase
 
         Storage::disk('media')->assertMissing('products/9/lampiran-card.webp');
         $this->assertDatabaseMissing('product_media', ['id' => $media->id]);
+    }
+
+    public function test_bulk_delete_archives_asset_that_is_organized_in_a_folder(): void
+    {
+        Storage::fake('media');
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $folder = MediaFolder::create(['name' => 'Rapi', 'parent_id' => null]);
+        $asset = $this->makeAsset(['folder_id' => $folder->id]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.media.bulk-action'), [
+                'action' => 'delete',
+                'asset_ids' => [$asset->id],
+            ])
+            ->assertRedirect();
+
+        // Aset yang sudah dirapikan ke folder belum tentu terlampir ke produk,
+        // jadi folder dihitung sebagai tanda sedang dipakai: diarsipkan, bukan
+        // dihapus permanen, dan berkasnya tetap ada supaya bisa dipulihkan.
+        $this->assertDatabaseHas('media_assets', [
+            'id' => $asset->id,
+            'visibility' => 'archived',
+        ]);
+        Storage::disk('media')->assertExists(self::PDP);
     }
 }

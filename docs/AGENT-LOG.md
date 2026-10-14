@@ -5593,3 +5593,31 @@ Verifikasi: typecheck bersih, lint 0 warning, Vitest 371 lulus, `MediaLibraryFol
 Deploy ke 202: rilis aktif berganti lagi menjadi `20261014-media-dedup-batch` (dibuat agent lain); berkas dipasang ke rilis tersebut. Backup di `/root/backups/pre-folder-choice-20261014-193943`. Bundel `Library-Bj8fNXvu.js` memuat kedua tombol dan penyaring Thumbs.db, izin storage OK, halaman publik HTTP 200.
 
 Catatan: uji klik end-to-end lewat browser pada folder ujung daftar tidak berhasil karena dialog tidak terbuka di area tampilan; perilaku server diverifikasi lewat pemanggilan controller langsung (bukti lebih kuat untuk logika backend).
+## 2026-10-14 12:45 UTC | zcode-deploy-202 | Deep | skrip deploy 202 + pemangkasan rilis otomatis
+
+Akar masalah: 202 tidak punya repo git, tidak punya kunci SSH, dan `repository/` kosong, sehingga
+setiap perbaikan kecil diterapkan dengan menyalin berkas dari 209 lalu membangun ulang di tempat.
+Cara itu melahirkan folder rilis baru setiap kali dan tidak pernah memangkasnya: 6 rilis
+menumpuk jadi 3,1 GB, tumbuh sekitar 520 MB per deploy, tanpa batas. Cara itu juga sumber drift
+(berkas disalin pilihan dari working tree membawa ketergantungan yang belum ada di 202).
+
+Perbaikan: `scripts/prod/deploy-202.sh`, dipasang juga sebagai `/var/www/ragilaluminium/deploy-202.sh`
+di 202 (mode 755, owner deploy). Skrip menarik kode dari repository mirror, membuat rilis baru,
+menyambungkan berkas bersama (`.env` dan `storage/app` ke `shared/`), membangun dependensi dan
+aset, mengalihkan symlink `current` secara atomik, memeriksa kesehatan, dan MEMANGKAS rilis lama
+otomatis. Mode: deploy, `--rollback`, `--prune-only`, `--dry-run`, `--keep=N` (default 2: aktif
+plus satu sebelumnya), `--ref`, `--label`.
+
+Pengaman di skrip: kunci flock menolak deploy ganda; rilis yang ditunjuk `current` tidak pernah
+dihapus; urutan rilis memakai waktu ubah folder, bukan nama, karena rilis lama punya pola nama
+berbeda sehingga urutan nama tidak sama dengan urutan pembuatan; kalau pemeriksaan kesehatan
+gagal lima kali, symlink otomatis kembali ke rilis sebelumnya.
+
+Verifikasi: `bash -n` bersih; `--prune-only --dry-run` menunjukkan tepat 4 rilis terhapus
+(folder-menu, v1.0.1, v1.0.0, snapshot) dan menyimpan history-tabs plus rilis aktif, membebaskan
+sekitar 2.064 MB. Penghapusan nyata belum dijalankan: menunggu pemasangan repository mirror,
+yang butuh kredensial GitHub di 202.
+
+Belum selesai: 202 belum punya repository mirror, jadi `--ref` belum bisa dipakai. Butuh token
+GitHub (fine-grained, Contents: Read, repo 0xmemu/ragilaluminium) atau deploy key SSH, karena
+202 tidak bisa menjangkau GitHub sedangkan 209 bisa lewat kunci SSH-nya.

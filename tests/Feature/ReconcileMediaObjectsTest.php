@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CmsPage;
 use App\Models\CmsTestimonial;
 use App\Models\MediaAsset;
+use App\Models\MediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -34,9 +35,10 @@ class ReconcileMediaObjectsTest extends TestCase
         Storage::disk('media')->put(self::REVIEW_PHOTO, 'foto ulasan');
     }
 
-    private function makeAsset(): MediaAsset
+    /** @param array<string, mixed> $overrides */
+    private function makeAsset(array $overrides = []): MediaAsset
     {
-        return MediaAsset::create([
+        return MediaAsset::create(array_merge([
             'kind' => 'image',
             'label' => 'Aset reconcile',
             'checksum' => hash('sha256', 'reconcile-fixture'),
@@ -45,7 +47,7 @@ class ReconcileMediaObjectsTest extends TestCase
             'mime_type' => 'image/webp',
             'status' => 'ready',
             'visibility' => 'visible',
-        ]);
+        ], $overrides));
     }
 
     public function test_reports_orphans_without_deleting_anything(): void
@@ -131,5 +133,32 @@ class ReconcileMediaObjectsTest extends TestCase
         $this->artisan('media:reconcile --prune-orphans --include-library')->assertSuccessful();
 
         Storage::disk('media')->assertMissing('media-assets/tanpa-rujukan/card.webp');
+    }
+
+    public function test_archived_asset_still_in_a_folder_is_not_purged_by_retention(): void
+    {
+        Storage::fake('media');
+        Storage::disk('media')->put(self::REFERENCED, 'x');
+        $folder = MediaFolder::create(['name' => 'Rapi', 'parent_id' => null]);
+        $asset = $this->makeAsset(['folder_id' => $folder->id, 'visibility' => 'archived']);
+        app('db')->table('media_assets')->where('id', $asset->id)
+            ->update(['updated_at' => now()->subDays(90)]);
+
+        $this->artisan('media:reconcile --archived-days=30')->assertSuccessful();
+
+        Storage::disk('media')->assertExists(self::REFERENCED);
+    }
+
+    public function test_archived_asset_outside_any_folder_is_purged_by_retention(): void
+    {
+        Storage::fake('media');
+        Storage::disk('media')->put(self::REFERENCED, 'x');
+        $asset = $this->makeAsset(['visibility' => 'archived']);
+        app('db')->table('media_assets')->where('id', $asset->id)
+            ->update(['updated_at' => now()->subDays(90)]);
+
+        $this->artisan('media:reconcile --archived-days=30')->assertSuccessful();
+
+        Storage::disk('media')->assertMissing(self::REFERENCED);
     }
 }
