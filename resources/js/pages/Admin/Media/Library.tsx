@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 import * as React from "react"
 
+import { MediaDuplicateDialog } from "@/components/admin/media-duplicate-dialog"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
 import {
@@ -18,7 +19,12 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
-import { fileChecksum, partitionWithinBatch } from "@/lib/media-duplicate"
+import {
+  collectChecksums,
+  fileChecksum,
+  partitionByDuplicate,
+  type MediaDuplicate,
+} from "@/lib/media-duplicate"
 import { saringBerkasMedia } from "@/lib/media-upload-filter"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
@@ -36,6 +42,7 @@ const MEDIA_STATUS_META: Record<string, { label: string; tone: "neutral" | "info
   ready:      { label: "Siap digunakan",    tone: "success" },
   failed:     { label: "Gagal diproses",    tone: "danger" },
   archived:   { label: "Diarsipkan",         tone: "neutral" },
+  duplicate:  { label: "Duplikat terdeteksi", tone: "warning" },
 }
 
 function mediaStatusMeta(status: string): { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" } {
@@ -834,7 +841,7 @@ function FolderTree({
 type UploadItem = {
   id: number
   name: string
-  status: "memeriksa" | "uploading" | "sukses" | "gagal" | "ditolak"
+  status: "memeriksa" | "uploading" | "sukses" | "gagal" | "dilewati"
   progress: number
   error?: string
 }
@@ -975,8 +982,8 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
                     </span>
                     <span className="tabular-nums text-muted-foreground">{r.progress}%</span>
                   </span>
-                ) : r.status === "ditolak" ? (
-                  <span className="shrink-0 text-muted-foreground">kembar</span>
+                ) : r.status === "dilewati" ? (
+                  <span className="shrink-0 text-muted-foreground">dilewati</span>
                 ) : (
                   <span className={cn("shrink-0", r.status === "sukses" ? "text-success" : "text-destructive")}>
                     {r.status === "sukses" ? "✓" : `✗ ${r.error ?? ""}`}
@@ -1029,7 +1036,7 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
   if (uploads.length === 0 || hidden) return null
   const ok = uploads.filter((u) => u.status === "sukses").length
   const fail = uploads.filter((u) => u.status === "gagal").length
-  const skip = uploads.filter((u) => u.status === "ditolak").length
+  const skip = uploads.filter((u) => u.status === "dilewati").length
 
   return (
     <div className="fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-3 shadow-float">
@@ -1050,8 +1057,8 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
                 <span className="shrink-0 tabular-nums text-muted-foreground">{u.progress}%</span>
               ) : u.status === "sukses" ? (
                 <span className="shrink-0 text-success">✓</span>
-              ) : u.status === "ditolak" ? (
-                <span className="shrink-0 text-muted-foreground" title={u.error ?? ""}>kembar</span>
+              ) : u.status === "dilewati" ? (
+                <span className="shrink-0 text-muted-foreground" title={u.error ?? ""}>dilewati</span>
               ) : (
                 <span className="shrink-0 text-destructive" title={u.error ?? ""}>✗</span>
               )}
@@ -1066,7 +1073,7 @@ function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => vo
       </div>
       <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
         {allDone
-          ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}${skip ? `, ${skip} kembar dilewati` : ""}`
+          ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}${skip ? `, ${skip} dilewati karena sudah ada` : ""}`
           : `Sedang mengunggah ${active} media…`}
       </p>
     </div>
@@ -1129,6 +1136,15 @@ export default function MediaLibrary({
   // Upload tracking (persisten walau modal ditutup)
   const [uploads, setUploads] = React.useState<UploadItem[]>([])
   const uploadIdRef = React.useRef(0)
+  // Peringatan berkas duplikat: satu batch ditahan dulu sampai admin memutuskan.
+  const [duplicatePrompt, setDuplicatePrompt] = React.useState<{
+    folder: string | null
+    all: UploadEntry[]
+    dup: UploadEntry[]
+    rest: UploadEntry[]
+    found: MediaDuplicate[]
+  } | null>(null)
+
   /** Buat folder (root atau subfolder) memakai dialog. */
   function submitFolderDialog(name: string) {
     if (!folderDialog) return
@@ -1201,12 +1217,61 @@ export default function MediaLibrary({
     })
   }
 
+  /**
+   * Cari aset yang sidik jarinya sudah ada di Media Library.
+   *
+   * Gagal memeriksa bukan alasan menahan unggahan: kalau permintaan ini gagal,
+   * hasilnya objek kosong dan berkas tetap dikirim, karena penggabungan otomatis
+   * di server tetap menjadi penjaga terakhirnya.
+   */
+  async function findExistingDuplicates(checksums: string[]): Promise<Record<string, MediaDuplicate>> {
+    if (checksums.length === 0) return {}
+
+    try {
+      const res = await fetch(routeUrl("admin.media.check-duplicates"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-TOKEN": csrf,
+        },
+        body: JSON.stringify({ checksums }),
+      })
+      if (!res.ok) return {}
+
+      const body = (await res.json()) as { duplicates?: Record<string, MediaDuplicate> }
+
+      return body.duplicates ?? {}
+    } catch {
+      return {}
+    }
+  }
+
   async function runUploads(entries: UploadEntry[], folder: string | null): Promise<void> {
     for (const it of entries) {
       patchUpload(it.id, { status: "uploading", progress: 0 })
       await uploadOne(it.id, it.file, folder)
     }
     runSearch()
+  }
+
+  /** Lewati berkas yang sudah ada, lalu lanjutkan sisanya. */
+  function skipDuplicates(): void {
+    const prompt = duplicatePrompt
+    if (!prompt) return
+    setDuplicatePrompt(null)
+    for (const d of prompt.dup) {
+      patchUpload(d.id, { status: "dilewati", error: "Sudah ada di Media Library" })
+    }
+    void runUploads(prompt.rest, prompt.folder)
+  }
+
+  /** Kirim semuanya, termasuk yang sudah ada, karena admin memilih begitu. */
+  function uploadDuplicatesAnyway(): void {
+    const prompt = duplicatePrompt
+    if (!prompt) return
+    setDuplicatePrompt(null)
+    void runUploads(prompt.all, prompt.folder)
   }
 
   async function startUploads(files: File[]): Promise<void> {
@@ -1230,20 +1295,17 @@ export default function MediaLibrary({
       entries.push({ ...it, checksum: await fileChecksum(it.file) })
     }
 
-    // Berkas kembar DI DALAM aksi unggah ini hanya boleh masuk sekali, karena di
-    // situ duplikat hampir pasti kecelakaan (berkas yang sama terpilih dua kali).
-    // Duplikat antar aksi unggah sengaja DIBIARKAN: admin toko sering memakai satu
-    // foto untuk dua produk yang dimensinya berdekatan, dan tiap produk tetap harus
-    // punya medianya sendiri di foldernya masing-masing. Karena itu tidak ada lagi
-    // pertanyaan ke pustaka dan tidak ada dialog "Lewati atau Tetap unggah".
-    const { dup } = partitionWithinBatch(entries)
-    const kembar = new Set(dup.map((d) => d.id))
+    const found = await findExistingDuplicates(collectChecksums(entries))
+    const { dup, rest } = partitionByDuplicate(entries, found)
 
-    for (const d of dup) {
-      patchUpload(d.id, { status: "ditolak", error: "Berkas kembar di aksi unggah ini" })
+    if (dup.length > 0) {
+      // Berkas identik ditahan dulu: jangan kirim sebelum admin memutuskan.
+      setDuplicatePrompt({ folder, all: entries, dup, rest, found: Object.values(found) })
+
+      return
     }
 
-    await runUploads(entries.filter((e) => !kembar.has(e.id)), folder)
+    await runUploads(entries, folder)
   }
 
   const assetsRef = React.useRef(assets)
@@ -1397,6 +1459,12 @@ export default function MediaLibrary({
         onStart={(files) => { void startUploads(files) }}
       />
       <UploadTracker uploads={uploads} onDismiss={() => setUploads([])} />
+      <MediaDuplicateDialog
+        open={duplicatePrompt !== null}
+        duplicates={duplicatePrompt?.found ?? []}
+        onSkip={skipDuplicates}
+        onUploadAnyway={uploadDuplicatesAnyway}
+      />
 
       {/* Toggle panel folder: ikon folder, kiri */}
       <div className="mb-2 flex items-center">
