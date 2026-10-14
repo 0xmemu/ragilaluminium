@@ -32,12 +32,92 @@ memegang berkas yang sama.
 
 Aturan yang mengikat:
 
+- **Eksekusi penuh hanya setelah gerbang di bagian 2b lolos.** Jalankan deteksinya dulu;
+  jangan mulai menyalin berkas, commit, push, atau deploy sebelum keadaan dipastikan tenang.
 - **Berkas berstatus ` M` bukan berarti boleh ditimpa.** Itu pekerjaan agent lain
   yang belum di-commit. Jangan `git add` seluruh direktori, jangan
   `git checkout --` berkas itu, jangan `git stash` milik orang lain.
 - Kalau berkas yang Anda butuhkan sedang kotor oleh agent lain, tambah saja
   (append) atau tulis di berkas berbeda. Jangan mengubah baris miliknya.
 - Jangan commit berkas milik agent lain. Commit hanya berkas yang Anda sentuh.
+
+## 2b. Gerbang pra-eksekusi: deteksi kerja bersamaan dulu, baru eksekusi penuh
+
+Disepakati owner 2026-10-14, setelah dua insiden nyata di hari yang sama: pekerjaan
+agent lain tersapu saat menyalin berkas, dan rilis produksi tertimpa deploy agent lain
+yang dibuat dari titik sebelum commit terkini. Keduanya terjadi karena eksekusi dimulai
+sebelum memastikan keadaan repo dan produksi sedang tenang.
+
+Aturannya: **deteksi dulu, eksekusi penuh hanya setelah aman.** Empat gerbang, masing
+masing dengan perintah dan ambang yang jelas.
+
+**Gerbang 1 - sebelum mulai bekerja.**
+
+    bash scripts/agent-state.sh
+
+Kalau ada berkas kotor, catat daftarnya. Berkas itu milik agent lain dan tidak boleh
+disentuh. Kalau berkas yang Anda butuhkan ada di daftar itu, kerjakan bagian lain lebih
+dulu, atau tulis di berkas berbeda.
+
+**Gerbang 2 - sebelum commit.** Pastikan commit Anda hanya memuat berkas Anda.
+
+    git status -s
+    git diff --cached --name-only
+
+Satu berkas bisa memuat pekerjaan dua agent sekaligus. Kalau begitu, commit per-hunk
+(lihat bagian 3), jangan `git add <berkas>` begitu saja.
+
+**Gerbang 3 - sebelum push.** Ref origin sering bergerak. Urutan wajib:
+
+    git fetch origin
+    git log --oneline HEAD..origin/<branch>     # ada isi = origin sudah maju
+    git pull --rebase --autostash origin <branch>
+    git push origin <branch>
+
+`--autostash` menahan berkas kotor milik agent lain selama rebase lalu mengembalikannya.
+**Buktikan pekerjaan mereka utuh** dengan membandingkan `md5sum` berkas kotor SEBELUM dan
+SESUDAH rebase; angkanya harus sama. Kalau push ditolak karena `cannot lock ref`, jangan
+ulangi perintah yang sama: fetch lagi, lalu nilai ulang.
+
+**Gerbang 4 - sebelum deploy, dan sesudahnya.** Ini gerbang yang paling mudah terlewat.
+
+Sebelum deploy, deteksi apakah ada deploy lain sedang berjalan. Skripnya dijalankan
+**dari mesin lokal**, bukan dari dalam server, karena butuh kunci SSH produksi:
+
+    bash scripts/agent-state-prod.sh
+
+Skrip itu memeriksa empat hal, dan semuanya harus aman sebelum deploy dimulai:
+
+1. Proses deploy yang masih hidup di produksi (`rsync`, `scp`, `cp -a`, `npm run build`,
+   `vite build`, `composer install`, `php artisan migrate`). Kalau ada, TUNGGU.
+2. Umur symlink `current` dan rilis terbaru di `releases/`. Rilis baru yang belum Anda
+   kenal berarti agent lain baru deploy atau sedang deploy.
+3. Apakah rilis live sudah memuat commit terkini, dengan membandingkan `md5sum` berkas
+   kunci antara rilis live dan repo kerja. Kalau BERBEDA padahal Anda tidak merasa
+   mengubah apa pun, selidiki dulu.
+4. Aktivitas tulis terakhir di `storage/logs` sebagai tanda aplikasi sedang sibuk.
+
+Kalau ada yang tidak aman, **tunggu sampai selesai**, jangan melanjutkan.
+
+Tiga larangan yang lahir dari insiden nyata:
+
+- **Jangan menyalin berkas pilihan dari working tree.** Menyalin beberapa berkas dari 209
+  membawa serta ketergantungan yang belum ada di produksi (kasus `MediaStoragePurger`:
+  controller yang memanggilnya ikut tersalin, kelasnya tidak, dan aksi hapus media jadi
+  gagal). Deploy dari satu titik commit yang lengkap, bukan dari potongan berkas.
+- **Jangan menganggap rilis dasar sudah memuat commit Anda.** Rilis yang dibuat agent lain
+  bisa berasal dari titik sebelum commit Anda. Periksa berkas kuncinya di rilis itu, bukan
+  hanya mengandalkan `current` menunjuk rilis terbaru.
+- **Jangan menimpa rilis yang sedang live.** Buat rilis baru di sampingnya, lalu pindahkan
+  symlink `current`. Rilis lama adalah titik rollback.
+
+Sesudah deploy, buktikan yang live memang memuat perubahan Anda: ambil nama chunk dari
+`public/build/manifest.json`, `curl` chunk itu dari domain live, dan periksa penanda
+perubahannya ada. Untuk perubahan server, jalankan pemeriksaan terhadap kode di
+`current`, bukan terhadap kode di working tree.
+
+Kalau ada gerbang yang tidak lolos, **berhenti dan lapor**, bukan melanjutkan dengan
+asumsi bahwa semuanya akan baik-baik saja.
 
 ## 3. Bila berkas kotor harus diubah, dan commit Anda hanya boleh memuat perubahan Anda
 
@@ -110,6 +190,9 @@ informasi yang dibutuhkan agent berikutnya.
 Bila ada keputusan produk atau milestone, tambahkan juga di `docs/MEMORY.md`.
 
 ## 7. Push: cek dulu, jangan ulang buta
+
+Ringkasan prosedurnya ada di gerbang 3 bagian 2b. Bagian ini menyimpan riwayat dan
+alasannya.
 
 Branch ini dipakai bersama, jadi ref di origin sering bergerak di bawah kaki.
 Sesi 2026-09-21: tiga percobaan push gagal berturut-turut, dua karena ref sudah

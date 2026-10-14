@@ -27,7 +27,17 @@ membuat pekerjaan mereka terlihat tanpa perlu bertanya.
 4. **Sesudah selesai, catat.** Tambahkan satu entri di `docs/AGENT-LOG.md` (wajib
    tiap task, termasuk yang gagal atau diblokir). Bila ada keputusan atau
    milestone, tambahkan juga di `docs/MEMORY.md`.
-5. **Data terkini menang atas dokumen.** Sebelum mengklaim sesuatu benar,
+5. **Deteksi dulu, eksekusi penuh hanya setelah aman (kontrak 2026-10-14).**
+   Sebelum menyalin berkas, commit, push, atau deploy, pastikan tidak ada kerja
+   bersamaan yang bisa menggagalkan proses itu: berkas kotor milik agent lain,
+   commit belum di-push, dan deploy yang sedang berjalan di produksi. Perintah
+   deteksinya `bash scripts/agent-state.sh` (repo, dari mana saja) dan
+   `bash scripts/agent-state-prod.sh` (produksi, dijalankan dari mesin lokal
+   karena butuh kunci SSH). Kalau ada yang berjalan,
+   tunggu; jangan menyalin berkas pilihan dari working tree karena itu membawa
+   ketergantungan yang belum ada di produksi. Rinci: bagian 2b
+   `docs/AGENT-COLLABORATION.md`.
+6. **Data terkini menang atas dokumen.** Sebelum mengklaim sesuatu benar,
    verifikasi kondisi terkini. `docs/TEKNIS/` selalu akurat karena dihasilkan dari
    kode; `docs/KONTRAK/` dan `docs/ADR/` bisa basi. Bagian "Current status" di
    bawah adalah RIWAYAT, bukan kondisi terkini.
