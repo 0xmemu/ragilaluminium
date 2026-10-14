@@ -391,12 +391,12 @@ export default function OrderStatus({
                   label="Nomor pesanan"
                   required
                   error={form.errors.order_number}
-                  hint="Contoh format: ORD26090011, yaitu ORD lalu tanggal dan nomor urut. Nomor ini tertera di halaman konfirmasi setelah checkout."
+                  hint="Contoh format: ORDYYMMNNNN, yaitu ORD lalu tanggal dan nomor urut. Nomor ini tertera di halaman konfirmasi setelah checkout."
                 >
                   <Input
                     value={form.data.order_number}
                     onChange={(event) => form.setData("order_number", event.target.value)}
-                    placeholder="ORD26090011"
+                    placeholder="ORDYYMMNNNN"
                     autoComplete="off"
                     className="font-mono"
                   />
@@ -407,14 +407,14 @@ export default function OrderStatus({
                   label="Nomor HP/WhatsApp"
                   required
                   error={form.errors.customer_phone}
-                  hint="Nomor yang dipakai saat checkout. Boleh ditulis diawali 08 atau 62, keduanya dikenali. Contoh: 085725116817."
+                  hint="Nomor yang dipakai saat checkout. Boleh ditulis diawali 08 atau 62, keduanya dikenali."
                 >
                   <Input
                     type="tel"
                     inputMode="tel"
                     value={form.data.customer_phone}
                     onChange={(event) => form.setData("customer_phone", event.target.value)}
-                    placeholder="085725116817"
+                    placeholder="08XXXXXXXXXX"
                     autoComplete="tel"
                   />
                 </Field>

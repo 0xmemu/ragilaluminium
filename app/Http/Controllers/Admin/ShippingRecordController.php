@@ -152,7 +152,7 @@ class ShippingRecordController extends Controller
                 'order_status' => $order?->order_status ?? null,
                 'customer_name' => $order?->customer_name ?? '-',
                 // Nomor HP dikirim dalam bentuk normal 62 tanpa pemisah (mis.
-                // 6285725116817), bukan format tampilan 08xx-xxxx-xxxx: angka
+                // 6281234567890), bukan format tampilan 08xx-xxxx-xxxx: angka
                 // ini dipakai admin untuk menyalin dan menghubungi pembeli.
                 'customer_phone' => PhoneNumber::normalize($order?->customer_phone)
                     ?? preg_replace('/\D/', '', (string) $order?->customer_phone),

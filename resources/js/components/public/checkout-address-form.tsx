@@ -97,7 +97,7 @@ export function CheckoutAddressForm({
                 onBlur={() => c.prefillFromLastOrder()}
                 autoComplete="tel"
                 inputMode="tel"
-                placeholder="085725116817"
+                placeholder="08XXXXXXXXXX"
                 className="h-9 min-h-9 rounded-md px-3 py-1.5 text-xs shadow-none"
               />
             </Field>
