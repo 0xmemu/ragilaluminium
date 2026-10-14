@@ -5710,3 +5710,56 @@ Verifikasi: typecheck bersih, lint 0 warning, Vitest 371 lulus, 6 test baru `Med
 INSIDEN yang diperbaiki: commit agent lain (`15ac59d9`) menyapu perubahan `ProductMediaController` untuk fitur ini tanpa kelas `MediaLibraryFilter`, sehingga `main` memakai kelas yang belum ada dan halaman Media Library produksi mengembalikan **500 pada 20:27**. Saya lengkapi kelasnya di commit `ff4b1993`. Setelah deploy, tidak ada lagi 500 dan halaman render normal (diverifikasi baca-saja: global 115 aset, folder "custom" 6 aset).
 
 Deploy ke 202: rilis aktif saat itu baru (`20261014202431-cascade-media`, dibuat agent lain 20:24). Build sempat gagal karena `public/build` di rilis baru tidak memberi izin tulis ke group; diperbaiki dengan `chown`+`chmod` artefak build (langkah standar repo ini). Bundel `Library-kCnuyNqp.js` memuat seluruh fitur baru dan fitur lama (pilihan hapus folder, penyaring berkas sistem) tetap utuh. Backup: `/root/backups/pre-pilih-semua-20261014-202835`.
+
+## 2026-10-14 20:55 UTC | zcode-media-status-sementara | Deep | 773b67fd | selesai
+
+Owner menilai tab "Diproses" dan "Antre" rancu dan meminta keduanya tidak dibuat tab
+terpisah: "kalau media sedang diproses maka di tab semua media yang sedang diproses
+statusnya adalah diproses. jadi sebagai status sementara. bedakan status tetap dan
+status yang sedang terjadi."
+
+Owner benar, dan akar masalahnya lebih dalam dari pil tab: baris "Diproses" TIDAK PERNAH
+berhenti. `MediaProcessingLog::record()` selalu MENAMBAH baris baru tiap tahap, jadi satu
+media meninggalkan dua baris (Diproses lalu Berhasil). Data produksi 14 Okt membuktikan:
+164 media meninggalkan 326 baris, dan 162 di antaranya tepat dua baris. Angkanya terbaca
+seperti masih banyak pekerjaan berjalan padahal antrean kosong dan semua aset sudah siap.
+
+Perbaikan di pencatatannya, bukan hanya di tampilan:
+- `MediaProcessingLog::transition()` BARU: memperbarui baris berjalan (antre atau diproses)
+  milik entitas yang sama, bukan menambah baris. Baris yang sudah berakhir (berhasil,
+  gagal, duplikat) tidak pernah ditimpa, sehingga percobaan ulang sesudah gagal tetap
+  mendapat barisnya sendiri. Seluruh penulis log pemrosesan media memakainya:
+  ProcessUploadedMediaAsset, DownloadMediaAsset, DownloadProductMedia, MediaUploadController,
+  dan retryLog. `record()` tetap ada sebagai penulis tingkat rendah untuk uji.
+- Migration `2026_10_14_130000_collapse_media_processing_logs` merapikan data lama:
+  sisakan baris TERBARU per media, lalu buang status berjalan milik media yang sudah tidak
+  ada (status sementara untuk media yang sudah dihapus tidak akan pernah selesai).
+- Tab hanya untuk status TETAP: Semua, Berhasil, Gagal. Diproses dan Antre tidak lagi
+  bertab; keduanya tetap tampil di daftar Semua sebagai status berjalan, dan jumlahnya
+  diringkas sebagai `inProgressCount` di samping tab. `?event=processing` dan
+  `?event=queued` kini dinormalkan menjadi kosong, mengikuti pola filter lain.
+
+Hasil di produksi: baris log 326 menjadi 162 (tepat satu baris per media), dan angka tab
+menjadi Semua 162 = Berhasil 162 + Gagal 0, selisih 0.
+
+Docs kanonik diperbarui: `docs/sitemap/admin-sitemap.md` dan
+`docs/api-and-routes-ragil-aluminium.md`.
+
+Bukti: PHPUnit 1447 lulus 1 skip; Vitest 371 lulus; typecheck dan lint bersih; build sukses
+di 209 dan di rilis 202. Penjaga baru: `test_processing_row_is_updated_not_stacked` dan
+`test_retry_after_failure_gets_its_own_row`. Perilaku diuji pada KODE PRODUKSI di dalam
+transaksi yang di-ROLLBACK: alur antre -> diproses -> berhasil menyisakan SATU baris, dan
+alur gagal -> retry -> berhasil menyisakan DUA baris (satu per percobaan). Halaman Riwayat
+Media live menampilkan hanya tiga pil (Semua, Berhasil, Gagal) tanpa pil Diproses/Antre.
+
+Catatan deploy: rilis `20261014-media-dedup-batch` sudah dipangkas agent lain, dan rilis
+yang sedang live (`20261014202431-cascade-media`) dibuat dari titik SEBELUM perubahan ini,
+sehingga perubahan status sementara tidak ikut di dalamnya. Deploy dilakukan di atas rilis
+itu. Error `Class "App\Support\MediaLibraryFilter" not found` pukul 20:27 ada di log, tetapi
+itu SEBELUM deploy ini dan kelasnya sudah ada di rilis sekarang; tidak ada error aplikasi
+baru sesudah 20:45.
+
+Untuk agent berikutnya: jangan kembali ke pola "tambah baris per tahap" untuk log pemrosesan
+media, dan jangan memberi tab pada status sementara. Kalau menambah jenis event baru,
+tentukan dulu apakah ia status tetap (layak bertab) atau status sementara (tampil di daftar
+Semua saja).
