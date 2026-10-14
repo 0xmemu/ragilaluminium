@@ -486,10 +486,22 @@ class ProductMediaController extends Controller
      * Jenis event yang punya tab di halaman Riwayat Media. Dipakai untuk
      * memvalidasi filter status sekaligus menjaga daftarnya sinkron dengan
      * EVENT_TABS di resources/js/pages/Admin/Media/History.tsx.
+     *
+     * Daftar ini memuat SEMUA jenis event yang benar-benar ditulis aplikasi
+     * (lihat MediaProcessingLog::record di ProcessUploadedMediaAsset dan
+     * DownloadMediaAsset). Owner 14 Okt 2026 menemukan angka tab tidak bisa
+     * ditutup: Semua 324 sementara Berhasil 156 dan Gagal 0, sehingga sisa 168
+     * terbaca seperti kegagalan yang tidak tercatat, padahal isinya 162 baris
+     * Diproses dan 6 baris Duplikat. Karena itu tabCounts dihitung dari konstanta
+     * ini, bukan dari daftar tetap, supaya menambah jenis event tidak bisa lupa
+     * menambah angkanya.
      */
     private const HISTORY_EVENT_TABS = [
         'success',
         'failed',
+        'processing',
+        'queued',
+        'dedup',
     ];
 
     /**
@@ -509,12 +521,22 @@ class ProductMediaController extends Controller
         $dateFrom = trim((string) $request->input('date_from', ''));
         $dateTo = trim((string) $request->input('date_to', ''));
 
-        // Status hanya menerima nilai yang punya tab. Nilai lain, misalnya
-        // ?event=dedup dari tautan lama, dibuang supaya halaman tidak pernah
-        // tampil tanpa tab aktif: keadaan yang tidak bisa diwakili tombol filter
-        // akan terbaca seperti halaman rusak.
+        // Status hanya menerima nilai yang punya tab. Nilai lain dibuang supaya
+        // halaman tidak pernah tampil tanpa tab aktif: keadaan yang tidak bisa
+        // diwakili tombol filter akan terbaca seperti halaman rusak. Sejak 14 Okt
+        // 2026 semua jenis event yang ditulis aplikasi punya tab, jadi yang
+        // tersaring di sini tinggal nilai asing seperti ?event=downloaded (itu
+        // status lampiran media, bukan kejadian) atau tautan lama.
         if (! in_array($event, self::HISTORY_EVENT_TABS, true)) {
             $event = '';
+        }
+
+        // Urutan daftar. Mengikuti pola Log Aktivitas: nilai asing diabaikan dan
+        // kembali ke bawaan, bukan ditolak dengan galat, supaya tautan lama tidak
+        // memantul ke halaman sebelumnya.
+        $sort = (string) $request->input('sort', 'newest');
+        if (! in_array($sort, ['newest', 'oldest'], true)) {
+            $sort = 'newest';
         }
 
         // Periode memakai pola yang sama dengan halaman daftar admin lain: satu
@@ -549,16 +571,26 @@ class ProductMediaController extends Controller
             ->pluck('count', 'event')
             ->all();
 
-        $tabCounts = [
-            '' => (int) array_sum($countsByEvent),
-            'failed' => (int) ($countsByEvent['failed'] ?? 0),
-            'success' => (int) ($countsByEvent['success'] ?? 0),
-        ];
+        // Dihitung dari konstanta tab, bukan dari daftar tetap: menambah tab tidak
+        // bisa lupa menambah angkanya, dan angka Semua selalu sama dengan jumlah
+        // seluruh tab. Itu syarat supaya tidak ada sisa angka yang harus ditebak
+        // pembaca (lihat catatan pada HISTORY_EVENT_TABS).
+        $tabCounts = ['' => (int) array_sum($countsByEvent)];
+        foreach (self::HISTORY_EVENT_TABS as $tabEvent) {
+            $tabCounts[$tabEvent] = (int) ($countsByEvent[$tabEvent] ?? 0);
+        }
 
         $query = (clone $baseQuery)
             ->when($event !== '', fn ($builder) => $builder->where('event', $event));
 
-        $paginator = (clone $query)->latest('created_at')->paginate(30)->withQueryString();
+        // id dipakai sebagai pemecah seri supaya urutan tidak berubah-ubah saat
+        // beberapa baris berbagi created_at yang sama persis. Itu benar-benar
+        // terjadi pada impor curah: dua baris bisa jatuh pada detik yang sama.
+        $paginator = (clone $query)
+            ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+            ->orderBy('id', $sort === 'oldest' ? 'asc' : 'desc')
+            ->paginate(30)
+            ->withQueryString();
 
         $logs = $this->historyRows($paginator->items());
 
@@ -577,6 +609,11 @@ class ProductMediaController extends Controller
             'filters' => [
                 'event' => $event,
                 'q' => $q,
+                'sort' => $sort,
+            ],
+            'sortOptions' => [
+                ['value' => 'newest', 'label' => 'Terbaru'],
+                ['value' => 'oldest', 'label' => 'Terlama'],
             ],
             'tabCounts' => $tabCounts,
             'activeDatePreset' => $datePreset,

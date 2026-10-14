@@ -112,24 +112,32 @@ const EVENT_META: Record<string, { label: string; tone: string }> = {
  * sehingga badge status dan label tab menyebut hal yang sama dengan ejaan
  * berbeda. Satu sumber membuat selisih seperti itu tidak mungkin terulang.
  *
- * Empat jenis event TIDAK punya tab, karena tiga sebab yang berbeda, dan semuanya
- * bermuara pada satu hal: tab hanya layak untuk keadaan yang bisa DISARING.
+ * Owner 14 Okt 2026: tab Diproses, Antre, dan Duplikat DITAMBAHKAN. Sebelumnya
+ * hanya Berhasil dan Gagal yang punya tab, sehingga angka Semua selalu lebih besar
+ * dari jumlah seluruh tab dan selisihnya terbaca seperti kegagalan yang tidak
+ * tercatat. Pada data nyata 14 Okt: Semua 324, sementara Berhasil 156 dan Gagal 0,
+ * padahal sisa 168 itu 162 baris Diproses dan 6 baris Duplikat. Sekarang SETIAP
+ * jenis event yang benar-benar ditulis aplikasi punya tabnya sendiri, jadi angka
+ * tab selalu bisa ditutup: Semua = Berhasil + Gagal + Diproses + Antre + Duplikat.
  *
- * - Duplikat: penjagaan berkas kembar sudah berjalan di halaman Media Library
- *   SEBELUM berkas dikirim, jadi tidak perlu disaring sehari-hari. Labelnya tetap
- *   ada di EVENT_META karena event ini masih ditulis oleh penggabungan di server.
- * - Terunduh: bukan event sama sekali. "downloaded" adalah STATUS pada tabel
- *   lampiran media, dan tidak ada satu pun kode yang pernah menuliskannya sebagai
- *   event riwayat. Labelnya ikut dibuang supaya tidak menyisakan pemetaan mati.
- * - Antre dan Diproses: KEDUANYA bukan keadaan yang bertahan. Setiap tahap
- *   pemrosesan MENAMBAH baris barunya sendiri dan tidak pernah memperbarui yang
- *   lama, jadi baris "Diproses" tetap tinggal walau pekerjaannya selesai tiga detik
- *   kemudian (terukur: jarak Diproses ke Berhasil hanya 3 detik). Menyaring dengan tab
- *   itu karena itu tidak menyaring apa pun, dan pemantauan pekerjaan berjalan sudah
- *   ditangani badge Live serta penyegaran otomatis di tab Semua. Labelnya tetap
- *   dipetakan di EVENT_META karena baris lama masih perlu tampil bernada benar.
+ * "Terunduh" TIDAK punya tab dan tidak punya label: itu bukan event sama sekali,
+ * melainkan STATUS pada tabel lampiran media, dan tidak ada satu pun kode yang
+ * pernah menuliskannya sebagai event riwayat.
+ *
+ * Catatan arti "Diproses" dan "Antre": setiap tahap pemrosesan MENAMBAH baris
+ * barunya sendiri dan tidak pernah memperbarui baris lama, jadi satu aset yang
+ * selesai meninggalkan dua baris, satu "Diproses" dan satu "Berhasil". Angka pada
+ * tab Diproses karena itu menghitung BARIS riwayat, bukan pekerjaan yang masih
+ * berjalan. Untuk audit memang itu yang dibutuhkan, tetapi jangan dibaca sebagai
+ * jumlah antrean aktif: pekerjaan yang benar-benar berjalan ditandai badge Live.
  */
-const EVENT_TABS = ["success", "failed"] as const
+const EVENT_TABS = ["success", "failed", "processing", "queued", "dedup"] as const
+
+/** Pilihan urutan daftar. Juga dipakai sebagai bawaan bila server tidak mengirim. */
+const URUTAN_BAWAH: Array<{ value: string; label: string }> = [
+  { value: "newest", label: "Terbaru" },
+  { value: "oldest", label: "Terlama" },
+]
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"
@@ -150,13 +158,15 @@ export default function MediaHistory({
   dateFrom: initialDateFrom,
   dateTo: initialDateTo,
   periodLabel,
+  sortOptions = URUTAN_BAWAH,
   tabCounts,
   prune,
   backUrl,
 }: {
   logs: LogRow[]
   pagination: PaginationData | null
-  filters: { event: string; q: string }
+  filters: { event: string; q: string; sort: string }
+  sortOptions?: Array<{ value: string; label: string }>
   tabCounts?: Record<string, number>
   activeDatePreset: string
   dateFrom: string
@@ -166,6 +176,7 @@ export default function MediaHistory({
   backUrl?: string | null
 }) {
   const [q, setQ] = React.useState(filters.q)
+  const [sort, setSort] = React.useState(filters.sort)
   const [rangeFrom, setRangeFrom] = React.useState(initialDateFrom)
   const [rangeTo, setRangeTo] = React.useState(initialDateTo)
 
@@ -183,6 +194,7 @@ export default function MediaHistory({
       {
         event: filters.event,
         q: filters.q,
+        sort: filters.sort,
         date_preset: activeDatePreset,
         date_from: activeDatePreset === "range" ? rangeFrom : undefined,
         date_to: activeDatePreset === "range" ? rangeTo : undefined,
@@ -202,7 +214,8 @@ export default function MediaHistory({
 
   // ---- Live: polling status entitas yang masih queued/processing ----
   // Overrides per log id (hanya di-set dari callback async polling, bukan di
-  // body effect) sehingga tidak memicu peringatan setState-in-effect.
+  // body effect) sehingga tidak memicu peringatan setState-in-effect. Isinya
+  // sekarang HANYA kegagalan, lihat penjelasan di blok tick().
   const [liveOverrides, setLiveOverrides] = React.useState<Record<number, Partial<LogRow>>>({})
   // Galat polling status: dulu ditelan diam-diam, sehingga baris yang masih
   // "Antre" terlihat sama seperti antrean normal. Sekarang muncul sebagai
@@ -211,11 +224,24 @@ export default function MediaHistory({
   const [pollNonce, setPollNonce] = React.useState(0)
 
   const liveRows = logs.map((row) => ({ ...row, ...liveOverrides[row.id] }))
-  const liveActive = liveRows.some((r) => r.event === "queued" || r.event === "processing")
+
+  // Entitas yang hasil akhirnya sudah diketahui (asetnya siap atau gagal). Dipakai
+  // untuk memutus penyegaran: baris "Diproses" dan "Antre" TIDAK pernah berubah
+  // statusnya di database (lihat catatan di EVENT_TABS), jadi tanpa penanda ini
+  // badge Live dan polling tidak akan pernah berhenti.
+  const [settledEntities, setSettledEntities] = React.useState<Record<string, boolean>>({})
+  const liveActive = logs.some(
+    (r) =>
+      (r.event === "queued" || r.event === "processing") &&
+      !settledEntities[`${r.loggable_type}:${r.loggable_id}`],
+  )
 
   React.useEffect(() => {
     const pending = logs.filter((r) => r.event === "queued" || r.event === "processing")
     if (pending.length === 0) return
+    // Seluruh baris tunggu sudah diketahui hasilnya: tidak ada lagi yang perlu
+    // disegarkan, jadi interval tidak dipasang sama sekali.
+    if (pending.every((r) => settledEntities[`${r.loggable_type}:${r.loggable_id}`])) return
     let cancelled = false
 
     async function tick() {
@@ -268,17 +294,22 @@ export default function MediaHistory({
         }
 
         const next: Record<number, Partial<LogRow>> = {}
+        const settled: Record<string, boolean> = {}
         for (const row of latestPerEntity.values()) {
           const kind = row.loggable_type.includes("MediaAsset") ? "asset" : "product"
           const info = statuses[`${kind}:${row.loggable_id}`]
           if (!info) continue
-          if (info.status === "ready" || info.status === "downloaded") {
-            next[row.id] = {
-              event: "success",
-              message: "Derivatif WebP siap (thumb/card/pdp).",
-              retry_url: null,
-            }
-          } else if (info.status === "failed") {
+
+          if (info.status === "ready" || info.status === "downloaded" || info.status === "failed") {
+            settled[`${row.loggable_type}:${row.loggable_id}`] = true
+          }
+
+          // HANYA kegagalan yang menulis ulang tampilan baris. Sebelumnya baris
+          // "Diproses" ikut diubah menjadi "Berhasil" begitu asetnya siap, sehingga
+          // satu aset tampil dua baris kembar berlabel sama dan tab Diproses
+          // menampilkan baris berlabel Berhasil. Riwayat sekarang dibiarkan apa
+          // adanya: baris "Diproses" tetap terbaca sebagai langkah yang terjadi.
+          if (info.status === "failed") {
             next[row.id] = {
               event: "failed",
               message: info.error_reason ?? "Pemrosesan media gagal.",
@@ -288,6 +319,9 @@ export default function MediaHistory({
         }
         if (Object.keys(next).length > 0) {
           setLiveOverrides((prev) => ({ ...prev, ...next }))
+        }
+        if (Object.keys(settled).some((key) => !settledEntities[key])) {
+          setSettledEntities((prev) => ({ ...prev, ...settled }))
         }
         setPollError(gagal ? "Status pemrosesan media belum dapat dimuat." : null)
       } catch {
@@ -302,10 +336,10 @@ export default function MediaHistory({
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [logs, pollNonce])
+  }, [logs, pollNonce, settledEntities])
 
   return (
-    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil atau Gagal">
+    <AdminLayout title="Riwayat Media" backUrl={backUrl} description="Audit pemrosesan media: Berhasil, Gagal, Diproses, dan Duplikat">
       <Head title="Riwayat Media | Admin" />
 
       <div className="mb-4 flex items-center justify-between gap-2">
@@ -362,6 +396,24 @@ export default function MediaHistory({
           onSubmit: () => visit({ q }),
           placeholder: "Cari berdasarkan label media atau pesan",
         }}
+        sort={
+          <Select
+            value={sort}
+            onChange={(event) => {
+              const value = event.target.value
+              setSort(value)
+              visit({ sort: value })
+            }}
+            className="w-40"
+            aria-label="Urutkan riwayat media"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        }
         className="mb-4"
         actions={
           prune && prune.count > 0 ? (

@@ -61,10 +61,13 @@ describe("label status Riwayat Media", () => {
     expect(baris).toContain('"success", "failed"')
   })
 
-  it("dua jenis event punya tab: Berhasil dan Gagal", () => {
-    // Antre dan Diproses dibuang karena bukan keadaan yang bertahan: setiap
-    // tahap menambah barisnya sendiri, jadi tabnya tidak menyaring apa pun.
-    expect(daftarEventKlien()).toEqual(["success", "failed"])
+  it("setiap jenis event yang ditulis aplikasi punya tab", () => {
+    // Owner 14 Okt 2026: angka tab harus selalu bisa ditutup, dan itu hanya mungkin
+    // kalau setiap jenis event punya tabnya sendiri. Sebelumnya hanya success dan
+    // failed yang bertab, sehingga pada data nyata tab Semua menunjukkan 324
+    // sementara Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan
+    // yang tidak tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat.
+    expect(daftarEventKlien()).toEqual(["success", "failed", "processing", "queued", "dedup"])
   })
 
   it("kejadian berhasil dilabeli Berhasil, bukan Siap", () => {
@@ -78,17 +81,22 @@ describe("label status Riwayat Media", () => {
     expect(teks).not.toContain('success: { label: "Siap"')
   })
 
-  it("deskripsi halaman tidak menyebut tab yang sudah tidak ada", () => {
-    // Deskripsi sempat berbunyi "Antre, Diproses, lalu Siap atau Gagal" padahal
-    // tab Antre dan Diproses sudah dibuang, sehingga pembaca mencari tab yang
-    // tidak pernah ada.
+  it("deskripsi halaman menyebut jenis hasil yang benar-benar punya tab", () => {
+    // Deskripsi pernah berbunyi "Antre, Diproses, lalu Siap atau Gagal" saat tab
+    // Antre dan Diproses belum ada, sehingga pembaca mencari tab yang tidak pernah
+    // ada. Sekarang keempat jenis hasil punya tab, jadi deskripsinya menyebut
+    // keempatnya, dan tetap tidak memakai kata "Siap" (lihat alasannya di test
+    // label di atas).
     const deskripsi = sumber()
       .split(String.fromCharCode(10))
       .find((b) => b.includes("description=\"Audit pemrosesan media"))
 
     expect(deskripsi).toBeDefined()
-    expect(deskripsi).not.toContain("Antre")
-    expect(deskripsi).not.toContain("Diproses")
+    expect(deskripsi).toContain("Berhasil")
+    expect(deskripsi).toContain("Gagal")
+    expect(deskripsi).toContain("Diproses")
+    expect(deskripsi).toContain("Duplikat")
+    expect(deskripsi).not.toContain("Siap")
   })
 
   it("Antre dan Diproses tidak punya tab tetapi labelnya tetap terpetakan", () => {
@@ -121,17 +129,19 @@ describe("label status Riwayat Media", () => {
     expect(daftarEventServer()).not.toContain("downloaded")
   })
 
-  it("Duplikat tidak lagi punya tab, tetapi labelnya tetap terpetakan", () => {
-    // Keputusan owner 2026-10-08: penjagaan berkas kembar sudah berjalan di
-    // halaman Media Library sebelum berkas dikirim, jadi tidak perlu tab.
-    // Labelnya WAJIB tetap ada supaya baris dedup lama atau baris yang lolos
-    // lewat jalur server tetap tampil sebagai Duplikat, bukan mentah.
+  it("Duplikat punya tab dan labelnya tetap terpetakan", () => {
+    // Keputusan 2026-10-08 hanya memberi tab pada Berhasil dan Gagal, dengan alasan
+    // penjagaan berkas kembar sudah berjalan di Media Library sebelum berkas
+    // dikirim. Owner 14 Okt 2026 membaliknya: baris dedup NYATA ada di riwayat
+    // (6 baris pada data produksi 14 Okt), dan tanpa tab angkanya ikut menjadi
+    // selisih yang tidak bisa dijelaskan pembaca.
+    // Labelnya tetap wajib ada supaya baris tampil sebagai Duplikat, bukan mentah.
     const teks = sumber()
     const barisTab = teks
       .split(String.fromCharCode(10))
       .find((b) => b.includes("const EVENT_TABS")) as string
 
-    expect(barisTab).not.toContain("dedup")
+    expect(barisTab).toContain("dedup")
     expect(teks).toContain('dedup: { label: "Duplikat"')
   })
 })
@@ -248,6 +258,32 @@ describe("angka jumlah di tab Riwayat Media", () => {
     const teks = sumber()
 
     expect(teks).toContain('tab.key === "failed" && count > 0')
+  })
+})
+
+describe("urutan daftar Riwayat Media", () => {
+  it("memakai pola yang sama dengan halaman Log Aktivitas", () => {
+    // Standar halaman lain: SATU pilihan urutan di toolbar, nilai `newest` dan
+    // `oldest`, dan server mengabaikan nilai asing dengan kembali ke bawaan
+    // (bukan menolak dengan galat) supaya tautan lama tidak memantul.
+    const teks = sumber()
+
+    expect(teks).toContain('import { Select } from "@/components/admin/ui/select"')
+    expect(teks).toContain("sort={")
+    expect(teks).toContain('aria-label="Urutkan riwayat media"')
+    expect(teks).toContain("{ value: \"newest\", label: \"Terbaru\" }")
+    expect(teks).toContain("{ value: \"oldest\", label: \"Terlama\" }")
+  })
+
+  it("urutan ikut terbawa saat filter lain diubah", () => {
+    // Kalau urutan tidak ikut dikirim, mengganti tab atau periode akan diam-diam
+    // mengembalikan daftar ke urutan bawaan tanpa terlihat di kontrol mana pun.
+    expect(sumber()).toContain("sort: filters.sort,")
+  })
+
+  it("kontrol urutan punya bawaan supaya tetap utuh bila server tidak mengirim", () => {
+    expect(sumber()).toContain("const URUTAN_BAWAH")
+    expect(sumber()).toContain("sortOptions = URUTAN_BAWAH")
   })
 })
 

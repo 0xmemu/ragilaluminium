@@ -41,19 +41,21 @@ class MediaHistoryFilterTest extends TestCase
         ]);
     }
 
-    public function test_event_yang_tidak_punya_tab_dinormalkan_menjadi_kosong(): void
+    public function test_nilai_yang_bukan_kejadian_dinormalkan_menjadi_kosong(): void
     {
         $this->log('dedup');
         $this->log('success');
 
-        // Empat nilai yang tidak punya tab, karena tiga sebab berbeda:
-        // - dedup: penjagaan berkas kembar sudah jalan di klien.
-        // - downloaded: bukan event sama sekali, melainkan status lampiran media.
-        // - processing dan queued: bukan keadaan yang bertahan, karena setiap tahap
-        //   menambah barisnya sendiri sehingga tabnya tidak menyaring apa pun.
-        // Tanpa normalisasi, halaman menyaring ke event itu dan tampil tanpa tab
+        // Dua nilai yang BUKAN kejadian, jadi tidak punya dan tidak boleh punya tab:
+        // - downloaded: status pada tabel lampiran media, tidak pernah ditulis sebagai
+        //   event riwayat oleh kode mana pun.
+        // - nilai asing: tautan lama atau salah ketik.
+        // Tanpa normalisasi, halaman menyaring ke nilai itu dan tampil tanpa tab
         // aktif, terbaca seperti halaman rusak.
-        foreach (['dedup', 'downloaded', 'processing', 'queued'] as $event) {
+        //
+        // dedup, processing, dan queued TIDAK lagi ada di daftar ini: sejak 14 Okt 2026
+        // ketiganya punya tab sendiri, lihat test_setiap_kejadian_punya_tab_dan_menyaring.
+        foreach (['downloaded', 'kemarin'] as $event) {
             $this->actingAs($this->admin())
                 ->get(route('admin.media.history', ['event' => $event]))
                 ->assertOk()
@@ -65,18 +67,24 @@ class MediaHistoryFilterTest extends TestCase
         }
     }
 
-    public function test_event_yang_punya_tab_tetap_menyaring(): void
+    public function test_setiap_kejadian_punya_tab_dan_menyaring(): void
     {
-        $this->log('dedup');
-        $this->log('success');
+        // Owner 14 Okt 2026: angka tab harus selalu bisa ditutup, dan itu hanya
+        // mungkin kalau SETIAP jenis event yang ditulis aplikasi punya tabnya
+        // sendiri. Kelimanya diuji satu per satu di sini. Sebelumnya hanya success
+        // dan failed yang lolos; sisanya membuat angka Semua lebih besar dari
+        // jumlah seluruh tab, dan selisihnya terbaca seperti kegagalan.
+        foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+            $this->log($event);
 
-        $this->actingAs($this->admin())
-            ->get(route('admin.media.history', ['event' => 'success']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('filters.event', 'success')
-                ->has('logs', 1)
-                ->where('logs.0.event', 'success'));
+            $this->actingAs($this->admin())
+                ->get(route('admin.media.history', ['event' => $event]))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('filters.event', $event)
+                    ->has('logs', 1)
+                    ->where('logs.0.event', $event));
+        }
     }
 
     public function test_tanpa_filter_semua_log_tampil(): void
@@ -308,14 +316,97 @@ class MediaHistoryFilterTest extends TestCase
         $this->log('success');
         $this->log('success');
         $this->log('failed');
+        $this->log('processing');
+        $this->log('queued');
+        $this->log('dedup');
 
         $this->actingAs($this->admin())
             ->get(route('admin.media.history'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tabCounts', fn ($v) => (int) $v[''] === 3)
+                ->where('tabCounts', fn ($v) => (int) $v[''] === 6)
                 ->where('tabCounts.failed', 1)
-                ->where('tabCounts.success', 2));
+                ->where('tabCounts.success', 2)
+                ->where('tabCounts.processing', 1)
+                ->where('tabCounts.queued', 1)
+                ->where('tabCounts.dedup', 1));
+    }
+
+    public function test_angka_tab_selalu_bisa_ditutup(): void
+    {
+        // Inti keluhan owner 14 Okt 2026: "Semua 324, Berhasil 156" terbaca seperti
+        // selisihnya adalah kegagalan, padahal bukan. Penjaganya: jumlah seluruh tab
+        // HARUS sama dengan angka tab Semua, sehingga tidak ada sisa yang harus
+        // ditebak. Kalau kelak ada jenis event baru yang lupa diberi tab, test ini
+        // gagal dan menyebut besar selisihnya.
+        foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+            $this->log($event);
+            $this->log($event);
+        }
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tabCounts', function ($counts) {
+                    $semua = (int) $counts[''];
+                    $jumlahTab = 0;
+                    foreach (['success', 'failed', 'processing', 'queued', 'dedup'] as $event) {
+                        $jumlahTab += (int) $counts[$event];
+                    }
+
+                    $this->assertSame(10, $semua, 'Tab Semua harus menghitung seluruh baris.');
+                    $this->assertSame(
+                        $semua,
+                        $jumlahTab,
+                        'Jumlah seluruh tab harus sama dengan tab Semua; selisih '.($semua - $jumlahTab).' berarti ada jenis event tanpa tab.'
+                    );
+
+                    return true;
+                }));
+    }
+
+    public function test_urutan_bawaan_adalah_terbaru(): void
+    {
+        $this->log('success', '2026-09-10 10:00:00', 'lama.png');
+        $this->log('success', '2026-10-01 10:00:00', 'baru.png');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'newest')
+                ->where('logs.0.entity_label', 'baru.png')
+                ->where('logs.1.entity_label', 'lama.png'));
+    }
+
+    public function test_urutan_terlama_membalik_urutan(): void
+    {
+        $this->log('success', '2026-09-10 10:00:00', 'lama.png');
+        $this->log('success', '2026-10-01 10:00:00', 'baru.png');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history', ['sort' => 'oldest']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'oldest')
+                ->where('logs.0.entity_label', 'lama.png')
+                ->where('logs.1.entity_label', 'baru.png'));
+    }
+
+    public function test_urutan_yang_tidak_dikenal_kembali_ke_terbaru(): void
+    {
+        // Mengikuti pola filter lain di halaman ini: nilai asing tidak ditolak,
+        // hanya diabaikan, supaya tautan lama tidak memantul dengan galat.
+        $this->log('success', '2026-09-10 10:00:00', 'lama.png');
+        $this->log('success', '2026-10-01 10:00:00', 'baru.png');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.media.history', ['sort' => 'acak']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'newest')
+                ->where('logs.0.entity_label', 'baru.png'));
     }
 
     public function test_jumlah_tab_mengikuti_penyaring_aktif(): void

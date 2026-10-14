@@ -118,14 +118,30 @@ URL di bawah prefix `/admin/kelola/*`; URL lama (`/admin/products`, `/admin/cate
   - Penggabungan otomatis di server tetap berlaku sebagai penjaga terakhir: kalau pemeriksaan di klien
     tidak bisa dijalankan, berkas tetap dikirim dan digabungkan seperti sebelumnya.
 - **Riwayat Media** (Tipe: Operational) — histori pekerjaan media, submenu Kelola Produk.
-  - Filter: tab status (Semua, Gagal, Berhasil), pencarian label/pesan,
-    dan SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang tanggal)
-    memakai pola yang sama dengan halaman daftar admin lain. Rentang tanggal hanya muncul
-    setelah "Rentang tanggal" dipilih, dan periode aktif ditandai chip beserta jalan melepasnya.
-  - Nilai status yang tidak punya tab lagi (mis. `?event=dedup` dari tautan lama) diabaikan,
-    bukan ditolak, supaya halaman tidak pernah tampil tanpa tab aktif. Daftar jenis event
-    yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`, sinkron dengan
-    `EVENT_TABS` di `resources/js/pages/Admin/Media/History.tsx`.
+  - Filter: tab status (Semua, Berhasil, Gagal, Diproses, Antre, Duplikat), pencarian
+    label/pesan, SATU pilihan periode (Semua waktu, Hari ini, 3/7/30 hari terakhir, Rentang
+    tanggal), dan SATU pilihan urutan (Terbaru, bawaan, atau Terlama).
+    Rentang tanggal hanya muncul setelah "Rentang tanggal" dipilih, dan periode aktif
+    ditandai chip beserta jalan melepasnya. Urutan memakai pola yang sama dengan halaman
+    Log Aktivitas (`sort=newest|oldest`, nilai asing kembali ke bawaan).
+  - Angka tab WAJIB bisa ditutup: jumlah seluruh tab sama dengan angka tab Semua, karena
+    tiap jenis event yang ditulis aplikasi punya tabnya sendiri. Sebelum 14 Okt 2026 hanya
+    Berhasil dan Gagal yang punya tab, sehingga pada data nyata tab Semua 324 sementara
+    Berhasil 156 dan Gagal 0, dan sisa 168 itu terbaca seperti kegagalan yang tidak
+    tercatat padahal isinya 162 baris Diproses dan 6 baris Duplikat. Dijaga test
+    `test_angka_tab_selalu_bisa_ditutup`.
+  - Daftar jenis event yang punya tab ada di `ProductMediaController::HISTORY_EVENT_TABS`
+    dan `tabCounts` dihitung dari konstanta itu, sinkron dengan `EVENT_TABS` di
+    `resources/js/pages/Admin/Media/History.tsx`. Nilai yang bukan kejadian sama sekali
+    (mis. `?event=downloaded`) diabaikan, bukan ditolak, supaya halaman tidak pernah
+    tampil tanpa tab aktif.
+  - Arti "Diproses" dan "Antre" pada tab: setiap tahap pemrosesan MENAMBAH baris barunya
+    sendiri dan tidak pernah memperbarui baris lama, jadi satu aset yang selesai
+    meninggalkan dua baris (satu Diproses, satu Berhasil). Angka pada kedua tab itu
+    menghitung BARIS riwayat, bukan pekerjaan yang masih berjalan. Pekerjaan yang benar
+    benar berjalan ditandai badge Live. Karena itu penyegaran status tidak lagi menulis
+    ulang baris "Diproses" menjadi "Berhasil"; hanya kegagalan yang menulis ulang, dan
+    penyegaran berhenti sendiri setelah seluruh entitas tunggu diketahui hasilnya.
 
 ### 4. Orders & Payments (Pesanan & Pembayaran)
 - **Orders** (Tipe: `Operational`)
