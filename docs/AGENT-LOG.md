@@ -5262,3 +5262,13 @@ karena penjaga `media-folder-menu-anchor.test.ts` akan gagal. Catatan lingkungan
 berkas probe milik agent lain (`tests/frontend/zz-probe-*.test.ts(x)`) di working tree 209
 yang membuat `npm run lint` melaporkan 8 warning `no-explicit-any`; berkas itu BUKAN milik
 saya dan sengaja tidak saya sentuh. Lint berkas yang saya ubah bersih dengan `--max-warnings=0`.
+
+## 2026-10-14 15:58 UTC | zcode | Standard | deploy perbaikan re-render ke produksi 202
+
+Perbaikan crash halaman Tambah Produk dipasang ke rilis produksi aktif 202 (`releases/20261014-media-folder-menu`) secara in-place, karena 202 tidak bisa menjangkau GitHub (Host key verification failed) sehingga `git pull` tidak tersedia. Berkas sumber disalin dari 209 yang sudah lolos verifikasi (checksum md5 dicocokkan sebelum dan sesudah kirim), lalu aset frontend dibangun ulang di 202 (`npm run build`, 59,6 detik).
+
+Langkah: backup berkas lama ke `/root/backups/pre-fix-rerender-20261014-155454`, pasang ProductForm.tsx + Checkout.tsx + penjaga regresi, kembalikan kepemilikan ke `deploy:www-data` mode 664 (penting: `cp` sebagai root meninggalkan owner root), lalu build.
+
+Verifikasi di 202: repro jsdom yang sebelumnya GAGAL kini LULUS (klik tombol Tambah menghasilkan 8 input, bukan crash), penjaga `stable-prop-default.test.ts` 3 test lulus, izin tulis `storage/logs` dan `bootstrap/cache` sebagai www-data tetap OK, manifest menunjuk bundel baru `ProductForm-CF5lQx5a.js`, dan halaman beranda/produk/login menjawab HTTP 200. Berkas probe sementara sudah dihapus dari rilis.
+
+Catatan: uji klik browser langsung di ragilaluminium.com belum dijalankan karena kredensial admin produksi tidak dipegang agent; bukti diambil dari repro jsdom terhadap kode yang sudah terpasang dan dari integritas bundel yang disajikan.
