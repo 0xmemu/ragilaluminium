@@ -5511,3 +5511,68 @@ Pemulihan: Library.tsx dikembalikan ke versi bersih terakhir (`ff946a70`) ditamb
 Pelajaran untuk agent lain: **jangan `git add` berkas yang mungkin disentuh agent lain tanpa memeriksa diff-nya lebih dulu.** Di repo ini working tree sering memuat pekerjaan agent lain yang belum di-commit. Periksa `git diff <berkas>` sebelum `git add`, dan bila perubahan itu bukan milik sendiri, commit berkas dari versi HEAD + perubahan sendiri, bukan dari working tree.
 
 Verifikasi: typecheck + build lulus di HEAD bersih; uji browser Playwright di dev menunjukkan tombol mode tinggal tiga (`Pilih Banyak File` hilang), mode "Pilih File" menerima 3 berkas sekaligus, dan mode folder tetap ada. Di produksi 202: bundel `Library-4DNS91Fi.js` tidak lagi memuat "Pilih Banyak File", penyaring Thumbs.db tetap ada, izin storage OK, halaman publik HTTP 200.
+
+## 2026-10-14 19:35 UTC | zcode-media-dedup-batch | Deep | 902a2428 | selesai
+
+Owner melaporkan penjaga duplikat media menghalangi kerja normal: produk A (120 cm) dan
+produk B (110 cm) sengaja memakai foto yang sama, tetapi karena berkas itu sudah ada di
+Media Library, unggahan untuk folder produk B ditolak sehingga folder B kosong dan admin
+dipaksa memakai media folder A. Owner memutuskan: dialog "Lewati atau Tetap unggah" DIHAPUS,
+dan penolakan duplikat hanya berlaku DI DALAM satu aksi unggah.
+
+Temuan yang membentuk keputusan:
+- Ada DUA lapis penjaga, dan lapis kedua mengabaikan keputusan admin. Lapis klien menahan
+  berkas dan menawarkan "Tetap unggah", tetapi lapis server (ProcessUploadedMediaAsset)
+  selalu menggabungkan: berkas dihapus dari R2, barisnya diarsipkan, lampirannya dialihkan.
+  Tidak ada satu pun penanda `force`/`allow_duplicate` di seluruh jalur, jadi pilihan admin
+  tidak pernah sampai ke server.
+- Penjaga yang diminta owner ("kembar dalam satu aksi") justru BELUM ada:
+  `partitionByDuplicate` hanya mencocokkan sidik jari ke database, tidak antar berkas dalam
+  aksi yang sama. Jadi arah perbaikannya bukan sekadar melonggarkan, melainkan memindahkan
+  penjaga ke tempat yang benar.
+- Penghalang skema: kolom `media_assets.checksum` UNIK, dan turunan WebP disimpan di path
+  berbasis checksum (`media-assets/<sidik jari>/`), sehingga dua aset berisi sama mustahil
+  disimpan: percobaan menyimpannya gagal dengan pelanggaran keunikan di `checksum` lalu di
+  `object_key`.
+
+Perubahan:
+- `lib/media-duplicate.ts` ditulis ulang: helper `partitionWithinBatch` menolak kemunculan
+  KEDUA dan seterusnya dari sidik jari yang sama DI DALAM satu aksi unggah; kemunculan
+  pertama tetap dikirim. Sidik jari null (gagal dihitung) selalu dikirim. Tidak ada lagi
+  permintaan ke server saat mengunggah.
+- Dialog, state `duplicatePrompt`, `skipDuplicates`, `uploadDuplicatesAnyway`,
+  `findExistingDuplicates`, komponen `media-duplicate-dialog.tsx`, endpoint
+  `POST /admin/media/check-duplicates`, dan test `MediaDuplicateCheckTest.php` DIHAPUS.
+  Status baris unggah `dilewati` menjadi `ditolak` dengan label "kembar".
+- Penggabungan otomatis dihapus di `ProcessUploadedMediaAsset` dan `DownloadMediaAsset`.
+- `MediaAssetResolver::fromUploadedFile` tidak lagi memakai ulang aset ber-checksum sama,
+  dan `importUrl` di Media Library selalu membuat aset baru di folder terpilih. Dulu aset
+  lama bahkan DIPINDAHKAN ke folder baru, sehingga menambah media ke folder produk B bisa
+  mengosongkan folder produk A. Idempotensi impor massal tetap dijaga lewat `source_url_hash`;
+  hash itu diklaim aset baru hanya bila masih bebas, supaya tidak bentrok.
+- Migration `2026_10_14_120000_relax_media_asset_checksum_unique`: keunikan `checksum`
+  dilepas, diganti indeks `idx_media_assets_checksum`. `source_url_hash` SENGAJA tetap unik.
+- `MediaDerivativeService` memakai ruang nama bersufiks id aset bila direktori berbasis sidik
+  jari sudah terpakai (kolom `object_key` masih unik). Direktori kanonik tetap dipakai pemakai
+  pertama, jadi tata letak lama tidak berubah. Pemanggil meneruskan id asetnya.
+- Tab "Duplikat" di Riwayat Media dibuang (kejadian `dedup` tidak pernah ditulis lagi);
+  labelnya tetap terpetakan supaya baris dedup lama tampil bernada benar.
+
+Dokumen kanonik diperbarui: `docs/database-schema-ragil-aluminium.md` (checksum UQ menjadi IDX),
+`docs/sitemap/admin-sitemap.md`, `docs/api-and-routes-ragil-aluminium.md`.
+
+Bukti: PHPUnit 1432 lulus 1 skip; Vitest 371 lulus; typecheck bersih; lint bersih; build sukses
+di 209 dan di release 202. Penjaga unggah manual diuji menggigit (perilaku pakai-ulang
+dikembalikan sesaat, test gagal, berkas dipulihkan). Verifikasi pada KODE PRODUKSI dijalankan
+di dalam transaksi yang di-ROLLBACK, jadi tidak ada data uji tertinggal: berkas yang sama
+diunggah dua kali menghasilkan dua aset (#1290 dan #1291) dengan checksum sama, dan ruang
+namanya terpisah (`.../pdp.webp` dan `...-1291/pdp.webp`). Empat berkas uji yang sempat
+tertulis ke bucket dihapus kembali dengan daftar eksplisit; bucket 355 berkas, 0 sisa uji,
+119 aset (115 siap, 4 arsip) tidak berubah.
+
+Untuk agent berikutnya: JANGAN mengembalikan penggabungan otomatis berbasis checksum, dan
+JANGAN menambah kembali tab Duplikat tanpa menghidupkan lagi penulis kejadian `dedup`. Kalau
+menambah jalur unggah baru, panggil `storeAssetDerivatives`/`storeVideoAsset` DENGAN id aset,
+karena tanpa itu dua berkas kembar akan berebut kunci objek. Catatan: baris `dedup` lama masih
+ada di `media_processing_logs`, jadi selisih tab Semua dengan jumlah seluruh tab yang sah
+hanya sebesar baris itu.
