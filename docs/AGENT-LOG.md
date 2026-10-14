@@ -5435,3 +5435,13 @@ override di `History.tsx`, jangan kembalikan penulisan `success` ke sana.
 
 Catatan lingkungan: `docs/sitemap/admin-sitemap.md` masih memuat 21 em dash warisan lama di
 seluruh berkas (bukan dari perubahan ini, dan tidak saya sentuh supaya diff tetap fokus).
+
+## 2026-10-14 17:56 UTC | zcode | Standard | penyaring berkas sistem di Media Library
+
+Owner melaporkan `Thumbs.db` ikut muncul di daftar unggah saat memakai tombol "Unggah Folder". Akar masalah: pemilih folder peramban (`webkitdirectory`) MENGABAIKAN atribut `accept`, sehingga seluruh berkas di dalam folder ikut terpilih, termasuk berkas sistem buatan Windows/macOS. Bila ikut terkirim, server menolaknya dengan "tipe file tidak diizinkan" (status 422 pada `admin.media.upload` yang memang terlihat di log produksi), dan admin hanya melihat kegagalan tanpa tahu berkas mana penyebabnya.
+
+Perbaikan: berkas baru `resources/js/lib/media-upload-filter.ts` menyaring nama berkas sistem (Thumbs.db, ehthumbs.db, desktop.ini, .DS_Store, .localized, awalan `._` khas macOS) dan berkas yang bukan media (memakai jenis dari peramban, dengan ekstensi sebagai cadangan saat jenis kosong). `Library.tsx` memanggil penyaring pada `onChange` pemilih berkas, dan berkas yang dibuang diberitahukan lewat notis supaya admin tahu kenapa jumlahnya berkurang.
+
+Verifikasi: typecheck bersih, lint 0 warning, Vitest 374 lulus (45 berkas, termasuk 8 test penyaring baru). Uji browser Playwright dengan folder tiruan berisi 7 gambar + Thumbs.db + desktop.ini: daftar unggah berisi 7 gambar, NOL berkas sistem, dan notis menyebut kedua berkas yang dilewati.
+
+Deploy ke produksi 202: rilis aktif saat itu baru berganti menjadi `20261014-media-history-tabs` (dibuat agent lain 17:50); berkas saya dipasang 17:52 sehingga masuk ke rilis tersebut. Backup di `/root/backups/pre-media-filter-20261014-175251`. Build ulang di 202 (69 detik), bundel `Library-By0EVHCm.js` memuat penyaring, izin storage tetap OK, halaman publik HTTP 200.
