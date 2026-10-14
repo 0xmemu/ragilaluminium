@@ -5851,3 +5851,17 @@ pemasangan `/etc/logrotate.d/ragil-backups` dan perbaikan konvensi penanda di
 Paket B (backup konfigurasi terenkripsi), C (ketahanan Redis), D (backup media),
 dan E (drill database/PITR) belum dikerjakan, menunggu persetujuan tindakan
 spesifik.
+
+## 2026-10-14 21:25 UTC | zcode | Standard | popup unggah bisa digulir penuh
+
+Owner: saat proses unggah, popup berisi banyak media tidak bisa digulir, padahal sebelum diproses bisa.
+
+Akar masalah (tata letak): daftar berkas dikurung kotak setinggi 160 px (`max-h-40`) DI DALAM wadah yang juga `overflow-y-auto`, jadi gulirnya BERSARANG. Hanya 138 px tinggi area gulir yang tersedia pada jendela 1280x720, dan roda tetikus di luar kotak kecil itu tidak menggerakkan apa pun karena wadah luarnya tidak meluap.
+
+Perbaikan: susunan bertingkat. Kepala (judul) dan kaki (tombol + catatan) tetap, dan SATU area gulir di tengah (`min-h-0 flex-1 overflow-y-auto overscroll-contain`) yang mengisi seluruh tinggi tersisa. Daftar berkas dan daftar unggahan tidak lagi dibatasi `max-h-40`, jadi tinggi area gulir SAMA pada kedua keadaan dan memakai tinggi popup yang tersedia (terukur 470 px, dari 138 px). `overscroll-contain` menahan gulir di dalam area supaya halaman di belakang tidak ikut bergerak saat daftar mencapai ujung.
+
+Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji browser dengan 60 berkas di empat ukuran jendela: area gulir 470 px dan roda tetikus menaikkan posisi di tiga titik (atas/tengah/bawah), baik sebelum maupun saat unggahan berjalan; tangkapan layar kedua keadaan diperiksa. HEAD diuji di worktree bersih (typecheck + build lulus) sebelum push.
+
+Deploy ke 202: berkas dari `origin/main`, build ulang 70 detik, bundel `Library-DwKt5wmD.js` memuat area gulir baru (`overscroll-contain` 1, `max-h-40` 0) dan fitur sebelumnya tetap utuh (Pilih semua, pilihan hapus folder, penyaring berkas sistem). Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-modal-scroll-20261014-212041`.
+
+INSIDEN (jenis kedua, penyebab berbeda dari 14:05). Commit pertama saya menangkap 5 berkas: 1 milik saya + 4 `scripts/prod/backup/*` milik agent lain yang SUDAH ADA DI INDEX (staging area) karena agent itu menjalankan `git add` beberapa detik sebelumnya. `git commit` tanpa path menyapu SELURUH index, bukan hanya berkas yang saya `git add`. Diperbaiki sebelum push: `git reset --soft HEAD~1` (berkas agent kembali staged, tidak hilang) lalu `git commit --only <berkas saya>`. Pelajaran: periksa `git status` SEBELUM commit, dan pakai `--only <path>` bila index mungkin memuat pekerjaan agent lain.
