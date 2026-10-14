@@ -5349,3 +5349,32 @@ aturan ini tidak mengunci selamanya. Dua test baru mengunci perilakunya.
 Verifikasi: `media:reconcile --orphans` di 209 kini melaporkan 3 yatim dari 2.739 berkas
 (turun dari 18), dengan 2.032 berkas Media Library dilewati karena dilindungi. Suite penuh
 1.436 test / 14.005 assertion hijau, Pint bersih.
+
+## 2026-10-14 10:05 UTC | zcode-media-cascade | Deep | pemulihan media library produksi 202
+
+Pemulihan atas kesalahan pada pembersihan bucket `ra-media-prod` di entri sebelumnya hari
+yang sama. Owner menegaskan bahwa media di Media Library produksi disimpan untuk produk dan
+tidak boleh dihapus, sehingga berkas yang saya hapus harus dikembalikan.
+
+Yang terbukti salah: pembersihan kedua menghapus 14 PNG di `media/library/2026/08/` yang
+ternyata media produk sah (di database dev tercatat sebagai 15 baris `media_assets` siap dan
+dirujuk 133 baris `product_media`), satu video di `media/library/2026/09/`, dua banner PNG,
+dan tiga foto ulasan di `reviews/`.
+
+Dipulihkan dari bucket dev `ra-media` (209) ke `ra-media-prod` (202), dengan pencocokan
+ukuran byte dan checksum berkas arsip sebelum dan sesudah kirim:
+- 14 PNG `media/library/2026/08/` (45 MB)
+- 1 video `media/library/2026/09/67d2e859-...mp4`
+- 2 banner PNG
+- 3 foto ulasan `reviews/`
+- seluruh awalan `media-assets/` yang belum ada di prod (dijalankan sebagai sinkronisasi
+  tambah-saja: berkas yang sudah ada di prod dilewati, tidak ada yang ditimpa atau dihapus)
+
+Akses publik diverifikasi: `media.ragilaluminium.com/media/library/2026/08/06a72a2a-...png`
+menjawab HTTP 200 sebesar 4.051.955 byte, sama dengan ukuran di bucket dev.
+
+Pelajaran yang dikunci di kode (commit `d6f85401`): `media/library/` dan `media-assets/`
+masuk `PROTECTED_PREFIXES` di `media:reconcile`, jadi berkas di awalan itu tidak pernah lagi
+dianggap yatim walaupun belum ada baris database yang merujuknya. Aturan pembersihan berbasis
+"tidak ada rujukan database" tidak boleh dipakai untuk media yang disimpan untuk dipakai
+produk, karena berkasnya memang sering ada lebih dulu daripada rujukannya.
