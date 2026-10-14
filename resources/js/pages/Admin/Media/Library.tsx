@@ -128,6 +128,37 @@ function FolderTreeList({
   const [order, setOrder] = React.useState<FolderNode[]>(nodes)
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const [dragTarget, setDragTarget] = React.useState<number | null>(null)
+  const menuContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (menuFor === null) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Element | null
+      if (!target) return
+      if (target.closest("[role=\"dialog\"]") || target.closest("[data-radix-portal]")) {
+        return
+      }
+      if (menuContainerRef.current && !menuContainerRef.current.contains(target)) {
+        setMenuFor(null)
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (!document.querySelector("[role=\"dialog\"]")) {
+          setMenuFor(null)
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [menuFor])
 
   // Daftar folder dari server disalin ke urutan lokal saat props berubah.
   // Disesuaikan saat render, bukan lewat effect.
@@ -286,71 +317,73 @@ function FolderTreeList({
                 ) : null}
               </button>
 
-              <button
-                type="button"
-                aria-label={`Menu folder ${node.name}`}
-                title="Menu folder"
-                onClick={() => setMenuFor(isOpen ? null : node.id)}
-                className={cn(
-                  "mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
-                  isOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
-                )}
-              >
-                <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
-              </button>
-            </div>
+              <div ref={isOpen ? menuContainerRef : null} className="relative mr-1 flex shrink-0 items-center self-stretch">
+                <button
+                  type="button"
+                  aria-label={`Menu folder ${node.name}`}
+                  title="Menu folder"
+                  onClick={() => setMenuFor(isOpen ? null : node.id)}
+                  className={cn(
+                    "flex size-6 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
+                    isOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
+                  )}
+                >
+                  <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
+                </button>
 
-            {isOpen ? (
-              <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
-                <button
-                  type="button"
-                  onClick={() => createSubfolder(node.id)}
-                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
-                >
-                  Buat subfolder
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuFor(null)
-                    // Tunda satu tick: klik yang sama tidak boleh dianggap
-                    // interaksi luar oleh Radix Dialog (dialog langsung tertutup).
-                    window.setTimeout(() => onRequestRename(node.id, node.name), 0)
-                  }}
-                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
-                >
-                  Ganti nama
-                </button>
-                <ConfirmAction
-                  trigger={
+                {isOpen ? (
+                  <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
                     <button
                       type="button"
+                      onClick={() => createSubfolder(node.id)}
                       className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
                     >
-                      Arsipkan
+                      Buat subfolder
                     </button>
-                  }
-                  title="Arsipkan folder?"
-                  description="Aset di dalamnya ikut diarsipkan."
-                  confirmLabel="Arsipkan"
-                  onConfirm={() => submitFolderAction(node.id, "archive")}
-                />
-                <ConfirmAction
-                  trigger={
                     <button
                       type="button"
-                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        setMenuFor(null)
+                        // Tunda satu tick: klik yang sama tidak boleh dianggap
+                        // interaksi luar oleh Radix Dialog (dialog langsung tertutup).
+                        window.setTimeout(() => onRequestRename(node.id, node.name), 0)
+                      }}
+                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
                     >
-                      Hapus folder
+                      Ganti nama
                     </button>
-                  }
-                  title={`Hapus folder "${node.name}"?`}
-                  description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
-                  confirmLabel="Hapus Folder"
-                  onConfirm={() => submitFolderAction(node.id, "delete")}
-                />
+                    <ConfirmAction
+                      trigger={
+                        <button
+                          type="button"
+                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                        >
+                          Arsipkan
+                        </button>
+                      }
+                      title="Arsipkan folder?"
+                      description="Aset di dalamnya ikut diarsipkan."
+                      confirmLabel="Arsipkan"
+                      onConfirm={() => submitFolderAction(node.id, "archive")}
+                    />
+                    <ConfirmAction
+                      trigger={
+                        <button
+                          type="button"
+                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                        >
+                          Hapus folder
+                        </button>
+                      }
+                      title={`Hapus folder "${node.name}"?`}
+                      description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
+                      confirmLabel="Hapus Folder"
+                      onConfirm={() => submitFolderAction(node.id, "delete")}
+                    />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
 
             {hasChildren && isExpanded ? (
               <div className="ml-2.5 border-l border-border pl-2">
@@ -499,6 +532,37 @@ function FolderTree({
 }) {
   const [folderQuery, setFolderQuery] = React.useState("")
   const [searchMenuFor, setSearchMenuFor] = React.useState<number | null>(null)
+  const searchMenuRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (searchMenuFor === null) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Element | null
+      if (!target) return
+      if (target.closest("[role=\"dialog\"]") || target.closest("[data-radix-portal]")) {
+        return
+      }
+      if (searchMenuRef.current && !searchMenuRef.current.contains(target)) {
+        setSearchMenuFor(null)
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (!document.querySelector("[role=\"dialog\"]")) {
+          setSearchMenuFor(null)
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [searchMenuFor])
   const [expandedIds, setExpandedIds] = React.useState<Record<number, boolean>>(() => {
     let saved: Record<number, boolean> = {}
     try {
@@ -697,68 +761,70 @@ function FolderTree({
                   ) : null}
                 </button>
 
-                <button
-                  type="button"
-                  aria-label={`Menu folder ${f.name}`}
-                  title="Menu folder"
-                  onClick={() => setSearchMenuFor(isMenuOpen ? null : f.id)}
-                  className={cn(
-                    "mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
-                    isMenuOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
-                  )}
-                >
-                  <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
-                </button>
+                <div ref={isMenuOpen ? searchMenuRef : null} className="relative mr-1 flex shrink-0 items-center self-stretch">
+                  <button
+                    type="button"
+                    aria-label={`Menu folder ${f.name}`}
+                    title="Menu folder"
+                    onClick={() => setSearchMenuFor(isMenuOpen ? null : f.id)}
+                    className={cn(
+                      "flex size-6 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-foreground",
+                      isMenuOpen ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100",
+                    )}
+                  >
+                    <Icon name="dots-three" className="size-3.5" aria-hidden="true" />
+                  </button>
 
-                {isMenuOpen ? (
-                  <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
-                    <button
-                      type="button"
-                      onClick={() => createSearchSubfolder(f.id)}
-                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
-                    >
-                      Buat subfolder
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchMenuFor(null)
-                        window.setTimeout(() => onRequestRename(f.id, f.name), 0)
-                      }}
-                      className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
-                    >
-                      Ganti nama
-                    </button>
-                    <ConfirmAction
-                      trigger={
-                        <button
-                          type="button"
-                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
-                        >
-                          Arsipkan
-                        </button>
-                      }
-                      title="Arsipkan folder?"
-                      description="Aset di dalamnya ikut diarsipkan."
-                      confirmLabel="Arsipkan"
-                      onConfirm={() => submitSearchFolderAction(f.id, "archive")}
-                    />
-                    <ConfirmAction
-                      trigger={
-                        <button
-                          type="button"
-                          className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
-                        >
-                          Hapus folder
-                        </button>
-                      }
-                      title={`Hapus folder "${f.name}"?`}
-                      description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
-                      confirmLabel="Hapus Folder"
-                      onConfirm={() => submitSearchFolderAction(f.id, "delete")}
-                    />
-                  </div>
-                ) : null}
+                  {isMenuOpen ? (
+                    <div className="absolute right-0 top-full z-30 mt-1 w-48 space-y-0.5 rounded-lg border border-border bg-card p-1 shadow-float">
+                      <button
+                        type="button"
+                        onClick={() => createSearchSubfolder(f.id)}
+                        className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                      >
+                        Buat subfolder
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchMenuFor(null)
+                          window.setTimeout(() => onRequestRename(f.id, f.name), 0)
+                        }}
+                        className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                      >
+                        Ganti nama
+                      </button>
+                      <ConfirmAction
+                        trigger={
+                          <button
+                            type="button"
+                            className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-card-hover"
+                          >
+                            Arsipkan
+                          </button>
+                        }
+                        title="Arsipkan folder?"
+                        description="Aset di dalamnya ikut diarsipkan."
+                        confirmLabel="Arsipkan"
+                        onConfirm={() => submitSearchFolderAction(f.id, "archive")}
+                      />
+                      <ConfirmAction
+                        trigger={
+                          <button
+                            type="button"
+                            className="block w-full rounded px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                          >
+                            Hapus folder
+                          </button>
+                        }
+                        title={`Hapus folder "${f.name}"?`}
+                        description="Semua aset di dalam folder ini (jika ada) akan otomatis dipindahkan ke Semua Media."
+                        confirmLabel="Hapus Folder"
+                        onConfirm={() => submitSearchFolderAction(f.id, "delete")}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </li>
             )
           })}
@@ -1395,7 +1461,7 @@ export default function MediaLibrary({
         </button>
       </div>
 
-      <div className="flex min-w-0 max-w-full gap-4 overflow-hidden">
+      <div className="flex min-w-0 max-w-full gap-4 overflow-x-clip">
         {/* Sidebar folder (bisa disembunyikan agar galeri lebih lebar) */}
         {showSidebar ? (
         <aside className="w-64 shrink-0">
