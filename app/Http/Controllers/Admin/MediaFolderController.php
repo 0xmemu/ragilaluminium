@@ -25,12 +25,11 @@ class MediaFolderController extends Controller
     public function tree(): JsonResponse
     {
         $folders = MediaFolder::query()
-            ->withCount('assets')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
-        return response()->json(['folders' => self::buildTree($folders)]);
+        return response()->json(['folders' => self::buildTree($folders, MediaFolder::deepAssetCounts())]);
     }
 
     /**
@@ -267,32 +266,30 @@ class MediaFolderController extends Controller
      */
     private function allDescendantIds(MediaFolder $folder): array
     {
-        $ids = [];
-        $children = MediaFolder::query()->where('parent_id', $folder->id)->get();
-        foreach ($children as $child) {
-            $ids[] = $child->id;
-            $ids = array_merge($ids, $this->allDescendantIds($child));
-        }
-
-        return $ids;
+        // Cakupan folder punya satu sumber di model (descendantIds), jadi di
+        // sini hanya membuang folder itu sendiri supaya pemanggil lama tetap
+        // menerima daftar turunan seperti sebelumnya.
+        return array_values(array_diff($folder->descendantIds(), [(int) $folder->id]));
     }
 
     public function archive(Request $request, MediaFolder $folder): RedirectResponse
     {
         DB::transaction(function () use ($folder): void {
-            $folder->update(['archived_at' => now()]);
-            // Asset di dalamnya ikut diarsipkan (keputusan: arsip, bukan hapus).
-            $folder->assets()->update(['visibility' => 'archived']);
-            foreach ($folder->children as $child) {
-                $child->update(['archived_at' => now()]);
-            }
+            // Satu folder bermakna folder ini dan seluruh turunannya, sama
+            // seperti cakupan daftar. Tanpa itu, subfolder ikut ditandai
+            // terarsip sementara asetnya tetap tampil, dan folder di bawah
+            // sekali pun tidak tersentuh.
+            $folderIds = $folder->descendantIds();
+
+            MediaFolder::query()->whereIn('id', $folderIds)->update(['archived_at' => now()]);
+            MediaAsset::query()->whereIn('folder_id', $folderIds)->update(['visibility' => 'archived']);
         });
 
-        return redirect()->back()->with('success', 'Folder diarsipkan (asset di dalamnya ikut diarsipkan).');
+        return redirect()->back()->with('success', 'Folder diarsipkan (aset di dalamnya ikut diarsipkan).');
     }
 
     /** @param \Illuminate\Support\Collection<int, MediaFolder> $folders */
-    private static function buildTree($folders, ?int $parentId = null): array
+    private static function buildTree($folders, array $deepCounts, ?int $parentId = null): array
     {
         return $folders
             ->where('parent_id', $parentId)
@@ -300,8 +297,8 @@ class MediaFolderController extends Controller
             ->map(fn (MediaFolder $f) => [
                 'id' => $f->id,
                 'name' => $f->name,
-                'assets_count' => (int) $f->assets_count,
-                'children' => self::buildTree($folders, (int) $f->id),
+                'assets_count' => (int) ($deepCounts[(int) $f->id] ?? 0),
+                'children' => self::buildTree($folders, $deepCounts, (int) $f->id),
             ])
             ->all();
     }

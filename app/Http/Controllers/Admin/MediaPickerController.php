@@ -56,10 +56,22 @@ class MediaPickerController extends Controller
             ->limit(48)
             ->get(['id', 'label', 'kind', 'status', 'object_key', 'derivatives', 'folder_id']);
 
+        // Angka folder memuat isi subfolder, sama seperti daftar Media Library,
+        // supaya folder induk tidak tampak kosong di pemilih media. Rinciannya
+        // dihitung server lewat MediaFolder::deepAssetCounts() supaya aturannya
+        // cuma ada satu.
+        $deepCounts = MediaFolder::deepAssetCounts();
         $allFolders = MediaFolder::query()
-            ->withCount('assets')
             ->orderBy('name')
-            ->get(['id', 'parent_id', 'name']);
+            ->get(['id', 'parent_id', 'name'])
+            ->map(fn (MediaFolder $folder) => [
+                'id' => (int) $folder->id,
+                'parent_id' => $folder->parent_id === null ? null : (int) $folder->parent_id,
+                'name' => (string) $folder->name,
+                'assets_count' => (int) ($deepCounts[(int) $folder->id] ?? 0),
+            ])
+            ->values()
+            ->all();
 
         $inboxCount = MediaAsset::query()
             ->where('status', 'ready')

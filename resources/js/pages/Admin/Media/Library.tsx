@@ -623,7 +623,6 @@ interface FlattenedFolderNode {
   name: string
   depth: number
   assets_count: number
-  assets_total: number
   path: string
   node: FolderNode
 }
@@ -631,26 +630,22 @@ interface FlattenedFolderNode {
 function buildFlattenedFolders(nodes: FolderNode[]): FlattenedFolderNode[] {
   const out: FlattenedFolderNode[] = []
 
-  function traverse(list: FolderNode[], depth: number, parentPath: string): number {
-    let subtreeTotal = 0
+  // Angka folder dari server sudah memuat isi subfolder, satu aturan dengan
+  // daftar galeri. Karena itu di sini TIDAK dijumlahkan lagi: menambahkan
+  // anak-anaknya akan menghitung isi subfolder dua kali.
+  function traverse(list: FolderNode[], depth: number, parentPath: string): void {
     for (const item of list) {
       const path = depth === 0 ? item.name : `${parentPath} / ${item.name}`
-      const own = item.assets_count ?? 0
-      const index = out.length
       out.push({
         id: item.id,
         name: item.name,
         depth,
-        assets_count: own,
-        assets_total: own,
+        assets_count: item.assets_count ?? 0,
         path,
         node: item,
       })
-      const nested = traverse(item.children || [], depth + 1, path)
-      out[index].assets_total = own + nested
-      subtreeTotal += own + nested
+      traverse(item.children || [], depth + 1, path)
     }
-    return subtreeTotal
   }
 
   traverse(nodes, 0, "")
@@ -904,9 +899,9 @@ function FolderTree({
                       </span>
                     ) : null}
                   </span>
-                  {f.assets_total > 0 ? (
+                  {f.assets_count > 0 ? (
                     <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                      {f.assets_total}
+                      {f.assets_count}
                     </span>
                   ) : null}
                 </button>

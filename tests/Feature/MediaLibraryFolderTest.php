@@ -332,4 +332,53 @@ class MediaLibraryFolderTest extends TestCase
             'Pilih semua di folder induk harus menyentuh aset subfolder juga',
         );
     }
+
+    public function test_pemilih_media_melaporkan_angka_folder_termasuk_subfolder(): void
+    {
+        $this->actingAs($this->admin());
+
+        $induk = MediaFolder::create(['name' => 'Induk']);
+        $anak = MediaFolder::create(['name' => 'Anak', 'parent_id' => $induk->id]);
+
+        $this->asetDi($anak, 'anak-1.jpg');
+        $this->asetDi($anak, 'anak-2.jpg');
+
+        $folders = collect(
+            $this->getJson(route('admin.media.picker'))->assertOk()->json('folders')
+        );
+
+        $simpul = $folders->firstWhere('id', (int) $induk->id);
+        $this->assertNotNull($simpul, 'Folder induk harus ikut dikirim ke pemilih media');
+        $this->assertSame(
+            2,
+            (int) $simpul['assets_count'],
+            'Angka folder induk di pemilih media harus ikut memuat isi subfolder',
+        );
+    }
+
+    public function test_arsip_folder_induk_mengarsipkan_aset_subfolder(): void
+    {
+        $this->actingAs($this->admin());
+
+        $induk = MediaFolder::create(['name' => 'Induk']);
+        $anak = MediaFolder::create(['name' => 'Anak', 'parent_id' => $induk->id]);
+
+        $this->asetDi($induk, 'induk-1.jpg');
+        $this->asetDi($anak, 'anak-1.jpg');
+
+        // Janji ke admin di dialog: "Aset di dalamnya ikut diarsipkan."
+        $this->post(route('admin.media.folders.archive', $induk))->assertRedirect();
+
+        $this->assertSame(
+            1,
+            MediaAsset::where('folder_id', $induk->id)->where('visibility', 'archived')->count(),
+            'Aset langsung folder induk harus ikut terarsip',
+        );
+        $this->assertSame(
+            1,
+            MediaAsset::where('folder_id', $anak->id)->where('visibility', 'archived')->count(),
+            'Aset di subfolder harus ikut terarsip, bukan hanya subfolder-nya ditandai',
+        );
+        $this->assertNotNull($anak->fresh()->archived_at, 'Subfolder harus ikut ditandai terarsip');
+    }
 }

@@ -38,10 +38,8 @@ interface FlattenedFolder {
   name: string
   parent_id: number | null
   depth: number
-  /** Aset langsung di folder ini. */
+  /** Aset folder ini termasuk seluruh sub-folder di bawahnya. */
   assets_count: number
-  /** Aset folder ini + seluruh sub-folder di bawahnya (angka yang tampil di daftar). */
-  assets_total: number
   /** Jalur lengkap dari akar, mis. "Jendela Swing / 70x60". Dipakai untuk pencarian. */
   path: string
 }
@@ -55,31 +53,25 @@ function buildFolderTree(items: FolderItem[]): FlattenedFolder[] {
   }
 
   const out: FlattenedFolder[] = []
-  // Mengembalikan total aset subtree agar induk menampilkan angka gabungan
-  // (aset umumnya tersimpan di sub-folder, bukan di folder induknya).
-  function traverse(parentId: string, depth: number, parentPath: string): number {
+  // Angka folder dari server sudah memuat seluruh sub-folder di bawahnya,
+  // jadi tidak dijumlahkan lagi di sini. Menjumlahkan ulang akan menghitung
+  // isi sub-folder dua kali.
+  function traverse(parentId: string, depth: number, parentPath: string): void {
     const children = byParent[parentId] || []
     // Sort alphabetically
     children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-    let subtreeTotal = 0
     for (const child of children) {
       const path = depth === 0 ? child.name : parentPath + " / " + child.name
-      const own = child.assets_count ?? 0
-      const index = out.length
       out.push({
         id: child.id,
         name: child.name,
         parent_id: child.parent_id,
         depth,
-        assets_count: own,
-        assets_total: own,
+        assets_count: child.assets_count ?? 0,
         path,
       })
-      const nested = traverse(String(child.id), depth + 1, path)
-      out[index].assets_total = own + nested
-      subtreeTotal += own + nested
+      traverse(String(child.id), depth + 1, path)
     }
-    return subtreeTotal
   }
 
   traverse("root", 0, "")
@@ -323,7 +315,7 @@ function FolderFilterCombobox({
                     ) : null}
                   </span>
                   <span className="shrink-0 pt-0.5 tabular-nums text-[10px] text-muted-foreground">
-                    {f.assets_total}
+                    {f.assets_count}
                   </span>
                 </button>
               ))
