@@ -406,6 +406,20 @@ function FolderTreeList({
           </li>
         )
       })}
+      {/* Tombol + di bawah subfolder terakhir untuk menambah subfolder baru */}
+      {parentId !== null ? (
+        <li className="flex items-center py-0.5 pl-5">
+          <button
+            type="button"
+            onClick={() => onRequestCreate(parentId)}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-primary"
+            title="Tambah subfolder baru"
+            aria-label="Tambah subfolder"
+          >
+            <Icon name="plus" className="size-3.5" aria-hidden="true" />
+          </button>
+        </li>
+      ) : null}
     </ul>
   )
 }
@@ -1501,13 +1515,14 @@ export default function MediaLibrary({
               onClick={() =>
                 setFolderDialog({
                   mode: "create",
-                  parentId: folderId && folderId !== "0" ? Number(folderId) : null,
+                  parentId: null,
                   name: "",
                 })
               }
               className="text-xs font-medium text-primary hover:underline"
+              title="Tambah folder utama"
             >
-              + Baru
+              + Tambah
             </button>
           </div>
           <FolderTree
