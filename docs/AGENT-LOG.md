@@ -5944,3 +5944,19 @@ Perbaikan:
 Verifikasi: typecheck bersih, lint 0 warning. Uji browser: tombol Pilih Media/Selesai 0, toolbar langsung aktif dengan label "Pilih semua (863)", 30 kotak centang langsung terlihat tanpa klik apa pun, klik kartu -> "1 dipilih" dan tombol Hapus aktif, klik lagi -> batal, Pilih semua -> "863 dipilih", tombol pratinjau 30 dan dialognya terbuka, tombol info 30. Tanpa error JS. HEAD diuji di worktree bersih (typecheck + build lulus) sebelum push.
 
 Deploy ke 202: bundel `Library-jj_AvU4k.js` memuat perubahan (Pilih Media 0, Lihat pratinjau 2) dan seluruh fitur sebelumnya tetap utuh (area gulir popup, Pilih semua, pilihan hapus folder, penyaring berkas sistem). Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-no-mode-20261014-224021`.
+## 2026-10-15 06:40 UTC | zcode | Standard | tombol pilih teks ala cart dan panel aksi kondisional di Media Library
+
+Owner: "checkbox dan panel tidak langsung aktif, tapi harus klik tombol pilih ... tombol pilih hanya text mirip pilih di cart ... pindah tombol batal ke checkbox pilih semua ... (N) hanya muncul jika checkbox di centang, bukan pilih semua (N) N dipilih".
+
+Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
+- State `selectMode` diaktifkan lewat tombol teks murni "Pilih" di atas galeri (gaya Cart: `text-xs font-semibold text-primary`).
+- Sebelum tombol "Pilih" ditekan: panel toolbar aksi dan checkbox di setiap kartu TIDAK MUNCUL sama sekali; klik kartu membuka pratinjau seperti biasa.
+- Setelah tombol "Pilih" ditekan: panel toolbar muncul dan checkbox di kartu aktif/muncul.
+- Checkbox "Pilih semua":
+  - Saat belum dicentang: teks murni "Pilih semua" (tanpa angka dan tanpa teks terpisah "N dipilih").
+  - Saat dicentang: teks berubah menjadi "Pilih semua (N)".
+- Tombol "Batal" dipindah ke sebelah kiri, tepat di samping checkbox "Pilih semua", untuk keluar dari mode pilih dan menutup panel.
+- Di sebelah kanan berjejer tombol aksi: Hapus, Arsipkan, (Pulihkan jika tab arsip), dan dropdown Pindah ke... (disabled jika belum ada yang dipilih).
+
+Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol teks "Pilih" ada saat awal, panel dan checkbox tersembunyi, klik kartu pratinjau OK; klik "Pilih" memunculkan panel, checkbox kartu aktif, label awal "Pilih semua", centang satu jadi "Pilih semua (1)", centang semua jadi "Pilih semua (863)", klik "Batal" menutup panel dan kembali ke awal.
+Deploy ke 202: bundel `Library-BFisuXbt.js` memuat perubahan, izin storage OK, HTTP 200 OK.
