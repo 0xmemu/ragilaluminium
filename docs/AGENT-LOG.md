@@ -6002,3 +6002,16 @@ konfigurasi berahasia dalam bentuk terbuka. Sudah dipindahkan ke /tmp lalu
 dihapus, sehingga tidak ada rahasia terbuka tertinggal di direktori backup.
 Penghapusan langsung di /root/backups diblokir guard, jadi pemindahan ke /tmp
 dipakai sebagai jalur yang diizinkan.
+
+## 2026-10-15 07:12 UTC | zcode | Standard | tombol + subfolder di bawah subfolder terakhir dan + Tambah untuk root folder
+
+Owner (15 Okt 2026):
+- Tombol "+ Baru" di header sidebar diganti dengan "+ Tambah" dan fungsinya hanya untuk menambahkan folder root (parentId: null).
+- Menambah satu tombol "+" di bawah subfolder terakhir dalam folder tertentu, fungsinya untuk menambah subfolder baru ke dalam folder tersebut.
+
+Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
+- Tombol di header sidebar diganti dari "+ Baru" menjadi "+ Tambah", dengan handler `setFolderDialog({ mode: 'create', parentId: null, name: '' })` sehingga selalu membuat folder utama/root tanpa memandang folder apa yang sedang dipilih.
+- Pada `FolderTreeList`, ketika `parentId !== null` (merender anak subfolder suatu folder), di bawah subfolder terakhir ditambahkan elemen item tombol `+` (`aria-label="Tambah subfolder"`) yang memanggil `onRequestCreate(parentId)`.
+
+Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol "+ Tambah" ada di sidebar (+ Baru sudah tidak ada), klik "+ Tambah" membuka dialog buat folder root; expand folder root memunculkan tombol "+" di bawah subfolder terakhir, klik "+" membuka dialog buat subfolder dengan parent id folder terkait. Nol error JS.
+Deploy ke 202: bundel `Library-d6zs--PV.js` memuat perubahan, izin storage OK, HTTP 200 OK.
