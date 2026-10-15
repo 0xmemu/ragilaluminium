@@ -6015,3 +6015,21 @@ Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
 
 Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol "+ Tambah" ada di sidebar (+ Baru sudah tidak ada), klik "+ Tambah" membuka dialog buat folder root; expand folder root memunculkan tombol "+" di bawah subfolder terakhir, klik "+" membuka dialog buat subfolder dengan parent id folder terkait. Nol error JS.
 Deploy ke 202: bundel `Library-d6zs--PV.js` memuat perubahan, izin storage OK, HTTP 200 OK.
+## 2026-10-15 07:35 UTC | zcode | Standard | tombol preview dan pasang dihapus, titik 3 jadi dropdown aksi (Pasang, Hapus, Detail)
+
+Owner (15 Okt 2026):
+- Hapus tombol preview terpisah di kartu (preview dilakukan hanya dengan klik gambar).
+- Hapus tombol Pasang langsung di kartu.
+- Pindahkan tombol titik 3 ke kanan bawah card bagian kanan, berfungsi sebagai dropdown aksi berisi opsi: Pasang, Hapus, Detail.
+
+Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
+- Tombol preview (ikon expand) di sudut kanan atas kartu dihapus total; tombol salin URL dikembalikan ke posisi `right-1.5 top-1.5`.
+- Klik gambar/kartu saat mode normal (`!selectMode`) langsung membuka dialog pratinjau (`previewAsset`).
+- Tombol teks "Pasang" langsung di kanan bawah kartu dihapus.
+- Tombol titik 3 (`dots-three-vertical`) diposisikan di baris bawah kartu sebelah kanan nama file, berfungsi sebagai `DropdownMenu` Radix dengan 3 item aksi:
+  1. "Pasang": memanggil `setAttachingId(asset.id)` untuk memasang ke produk.
+  2. "Hapus": memicu dialog konfirmasi hapus tunggal untuk aset tersebut via `runBulkAction('delete', [asset.id])`.
+  3. "Detail": memanggil `setInfoAsset(asset)` untuk melihat info/detail media.
+
+Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol expand 0 (terhapus), tombol Pasang langsung 0 (terhapus), klik gambar membuka dialog pratinjau (TRUE), tombol titik 3 ada dan membuka menu dropdown dengan opsi Pasang, Hapus, Detail (semua TRUE), klik Detail membuka dialog info media, klik Hapus membuka konfirmasi hapus. Nol error JS.
+Deploy ke 202: bundel `Library-CH7BQFL0.js` memuat perubahan, izin storage OK, HTTP 200 OK.
