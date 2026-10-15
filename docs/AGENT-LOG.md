@@ -6110,3 +6110,19 @@ Verifikasi:
 
 Catatan: skrip trafik di 202 identik dengan versi repo
 (scripts/prod/monitoring/scripts_traffic_check.sh, md5 2ae94d5e...).
+
+## 2026-10-15 08:15 UTC | zcode | Standard | alur kerja tambah subfolder inline langsung di list tanpa popup
+
+Owner (15 Okt 2026):
+- Saat admin klik "+" di bawah subfolder terakhir, muncul form inline di titik tombol "+" berada seukuran dengan list subfolder, seperti form biasa.
+- Saat menekan Enter, subfolder langsung terbuat dan terpasang otomatis tanpa popup lagi.
+
+Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
+- Di komponen `FolderTreeList`, ketika tombol `+` di bawah subfolder terakhir diklik, tombol tersebut digantikan oleh input baris inline yang seukuran item subfolder lainnya, dengan ikon folder di kiri dan input teks auto-focus (`placeholder="Nama subfolder…"`).
+- Pada event `onKeyDown` input:
+  - Tekan `Enter`: mengirimkan request `POST /admin/media/folders` dengan payload `name` dan `parent_id`. Setelah berhasil, input tertutup dan subfolder baru langsung muncul di daftar pohon folder via `router.reload({ only: ['folders'] })`.
+  - Tekan `Escape` atau klik di luar (blur saat kosong): membatalkan inline form dan mengembalikan tombol `+`.
+- Popup dialog `FolderNameDialog` tidak lagi muncul untuk pembuatan subfolder (hanya digunakan untuk folder utama root melalui tombol `+ Tambah`).
+
+Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: klik tombol `+` di bawah subfolder memunculkan input inline di list (popup dialog = 0, FALSE), ketik nama subfolder lalu tekan Enter menghasilkan POST 302, input tertutup otomatis, dan subfolder baru langsung tampil di daftar folder. Nol error JS.
+Deploy ke 202: bundel `Library-eYvTRqeZ.js` memuat perubahan, izin storage OK, HTTP 200 OK.
