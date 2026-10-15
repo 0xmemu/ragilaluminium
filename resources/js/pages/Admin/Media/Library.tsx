@@ -109,7 +109,9 @@ function FolderTreeList({
   expandedIds,
   onToggleExpand,
   parentId,
-  onRequestCreate,
+  inlineCreatingParentId,
+  onRequestInlineCreate,
+  onCancelInlineCreate,
   onRequestRename,
 }: {
   nodes: FolderNode[]
@@ -119,8 +121,12 @@ function FolderTreeList({
   onToggleExpand: (id: number) => void
   /** Parent dari level ini; null = folder root. Dipakai untuk reorder sibling. */
   parentId: number | null
-  /** Buka dialog buat subfolder (parentId = folder tempat subfolder dibuat). */
-  onRequestCreate: (parentId: number | null) => void
+  /** ID folder parent yang sedang membuat subfolder inline. */
+  inlineCreatingParentId?: number | null
+  /** Aktifkan form inline untuk menambah subfolder baru ke parentId. */
+  onRequestInlineCreate?: (parentId: number) => void
+  /** Batalkan form inline. */
+  onCancelInlineCreate?: () => void
   /** Buka dialog ubah nama folder. */
   onRequestRename: (folderId: number, currentName: string) => void
 }) {
@@ -128,7 +134,34 @@ function FolderTreeList({
   const [order, setOrder] = React.useState<FolderNode[]>(nodes)
   const [dragIndex, setDragIndex] = React.useState<number | null>(null)
   const [dragTarget, setDragTarget] = React.useState<number | null>(null)
+  const [inlineName, setInlineName] = React.useState("")
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const isInlineOpen = parentId !== null && inlineCreatingParentId === parentId
   const menuContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  function submitInline() {
+    const nama = inlineName.trim()
+    if (!nama || isSubmitting || parentId === null) return
+    setIsSubmitting(true)
+    const fd = new FormData()
+    fd.append("name", nama)
+    fd.append("parent_id", String(parentId))
+    router.post(routeUrl("admin.media.folders.store"), fd, {
+      preserveState: true,
+      preserveScroll: true,
+      onFinish: () => setIsSubmitting(false),
+      onSuccess: () => {
+        setInlineName("")
+        onCancelInlineCreate?.()
+        router.reload({ only: ["folders"] })
+      },
+    })
+  }
+
+  function cancelInline() {
+    setInlineName("")
+    onCancelInlineCreate?.()
+  }
 
   React.useEffect(() => {
     if (menuFor === null) return
@@ -222,12 +255,12 @@ function FolderTreeList({
     setMenuFor(null)
   }
 
-  function createSubfolder(parentId: number) {
+  function createSubfolder(folderId: number) {
     setMenuFor(null)
-    if (!expandedIds[parentId]) {
-      onToggleExpand(parentId)
+    if (!expandedIds[folderId]) {
+      onToggleExpand(folderId)
     }
-    window.setTimeout(() => onRequestCreate(parentId), 0)
+    onRequestInlineCreate?.(folderId)
   }
 
   return (
@@ -395,7 +428,7 @@ function FolderTreeList({
               </div>
             </div>
 
-            {hasChildren && isExpanded ? (
+            {((hasChildren || inlineCreatingParentId === node.id) && isExpanded) ? (
               <div className="ml-2.5 border-l border-border pl-2">
                 <FolderTreeList
                   nodes={node.children}
@@ -404,7 +437,9 @@ function FolderTreeList({
                   expandedIds={expandedIds}
                   onToggleExpand={onToggleExpand}
                   parentId={node.id}
-                  onRequestCreate={onRequestCreate}
+                  inlineCreatingParentId={inlineCreatingParentId}
+                  onRequestInlineCreate={onRequestInlineCreate}
+                  onCancelInlineCreate={onCancelInlineCreate}
                   onRequestRename={onRequestRename}
                 />
               </div>
@@ -412,19 +447,50 @@ function FolderTreeList({
           </li>
         )
       })}
-      {/* Tombol + di bawah subfolder terakhir untuk menambah subfolder baru */}
+      {/* Inline Form atau Tombol + di bawah subfolder terakhir */}
       {parentId !== null ? (
-        <li className="flex items-center py-0.5 pl-5">
-          <button
-            type="button"
-            onClick={() => onRequestCreate(parentId)}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-primary"
-            title="Tambah subfolder baru"
-            aria-label="Tambah subfolder"
-          >
-            <Icon name="plus" className="size-3.5" aria-hidden="true" />
-          </button>
-        </li>
+        isInlineOpen ? (
+          <li className="flex items-center py-0.5">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border border-primary bg-surface px-2 py-1 shadow-xs">
+              <Icon name="folder" className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+              <input
+                type="text"
+                value={inlineName}
+                onChange={(e) => setInlineName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    submitInline()
+                  } else if (e.key === "Escape") {
+                    e.preventDefault()
+                    cancelInline()
+                  }
+                }}
+                onBlur={() => {
+                  if (!inlineName.trim() && !isSubmitting) {
+                    cancelInline()
+                  }
+                }}
+                disabled={isSubmitting}
+                placeholder="Nama subfolder…"
+                className="h-6 w-full min-w-0 bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground outline-none"
+                autoFocus
+              />
+            </div>
+          </li>
+        ) : (
+          <li className="flex items-center py-0.5 pl-5">
+            <button
+              type="button"
+              onClick={() => onRequestInlineCreate?.(parentId)}
+              className="flex size-6 items-center justify-center rounded text-muted-foreground transition hover:bg-card-hover hover:text-primary"
+              title="Tambah subfolder baru"
+              aria-label="Tambah subfolder"
+            >
+              <Icon name="plus" className="size-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        )
       ) : null}
     </ul>
   )
@@ -545,7 +611,7 @@ function FolderTree({
   nodes,
   currentFolderId,
   onSelect,
-  onRequestCreate,
+  onRequestCreate: _onRequestCreate,
   onRequestRename,
 }: {
   nodes: FolderNode[]
@@ -555,6 +621,7 @@ function FolderTree({
   onRequestRename: (folderId: number, currentName: string) => void
 }) {
   const [folderQuery, setFolderQuery] = React.useState("")
+  const [inlineCreatingParentId, setInlineCreatingParentId] = React.useState<number | null>(null)
   const [searchMenuFor, setSearchMenuFor] = React.useState<number | null>(null)
   const searchMenuRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -693,10 +760,11 @@ function FolderTree({
 
   function createSearchSubfolder(parentId: number) {
     setSearchMenuFor(null)
+    setFolderQuery("")
     if (!expandedIds[parentId]) {
       handleToggleExpand(parentId)
     }
-    window.setTimeout(() => onRequestCreate(parentId), 0)
+    setInlineCreatingParentId(parentId)
   }
 
   return (
@@ -744,7 +812,9 @@ function FolderTree({
           expandedIds={expandedIds}
           onToggleExpand={handleToggleExpand}
           parentId={null}
-          onRequestCreate={onRequestCreate}
+          inlineCreatingParentId={inlineCreatingParentId}
+          onRequestInlineCreate={(pId) => setInlineCreatingParentId(pId)}
+          onCancelInlineCreate={() => setInlineCreatingParentId(null)}
           onRequestRename={onRequestRename}
         />
       ) : filtered.length === 0 ? (
