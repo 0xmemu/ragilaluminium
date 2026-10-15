@@ -202,4 +202,26 @@ if [ -f "$TG_LOG" ]; then
   fi
 fi
 
+# 6) Arsip media tambah-saja. Bucket produksi tidak mendukung versioning, dan
+#    penghapusan media di panel admin benar-benar menghapus berkasnya, jadi
+#    arsip ini satu-satunya jalan memulihkan objek yang terhapus. Arsip yang
+#    tertinggal harus terlihat sebelum objeknya benar-benar dibutuhkan.
+if OUT_MEDIA=$(timeout "$R2_TIMEOUT" python3 "$ALERT_DIR/media_archive_gap.py" 2>>"$LOG"); then
+  GAP=$(printf '%s' "$OUT_MEDIA" | tr -d '[:space:]')
+  if ! angka_sah "$GAP"; then
+    kritis "MEDIA-ARCHIVE" "Pemeriksaan arsip media mengembalikan nilai tidak sah (keluaran: '${OUT_MEDIA}'). Keadaan arsip tidak dapat dipastikan."
+  elif [ "$GAP" -gt 0 ]; then
+    kritis "MEDIA-ARCHIVE" "Ada ${GAP} objek media di produksi yang belum masuk arsip. Objek itu belum terlindungi dari penghapusan."
+  else
+    pulih "MEDIA-ARCHIVE" "arsip media lengkap kembali."
+  fi
+else
+  RC=$?
+  if [ "$RC" = "124" ]; then
+    kritis "MEDIA-ARCHIVE" "Pemeriksaan arsip media melewati batas ${R2_TIMEOUT}s (timeout). Keadaan arsip tidak dapat dipastikan."
+  else
+    kritis "MEDIA-ARCHIVE" "Pemeriksaan arsip media gagal dijalankan (kode $RC). Keadaan arsip tidak dapat dipastikan; lihat $LOG."
+  fi
+fi
+
 catat "=== selesai ==="

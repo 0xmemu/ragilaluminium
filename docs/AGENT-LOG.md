@@ -6033,3 +6033,40 @@ Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
 
 Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol expand 0 (terhapus), tombol Pasang langsung 0 (terhapus), klik gambar membuka dialog pratinjau (TRUE), tombol titik 3 ada dan membuka menu dropdown dengan opsi Pasang, Hapus, Detail (semua TRUE), klik Detail membuka dialog info media, klik Hapus membuka konfirmasi hapus. Nol error JS.
 Deploy ke 202: bundel `Library-CH7BQFL0.js` memuat perubahan, izin storage OK, HTTP 200 OK.
+## 2026-10-15 07:35 UTC | zcode-backup-audit | Deep | paket D: arsip media tambah-saja + pemulihan terbukti
+
+Mengapa: bucket ra-media-prod TIDAK mendukung versioning (R2 menjawab
+NotImplemented untuk PutBucketVersioning), sehingga objek yang terhapus atau
+tertimpa tidak bisa dipulihkan. Penghapusan media lewat panel admin juga sudah
+benar-benar menghapus berkasnya di R2 sejak cascade dipasang.
+
+Bukti bahwa risikonya nyata, bukan teoretis: saat paket ini dikerjakan, jumlah
+objek di ra-media-prod turun dari 353 menjadi 335 (18 berkas), dan jumlah aset
+siap di database turun dari 115 menjadi 109. Enam aset dihapus lewat panel admin
+dan berkasnya benar-benar hilang dari bucket.
+
+Dipasang di 202 (versi terkontrol di scripts/prod/backup/):
+- media-archive.py: menyalin objek media yang belum ada di arsip ke
+  ra-backup-prod/media/ memakai salinan sisi server. TAMBAH-SAJA: tidak menimpa,
+  tidak menghapus, bukan mirror. Mode --lapor dan --verifikasi untuk pemeriksaan.
+- media-restore.py: memulihkan objek dari arsip. Bawaannya TIDAK menimpa objek
+  yang masih ada di produksi; --timpa harus disebut eksplisit.
+- media_archive_gap.py: melaporkan jumlah objek produksi yang belum terarsip.
+- backup-alert.sh: ditambah pemeriksaan MEDIA-ARCHIVE memakai skrip gap itu.
+
+Jadwal: cron root 15 4 * * * (harian), setelah config-backup pukul 03:45.
+Crontab lama dicadangkan ke /root/backups/crontab-before-media-archive.txt.
+
+Verifikasi:
+- Arsip pertama: 335 objek, 26.67 MB, 0 gagal. --verifikasi: 0 beda ukuran,
+  0 objek hanya di salah satu sisi.
+- Uji pemulihan sungguhan: satu objek dihapus dari produksi, terdeteksi sebagai
+  "hilang dari produksi tapi ada di arsip: 1 objek", lalu dipulihkan (1 gagal 0),
+  dan akses publiknya kembali HTTP 200 sebesar 75.390 byte, sama seperti aslinya.
+- Uji deteksi monitor dengan stub, tiga putaran: celah 3 objek menghasilkan
+  MEDIA-ARCHIVE, arsip lengkap menghasilkan PULIH dan state bersih, dan skrip
+  gap yang hilang menghasilkan MEDIA-ARCHIVE (bukan sehat).
+
+Catatan: pemeriksaan arsip media ditambahkan ke monitor backup supaya arsip yang
+tertinggal terlihat sebelum objeknya benar-benar dibutuhkan, dan supaya kegagalan
+pemeriksaan tidak terbaca sebagai "arsip lengkap".
