@@ -6388,3 +6388,55 @@ yang memang sudah diketahui dan sengaja dibiarkan dari uji impor sebelumnya, buk
 perubahan unggah media. Tidak dihapus tanpa keputusan owner.
 
 Agent: zcode
+
+## 2026-10-16 02:00 UTC | zcode | Standard | samakan cakupan folder di pemilih media, arsip, dan angka klien
+
+Lanjutan dari entri "folder induk Media Library memuat media dari subfolder" (commit 32695320). Aturan
+"satu folder = folder itu plus seluruh turunannya" baru dipakai di daftar galeri, belum merata.
+
+Istilah: CAKUPAN FOLDER = himpunan folder yang ikut terhitung saat satu folder dipilih.
+
+Yang berubah (commit aca37055, dan penjaga di 42f6938a):
+- `MediaPickerController`: angka folder memakai `MediaFolder::deepAssetCounts()`. Sebelumnya
+  `withCount('assets')`, yaitu aset langsung saja.
+- `MediaFolderController::tree()` (endpoint JSON `admin.media.folders.tree`): angka folder juga memuat
+  subfolder. Endpoint ini TIDAK dipakai UI, tapi dibiarkan salah berarti jadi jebakan bagi pemanggil
+  berikutnya.
+- `MediaFolderController::allDescendantIds()` memakai `MediaFolder::descendantIds()`. Ini penulisan
+  pohon yang KETIGA dan sekarang hilang; aturannya satu sumber di model.
+- `MediaFolderController::archive()` mengarsipkan seluruh turunan, folder dan asetnya. Sebelumnya
+  hanya aset yang menempel langsung yang diarsipkan, sementara subfolder cuma ditandai `archived_at`
+  sehingga asetnya tetap tampil, dan folder lebih dalam tidak tersentuh. Bertentangan dengan janji
+  dialog "Aset di dalamnya ikut diarsipkan."
+- Dua klien berhenti menjumlahkan sendiri angka anak-anaknya. Server sudah mengirim angka yang memuat
+  subfolder, jadi penjumlahan di klien menghitung isi subfolder DUA KALI. Ini cacat yang lahir dari
+  entri sebelumnya (angka server berubah, klien masih menjumlahkan), bukan cacat lama. Field
+  `assets_total` dihapus dari `Library.tsx` dan `media-picker.tsx`, angka tampil memakai
+  `assets_count` dari server. Dijaga `tests/frontend/media-folder-count.test.ts`.
+
+Dampak spec: tidak berubah. Tidak ada rute, kolom, enum, atau bentuk JSON baru. Bentuk balasan
+`GET admin/media/picker` berubah pada isi `folders[].assets_count` (kini memuat subfolder) dan
+`parent_id` kini selalu angka atau null; tidak ada klien lain yang membaca endpoint ini.
+
+Dua kejanggalan yang DITEMUKAN tetapi SENGAJA TIDAK diubah, karena mengubah perilaku/angka dan
+butuh keputusan owner:
+1. `archived_at` folder ditulis tapi tidak pernah dibaca di mana pun. Jadi "Arsipkan folder" hanya
+   menyembunyikan aset di dalamnya; foldernya sendiri tetap tampil seperti biasa. Tidak ada aksi
+   batal-arsip folder (route `unarchive`/`restore` hanya ada untuk produk, aset media, dan FAQ).
+2. Angka folder di sidebar menghitung SEMUA aset termasuk yang terarsip, sedangkan daftar galeri
+   menyembunyikan aset terarsip secara bawaan. Jadi folder yang sudah diarsipkan bisa tampil "6"
+   padahal galerinya kosong, cerminan masalah awal yang dilaporkan owner. Menyamakannya berarti
+   mengubah angka yang tampil, jadi menunggu keputusan.
+
+Untuk agent berikutnya: jangan kembalikan `withCount('assets')` atau penjumlahan angka folder di
+klien untuk Media Library. Satu folder bermakna folder + seluruh turunannya di daftar, pemilih
+media, aksi massal, dan arsip folder.
+
+Bukti: `php artisan test --filter=Media` 159 lolos (termasuk 4 penjaga baru); Vitest 380 lolos;
+typecheck dan eslint bersih. Live 202 rilis `20261016015532-media-folder-guard` commit `42f6938a`:
+pemilih media folder 18 = 66 aset dan subfolder 29 = 6 aset, galeri folder 18 = 66 aset, arsip folder
+induk diuji di dalam transaksi lalu di-rollback (aset subfolder terarsip 0 menjadi 6 dari 6,
+subfolder ditandai terarsip 1, lalu kembali 0 setelah rollback sehingga tidak ada data produksi yang
+berubah), beranda 200, dan bundel build tidak lagi memuat `assets_total`.
+
+Agent: zcode
