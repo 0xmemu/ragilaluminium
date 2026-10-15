@@ -1159,11 +1159,8 @@ export default function MediaLibrary({
   >(null)
   const [folderSaving, setFolderSaving] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<number[]>([])
-  // Pemilihan massal SELALU aktif (owner 14 Okt 2026: "checkbox dan panel
-  // tidak langsung aktif, tapi harus klik tombol 'pilih media'"). Tidak ada
-  // lagi mode terpisah: kotak centang kartu selalu tampil, dan klik kartu
-  // langsung memilih/membatalkan pilihan. Pratinjau dipindah ke tombol
-  // tersendiri di kartu supaya kemampuan itu tidak hilang.
+  // Mode pilih aktif jika tombol teks 'Pilih' ditekan (mirip Cart).
+  const [selectMode, setSelectMode] = React.useState(false)
   const [previewAsset, setPreviewAsset] = React.useState<(typeof assets)[number] | null>(null)
   // Aset yang info singkatnya (titik tiga) sedang terbuka.
   const [infoAsset, setInfoAsset] = React.useState<(typeof assets)[number] | null>(null)
@@ -1389,6 +1386,11 @@ export default function MediaLibrary({
     setSelectedIds([])
   }
 
+  function cancelSelectMode() {
+    clearSelection()
+    setSelectMode(false)
+  }
+
   /** Filter aktif, ikut dikirim saat sasaran aksi adalah "semua". */
   function scopeParams(): Record<string, string> {
     const params: Record<string, string> = {}
@@ -1559,85 +1561,101 @@ export default function MediaLibrary({
             </Button>
           </div>
 
-          {/* Toolbar seleksi & aksi massal, selalu tampil dan langsung bisa
-              dipakai tanpa mode perantara. Tombol aksi tidak disembunyikan
-              sampai ada yang dipilih; "Pilih semua" menyasar seluruh folder +
-              filter aktif, bukan satu halaman. */}
-          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 px-3">
-            <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-foreground">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-border accent-primary"
-                checked={selectAllScope}
-                ref={(node) => {
-                  if (node) node.indeterminate = !selectAllScope && selectedIds.length > 0
-                }}
-                disabled={totalInScope === 0}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    setSelectAllScope(true)
-                    setSelectedIds([])
-                  } else {
-                    clearSelection()
-                  }
-                }}
-                aria-label="Pilih semua media pada folder dan filter aktif"
-              />
-              Pilih semua ({totalInScope})
-            </label>
-
-            {hasSelection ? (
-              <span className="text-xs text-muted-foreground" role="status">
-                <span className="tabular-nums font-semibold text-foreground">{selectedCount}</span> dipilih
-              </span>
-            ) : null}
-
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <ConfirmAction
-                trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Hapus</Button>}
-                title="Hapus aset terpilih?"
-                description="Aset yang masih dipakai produk/banner akan diarsipkan, bukan dihapus."
-                confirmLabel="Hapus"
-                onConfirm={() => runBulkAction("delete")}
-              />
-              <ConfirmAction
-                trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Arsipkan</Button>}
-                title="Arsipkan aset terpilih?"
-                description="Aset akan disembunyikan dari daftar aktif."
-                confirmLabel="Arsipkan"
-                onConfirm={() => runBulkAction("archive")}
-              />
-              {/* Pulihkan hanya relevan saat daftar sedang menampilkan aset
-                  diarsipkan; tombolnya muncul di situ saja. */}
-              {visibility === "archived" ? (
-                <ConfirmAction
-                  trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Pulihkan</Button>}
-                  title="Pulihkan aset terpilih?"
-                  description="Aset akan tampil kembali di daftar aktif."
-                  confirmLabel="Pulihkan"
-                  onConfirm={() => runBulkAction("restore")}
-                />
-              ) : null}
-
-              <Select
-                value={bulkMoveTarget}
-                onChange={(e) => setBulkMoveTarget(e.target.value)}
-                className="w-52"
-                disabled={!hasSelection}
-                aria-label="Pindah ke folder"
+          {/* Tombol teks Pilih (mirip di Cart), aktifkan mode pilih dan munculkan panel */}
+          {!selectMode && assets.length > 0 ? (
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setSelectMode(true)}
+                className="text-xs font-semibold text-primary transition hover:opacity-80"
               >
-                <option value="">Pindah ke…</option>
-                <option value="0">Inbox (tanpa folder)</option>
-                {flattenFolders(folders).map((f) => (
-                  <option key={f.id} value={f.id}>{f.indent}{f.name} ({f.assets_count})</option>
-                ))}
-              </Select>
-              {bulkMoveTarget ? (
-                <Button type="button" size="sm" disabled={!hasSelection} onClick={bulkMove}>Pindahkan</Button>
-              ) : null}
-              <Button type="button" variant="ghost" size="sm" disabled={!hasSelection} onClick={clearSelection}>Batal</Button>
+                Pilih
+              </button>
             </div>
-          </div>
+          ) : null}
+
+          {/* Panel toolbar aksi: hanya muncul jika tombol 'Pilih' ditekan */}
+          {selectMode ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 px-3">
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-foreground">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-border accent-primary"
+                    checked={selectAllScope}
+                    ref={(node) => {
+                      if (node) node.indeterminate = !selectAllScope && selectedIds.length > 0
+                    }}
+                    disabled={totalInScope === 0}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setSelectAllScope(true)
+                        setSelectedIds([])
+                      } else {
+                        clearSelection()
+                      }
+                    }}
+                    aria-label="Pilih semua media pada folder dan filter aktif"
+                  />
+                  {/* (N) hanya muncul jika dicentang, tanpa teks 'N dipilih' */}
+                  <span>{hasSelection ? `Pilih semua (${selectedCount})` : "Pilih semua"}</span>
+                </label>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelSelectMode}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Batal
+                </Button>
+              </div>
+
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <ConfirmAction
+                  trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Hapus</Button>}
+                  title="Hapus aset terpilih?"
+                  description="Aset yang masih dipakai produk/banner akan diarsipkan, bukan dihapus."
+                  confirmLabel="Hapus"
+                  onConfirm={() => runBulkAction("delete")}
+                />
+                <ConfirmAction
+                  trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Arsipkan</Button>}
+                  title="Arsipkan aset terpilih?"
+                  description="Aset akan disembunyikan dari daftar aktif."
+                  confirmLabel="Arsipkan"
+                  onConfirm={() => runBulkAction("archive")}
+                />
+                {visibility === "archived" ? (
+                  <ConfirmAction
+                    trigger={<Button type="button" variant="secondary" size="sm" disabled={!hasSelection}>Pulihkan</Button>}
+                    title="Pulihkan aset terpilih?"
+                    description="Aset akan tampil kembali di daftar aktif."
+                    confirmLabel="Pulihkan"
+                    onConfirm={() => runBulkAction("restore")}
+                  />
+                ) : null}
+
+                <Select
+                  value={bulkMoveTarget}
+                  onChange={(e) => setBulkMoveTarget(e.target.value)}
+                  className="w-52"
+                  disabled={!hasSelection}
+                  aria-label="Pindah ke folder"
+                >
+                  <option value="">Pindah ke…</option>
+                  <option value="0">Inbox (tanpa folder)</option>
+                  {flattenFolders(folders).map((f) => (
+                    <option key={f.id} value={f.id}>{f.indent}{f.name} ({f.assets_count})</option>
+                  ))}
+                </Select>
+                {bulkMoveTarget ? (
+                  <Button type="button" size="sm" disabled={!hasSelection} onClick={bulkMove}>Pindahkan</Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* Susunan kartu: enam per layar di desktop lebar, lalu mengecil
               bertingkat begitu lebar layar berkurang (2/3/4/5/6 kolom). Kartu
@@ -1650,25 +1668,27 @@ export default function MediaLibrary({
               return (
                 <div
                   key={asset.id}
-                  role="checkbox"
-                  aria-checked={isSelected(asset.id)}
-                  aria-label={`Pilih ${asset.label}`}
+                  role={selectMode ? "checkbox" : "button"}
+                  aria-checked={selectMode ? isSelected(asset.id) : undefined}
+                  aria-label={selectMode ? `Pilih ${asset.label}` : `Lihat pratinjau ${asset.label}`}
                   tabIndex={0}
                   onClick={(e) => {
                     // Tombol/link di dalam card tetap berfungsi normal.
                     const target = e.target as HTMLElement
                     if (target.closest('button, a, input, [data-no-select]')) return
-                    toggleSelected(asset.id)
+                    if (selectMode) toggleSelected(asset.id)
+                    else setPreviewAsset(asset)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       const target = e.target as HTMLElement
                       if (target.closest('button, a, input, [data-no-select]')) return
                       e.preventDefault()
-                      toggleSelected(asset.id)
+                      if (selectMode) toggleSelected(asset.id)
+                      else setPreviewAsset(asset)
                     }
                   }}
-                  className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md ${isSelected(asset.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
+                  className={`group relative cursor-pointer overflow-hidden rounded-lg border bg-card transition-all hover:shadow-md ${selectMode && isSelected(asset.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
                 >
                   <div className="relative aspect-square overflow-hidden bg-muted">
                     {asset.thumb_url ? (
@@ -1723,14 +1743,16 @@ export default function MediaLibrary({
                         <Icon name="rotate-cw" className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
-                    <input
-                      type="checkbox"
-                      checked={isSelected(asset.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={() => toggleSelected(asset.id)}
-                      className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
-                      aria-label={`Pilih ${asset.label}`}
-                    />
+                    {selectMode ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected(asset.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleSelected(asset.id)}
+                        className="absolute left-1.5 top-1.5 size-4 rounded border-border accent-primary"
+                        aria-label={`Pilih ${asset.label}`}
+                      />
+                    ) : null}
                   </div>
                   {/* Kartu sengaja hanya memuat nama aset. Jumlah pemakaian
                       dipindahkan ke dialog info (ikon titik tiga) supaya baris
