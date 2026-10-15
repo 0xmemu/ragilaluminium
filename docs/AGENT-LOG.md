@@ -6219,3 +6219,90 @@ Perbaikan di `resources/js/pages/Admin/Media/Library.tsx` (fungsi `submitInline`
 Verifikasi: typecheck bersih, lint 0 warning. Uji Playwright browser headless: klik `+`, ketik nama "Masuk_2622", tekan Enter -> URL berpindah dari `/admin/media/library` menjadi `/admin/media/library?folder_id=98` (langsung masuk), folder baru tampil di sidebar dengan kelas aktif (`text-primary`), tanpa error JS. Data uji dan akun uji dibersihkan setelah pengujian.
 
 Deploy ke 202: bundel `Library-DmaPboew.js` (49.054 byte, naik dari 48.769 byte). Bukti pembanding: berkas sumber SEBELUM deploy punya 0 kemunculan `cariAnak`, sesudahnya 3 kemunculan; jumlah pemuatan-ulang `only:['folders']` naik dari 2 menjadi 3 di bundel. Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-masuk-folder-20261015-163404`.
+## 2026-10-15 23:40 UTC | zcode | Deep | unggah media: paralel berslot, panel lintas halaman, jejak niat unggah
+
+Owner (15 Okt 2026): "saat ini ada proses upload media, tapi saat saya pindah ke halaman lain lalu
+masuk lagi ke halaman media library, progress bar dan daftar media yg sedang diprose kok
+menghilang", "close browser/windows lalu proses upload gagal sedikit beresiko", lalu ditutup
+dengan "eksekusi dengan cermat ... pastikan sistem berjalan dengan baik dan semua gap dan blocker
+teratasi semua sebelum kamu bilang selesai".
+
+Istilah yang dipakai di bawah: SLOT = izin satu kanal unggah yang berjalan bersamaan. NIAT UNGGAH
+= catatan di server bahwa satu berkas AKAN dikirim, ditulis sebelum byte bergerak.
+
+Empat hal diperbaiki sekaligus.
+
+1. Panel progress hilang saat berpindah halaman. Akarnya: daftar unggahan disimpan sebagai state
+   komponen halaman Media Library, sehingga ikut dibuang saat halaman berganti dan permintaan
+   unggah yang sedang berjalan kehilangan pemiliknya. Antreannya kini hidup di TINGKAT MODUL
+   (`resources/js/lib/media-upload-queue.ts`) dan panelnya dipasang SEKALI di shell admin
+   (`resources/js/components/admin/media-upload-tracker.tsx`), jadi terlihat di halaman mana pun,
+   termasuk Riwayat Media.
+
+2. Unggahan dulu berjalan satu berkas pada satu waktu. Ukur menunjukkan satu koneksi hanya sekitar
+   0,6 MB/detik sementara kapasitas admin sekitar 1,4 MB/detik, jadi kapasitasnya terbuang.
+   Sekarang ada pembatas SLOT berbobot: 4 slot total, video berbobot 2 slot (video 50 MB pada
+   0,6 MB/detik butuh sekitar 85 detik, dan dua video bersamaan sudah batas aman memori server).
+   Uji 10 berkas: berurutan 35,7 detik lawan paralel 12,0 detik (2,97x); ulangan 42,2 detik lawan
+   15,5 detik (2,72x). Delapan kanal tidak menambah, jadi empat adalah titik jenuh.
+
+3. Menutup tab di tengah unggahan dulu tidak meninggalkan jejak apa pun. Sekarang klien mencatat
+   NIAT di server lebih dulu (`POST admin/media/upload-intents`, satu baris per berkas di tabel
+   `media_upload_intents`), lalu endpoint unggah menerima `intent_id` untuk mencatat hasilnya.
+   Command `media:close-stale-intents` (terjadwal tiap 15 menit) menandai baris yang tidak memberi
+   kabar lebih dari 30 menit sebagai `disconnected`, dan memangkas catatan lebih tua dari 14 hari.
+   Media Library menampilkan pemberitahuan berkas yang belum selesai, dengan tombol "Mengerti"
+   yang membuang catatannya.
+
+4. Peringatan keluar (beforeunload) dipasang HANYA selama ada unggahan berjalan, supaya navigasi
+   biasa tidak terganggu.
+
+Perubahan berkas: `resources/js/lib/media-upload-queue.ts` (baru),
+`resources/js/components/admin/media-upload-tracker.tsx` (baru), `app/Models/MediaUploadIntent.php`
+(baru), `app/Console/Commands/CloseStaleUploadIntents.php` (baru),
+`database/migrations/2026_10_15_140000_create_media_upload_intents_table.php` (baru),
+`resources/js/pages/Admin/Media/Library.tsx` (logika unggah dipindah keluar),
+`resources/js/layouts/admin-layout.tsx` (panel dipasang di shell),
+`app/Http/Controllers/Admin/MediaLibraryUploadController.php` (intent_id, dua endpoint, satu
+pembantu), `app/Http/Controllers/Admin/ProductMediaController.php` (prop `uploadIntents`),
+`config/media.php`, `routes/web.php`, `routes/console.php`, `tests/frontend/media-upload-queue.test.ts`,
+`tests/Feature/MediaUploadIntentTest.php`.
+
+Dampak spesifikasi: SPEC_CHANGED_AND_DOCS_UPDATED. Dua rute baru, satu tabel baru, satu prop
+Inertia baru, dua kunci config baru. Dokumen kanonik diperbarui:
+`docs/api-and-routes-ragil-aluminium.md` dan `docs/database-schema-ragil-aluminium.md`. Sitemap
+tidak berubah karena keduanya endpoint JSON, bukan halaman.
+
+Verifikasi:
+- 8 test PHP baru lulus (44 assertion): satu baris per berkas, penolakan sidik jari tidak sah,
+  pembuangan terbatas milik sendiri, penyapu menandai terputus, pemangkasan catatan kedaluwarsa,
+  dry-run tidak mengubah apa pun, prop halaman, dan isolasi antar pengguna.
+- 7 test Vitest baru lulus: batas slot tidak pernah terlampaui, video dihitung dua slot, urutan
+  pilihan admin dipertahankan, tidak buntu saat bobot sama dengan kapasitas, dan definisi
+  "masih berjalan".
+- Suite penuh 46 berkas / 378 test frontend lulus, typecheck bersih, lint 0 warning, build sukses.
+- UJI HIDUP di 209 (Playwright, peramban sungguhan, situs yang berjalan): (a) empat berkas 2,5 MB
+  naik bersamaan, puncak dua permintaan serentak terbukti, panel tetap ada setelah pindah ke
+  Aktivitas Media lewat navigasi Inertia, keempatnya berhasil, dan penghitung beforeunload kembali
+  0 saat tidak ada unggahan; (b) pemberitahuan niat tertinggal muncul dengan nama berkasnya, tombol
+  "Mengerti" menghilangkannya, dan tetap hilang setelah muat ulang. Bukti sisi server: empat baris
+  niat berbagi satu `client_batch_id`, semuanya `done` dan tertaut ke aset, empat aset `ready`.
+- UJI ENDPOINT DI PRODUKSI 202 (tanpa mengunggah berkas, memakai akun sementara yang dihapus
+  sesudahnya): `/login` 200, `POST /login` 302, `GET /admin/media/library` 200 dengan admin,
+  `POST /admin/media/upload-intents` 201 dengan dua id, `POST .../dismiss` 200 `{deleted:2}`, nama
+  berkas terbukti ikut pada props halaman dan hilang setelah dibuang, sidik jari tidak sah ditolak
+  422. Seluruh data uji dibersihkan: akun, sesi, niat, dan satu baris `event_logs`; tabel
+  `media_upload_intents` kembali 0 baris.
+
+Deploy ke 202: `deploy-202.sh --label=media-upload-paralel`, commit 8f78db87, rilis
+`20261015231033-media-upload-paralel`, kesehatan OK. Migrasi `media_upload_intents` dijalankan
+terpisah karena skrip deploy TIDAK menjalankan migrasi. Saat verifikasi, agent lain mendeploy lagi
+(rilis `20261015232628-media-folder-subfolder`, commit 32695320) yang memuat commit ini sebagai
+leluhur; integritas diverifikasi ulang terhadap rilis aktif itu: 10 berkas kunci COCOK
+byte-per-byte dengan commit, tabel, rute, config, dan jadwal terpasang, halaman publik 200.
+
+Catatan untuk kerja berikutnya: skrip deploy 202 tidak menjalankan `php artisan migrate`, sehingga
+migrasi baru harus dijalankan terpisah sesudah symlink `current` berpindah. Kalau tidak, halaman
+yang membaca tabel baru akan 500 walau kesehatan deploy melaporkan OK.
+
+Agent: zcode

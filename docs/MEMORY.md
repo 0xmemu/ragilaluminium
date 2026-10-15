@@ -2928,3 +2928,22 @@ Teks CTA storefront sekarang hidup di kode, bukan di database.
 - Dokumen kanonik ikut diperbarui: `docs/api-and-routes-ragil-aluminium.md`,
   `docs/admin-menu-functions.md`, `docs/PRODUCT-HANDOFF.md`,
   `frontend/docs/UI-CONSISTENCY-CONTRACT.md`, dan ADR-024 ditandai SUPERSEDED.
+
+### 2026-10-15 - Unggah media: paralel berslot, panel lintas halaman, jejak niat unggah
+Milestone: unggah media tidak lagi satu berkas sekaligus, panel progress tidak lagi hilang saat
+berpindah halaman, dan tab yang ditutup di tengah unggahan meninggalkan jejak yang bisa dibaca admin.
+
+- Titik jenuh kanal unggah TERUKUR: 1 kanal sekitar 0,6 MB/detik, 4 kanal sekitar 1,4 MB/detik,
+  8 kanal tidak menambah. Karena itu pembatas slot memakai 4 slot total dan video berbobot 2 slot.
+  Uji 10 berkas: 35,7 detik berurutan lawan 12,0 detik paralel (2,97x).
+- Antrean unggah hidup di tingkat modul (`resources/js/lib/media-upload-queue.ts`) dan panelnya
+  dipasang sekali di shell admin (`resources/js/components/admin/media-upload-tracker.tsx`).
+  Inilah yang membuatnya bertahan lintas halaman.
+- Tabel `media_upload_intents` dan command `media:close-stale-intents` (tiap 15 menit) memberi
+  jejak pada fase "sudah ditekan Mulai Unggah sampai berkas diterima server" yang sebelumnya tidak
+  tercatat. Ambang terputus 30 menit, retensi 14 hari, keduanya di `config/media.php`.
+- JEBAKAN PENTING: `scripts/prod/deploy-202.sh` TIDAK menjalankan `php artisan migrate`. Migrasi
+  baru harus dijalankan terpisah sesudah symlink `current` berpindah.
+- Verifikasi: 8 test PHP, 7 test Vitest, suite frontend 378 test lulus, uji hidup Playwright di 209
+  untuk paralel, panel lintas halaman, beforeunload, dan pemberitahuan niat tertinggal; endpoint
+  produksi diuji langsung (201/200/422) lalu seluruh data uji dibersihkan.
