@@ -142,10 +142,11 @@ function FolderTreeList({
   function submitInline() {
     const nama = inlineName.trim()
     if (!nama || isSubmitting || parentId === null) return
+    const parentUntukMasuk = parentId
     setIsSubmitting(true)
     const fd = new FormData()
     fd.append("name", nama)
-    fd.append("parent_id", String(parentId))
+    fd.append("parent_id", String(parentUntukMasuk))
     router.post(routeUrl("admin.media.folders.store"), fd, {
       preserveState: true,
       preserveScroll: true,
@@ -153,7 +154,32 @@ function FolderTreeList({
       onSuccess: () => {
         setInlineName("")
         onCancelInlineCreate?.()
-        router.reload({ only: ["folders"] })
+        // Muat ulang daftar folder, lalu LANGSUNG MASUK ke folder baru
+        // (permintaan owner 15 Okt 2026) supaya tidak perlu diklik lagi.
+        router.reload({
+          only: ["folders"],
+          onSuccess: (page) => {
+            const daftar =
+              ((page as unknown as { props?: { folders?: FolderNode[] } }).props?.folders) ?? []
+
+            const cariAnak = (list: FolderNode[]): FolderNode | null => {
+              for (const node of list) {
+                if (node.id === parentUntukMasuk) {
+                  return (node.children ?? []).find((anak) => anak.name === nama) ?? null
+                }
+                const dalam = cariAnak(node.children ?? [])
+                if (dalam !== null) return dalam
+              }
+              return null
+            }
+
+            const folderBaru = cariAnak(daftar)
+            if (folderBaru === null) return
+            // Perluas parent agar folder baru terlihat, lalu pilih folder itu.
+            if (!expandedIds[parentUntukMasuk]) onToggleExpand(parentUntukMasuk)
+            onSelect(String(folderBaru.id))
+          },
+        })
       },
     })
   }
