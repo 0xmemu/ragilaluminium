@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\MediaAsset;
+use App\Models\MediaFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -41,7 +42,12 @@ final class MediaLibraryFilter
                 if ((int) $folderId === 0) {
                     $query->whereNull('folder_id'); // Inbox
                 } else {
-                    $query->where('folder_id', (int) $folderId);
+                    // Folder induk ikut memuat media di subfolder bawahnya, supaya
+                    // folder yang isinya tersimpan di subfolder tidak tampak kosong.
+                    // Aksi massal "Pilih semua" memakai penyaring yang sama, jadi
+                    // sasarannya pun menyertakan subfolder.
+                    $folder = MediaFolder::find((int) $folderId);
+                    $query->whereIn('folder_id', $folder ? $folder->descendantIds() : [(int) $folderId]);
                 }
             })
             // Aset yang diarsipkan disembunyikan kecuali diminta lewat filter,

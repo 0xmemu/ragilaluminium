@@ -41,23 +41,8 @@ class MediaPickerController extends Controller
                 // Folder induk harus mencakup sub-folder di bawahnya: aset
                 // umumnya tersimpan di sub-folder, sehingga exact match membuat
                 // folder induk tampak kosong (temuan owner 2026-09-17).
-                $folderIds = [$folderId];
-                $pending = [$folderId];
-                while ($pending !== []) {
-                    $children = MediaFolder::query()
-                        ->whereIn('parent_id', $pending)
-                        ->pluck('id')
-                        ->all();
-
-                    if ($children === []) {
-                        break;
-                    }
-
-                    $pending = array_values(array_diff($children, $folderIds));
-                    $folderIds = array_merge($folderIds, $pending);
-                }
-
-                $query->whereIn('folder_id', array_map('intval', $folderIds));
+                $folder = MediaFolder::find((int) $folderId);
+                $query->whereIn('folder_id', $folder ? $folder->descendantIds() : [(int) $folderId]);
             })
             ->when($q !== '', function ($query) use ($q): void {
                 $query->where(function ($inner) use ($q): void {

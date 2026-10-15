@@ -247,4 +247,89 @@ class MediaLibraryFolderTest extends TestCase
         $this->assertSame(1, (int) $child2->fresh()->sort_order);
         $this->assertSame(2, (int) $child->fresh()->sort_order);
     }
+
+    /** Buat satu aset gambar yang tersimpan di dalam folder. */
+    protected function asetDi(MediaFolder $folder, string $label): MediaAsset
+    {
+        return MediaAsset::create([
+            'kind' => 'image',
+            'label' => $label,
+            'object_key' => 'media-assets/uji/'.$label,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 1,
+            'status' => 'ready',
+            'visibility' => 'visible',
+            'folder_id' => $folder->id,
+        ]);
+    }
+
+    /** Cari satu simpul folder pada pohon sidebar berdasarkan id. */
+    protected function cariSimpul(array $nodes, int $folderId): ?array
+    {
+        foreach ($nodes as $node) {
+            if ((int) $node['id'] === $folderId) {
+                return $node;
+            }
+
+            $dalam = $this->cariSimpul($node['children'] ?? [], $folderId);
+            if ($dalam !== null) {
+                return $dalam;
+            }
+        }
+
+        return null;
+    }
+
+    public function test_daftar_media_folder_induk_memuat_aset_subfolder(): void
+    {
+        $this->actingAs($this->admin());
+
+        $induk = MediaFolder::create(['name' => 'Induk']);
+        $anak = MediaFolder::create(['name' => 'Anak', 'parent_id' => $induk->id]);
+
+        // Persis temuan owner: folder induk tidak menyimpan berkas sendiri,
+        // seluruh isinya ada di subfolder. Dulu halaman menampilkan keadaan
+        // kosong karena penyaringnya menuntut folder_id sama persis.
+        $this->asetDi($anak, 'anak-1.jpg');
+        $this->asetDi($anak, 'anak-2.jpg');
+
+        $props = $this->get(route('admin.media.library', ['folder_id' => $induk->id]))
+            ->assertOk()
+            ->viewData('page')['props'];
+
+        $labels = array_column($props['assets'], 'label');
+        sort($labels);
+        $this->assertSame(['anak-1.jpg', 'anak-2.jpg'], $labels, 'Folder induk harus memuat aset dari subfolder');
+
+        $simpulInduk = $this->cariSimpul($props['folders'], (int) $induk->id);
+        $this->assertNotNull($simpulInduk, 'Folder induk harus ada di pohon sidebar');
+        $this->assertSame(
+            2,
+            (int) $simpulInduk['assets_count'],
+            'Angka sidebar folder induk harus ikut memuat isi subfolder',
+        );
+    }
+
+    public function test_aksi_massal_folder_induk_menyasar_aset_subfolder(): void
+    {
+        $this->actingAs($this->admin());
+
+        $induk = MediaFolder::create(['name' => 'Induk']);
+        $anak = MediaFolder::create(['name' => 'Anak', 'parent_id' => $induk->id]);
+
+        $this->asetDi($anak, 'anak-1.jpg');
+        $this->asetDi($anak, 'anak-2.jpg');
+
+        $this->post(route('admin.media.bulk-action'), [
+            'action' => 'archive',
+            'scope_all' => 1,
+            'scope_folder_id' => (string) $induk->id,
+        ])->assertRedirect();
+
+        $this->assertSame(
+            2,
+            MediaAsset::where('folder_id', $anak->id)->where('visibility', 'archived')->count(),
+            'Pilih semua di folder induk harus menyentuh aset subfolder juga',
+        );
+    }
 }

@@ -158,15 +158,17 @@ class ProductMediaController extends Controller
     protected function folderTree(): array
     {
         $folders = MediaFolder::query()
-            ->withCount('assets')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
-        $build = function (?int $parentId) use ($folders, &$build): array {
+        // Angka di sidebar memuat isi subfolder juga, sama seperti daftarnya:
+        // folder yang isinya tersimpan di subfolder tidak boleh tampak kosong.
+        $deepCounts = MediaFolder::deepAssetCounts();
+        $build = function (?int $parentId) use ($folders, $deepCounts, &$build): array {
             return $folders->where('parent_id', $parentId)->values()->map(fn ($f) => [
                 'id' => $f->id,
                 'name' => $f->name,
-                'assets_count' => (int) $f->assets_count,
+                'assets_count' => (int) ($deepCounts[(int) $f->id] ?? 0),
                 'children' => $build((int) $f->id),
             ])->all();
         };
