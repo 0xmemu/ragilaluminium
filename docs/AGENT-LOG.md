@@ -6126,3 +6126,84 @@ Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
 
 Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: klik tombol `+` di bawah subfolder memunculkan input inline di list (popup dialog = 0, FALSE), ketik nama subfolder lalu tekan Enter menghasilkan POST 302, input tertutup otomatis, dan subfolder baru langsung tampil di daftar folder. Nol error JS.
 Deploy ke 202: bundel `Library-eYvTRqeZ.js` memuat perubahan, izin storage OK, HTTP 200 OK.
+## 2026-10-15 09:10 UTC | zcode-backup-audit | Deep | paket E drill PITR terbukti + paket C audit Redis
+
+### Paket E: drill PITR terisolasi, RTO terukur
+
+Backup dump dan binlog sudah berjalan, tetapi replay binlog belum pernah diuji di
+202. Drill lama hanya menghitung jumlah tabel dan tidak mengukur durasi.
+
+Dua cacat serius ditemukan pada rancangan drill pertama saya, keduanya diperbaiki:
+
+1. TANPA `--rewrite-db`, replay TIDAK memindahkan penulisan. Peristiwa binlog
+   berbasis baris membawa nama database asal, sehingga keluaran mysqlbinlog yang
+   disalurkan ke klien untuk database lain tetap menulis ke `ragil_aluminium`.
+   Akibatnya uji pertama menemui galat duplikat pada database produksi, dan
+   database uji tidak menerima apa pun. Drill sekarang wajib memakai
+   `--rewrite-db`, dan MEMVERIFIKASI bahwa database uji benar-benar bertambah;
+   kalau tidak, drill gagal.
+
+   Integritas produksi diperiksa sesudah kejadian itu: 61 tabel, 109 media_assets,
+   15 cms_pages, 2 users, 81.058 postal_code_mappings, semuanya utuh. Tidak ada
+   perubahan pada database produksi.
+
+2. Versi kedua memakai nama database uji tetap dan `DROP DATABASE IF EXISTS` di
+   awal. Jalannya bertumpuk dengan sisa jalannya sebelumnya, dan hasilnya
+   dilaporkan sebagai "ADA BEDA" padahal masalahnya ada pada prosedur drill, bukan
+   pada data. Drill sekarang memakai nama database uji BERNAMA UNIK per jalan,
+   memeriksa jumlah tabel sesudah restore (harus utuh), berhenti sebagai GAGAL
+   kalau jumlah tabel turun di tengah replay, dan membersihkan database ujinya di
+   akhir termasuk saat gagal.
+
+Hasil drill final (database uji `ragil_pitr_uji_154023`, sudah dibersihkan):
+- dump 3,1 MB, titik awal `binlog.000642` pos 79740
+- restore 48 detik, 61 tabel terbentuk
+- replay 15 binlog (309 MB) dalam 796 detik
+- tabel: sumber=61 hasil=61
+- media_assets 109=109, cms_pages 15=15, users 2=2, products 0=0,
+  postal_code_mappings 81058=81058, jnt_address_masters 81320=81320,
+  media_folders 20=20, cms_testimonials 0=0, semuanya COCOK
+- satu selisih: system_health_snapshots sumber=191 hasil=190. Ini WAJAR dan
+  dijelaskan: tabel itu ditulis terus oleh snapshot kesehatan berkala, sedangkan
+  replay berhenti pada binlog terakhir yang tersedia. Selisih 1 baris adalah
+  aktivitas produksi sesudah titik replay, bukan kegagalan pemulihan.
+
+RTO TERUKUR, bukan asumsi: restore 48 detik + replay 796 detik = 851 detik
+(sekitar 14 menit) untuk 309 MB binlog pada database 61 tabel. RPO mengikuti
+jadwal dump harian (03:17) ditambah binlog per jam, jadi paling buruk sekitar
+1 jam data, dan itu TARGET yang belum dibuktikan dengan uji kehilangan nyata.
+
+### Paket C: audit ketahanan Redis, USULAN saja (tidak ada perubahan)
+
+Sesuai batas cakupan, tidak ada perubahan dan Redis produksi TIDAK direstart.
+
+Keadaan terverifikasi (bukan disimpulkan dari satu logical DB):
+- kunci: hanya db1, 5 kunci, semuanya CACHE (`storefront:model-menu`,
+  `system-health:cpu-stat`, `catalog.taxonomy.v4`, dua turunan modelCards,
+  `cache_tag:products:entries`), semua ber-TTL
+- antrean: pola `queues:*` KOSONG di semua DB yang diperiksa, jadi tidak ada job
+  menunggu, delayed, maupun reserved saat diperiksa
+- sesi: TIDAK di Redis (`SESSION_DRIVER=database`, sesi di MySQL)
+- lock: TIDAK ada kunci lock di Redis
+- persistensi efektif: `appendonly no`, RDB AKTIF
+  (`save 3600 1 300 100 60 10000`), `rdb_changes_since_last_save=32`
+- memori: `maxmemory 512MB`, `maxmemory-policy noeviction`, terpakai 1,49 MB
+- restart policy: `Restart=always`
+
+Risiko yang NYATA, bukan yang dikira-kira: karena `noeviction`, kalau Redis
+mencapai 512 MB, penulisan GAGAL, bukan menyingkirkan kunci lama. Dampaknya bukan
+sekadar cache dingin, tetapi DISPATCH JOB ANTREAN BISA GAGAL. Sekarang risikonya
+jauh (1,49 MB dari 512 MB), jadi ini catatan untuk pertumbuhan, bukan bahaya
+sekarang.
+
+Karena tidak ada job menunggu dan cache aman hilang, RDB sudah memadai untuk
+beban sekarang. AOF akan menambah ketahanan job yang sedang diproses, dengan
+dampak: tambahan disk untuk appendonly, IO tulis lebih sering, dan waktu muat
+ulang lebih lama saat start. Kalau volume antrean tumbuh, usulan aktivasinya:
+`appendonly yes` dan `appendfsync everysec` (kompromi kehilangan maksimal 1 detik
+tanpa memblokir tiap tulis), diikuti `CONFIG REWRITE` supaya bertahan setelah
+restart, dan pemantauan ukuran `appendonly.aof.d` terhadap disk. Rollback:
+`appendonly no` lalu `CONFIG REWRITE`; berkas AOF lama boleh dibiarkan sebagai
+arsip karena tidak dibaca saat AOF mati. Aktivasi dan rollback keduanya
+MEMERLUKAN restart atau setidaknya CONFIG SET, sehingga harus dijadwalkan, bukan
+dilakukan diam-diam.
