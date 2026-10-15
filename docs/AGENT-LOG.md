@@ -6306,3 +6306,47 @@ migrasi baru harus dijalankan terpisah sesudah symlink `current` berpindah. Kala
 yang membaca tabel baru akan 500 walau kesehatan deploy melaporkan OK.
 
 Agent: zcode
+
+## 2026-10-15 18:15 UTC | zcode | Standard | folder induk Media Library memuat media dari subfolder
+
+Owner (15 Okt 2026): "saat di folder dan galeri kosong itu agak aneh ya bro, harusnya kan galeri
+menampilkan seluruh media yang ada di folder tersebut, walau di dalam folder media dipisah dengan
+subfolder, tapi bukan berarti main folder itu kosong".
+
+Istilah yang dipakai di bawah: FOLDER INDUK = folder yang tidak menyimpan berkas sendiri, seluruh
+isinya diletakkan di subfolder di bawahnya. CAKUPAN FOLDER = daftar folder yang ikut terhitung
+saat satu folder dipilih.
+
+Masalah nyata (diukur di produksi 202): folder 18 "Jendela Sliding Polos" berisi 0 aset langsung
+dan 66 aset di 11 subfolder A sampai K. Halaman menampilkan "Belum ada media. Unggah file untuk
+memulai." karena penyaring daftar menuntut `folder_id` sama persis. Angka sidebar juga tampil
+kosong karena `withCount('assets')` menghitung aset langsung saja.
+
+Yang berubah:
+- `MediaFolder::descendantIds()` dan `MediaFolder::deepAssetCounts()` jadi satu sumber aturan
+  cakupan folder (berkas `app/Models/MediaFolder.php`).
+- `MediaLibraryFilter` memakai cakupan itu, jadi daftar galeri DAN aksi massal "Pilih semua" ikut
+  menyertakan subfolder.
+- `MediaPickerController` yang sudah memakai aturan itu sejak temuan 17 Sep kini memakai helper
+  bersama, bukan loop sendiri, supaya aturannya tidak ditulis dua kali.
+- `folderTree()` di `ProductMediaController` memakai `deepAssetCounts()` supaya angka sidebar
+  sejalan dengan isi daftar.
+- Penjaga regresi di `tests/Feature/MediaLibraryFolderTest.php`.
+
+Dampak spec: tidak berubah. Tidak ada rute, kolom, enum, atau bentuk JSON baru; yang berubah hanya
+cakupan penyaring folder dan nilai `assets_count`.
+
+Untuk agent berikutnya: satu folder kini bermakna "folder ini dan seluruh turunannya" pada daftar
+Media Library, pemilih media, dan aksi massal. Jangan kembalikan `where('folder_id', ...)` yang
+menuntut kecocokan persis, dan jangan tulis ulang penelusuran subfolder di tempat lain, pakai
+`descendantIds()`. Aksi massal hapus/arsip pada folder induk kini menyentuh aset subfolder juga,
+sejalan dengan apa yang terlihat di layar.
+
+Bukti: `php artisan test --filter=MediaLibraryFolderTest` 12 lolos (termasuk dua penjaga baru);
+regresi `MediaLibraryBulkScopeTest`, `MediaPickerEndpointTest`, `MediaHistoryFilterTest`,
+`MediaAssetWorkflowTest`, `MediaCascadeDeleteTest` 46 lolos. Live produksi 202, rilis
+`20261015232628-media-folder-subfolder` commit `32695320`: galeri folder 18 memuat 66 aset (dulu 0),
+angka sidebar folder 18 = 66, folder 2 = 43, subfolder A = 6 (tidak berubah), Inbox = 0, halaman
+dirender HTTP 200 tanpa keadaan kosong, beranda 200.
+
+Agent: zcode
