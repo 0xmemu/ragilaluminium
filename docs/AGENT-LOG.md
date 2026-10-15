@@ -5960,3 +5960,45 @@ Perbaikan di `resources/js/pages/Admin/Media/Library.tsx`:
 
 Verifikasi: typecheck bersih, lint 0 warning, 371 test frontend lulus. Uji Playwright browser headless: tombol teks "Pilih" ada saat awal, panel dan checkbox tersembunyi, klik kartu pratinjau OK; klik "Pilih" memunculkan panel, checkbox kartu aktif, label awal "Pilih semua", centang satu jadi "Pilih semua (1)", centang semua jadi "Pilih semua (863)", klik "Batal" menutup panel dan kembali ke awal.
 Deploy ke 202: bundel `Library-BFisuXbt.js` memuat perubahan, izin storage OK, HTTP 200 OK.
+## 2026-10-15 07:10 UTC | zcode-backup-audit | Deep | paket B: backup konfigurasi terenkripsi + kunci dikelola sistem
+
+Mengapa: .env, konfigurasi privat /root/.config/ragilaluminium/, nginx, PHP-FPM,
+systemd, cron, dan skrip operasional tidak punya salinan sama sekali. Kalau server
+hilang, seluruh kredensial (database, R2, J&T, WhatsApp, Telegram) harus disusun
+ulang manual dari ingatan, dan itu membuat pemulihan mustahil, bukan sekadar lama.
+
+Dipasang di 202 (versi terkontrol di scripts/prod/backup/):
+- config-backup.sh: menyusun arsip 31 berkas konfigurasi, memverifikasi gzip,
+  mengenkripsi AES-256-CBC pbkdf2 200000 iterasi, memverifikasi hasil dekripsi
+  sebelum diunggah, menyimpan 14 salinan lokal, lalu mengunggah ke
+  ra-backup-prod/config/. Arsip tidak pernah ditulis dalam bentuk terang ke disk.
+- config-restore.sh: memulihkan ke direktori terpisah, TIDAK menimpa konfigurasi
+  aktif, memeriksa sidik jari lebih dulu.
+- kirim-kunci-backup.sh: mengirim salinan kunci ke Telegram SEKALI, lalu membuat
+  penanda dan menolak kirim ulang.
+
+Kunci dikelola sistem sepenuhnya: dibuat otomatis oleh skrip saat belum ada
+(openssl rand, mode 600 root:root), tidak pernah dicetak ke log atau layar, dan
+tidak ada langkah manual berulang. Owner tidak perlu mengurus kunci.
+
+Jadwal: cron root 45 3 * * * (harian). Crontab lama dicadangkan ke
+/root/backups/crontab-before-config-backup.txt.
+
+Verifikasi:
+- Arsip pertama: 31 berkas, 52 KB, sha256 ea090544..., terunggah ke R2 (HTTP 200).
+- Uji pemulihan terisolasi: sidik jari COCOK, 31 berkas diekstrak, dan tujuh
+  berkas sampel (shared/.env, telegram.env, cloudflare.env, vhost nginx,
+  ragil-queue.service, daily-db-backup.sh, crontab root) md5 identik dengan
+  berkas asli.
+- Kunci terkirim ke Telegram pukul 14:06:16 (1 ok, 0 gagal); percobaan ulang
+  ditolak sesuai rancangan.
+
+Bug yang ditemukan dan diperbaiki saat uji: config-restore.sh memeriksa sidik
+jari dari direktori kerja, padahal berkas .sha256 memuat nama dasar arsip,
+sehingga selalu gagal. Sekarang pemeriksaan dijalankan dari direktori arsip.
+
+Batas: direktori sementara /root/backups/uji-pulih sempat berisi 31 salinan
+konfigurasi berahasia dalam bentuk terbuka. Sudah dipindahkan ke /tmp lalu
+dihapus, sehingga tidak ada rahasia terbuka tertinggal di direktori backup.
+Penghapusan langsung di /root/backups diblokir guard, jadi pemindahan ke /tmp
+dipakai sebagai jalur yang diizinkan.
