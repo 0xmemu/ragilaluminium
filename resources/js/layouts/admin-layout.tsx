@@ -6,6 +6,7 @@ import { AdminCommandSearch } from "@/components/admin/admin-command-search"
 import { ActivityLogBell, type ActivityLogItem } from "@/components/admin/activity-log-bell"
 import { NotificationBell, type NotificationItem } from "@/components/admin/notification-bell"
 import { LiveNotificationManager } from "@/components/admin/live-notification-manager"
+import { MediaUploadTracker } from "@/components/admin/media-upload-tracker"
 import { AdminNavigation } from "@/components/admin/admin-navigation"
 import { Button } from "@/components/admin/ui/button"
 import { AdminBreadcrumbs, resolveAdminBreadcrumb } from "@/components/admin/ui/breadcrumb"
@@ -250,6 +251,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
         <AdminBottomNav onOpenMenu={() => setNavigationOpen(true)} />
+        {/* Panel progress unggah media: dipasang di shell, bukan di halaman
+            Media Library, supaya unggahan yang masih berjalan tetap terlihat
+            walau admin berpindah halaman. */}
+        <MediaUploadTracker />
         <LiveNotificationManager />
       </div>
     </AdminShellContext.Provider>

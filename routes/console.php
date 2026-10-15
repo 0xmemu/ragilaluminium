@@ -48,6 +48,13 @@ Schedule::command('media:prune-logs', [
     '--days' => (int) config('media.log_retention_days', 30),
 ])->dailyAt('03:30')->withoutOverlapping();
 
+// Tutup niat unggah yang tidak pernah memberi kabar (tab ditutup atau koneksi
+// putus di tengah unggahan), lalu pangkas catatan yang sudah kedaluwarsa. Tiap
+// 15 menit supaya admin melihat berkas yang perlu diunggah ulang secepatnya.
+Schedule::command('media:close-stale-intents')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
 // Rilis reservation stok kedaluwarsa (P2-3.2; aman walau feature disabled).
 Schedule::call(function () {
     app(\App\Services\StockReservationService::class)->releaseExpired();

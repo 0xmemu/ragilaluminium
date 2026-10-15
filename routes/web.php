@@ -247,6 +247,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('media/folders/{folder}/archive', [MediaFolderController::class, 'archive'])->name('media.folders.archive');
     Route::delete('media/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('media.folders.destroy');
     Route::post('media/upload', [MediaLibraryUploadController::class, 'upload'])->name('media.upload');
+    // Jejak niat unggah: dicatat klien SEBELUM berkas dikirim, supaya unggahan
+    // yang terputus tetap meninggalkan keterangan yang bisa dibaca admin.
+    Route::post('media/upload-intents', [MediaLibraryUploadController::class, 'intents'])->name('media.upload-intents');
+    Route::post('media/upload-intents/dismiss', [MediaLibraryUploadController::class, 'hapusIntents'])->name('media.upload-intents.dismiss');
     Route::post('media/import-url', [MediaLibraryUploadController::class, 'importUrl'])->name('media.import-url');
     Route::get('media/history', [ProductMediaController::class, 'history'])->name('media.history');
     Route::post('media/logs/{log}/retry', [ProductMediaController::class, 'retryLog'])->name('media.logs.retry');

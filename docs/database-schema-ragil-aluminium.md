@@ -236,6 +236,35 @@ Indexes:
 - IDX on `event`
 - IDX on `created_at`
 
+### 1.5b `media_upload_intents`
+
+Jejak NIAT unggah media: satu baris per berkas, ditulis klien sebelum byte bergerak
+(migrasi 2026-10-15). Sebelumnya fase antara admin menekan "Mulai Unggah" dan berkas
+diterima server tidak tercatat sama sekali, sehingga tab yang ditutup di tengah unggahan
+menghilangkan keterangannya tanpa sisa.
+
+- `id` (`INTEGER`), PK, NN
+- `user_id` (`INTEGER`), NN, FK -> users.id (cascade on delete)
+- `folder_id` (`INTEGER`), nullable, FK -> media_folders.id (null on delete)
+- `client_batch_id` (`VARCHAR` 64), NN; satu aksi unggah klien memakai satu nilai
+- `file_name` (`VARCHAR`), NN
+- `size_bytes` (`BIGINT UNSIGNED`), NN, default 0
+- `checksum` (`VARCHAR` 64), nullable; sidik jari sha256 hex dari klien
+- `status` (`VARCHAR` 20), NN, default `uploading`; salah satu dari `uploading`, `done`, `failed`, `disconnected`
+- `media_asset_id` (`INTEGER`), nullable, FK -> media_assets.id (null on delete); terisi saat status `done`
+- `error_reason` (`VARCHAR`), nullable; sebab penolakan atau keterangan terputus
+- `created_at` (`DATETIME`), nullable
+- `updated_at` (`DATETIME`), nullable
+
+Indexes:
+- `media_upload_intents_status_created_idx` (IDX on `status`, `created_at`)
+- `media_upload_intents_user_batch_idx` (IDX on `user_id`, `client_batch_id`)
+
+Catatan: tabel ini alat bantu operasional, bukan buku besar audit. Command
+`media:close-stale-intents` menandai baris `uploading` yang tidak memberi kabar lebih dari
+`media.upload_intent_timeout_minutes` (bawaan 30 menit) sebagai `disconnected`, lalu memangkas
+baris yang lebih tua dari `media.upload_intent_retention_days` (bawaan 14 hari).
+
 ### 1.6 `sub_models`
 
 - `id` (`INTEGER`), PK, NN

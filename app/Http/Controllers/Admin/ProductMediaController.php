@@ -11,6 +11,7 @@ use App\Models\CmsGalleryItem;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
 use App\Models\MediaProcessingLog;
+use App\Models\MediaUploadIntent;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -117,7 +118,41 @@ class ProductMediaController extends Controller
                 'folder_id' => (string) $request->query('folder_id', ''),
             ],
             'historyHref' => route('admin.media.history', array_filter(['origin' => $knownOrigin])),
+            // Berkas yang belum selesai diunggah, supaya admin tahu apa yang
+            // perlu diulang. Sebelumnya keadaan ini hilang tanpa jejak begitu
+            // tab ditutup di tengah unggahan.
+            'uploadIntents' => $this->intentsTertinggal($request),
         ]);
+    }
+
+    /**
+     * Niat unggah milik pengguna ini yang belum selesai.
+     *
+     * Hanya `failed` dan `disconnected` yang diambil: keduanya berarti berkas
+     * belum masuk dan perlu diunggah ulang. `uploading` sengaja dilewati karena
+     * masih bisa selesai, dan `done` sudah terwakili asetnya sendiri di daftar.
+     */
+    protected function intentsTertinggal(Request $request): array
+    {
+        return MediaUploadIntent::query()
+            ->where('user_id', (int) $request->user()->id)
+            ->whereIn('status', [
+                MediaUploadIntent::STATUS_FAILED,
+                MediaUploadIntent::STATUS_DISCONNECTED,
+            ])
+            ->where('created_at', '>=', now()->subDays(7))
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get(['id', 'file_name', 'status', 'error_reason', 'created_at'])
+            ->map(fn (MediaUploadIntent $intent) => [
+                'id' => (int) $intent->id,
+                'file_name' => (string) $intent->file_name,
+                'status' => (string) $intent->status,
+                'error_reason' => $intent->error_reason,
+                'created_at' => optional($intent->created_at)?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 
     protected function folderTree(): array

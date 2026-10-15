@@ -24,7 +24,13 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
-import { fileChecksum, partitionWithinBatch } from "@/lib/media-duplicate"
+import {
+  adaUnggahanBerjalan,
+  mulaiUnggah,
+  snapshotUnggahan,
+  subscribeUnggahan,
+  type UploadItem,
+} from "@/lib/media-upload-queue"
 import { saringBerkasMedia } from "@/lib/media-upload-filter"
 import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 
@@ -69,6 +75,24 @@ interface LibraryAsset {
   error_reason?: string | null
   context: string
   created_at: string | null
+}
+
+/** Nilai bawaan stabil: literal array di daftar argumen dibuat ulang tiap render. */
+const TANPA_NIAT: UploadIntentRow[] = []
+
+/**
+ * Niat unggah yang dicatat server sebelum berkas dikirim.
+ *
+ * Baris `failed` dan `disconnected` adalah yang penting di layar: keduanya
+ * berarti berkas itu belum masuk dan perlu diunggah ulang. Baris `uploading`
+ * sengaja tidak ditampilkan karena masih bisa selesai.
+ */
+interface UploadIntentRow {
+  id: number
+  file_name: string
+  status: "uploading" | "done" | "failed" | "disconnected"
+  error_reason: string | null
+  created_at: string
 }
 
 interface LibraryFilters {
@@ -965,18 +989,8 @@ function FolderTree({
 }
 
 // --- Upload preview modal ---
-// State upload dinaikkan ke halaman (uploads + startUploads) agar progress
-// tetap terlihat walau modal ditutup (lihat UploadTracker di bawah).
-type UploadItem = {
-  id: number
-  name: string
-  status: "memeriksa" | "uploading" | "sukses" | "gagal" | "ditolak"
-  progress: number
-  error?: string
-}
-
-/** Satu berkas di dalam batch unggah, beserta sidik jarinya. */
-type UploadEntry = { id: number; name: string; file: File; checksum: string | null }
+// Tipe UploadItem dan antrean unggahnya ada di "@/lib/media-upload-queue",
+// karena keadaannya harus bertahan lintas halaman.
 
 function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   open: boolean
@@ -1174,65 +1188,6 @@ function UploadModal({ open, onClose, folderId, uploads, onStart }: {
   )
 }
 
-// --- Panel tracking upload (persisten walau modal ditutup) ---
-function UploadTracker({ uploads }: { uploads: UploadItem[]; onDismiss: () => void }) {
-  const [hidden, setHidden] = React.useState(false)
-  const active = uploads.filter((u) => u.status === "uploading" || u.status === "memeriksa").length
-  const allDone = uploads.length > 0 && active === 0
-
-  React.useEffect(() => {
-    if (!allDone) return
-    const t = window.setTimeout(() => setHidden(true), 5000)
-    return () => window.clearTimeout(t)
-  }, [allDone])
-
-  if (uploads.length === 0 || hidden) return null
-  const ok = uploads.filter((u) => u.status === "sukses").length
-  const fail = uploads.filter((u) => u.status === "gagal").length
-  const skip = uploads.filter((u) => u.status === "ditolak").length
-
-  return (
-    <div className="fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-3 shadow-float">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-semibold">Unggah Media</p>
-        <button type="button" onClick={() => setHidden(true)} className="text-muted-foreground hover:text-foreground" aria-label="Tutup panel unggah">
-          <Icon name="x" className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-      <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-        {uploads.map((u) => (
-          <div key={u.id} className="text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate">{u.name}</span>
-              {u.status === "memeriksa" ? (
-                <span className="shrink-0 text-muted-foreground">memeriksa…</span>
-              ) : u.status === "uploading" ? (
-                <span className="shrink-0 tabular-nums text-muted-foreground">{u.progress}%</span>
-              ) : u.status === "sukses" ? (
-                <span className="shrink-0 text-success">✓</span>
-              ) : u.status === "ditolak" ? (
-                <span className="shrink-0 text-muted-foreground" title={u.error ?? ""}>kembar</span>
-              ) : (
-                <span className="shrink-0 text-destructive" title={u.error ?? ""}>✗</span>
-              )}
-            </div>
-            {u.status === "uploading" ? (
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border">
-                <div className="h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${u.progress}%` }} />
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
-        {allDone
-          ? `${ok} berhasil${fail ? `, ${fail} gagal` : ""}${skip ? `, ${skip} kembar dilewati` : ""}`
-          : `Sedang mengunggah ${active} media…`}
-      </p>
-    </div>
-  )
-}
-
 // --- Copy URL helper ---
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -1245,7 +1200,7 @@ async function copyText(text: string): Promise<boolean> {
 
 // ====== MAIN PAGE ======
 export default function MediaLibrary({
-  assets, pagination, filters, folders, historyHref, backUrl, origin,
+  assets, pagination, filters, folders, historyHref, backUrl, origin, uploadIntents = TANPA_NIAT,
 }: {
   assets: LibraryAsset[]
   pagination: PaginationData | null
@@ -1255,8 +1210,14 @@ export default function MediaLibrary({
   backUrl?: string | null
   /** Penanda asal halaman ("products" bila dibuka dari halaman Produk). */
   origin?: string | null
+  /** Niat unggah yang belum selesai (gagal/terputus) dari sesi sebelumnya. */
+  uploadIntents?: UploadIntentRow[]
 }) {
   const { csrf } = usePage<SharedPageProps>().props
+  // Dulu berkas seperti ini hilang tanpa jejak ketika tab ditutup di tengah
+  // unggahan; sekarang server menyimpannya sampai admin menyatakan mengerti.
+  const [intentDibuang, setIntentDibuang] = React.useState<number[]>([])
+  const intentTertinggal = uploadIntents.filter((it) => !intentDibuang.includes(it.id))
   const [q, setQ] = React.useState(filters.q)
   const [kind, setKind] = React.useState(filters.kind)
   const [status, setStatus] = React.useState(filters.status)
@@ -1285,9 +1246,17 @@ export default function MediaLibrary({
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
   const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
 
-  // Upload tracking (persisten walau modal ditutup)
-  const [uploads, setUploads] = React.useState<UploadItem[]>([])
-  const uploadIdRef = React.useRef(0)
+  // Antrean unggah hidup di TINGKAT MODUL (lib/media-upload-queue), bukan di
+  // dalam halaman ini. Dua akibatnya: unggahan tetap berjalan walau admin
+  // berpindah halaman, dan panel progress-nya tetap ada karena dipasang sekali
+  // di shell admin, bukan di sini.
+  const { items: uploadItems } = React.useSyncExternalStore(
+    subscribeUnggahan,
+    snapshotUnggahan,
+    snapshotUnggahan,
+  )
+  const adaBerjalan = adaUnggahanBerjalan(uploadItems)
+
   /** Buat folder (root atau subfolder) memakai dialog. */
   function submitFolderDialog(name: string) {
     if (!folderDialog) return
@@ -1323,86 +1292,9 @@ export default function MediaLibrary({
     })
   }
 
-  function patchUpload(id: number, patch: Partial<Omit<UploadItem, "id" | "name">>): void {
-    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)))
-  }
-
-  function uploadOne(id: number, file: File, folder: string | null): Promise<void> {
-    return new Promise((resolve) => {
-      const fd = new FormData()
-      fd.append("media", file)
-      if (folder) fd.append("folder_id", folder)
-      const xhr = new XMLHttpRequest()
-      xhr.open("POST", routeUrl("admin.media.upload"))
-      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-      xhr.setRequestHeader("X-CSRF-TOKEN", csrf)
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) patchUpload(id, { progress: Math.min(99, Math.round((e.loaded / e.total) * 100)) })
-      }
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          patchUpload(id, { status: "sukses", progress: 100 })
-        } else {
-          let msg = "Upload gagal"
-          try {
-            const body = JSON.parse(xhr.responseText)
-            if (body?.message) msg = body.message
-          } catch { /* respon bukan JSON */ }
-          patchUpload(id, { status: "gagal", error: msg })
-        }
-        resolve()
-      }
-      xhr.onerror = () => {
-        patchUpload(id, { status: "gagal", error: "Upload gagal, periksa koneksi." })
-        resolve()
-      }
-      xhr.send(fd)
-    })
-  }
-
-  async function runUploads(entries: UploadEntry[], folder: string | null): Promise<void> {
-    for (const it of entries) {
-      patchUpload(it.id, { status: "uploading", progress: 0 })
-      await uploadOne(it.id, it.file, folder)
-    }
-    runSearch()
-  }
-
-  async function startUploads(files: File[]): Promise<void> {
-    const folder = folderId || null
-    const dasar: UploadEntry[] = files.map((f) => ({
-      id: ++uploadIdRef.current,
-      name: f.name,
-      file: f,
-      checksum: null,
-    }))
-
-    // Sidik jari dihitung lebih dulu, dan statusnya sudah tampil supaya berkas
-    // besar tidak terkesan tidak terjadi apa-apa.
-    setUploads((prev) => [
-      ...prev,
-      ...dasar.map(({ id, name }) => ({ id, name, status: "memeriksa" as const, progress: 0 })),
-    ])
-
-    const entries: UploadEntry[] = []
-    for (const it of dasar) {
-      entries.push({ ...it, checksum: await fileChecksum(it.file) })
-    }
-
-    // Berkas kembar DI DALAM aksi unggah ini hanya boleh masuk sekali, karena di
-    // situ duplikat hampir pasti kecelakaan (berkas yang sama terpilih dua kali).
-    // Duplikat antar aksi unggah sengaja DIBIARKAN: admin toko sering memakai satu
-    // foto untuk dua produk yang dimensinya berdekatan, dan tiap produk tetap harus
-    // punya medianya sendiri di foldernya masing-masing. Karena itu tidak ada lagi
-    // pertanyaan ke pustaka dan tidak ada dialog "Lewati atau Tetap unggah".
-    const { dup } = partitionWithinBatch(entries)
-    const kembar = new Set(dup.map((d) => d.id))
-
-    for (const d of dup) {
-      patchUpload(d.id, { status: "ditolak", error: "Berkas kembar di aksi unggah ini" })
-    }
-
-    await runUploads(entries.filter((e) => !kembar.has(e.id)), folder)
+  /** Serahkan berkas terpilih ke antrean unggah tingkat modul. */
+  function mulaiDariModal(files: File[]): void {
+    void mulaiUnggah({ files, folderId: folderId || null, csrf })
   }
 
   const assetsRef = React.useRef(assets)
@@ -1440,6 +1332,23 @@ export default function MediaLibrary({
       { preserveState: true, preserveScroll: true },
     )
   }, [q, kind, status, visibility, folderId, origin])
+
+  // Segarkan daftar begitu seluruh unggahan selesai, supaya aset baru muncul.
+  // Berguna juga saat unggahan dimulai sebelum berpindah halaman: begitu admin
+  // kembali dan unggahannya selesai, daftarnya menyesuaikan sendiri.
+  const sebelumnyaBerjalan = React.useRef(false)
+  React.useEffect(() => {
+    if (sebelumnyaBerjalan.current && !adaBerjalan) runSearch()
+    sebelumnyaBerjalan.current = adaBerjalan
+  }, [adaBerjalan, runSearch])
+
+  /** Buang pemberitahuan berkas yang tidak selesai diunggah. */
+  function bersihkanPemberitahuan(): void {
+    const ids = intentTertinggal.map((it) => it.id)
+    if (ids.length === 0) return
+    setIntentDibuang((prev) => [...prev, ...ids])
+    router.post(routeUrl("admin.media.upload-intents.dismiss"), { ids }, { preserveScroll: true })
+  }
 
   React.useEffect(() => {
     try {
@@ -1574,14 +1483,45 @@ export default function MediaLibrary({
     >
       <Head title="Media Library | Admin" />
 
+      {/* Berkas dari sesi sebelumnya yang tidak selesai terkirim. Ditampilkan
+          supaya admin tahu berkas mana yang perlu diunggah ulang, alih-alih
+          kehilangan jejaknya saat tab ditutup di tengah unggahan. */}
+      {intentTertinggal.length > 0 ? (
+        <div
+          className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs"
+          role="status"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">
+                {intentTertinggal.length} berkas tidak selesai diunggah
+              </p>
+              <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                {intentTertinggal.slice(0, 5).map((it) => (
+                  <li key={it.id} className="truncate" title={it.error_reason ?? ""}>
+                    {it.file_name}
+                    {it.status === "disconnected" ? " · terputus" : ""}
+                  </li>
+                ))}
+                {intentTertinggal.length > 5 ? (
+                  <li>dan {intentTertinggal.length - 5} berkas lain</li>
+                ) : null}
+              </ul>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={bersihkanPemberitahuan}>
+              Mengerti
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <UploadModal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         folderId={folderId || null}
-        uploads={uploads}
-        onStart={(files) => { void startUploads(files) }}
+        uploads={uploadItems}
+        onStart={mulaiDariModal}
       />
-      <UploadTracker uploads={uploads} onDismiss={() => setUploads([])} />
 
       {/* Toggle panel folder: ikon folder, kiri */}
       <div className="mb-2 flex items-center">

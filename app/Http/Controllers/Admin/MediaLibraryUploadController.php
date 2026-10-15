@@ -7,6 +7,7 @@ use App\Jobs\DownloadMediaAsset;
 use App\Jobs\ProcessUploadedMediaAsset;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
+use App\Models\MediaUploadIntent;
 use App\Support\MediaNamer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +29,14 @@ class MediaLibraryUploadController extends Controller
             'media' => ['required', 'file'],
             'folder_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
             'label' => ['nullable', 'string', 'max:255'],
+            // Opsional. Niat unggah yang dibuat klien SEBELUM berkas dikirim,
+            // dipakai untuk mencatat hasil. Tidak memengaruhi izin mengunggah:
+            // berkas tetap diproses walau id-nya tidak dikirim atau tidak dikenal.
+            'intent_id' => ['nullable', 'integer'],
         ]);
+
+        $intentId = isset($validated['intent_id']) ? (int) $validated['intent_id'] : null;
+        $userId = (int) $request->user()->id;
 
         $file = $request->file('media');
         $mime = strtolower((string) $file->getMimeType());
@@ -38,14 +46,20 @@ class MediaLibraryUploadController extends Controller
             ? (array) config('media.allowed_video_mime', [])
             : (array) config('media.allowed_mime', []);
         if (! in_array($mime, $allowed, true)) {
-            return response()->json(['message' => "Tipe file tidak diizinkan: {$mime}"], 422);
+            $pesan = "Tipe file tidak diizinkan: {$mime}";
+            $this->catatHasilNiat($intentId, $userId, MediaUploadIntent::STATUS_FAILED, null, $pesan);
+
+            return response()->json(['message' => $pesan], 422);
         }
 
         $maxBytes = $kind === 'video'
             ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
             : (int) config('media.max_bytes', 10 * 1024 * 1024);
         if ($file->getSize() > $maxBytes) {
-            return response()->json(['message' => "Ukuran file melebihi batas {$maxBytes} byte"], 422);
+            $pesan = "Ukuran file melebihi batas {$maxBytes} byte";
+            $this->catatHasilNiat($intentId, $userId, MediaUploadIntent::STATUS_FAILED, null, $pesan);
+
+            return response()->json(['message' => $pesan], 422);
         }
 
         $extension = strtolower($file->getClientOriginalExtension() ?: ($kind === 'video' ? 'mp4' : 'jpg'));
@@ -78,6 +92,8 @@ class MediaLibraryUploadController extends Controller
         // Pipeline WebP: generate derivatives via queue (sama dgn banner/galeri).
         ProcessUploadedMediaAsset::dispatch($asset->id);
 
+        $this->catatHasilNiat($intentId, $userId, MediaUploadIntent::STATUS_DONE, (int) $asset->id);
+
         return response()->json([
             'asset' => [
                 'id' => $asset->id,
@@ -88,6 +104,103 @@ class MediaLibraryUploadController extends Controller
                 'folder_id' => $asset->folder_id,
             ],
         ], 201);
+    }
+
+    /**
+     * Catat niat unggah satu aksi (dipanggil klien SEBELUM berkas dikirim).
+     *
+     * Ini yang memberi jejak pada fase yang sebelumnya tidak tercatat: bila tab
+     * ditutup di tengah unggahan, barisnya tetap ada dan penyapu
+     * `media:close-stale-intents` menandainya terputus, sehingga admin tahu
+     * berkas mana yang perlu diunggah ulang alih-alih kehilangan jejaknya.
+     *
+     * Satu baris per berkas, dikelompokkan oleh `client_batch_id`.
+     */
+    public function intents(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'client_batch_id' => ['required', 'string', 'max:64'],
+            'folder_id' => ['nullable', 'integer', Rule::exists('media_folders', 'id')],
+            'files' => ['required', 'array', 'min:1', 'max:200'],
+            'files.*.name' => ['required', 'string', 'max:255'],
+            'files.*.size_bytes' => ['required', 'integer', 'min:0'],
+            'files.*.checksum' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/'],
+        ]);
+
+        $userId = (int) $request->user()->id;
+        $folderId = $validated['folder_id'] ?? null;
+        $batchId = $validated['client_batch_id'];
+
+        $ids = [];
+        foreach ($validated['files'] as $berkas) {
+            $intent = MediaUploadIntent::create([
+                'user_id' => $userId,
+                'folder_id' => $folderId,
+                'client_batch_id' => $batchId,
+                'file_name' => $berkas['name'],
+                'size_bytes' => (int) $berkas['size_bytes'],
+                'checksum' => $berkas['checksum'] ?? null,
+                'status' => MediaUploadIntent::STATUS_UPLOADING,
+            ]);
+            $ids[] = (int) $intent->id;
+        }
+
+        return response()->json(['intent_ids' => $ids], 201);
+    }
+
+    /**
+     * Buang catatan niat unggah milik pengguna yang sedang masuk.
+     *
+     * Dipakai tombol "Mengerti" pada pemberitahuan unggahan tertinggal: setelah
+     * admin membacanya, catatannya tidak perlu lagi tampil. Hanya baris milik
+     * pengguna sendiri yang boleh dibuang.
+     */
+    public function hapusIntents(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $dihapus = MediaUploadIntent::query()
+            ->whereIn('id', $validated['ids'])
+            ->where('user_id', (int) $request->user()->id)
+            ->delete();
+
+        return response()->json(['deleted' => $dihapus]);
+    }
+
+    /**
+     * Catat hasil unggah pada niat yang dibuat klien.
+     *
+     * Niat bersifat OPSIONAL: kalau id-nya tidak dikirim, tidak dikenal, atau
+     * milik pengguna lain, unggahan tetap harus berhasil. Karena itu kegagalan di
+     * sini ditelan, bukan diteruskan.
+     */
+    private function catatHasilNiat(
+        ?int $intentId,
+        int $userId,
+        string $status,
+        ?int $assetId = null,
+        ?string $alasan = null,
+    ): void {
+        if ($intentId === null) {
+            return;
+        }
+
+        try {
+            MediaUploadIntent::query()
+                ->whereKey($intentId)
+                ->where('user_id', $userId)
+                ->update([
+                    'status' => $status,
+                    'media_asset_id' => $assetId,
+                    'error_reason' => $alasan,
+                    'updated_at' => now(),
+                ]);
+        } catch (\Throwable) {
+            // Jejak niat tidak boleh menggagalkan unggahan yang sudah berhasil.
+        }
     }
 
     /** Impor dari URL -> asset pending + download (pipeline existing). */

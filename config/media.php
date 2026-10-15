@@ -48,6 +48,16 @@ return [
     // Public path under /public used when no stored media (relative to app URL via asset()).
     'placeholder' => env('MEDIA_PLACEHOLDER', 'images/home/product-flash.png'),
 
+    // Batas umur niat unggah yang tidak pernah memberi kabar (menit) sebelum
+    // ditandai "terputus" oleh media:close-stale-intents. Harus lebih panjang
+    // daripada unggahan terlama yang wajar: video 50 MB pada 0,6 MB/detik butuh
+    // sekitar 85 detik, dan koneksi admin bisa jauh lebih lambat.
+    'upload_intent_timeout_minutes' => (int) env('MEDIA_UPLOAD_INTENT_TIMEOUT_MINUTES', 30),
+
+    // Catatan niat unggah lebih tua dari ini (hari) dipangkas. Tabelnya alat bantu
+    // operasional, bukan buku besar audit, jadi tidak perlu tumbuh tanpa batas.
+    'upload_intent_retention_days' => (int) env('MEDIA_UPLOAD_INTENT_RETENTION_DAYS', 14),
+
     // Retensi log riwayat pemrosesan media (hari) — otomatis dipangkas oleh media:prune-logs
     'log_retention_days' => (int) env('MEDIA_LOG_RETENTION_DAYS', 30),
 ];
