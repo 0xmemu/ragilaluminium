@@ -6207,3 +6207,15 @@ restart, dan pemantauan ukuran `appendonly.aof.d` terhadap disk. Rollback:
 arsip karena tidak dibaca saat AOF mati. Aktivasi dan rollback keduanya
 MEMERLUKAN restart atau setidaknya CONFIG SET, sehingga harus dijadwalkan, bukan
 dilakukan diam-diam.
+
+## 2026-10-15 09:40 UTC | zcode | Standard | setelah buat subfolder langsung masuk ke folder tersebut
+
+Owner (15 Okt 2026): "harusnya setelah enter kita akan langsung masuk ke folder tersebut".
+
+Sebelumnya setelah Enter membuat subfolder, folder baru muncul di daftar tetapi admin harus mengkliknya sendiri. Sekarang setelah `POST admin.media.folders.store` berhasil, daftar folder dimuat ulang lalu folder baru dicari di props `folders` terbaru (anak dari parent yang namanya sama), parent diperluas bila belum terbuka, lalu `onSelect` dipanggil sehingga folder itu langsung terpilih dan isinya tampil.
+
+Perbaikan di `resources/js/pages/Admin/Media/Library.tsx` (fungsi `submitInline`): `router.reload({ only: ['folders'], onSuccess: (page) => ... })` mencari anak folder pada `page.props.folders`, lalu memanggil `onToggleExpand(parentId)` bila parent belum terbuka, dan `onSelect(String(folderBaru.id))`.
+
+Verifikasi: typecheck bersih, lint 0 warning. Uji Playwright browser headless: klik `+`, ketik nama "Masuk_2622", tekan Enter -> URL berpindah dari `/admin/media/library` menjadi `/admin/media/library?folder_id=98` (langsung masuk), folder baru tampil di sidebar dengan kelas aktif (`text-primary`), tanpa error JS. Data uji dan akun uji dibersihkan setelah pengujian.
+
+Deploy ke 202: bundel `Library-DmaPboew.js` (49.054 byte, naik dari 48.769 byte). Bukti pembanding: berkas sumber SEBELUM deploy punya 0 kemunculan `cariAnak`, sesudahnya 3 kemunculan; jumlah pemuatan-ulang `only:['folders']` naik dari 2 menjadi 3 di bundel. Izin storage OK, halaman publik HTTP 200. Backup: `/root/backups/pre-masuk-folder-20261015-163404`.
