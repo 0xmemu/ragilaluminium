@@ -9,6 +9,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/admin/ui/dropdown-menu"
 import { Field } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
@@ -1176,8 +1182,9 @@ export default function MediaLibrary({
   // Mode pilih aktif jika tombol teks 'Pilih' ditekan (mirip Cart).
   const [selectMode, setSelectMode] = React.useState(false)
   const [previewAsset, setPreviewAsset] = React.useState<(typeof assets)[number] | null>(null)
-  // Aset yang info singkatnya (titik tiga) sedang terbuka.
+  // Aset yang info singkatnya (detail) sedang terbuka.
   const [infoAsset, setInfoAsset] = React.useState<(typeof assets)[number] | null>(null)
+  const [deletingAsset, setDeletingAsset] = React.useState<(typeof assets)[number] | null>(null)
   const [showUploadModal, setShowUploadModal] = React.useState(false)
   const [copiedId, setCopiedId] = React.useState<number | null>(null)
   const [bulkMoveTarget, setBulkMoveTarget] = React.useState<string>("")
@@ -1428,11 +1435,21 @@ export default function MediaLibrary({
     selectedIds.forEach((id) => form.append("asset_ids[]", String(id)))
   }
 
-  function runBulkAction(action: "archive" | "delete" | "restore") {
+  function runBulkAction(action: "archive" | "delete" | "restore", overrideIds?: number[]) {
     const form = new FormData()
     form.append("action", action)
-    isiSasaran(form)
-    router.post(routeUrl("admin.media.bulk-action"), form, { preserveState: true, onSuccess: () => clearSelection() })
+    if (overrideIds && overrideIds.length > 0) {
+      overrideIds.forEach((id) => form.append("asset_ids[]", String(id)))
+    } else {
+      isiSasaran(form)
+    }
+    router.post(routeUrl("admin.media.bulk-action"), form, {
+      preserveState: true,
+      onSuccess: () => {
+        if (!overrideIds) clearSelection()
+        setDeletingAsset(null)
+      },
+    })
   }
 
   async function bulkMove() {
@@ -1722,28 +1739,13 @@ export default function MediaLibrary({
                       }`}
                       title={meta.label}
                     />
-                    {/* Pratinjau: dulu lewat klik kartu, kini lewat tombol
-                        sendiri karena klik kartu dipakai untuk memilih. */}
-                    <button
-                      type="button"
-                      data-no-select
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setPreviewAsset(asset)
-                      }}
-                      aria-label={`Lihat pratinjau ${asset.label}`}
-                      title="Lihat pratinjau"
-                      className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
-                    >
-                      <Icon name="expand" className="size-3.5" aria-hidden="true" />
-                    </button>
                     {asset.status === "ready" ? (
                       <button
                         type="button"
                         onClick={() => handleCopyUrl(asset)}
                         aria-label={`Salin URL publik ${asset.label}`}
                         title="Salin URL publik"
-                        className="absolute right-10 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
+                        className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md bg-surface/80 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-surface hover:text-foreground"
                       >
                         <Icon name={isCopied ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
                       </button>
@@ -1769,39 +1771,55 @@ export default function MediaLibrary({
                       />
                     ) : null}
                   </div>
-                  {/* Kartu sengaja hanya memuat nama aset. Jumlah pemakaian
-                      dipindahkan ke dialog info (ikon titik tiga) supaya baris
-                      kartu tetap satu tinggi dan nama panjang tidak terdesak. */}
+                  {/* Baris bawah kartu: nama aset di kiri, dropdown aksi titik 3 di kanan */}
                   <div className="flex items-center justify-between gap-2 p-2.5">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-foreground" title={asset.label}>{asset.label}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      {/* Info media: dipindah ke baris bawah karena posisi
-                          kiri-atas kartu kini dipakai kotak centang. */}
-                      <button
-                        type="button"
-                        data-no-select
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setInfoAsset(asset)
-                        }}
-                        className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground"
-                        title="Info media"
-                        aria-label={`Info ${asset.label}`}
-                      >
-                        <Icon name="dots-three-vertical" className="size-3.5" aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAttachingId(asset.id)}
-                        className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition hover:bg-surface hover:text-foreground"
-                        title="Pasang ke produk"
-                        aria-label={`Pasang ${asset.label}`}
-                      >
-                        <Icon name="link" className="size-3.5" aria-hidden="true" />
-                        <span>Pasang</span>
-                      </button>
+                    <div className="flex shrink-0 items-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            data-no-select
+                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title="Aksi media"
+                            aria-label={`Aksi untuk ${asset.label}`}
+                          >
+                            <Icon name="dots-three-vertical" className="size-4" aria-hidden="true" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[8.5rem]">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setAttachingId(asset.id)
+                            }}
+                          >
+                            <Icon name="link" className="size-3.5" aria-hidden="true" />
+                            <span>Pasang</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeletingAsset(asset)
+                            }}
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                          >
+                            <Icon name="trash" className="size-3.5" aria-hidden="true" />
+                            <span>Hapus</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setInfoAsset(asset)
+                            }}
+                          >
+                            <Icon name="info" className="size-3.5" aria-hidden="true" />
+                            <span>Detail</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
@@ -1952,6 +1970,30 @@ export default function MediaLibrary({
             {attachError ? <p className="mt-2 text-xs text-destructive">{attachError}</p> : null}
           </div>
         </div>
+      ) : null}
+
+      {deletingAsset ? (
+        <Dialog open onOpenChange={(next) => { if (!next) setDeletingAsset(null) }}>
+          <DialogContent className="max-w-sm">
+            <DialogTitle>Hapus media?</DialogTitle>
+            <DialogDescription>
+              Hapus "{deletingAsset.label}"? Aset yang masih dipakai produk atau banner akan diarsipkan, bukan dihapus.
+            </DialogDescription>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeletingAsset(null)}>
+                Batal
+              </Button>
+              <Button
+                variant="destructive-solid"
+                onClick={() => {
+                  runBulkAction("delete", [deletingAsset.id])
+                }}
+              >
+                Hapus
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       {infoAsset ? (
