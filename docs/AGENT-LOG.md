@@ -6350,3 +6350,41 @@ angka sidebar folder 18 = 66, folder 2 = 43, subfolder A = 6 (tidak berubah), In
 dirender HTTP 200 tanpa keadaan kosong, beranda 200.
 
 Agent: zcode
+## 2026-10-15 18:40 UTC | zcode | Standard | lanjutan: unggah berkas nyata dibuktikan di produksi 202
+
+Istilah: SLOT = izin satu kanal unggah yang berjalan bersamaan. NIAT UNGGAH = catatan di server
+bahwa satu berkas akan dikirim, ditulis sebelum byte bergerak.
+
+Entri sebelumnya menguji endpoint produksi TANPA berkas. Owner menanyakan apakah pekerjaannya
+sudah tuntas, jadi lubang verifikasi itu ditutup: unggahan berkas sungguhan dijalankan di
+produksi, bukan hanya di dev.
+
+Hasil (akun admin sementara dibuat lalu dihapus sesudahnya):
+- Empat berkas PNG 1,4 MB dikirim BERSAMAAN ke `POST /admin/media/upload`. Keempatnya 201, waktu
+  dinding total 3,98 detik, masing-masing 3,6 sampai 3,9 detik. Kalau berurutan hasilnya sekitar
+  15 detik, jadi paralelnya benar-benar bekerja di produksi, bukan hanya di dev.
+- Empat NIAT dicatat lebih dulu dengan satu `client_batch_id`; sesudah unggah keempat barisnya
+  `done` dan tertaut ke aset yang benar (id 1302 sampai 1306). Rantai niat ke aset utuh.
+- Keempat aset menjadi `ready` dengan turunan lengkap (thumb/card/pdp), jadi pipeline WebP
+  produksi jalan. Aset terakhir siap di bawah satu menit setelah unggah.
+- `media:close-stale-intents --dry-run` di produksi keluar dengan kode 0, jadi command penyapu
+  benar-benar bisa dijalankan di sana (sebelumnya hanya diuji di PHPUnit dan baru diperiksa
+  terdaftar di jadwal, belum pernah dieksekusi).
+- Worker antrean aktif dengan `--queue=imports,media,default`, penjadwal cron `* * * * *` untuk
+  `schedule:run` ada di crontab www-data, dan jadwal `media:close-stale-intents` terdaftar pada
+  `*/15 * * * *` tanpa tumpang tindih.
+
+Pembersihan (dibuktikan, bukan diasumsikan):
+- Lima aset uji dihapus dari basis data, dan 15 objek terkait diperiksa langsung di bucket:
+  seluruhnya HILANG. Pada pemeriksaan pertama 14 objek tampak masih ada, tetapi itu soal waktu,
+  bukan kegagalan: pembersihan bucket berjalan lewat antrean dengan satu pekerja, sehingga butuh
+  sekitar satu menit untuk kelima aset. Sekitar satu menit kemudian jumlah objek yang tersisa nol.
+- Akun sementara, sesi, delapan baris niat, dan dua baris `event_logs` dibersihkan. Pustaka media
+  kembali 109 aset, tabel `media_upload_intents` kembali 0 baris.
+
+Temuan yang BUKAN dari pekerjaan ini: satu baris `failed_jobs` berisi `DownloadMediaAsset` dari
+2026-10-14 01:51 UTC, gagal karena `media.333labs.tech` tidak ada di daftar izin host. Itu jejak
+yang memang sudah diketahui dan sengaja dibiarkan dari uji impor sebelumnya, bukan akibat
+perubahan unggah media. Tidak dihapus tanpa keputusan owner.
+
+Agent: zcode
