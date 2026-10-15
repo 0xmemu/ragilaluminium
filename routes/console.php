@@ -94,10 +94,9 @@ Schedule::call(function (): void {
 // kali per setengah jam dan kuota API J&T terpakai dua kali. Perintah itu
 // tetap ada sebagai alat diagnostik manual (punya mode --dry-run).
 
-// Pencatat trafik dan bandwidth (owner 2026-09-28). Mengisi
-// /root/backups/traffic-daily.csv untuk melihat tren, dan mencatat pemakaian
-// harian di log. Pemakaian bandwidth sebelumnya tidak dipantau sama sekali.
-Schedule::exec('/root/scripts_traffic_check.sh')
-    ->name('traffic-check')
-    ->hourly()
-    ->withoutOverlapping();
+// Pencatat trafik dan bandwidth (owner 2026-09-28) TIDAK dijadwalkan di sini.
+// Skrip itu menulis ke /root/backups dan membaca /var/log/nginx/access.log,
+// jadi harus berjalan sebagai root. Scheduler Laravel berjalan sebagai
+// www-data yang tidak bisa membaca /root, sehingga jadwal di sini selalu gagal
+// senyap (keluarannya dibuang ke /dev/null). Penjadwalannya dipindah ke cron
+// root di server: 5 * * * * /root/backups/traffic-check.sh

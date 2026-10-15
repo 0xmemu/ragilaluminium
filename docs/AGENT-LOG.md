@@ -6070,3 +6070,43 @@ Verifikasi:
 Catatan: pemeriksaan arsip media ditambahkan ke monitor backup supaya arsip yang
 tertinggal terlihat sebelum objeknya benar-benar dibutuhkan, dan supaya kegagalan
 pemeriksaan tidak terbaca sebagai "arsip lengkap".
+
+## 2026-10-15 08:00 UTC | zcode-backup-audit | Deep | paket F: monitoring trafik + rotasi log
+
+DUA MASALAH YANG DITUTUP.
+
+1. Pencatat trafik tidak berjalan di 202, dan gagalnya senyap. Jadwal Laravel 202
+   (`routes/console.php`) menjalankan `/root/scripts_traffic_check.sh` tiap jam,
+   tetapi scheduler Laravel berjalan sebagai www-data sedangkan /root bermode 0700
+   root:root. www-data tidak bisa membacanya, dan keluaran jadwal dibuang ke
+   /dev/null, jadi tidak ada yang menyadari. Buktinya: berkas
+   /root/backups/traffic-daily.csv yang seharusnya dihasilkan tidak pernah ada.
+
+   Perbaikan: skrip dipasang di /root/backups/traffic-check.sh (mode 750 root) dan
+   dijadwalkan lewat CRON ROOT `5 * * * *`, karena skrip memang butuh root untuk
+   membaca /var/log/nginx/access.log dan menulis ke /root/backups. Jadwal Laravel
+   yang rusak DIHAPUS dari routes/console.php dan diganti catatan penunjuk ke
+   cron root, bukan dibiarkan gagal senyap. Uji jalan pertama: 23.340 permintaan,
+   perkiraan 3.124 pengunjung, bandwidth 28 MB, CSV terisi.
+
+2. Log di /root/backups tumbuh tanpa batas (ragil-binlog.log 12 MB). Pemasangan
+   /etc/logrotate.d/ragil-backups DIBLOKIR guard, dan logrotate.conf hanya memuat
+   direktori itu, jadi pendekatan mandiri dipakai: prune-logs.sh memutar log
+   >1 MB ke arsip bersufiks tanggal lalu membatasi 8 arsip per log. Berkas
+   penanda (ALERT-*, .backup-alert-state, .config-backup-key, last-dump,
+   last-drill) tidak pernah disentuh. Jadwal cron root `30 4 * * *`.
+
+Verifikasi:
+- Rotasi pertama: ragil-binlog.log 11.768 KB diputar menjadi arsip 254 KB, arsip
+  diverifikasi UTUH dengan gzip -t dan berisi 205.079 baris. Penanda ALERT-* dan
+  berkas kunci diperiksa tetap ada.
+- Monitor backup ditambah pemeriksaan TRAFIK (kesegaran traffic-daily.csv, batas
+  2 jam) dan MEDIA-ARCHIVE (celah arsip media), supaya jadwal yang rusak terlihat
+  dari hasilnya, bukan menunggu ada yang menyadari.
+- Monitor dijalankan terhadap keadaan nyata dengan pengirim asli: keluaran bersih,
+  nol pesan Telegram terkirim, state kosong.
+- Test kontrak `MonitoringScriptsContractTest` 8 lulus, `--filter=Console|Schedule`
+  6 lulus, `php -l routes/console.php` bersih.
+
+Catatan: skrip trafik di 202 identik dengan versi repo
+(scripts/prod/monitoring/scripts_traffic_check.sh, md5 2ae94d5e...).

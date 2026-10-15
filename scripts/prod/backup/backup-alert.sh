@@ -224,4 +224,20 @@ else
   fi
 fi
 
+# 7) Pencatat trafik. Sebelumnya jadwalnya rusak senyap: dijalankan scheduler
+#    Laravel sebagai www-data yang tidak bisa membaca /root, sehingga tidak ada
+#    yang menyadari pemantauan trafik tidak berjalan. Sekarang diperiksa dari
+#    hasilnya, yaitu kesegaran berkas CSV yang dihasilkan.
+CSV_TRAFIK="$ALERT_DIR/traffic-daily.csv"
+if [ -f "$CSV_TRAFIK" ]; then
+  UMUR_CSV=$(( $(date +%s) - $(stat -c %Y "$CSV_TRAFIK" 2>/dev/null || echo 0) ))
+  if [ "$UMUR_CSV" -gt 7200 ]; then
+    kritis "TRAFIK" "Berkas catatan trafik terakhir diperbarui ${UMUR_CSV}s lalu (batas 7200s). Pencatat trafik tidak berjalan."
+  else
+    pulih "TRAFIK" "pencatat trafik berjalan kembali (umur ${UMUR_CSV}s)."
+  fi
+else
+  kritis "TRAFIK" "Berkas catatan trafik belum ada di $CSV_TRAFIK. Pencatat trafik tidak pernah berhasil."
+fi
+
 catat "=== selesai ==="
