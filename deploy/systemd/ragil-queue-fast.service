@@ -1,0 +1,18 @@
+[Unit]
+Description=Ragil Aluminium queue worker (pekerjaan pendek: broadcast)
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ragilaluminium/current
+# Antrean broadcast dipisah supaya notifikasi live admin tidak mengantre di
+# belakang impor katalog yang bisa berjalan sampai 30 menit.
+ExecStart=/usr/bin/php /var/www/ragilaluminium/current/artisan queue:work --queue=broadcast --tries=3 --timeout=60 --max-time=3600
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

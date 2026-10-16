@@ -1,13 +1,13 @@
 [Unit]
-Description=Ragil Aluminium queue worker
+Description=Ragil Aluminium queue worker (pekerjaan panjang: imports, media, default)
 After=network-online.target mysql.service redis-server.service
 Wants=network-online.target
 
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/ragilaluminium
-ExecStart=/usr/bin/php /var/www/ragilaluminium/artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600
+WorkingDirectory=/var/www/ragilaluminium/current
+ExecStart=/usr/bin/php /var/www/ragilaluminium/current/artisan queue:work --queue=imports,media,default --tries=3 --timeout=1800 --max-time=3600
 Restart=always
 RestartSec=3
 Nice=5

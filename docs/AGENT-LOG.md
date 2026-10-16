@@ -6541,3 +6541,41 @@ Dampak spec: tidak berubah (aturan pemeriksaan berkas diperketat; tidak ada rout
 Bukti: suite penuh 1 skipped 1475 passed (14267 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Verifikasi live 202: verifier menolak baris dengan Model kosong dan mengembalikan pesan Model Produk wajib diisi pada baris pertama grup NO. ID 1. Rilis 20261016180648-2b99e58b aktif; /, /up, /products HTTP 200.
 Untuk agent berikutnya: jangan kembalikan fallback SLIDING. Kalau ada berkas impor lama milik owner dengan kolom Model kosong, berkas itu sekarang DITOLAK di pemeriksaan awal dan itu memang tujuannya; minta owner mengisi kolom Model.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 11:20 UTC | zcode-live-events | Standard | belum deploy | siap, menunggu izin
+
+Lingkup: tindak lanjut investigasi Error 522 pada ragilaluminium.com. Akarnya BUKAN
+jaringan Cloudflare, melainkan endpoint /admin/notifications/poll yang dipanggil panel
+admin tiap 8 detik; tiap panggilan menjalankan query agregat ke 14 tabel. Puncak
+tercatat 93 permintaan per menit (sekitar 12 tab admin), menumpuk di kolam php-fpm
+yang hanya 12 pekerja. Bukti penentu: pada jendela 16 Okt 09:00, nginx mencatat
+1.071 permintaan dijawab 200 dan NOL 5xx, sementara Cloudflare mencatat 443 kegagalan
+(522/524/525/520) dan 498 permintaan dengan origin diam.
+
+Berkas:
+- docs/RANCANGAN-LIVE-EVENTS-ADMIN.md (baru): rancangan 4 lapis + 12 mode gagal + penutupnya.
+- docs/TASKS-LIVE-EVENTS-ADMIN.md (baru): task teruji 5 tahap dengan langkah uji dan cara balik.
+- scripts/prod/diagnosa/diagnose_522.py (baru): diagnosa otomatis saat 522 muncul lagi.
+- deploy/systemd/laravel-reverb.service: Restart=on-failure -> always, StartLimitIntervalSec=0, log ke shared.
+- deploy/systemd/ragil-queue-fast.service (baru): antrean broadcast dipisah dari imports.
+- deploy/nginx/00-ragil-http.conf + sites-available-ragilaluminium.com.conf (baru):
+  diselaraskan dengan kenyataan server (repo sebelumnya hanya punya berkas gabungan yang basi),
+  ditambah limit_req pada endpoint poll dan fastcgi_read_timeout 300 -> 60.
+- scripts/prod/apply-live-events-202.sh (baru): penerap idempoten, uji nginx -t sebelum pasang, punya --dry-run.
+
+Dampak spec: tidak berubah.
+
+Bukti: skrip diagnosa diuji ulang pada kejadian 16 Okt 09:00 dan menghasilkan kesimpulan
+otomatis yang benar (server 0 5xx, Cloudflare 443 gagal -> jalur Cloudflare). Skrip
+penerap lulus bash -n dan mode --dry-run menolak dengan benar saat sumber belum ada.
+
+PENTING untuk agent berikutnya (bahaya kopling): perubahan kode broadcastQueue() pada
+ketiga event SENGAJA BELUM di-commit. Kalau kode itu ter-deploy tanpa worker antrean
+broadcast yang hidup, notifikasi admin berhenti total. Urutannya wajib: pasang infra
+dulu (apply-live-events-202.sh), baru commit + deploy kode event. Perubahan infra di
+commit ini inert sampai skrip penerap dijalankan.
+
+Belum dipasang ke 202: tulis ke /etc diblokir guard, menunggu pernyataan tegas pemilik.
+Agent: zcode-live-events
