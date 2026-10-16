@@ -6861,3 +6861,43 @@ bukan dari peramban pengguna.
 Dampak spec: tidak berubah.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-17 04:45 UTC | zcode-live-events | Standard | 2b2b45b1 | selesai
+
+Lingkup: label "Pembaruan langsung terputus" di panel admin. Ini lanjutan dari
+perbaikan klien Pusher; ternyata ada cacat kedua yang terpisah.
+
+Gejala: WebSocket SUDAH tersambung (nginx mencatat 101), tetapi otorisasi kanal
+privat selalu ditolak sehingga langganan kanal gagal dan panel melaporkan terputus.
+
+Bukti yang mengunci:
+- Pada detik yang sama, halaman /admin dijawab 200 sementara /broadcasting/auth
+  dijawab 403. Jadi sesi admin SAH, bukan masalah login.
+- Responsnya {"message": ""} dengan pesan KOSONG, khas AccessDeniedHttpException.
+- Uji otorisasi langsung di produksi dengan user asli: BERHASIL. Jadi logika
+  otorisasi dan callback kanal benar.
+- Uji dengan cookie sesi admin yang sah: 200 (berikut tanda tangan otorisasi).
+- AKAR MASALAH DIPEROLEH ULANG: bila isi permintaan berbentuk JSON tetapi header
+  menyatakan application/x-www-form-urlencoded, server tidak menemukan nama kanal
+  dan menjawab 403 pesan kosong. Tiga uji pembanding dengan sesi sah:
+  body form + header form -> 200; body JSON + header form -> 403 pesan kosong;
+  body JSON + header JSON -> 200.
+
+Perbaikan: bentuk permintaan otorisasi ditentukan SENDIRI, tidak lagi bergantung
+pada bentuk bawaan pustaka. JSON dengan header JSON, cookie disertakan eksplisit
+(credentials same-origin), token CSRF dari meta tag (cadangan cookie XSRF-TOKEN)
+dikirim lewat header X-CSRF-TOKEN. Status gagal diubah menjadi error yang terbaca,
+bukan diam.
+
+Penjaga regresi: tests/frontend/admin-live-authorizer.test.ts mengunci kecocokan
+header dengan isi, plus kehadiran cookie dan token CSRF.
+
+Verifikasi: 440 tes frontend lulus (55 berkas); tsc 0 error; eslint 0 warning;
+build sukses. Belum ada percobaan otorisasi baru dari peramban setelah deploy
+04:38:43, jadi konfirmasi akhir menunggu admin memuat ulang panel.
+
+Dampak spec: tidak berubah.
+
+Agent: zcode-live-events
