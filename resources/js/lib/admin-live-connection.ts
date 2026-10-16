@@ -211,6 +211,79 @@ function resignLeadership(): void {
   }
 }
 
+/**
+ * Token CSRF untuk permintaan otorisasi kanal.
+ *
+ * Diambil dari meta tag yang sudah ada di layout, dengan cadangan dari cookie
+ * XSRF-TOKEN. Tanpa token ini server menjawab 419.
+ */
+function tokenCsrf(): string {
+  try {
+    const meta = document.querySelector('meta[name="csrf-token"]')
+    const dariMeta = meta?.getAttribute("content") ?? ""
+    if (dariMeta !== "") return dariMeta
+
+    const bagian = document.cookie.split("; ").find((c) => c.startsWith("XSRF-TOKEN="))
+
+    return bagian ? decodeURIComponent(bagian.split("=").slice(1).join("=")) : ""
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * Pengotorisasi kanal eksplisit (Tahap 3 lanjutan, 17 Okt 2026).
+ *
+ * Kenapa tidak memakai bawaan pustaka: bentuk permintaan bawaan pernah TIDAK
+ * terbaca server. Saat isi permintaan berbentuk JSON tetapi headernya menyatakan
+ * form-urlencoded, server tidak menemukan nama kanal, lalu menjawab 403 dengan
+ * pesan kosong. Gejala di panel: "Pembaruan langsung terputus", padahal sesi
+ * admin sah (halaman /admin sendiri dijawab 200 pada detik yang sama).
+ *
+ * Di sini bentuknya ditentukan sendiri dan tidak bergantung pada pustaka lain:
+ * JSON dengan header JSON, cookie disertakan eksplisit, token CSRF dikirim lewat
+ * header. Dengan begitu tidak ada lagi ketidakcocokan header dan isi.
+ */
+interface KanalEcho {
+  name: string
+}
+
+interface DataOtorisasi {
+  auth: string
+  channel_data?: string
+  shared_secret?: string
+}
+
+function authorizerKanal(
+  channel: KanalEcho,
+  _options: unknown,
+): { authorize: (socketId: string, callback: (error: Error | null, data: DataOtorisasi | null) => void) => void } {
+  return {
+    authorize: (socketId: string, callback: (error: Error | null, data: DataOtorisasi | null) => void) => {
+      void fetch("/broadcasting/auth", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-TOKEN": tokenCsrf(),
+        },
+        body: JSON.stringify({ socket_id: socketId, channel_name: channel.name }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            throw new Error("Otorisasi kanal gagal dengan status " + res.status)
+          }
+
+          return res.json()
+        })
+        .then((data) => callback(null, data))
+        .catch((e: unknown) => callback(e instanceof Error ? e : new Error(String(e)), null))
+    },
+  }
+}
+
 async function ensureEcho(): Promise<EchoClient | null> {
   if (!echoAvailable) return null
   if (window.Echo) return window.Echo
@@ -236,6 +309,7 @@ async function ensureEcho(): Promise<EchoClient | null> {
         broadcaster: "reverb",
         key: import.meta.env.VITE_REVERB_APP_KEY as string,
         Pusher,
+        authorizer: authorizerKanal,
         wsHost: host,
         wsPort: isTls ? 80 : port,
         wssPort: isTls ? port : 443,
