@@ -6515,3 +6515,15 @@ Dampak spec: tidak berubah (tidak ada route, kolom, enum, atau bentuk JSON baru)
 Bukti: suite penuh 1 skipped 1466 passed (14250 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Rilis 20261016171635-764cfbca aktif di VPS 202. Verifikasi live 202: kategori 3 (JENDELA, PINTU, BOVEN), model produk 0 (KOSONG), sub model 0 (KOSONG); /, /products, /up, /products/jendela semua HTTP 200.
 Untuk agent berikutnya: model produk TIDAK punya daftar cadangan di kode lagi. Kalau butuh model baru, WAJIB dibuat lewat halaman admin Kelola Model Produk atau lewat impor XLSX (wadah dibuat otomatis oleh syncFromCatalog). Jangan menghidupkan kembali konstanta MODEL_ORDER.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 17:50 UTC | zcode-taxonomy-flow | Trivial | 97ff77ac | selesai
+Lingkup: mengunci dampak perubahan taksonomi dinamis terhadap keempat alur XLSX lewat pengujian.
+Berkas:
+- tests/Feature/XlsxFlowsWithoutTaxonomyTest.php (BARU): keempat alur XLSX tetap HTTP 200 saat model dan sub model kosong (template import produk baru, template update harga/stok, template update media, export katalog).
+- tests/Feature/ImportBlankModelColumnTest.php (BARU): mengunci perilaku kolom Model yang dibiarkan kosong. Nilainya diam-diam menjadi SLIDING oleh CatalogProductsImportV2 (baris  lalu fallback ). Kolom Sub Model kosong tetap null.
+Dampak spec: tidak berubah.
+Bukti: 9 tes / 24 assertions lulus (ketiga berkas XLSX). Rilis 20261016174203-97ff77ac aktif di VPS 202; /, /products, /up HTTP 200.
+Untuk agent berikutnya: TEMUAN untuk owner. Verifier V1-V8 TIDAK mewajibkan kolom Model Produk, sehingga baris XLSX dengan kolom Model kosong diterima dan diam-diam menjadi SLIDING. Ini perilaku bawaan importer sejak lama, BUKAN efek taksonomi dinamis. Kategori satu-satunya kolom taksonomi yang wajib (ditolak bila tidak dikenal). Kalau owner ingin kolom Model wajib, itu perubahan kontrak terpisah yang butuh keputusan.
+Agent: zcode-taxonomy-flow
