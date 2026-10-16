@@ -6594,3 +6594,49 @@ Bukti: suite penuh 1 skipped 1481 passed (14311 assertions). Verifikasi XML temp
 Untuk agent berikutnya: JANGAN kembalikan errorStyle stop untuk kolom Model Produk dan Sub Model. Keduanya memang boleh berisi kode baru yang belum terdaftar. Hanya Kategori Produk yang wajib sudah terdaftar.
 Catatan proses: commit dikerjakan lewat worktree terpisah (/tmp/commitwt-dropdown) karena working tree 209 sedang memuat pekerjaan agent lain di app/Events dan scripts/prod. Setelah git update-ref, WAJIB jalankan git reset --mixed HEAD supaya index selaras dengan HEAD baru; tanpa itu status menunjukkan MM dan D palsu.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 18:55 UTC | zcode-live-events | Standard | f332f563 | selesai
+
+Lingkup: eksekusi Tahap 1 rancangan live events ke VPS 202 (infrastruktur, tanpa
+mengubah perilaku UI). Latar: investigasi Error 522; akarnya endpoint
+/admin/notifications/poll yang dipanggil tiap 8 detik dan menjalankan query agregat
+ke 14 tabel, menumpuk di kolam php-fpm yang hanya 12 pekerja.
+
+Berkas:
+- deploy/systemd/laravel-reverb.service: Restart=always, StartLimitIntervalSec=0, log ke shared.
+- deploy/systemd/ragil-queue-fast.service (BARU): antrean broadcast dipisah dari imports.
+- deploy/nginx/00-ragil-http.conf + sites-available-ragilaluminium.com.conf: limit_req 120r/m
+  pada endpoint poll, fastcgi_read_timeout 300 -> 60.
+- app/Events/*.php (3 berkas): broadcastQueue() = broadcast.
+- scripts/prod/deploy-202.sh: kini membuat shared/storage/logs (folder ini TIDAK PERNAH
+  dibuat sebelumnya, dan systemd menolak start bila berkas log tidak bisa dibuka).
+- scripts/prod/apply-live-events-202.sh, scripts/prod/diagnosa/diagnose_522.py (BARU).
+
+Dampak spec: tidak berubah.
+
+Bukti terpasang di 202 (semua diverifikasi langsung):
+- Reverb: uji kill -9 -> hidup lagi (PID baru, NRestarts=1). Ini penutup kegagalan diam
+  yang sebelumnya tidak ada, karena Restart=on-failure tidak menghidupkan proses yang
+  berhenti bersih.
+- Worker: DUA proses queue:work berjalan (broadcast dan imports,media,default).
+- Kolam php-fpm: pm.max_children = 24 (dari 12).
+- limit_req: 150 permintaan cepat -> 4 kena 429, 146 lolos ke aplikasi, NOL 5xx.
+- Situs / dan /up HTTP 200; nginx, php-fpm, reverb, kedua worker, mysql, redis semua active.
+- apply-live-events-202.sh dijalankan dua kali: idempoten, verifikasi OK keduanya.
+- Cadangan rollback lengkap di /var/www/ragilaluminium/_backup-pre-liveevents/.
+
+Dua cacat yang ketemu dan diperbaiki saat pemasangan (jangan terulang):
+1. Reverb gagal start (209/STDOUT) karena shared/storage/logs tidak ada. deploy-202.sh
+   hanya membuat shared/storage/app/*. Kini deploy ikut membuatnya.
+2. ragil-queue-fast hanya di-"enable", tidak dijalankan, sehingga antrean broadcast tidak
+   punya pekerja. Kini "enable --now".
+
+PENTING untuk agent berikutnya: Tahap 2 (penanda versi di Redis) dan Tahap 3 (klien,
+satu pemilik Echo, heartbeat 120 detik, pemilihan pemimpin antar tab) BELUM dikerjakan.
+Selama Tahap 3 belum jalan, polling 8 detik masih berjalan, jadi perbaikan beban
+sesungguhnya belum terasa. Yang sudah aktif dari Tahap 1 hanyalah penutup jalur kritis
+dan pagar pengaman.
+
+Agent: zcode-live-events
