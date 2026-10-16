@@ -6682,3 +6682,65 @@ Dampak spec: spec tidak berubah (tidak ada rute, skema, enum, atau bentuk JSON b
 Bukti: tsc 0 error, eslint 0 error pada 11 berkas yang disentuh, vitest 421 test lulus (50 berkas), PHPUnit OrderEventLabelsEventTypeTest dan 97 test impor lulus, build Vite sukses. Uji penjaga: kebocoran metric_basis.anchor disuntikkan kembali, penjaga GAGAL sesuai harapan, lalu dipulihkan.
 Catatan kolaborasi: agent lain bekerja bersamaan di working tree yang sama (live-notification-manager.tsx dan berkas admin-live-* baru). Commit ini hanya memuat berkas milik pekerjaan ini.
 Agent: zcode
+
+---
+
+## 2026-10-16 20:35 UTC | zcode-live-events | Standard | 54d38487 | selesai
+
+Lingkup: Tahap 2 dan Tahap 3 rancangan live events (lanjutan Tahap 1 yang sudah
+terpasang sore ini). Tujuan: menurunkan beban polling yang sesungguhnya.
+
+Tahap 2 (biaya pengecekan):
+- app/Services/AdminDataVersion.php (BARU): penanda versi data panel di Redis,
+  dinaikkan pengamat model. Menggantikan query agregat 14 subquery yang dulu jalan
+  pada SETIAP polling. bump() tidak pernah melempar supaya kegagalan penanda tidak
+  menggagalkan penyimpanan data pelanggan; current() jatuh ke perhitungan basis data
+  bila Redis tidak terbaca.
+- app/Observers/AdminDataVersionObserver.php (BARU), 13 model didaftarkan di
+  AppServiceProvider (daftar eksplisit, dijaga tes).
+- Migrasi indeks updated_at untuk 13 tabel. Kolom itu sebelumnya TIDAK berindeks.
+- Method dataVersion() lama DIBUANG (query 14 subquery duplikat, tidak terpakai).
+
+Tahap 3 (beban klien):
+- resources/js/lib/admin-live-lease.ts (BARU): aturan waktu murni, diuji tanpa peramban.
+- resources/js/lib/admin-live-connection.ts (BARU): PEMILIK TUNGGAL sambungan Echo.
+  Satu sambungan per peramban lewat pemilihan pemimpin antar tab (BroadcastChannel),
+  denyut data 120 detik hanya dari tab pemimpin, penyelarasan saat sambungan pulih
+  (menutup celah event saat deploy), deteksi data basi, status koneksi untuk UI.
+- admin-live-events.ts jadi lapisan tipis; API lama dipertahankan.
+- live-notification-manager.tsx: polling 8 detik DIHAPUS.
+- app/Events/AdminShippingStatusUpdated.php (BARU): perubahan resi disiarkan. Terpisah
+  dari ShippingStatusUpdated karena event itu membawa model Order dan ShippingRecord
+  utuh, jadi menyiarkannya langsung akan mengirim PII pelanggan ke peramban.
+
+Dampak spec: tidak berubah.
+
+Bukti (semua dijalankan, bukan asumsi):
+- AdminDataVersionTest: 8 passed (40 assertions). AdminLiveEventContractTest: 6 passed.
+- vitest tests/frontend: 50 berkas, 421 tes lulus.
+- Tes Shipping: 80 passed (576 assertions).
+- tsc 0 error dan eslint 0 warning pada berkas pekerjaan ini; build Vite sukses.
+- Live 202 setelah deploy: semua layanan active; / /up /products 200; /admin 302.
+- Penanda versi diuji di produksi: 2969233671 -> 2969233672 (BERUBAH, benar).
+- Kunci Redis terbentuk: ragil_aluminium_database_..._admin:data_version (db 1).
+- Observer terdaftar di produksi: Order 1 pendengar, AdminNotification 1 pendengar.
+- 13 indeks updated_at terbentuk di MySQL.
+- Reverb uji kill -9: hidup lagi (pid baru).
+- queue:monitor: antrean broadcast dan default OK, ukuran 0.
+- Tahap 1 masih utuh: limit_req 3 blok, pm.max_children 24, 2 worker.
+
+Dua cacat yang ketemu dan diperbaiki saat verifikasi (jangan terulang):
+1. Injection layanan WAJIB lewat konstruktor controller. Saya awalnya memakai
+   $this->dataVersion tanpa deklarasi; tes endpoint poll menangkapnya.
+2. Saat mengganti blok kode panjang, sisakan bagian ekor bila anchor akhir salah.
+   Blok polling lama sempat tersisa; dibuang dengan penanda akhir effect.
+
+Catatan: resources/js/pages/Admin/Orders/Show.tsx dan beberapa berkas katalog sedang
+disunting agent lain (duplikat import statusMeta, dsb) dan TIDAK disentuh di commit ini.
+tsc/eslint repo-wide masih merah karena berkas mereka, bukan karena pekerjaan ini.
+
+Belum dikerjakan dari rancangan: Tahap 4 (pengawas produksi dari luar, perbaikan skrip
+pengawas, hubungi penyedia, perbaikan DNS mail/admin) dan Tahap 5 (geser cron tengah
+malam). Keduanya perlu keputusan pemilik karena menyentuh hal di luar aplikasi.
+
+Agent: zcode-live-events
