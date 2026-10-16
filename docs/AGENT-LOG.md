@@ -6814,3 +6814,50 @@ Perubahan:
 Dampak spec: spec tidak berubah.
 Bukti: tsc 0 error, eslint 0 error seluruh proyek, vitest 433 test lulus pada 53 berkas, PHPUnit 11 test SystemHealth lulus. Penjaga dibuktikan bisa gagal: nama variabel disuntikkan kembali ke SystemHealthService, uji integrasi GAGAL sesuai harapan, lalu berkas dipulihkan.
 Agent: zcode
+
+---
+
+## 2026-10-16 23:20 UTC | zcode-live-events | Standard | a3b0655a | selesai
+
+Lingkup: label sticky "Menghubungkan pembaruan langsung..." tampil terus di kanan
+atas panel admin. Ternyata bukan sekadar kosmetik: itu menandakan SELURUH fitur live
+events tidak pernah benar-benar menyambung.
+
+Temuan (dibuktikan, bukan dugaan):
+- nginx mencatat NOL respons 101 Switching Protocols sepanjang hari. Artinya tidak
+  ada satu pun sambungan WebSocket yang terbentuk.
+- Uji handshake langsung ke Reverb (127.0.0.1:8080) BERHASIL (101). Jadi Reverb
+  sehat; masalahnya di klien.
+- Akar masalah: laravel-echo 2.4.0 TIDAK lagi menyertakan klien Pusher. Bila opsi
+  Pusher (atau window.Pusher) tidak diberikan, ia MELEMPAR "Pusher client not found"
+  saat connect(). Kode saya hanya mengandalkan window.Pusher yang tidak pernah
+  diisi siapa pun. Ini juga ada di kode LAMA, jadi live events memang belum pernah
+  bekerja; pembaruan panel selama ini bergantung pada polling.
+- Label tampil terus karena kegagalan Echo meninggalkan status di "connecting"
+  selamanya (attachEcho kembali diam-diam tanpa menyetel status).
+
+Perbaikan:
+1. Klien Pusher diserahkan lewat opsi Pusher (import pusher-js), cara yang benar
+   untuk bundler Vite.
+2. Kegagalan memuat Echo menyetel status "unavailable", tidak lagi diam.
+3. Pengaman batas waktu sambung 10 detik: bila sambungan tidak terbentuk (mis.
+   otentikasi kanal ditolak sehingga callback subscribed tidak pernah dipanggil),
+   status menjadi "disconnected" dan tombol muat ulang manual tersedia.
+
+Penjaga regresi: tests/frontend/admin-live-pusher.test.ts (tiruan laravel-echo dan
+pusher-js, memeriksa Echo dibangun DENGAN opsi Pusher) dan penambahan batas waktu
+sambung di admin-live-lease.test.ts. Dibuktikan bukan penjaga palsu: saat opsi
+Pusher dihapus, tes langsung gagal.
+
+Bukti perbaikan bekerja (live): setelah deploy a3b0655a pukul 23:15:24, peramban
+admin (103.247.23.36) membentuk 2 sambungan dengan status 101, dan ada sambungan
+ESTAB ke Reverb 127.0.0.1:8080. Sebelum perbaikan: nol 101 sepanjang hari.
+
+Verifikasi: 29 tes frontend lulus (5 berkas); tsc 0 error; eslint 0 warning; build sukses.
+
+Catatan: tiga kode 500 pada /app/ di log adalah uji handshake milik agent sendiri,
+bukan dari peramban pengguna.
+
+Dampak spec: tidak berubah.
+
+Agent: zcode-live-events
