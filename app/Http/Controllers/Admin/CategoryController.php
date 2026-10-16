@@ -48,6 +48,7 @@ class CategoryController extends Controller
                 'sort_order' => $c->sort_order,
                 'is_active' => (bool) $c->is_active,
                 'products_count' => (int) $c->products_count,
+                'models_count' => \App\Models\CmsModelProduct::where('product_category', $c->code)->count(),
                 'editUrl' => route('admin.categories.edit', $c),
             ])->all();
 
@@ -152,6 +153,10 @@ class CategoryController extends Controller
     {
         if ($category->products()->exists()) {
             return back()->with('error', 'Tidak bisa menghapus kategori yang masih dipakai produk.');
+        }
+
+        if (\App\Models\CmsModelProduct::where('product_category', $category->code)->exists()) {
+            return back()->with('error', 'Tidak bisa menghapus kategori yang masih memiliki model produk.');
         }
         $this->logs->record('product.category_deleted', 'category', $category->id, [
             'code' => $category->code,

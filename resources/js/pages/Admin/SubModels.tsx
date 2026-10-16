@@ -44,6 +44,7 @@ interface SubModelRow {
   products_count: number
   edit_href: string
   toggle_url: string
+  delete_url?: string
 }
 
 interface FilterOption {
@@ -461,6 +462,35 @@ export default function SubModelsIndex({
                               })
                             }}
                           />
+                          {row.delete_url ? (
+                            <ConfirmAction
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                                  disabled={busyId === row.id || row.products_count > 0}
+                                >
+                                  Hapus
+                                  {row.products_count > 0 ? (
+                                    <span className="mt-0.5 block text-[10px] font-normal leading-tight text-muted-foreground">
+                                      Masih dipakai {row.products_count} produk
+                                    </span>
+                                  ) : null}
+                                </button>
+                              }
+                              title="Hapus sub model?"
+                              description={`Sub model "${row.name}" akan dihapus permanen.`}
+                              confirmLabel="Hapus"
+                              processing={busyId === row.id}
+                              onConfirm={() => {
+                                setBusyId(row.id)
+                                router.delete(row.delete_url!, {
+                                  preserveScroll: true,
+                                  onFinish: () => setBusyId(null),
+                                })
+                              }}
+                            />
+                          ) : null}
                         </RowActionsMenu>
                       </RowActions>
                     </TableCell>

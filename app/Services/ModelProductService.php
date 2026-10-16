@@ -92,6 +92,8 @@ class ModelProductService
                 'edit_href' => route('admin.model-products.edit', $item),
                 'activate_url' => route('admin.model-products.activate', $item),
                 'deactivate_url' => route('admin.model-products.deactivate', $item),
+                'delete_url' => route('admin.model-products.destroy', $item),
+                'sub_models_total_count' => \App\Models\SubModel::where('product_model', $item->product_model)->count(),
             ];
         });
     }

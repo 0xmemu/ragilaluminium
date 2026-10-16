@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SubModel;
+use App\Models\Product;
+use App\Support\CatalogTaxonomy;
 use App\Services\ActivityLogService;
 use App\Support\CatalogLabels;
 use App\Support\InertiaAdmin;
@@ -103,6 +105,7 @@ class SubModelController extends Controller
                 'products_count' => (int) ($s->products_count ?? 0),
                 'edit_href' => route('admin.sub-models.edit', $s),
                 'toggle_url' => route('admin.sub-models.toggle', $s),
+                'delete_url' => route('admin.sub-models.destroy', $s),
             ])->values()->all(),
             'createHref' => $model
                 ? route('admin.sub-models.create', ['product_model' => $model])
@@ -284,6 +287,43 @@ class SubModelController extends Controller
         ], $request->user()?->id);
 
         return back()->with('success', 'Urutan sub model disimpan.');
+    }
+
+    public function destroy(SubModel $subModel): RedirectResponse
+    {
+        $hasProducts = Product::where('product_model', $subModel->product_model)
+            ->where('design_variant', $subModel->code)
+            ->exists();
+
+        if ($hasProducts) {
+            return back()->with('error', 'Tidak bisa menghapus sub model yang masih dipakai produk.');
+        }
+
+        $name = $subModel->name;
+        $productModel = $subModel->product_model;
+
+        $subModel->attributeTemplates()->delete();
+        $subModel->delete();
+
+        \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.all');
+        \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.'.$productModel);
+        CatalogTaxonomy::forgetCache();
+
+        ActivityLogService::record(
+            'product.sub_model_deleted',
+            'sub_model',
+            (int) $subModel->id,
+            [
+                'product_model' => $productModel,
+                'code' => $subModel->code,
+                'name' => $name,
+            ],
+            request()->user()?->id,
+        );
+
+        return redirect()
+            ->route('admin.sub-models.index', ['product_model' => $productModel])
+            ->with('success', 'Sub model "'.$name.'" berhasil dihapus.');
     }
 
     private static function normalizeCode(string $code): string

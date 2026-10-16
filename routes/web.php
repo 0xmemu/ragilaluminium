@@ -430,6 +430,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('kelola/sub-model/{subModel}', [SubModelController::class, 'update'])->name('sub-models.update');
     Route::post('kelola/sub-model/{subModel}/toggle', [SubModelController::class, 'toggle'])->name('sub-models.toggle');
     Route::post('kelola/sub-model/reorder', [SubModelController::class, 'reorder'])->name('sub-models.reorder');
+    Route::delete('kelola/sub-model/{subModel}', [SubModelController::class, 'destroy'])->name('sub-models.destroy');
     Route::get('promotions/products', [PromotionController::class, 'products'])->name('promotions.products');
     Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
     Route::get('promotions/create', [PromotionController::class, 'create'])->name('promotions.create');
@@ -462,6 +463,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('kelola/model-produk/{modelProduct}', [ModelProductController::class, 'update'])->name('model-products.update');
     Route::post('kelola/model-produk/{modelProduct}/activate', [ModelProductController::class, 'activate'])->name('model-products.activate');
     Route::post('kelola/model-produk/{modelProduct}/deactivate', [ModelProductController::class, 'deactivate'])->name('model-products.deactivate');
+    Route::delete('kelola/model-produk/{modelProduct}', [ModelProductController::class, 'destroy'])->name('model-products.destroy');
 
     Route::get('cara-pemesanan', [CaraPemesananController::class, 'edit'])->name('cara-pemesanan.edit');
     Route::put('cara-pemesanan', [CaraPemesananController::class, 'update'])->name('cara-pemesanan.update');

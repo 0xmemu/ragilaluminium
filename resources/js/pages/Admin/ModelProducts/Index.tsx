@@ -50,6 +50,8 @@ interface ModelRow {
   edit_href: string
   activate_url: string
   deactivate_url: string
+  delete_url?: string
+  sub_models_total_count?: number
 }
 
 type ViewMode = "list" | "grid"
@@ -247,6 +249,10 @@ export default function ModelProductsIndex({
   })
 
   function ModelActions({ row }: { row: ModelRow }) {
+    const totalProducts = (row.active_count ?? 0) + (row.archived_count ?? 0)
+    const totalSubModels = row.sub_models_total_count ?? row.sub_model_count ?? 0
+    const canDelete = totalProducts === 0 && totalSubModels === 0
+
     return (
       <RowActions>
         <Button asChild variant="secondary" size="xs">
@@ -298,6 +304,37 @@ export default function ModelProductsIndex({
               </button>
             </DropdownMenuItem>
           )}
+          {row.delete_url ? (
+            <ConfirmAction
+              trigger={
+                <button
+                  type="button"
+                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                  disabled={busyId === row.id || !canDelete}
+                >
+                  Hapus
+                  {!canDelete ? (
+                    <span className="mt-0.5 block text-[10px] font-normal leading-tight text-muted-foreground">
+                      {totalProducts > 0
+                        ? `Masih dipakai ${totalProducts} produk`
+                        : `Masih memiliki ${totalSubModels} sub model`}
+                    </span>
+                  ) : null}
+                </button>
+              }
+              title="Hapus model produk?"
+              description={`Model produk "${row.name}" akan dihapus permanen.`}
+              confirmLabel="Hapus"
+              processing={busyId === row.id}
+              onConfirm={() => {
+                setBusyId(row.id)
+                router.delete(row.delete_url!, {
+                  preserveScroll: true,
+                  onFinish: () => setBusyId(null),
+                })
+              }}
+            />
+          ) : null}
         </RowActionsMenu>
       </RowActions>
     )

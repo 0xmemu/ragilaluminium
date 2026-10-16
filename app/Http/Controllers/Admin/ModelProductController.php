@@ -8,6 +8,8 @@ use App\Models\CmsGalleryItem;
 use App\Models\CmsModelProduct;
 use App\Models\MediaAsset;
 use App\Models\ProductMedia;
+use App\Models\Product;
+use App\Models\SubModel;
 use App\Services\ActivityLogService;
 use App\Services\ModelProductService;
 use App\Support\CatalogTaxonomy;
@@ -235,6 +237,41 @@ class ModelProductController extends Controller
         CatalogTaxonomy::forgetCache();
 
         return back()->with('success', 'Model disembunyikan (draft).');
+    }
+
+    public function destroy(CmsModelProduct $modelProduct): RedirectResponse
+    {
+        if (Product::where('product_model', $modelProduct->product_model)->exists()) {
+            return back()->with('error', 'Tidak bisa menghapus model produk yang masih dipakai produk.');
+        }
+
+        if (SubModel::where('product_model', $modelProduct->product_model)->exists()) {
+            return back()->with('error', 'Tidak bisa menghapus model produk yang masih memiliki sub model.');
+        }
+
+        $name = $modelProduct->name;
+        $previousAssetId = $modelProduct->media_asset_id ? (int) $modelProduct->media_asset_id : null;
+
+        $modelProduct->galleryAssets()->detach();
+        $modelProduct->delete();
+
+        if ($previousAssetId) {
+            $this->archiveReplacedAsset($previousAssetId, null);
+        }
+
+        CatalogTaxonomy::forgetCache();
+
+        ActivityLogService::record(
+            'cms.model_product_deleted',
+            'cms_model_product',
+            (int) $modelProduct->id,
+            ['name' => $name],
+            request()->user()?->id,
+        );
+
+        return redirect()
+            ->route('admin.model-products.index')
+            ->with('success', 'Model produk "'.$name.'" berhasil dihapus.');
     }
 
     /** @return array<string, mixed> */
