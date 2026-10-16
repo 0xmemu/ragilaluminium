@@ -6938,3 +6938,42 @@ tetap ada.
 Dampak spec: tidak berubah.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-17 05:15 UTC | zcode-live-events | Trivial | 0448661f | selesai
+
+Lingkup: lanjutan kontrak owner 17 Okt 2026 ("label itu DAN LABEL SERUPA"). Owner
+menyetujui pembuangan status sistem yang tersisa di halaman detail pesanan.
+
+Dibuang:
+- Baris "Pembaruan langsung" (status koneksi) di DUA tempat: drawer Detail dan
+  kartu ringkasan.
+- Baris "Event terakhir" (waktu teknis event) di dua tempat yang sama.
+- Fungsi liveConnectionLabel yang kini jadi kode mati, beserta re-ekspornya di
+  adapter. Dibiarkan berarti jadi jebakan bagi agent berikutnya.
+
+Yang TIDAK diubah: peringatan pekerjaan "Pesanan diperbarui oleh aktivitas lain.
+Perbarui setelah menyimpan pekerjaan Anda." tetap ada (baris 707, dirender 1113).
+Itu peringatan risiko menimpa pekerjaan yang sedang diedit, bukan status sistem.
+Notifikasi "Pesanan Baru Masuk" dan "Pesan WhatsApp Masuk" juga tetap.
+
+Penjaga regresi: dua tes baru (larangan teks status sistem di halaman pesanan, dan
+larangan fungsi label kembali ada). Dibuktikan bukan penjaga palsu: saat label
+sengaja dikembalikan, tes langsung gagal.
+
+Jebakan proses yang ketemu: git checkout otomatis berpindah ke cabang
+feat/ui-consistency-vps209 (dibuat agent lain dari main) sehingga commit saya masuk
+ke cabang itu. Sudah dipindahkan ke main lewat cherry-pick tanpa mengganggu cabang
+tersebut. Cabang itu belum ada di remote dan hanya berisi commit saya.
+
+Juga menutup celah: tests/Feature/AdminBroadcastAuthTest.php (dibuat saat menyelidiki
+403 otorisasi kanal) belum ikut ter-commit; sekarang ikut, 3 passed.
+
+Verifikasi: 442 tes frontend lulus (55 berkas); tsc 0 error; eslint 0 warning;
+build sukses. Live: rilis 0448661f aktif, layanan sehat. Bundel: lima teks status
+sistem 0 kemunculan; notifikasi pesanan dan WhatsApp tetap ada.
+
+Dampak spec: tidak berubah.
+
+Agent: zcode-live-events
