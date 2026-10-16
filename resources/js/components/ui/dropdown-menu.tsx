@@ -11,13 +11,15 @@ export const DropdownMenuPortal = DropdownMenuPrimitive.Portal
 export const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 8, ...props }, ref) => (
+>(({ className, sideOffset = 8, collisionPadding = 8, avoidCollisions = true, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
+      avoidCollisions={avoidCollisions}
       className={cn(
-        "z-modal min-w-[14rem] overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-float animate-in fade-in-0 zoom-in-95",
+        "z-modal min-w-[14rem] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-float animate-in fade-in-0 zoom-in-95",
         className,
       )}
       {...props}

@@ -60,6 +60,9 @@ export function SearchSelect({
     visibility: "hidden",
     zIndex: 60,
   })
+  // Tinggi maksimum daftar opsi dihitung dari sisa ruang layar supaya daftar
+  // panjang tidak melewati batas viewport saat dibuka dekat tepi layar.
+  const [listMaxHeight, setListMaxHeight] = React.useState<number | undefined>(undefined)
 
   // Baris tambahan "Pakai <ketikan>" muncul hanya bila creatable dan ketikan
   // belum ada padanannya. Logikanya ada di helper murni supaya bisa diuji
@@ -113,6 +116,9 @@ export function SearchSelect({
     const rect = trigger.getBoundingClientRect()
     const spaceBelow = window.innerHeight - rect.bottom
     const preferUp = spaceBelow < 260 && rect.top > spaceBelow
+    // Ruang tersisa dikurangi tinggi kotak pencarian dan bantalan tepi.
+    const ruang = preferUp ? rect.top - 8 : window.innerHeight - rect.bottom - 8
+    setListMaxHeight(Math.max(140, Math.round(ruang - 60)))
 
     // Font diambil dari elemen nyata, lalu lebar diukur lewat canvas supaya
     // daftar ratusan opsi tidak menambah elemen pengukur ke DOM.
@@ -263,7 +269,10 @@ export function SearchSelect({
               className="h-8 w-full rounded border border-input bg-surface px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             />
           </div>
-          <div className="max-h-60 divide-y divide-border/20 overflow-y-auto bg-surface p-1 text-xs">
+          <div
+            className="max-h-60 divide-y divide-border/20 overflow-y-auto bg-surface p-1 text-xs"
+            style={{ maxHeight: listMaxHeight }}
+          >
             {rows.length === 0 ? (
               <p className="p-2.5 text-center text-xs text-muted-foreground">{emptyMessage}</p>
             ) : (

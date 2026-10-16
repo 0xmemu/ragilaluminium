@@ -6479,3 +6479,22 @@ Berkas:
 Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (penambahan dua endpoint DELETE admin baru dengan proteksi integritas relasional).
 Bukti: TaxonomyDestroyGuardTest 15 assertions passed; tsc 0 error, eslint 0 warning, build Vite sukses. Rilis 20261016160320-9b460d11 aktif di VPS 202.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 17:10 UTC | zcode | Standard | (belum) | selesai
+Lingkup: penyeragaman seluruh elemen melayang di panel admin agar tidak lagi terpotong tepian kartu, tabel bergeser, atau batas layar.
+Akar masalah: kotak petunjuk kursor (HintTip) masih dirender sebagai elemen berposisi absolut DI DALAM kartu, sehingga teriris oleh wadah ber-overflow-hidden dan overflow-x-auto. Menu tarik-turun memakai portal tetapi tanpa jarak aman layar dan tanpa batas tinggi adaptif, sehingga daftar panjang terpotong saat dibuka dekat tepi layar.
+Perubahan:
+- resources/js/components/admin/ui/hint-tip.tsx: diganti memakai Radix Tooltip Primitive dengan Portal ke document.body, collisionPadding 8px, avoidCollisions aktif (otomatis membalik ke atas atau bawah), dan gaya popover seragam.
+- resources/js/components/admin/ui/dropdown-menu.tsx: ditambah collisionPadding, avoidCollisions, dan max-height var(--radix-dropdown-menu-content-available-height) dengan overflow-y-auto.
+- resources/js/components/ui/dropdown-menu.tsx: perlakuan sama untuk menu tarik-turun bersama.
+- resources/js/components/admin/ui/tooltip.tsx dan resources/js/components/ui/tooltip.tsx: latar bg-primary pekat diganti permukaan popover (bg-popover, border, shadow-float) plus collisionPadding dan avoidCollisions, agar satu bahasa desain dengan HintTip.
+- resources/js/components/admin/ui/select.tsx: batas tinggi daftar opsi dihitung dari sisa ruang layar (state listMaxHeight) supaya daftar panjang tidak melewati viewport.
+- resources/js/components/admin/ui/search-select.tsx: batas tinggi daftar dihitung dari sisa ruang layar.
+- resources/js/components/admin/option-menu.tsx: maxHeight dihitung dari sisa ruang layar dan daftar bisa digulir.
+- tests/frontend/popover-clipping-guard.test.ts: penjaga regresi, 13 test membaca sumber dan menolak popover yang tidak lewat portal atau kehilangan batas aman layar.
+Dampak spec: spec tidak berubah (tidak ada rute, skema, enum, atau bentuk JSON baru).
+Bukti: tsc 0 error, eslint 0 warning, vitest 393 test lulus (48 berkas, termasuk 13 penjaga baru), build Vite sukses. Verifikasi live di peramban sungguhan (Chrome headless, viewport 1418x1302) pada halaman Performa Toko, Pesanan, Biaya COD, dan Kategori: seluruh petunjuk kursor dan menu tarik-turun terbukti dirender lewat portal, berada di dalam viewport, dan tidak satu pun terpotong wadah ber-overflow. Bukti tangkapan layar: petunjuk pada halaman Biaya COD kini melayang di atas kartu dan menimpa sidebar tanpa teriris.
+Catatan operasional: kata sandi akun uji dev (username dev.agent) disetel ulang ke nilai yang terdokumentasi agar verifikasi peramban bisa berjalan; skrip sementara di /tmp sudah dihapus.
+Agent: zcode

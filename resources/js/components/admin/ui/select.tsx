@@ -126,6 +126,10 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       visibility: "hidden",
       zIndex: 60,
     })
+    // Tinggi maksimum daftar opsi dihitung dari sisa ruang layar saat popover
+    // dibuka, supaya daftar panjang tidak melewati batas atas atau bawah
+    // viewport walau sedang dibuka dekat tepi layar.
+    const [listMaxHeight, setListMaxHeight] = React.useState<number | undefined>(undefined)
     const options = collectOptions(children)
     const showSearch = options.length > SEARCH_THRESHOLD
 
@@ -177,6 +181,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         ? Math.min(longestLabelWidth + POPOVER_TEXT_INSET, MAX_POPOVER_WIDTH)
         : 0
       const width = Math.max(Math.round(rect.width), wanted)
+      // Ruang tersisa di sisi tempat popover dibuka, dikurangi tinggi kotak
+      // pencarian, footer panel, dan bantalan tepi. Daftar opsi memakai angka
+      // ini sebagai batas tinggi sehingga selalu bisa digulir di dalam layar.
+      const chrome = (showSearch ? 46 : 0) + (popoverFooter ? 56 : 0) + 16
+      const ruang = preferUp ? rect.top - 8 : window.innerHeight - rect.bottom - 8
+      setListMaxHeight(Math.max(160, Math.round(ruang - chrome)))
       setPopoverStyle({
         position: "fixed",
         left: Math.max(8, Math.min(Math.round(rect.left), window.innerWidth - width - 8)),
@@ -186,7 +196,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         visibility: "visible",
         zIndex: 60,
       })
-    }, [longestLabelWidth])
+    }, [longestLabelWidth, showSearch, popoverFooter])
 
     // useLayoutEffect: posisi dihitung sebelum browser menggambar, jadi tidak
     // ada satu frame pun saat portal masih berada pada posisi alir.
@@ -314,7 +324,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               {showSearch ? (
                 <CommandInput placeholder="Cari..." />
               ) : null}
-              <CommandList className="max-h-72">
+              <CommandList className="max-h-72" style={{ maxHeight: listMaxHeight }}>
                 <CommandEmpty>Tidak ada yang cocok</CommandEmpty>
                 {options.map((option) => {
                   const isSelected = option.value === String(value ?? "")

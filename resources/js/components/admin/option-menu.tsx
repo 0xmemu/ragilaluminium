@@ -82,6 +82,9 @@ export function OptionMenu({
       bottom: preferUp ? Math.round(window.innerHeight - rect.top + 4) : undefined,
       visibility: "visible",
       zIndex: 60,
+      maxHeight: Math.max(120, Math.round(
+        (preferUp ? rect.top - 8 : window.innerHeight - rect.bottom - 8),
+      )),
     })
   }, [align])
 
@@ -124,7 +127,7 @@ export function OptionMenu({
           role="listbox"
           aria-label={label}
           style={popoverStyle}
-          className="overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md"
+          className="overflow-y-auto overflow-x-hidden rounded-md border border-border bg-surface py-1 shadow-md"
         >
           {options.map((option) => {
             const active = option.value === value
