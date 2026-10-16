@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Domain\Orders\OrderStateMachine;
+use App\Events\AdminShippingStatusUpdated;
 use App\Events\ShippingStatusUpdated;
 use App\Models\EventLog;
 use App\Models\Order;
@@ -738,6 +739,11 @@ class ShippingService
 
                 if ($order) {
                     ShippingStatusUpdated::dispatch($order, $record, $previous, $mapped);
+                    // Siaran panel admin memakai event terpisah yang hanya membawa
+                    // field aman. ShippingStatusUpdated membawa model Order dan
+                    // ShippingRecord utuh, jadi menyiarkannya langsung akan mengirim
+                    // nama, telepon, dan alamat pelanggan ke peramban.
+                    AdminShippingStatusUpdated::dispatch($order, $record, $previous, $mapped);
                 }
             }
         });

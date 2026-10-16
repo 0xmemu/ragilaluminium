@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Services\ActivityLogService;
+use App\Services\AdminDataVersion;
 use App\Support\InertiaAdmin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,10 @@ use Inertia\Response;
 
 class NotificationController extends Controller
 {
-    public function __construct(protected ActivityLogService $logs) {}
+    public function __construct(
+        protected ActivityLogService $logs,
+        protected AdminDataVersion $dataVersion,
+    ) {}
 
     /**
      * Daftar notifikasi admin (spec F: 1 daftar, klik -> detail).
@@ -205,7 +209,7 @@ class NotificationController extends Controller
             // Penanda versi data panel admin (owner 2026-09-29): berubah bila
             // data yang tampil di panel berubah, sehingga halaman dapat memuat
             // ulang dirinya secara otomatis tanpa tombol Muat ulang.
-            'data_version' => $this->dataVersion(),
+            'data_version' => $this->dataVersion->current(),
         ]);
     }
 

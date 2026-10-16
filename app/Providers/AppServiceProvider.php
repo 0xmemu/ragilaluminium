@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Observers\AdminDataVersionObserver;
 use App\Services\CampaignService;
 use App\Services\CartService;
 use App\Support\CatalogTaxonomy;
@@ -22,6 +23,30 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Penanda versi data panel admin (Tahap 2 live events, 16 Okt 2026).
+        // Model di bawah ini adalah yang tampil di panel. Setiap simpan atau hapus
+        // menaikkan satu nilai di Redis, menggantikan query agregat 14 subquery yang
+        // dulu berjalan pada setiap polling notifikasi.
+        // Daftar ini SENGAJA eksplisit: model baru yang tampil di panel wajib
+        // ditambahkan di sini, dan AdminDataVersionTest menjaga daftarnya.
+        foreach ([
+            \App\Models\Order::class,
+            \App\Models\Payment::class,
+            \App\Models\WhatsAppMessage::class,
+            \App\Models\MediaAsset::class,
+            \App\Models\ImportJob::class,
+            \App\Models\OrderReturnCase::class,
+            \App\Models\CmsTestimonial::class,
+            \App\Models\CmsBanner::class,
+            \App\Models\Announcement::class,
+            \App\Models\StoreVoucher::class,
+            \App\Models\Promotion::class,
+            \App\Models\ShippingRecord::class,
+            \App\Models\AdminNotification::class,
+        ] as $model) {
+            $model::observe(AdminDataVersionObserver::class);
+        }
+
         if ($this->app->environment('production')
             && config('jnt.enabled')
             && blank(config('jnt.webhook.private_key'))) {

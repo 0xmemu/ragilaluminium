@@ -2,6 +2,11 @@ import * as React from "react"
 import { Link, router, usePage } from "@inertiajs/react"
 import { Icon } from "@/components/shared/icon"
 import { routeUrl } from "@/lib/routes"
+import {
+  liveConnectionLabel,
+  subscribeAdminLive,
+  useAdminLive,
+} from "@/lib/admin-live-connection"
 import { isAutoRefreshPaused } from "@/lib/admin-auto-refresh"
 
 interface ToastItem {
@@ -39,20 +44,6 @@ interface AdminWhatsAppReceivedEvent {
   href: string
 }
 
-interface PollResponse {
-  unread_count: number
-  latest_id: number
-  /** Penanda versi data panel; berubah bila data admin berubah. */
-  data_version?: string
-  new_notifications: Array<{
-    id: number
-    type: string
-    title: string
-    body?: string | null
-    href?: string | null
-    created_at?: string | null
-  }>
-}
 
 function playNotificationChime(type: "order" | "whatsapp" | "generic" = "generic"): void {
   try {
@@ -121,13 +112,14 @@ export function LiveNotificationManager(): React.ReactElement | null {
   const [toasts, setToasts] = React.useState<ToastItem[]>([])
   const seenIdsRef = React.useRef<Set<string>>(new Set())
   const lastPollIdRef = React.useRef<number>(0)
+  // Status koneksi live dari modul bersama (bukan sambungan milik komponen ini).
+  const live = useAdminLive()
 
   // ---- Muat ulang otomatis (owner 2026-09-29) ----
   // Halaman memuat ulang datanya sendiri saat ada perubahan nyata: lewat event
   // live (WebSocket) begitu pesanan/pesan WA berubah, atau lewat penanda versi
   // pada polling cadangan. Tidak ada tombol Muat ulang lagi.
   const { component } = usePage()
-  const lastVersionRef = React.useRef<string | null>(null)
   const autoTimerRef = React.useRef<number | null>(null)
   const lastReloadRef = React.useRef<number>(0)
   const busyRef = React.useRef(false)
@@ -195,40 +187,16 @@ export function LiveNotificationManager(): React.ReactElement | null {
     }, 7000)
   }, [dismissToast])
 
-  // Inisialisasi WebSocket Reverb
+  // Event live dan denyut data ditangani satu modul bersama
+  // (@/lib/admin-live-connection). Berkas ini TIDAK lagi membuat sambungan Echo
+  // sendiri dan TIDAK lagi menjalankan polling tiap 8 detik. Denyut data kini 120
+  // detik dan hanya dijalankan tab pemimpin, sehingga satu peramban dengan
+  // belasan tab hanya menghasilkan satu permintaan tiap dua menit.
   React.useEffect(() => {
-    let disposed = false
-
-    const connectReverb = async (): Promise<void> => {
-      const reverbKey = import.meta.env.VITE_REVERB_APP_KEY
-      if (!reverbKey) return
-
-      try {
-        const { default: Echo } = await import("laravel-echo")
-        if (disposed) return
-
-        if (!window.Echo) {
-          const host = (import.meta.env.VITE_REVERB_HOST as string) || window.location.hostname
-          const scheme = (import.meta.env.VITE_REVERB_SCHEME as string) || "https"
-          const isTls = scheme === "https"
-
-          window.Echo = new Echo({
-            broadcaster: "reverb",
-            key: reverbKey,
-            wsHost: host,
-            wsPort: 80,
-            wssPort: 443,
-            forceTLS: isTls,
-            enabledTransports: ["ws", "wss"],
-          }) as unknown as typeof window.Echo
-        }
-
-        const echoClient = window.Echo
-        if (!echoClient) return
-        const channel = echoClient.private("admin.operations")
-
-        channel.listen(".order.created", (data: AdminOrderCreatedEvent) => {
-          if (disposed) return
+    return subscribeAdminLive((message) => {
+      if (message.type === "event") {
+        if (message.event === "order.created") {
+          const data = message.data as AdminOrderCreatedEvent
           jadwalkanMuatUlang()
           pushToast({
             id: "order-" + data.event_id,
@@ -240,10 +208,11 @@ export function LiveNotificationManager(): React.ReactElement | null {
             href: data.href || routeUrl("admin.orders.show", { order: data.order_id }),
             timestamp: Date.now(),
           })
-        })
+          return
+        }
 
-        channel.listen(".whatsapp.received", (data: AdminWhatsAppReceivedEvent) => {
-          if (disposed) return
+        if (message.event === "whatsapp.received") {
+          const data = message.data as AdminWhatsAppReceivedEvent
           jadwalkanMuatUlang()
           const senderLabel = data.customer_name
             ? data.customer_name + " (" + data.phone_number + ")"
@@ -258,92 +227,71 @@ export function LiveNotificationManager(): React.ReactElement | null {
             href: data.href || routeUrl("admin.orders.index", { search: data.phone_number }),
             timestamp: Date.now(),
           })
-        })
-      } catch {
-        // Fallback ke polling otomatis
-      }
-    }
-
-    void connectReverb()
-
-    return () => {
-      disposed = true
-    }
-  }, [pushToast, jadwalkanMuatUlang])
-
-  // Heartbeat Polling Fallback (setiap 8 detik)
-  React.useEffect(() => {
-    let disposed = false
-
-    const pollNotifications = async (): Promise<void> => {
-      try {
-        const url = routeUrl("admin.notifications.poll") + "?last_id=" + lastPollIdRef.current
-        const res = await fetch(url, {
-          headers: {
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        })
-
-        if (!res.ok || disposed) return
-        const data = (await res.json()) as PollResponse
-
-        // Penanda versi: pertama kali hanya dicatat, setelah itu perubahan
-        // memicu pemuatan ulang halaman (menangkap perubahan yang tidak
-        // menghasilkan notifikasi, mis. status resi dari J&T).
-        if (typeof data.data_version === "string" && data.data_version !== "") {
-          if (lastVersionRef.current === null) {
-            lastVersionRef.current = data.data_version
-          } else if (lastVersionRef.current !== data.data_version) {
-            lastVersionRef.current = data.data_version
-            jadwalkanMuatUlang()
-          }
-        }
-
-        if (lastPollIdRef.current === 0) {
-          // Inisialisasi awal ID, tidak memicu alert notifikasi lama saat halaman pertama kali dimuat
-          lastPollIdRef.current = data.latest_id || 0
           return
         }
 
-        if (data.latest_id > lastPollIdRef.current) {
-          lastPollIdRef.current = data.latest_id
-
-          if (Array.isArray(data.new_notifications) && data.new_notifications.length > 0) {
-            for (const notif of data.new_notifications) {
-              const notifType = notif.type === "order_created" ? "order" : notif.type === "whatsapp_inbound" ? "whatsapp" : "generic"
-              pushToast({
-                id: "notif-" + notif.id,
-                type: notifType,
-                title: notif.title || "Notifikasi Baru",
-                subtitle: notif.body || "",
-                href: notif.href || routeUrl("admin.notifications.index"),
-                timestamp: Date.now(),
-              })
-            }
+        if (message.event === "shipping.updated") {
+          const data = message.data as {
+            event_id: string
+            order_number: string
+            new_status: string
+            href?: string
           }
+          jadwalkanMuatUlang()
+          pushToast({
+            id: "ship-" + data.event_id,
+            type: "generic",
+            title: "Status Pengiriman Berubah",
+            subtitle: data.order_number + " : " + data.new_status,
+            href: data.href || routeUrl("admin.orders.index"),
+            timestamp: Date.now(),
+          })
+          return
         }
-      } catch {
-        // Abaikan kegagalan jaringan sementara
+
+        // order.updated: tidak perlu toast, cukup memuat ulang datanya.
+        jadwalkanMuatUlang()
+        return
       }
-    }
 
-    // Eksekusi inisialisasi awal
-    void pollNotifications()
-
-    const timer = window.setInterval(() => {
-      if (!disposed) {
-        void pollNotifications()
+      // Pesan penyelarasan dari denyut data atau pemulihan sambungan.
+      if (message.reason === "version" || message.reason === "reconnect") {
+        jadwalkanMuatUlang()
       }
-    }, 8000)
 
-    return () => {
-      disposed = true
-      window.clearInterval(timer)
-    }
+      // Notifikasi yang terlewat saat sambungan putus. Hanya yang lebih baru
+      // dari pembacaan terakhir yang ditampilkan, supaya notifikasi lama tidak
+      // muncul berulang tiap denyut.
+      const daftar = message.notifications
+      if (Array.isArray(daftar) && daftar.length > 0) {
+        const terbesar = daftar.reduce((maks, n) => Math.max(maks, n.id), 0)
+
+        if (lastPollIdRef.current === 0) {
+          lastPollIdRef.current = terbesar
+          return
+        }
+
+        for (const notif of daftar) {
+          if (notif.id <= lastPollIdRef.current) continue
+          const notifType =
+            notif.type === "order_created" ? "order" : notif.type === "whatsapp_inbound" ? "whatsapp" : "generic"
+          pushToast({
+            id: "notif-" + notif.id,
+            type: notifType,
+            title: notif.title || "Notifikasi Baru",
+            subtitle: notif.body || "",
+            href: notif.href || routeUrl("admin.notifications.index"),
+            timestamp: Date.now(),
+          })
+        }
+
+        lastPollIdRef.current = terbesar
+      }
+    })
   }, [pushToast, jadwalkanMuatUlang])
 
-  if (toasts.length === 0) return null
+
+  const statusLabel = liveConnectionLabel(live.state)
 
   return (
     <div
@@ -351,6 +299,17 @@ export function LiveNotificationManager(): React.ReactElement | null {
       role="region"
       aria-label="Notifikasi langsung toko"
     >
+      {statusLabel ? (
+        <div
+          className="pointer-events-auto ml-auto flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
+          <span>{statusLabel}</span>
+          {live.stale ? <span className="text-amber-600 dark:text-amber-400">Data mungkin tertinggal.</span> : null}
+        </div>
+      ) : null}
       {toasts.map((toast) => {
         const isOrder = toast.type === "order"
         const isWa = toast.type === "whatsapp"
