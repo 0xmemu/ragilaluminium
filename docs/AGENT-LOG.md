@@ -6901,3 +6901,40 @@ build sukses. Belum ada percobaan otorisasi baru dari peramban setelah deploy
 Dampak spec: tidak berubah.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-17 05:00 UTC | zcode-live-events | Trivial | b1085a7d | selesai
+
+Lingkup: koreksi atas kelalaian sendiri. Saya menambahkan pil status koneksi
+melayang di kanan atas SEMUA halaman admin, padahal tidak diminta.
+
+Kontrak owner 17 Okt 2026: admin toko TIDAK berurusan dengan kesehatan sistem.
+Status teknis (menghubungkan, terputus, data basi) bukan urusan pekerjaan admin
+toko, jadi tidak boleh tampil di panel.
+
+Dibuang:
+- Pil status koneksi beserta peringatan "Data mungkin tertinggal" dari shell admin.
+- Hook status dan perhitungan label yang hanya dipakai pil itu.
+- Dua ekspor mati yang saya tinggalkan: reconcileAdminLive dan ADMIN_LIVE_TIMING.
+
+Yang TIDAK diubah: notifikasi "Pesanan Baru Masuk", "Pesan WhatsApp Masuk", dan
+perubahan status pengiriman tetap tampil. Itu urusan pekerjaan admin toko.
+
+Catatan penting untuk agent berikutnya: fungsi liveConnectionLabel dan pemakaiannya
+di halaman detail pesanan (resources/js/pages/Admin/Orders/Show.tsx) SUDAH ADA
+sebelum pekerjaan ini (commit 1f6c68d0 dan 12ee87fc), jadi TIDAK saya sentuh. Kalau
+owner ingin itu dibuang juga, itu perubahan terpisah dan perlu keputusan.
+
+Penjaga regresi: penjaga lama yang MENUNTUT label tampil dibalik menjadi penjaga
+yang MELARANG di shell admin. Dibuktikan bukan penjaga palsu: saat label sengaja
+dikembalikan, tes langsung gagal, lalu dipulihkan dan lulus lagi.
+
+Verifikasi: 440 tes frontend lulus (55 berkas); tsc 0 error; eslint 0 warning;
+build sukses. Live: rilis b1085a7d aktif, layanan sehat, / 200, /admin 302.
+Bundel: teks "Data mungkin tertinggal" 0 kemunculan; notifikasi pesanan dan WhatsApp
+tetap ada.
+
+Dampak spec: tidak berubah.
+
+Agent: zcode-live-events
