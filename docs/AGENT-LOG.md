@@ -6460,3 +6460,22 @@ Pembersihan produksi: 51 baris sub_models lama di VPS 202 dibersihkan (0 baris),
 Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (taksonomi kategori dan model produk kini murni dinamis berbasis database, melepaskan keterikatan ke konstanta hardcode PHP).
 Bukti: DynamicTaxonomyFlowTest 14 assertions passed, SubModel tests 26 passed, ModelProduct tests 16 passed, Category tests 23 passed, tsc 0 error, eslint 0 warning, build Vite sukses. Rilis 20261016152609-08d4c2d8 aktif di VPS 202, HTTP 200 di https://ragilaluminium.com/ dan /products.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 16:10 UTC | zcode-taxonomy-flow | Standard | 9b460d11 | selesai
+Lingkup: penambahan aksi hapus permanen dengan proteksi berjenjang (cascade integrity guard) pada Model Produk, Sub Model, dan Kategori.
+Berkas:
+- routes/web.php: tambah route DELETE admin.model-products.destroy dan admin.sub-models.destroy.
+- app/Http/Controllers/Admin/ModelProductController.php: method destroy() dengan guard penolak jika masih memiliki produk aktif/arsip atau memiliki sub model; melepas pivot galeri dan mengarsipkan media yatim.
+- app/Services/ModelProductService.php: menyertakan delete_url dan sub_models_total_count pada baris adminRows.
+- app/Http/Controllers/Admin/SubModelController.php: method destroy() dengan guard penolak jika masih dipakai produk; menghapus template atribut dan membersihkan cache.
+- app/Http/Controllers/Admin/CategoryController.php: memperkuat method destroy() dengan guard penolak jika masih memiliki model produk; menyertakan models_count di index.
+- resources/js/pages/Admin/ModelProducts/Index.tsx: tombol Hapus di RowActionsMenu dengan ConfirmAction, disabled jika masih memiliki produk atau sub model.
+- resources/js/pages/Admin/SubModels.tsx: tombol Hapus di RowActionsMenu dengan ConfirmAction, disabled jika masih dipakai produk.
+- resources/js/pages/Admin/Categories/Index.tsx: tombol Hapus disabled jika masih dipakai produk atau masih memiliki model produk.
+- tests/Feature/TaxonomyDestroyGuardTest.php: test proteksi berjenjang (kategori ditolak jika ada model, model ditolak jika ada sub model/produk, sub model ditolak jika ada produk).
+- docs/api-and-routes-ragil-aluminium.md: dokumentasi rute DELETE baru.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (penambahan dua endpoint DELETE admin baru dengan proteksi integritas relasional).
+Bukti: TaxonomyDestroyGuardTest 15 assertions passed; tsc 0 error, eslint 0 warning, build Vite sukses. Rilis 20261016160320-9b460d11 aktif di VPS 202.
+Agent: zcode-taxonomy-flow
