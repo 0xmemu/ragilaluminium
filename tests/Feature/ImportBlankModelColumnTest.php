@@ -8,75 +8,32 @@ use App\Models\ImportJob;
 use App\Models\Product;
 use App\Models\SubModel;
 use App\Models\User;
+use App\Support\CatalogImportVerifierV2;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
 /**
- * Membuktikan perilaku kolom Model dan Sub Model pada XLSX saat tabel
- * taksonomi kosong dan kolomnya dibiarkan KOSONG oleh admin.
+ * Perbaikan 16 Okt 2026: kolom Model Produk yang kosong TIDAK LAGI lolos
+ * pemeriksaan berkas lalu diam-diam menjadi SLIDING.
+ *
+ * Dulu baris dengan Model kosong diterima verifier, lalu importer menulis
+ * product_model = SLIDING tanpa peringatan, sehingga produk tercatat salah
+ * model tanpa admin sadar. Sekarang verifier menolaknya lebih dulu.
  */
 class ImportBlankModelColumnTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function siapkanMedia(): void
+    private function baris(array $override = []): array
     {
-        \Illuminate\Support\Facades\Storage::fake('media');
-        \Illuminate\Support\Facades\Storage::disk('media')->put('media-assets/utama/pdp.webp', 'isi-uji');
-    }
-
-    private function berkas(array $rows): string
-    {
-        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $ws = $ss->getActiveSheet();
-        $ws->setTitle('Data');
-
-        $headers = array_keys($rows[0]);
-        foreach ($headers as $i => $header) {
-            $ws->setCellValue(
-                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).'1',
-                $header
-            );
-        }
-        foreach ($rows as $r => $row) {
-            foreach (array_values($row) as $c => $value) {
-                $ws->setCellValue(
-                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c + 1).($r + 2),
-                    $value
-                );
-            }
-        }
-
-        $path = \Illuminate\Support\Facades\Storage::disk('imports')->path('tmp/uji-kosong-model.xlsx');
-        @mkdir(dirname($path), 0775, true);
-        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
-
-        return $path;
-    }
-
-    private function job(): ImportJob
-    {
-        return ImportJob::create([
-            'type' => 'catalog_import',
-            'source_file_name' => 'uji.xlsx',
-            'source_file_path' => 'tmp/uji.xlsx',
-            'stock_mode' => 'file',
-            'status' => 'pending',
-            'triggered_by_user_id' => User::factory()->create(['role' => 'admin', 'status' => 'active'])->id,
-        ]);
-    }
-
-    private function barisKosongTaksonomi(): array
-    {
-        return [
+        return array_merge([
             'no_id' => 1,
-            'nama_produk' => 'Produk Tanpa Kolom Model',
+            'nama_produk' => 'Produk Uji Kolom Model',
             'deskripsi_produk' => 'Deskripsi.',
             'spesifikasi' => 'Bahan: Aluminium',
             'kategori_produk' => 'PINTU',
-            'model_produk' => '',
-            'sub_model' => '',
+            'model_produk' => 'PINTU_LIPAT',
+            'sub_model' => 'KISI_KISI',
             'nama_variasi_1' => 'Warna',
             'opsi_variasi_1' => 'Putih',
             'harga' => 2000000,
@@ -86,36 +43,91 @@ class ImportBlankModelColumnTest extends TestCase
             'panjang_cm' => 100,
             'lebar_cm' => 10,
             'gambar_1_utama' => 'https://media.333labs.tech/media-assets/utama/pdp.webp',
-        ];
+        ], $override);
     }
 
-    public function test_kolom_model_kosong_jatuh_ke_sliding_diam_diam(): void
+    public function test_verifier_menolak_kolom_model_kosong(): void
     {
-        $this->siapkanMedia();
+        $errors = CatalogImportVerifierV2::verify([$this->baris(['model_produk' => ''])]);
+
+        $this->assertNotEmpty($errors, 'berkas dengan Model kosong harus ditolak');
+        $pesan = implode(' | ', $errors);
+        $this->assertStringContainsString('Model Produk wajib diisi', $pesan);
+        $this->assertStringContainsString('baris pertama grup', $pesan);
+    }
+
+    public function test_verifier_menolak_kolom_model_hanya_spasi(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([$this->baris(['model_produk' => '   '])]);
+
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('Model Produk wajib diisi', implode(' | ', $errors));
+    }
+
+    public function test_verifier_menolak_kolom_kategori_kosong(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([$this->baris(['kategori_produk' => ''])]);
+
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('Kategori Produk wajib diisi', implode(' | ', $errors));
+    }
+
+    public function test_verifier_meloloskan_kolom_model_yang_terisi(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([$this->baris()]);
+
+        $this->assertSame([], $errors, 'berkas lengkap harus lolos');
+    }
+
+    public function test_importer_menolak_model_kosong_bukan_menulis_sliding(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('media');
+        \Illuminate\Support\Facades\Storage::disk('media')->put('media-assets/utama/pdp.webp', 'isi-uji');
+
         CmsModelProduct::query()->delete();
         SubModel::query()->delete();
         \Illuminate\Support\Facades\Cache::flush();
 
-        $job = $this->job();
-        $path = $this->berkas([$this->barisKosongTaksonomi()]);
-        Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+        $job = ImportJob::create([
+            'type' => 'catalog_import',
+            'source_file_name' => 'uji.xlsx',
+            'source_file_path' => 'tmp/uji.xlsx',
+            'stock_mode' => 'file',
+            'status' => 'pending',
+            'triggered_by_user_id' => User::factory()->create(['role' => 'admin', 'status' => 'active'])->id,
+        ]);
 
-        $product = Product::first();
-        $this->assertNotNull($product, 'produk tetap tercipta');
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet();
+        $ws->setTitle('Data');
+        $rows = [$this->baris(['model_produk' => ''])];
+        $headers = array_keys($rows[0]);
+        foreach ($headers as $i => $header) {
+            $ws->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).'1', $header);
+        }
+        foreach ($rows as $r => $row) {
+            foreach (array_values($row) as $c => $value) {
+                $ws->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c + 1).($r + 2), $value);
+            }
+        }
+        $path = \Illuminate\Support\Facades\Storage::disk('imports')->path('tmp/uji-model-kosong.xlsx');
+        @mkdir(dirname($path), 0775, true);
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
 
-        // PERILAKU LAMA YANG TERDOKUMENTASI: kolom Model kosong TIDAK ditolak,
-        // melainkan diam-diam menjadi SLIDING oleh CatalogProductsImportV2
-        // ($data['model_produk'] ?? '' dinormalkan lalu jatuh ke 'SLIDING').
-        // Ini bukan efek perubahan taksonomi dinamis, melainkan perilaku bawaan
-        // importer. Test ini mengunci perilaku itu supaya perubahan mendatang
-        // terlihat, bukan menyatakan bahwa perilaku ini diinginkan.
-        $this->assertSame('SLIDING', $product->product_model, 'kolom Model kosong jatuh ke SLIDING');
-        $this->assertNull($product->design_variant, 'kolom Sub Model kosong tetap null');
+        // Importer menolak berkas lewat verifier internal sebelum menulis apa pun.
+        $ditolak = false;
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
+        } catch (\Throwable $e) {
+            $ditolak = true;
+            $this->assertStringContainsString('Model Produk wajib diisi', $e->getMessage());
+        }
 
-        app(\App\Services\ModelProductService::class)->syncFromCatalog(null);
-        $this->assertTrue(
-            CmsModelProduct::where('product_model', 'SLIDING')->exists(),
-            'wadah SLIDING lahir dari nilai fallback'
+        $this->assertTrue($ditolak, 'berkas dengan Model kosong harus ditolak');
+        $this->assertSame(0, Product::count(), 'tidak ada produk yang boleh tercipta');
+        $this->assertFalse(
+            Product::where('product_model', 'SLIDING')->exists(),
+            'produk tidak boleh tercatat sebagai SLIDING'
         );
     }
 }

@@ -278,6 +278,15 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             );
         }
 
+        // Model Produk wajib: kolom kosong TIDAK lagi diam-diam menjadi SLIDING
+        // (perbaikan 16 Okt 2026). Verifier sudah menolak berkas seperti ini di
+        // pemeriksaan awal; penjagaan di sini lapisan kedua supaya jalur lain
+        // yang memanggil importer tetap tidak bisa menulis model yang salah.
+        $productModel = CatalogLabels::normalizeModel($data["model_produk"] ?? "");
+        if ($productModel === null || $productModel === "") {
+            throw new \RuntimeException("Model Produk kosong. Isi kolom Model Produk pada baris pertama grup.");
+        }
+
         $groupKey = $noId !== "" ? $noId : "nama:".$name;
         if (! isset($this->groupParentSkus[$groupKey])) {
             $this->groupParentSkus[$groupKey] = ShopeeStyleSku::nextParentSku();
@@ -292,7 +301,7 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
                 "short_name" => CatalogLabels::titleCaseIndonesia($name) ?: $this->groupParentSkus[$groupKey],
                 "description" => trim((string) ($data["deskripsi_produk"] ?? "")) ?: null,
                 "product_category" => $productCategory,
-                "product_model" => CatalogLabels::normalizeModel($data["model_produk"] ?? "") ?? "SLIDING",
+                "product_model" => $productModel,
                 "design_variant" => CatalogLabels::normalizeDesign($data["sub_model"] ?? null),
                 // Empat kolom pengiriman. Lebar (cm) dipetakan ke depth_cm
                 // sesuai keputusan owner: kedalaman itu lebar.

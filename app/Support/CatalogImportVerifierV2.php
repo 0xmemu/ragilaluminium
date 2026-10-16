@@ -16,6 +16,10 @@ namespace App\Support;
  *  V8  Identitas produk (nama + kategori + model + sub-model) belum ada pada
  *      produk aktif dan tidak dobel dalam berkas (pola Shopee: Mass Upload
  *      hanya untuk produk baru; perubahan lewat template Update).
+ *  V9  Kategori Produk wajib diisi di baris pertama grup.
+ *  V10 Model Produk wajib diisi di baris pertama grup. Sebelum 16 Okt 2026
+ *      kolom ini boleh kosong dan diam-diam menjadi SLIDING, sehingga produk
+ *      tercatat salah model tanpa peringatan apa pun.
  *
  * Perbedaan mendasar dari verifier lama: satu baris = satu varian, sehingga
  * kombinasi terbentuk dari kolom Opsi Variasi 1 dan 2, bukan kolom khusus.
@@ -138,6 +142,20 @@ final class CatalogImportVerifierV2
                 if ($value === null || $value === '' || (float) str_replace(',', '.', (string) $value) <= 0) {
                     $errors[] = 'Baris '.$firstRowNo.': '.$label2.' wajib diisi lebih dari nol pada baris pertama grup NO. ID "'.$label.'".';
                 }
+            }
+
+            // V9: Kategori Produk wajib diisi. Importer menolak kategori kosong
+            // per baris, tetapi pemeriksaan berkas memberi tahu admin lebih awal
+            // dan menyeluruh sebelum satu baris pun diproses.
+            if (trim((string) ($first['kategori_produk'] ?? '')) === '') {
+                $errors[] = 'Baris '.$firstRowNo.': Kategori Produk wajib diisi pada baris pertama grup NO. ID "'.$label.'".';
+            }
+
+            // V10: Model Produk wajib diisi. Dulu kolom kosong lolos dan diam-diam
+            // menjadi SLIDING, jadi produk tercatat salah model tanpa peringatan.
+            if (trim((string) ($first['model_produk'] ?? '')) === '') {
+                $errors[] = 'Baris '.$firstRowNo.': Model Produk wajib diisi pada baris pertama grup NO. ID "'.$label.'". '
+                    .'Dulu kolom kosong otomatis menjadi SLIDING; sekarang harus diisi supaya model produk tidak salah catat.';
             }
 
             // V8: identitas tidak boleh sudah ada aktif dan tidak boleh dobel
