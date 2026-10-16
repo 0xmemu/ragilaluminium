@@ -6579,3 +6579,18 @@ commit ini inert sampai skrip penerap dijalankan.
 
 Belum dipasang ke 202: tulis ke /etc diblokir guard, menunggu pernyataan tegas pemilik.
 Agent: zcode-live-events
+
+---
+
+## 2026-10-16 18:50 UTC | zcode-taxonomy-flow | Standard | 25944828 | selesai
+Lingkup: perbaikan kedua dari rangkaian pertanyaan owner. Dropdown Excel pada template import produk v2 memakai errorStyle stop untuk KETIGA kolom taksonomi, sehingga Excel MENOLAK nilai di luar daftar dan admin TIDAK BISA mengetik model atau sub model baru, padahal importer justru menerimanya.
+Berkas:
+- app/Support/CatalogTemplateV2Styler.php: listValidation() menerima parameter errorStyle (stop atau warning) dan pesan galat dibedakan per gaya.
+- app/Exports/ProductImportTemplateExport.php: Kategori Produk tetap stop, Model Produk dan Sub Model memakai warning.
+- tests/Feature/TemplateDropdownStrictnessTest.php (BARU): penjaga sikap dropdown per kolom (kategori stop, model dan sub model warning) plus kondisi DB kosong.
+- tests/Feature/ImportUnregisteredTaxonomyTest.php (BARU): kategori asing DITOLAK per baris, model dan sub model asing DITERIMA, sub model asing tidak membuat baris sub_models.
+Dampak spec: tidak berubah.
+Bukti: suite penuh 1 skipped 1481 passed (14311 assertions). Verifikasi XML template live: kolom E (kategori) errorStyle stop, kolom F (model) errorStyle warning. Rilis 20261016184247-2be059c2 aktif di VPS 202; / dan /up HTTP 200.
+Untuk agent berikutnya: JANGAN kembalikan errorStyle stop untuk kolom Model Produk dan Sub Model. Keduanya memang boleh berisi kode baru yang belum terdaftar. Hanya Kategori Produk yang wajib sudah terdaftar.
+Catatan proses: commit dikerjakan lewat worktree terpisah (/tmp/commitwt-dropdown) karena working tree 209 sedang memuat pekerjaan agent lain di app/Events dan scripts/prod. Setelah git update-ref, WAJIB jalankan git reset --mixed HEAD supaya index selaras dengan HEAD baru; tanpa itu status menunjukkan MM dan D palsu.
+Agent: zcode-taxonomy-flow
