@@ -98,6 +98,7 @@ export default function ModelProductForm({
   const editing = Boolean(modelProduct)
   const form = useForm({
     name: modelProduct?.name ?? "",
+    product_model: modelProduct?.product_model ?? "",
     product_category: modelProduct?.product_category ?? "",
     image_url: modelProduct?.image_url ?? "",
     media_asset_id: media?.assetId ?? null,
@@ -209,6 +210,26 @@ export default function ModelProductForm({
                 <td className="px-4 py-2.5">
                   <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} className="h-8 text-xs" />
                   {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
+                  Kode Model Produk
+                </th>
+                <td className="px-4 py-2.5">
+                  <Input
+                    value={form.data.product_model ?? ""}
+                    onChange={(event) => form.setData("product_model", event.target.value.toUpperCase().replace(/[-\s]+/g, "_"))}
+                    placeholder="Otomatis dibuat dari nama jika kosong (misal: PINTU_LIPAT)"
+                    className="h-8 w-80 font-mono text-xs"
+                    disabled={editing}
+                  />
+                  {form.errors.product_model ? <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p> : null}
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {editing
+                      ? "Kode model terkunci setelah dibuat agar tidak memutus tautan produk katalog."
+                      : "Gunakan huruf besar dan garis bawah (contoh: PINTU_LIPAT, CASEMENT). Kosongkan untuk otomatis."}
+                  </p>
                 </td>
               </tr>
               <tr>

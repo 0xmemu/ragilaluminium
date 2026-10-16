@@ -402,6 +402,15 @@ export default function ProductForm({
 
   const combinedErrors: Record<string, string> = { ...sharedErrors, ...form.errors }
 
+  // Model produk tersaring berdasarkan kategori yang dipilih
+  const modelOptions = React.useMemo(() => {
+    const list = options.models.filter(
+      (m: SelectOption & { category?: string | null }) =>
+        !m.category || m.category === form.data.product_category,
+    )
+    return list.length > 0 ? list : options.models
+  }, [options.models, form.data.product_category])
+
   // Sub model bersifat opsional. Daftar berisi sub model milik model terpilih
   // plus pilihan kosong; nilai bebas yang sudah tersimpan ikut ditampilkan
   // supaya tidak hilang saat form disimpan.
@@ -660,7 +669,16 @@ export default function ProductForm({
                         <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Kategori</label>
                         <Select
                           value={form.data.product_category}
-                          onChange={(event) => form.setData("product_category", event.target.value as never)}
+                          onChange={(event) => {
+                            const newCat = event.target.value
+                            form.setData("product_category", newCat as never)
+                            const matching = options.models.filter(
+                              (m: SelectOption & { category?: string | null }) => m.category === newCat,
+                            )
+                            if (matching.length > 0 && !matching.some((m) => m.value === form.data.product_model)) {
+                              form.setData("product_model", matching[0].value as never)
+                            }
+                          }}
                           className="h-8 text-xs"
                         >
                           {options.categories.map((option) => (
@@ -678,7 +696,7 @@ export default function ProductForm({
                           onChange={(event) => form.setData("product_model", event.target.value as never)}
                           className="h-8 text-xs"
                         >
-                          {options.models.map((option) => (
+                          {modelOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>

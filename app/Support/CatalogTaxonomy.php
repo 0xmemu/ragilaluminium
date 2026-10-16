@@ -356,7 +356,11 @@ class CatalogTaxonomy
 
             $items = [];
             if ($rows->isNotEmpty()) {
-                foreach (CatalogLabels::MODEL_ORDER as $model) {
+                $modelsToLoop = array_values(array_unique(array_merge(
+                    CatalogLabels::modelCodes($category),
+                    $catRows->pluck('product_model')->unique()->all()
+                )));
+                foreach ($modelsToLoop as $model) {
                     $modelRows = $catRows->where("product_model", $model);
                     if ($modelRows->isEmpty()) {
                         continue;

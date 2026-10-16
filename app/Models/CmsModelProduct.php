@@ -27,6 +27,25 @@ class CmsModelProduct extends Model
         'sort_order',
     ];
 
+    protected static function booted(): void
+    {
+        $flush = function (self $model) {
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.all');
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes');
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v2');
+            if ($model->product_category) {
+                \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.'.strtoupper((string) $model->product_category));
+            }
+            if ($model->product_model) {
+                \Illuminate\Support\Facades\Cache::forget('catalog.model.label.'.strtolower((string) $model->product_model));
+            }
+            \App\Support\CatalogTaxonomy::forgetCache();
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
+    }
+
     protected $casts = [
         'sort_order' => 'integer',
         'keywords' => 'array',

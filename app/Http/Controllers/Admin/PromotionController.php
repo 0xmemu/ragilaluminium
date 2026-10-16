@@ -480,9 +480,7 @@ class PromotionController extends Controller
     {
         return [
             'type' => $type,
-            'modelOptions' => collect(SubModel::MODELS)
-                ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
-                ->all(),
+            'modelOptions' => CatalogLabels::modelOptions(),
             'subModelOptions' => SubModel::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')

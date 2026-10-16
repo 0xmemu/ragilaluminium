@@ -267,7 +267,7 @@ class VoucherController extends Controller
                 'nullable',
                 'string',
                 Rule::requiredIf($targetType === StoreVoucher::TARGET_MODEL),
-                Rule::in(SubModel::MODELS),
+                Rule::in(CatalogLabels::modelCodes()),
             ],
             'target_product_id' => [
                 'nullable',
@@ -326,9 +326,7 @@ class VoucherController extends Controller
     private function targetOptions(): array
     {
         return [
-            'modelOptions' => collect(SubModel::MODELS)
-                ->map(fn (string $m): array => ['value' => $m, 'label' => CatalogLabels::model($m)])
-                ->all(),
+            'modelOptions' => CatalogLabels::modelOptions(),
         ];
     }
 

@@ -245,6 +245,7 @@ class ModelProductController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'product_model' => ['nullable', 'string', 'max:64'],
             'product_category' => ['required', 'string', Rule::in(CategoryUrl::productCategoryCodes())],
             'image_url' => ['nullable', 'string', 'max:1024'],
             'media_asset_id' => ['nullable', 'integer', $usableAsset()],
@@ -263,8 +264,11 @@ class ModelProductController extends Controller
         // berarti MENAMBAH, bukan memilih kode model katalog yang sudah ada.
         // Kode dibuat otomatis dari nama saat create; saat edit kode lama
         // dipertahankan agar tautan produk tidak patah.
-        $validated['product_model'] = $existing?->product_model
-            ?: mb_strtoupper(Str::slug((string) $validated['name'], '_'));
+        $customCode = trim((string) $request->input('product_model', ''));
+        $generatedCode = filled($customCode)
+            ? strtoupper(preg_replace('/[^A-Z0-9_]+/', '_', strtoupper($customCode)))
+            : mb_strtoupper(Str::slug((string) $validated['name'], '_'));
+        $validated['product_model'] = $existing?->product_model ?: $generatedCode;
         $validated['media_asset_id'] = $validated['media_asset_id'] ?? null;
         $validated['media_show_product_photos'] = $request->boolean('media_show_product_photos', true);
         $validated['image_url'] = ($validated['image_url'] ?? null) ?: null;

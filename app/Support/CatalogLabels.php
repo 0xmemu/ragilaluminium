@@ -95,10 +95,10 @@ class CatalogLabels
         return self::categoryNameForProductCode($key) ?? ((string) $code);
     }
 
-    /** @return list<string> kode kategori valid (untuk dropdown template import) */
+    /** @return list<string> kode kategori valid (untuk dropdown template import dan validasi) */
     public static function categoryCodes(): array
     {
-        return array_keys(self::CATEGORY);
+        return \App\Support\CategoryUrl::productCategoryCodes();
     }
 
     /**
@@ -175,7 +175,32 @@ class CatalogLabels
             return '';
         }
 
-        return self::MODEL[$key] ?? self::titleCaseIndonesia($key);
+        if (isset(self::MODEL[$key])) {
+            return self::MODEL[$key];
+        }
+
+        $label = \Illuminate\Support\Facades\Cache::remember(
+            'catalog.model.label.'.strtolower($key),
+            3600,
+            function () use ($key): ?string {
+                $name = \App\Models\CmsModelProduct::query()
+                    ->where('product_model', $key)
+                    ->value('name');
+
+                if ($name && str_contains($name, ' Aluminium ')) {
+                    $parts = explode(' Aluminium ', $name, 2);
+                    return trim($parts[1]);
+                }
+
+                return $name;
+            }
+        );
+
+        if ($label) {
+            return $label;
+        }
+
+        return self::titleCaseIndonesia($key);
     }
 
     public static function design(?string $code): string
@@ -232,20 +257,62 @@ class CatalogLabels
     }
 
     /** @return list<string> */
-    public static function modelCodes(): array
+    public static function modelCodes(?string $category = null): array
     {
-        $db = \Illuminate\Support\Facades\Cache::remember('catalog.model_codes', 3600, function (): array {
-            return \App\Models\SubModel::query()
-                ->where('is_active', true)
-                ->distinct()
+        $categoryKey = $category !== null && $category !== '' ? strtoupper(trim($category)) : 'all';
+
+        return \Illuminate\Support\Facades\Cache::remember('catalog.model_codes.v3.'.$categoryKey, 3600, function () use ($category): array {
+            $cmsQuery = \App\Models\CmsModelProduct::query()->where('status', 'active');
+            if ($category !== null && $category !== '') {
+                $cmsQuery->where('product_category', strtoupper(trim($category)));
+            }
+            $fromCms = $cmsQuery->orderBy('sort_order')->orderBy('id')
                 ->pluck('product_model')
                 ->filter()
                 ->map(fn ($m) => strtoupper((string) $m))
                 ->values()
                 ->all();
-        });
 
-        return array_values(array_unique(array_merge(self::MODEL_ORDER, $db)));
+            $subQuery = \App\Models\SubModel::query()->where('is_active', true);
+            $fromSub = $subQuery->distinct()
+                ->pluck('product_model')
+                ->filter()
+                ->map(fn ($m) => strtoupper((string) $m))
+                ->values()
+                ->all();
+
+            $merged = array_values(array_unique(array_merge($fromCms, $fromSub, self::MODEL_ORDER)));
+
+            if ($category !== null && $category !== '' && ! empty($fromCms)) {
+                return array_values(array_unique($fromCms));
+            }
+
+            return $merged;
+        });
+    }
+
+    /**
+     * Opsi model untuk dropdown form admin (value = code, label = name/title, category = category).
+     *
+     * @return list<array{value: string, label: string, category: ?string}>
+     */
+    public static function modelOptions(?string $category = null): array
+    {
+        $codes = self::modelCodes($category);
+        $cmsMap = \App\Models\CmsModelProduct::query()
+            ->get(['product_model', 'product_category', 'name'])
+            ->keyBy(fn ($item) => strtoupper((string) $item->product_model));
+
+        return collect($codes)->map(function (string $code) use ($cmsMap) {
+            $cms = $cmsMap->get($code);
+            $catLabel = $cms && $cms->product_category ? self::category($cms->product_category).' · ' : '';
+
+            return [
+                'value' => $code,
+                'label' => $catLabel . self::model($code),
+                'category' => $cms?->product_category ?? null,
+            ];
+        })->values()->all();
     }
 
     /** @return list<string> */

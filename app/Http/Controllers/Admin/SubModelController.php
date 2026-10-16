@@ -24,7 +24,7 @@ class SubModelController extends Controller
         // model; mode geser urutan dinonaktifkan karena urutan per model.
         $q = trim((string) $request->input('q', ''));
         $model = (string) $request->input('product_model', '');
-        $model = in_array($model, SubModel::MODELS, true) ? $model : null;
+        $model = in_array($model, CatalogLabels::modelCodes(), true) ? $model : null;
 
         // Filter status: semua, aktif, nonaktif (owner 2026-09-16)
         $status = (string) $request->input('status', 'all');
@@ -90,9 +90,7 @@ class SubModelController extends Controller
             ],
             'modelOptions' => array_merge(
                 [['value' => '', 'label' => 'Semua model']],
-                collect(SubModel::MODELS)
-                    ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
-                    ->all(),
+                CatalogLabels::modelOptions(),
             ),
             'rows' => $rows->getCollection()->map(fn (SubModel $s) => [
                 'id' => $s->id,
@@ -120,15 +118,13 @@ class SubModelController extends Controller
         // tautan balik ke daftar, BUKAN mengisi form (jangan ulangi
         // kesalahan prefill MODELS[0] yang pernah diperbaiki di bcae2a6).
         $model = (string) $request->input('product_model', '');
-        $model = in_array($model, SubModel::MODELS, true) ? $model : null;
+        $model = in_array($model, CatalogLabels::modelCodes(), true) ? $model : null;
 
         return Inertia::render('Admin/SubModelForm', [
             'backUrl' => route('admin.sub-models.index', $model ? ['product_model' => $model] : []),
             'title' => 'Tambah Sub Model',
             'subModel' => null,
-            'modelOptions' => collect(SubModel::MODELS)
-                ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
-                ->all(),
+            'modelOptions' => CatalogLabels::modelOptions(),
             'submitUrl' => route('admin.sub-models.store'),
             'indexUrl' => route('admin.sub-models.index', $model ? ['product_model' => $model] : []),
         ]);
@@ -144,7 +140,7 @@ class SubModelController extends Controller
         $request->merge(['code' => $code]);
 
         $validated = $request->validate([
-            'product_model' => ['required', 'in:'.implode(',', SubModel::MODELS)],
+            'product_model' => ['required', Rule::in(CatalogLabels::modelCodes())],
             'code' => ['required', 'string', 'max:100', 'regex:/^[A-Z0-9_]+$/', Rule::unique('sub_models', 'code')->where('product_model', $request->input('product_model'))],
             'name' => ['required', 'string', 'max:255'],
         ], [
@@ -190,9 +186,7 @@ class SubModelController extends Controller
                 ->orderBy('sort_order')->orderBy('id')
                 ->get(['id', 'attribute_name', 'attribute_value'])
                 ->all(),
-            'modelOptions' => collect(SubModel::MODELS)
-                ->map(fn (string $m) => ['value' => $m, 'label' => CatalogLabels::model($m)])
-                ->all(),
+            'modelOptions' => CatalogLabels::modelOptions(),
             'submitUrl' => route('admin.sub-models.update', $subModel),
             'indexUrl' => route('admin.sub-models.index', ['product_model' => $subModel->product_model]),
         ]);

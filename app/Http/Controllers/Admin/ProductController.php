@@ -1480,9 +1480,7 @@ class ProductController extends Controller
         return [
             'categories' => \App\Models\Category::query()->orderBy('sort_order')->orderBy('id')->get()
                 ->map(fn (\App\Models\Category $c) => ['value' => $c->code, 'label' => $c->name])->all(),
-            'models' => collect(CatalogLabels::modelCodes())
-                ->map(fn (string $value) => ['value' => $value, 'label' => CatalogLabels::model($value)])
-                ->all(),
+            'models' => CatalogLabels::modelOptions(),
             'designs' => \App\Models\SubModel::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
