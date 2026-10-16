@@ -6640,3 +6640,19 @@ sesungguhnya belum terasa. Yang sudah aktif dari Tahap 1 hanyalah penutup jalur 
 dan pagar pengaman.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-16 19:45 UTC | zcode-taxonomy-flow | Standard | a9445f2c + b0153891 | selesai
+Lingkup: dua cacat yang ditemukan saat memverifikasi alur resmi yang owner setujui, yaitu admin membuat Kategori, Model, dan Sub Model LEBIH DULU, baru mengimpor XLSX.
+Berkas:
+- app/Models/SubModel.php (a9445f2c): booted() membersihkan cache taksonomi pada saved dan deleted. Sebelumnya cache hanya dibersihkan di destroy controller, sehingga sub model yang BARU DIBUAT atau DINONAKTIFKAN tidak langsung terlihat (menunggu TTL 1 jam). Konstanta mati SubModel::MODELS ikut dihapus.
+- app/Http/Controllers/Admin/SubModelController.php: pembersihan cache manual di destroy dibuang karena sudah ditangani hook model.
+- tests/Feature/TaxonomySetupOrderTest.php (BARU): 5 tes alur resmi, termasuk sub model baru langsung muncul dan penonaktifan langsung hilang.
+- app/Support/CatalogLabels.php (b0153891): konstanta DESIGN_ORDER dihapus. designCodes() murni dari tabel sub_models aktif.
+- app/Support/CatalogTaxonomy.php, app/Support/CatalogSearch.php, app/Http/Controllers/CatalogController.php: urutan desain (filter, mega menu, rail halaman model) membaca database.
+- tests/Feature/DesignCodesPurityTest.php (BARU): 6 penjaga, termasuk memastikan DESIGN_ORDER, MODEL_ORDER, dan SubModel::MODELS tidak ada lagi di kode.
+Dampak spec: tidak berubah.
+Bukti: suite penuh 1 skipped 1486 passed (14341 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Verifikasi live 202 rilis 20261016193348-b0153891: kategori 3, model 0, sub model 0 (sebelumnya sub model melaporkan 6 palsu dari daftar cadangan); DESIGN_ORDER dan MODEL_ORDER terkonfirmasi TIDAK ADA; /, /up, /products HTTP 200.
+Untuk agent berikutnya: TIDAK ADA lagi daftar cadangan taksonomi di kode. DESIGN_ORDER, MODEL_ORDER, dan SubModel::MODELS semuanya sudah dihapus. Semua daftar taksonomi murni dari database. Kalau butuh kategori, model, atau sub model baru, WAJIB lewat halaman admin atau lewat impor XLSX. Cache taksonomi kini dibersihkan otomatis lewat booted() pada CmsModelProduct dan SubModel, jadi jangan kembali menaruh pembersihan cache manual di controller.
+Agent: zcode-taxonomy-flow
