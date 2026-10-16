@@ -6744,3 +6744,18 @@ pengawas, hubungi penyedia, perbaikan DNS mail/admin) dan Tahap 5 (geser cron te
 malam). Keduanya perlu keputusan pemilik karena menyentuh hal di luar aplikasi.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-16 21:40 UTC | zcode | Deep | (belum) | selesai
+Lingkup: memperbaiki crash seluruh panel admin (React error 185) dan melengkapi pembersihan penanda sistem.
+Akar masalah: resources/js/lib/admin-live-connection.ts memakai useSyncExternalStore dengan getSnapshot yang SELALU mengembalikan objek baru dan memanggil Date.now(). React membandingkan hasil dengan Object.is, jadi store dianggap berubah di setiap pemeriksaan dan render berulang tanpa henti. Hook ini dipakai di layout admin, sehingga SELURUH halaman admin runtuh (error boundary menampilkan 500). Penyebab ini lahir di commit 9fe262c5 (13:10:31) milik pekerjaan live events, SEBELUM commit penanda sistem efcf603c (13:17); commit penanda sistem tidak menyentuh berkas tersebut.
+Perubahan:
+- resources/js/lib/admin-live-connection.ts: snapshot() kini di-cache dan hanya dibuat ulang saat nilainya berubah; waktu masuk kunci cache sebagai ember kasar berdurasi STALE_MS supaya status basi tetap bisa berubah sendiri tanpa mengubah identitas objek. Nilai balik useAdminLive dibungkus useMemo.
+- resources/js/pages/Admin/WhatsApp/Index.tsx dan Edit.tsx: blok rujukan teknis (Kunci internal, Nama di penyedia, Kode bahasa) DIHAPUS seluruhnya. Sebelumnya dipindah ke tooltip, tetapi teks tooltip tetap ada di DOM untuk pembaca layar sehingga penandanya masih terbaca; ini koreksi dari pekerjaan sebelumnya di sesi yang sama.
+- resources/js/pages/Admin/WhatsApp/Edit.tsx: kalimat petunjuk token tidak lagi memakai contoh penanda gaya sistem.
+- tests/frontend/penanda-sistem-tidak-bocor.test.ts: penjaga ditambah larangan teks Kunci internal, Rujukan teknis, dan contoh token gaya penanda.
+Dampak spec: spec tidak berubah.
+Bukti: tsc 0 error, eslint 0 error (seluruh proyek), vitest 428 test lulus (52 berkas), build Vite sukses. Verifikasi live di peramban sungguhan pada 209: enam halaman admin (Log Aktivitas, Template WhatsApp, sunting template, Halaman CMS, Performa Toko, Media Library) semuanya kembali normal dengan nol error React 185 dan nol penanda sistem bocor; sebelum perbaikan seluruh halaman admin menampilkan layar gangguan.
+Catatan kolaborasi: produksi 202 beberapa kali berpindah rilis saat penyelidikan (agent lain men-deploy); commit penanda sistem efcf603c sudah ikut terpasang di sana. Perbaikan crash ini BELUM ter-deploy ke 202.
+Agent: zcode

@@ -5,7 +5,6 @@ import { Button } from "@/components/admin/ui/button"
 import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
-import { HintTip } from "@/components/admin/ui/hint-tip"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -227,7 +226,7 @@ export default function WhatsAppEdit({
           <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-base font-bold">Urutan variabel Meta</h2>
           <p className="mt-2 text-pretty text-sm text-muted-foreground">
-            Klik token untuk sisipkan ke pratinjau. Urutan ini sama dengan parameter yang dikirim backend - jangan ganti jadi nama seperti {"{{order_number}}"}.
+            Klik token untuk menyisipkan ke pratinjau. Urutan token ini harus tetap sama dengan urutan parameter yang dikirim sistem. Jangan menggantinya dengan nama sendiri.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {variables.map((variable) => (
@@ -242,17 +241,6 @@ export default function WhatsAppEdit({
                 <span className="mt-0.5 block font-medium text-muted-foreground">{variable.label}</span>
               </button>
             ))}
-          </div>
-          <div className="mt-4">
-            <HintTip
-              label={<span className="text-[11px] text-muted-foreground">Rujukan teknis template</span>}
-              hint={
-                "Kunci internal: " + template.internal_key +
-                " · Nama di penyedia: " + template.provider_template_name +
-                " · Kode bahasa: " + template.language_code
-              }
-              side="top"
-            />
           </div>
           </section>
         </aside>

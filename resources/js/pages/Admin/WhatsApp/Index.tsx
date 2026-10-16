@@ -7,7 +7,6 @@ import {
   type WhatsAppConnectionSummary,
 } from "@/components/admin/whatsapp-connection-card"
 import { Button } from "@/components/admin/ui/button"
-import { HintTip } from "@/components/admin/ui/hint-tip"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Switch } from "@/components/admin/ui/switch"
 import { WhatsAppTabs } from "@/components/admin/whatsapp-tabs"
@@ -112,17 +111,6 @@ export default function WhatsAppIndex({
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground">{row.label}</p>
                       <p className="mt-1 text-sm leading-5 text-muted-foreground">{row.description}</p>
-                      <div className="mt-1">
-                        <HintTip
-                          label={<span className="text-[11px] text-muted-foreground">Rujukan teknis</span>}
-                          hint={
-                            "Kunci internal: " + row.internal_key +
-                            " · Nama di penyedia: " + row.provider_template_name +
-                            " · Kode bahasa: " + row.language_code
-                          }
-                          side="bottom"
-                        />
-                      </div>
                     </div>
                   </div>
 

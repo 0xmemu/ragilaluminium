@@ -97,6 +97,11 @@ describe("penanda sistem tidak bocor ke layar", () => {
       expect(isi).not.toMatch(/humanize\(/)
       expect(isi).not.toMatch(/\{row\.internal_key\}/)
       expect(isi).not.toMatch(/Key: \{/)
+      // Teks tooltip tetap ada di DOM untuk pembaca layar, jadi penanda
+      // sistem di dalam hint juga terbaca. Dilarang sama seperti teks utama.
+      expect(isi).not.toMatch(/Kunci internal/)
+      expect(isi).not.toMatch(/Rujukan teknis/)
+      expect(isi).not.toMatch(/jangan ganti jadi nama seperti/)
       expect(isi).not.toMatch(/>Payment #/)
     },
   )
