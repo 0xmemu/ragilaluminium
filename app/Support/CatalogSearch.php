@@ -480,7 +480,7 @@ class CatalogSearch
             $found[] = 'SERIES_'.strtoupper($m[1]);
         }
 
-        // Label/kode desain dinamis dari DB (sub_models aktif) + DESIGN_ORDER.
+        // Label/kode desain murni dari DB (sub_models aktif).
         $labelToCode = [];
         foreach (CatalogLabels::designCodes() as $code) {
             $labelToCode[mb_strtolower($code)] = $code;

@@ -8,8 +8,6 @@ namespace App\Support;
  */
 class CatalogLabels
 {
-    public const DESIGN_ORDER = ['POLOS', 'ORNAMEN', 'KOMBINASI', 'SERIES_A', 'SERIES_B', 'SERIES_C'];
-
     /** @var array<string, string> Alias query lama → enum baru */
     private const MODEL_ALIASES = [
         'FIXED' => 'KACA_MATI',
@@ -316,7 +314,10 @@ class CatalogLabels
             }
         );
 
-        return array_values(array_unique(array_merge($codes, self::DESIGN_ORDER)));
+        // Murni dari database. Tidak ada lagi daftar cadangan di kode (16 Okt 2026),
+        // sejalan dengan penghapusan MODEL_ORDER: saat tabel sub_models kosong,
+        // daftar sub model memang kosong.
+        return array_values(array_unique($codes));
     }
 
     /** @return array<string, string> Kode sub model aktif -> label */

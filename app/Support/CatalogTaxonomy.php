@@ -239,7 +239,7 @@ class CatalogTaxonomy
         $present = self::rows()->pluck('design_variant')->filter()->unique()->all();
 
         $ordered = array_values(array_filter(
-            CatalogLabels::DESIGN_ORDER,
+            CatalogLabels::designCodes(),
             fn (string $d) => in_array($d, $present, true)
         ));
 
@@ -366,7 +366,14 @@ class CatalogTaxonomy
                         continue;
                     }
 
-                    foreach (CatalogLabels::DESIGN_ORDER as $design) {
+                    // Desain dari database (sub model aktif) digabung desain yang
+                    // benar-benar dipakai produk, supaya kode yang belum terdaftar
+                    // sebagai sub model tetap muncul di menu.
+                    $designsToLoop = array_values(array_unique(array_merge(
+                        CatalogLabels::designCodes($model),
+                        $modelRows->pluck("design_variant")->filter()->unique()->all()
+                    )));
+                    foreach ($designsToLoop as $design) {
                         $hit = $modelRows->firstWhere("design_variant", $design);
                         if (! $hit) {
                             continue;

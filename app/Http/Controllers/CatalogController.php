@@ -807,7 +807,7 @@ protected function category(?string $category, Request $request, string $mode = 
         $categorySlug = CategoryUrl::categoryToSlug($categoryCode);
 
         $ordered = [];
-        foreach (CatalogLabels::DESIGN_ORDER as $code) {
+        foreach (CatalogLabels::designCodes() as $code) {
             if ($grouped->has($code)) {
                 $ordered[] = $code;
             }
