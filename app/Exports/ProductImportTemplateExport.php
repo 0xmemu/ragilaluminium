@@ -99,9 +99,12 @@ class ProductImportDataSheet implements FromArray, WithTitle, WithEvents
         // Dropdown dari data yang benar-benar ada, bukan daftar tetap, supaya
         // model dan sub model baru ikut otomatis tanpa mengubah kode.
         $letters = CatalogTemplateV2::lettersBySlug($columns);
+        // Kategori WAJIB sudah terdaftar, jadi Excel menolak nilai di luar daftar.
         CatalogTemplateV2Styler::listValidation($sheet, $letters['kategori_produk'], self::categoryOptions(), 500);
-        CatalogTemplateV2Styler::listValidation($sheet, $letters['model_produk'], CatalogLabels::modelCodes(), 500);
-        CatalogTemplateV2Styler::listValidation($sheet, $letters['sub_model'], self::subModelCodes(), 500);
+        // Model dan Sub Model boleh berupa KODE BARU yang belum terdaftar, jadi
+        // Excel hanya memperingatkan, tidak memblokir (perbaikan 16 Okt 2026).
+        CatalogTemplateV2Styler::listValidation($sheet, $letters['model_produk'], CatalogLabels::modelCodes(), 500, null, 'warning');
+        CatalogTemplateV2Styler::listValidation($sheet, $letters['sub_model'], self::subModelCodes(), 500, null, 'warning');
     }
 
     /**
@@ -292,7 +295,8 @@ class ProductImportExampleSheet implements FromArray, WithTitle, WithEvents
             $letters['model_produk'],
             CatalogLabels::modelCodes(),
             self::lastExampleRow(),
-            4
+            4,
+            'warning'
         );
         CatalogTemplateV2Styler::listValidation(
             $sheet,

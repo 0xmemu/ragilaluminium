@@ -192,6 +192,15 @@ final class CatalogTemplateV2Styler
     /**
      * Tulis daftar pilihan (dropdown) pada satu kolom.
      *
+     * `$errorStyle` menentukan sikap Excel terhadap nilai di luar daftar:
+     *  - `stop` (bawaan): nilai di luar daftar DITOLAK. Dipakai untuk kolom
+     *    yang wajib sudah terdaftar di sistem, mis. Kategori Produk.
+     *  - `warning`: nilai di luar daftar DIPERBOLEHKAN dengan peringatan.
+     *    Dipakai untuk Model Produk dan Sub Model, karena keduanya boleh
+     *    berisi kode baru yang belum terdaftar (dibuat otomatis saat impor).
+     *    Sebelum 16 Okt 2026 keduanya memakai `stop`, sehingga admin TIDAK BISA
+     *    mengetik model baru walau panduan menyarankannya.
+     *
      * @param  list<string>  $values
      */
     public static function listValidation(
@@ -200,6 +209,7 @@ final class CatalogTemplateV2Styler
         array $values,
         int $lastRow,
         ?int $firstRow = null,
+        string $errorStyle = 'stop',
     ): void {
         $values = array_values(array_unique(array_filter($values, static fn ($v) => trim((string) $v) !== '')));
         if ($values === []) {
@@ -236,9 +246,19 @@ final class CatalogTemplateV2Styler
         // mengetik model yang salah dan baru ketahuan saat import. Pesan
         // pengarahnya ditampilkan supaya admin tahu harus pilih dari daftar.
         $validation->setShowErrorMessage(true);
-        $validation->setErrorTitle('Nilai tidak dikenal');
-        $validation->setError('Pilih nilai dari daftar. Daftar ini dibaca dari data sistem, '
-            .'jadi model atau sub model yang baru ditambahkan akan muncul sendiri.');
+        $validation->setErrorStyle(
+            $errorStyle === 'warning'
+                ? DataValidation::STYLE_WARNING
+                : DataValidation::STYLE_STOP
+        );
+        $validation->setErrorTitle('Nilai di luar daftar');
+        $validation->setError(
+            $errorStyle === 'warning'
+                ? 'Nilai ini belum ada di daftar. Boleh dilanjutkan bila memang kode baru; '
+                    .'sistem akan membuatnya otomatis saat impor. Periksa ejaannya bila ragu.'
+                : 'Pilih nilai dari daftar. Daftar ini dibaca dari data sistem, jadi nilai '
+                    .'yang baru ditambahkan akan muncul sendiri.'
+        );
         $validation->setShowInputMessage(true);
         $validation->setPromptTitle('Pilih dari daftar');
         $validation->setPrompt('Klik panah di kanan sel untuk memilih.');
