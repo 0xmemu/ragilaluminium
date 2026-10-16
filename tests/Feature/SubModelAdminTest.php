@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CmsModelProduct;
 use App\Models\SubModel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,25 @@ class SubModelAdminTest extends TestCase
         return User::factory()->create(['role' => 'admin', 'status' => 'active']);
     }
 
+    /**
+     * Sejak taksonomi dinamis (16 Okt 2026), model produk TIDAK lagi punya
+     * daftar cadangan di kode. Sub model hanya boleh menunjuk model yang
+     * benar-benar ada di tabel cms_model_products, jadi test wajib menyemai
+     * induknya lebih dulu.
+     */
+    protected function modelInduk(string $code = 'JUNGKIT_1_DAUN', string $category = 'JENDELA'): CmsModelProduct
+    {
+        \Illuminate\Support\Facades\Cache::flush();
+
+        return CmsModelProduct::create([
+            'name' => 'Model '.$code,
+            'product_category' => $category,
+            'product_model' => $code,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+    }
+
     public function test_create_form_starts_empty_without_model_prefill(): void
     {
         $admin = $this->admin();
@@ -40,6 +60,7 @@ class SubModelAdminTest extends TestCase
     public function test_create_with_valid_model_only_sets_back_link_not_prefill(): void
     {
         $admin = $this->admin();
+        $this->modelInduk('JUNGKIT_1_DAUN');
 
         $this->actingAs($admin)
             ->get(route('admin.sub-models.create', ['product_model' => 'JUNGKIT_1_DAUN']))
@@ -54,6 +75,7 @@ class SubModelAdminTest extends TestCase
     {
         SubModel::query()->delete();
         $admin = $this->admin();
+        $this->modelInduk('JUNGKIT_1_DAUN');
 
         // Tanpa product_model: ditolak (dulu jatuh ke JUNGKIT_1_DAUN diam-diam).
         $this->actingAs($admin)

@@ -224,8 +224,8 @@ class ModelProdukPageTest extends TestCase
         $sliding = $this->makeHubProduct('WIN-HUB-SLIDE', 'SLIDING');
         $jungkit = $this->makeHubProduct('WIN-HUB-JUNG', 'JUNGKIT');
 
-        // SLIDING lebih laris daripada JUNGKIT — harus di depan walau JUNGKIT
-        // lebih dulu di MODEL_ORDER default (membuktikan sort "popular" bekerja).
+        // SLIDING lebih laris daripada JUNGKIT, jadi harus di depan
+        // (membuktikan sort "popular" bekerja, bukan urutan abjad).
         $this->addSales($sliding, 8);
         $this->addSales($jungkit, 5);
 

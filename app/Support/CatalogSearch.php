@@ -517,7 +517,7 @@ class CatalogSearch
         $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
         $matched = [];
 
-        foreach (CatalogLabels::MODEL_ORDER as $code) {
+        foreach (CatalogLabels::modelCodes() as $code) {
             $label = mb_strtolower(CatalogLabels::model($code));
             $slug = mb_strtolower(str_replace('_', ' ', $code));
             foreach ($haystacks as $piece) {

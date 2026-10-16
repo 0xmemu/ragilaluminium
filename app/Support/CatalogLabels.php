@@ -8,21 +8,6 @@ namespace App\Support;
  */
 class CatalogLabels
 {
-    public const MODEL_ORDER = [
-        'JUNGKIT_1_DAUN',
-        'JUNGKIT_2_DAUN',
-        'JUNGKIT_3_DAUN',
-        'SLIDING_2_DAUN',
-        'SWING_1_DAUN',
-        'SWING_2_DAUN',
-        'SWING_3_DAUN',
-        'KACA_MATI',
-        'ZIGZAG',
-        'JUNGKIT',
-        'SLIDING',
-        'SWING',
-    ];
-
     public const DESIGN_ORDER = ['POLOS', 'ORNAMEN', 'KOMBINASI', 'SERIES_A', 'SERIES_B', 'SERIES_C'];
 
     /** @var array<string, string> Alias query lama → enum baru */
@@ -281,7 +266,7 @@ class CatalogLabels
                 ->values()
                 ->all();
 
-            $merged = array_values(array_unique(array_merge($fromCms, $fromSub, self::MODEL_ORDER)));
+            $merged = array_values(array_unique(array_merge($fromCms, $fromSub)));
 
             if ($category !== null && $category !== '' && ! empty($fromCms)) {
                 return array_values(array_unique($fromCms));

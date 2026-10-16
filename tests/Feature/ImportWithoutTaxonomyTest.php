@@ -149,6 +149,7 @@ class ImportWithoutTaxonomyTest extends TestCase
 
         $this->assertContains('PINTU', $kategori);
         $this->assertSame([], $sub, 'sub model kosong karena tabelnya kosong');
+        $this->assertSame([], $model, 'model produk kosong karena tidak ada daftar cadangan di kode');
     }
 
     public function test_model_di_luar_daftar_diterima_impor(): void

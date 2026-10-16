@@ -581,7 +581,7 @@ protected function category(?string $category, Request $request, string $mode = 
         $haystacks = array_values(array_unique(array_merge([mb_strtolower($term)], $tokens)));
         $categorySlug = CategoryUrl::categoryToSlug((string) $category);
 
-        foreach (CatalogLabels::MODEL_ORDER as $code) {
+        foreach (CatalogLabels::modelCodes() as $code) {
             $label = mb_strtolower(CatalogLabels::model($code));
             $slug = mb_strtolower(str_replace('_', ' ', $code));
             foreach ($haystacks as $piece) {

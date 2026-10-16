@@ -100,7 +100,7 @@ class CatalogTaxonomy
                 $byModel = $catRows->groupBy('product_model');
                 $modelKeys = array_values(array_unique(array_merge(
                     array_values(array_filter(
-                        CatalogLabels::MODEL_ORDER,
+                        CatalogLabels::modelCodes(),
                         fn (string $m) => $byModel->has($m)
                     )),
                     $byModel->keys()->sort()->all()
@@ -271,7 +271,7 @@ class CatalogTaxonomy
         $present = $rows->pluck('product_model')->unique()->all();
 
         $ordered = array_values(array_filter(
-            CatalogLabels::MODEL_ORDER,
+            CatalogLabels::modelCodes(),
             fn (string $m) => in_array($m, $present, true)
         ));
 
