@@ -612,22 +612,7 @@ export function useAdminLive(): AdminLiveSnapshot & { refresh: () => void } {
   return React.useMemo(() => ({ ...snap, refresh }), [snap, refresh])
 }
 
-/** Paksa satu penyelarasan sekarang (dipakai tombol muat ulang manual). */
-export function reconcileAdminLive(): void {
-  start()
-  if (s.leader) {
-    void pollNow("visible")
-  } else {
-    maybeTakeLeadership()
-  }
-}
 
-/** Dipakai tes dan komponen untuk membaca ambang waktu yang berlaku. */
-export const ADMIN_LIVE_TIMING = {
-  livenessMs: LIVENESS_MS,
-  heartbeatMs: HEARTBEAT_MS,
-  staleMs: STALE_MS,
-} as const
 
 /** Label status koneksi dalam Bahasa Indonesia (null = jangan tampilkan). */
 export function liveConnectionLabel(state: AdminLiveState): string | null {

@@ -2,11 +2,7 @@ import * as React from "react"
 import { Link, router, usePage } from "@inertiajs/react"
 import { Icon } from "@/components/shared/icon"
 import { routeUrl } from "@/lib/routes"
-import {
-  liveConnectionLabel,
-  subscribeAdminLive,
-  useAdminLive,
-} from "@/lib/admin-live-connection"
+import { subscribeAdminLive } from "@/lib/admin-live-connection"
 import { isAutoRefreshPaused } from "@/lib/admin-auto-refresh"
 
 interface ToastItem {
@@ -112,8 +108,6 @@ export function LiveNotificationManager(): React.ReactElement | null {
   const [toasts, setToasts] = React.useState<ToastItem[]>([])
   const seenIdsRef = React.useRef<Set<string>>(new Set())
   const lastPollIdRef = React.useRef<number>(0)
-  // Status koneksi live dari modul bersama (bukan sambungan milik komponen ini).
-  const live = useAdminLive()
 
   // ---- Muat ulang otomatis (owner 2026-09-29) ----
   // Halaman memuat ulang datanya sendiri saat ada perubahan nyata: lewat event
@@ -291,7 +285,6 @@ export function LiveNotificationManager(): React.ReactElement | null {
   }, [pushToast, jadwalkanMuatUlang])
 
 
-  const statusLabel = liveConnectionLabel(live.state)
 
   return (
     <div
@@ -299,17 +292,6 @@ export function LiveNotificationManager(): React.ReactElement | null {
       role="region"
       aria-label="Notifikasi langsung toko"
     >
-      {statusLabel ? (
-        <div
-          className="pointer-events-auto ml-auto flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-lg"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
-          <span>{statusLabel}</span>
-          {live.stale ? <span className="text-amber-600 dark:text-amber-400">Data mungkin tertinggal.</span> : null}
-        </div>
-      ) : null}
       {toasts.map((toast) => {
         const isOrder = toast.type === "order"
         const isWa = toast.type === "whatsapp"

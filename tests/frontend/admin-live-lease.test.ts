@@ -126,10 +126,16 @@ describe("kontrak sumber klien admin", () => {
     expect(isi).toContain("subscribed")
   })
 
-  it("status koneksi ditampilkan ke admin", () => {
+  it("shell admin TIDAK menampilkan status kesehatan sistem", () => {
+    // Kontrak owner 17 Okt 2026: admin toko tidak berurusan dengan kesehatan
+    // sistem. Shell admin (yang tampil di SEMUA halaman) tidak boleh menampilkan
+    // status koneksi, label menghubungkan/terputus, atau peringatan data basi.
+    // Penjaga ini mencegahnya ditambahkan lagi tanpa permintaan.
     const isi = baca(manager)
-    expect(isi).toContain("liveConnectionLabel")
-    expect(isi).toContain("live.stale")
+    expect(isi).not.toContain("liveConnectionLabel")
+    expect(isi).not.toContain("live.stale")
+    expect(isi).not.toContain("Menghubungkan pembaruan langsung")
+    expect(isi).not.toContain("Data mungkin tertinggal")
   })
 
   it("batas waktu sambung ada dan wajar", () => {
