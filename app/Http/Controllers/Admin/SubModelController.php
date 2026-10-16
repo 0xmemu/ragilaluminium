@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SubModel;
 use App\Models\Product;
-use App\Support\CatalogTaxonomy;
 use App\Services\ActivityLogService;
 use App\Support\CatalogLabels;
 use App\Support\InertiaAdmin;
@@ -305,9 +304,7 @@ class SubModelController extends Controller
         $subModel->attributeTemplates()->delete();
         $subModel->delete();
 
-        \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.all');
-        \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.'.$productModel);
-        CatalogTaxonomy::forgetCache();
+        // Cache dibersihkan otomatis oleh SubModel::booted().
 
         ActivityLogService::record(
             'product.sub_model_deleted',

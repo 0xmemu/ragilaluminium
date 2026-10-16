@@ -8,21 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubModel extends Model
 {
-    public const MODELS = [
-        'JUNGKIT_1_DAUN',
-        'JUNGKIT_2_DAUN',
-        'JUNGKIT_3_DAUN',
-        'SLIDING_2_DAUN',
-        'SWING_1_DAUN',
-        'SWING_2_DAUN',
-        'SWING_3_DAUN',
-        'KACA_MATI',
-        'ZIGZAG',
-        'JUNGKIT',
-        'SLIDING',
-        'SWING',
-    ];
-
     protected $fillable = [
         'product_model',
         'code',
@@ -36,6 +21,34 @@ class SubModel extends Model
         'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Bersihkan cache taksonomi setiap sub model berubah.
+     *
+     * Sebelum 16 Okt 2026 cache `catalog.sub_model_codes.*` hanya dibersihkan di
+     * metode destroy controller, sehingga sub model yang BARU DIBUAT atau
+     * DINONAKTIFKAN tidak langsung terlihat (menunggu TTL 1 jam). Akibatnya
+     * dropdown pencarian dan pilihan sub model bisa basi. Hook ini menaruh
+     * pembersihan di level model supaya berlaku untuk SEMUA jalur yang menulis
+     * sub model, bukan hanya satu controller.
+     */
+    protected static function booted(): void
+    {
+        $flush = function (self $model): void {
+            \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.all');
+            \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.'.($model->product_model ?? ''));
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.all');
+            if ($model->product_model) {
+                \Illuminate\Support\Facades\Cache::forget(
+                    'catalog.model_codes.v3.'.strtoupper((string) $model->product_model)
+                );
+            }
+            \App\Support\CatalogTaxonomy::forgetCache();
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
+    }
 
     public function scopeActive(Builder $query): Builder
     {
