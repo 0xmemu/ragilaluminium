@@ -614,20 +614,3 @@ export function useAdminLive(): AdminLiveSnapshot & { refresh: () => void } {
 
 
 
-/** Label status koneksi dalam Bahasa Indonesia (null = jangan tampilkan). */
-export function liveConnectionLabel(state: AdminLiveState): string | null {
-  switch (state) {
-    case "connected":
-      return null
-    case "connecting":
-      return "Menghubungkan pembaruan langsung..."
-    case "reconnecting":
-      return "Menghubungkan ulang pembaruan langsung..."
-    case "disconnected":
-      return "Pembaruan langsung terputus, data mungkin tertinggal."
-    case "unavailable":
-      return null
-    default:
-      return null
-  }
-}

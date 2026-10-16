@@ -29,7 +29,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { formatCurrency, formatNumber } from "@/lib/format"
 import { paymentMethodLabel, statusMeta } from "@/lib/status"
 import { routeUrl } from "@/lib/routes"
-import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
+import { useAdminLiveOrders } from "@/lib/admin-live-events"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { jagaGerbang } from "@/lib/submit-gate"
@@ -697,7 +697,9 @@ export default function OrderShow({
   const { printing, handlePrint } = usePrintOrder()
   const capabilities = useAdminCapabilities()
   const [liveChangedNotice, setLiveChangedNotice] = React.useState<string | null>(null)
-  const { state: liveState, lastEventAt } = useAdminLiveOrders({
+  // Hanya callback perubahan pesanan yang dipakai. Status koneksi live tidak
+  // ditampilkan ke admin toko (kontrak owner 17 Okt 2026).
+  useAdminLiveOrders({
     onOrderUpdated: (event) => {
       if (event.order_id === order.id) {
         // Jangan timpa form yang sedang diedit; tampilkan notice + Refresh manual.
@@ -1514,18 +1516,6 @@ export default function OrderShow({
               <span className="text-muted-foreground">Update terakhir</span>
               <span className="font-medium">{formatDateTime(order.updated_at)}</span>
             </li>
-            {liveState !== "unavailable" && liveState !== "connected" ? (
-              <li className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Pembaruan langsung</span>
-                <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
-              </li>
-            ) : null}
-            {lastEventAt ? (
-              <li className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Event terakhir</span>
-                <span className="font-medium">{formatDateTime(lastEventAt)}</span>
-              </li>
-            ) : null}
           </ol>
         </SectionCard>
         <SectionCard
@@ -1934,18 +1924,6 @@ export default function OrderShow({
                       <span className="text-muted-foreground">Update terakhir</span>
                       <span className="font-medium">{formatDateTime(order.updated_at)}</span>
                     </li>
-                    {lastEventAt ? (
-                      <li className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Event terakhir</span>
-                        <span className="font-medium">{formatDateTime(lastEventAt)}</span>
-                      </li>
-                    ) : null}
-                    {liveState !== "unavailable" && liveState !== "connected" ? (
-                      <li className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Pembaruan langsung</span>
-                        <span className="font-medium text-warning">{liveConnectionLabel(liveState)}</span>
-                      </li>
-                    ) : null}
                   </ol>
                 </div>
 

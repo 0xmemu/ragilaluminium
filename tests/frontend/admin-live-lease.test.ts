@@ -150,4 +150,22 @@ describe("kontrak sumber klien admin", () => {
     // Kalau terbalik, label akan tampil lebih lama daripada siklus denyutnya.
     expect(CONNECT_TIMEOUT_MS).toBeLessThan(HEARTBEAT_MS)
   })
+
+  it("halaman detail pesanan TIDAK menampilkan status sistem", () => {
+    // Kontrak owner 17 Okt 2026 (label "dan label serupa"): admin toko tidak
+    // berurusan dengan kesehatan sistem. Baris "Pembaruan langsung" dan
+    // "Event terakhir" di halaman detail pesanan juga status sistem, jadi ikut
+    // dilarang. Yang boleh tampil hanya data pekerjaan pesanan itu sendiri.
+    const isi = baca("resources/js/pages/Admin/Orders/Show.tsx")
+    expect(isi).not.toContain("liveConnectionLabel")
+    expect(isi).not.toContain("Pembaruan langsung")
+    expect(isi).not.toContain("Event terakhir")
+  })
+
+  it("fungsi label status sistem sudah tidak ada lagi di modul koneksi", () => {
+    // Setelah konsumen terakhirnya dibuang, fungsi ini jadi kode mati. Dibiarkan
+    // berarti jadi jebakan: agent berikutnya bisa memakainya lagi tanpa sadar.
+    const isi = baca(connection)
+    expect(isi).not.toContain("liveConnectionLabel")
+  })
 })

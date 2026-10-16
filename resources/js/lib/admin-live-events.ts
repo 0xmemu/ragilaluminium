@@ -3,7 +3,6 @@ import * as React from "react"
 import {
   type AdminLiveState,
   type AdminLiveMessage,
-  liveConnectionLabel,
   subscribeAdminLive,
   useAdminLive,
 } from "@/lib/admin-live-connection"
@@ -82,4 +81,3 @@ export function useAdminLiveOrders(handlers: AdminLiveOrderHandlers): {
   return { state, lastEventAt, refresh }
 }
 
-export { liveConnectionLabel }
