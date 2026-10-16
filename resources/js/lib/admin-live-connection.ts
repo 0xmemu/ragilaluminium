@@ -254,7 +254,7 @@ interface DataOtorisasi {
   shared_secret?: string
 }
 
-function authorizerKanal(
+export function authorizerKanal(
   channel: KanalEcho,
   _options: unknown,
 ): { authorize: (socketId: string, callback: (error: Error | null, data: DataOtorisasi | null) => void) => void } {
