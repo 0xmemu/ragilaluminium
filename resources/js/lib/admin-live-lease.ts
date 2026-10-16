@@ -34,6 +34,14 @@ export const HEARTBEAT_MS = 120_000
  */
 export const STALE_MS = HEARTBEAT_MS * 2
 
+/**
+ * Batas waktu membentuk sambungan WebSocket. Bila sambungan tidak pernah
+ * terbentuk dalam waktu ini (mis. otentikasi kanal gagal, atau server tidak
+ * menjawab), status TIDAK boleh tertinggal di "connecting" selamanya, karena itu
+ * membuat label "Menghubungkan pembaruan langsung..." tampil terus di panel admin.
+ */
+export const CONNECT_TIMEOUT_MS = 10_000
+
 /** Apakah klaim kepemimpinan sudah kedaluwarsa. */
 export function leaseExpired(now: number, lastClaimAt: number, leaseMs: number = LEASE_MS): boolean {
   if (lastClaimAt <= 0) return true

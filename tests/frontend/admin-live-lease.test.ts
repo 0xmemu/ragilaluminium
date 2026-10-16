@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
+  CONNECT_TIMEOUT_MS,
   HEARTBEAT_MS,
   LEASE_MS,
   LIVENESS_MS,
@@ -129,5 +130,18 @@ describe("kontrak sumber klien admin", () => {
     const isi = baca(manager)
     expect(isi).toContain("liveConnectionLabel")
     expect(isi).toContain("live.stale")
+  })
+
+  it("batas waktu sambung ada dan wajar", () => {
+    // Bila sambungan tidak terbentuk dalam batas ini, status tidak boleh tertinggal
+    // di "connecting" selamanya, karena itu membuat label "Menghubungkan pembaruan
+    // langsung..." tampil terus di panel admin.
+    expect(CONNECT_TIMEOUT_MS).toBeGreaterThan(1_000)
+    expect(CONNECT_TIMEOUT_MS).toBeLessThanOrEqual(30_000)
+  })
+
+  it("batas waktu sambung lebih pendek daripada denyut data", () => {
+    // Kalau terbalik, label akan tampil lebih lama daripada siklus denyutnya.
+    expect(CONNECT_TIMEOUT_MS).toBeLessThan(HEARTBEAT_MS)
   })
 })

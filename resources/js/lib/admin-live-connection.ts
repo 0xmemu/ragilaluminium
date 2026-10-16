@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { routeUrl } from "@/lib/routes"
 import {
+  CONNECT_TIMEOUT_MS,
   HEARTBEAT_MS,
   LIVENESS_MS,
   STALE_MS,
@@ -124,6 +125,7 @@ interface Internal {
   bc: BroadcastChannel | null
   livenessTimer: number | null
   heartbeatTimer: number | null
+  connectGuardTimer: number | null
   echoInit: Promise<EchoClient | null> | null
 }
 
@@ -143,6 +145,7 @@ const s: Internal = {
   bc: null,
   livenessTimer: null,
   heartbeatTimer: null,
+  connectGuardTimer: null,
   echoInit: null,
 }
 
@@ -183,6 +186,18 @@ function becomeLeader(): void {
   attachEcho()
   scheduleHeartbeat()
   void pollNow("heartbeat")
+
+  // Pengaman: bila sambungan tidak terbentuk dalam batas waktu, status dinyatakan
+  // terputus. Tanpa ini, kegagalan otentikasi kanal meninggalkan status
+  // "connecting" selamanya dan label "Menghubungkan pembaruan langsung..." tampil
+  // terus di panel admin.
+  if (s.connectGuardTimer !== null) window.clearTimeout(s.connectGuardTimer)
+  s.connectGuardTimer = window.setTimeout(() => {
+    s.connectGuardTimer = null
+    if (s.leader && s.state !== "connected") {
+      setState("disconnected")
+    }
+  }, CONNECT_TIMEOUT_MS)
 }
 
 function resignLeadership(): void {
@@ -262,6 +277,10 @@ function attachEcho(): void {
         if (!s.leader) return
         const pulih = s.everConnected
         s.everConnected = true
+        if (s.connectGuardTimer !== null) {
+          window.clearTimeout(s.connectGuardTimer)
+          s.connectGuardTimer = null
+        }
         setState("connected")
         // Penyelarasan saat sambungan pulih: menutup celah event yang terjadi
         // ketika sambungan putus, mis. saat deploy me-restart layanan.
