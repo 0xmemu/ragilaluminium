@@ -61,7 +61,7 @@ final class CatalogImportVerifier
             }
             if ($key === null) {
                 $groupKeys[$i] = null;
-                $errors[] = 'Baris '.($i + 2).': tidak punya id_key dan tidak ada baris grup sebelumnya.';
+                $errors[] = 'Baris '.($i + 2).': tidak punya NO. ID dan tidak ada baris grup sebelumnya.';
                 continue;
             }
             $groupKeys[$i] = $key;
@@ -79,7 +79,7 @@ final class CatalogImportVerifier
                 }
                 if ($key !== $prevKey && isset($seenClosed[$key])) {
                     $idLabel = str_starts_with($key, 'id:') ? substr($key, 3) : $key;
-                    $errors[] = 'Baris '.($i + 2).': id_key "'.$idLabel.'" muncul kembali setelah digantikan. Susun baris berurutan per produk.';
+                    $errors[] = 'Baris '.($i + 2).': NO. ID "'.$idLabel.'" muncul kembali setelah digantikan. Susun baris berurutan per produk.';
                 }
                 $prevKey = $key;
             }
@@ -112,11 +112,11 @@ final class CatalogImportVerifier
                 if ($combo !== '') {
                     $price = self::price($r);
                     if ($price === null || $price <= 0) {
-                        $errors[] = 'Baris '.($i + 2).': harga kosong atau nol untuk kombinasi "'.$combo.'" pada id_key "'.$idLabel.'".';
+                        $errors[] = 'Baris '.($i + 2).': harga kosong atau nol untuk kombinasi "'.$combo.'" pada NO. ID "'.$idLabel.'".';
                     }
                     $comboKey = strtolower($combo);
                     if (isset($combos[$comboKey])) {
-                        $errors[] = 'Baris '.($i + 2).': kombinasi "'.$combo.'" duplikat dengan baris '.$combos[$comboKey].' pada id_key "'.$idLabel.'".';
+                        $errors[] = 'Baris '.($i + 2).': kombinasi "'.$combo.'" duplikat dengan baris '.$combos[$comboKey].' pada NO. ID "'.$idLabel.'".';
                     } else {
                         $combos[$comboKey] = $i + 2;
                     }
@@ -128,7 +128,7 @@ final class CatalogImportVerifier
                         $optionSig = $sig;
                         $optionSigRow = $i + 2;
                     } elseif ($sig !== $optionSig) {
-                        $errors[] = 'Baris '.($i + 2).': daftar opsi varian berbeda dengan baris '.$optionSigRow.' pada id_key "'.$idLabel.'". Definisi opsi harus sama di semua baris grup.';
+                        $errors[] = 'Baris '.($i + 2).': daftar opsi varian berbeda dengan baris '.$optionSigRow.' pada NO. ID "'.$idLabel.'". Definisi opsi harus sama di semua baris grup.';
                     }
                 }
             }
@@ -138,13 +138,13 @@ final class CatalogImportVerifier
                 foreach ($names as $n => $rowList) {
                     $parts[] = '"'.$n.'" (baris '.implode(', ', $rowList).')';
                 }
-                $errors[] = 'id_key "'.$idLabel.'" memuat nama berbeda: '.implode(' dan ', $parts).'. Samakan nama dalam satu id_key.';
+                $errors[] = 'NO. ID "'.$idLabel.'" memuat nama berbeda: '.implode(' dan ', $parts).'. Samakan nama dalam satu NO. ID.';
             }
 
             // V7: foto utama (image_1) wajib utk tiap produk (syarat aktivasi).
             if ($groupImage1 === null || $groupImage1 === '') {
                 $firstRow = $rowIdxs[0] + 2;
-                $errors[] = 'Produk pada id_key "'.$idLabel.'" (baris '.$firstRow.') tidak punya image_1. Foto utama wajib agar produk bisa aktif.';
+                $errors[] = 'Produk pada NO. ID "'.$idLabel.'" (baris '.$firstRow.') tidak punya foto utama (kolom Gambar 1). Foto utama wajib agar produk bisa aktif.';
             }
 
             // V8: berat & dimensi wajib di baris pertama grup (syarat aktivasi,
@@ -167,7 +167,7 @@ final class CatalogImportVerifier
                 foreach (['berat', 'tinggi', 'panjang', 'lebar'] as $idx => $label) {
                     if ($dims[$idx] <= 0.0) { $missing[] = $label; }
                 }
-                $errors[] = 'Produk pada id_key "'.$idLabel.'" (baris '.$dimsRow.') kurang data pengiriman: '.implode(', ', $missing).'. Wajib angka lebih dari nol.';
+                $errors[] = 'Produk pada NO. ID "'.$idLabel.'" (baris '.$dimsRow.') kurang data pengiriman: '.implode(', ', $missing).'. Wajib angka lebih dari nol.';
             }
         }
 

@@ -47,7 +47,7 @@ class OrderEventLabels
             'refunded' => 'Refund',
             'pending' => 'Belum dibayar',
             null, '' => '-',
-            default => str_replace('_', ' ', $status),
+            default => 'Status lain',
         };
     }
 
@@ -57,7 +57,7 @@ class OrderEventLabels
             return '-';
         }
 
-        return self::ORDER_STATUSES[$code] ?? str_replace('_', ' ', $code);
+        return self::ORDER_STATUSES[$code] ?? 'Status lain';
     }
 
     /**
@@ -81,7 +81,13 @@ class OrderEventLabels
             'shipping.created' => 'Pengiriman dibuat',
             'shipping.status_updated' => 'Status pengiriman diperbarui',
             'system/cod_settlement' => 'Pelunasan COD otomatis saat paket sampai',
-            default => str_replace(['_', '.'], ' ', $eventType),
+            'system/cod_completion' => 'Pelunasan COD otomatis saat pesanan selesai',
+            'payment.reconciled' => 'Pembayaran dicocokkan ulang',
+            'whatsapp.logged_out' => 'Sesi WhatsApp terputus',
+            // Cadangan TIDAK lagi mengubah penanda sistem menjadi kalimat Inggris
+            // (dulu payment.reconciled tampil payment reconciled). Jenis event baru
+            // wajib didaftarkan di daftar di atas (kontrak owner 2026-10-16).
+            default => 'Perubahan tercatat',
         };
     }
 
@@ -105,6 +111,6 @@ class OrderEventLabels
             'outbound' => 'Pesan keluar',
         ];
 
-        return $map[$internalKey] ?? str_replace('_', ' ', $internalKey);
+        return $map[$internalKey] ?? 'Pesan WhatsApp';
     }
 }

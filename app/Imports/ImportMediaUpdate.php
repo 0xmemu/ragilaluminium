@@ -91,7 +91,7 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
             }
 
             if ($variant && $parentSku !== '' && $product->parent_sku !== $parentSku) {
-                throw new \RuntimeException('variant_sku tidak cocok dengan parent_sku: '.$variantSku);
+                throw new \RuntimeException('SKU varian tidak cocok dengan SKU produk: '.$variantSku);
             }
 
             // Kontrak owner (09-05): baris dgn semua kolom gambar kosong =
@@ -153,7 +153,7 @@ class ImportMediaUpdate implements OnEachRow, WithHeadingRow, WithChunkReading
                     continue;
                 }
                 if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                    throw new \RuntimeException('URL installation_image_'.$i.' tidak valid: '.$url);
+                    throw new \RuntimeException('URL gambar hasil pemasangan ke-'.$i.' tidak valid: '.$url);
                 }
                 $upserter->upsert(
                     productId: $product->id,

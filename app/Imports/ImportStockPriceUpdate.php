@@ -97,7 +97,7 @@ class ImportStockPriceUpdate implements OnEachRow, WithHeadingRow, WithChunkRead
             // milik parent_sku. Salah induk = error per baris, bukan diam-diam
             // mengupdate varian parent lain.
             if ($variant && $parentSku !== '' && $variant->product?->parent_sku !== $parentSku) {
-                throw new \RuntimeException('variant_sku tidak cocok dengan parent_sku: '.$variantSku);
+                throw new \RuntimeException('SKU varian tidak cocok dengan SKU produk: '.$variantSku);
             }
 
             if (! $variant && $product) {

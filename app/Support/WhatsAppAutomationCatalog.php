@@ -31,7 +31,7 @@ class WhatsAppAutomationCatalog
             [
                 'internal_key' => 'order_created',
                 'label' => 'WA Order COD',
-                'description' => 'Dikirim saat pelanggan menyelesaikan pesanan COD. Tombol/balasan konfirmasi pelanggan otomatis memproses pesanan (pending → diproses).',
+                'description' => 'Dikirim saat pelanggan menyelesaikan pesanan COD. Tombol atau balasan konfirmasi pelanggan otomatis memproses pesanan dari menunggu pembayaran menjadi diproses.',
                 'icon' => 'hand-coins',
                 'default_provider_name' => 'order_created_cod',
                 'default_body' => <<<'TXT'
@@ -199,7 +199,7 @@ TXT,
             [
                 'internal_key' => 'order_issue_followup',
                 'label' => 'WA Follow Up Masalah',
-                'description' => 'Dikirim saat admin menandai pesanan bermasalah / retur masuk (issue / return_in_process) sebagai konfirmasi tindak lanjut.',
+                'description' => 'Dikirim saat admin menandai pesanan bermasalah atau retur masuk sebagai konfirmasi tindak lanjut.',
                 'icon' => 'alert-triangle',
                 'default_provider_name' => 'order_issue_followup',
                 'default_body' => <<<'TXT'
@@ -218,7 +218,7 @@ TXT,
             [
                 'internal_key' => 'order_returned',
                 'label' => 'WA Retur Diproses',
-                'description' => "Dikirim saat admin menandai retur selesai (return_completed) atau tracking menyatakan paket kembali ke pengirim.",
+                'description' => "Dikirim saat admin menandai retur selesai, atau saat pelacakan menyatakan paket kembali ke pengirim.",
                 'icon' => 'package',
                 'default_provider_name' => 'order_returned',
                 'default_body' => <<<'TXT'

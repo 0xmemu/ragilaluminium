@@ -127,7 +127,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             $payload = [
                 'derivatives' => $built ?: null,
                 'status' => 'downloaded',
-                'error_reason' => empty($built) ? Str::limit('derivatives_failed: check GD / image format', 500) : null,
+                'error_reason' => empty($built) ? Str::limit('Turunan gambar gagal dibuat. Periksa format berkas atau ekstensi pemroses gambar di server.', 500) : null,
             ];
 
             $promoted = ! empty($built)

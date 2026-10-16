@@ -23,9 +23,9 @@ class PageController extends Controller
             'createHref' => route('admin.pages.create'),
             'columns' => [
                 ['key' => 'title', 'label' => 'Judul', 'hrefKey' => 'href'],
-                ['key' => 'slug', 'label' => 'Slug'],
-                ['key' => 'published', 'label' => 'Published'],
-                ['key' => 'updated_at', 'label' => 'Update'],
+                ['key' => 'slug', 'label' => 'Alamat halaman'],
+                ['key' => 'published', 'label' => 'Terbit'],
+                ['key' => 'updated_at', 'label' => 'Diperbarui'],
             ],
             'rows' => $pages->getCollection()->map(fn (CmsPage $p) => [
                 'title' => $p->title,

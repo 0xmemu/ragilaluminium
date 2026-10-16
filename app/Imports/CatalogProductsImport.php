@@ -318,7 +318,7 @@ class CatalogProductsImport implements OnEachRow, WithHeadingRow, WithChunkReadi
                 }
             }
             if ($parentSku === '') {
-                throw new \RuntimeException('parent_sku dan name kosong');
+                throw new \RuntimeException('SKU produk dan nama produk kosong');
             }
 
             // Resolusi kategori dari sumber DINAMIS (tabel categories), bukan default

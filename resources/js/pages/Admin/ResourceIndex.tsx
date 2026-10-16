@@ -14,7 +14,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
-import { humanize } from "@/lib/format"
+import { mediaKindLabel, mediaStatusMeta, statusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import type { ResourceIndexProps, ResourceRow, ResourceRowAction } from "@/types"
 
@@ -88,7 +88,7 @@ function RowActionButtons({ actions }: { actions: ResourceRowAction[] }) {
             )
           }
           title={action.confirm || "Jalankan tindakan ini?"}
-          description="Tindakan ini akan dijalankan pada record yang dipilih."
+          description="Tindakan ini akan dijalankan pada baris yang dipilih."
           confirmLabel={action.label}
           onConfirm={run}
         />
@@ -215,7 +215,7 @@ function MediaBulkAttachPanel({
                 )}
               </div>
               <p className="mt-2 truncate text-sm font-semibold">{asset.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{asset.kind} · {asset.status} · Dipakai di {asset.usage_count} produk</p>
+              <p className="mt-1 text-xs text-muted-foreground">{mediaKindLabel(asset.kind)} · {mediaStatusMeta(asset.status).label} · Dipakai di {asset.usage_count} produk</p>
             </button>
           ))}
         </div>
@@ -266,9 +266,9 @@ function MediaBulkAttachPanel({
             <Field id="bulk-position" label="Posisi">
               <Input type="number" min="1" max="109" value={form.data.position} onChange={(event) => form.setData("position", event.target.value)} />
             </Field>
-            <Select value={form.data.visibility} onChange={(event) => form.setData("visibility", event.target.value)} aria-label="Visibilitas attachment">
-              <option value="visible">Visible</option>
-              <option value="hidden">Hidden</option>
+            <Select value={form.data.visibility} onChange={(event) => form.setData("visibility", event.target.value)} aria-label="Visibilitas pemasangan">
+              <option value="visible">Tampil</option>
+              <option value="hidden">Disembunyikan</option>
             </Select>
             <CheckboxField
               id="attach-show-in-catalog"
@@ -333,6 +333,14 @@ export default function ResourceIndex({
         : [],
     [rows, statusColumn],
   )
+  // Nilai kolom status bisa berupa kode sistem (mis. "awaiting_review") atau
+  // teks biasa ("ya"/"tidak"). Kode sistem memakai peta label supaya penanda
+  // sistem tidak tampil apa adanya di pilihan filter.
+  const labelStatusFilter = (value: string): string =>
+    value.includes("_")
+      ? statusMeta(value).label
+      : value.charAt(0).toUpperCase() + value.slice(1)
+
   const showActions = rows.some((row) => Array.isArray(row.actions) && row.actions.length > 0)
   const filteredRows = React.useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -373,7 +381,7 @@ export default function ResourceIndex({
   return (
     <AdminLayout
       title={title}
-      description={description ?? `${pagination?.total ?? rows.length} record tersedia.`}
+      description={description ?? `${pagination?.total ?? rows.length} baris tersedia.`}
       actions={toolbarLinks.length || createHref ? actions : null}
     >
       <Head title={`${title} | Admin`} />
@@ -416,7 +424,7 @@ export default function ResourceIndex({
               <option value="">Semua {statusColumn?.label.toLowerCase()}</option>
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {humanize(status)}
+                  {labelStatusFilter(status)}
                 </option>
               ))}
             </Select>
@@ -564,7 +572,7 @@ export default function ResourceIndex({
           <EmptyState
             className="m-4"
             icon="search"
-            title={rows.length ? "Record tidak cocok" : "Belum ada record"}
+            title={rows.length ? "Tidak ada baris yang cocok" : "Belum ada data"}
             description={
               rows.length
                 ? "Ubah kata pencarian atau hapus filter halaman."

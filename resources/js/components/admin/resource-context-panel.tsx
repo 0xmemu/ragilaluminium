@@ -6,6 +6,7 @@ import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusSelect } from "@/components/admin/ui/status-select"
 import { routeUrl } from "@/lib/routes"
+import { paymentMethodLabel } from "@/lib/status"
 import type { ResourceRow } from "@/types"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { gerbangBolehLanjut } from "@/lib/submit-gate"
@@ -18,9 +19,9 @@ function PaymentRowControl({ row }: { row: ResourceRow }) {
   return (
     <div className="grid gap-3 border-b border-border p-4 sm:grid-cols-[1fr_11rem_auto] sm:items-end">
       <div>
-        <p className="font-mono text-xs font-semibold">Payment #{String(row.id)}</p>
+        <p className="text-xs font-semibold">Pembayaran #{String(row.id)}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {String(row.payment_method)} · {String(row.amount)}
+          {paymentMethodLabel(row.payment_method)} · {String(row.amount)}
         </p>
       </div>
       <Field id={`payment-row-status-${String(row.id)}`} label="Status" error={form.errors.status}>

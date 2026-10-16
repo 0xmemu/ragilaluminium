@@ -6656,3 +6656,29 @@ Dampak spec: tidak berubah.
 Bukti: suite penuh 1 skipped 1486 passed (14341 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Verifikasi live 202 rilis 20261016193348-b0153891: kategori 3, model 0, sub model 0 (sebelumnya sub model melaporkan 6 palsu dari daftar cadangan); DESIGN_ORDER dan MODEL_ORDER terkonfirmasi TIDAK ADA; /, /up, /products HTTP 200.
 Untuk agent berikutnya: TIDAK ADA lagi daftar cadangan taksonomi di kode. DESIGN_ORDER, MODEL_ORDER, dan SubModel::MODELS semuanya sudah dihapus. Semua daftar taksonomi murni dari database. Kalau butuh kategori, model, atau sub model baru, WAJIB lewat halaman admin atau lewat impor XLSX. Cache taksonomi kini dibersihkan otomatis lewat booted() pada CmsModelProduct dan SubModel, jadi jangan kembali menaruh pembersihan cache manual di controller.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 20:20 UTC | zcode | Deep | (belum) | selesai
+Lingkup: penanda sistem tidak lagi bocor ke layar pengguna di panel admin dan storefront. Kriteria owner 2026-10-16: yang fatal adalah penanda bergaya kode ber-underscore atau bertitik (metric_basis.anchor, cms.model_product_created); istilah serapan seperti Slug, Update, No. Order tetap boleh.
+Akar masalah: teks JSX sendiri bersih (hasil sisir 255 berkas nol temuan). Semua kebocoran berasal dari nilai data server yang dicetak apa adanya, ditambah tiga cadangan otomatis yang mengubah kode menjadi kalimat Inggris sehingga setiap status atau event baru selalu lahir bocor.
+Perubahan:
+- resources/js/lib/status.ts: cadangan statusMeta tidak lagi mengubah kode menjadi Title Case Inggris (kini netral Status lain). Ditambah mediaStatusMeta, mediaKindLabel, paymentMethodLabel.
+- resources/js/pages/Admin/ActivityLogs/Index.tsx: kunci mentah (cms.model_product_deleted) dihapus dari tabel dan kartu; label manusia sudah tersedia di baris atasnya.
+- resources/js/pages/Admin/WhatsApp/Index.tsx dan Edit.tsx: kunci teknis (internal_key, provider_template_name, language_code) dipindah ke tooltip rujukan, bukan teks utama.
+- resources/js/pages/Admin/Media/Library.tsx: peta status lokal diganti helper bersama; kind mentah (image) jadi label (Gambar).
+- resources/js/components/admin/product-edit/media-panel.tsx: StatusBadge memakai label media (kunci pending pada pesanan berarti Menunggu pembayaran, pada media Menunggu diproses); status mentah di daftar aset diterjemahkan.
+- resources/js/pages/Admin/ResourceIndex.tsx: kind dan status mentah diterjemahkan, Visible/Hidden jadi Tampil/Disembunyikan, record jadi baris, humanize dibuang.
+- resources/js/pages/Admin/Orders/Show.tsx dan resources/js/components/admin/resource-context-panel.tsx: metode dan status pembayaran diterjemahkan; cadangan event_type tidak lagi memakai humanize.
+- app/Support/OrderEventLabels.php: cadangan tidak lagi memakai str_replace pemisah penanda; ditambah label untuk payment.reconciled, system/cod_completion, whatsapp.logged_out.
+- app/Support/CatalogImportVerifier.php: id_key jadi NO. ID, image_1 jadi foto utama (kolom Gambar 1).
+- app/Http/Controllers/Admin/ImportJobController.php, app/Imports/ImportStockPriceUpdate.php, ImportMediaUpdate.php, CatalogProductsImport.php, app/Jobs/DownloadProductMedia.php: pesan galat tidak lagi menyebut parent_sku, variant_sku, installation_image_N, derivatives_failed.
+- app/Services/StorePerformanceService.php: rujukan metric_basis.anchor diganti kalimat Indonesia.
+- app/Http/Controllers/Admin/PageController.php: judul kolom Halaman CMS Slug/Published/Update jadi Alamat halaman/Terbit/Diperbarui.
+- app/Support/WhatsAppAutomationCatalog.php: deskripsi tidak lagi memuat (issue / return_in_process), (return_completed), (pending -> diproses).
+- tests/frontend/penanda-sistem-tidak-bocor.test.ts: penjaga regresi 11 test; terbukti menangkap kebocoran yang disuntikkan kembali.
+- tests/frontend/status.test.ts: kontrak fallback diperbarui dari Awaiting Review menjadi Status lain, plus test label media dan pembayaran.
+Dampak spec: spec tidak berubah (tidak ada rute, skema, enum, atau bentuk JSON baru).
+Bukti: tsc 0 error, eslint 0 error pada 11 berkas yang disentuh, vitest 421 test lulus (50 berkas), PHPUnit OrderEventLabelsEventTypeTest dan 97 test impor lulus, build Vite sukses. Uji penjaga: kebocoran metric_basis.anchor disuntikkan kembali, penjaga GAGAL sesuai harapan, lalu dipulihkan.
+Catatan kolaborasi: agent lain bekerja bersamaan di working tree yang sama (live-notification-manager.tsx dan berkas admin-live-* baru). Commit ini hanya memuat berkas milik pekerjaan ini.
+Agent: zcode

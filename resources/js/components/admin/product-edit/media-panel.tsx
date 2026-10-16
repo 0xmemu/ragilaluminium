@@ -16,6 +16,7 @@ import { Field, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
+import { mediaStatusMeta } from "@/lib/status"
 import { Textarea } from "@/components/admin/ui/textarea"
 import type { MediaPanelUrls } from "@/components/admin/product-edit/types"
 import { cn } from "@/lib/utils"
@@ -175,7 +176,7 @@ function MediaRowCard({
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-mono text-xs font-semibold text-muted-foreground">#{row.id}</p>
-            <StatusBadge status={row.status} />
+            <StatusBadge status={row.status} {...mediaStatusMeta(row.status)} />
             {row.is_main_image ? <StatusBadge status="active" label="Utama" /> : null}
             {row.is_installation ? <StatusBadge tone="info" label="Hasil pasang" /> : null}
             {!row.show_in_catalog ? <StatusBadge tone="neutral" label="Non-katalog" /> : null}
@@ -726,7 +727,7 @@ export function MediaRowsPanel({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold">{asset.label}</span>
-                      <span className="mt-1 block text-[11px] text-muted-foreground">{asset.status} · Dipakai di {asset.usage_count} produk</span>
+                      <span className="mt-1 block text-[11px] text-muted-foreground">{mediaStatusMeta(asset.status).label} · Dipakai di {asset.usage_count} produk</span>
                     </span>
                   </button>
                 )) : <p className="py-3 text-xs text-muted-foreground">Belum ada aset bersama yang cocok.</p>}

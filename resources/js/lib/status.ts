@@ -126,14 +126,65 @@ export function statusIcon(status: unknown): string | null {
   return STATUS_ICONS[String(status ?? "").toLowerCase()] ?? null
 }
 
+/**
+ * Status yang belum terdaftar TIDAK lagi diubah otomatis menjadi Title Case
+ * Inggris. Dulu "awaiting_review" tampil "Awaiting Review", sehingga penanda
+ * sistem bocor ke layar dan setiap status baru selalu lahir berbahasa Inggris.
+ * Sekarang labelnya netral dan status baru wajib didaftarkan di STATUS_MAP
+ * (kontrak owner 2026-10-16: penanda sistem tidak boleh tampil ke pengguna).
+ */
 export function statusMeta(status: unknown): StatusMeta {
   const key = String(status ?? "").toLowerCase()
   return STATUS_MAP[key] ?? {
-    label: key
-      ? key.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase())
-      : "Belum tersedia",
+    label: key ? "Status lain" : "Belum tersedia",
     tone: "neutral",
   }
+}
+
+/**
+ * Status aset media (media_assets.status, product_media.status). Dipisahkan
+ * dari STATUS_MAP karena kunci "pending" di sana berarti "Menunggu pembayaran"
+ * milik pesanan, sedangkan pada media artinya "Menunggu diproses".
+ */
+const MEDIA_STATUS_MAP: Record<string, StatusMeta> = {
+  pending: { label: "Menunggu diproses", tone: "neutral" },
+  uploading: { label: "Sedang diunggah", tone: "info" },
+  downloading: { label: "Mengambil media", tone: "info" },
+  downloaded: { label: "Tersimpan", tone: "success" },
+  processing: { label: "Sedang diproses", tone: "info" },
+  ready: { label: "Siap digunakan", tone: "success" },
+  failed: { label: "Gagal diproses", tone: "danger" },
+  archived: { label: "Diarsipkan", tone: "neutral" },
+}
+
+export function mediaStatusMeta(status: unknown): StatusMeta {
+  const key = String(status ?? "").toLowerCase()
+  return MEDIA_STATUS_MAP[key] ?? {
+    label: key ? "Status lain" : "Belum tersedia",
+    tone: "neutral",
+  }
+}
+
+/** Jenis aset media (media_assets.kind). */
+const MEDIA_KIND_LABELS: Record<string, string> = {
+  image: "Gambar",
+  video: "Video",
+}
+
+export function mediaKindLabel(kind: unknown): string {
+  return MEDIA_KIND_LABELS[String(kind ?? "").toLowerCase()] ?? "Media"
+}
+
+/** Metode pembayaran pada catatan pembayaran (payments.payment_method). */
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cod: "COD",
+  transfer: "Transfer Bank",
+  gateway: "Gateway",
+  other: "Lainnya",
+}
+
+export function paymentMethodLabel(method: unknown): string {
+  return PAYMENT_METHOD_LABELS[String(method ?? "").toLowerCase()] ?? "Lainnya"
 }
 
 export const ORDER_STEPS = [

@@ -190,7 +190,6 @@ export default function ActivityLogsIndex({
                       </td>
                       <td className="max-w-[24rem] px-3 py-3 text-muted-foreground">
                         <p>{row.activity}</p>
-                        <p className="mt-0.5 font-mono text-[11px]">{row.event_type}</p>
                       </td>
                       <td className="px-3 py-3">
                         <StatusBadge
@@ -266,7 +265,6 @@ export default function ActivityLogsIndex({
                       <dt className="text-[10px] font-semibold tracking-tight text-muted-foreground">Aktivitas</dt>
                       <dd className="mt-1 text-sm text-muted-foreground">
                         <p>{row.activity}</p>
-                        <p className="mt-0.5 font-mono text-[11px]">{row.event_type}</p>
                       </dd>
                     </div>
                   </dl>

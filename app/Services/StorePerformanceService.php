@@ -619,7 +619,7 @@ class StorePerformanceService
                 'running_period' => 'Periode berjalan dipotong ke waktu laporan dibangun',
                 'comparison' => 'Periode berjalan dibandingkan sampai jam yang sama pada periode sebelumnya, periode selesai dibandingkan penuh',
                 'recognition' => 'Pesanan dihitung bila dibuat dalam periode dan mencapai Diproses paling lambat akhir periode',
-                'per_metric' => 'Kolom tanggal tiap metrik tercantum di metric_basis.anchor',
+                'per_metric' => 'Kolom tanggal tiap metrik tercantum pada tabel Dasar Tambahan di halaman ini',
             ],
             'sections' => [
                 ['key' => 'sales', 'title' => 'Penjualan', 'kpis' => $salesKpis],

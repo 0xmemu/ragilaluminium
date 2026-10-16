@@ -24,6 +24,7 @@ import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
 import { cn } from "@/lib/utils"
 import { routeUrl } from "@/lib/routes"
+import { mediaKindLabel, mediaStatusMeta } from "@/lib/status"
 import {
   adaUnggahanBerjalan,
   mulaiUnggah,
@@ -40,19 +41,6 @@ import type { Pagination as PaginationData, SharedPageProps } from "@/types"
 const FOLDER_SIDEBAR_KEY = "ragil.admin.mediaLibrary.folderSidebar"
 const FOLDER_EXPANDED_KEY = "ragil.admin.mediaLibrary.folderExpanded"
 
-const MEDIA_STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" }> = {
-  pending:    { label: "Menunggu diproses", tone: "neutral" },
-  uploading:  { label: "Sedang diunggah",   tone: "info" },
-  downloading:{ label: "Mengambil media",   tone: "info" },
-  processing: { label: "Sedang diproses",   tone: "info" },
-  ready:      { label: "Siap digunakan",    tone: "success" },
-  failed:     { label: "Gagal diproses",    tone: "danger" },
-  archived:   { label: "Diarsipkan",         tone: "neutral" },
-}
-
-function mediaStatusMeta(status: string): { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" } {
-  return MEDIA_STATUS_META[status] ?? { label: status, tone: "neutral" }
-}
 
 // --- Types ---
 interface FolderNode {
@@ -2046,7 +2034,7 @@ export default function MediaLibrary({
               </div>
               <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                 <dt className="text-muted-foreground">Jenis / status</dt>
-                <dd className="text-foreground">{infoAsset.kind} / {mediaStatusMeta(infoAsset.status).label}</dd>
+                <dd className="text-foreground">{mediaKindLabel(infoAsset.kind)} / {mediaStatusMeta(infoAsset.status).label}</dd>
               </div>
               <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
                 <dt className="text-muted-foreground">Dipakai</dt>

@@ -26,9 +26,9 @@ import {
 } from "@/components/shared/print-order-customer"
 import { ShippingTrackPanel } from "@/components/shared/shipping-track-panel"
 import AdminLayout from "@/layouts/admin-layout"
-import { formatCurrency, formatNumber, humanize } from "@/lib/format"
+import { formatCurrency, formatNumber } from "@/lib/format"
+import { paymentMethodLabel, statusMeta } from "@/lib/status"
 import { routeUrl } from "@/lib/routes"
-import { statusMeta } from "@/lib/status"
 import { liveConnectionLabel, useAdminLiveOrders } from "@/lib/admin-live-events"
 import { can, useAdminCapabilities } from "@/lib/capabilities"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
@@ -1544,7 +1544,7 @@ export default function OrderShow({
                   key={`${event.event_type}-${index}`}
                   className="border-b border-border pb-2.5 last:border-0 last:pb-0"
                 >
-                  <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                  <p className="font-medium">{event.label || "Perubahan tercatat"}</p>
                   {typeof event.payload?.reason === "string" && event.payload.reason ? (
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       Alasan: {event.payload.reason}
@@ -1646,7 +1646,7 @@ export default function OrderShow({
                       </div>
 
                       <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 text-foreground">
-                        {message.text || message.label || humanize(message.direction)}
+                        {message.text || message.label || statusMeta(message.direction).label}
                       </p>
 
                       <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
@@ -1958,10 +1958,10 @@ export default function OrderShow({
                       {order.payments.map((payment) => (
                         <li key={payment.id} className="border-b border-border pb-2.5 last:border-0 last:pb-0">
                           <p className="font-medium">
-                            {payment.payment_method} · {formatCurrency(payment.amount)}
+                            {paymentMethodLabel(payment.payment_method)} · {formatCurrency(payment.amount)}
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Status: {payment.status}
+                            Status: {statusMeta(payment.status).label}
                             {payment.paid_at ? ` · Dibayar ${formatDateTime(payment.paid_at)}` : ""}
                           </p>
                         </li>
@@ -2000,7 +2000,7 @@ export default function OrderShow({
                       key={`${event.event_type}-${index}`}
                       className="border-b border-border pb-2.5 last:border-0 last:pb-0"
                     >
-                      <p className="font-medium">{event.label || humanize(event.event_type)}</p>
+                      <p className="font-medium">{event.label || "Perubahan tercatat"}</p>
                       {typeof event.payload?.reason === "string" && event.payload.reason ? (
                         <p className="mt-0.5 text-xs text-muted-foreground">Alasan: {event.payload.reason}</p>
                       ) : null}

@@ -760,7 +760,7 @@ class ImportJobController extends Controller
                 ? \App\Models\ProductVariant::with('product')->where('variant_sku', $variantSku)->first()
                 : null;
             if (! $variant || $variant->product->parent_sku !== $parentSku) {
-                $diffs[] = ['row' => $index + 2, 'status' => 'error', 'message' => 'parent_sku/variant_sku tidak ditemukan atau tidak cocok'];
+                $diffs[] = ['row' => $index + 2, 'status' => 'error', 'message' => 'SKU produk/SKU varian tidak ditemukan atau tidak cocok'];
                 continue;
             }
 
