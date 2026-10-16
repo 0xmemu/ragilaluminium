@@ -203,19 +203,27 @@ async function ensureEcho(): Promise<EchoClient | null> {
 
   s.echoInit = (async () => {
     try {
-      const { default: Echo } = await import("laravel-echo")
+      // Klien Pusher WAJIB diserahkan. laravel-echo 2.x tidak lagi menyertakannya
+      // dan akan MELEMPAR "Pusher client not found" saat connect(), sehingga
+      // sambungan WebSocket tidak pernah terbentuk.
+      const [{ default: Echo }, { default: Pusher }] = await Promise.all([
+        import("laravel-echo"),
+        import("pusher-js"),
+      ])
       if (window.Echo) return window.Echo
 
       const host = (import.meta.env.VITE_REVERB_HOST as string) || window.location.hostname
       const scheme = (import.meta.env.VITE_REVERB_SCHEME as string) || "https"
       const isTls = scheme === "https"
+      const port = Number(import.meta.env.VITE_REVERB_PORT ?? 443)
 
       window.Echo = new Echo({
         broadcaster: "reverb",
         key: import.meta.env.VITE_REVERB_APP_KEY as string,
+        Pusher,
         wsHost: host,
-        wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 80),
-        wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
+        wsPort: isTls ? 80 : port,
+        wssPort: isTls ? port : 443,
         forceTLS: isTls,
         enabledTransports: ["ws", "wss"],
       }) as unknown as EchoClient
@@ -236,7 +244,16 @@ function attachEcho(): void {
 
   void (async () => {
     const echo = await ensureEcho()
-    if (!echo || !s.leader || s.echoAttached) return
+
+    if (!echo) {
+      // Jangan diam di status "connecting". Kegagalan harus terbaca, dan denyut
+      // data tetap menjadi jalur pembaruan.
+      setState("unavailable")
+
+      return
+    }
+
+    if (!s.leader || s.echoAttached) return
 
     try {
       const channel = echo.private(CHANNEL_NAME)
@@ -270,7 +287,9 @@ function attachEcho(): void {
 
       s.echoAttached = true
     } catch {
+      // Sama: jangan tinggalkan status di "connecting".
       setState("unavailable")
+      s.echoAttached = false
     }
   })()
 }
