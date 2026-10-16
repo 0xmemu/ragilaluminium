@@ -429,38 +429,75 @@ export function subscribeAdminLive(handler: (m: AdminLiveMessage) => void): () =
   }
 }
 
-function snapshot(): AdminLiveSnapshot {
-  return {
+/**
+ * Snapshot yang WAJIB stabil antar panggilan.
+ *
+ * useSyncExternalStore membandingkan hasil getSnapshot dengan Object.is. Dulu
+ * fungsi ini selalu mengembalikan objek baru DAN memanggil Date.now(), sehingga
+ * React menganggap store berubah di setiap pemeriksaan dan render berulang tanpa
+ * henti (React error 185, "Maximum update depth exceeded"). Seluruh panel admin
+ * ikut runtuh karena hook ini dipakai di layout.
+ *
+ * Sekarang objek di-cache dan hanya dibuat ulang saat nilainya benar-benar
+ * berubah. Waktu ikut masuk kunci cache dalam bentuk ember kasar berdurasi
+ * STALE_MS, sehingga "basi" tetap bisa berubah sendiri (paling cepat sekali per
+ * STALE_MS) tanpa membuat identitas objek berubah di setiap pembacaan.
+ */
+let cachedSnapshot: AdminLiveSnapshot | null = null
+let cachedKey = ""
+
+export function readAdminLiveSnapshot(): AdminLiveSnapshot {
+  const emberWaktu = Math.floor(Date.now() / STALE_MS)
+  const key = [
+    s.state,
+    s.leader ? "1" : "0",
+    s.lastMessageAt,
+    s.lastEventAt ?? "",
+    emberWaktu,
+  ].join("|")
+
+  if (cachedSnapshot !== null && cachedKey === key) return cachedSnapshot
+
+  cachedKey = key
+  cachedSnapshot = {
     state: s.state,
     leader: s.leader,
     stale: isStale(Date.now(), s.lastMessageAt),
     lastEventAt: s.lastEventAt,
   }
+
+  return cachedSnapshot
 }
 
 /**
  * Status koneksi live untuk komponen. Memakai useSyncExternalStore supaya
  * pembacaan konsisten dan tidak ada render berlebih.
  */
+/** Langganan status; didefinisikan sekali supaya identitasnya stabil. */
+function subscribeState(cb: () => void): () => void {
+  start()
+  s.stateHandlers.add(cb)
+
+  return () => {
+    s.stateHandlers.delete(cb)
+  }
+}
+
 export function useAdminLive(): AdminLiveSnapshot & { refresh: () => void } {
   const snap = React.useSyncExternalStore(
-    (cb) => {
-      start()
-      s.stateHandlers.add(cb)
-
-      return () => {
-        s.stateHandlers.delete(cb)
-      }
-    },
-    snapshot,
-    snapshot,
+    subscribeState,
+    readAdminLiveSnapshot,
+    readAdminLiveSnapshot,
   )
 
   const refresh = React.useCallback(() => {
     if (s.leader) void pollNow("visible")
   }, [])
 
-  return { ...snap, refresh }
+  // Objek hasil dibungkus useMemo dengan kunci snapshot supaya identitasnya
+  // stabil selama snapshot tidak berubah. Tanpa ini, konsumen yang memakai
+  // nilai balik ini sebagai dependensi ikut render berulang.
+  return React.useMemo(() => ({ ...snap, refresh }), [snap, refresh])
 }
 
 /** Paksa satu penyelarasan sekarang (dipakai tombol muat ulang manual). */
