@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\ByteSize;
+
 use App\Http\Controllers\Controller;
 use App\Jobs\DownloadMediaAsset;
 use App\Jobs\ProcessUploadedMediaAsset;
@@ -56,7 +58,7 @@ class MediaLibraryUploadController extends Controller
             ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
             : (int) config('media.max_bytes', 10 * 1024 * 1024);
         if ($file->getSize() > $maxBytes) {
-            $pesan = "Ukuran file melebihi batas {$maxBytes} byte";
+            $pesan = 'Ukuran berkas melebihi batas '.ByteSize::human($maxBytes).'.';
             $this->catatHasilNiat($intentId, $userId, MediaUploadIntent::STATUS_FAILED, null, $pesan);
 
             return response()->json(['message' => $pesan], 422);

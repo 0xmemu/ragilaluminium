@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\ByteSize;
+
 use App\Models\MediaProcessingLog;
 use App\Models\ProductMedia;
 use App\Services\MediaDerivativeService;
@@ -97,7 +99,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             $size = filesize($tmp) ?: 0;
             $maxBytes = (int) config('media.max_bytes', 10 * 1024 * 1024);
             if ($size > $maxBytes) {
-                $this->fail($media, "Ukuran file {$size}B melebihi batas {$maxBytes}B");
+                $this->fail($media, 'Ukuran berkas '.ByteSize::human($size).' melebihi batas '.ByteSize::human($maxBytes).'.');
 
                 return;
             }

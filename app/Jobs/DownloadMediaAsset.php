@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\ByteSize;
+
 use App\Models\MediaAsset;
 use App\Models\MediaProcessingLog;
 use App\Models\ProductMedia;
@@ -72,7 +74,7 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
                 ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
                 : (int) config('media.max_bytes', 10 * 1024 * 1024);
             if ($size > $maxBytes) {
-                $this->failAsset($asset, "Ukuran file {$size}B melebihi batas {$maxBytes}B");
+                $this->failAsset($asset, 'Ukuran berkas '.ByteSize::human($size).' melebihi batas '.ByteSize::human($maxBytes).'.');
 
                 return;
             }

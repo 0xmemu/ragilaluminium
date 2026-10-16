@@ -66,7 +66,7 @@ class ShopeeMediaExport implements OnEachRow, WithChunkReading
                 'row_number' => $rowIndex,
                 'raw_data' => ['product_id' => $productId],
                 'status' => 'failed',
-                'error_reason' => 'Produk tidak ditemukan untuk product_id '.$productId,
+                'error_reason' => 'Produk tidak ditemukan untuk ID produk '.$productId,
                 'processed_at' => now(),
             ]);
             $job->increment('failed_rows');

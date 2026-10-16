@@ -163,6 +163,27 @@ describe("penanda sistem tidak bocor ke layar", () => {
     expect(DIKECUALIKAN).toContain("app/Providers/AppServiceProvider.php")
   })
 
+  it("pesan batas ukuran berkas memakai satuan yang mudah dibaca", () => {
+    // Angka byte mentah ("52428800B") memaksa admin menghitung sendiri.
+    // Semua pesan ukuran wajib lewat helper ByteSize.
+    const berkas = [
+      "app/Http/Controllers/Admin/MediaUploadController.php",
+      "app/Http/Controllers/Admin/MediaLibraryUploadController.php",
+      "app/Jobs/ProcessUploadedMediaAsset.php",
+      "app/Jobs/DownloadMediaAsset.php",
+      "app/Jobs/DownloadProductMedia.php",
+    ]
+    for (const relatif of berkas) {
+      const isi = baca(relatif)
+      expect(isi, relatif + " memuat angka byte mentah").not.toMatch(/\{\$[a-zA-Z]+\}B/)
+      expect(isi, relatif + " memuat kata byte mentah").not.toMatch(/\{\$[a-zA-Z]+\} byte/)
+    }
+    // Helper-nya wajib ada supaya pesan tetap bisa dibaca manusia.
+    const helper = baca("app/Support/ByteSize.php")
+    expect(helper).toContain("MB")
+    expect(helper).toContain("KB")
+  })
+
   it("pesan galat tidak menyebut nama kolom basis data", () => {
     const berkas = [
       "app/Support/CatalogImportVerifier.php",
@@ -173,6 +194,10 @@ describe("penanda sistem tidak bocor ke layar", () => {
       "app/Jobs/DownloadProductMedia.php",
       "app/Services/StorePerformanceService.php",
       "app/Support/WhatsAppAutomationCatalog.php",
+      "app/Http/Controllers/Admin/MediaLibraryUploadController.php",
+      "app/Jobs/DownloadMediaAsset.php",
+      "app/Jobs/DownloadProductMedia.php",
+      "app/Imports/archive/ShopeeMediaExport.php",
     ]
     for (const relatif of berkas) {
       expect(kalimatBocor(baca(relatif)), relatif).toEqual([])
