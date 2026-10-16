@@ -6498,3 +6498,20 @@ Dampak spec: spec tidak berubah (tidak ada rute, skema, enum, atau bentuk JSON b
 Bukti: tsc 0 error, eslint 0 warning, vitest 393 test lulus (48 berkas, termasuk 13 penjaga baru), build Vite sukses. Verifikasi live di peramban sungguhan (Chrome headless, viewport 1418x1302) pada halaman Performa Toko, Pesanan, Biaya COD, dan Kategori: seluruh petunjuk kursor dan menu tarik-turun terbukti dirender lewat portal, berada di dalam viewport, dan tidak satu pun terpotong wadah ber-overflow. Bukti tangkapan layar: petunjuk pada halaman Biaya COD kini melayang di atas kartu dan menimpa sidebar tanpa teriris.
 Catatan operasional: kata sandi akun uji dev (username dev.agent) disetel ulang ke nilai yang terdokumentasi agar verifikasi peramban bisa berjalan; skrip sementara di /tmp sudah dihapus.
 Agent: zcode
+
+---
+
+## 2026-10-16 17:25 UTC | zcode-taxonomy-flow | Standard | 764cfbca | selesai
+Lingkup: penghapusan daftar cadangan model produk dari kode agar taksonomi benar-benar murni dari database, atas keputusan owner (209 development tidak boleh mengikat produksi 202).
+Berkas:
+- app/Support/CatalogLabels.php: konstanta MODEL_ORDER dihapus total; modelCodes() kini murni gabungan cms_model_products + sub_models aktif.
+- app/Support/CatalogTaxonomy.php: dua tempat pengurutan model (kartu model dan mega menu) membaca modelCodes() dari database.
+- app/Support/CatalogSearch.php: loop pencocokan model pada pencarian membaca modelCodes().
+- app/Http/Controllers/CatalogController.php: loop model terkait pada halaman pencarian membaca modelCodes().
+- tests/Feature/SubModelAdminTest.php: helper modelInduk() menyemai model di cms_model_products karena sub model kini menuntut induk nyata.
+- tests/Feature/ImportWithoutTaxonomyTest.php: penjaga tambahan, dropdown model harus KOSONG saat tabel kosong.
+- tests/Feature/ModelProdukPageTest.php: komentar usang yang menyebut MODEL_ORDER dirapikan.
+Dampak spec: tidak berubah (tidak ada route, kolom, enum, atau bentuk JSON baru).
+Bukti: suite penuh 1 skipped 1466 passed (14250 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Rilis 20261016171635-764cfbca aktif di VPS 202. Verifikasi live 202: kategori 3 (JENDELA, PINTU, BOVEN), model produk 0 (KOSONG), sub model 0 (KOSONG); /, /products, /up, /products/jendela semua HTTP 200.
+Untuk agent berikutnya: model produk TIDAK punya daftar cadangan di kode lagi. Kalau butuh model baru, WAJIB dibuat lewat halaman admin Kelola Model Produk atau lewat impor XLSX (wadah dibuat otomatis oleh syncFromCatalog). Jangan menghidupkan kembali konstanta MODEL_ORDER.
+Agent: zcode-taxonomy-flow
