@@ -6440,3 +6440,23 @@ subfolder ditandai terarsip 1, lalu kembali 0 setelah rollback sehingga tidak ad
 berubah), beranda 200, dan bundel build tidak lagi memuat `assets_total`.
 
 Agent: zcode
+
+---
+
+## 2026-10-16 15:35 UTC | zcode-taxonomy-flow | Standard | 08d4c2d8 | selesai
+Lingkup: dinamisasi penuh taksonomi katalog (Kategori, Model Produk, Sub Model) menggantikan konstanta mati di PHP.
+Berkas:
+- app/Support/CatalogLabels.php: categoryCodes() membaca dinamis dari CategoryUrl::productCategoryCodes(); modelCodes(?category) membaca dari CmsModelProduct::active() + SubModel + fallback; model(?code) membaca nama model resmi dari database (CmsModelProduct) dengan fallback; modelOptions(?category) menyediakan opsi dropdown lengkap berlabel kategori.
+- app/Models/CmsModelProduct.php: hook booted() untuk invalidasi cache otomatis saat model produk disimpan atau dihapus.
+- app/Support/CatalogTaxonomy.php: loop mega menu menggunakan modelCodes dinamis dari database.
+- app/Http/Controllers/Admin/ModelProductController.php: menerima dan menormalkan input product_model jika diberikan, atau auto-slug dari nama.
+- app/Http/Controllers/Admin/SubModelController.php: index, create, edit, store menggunakan CatalogLabels::modelOptions() dan validasi modelCodes() dinamis menggantikan SubModel::MODELS.
+- app/Http/Controllers/Admin/ProductController.php: formOptions() meneruskan models dinamis dengan kategori ke frontend.
+- app/Http/Controllers/Admin/VoucherController.php & PromotionController.php: menggunakan modelCodes() dan modelOptions() dinamis.
+- resources/js/pages/Admin/ModelProducts/Form.tsx: menambahkan input opsional Kode Model Produk agar transparan.
+- resources/js/pages/Admin/ProductForm.tsx: dropdown Model menyaring otomatis berdasarkan Kategori yang dipilih.
+- tests/Feature/DynamicTaxonomyFlowTest.php: test end-to-end pembuatan Kategori baru -> Model baru -> Sub Model baru -> Produk baru -> verifikasi HTTP 200 di rute storefront.
+Pembersihan produksi: 51 baris sub_models lama di VPS 202 dibersihkan (0 baris), siap untuk input katalog mandiri.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED (taksonomi kategori dan model produk kini murni dinamis berbasis database, melepaskan keterikatan ke konstanta hardcode PHP).
+Bukti: DynamicTaxonomyFlowTest 14 assertions passed, SubModel tests 26 passed, ModelProduct tests 16 passed, Category tests 23 passed, tsc 0 error, eslint 0 warning, build Vite sukses. Rilis 20261016152609-08d4c2d8 aktif di VPS 202, HTTP 200 di https://ragilaluminium.com/ dan /products.
+Agent: zcode-taxonomy-flow
