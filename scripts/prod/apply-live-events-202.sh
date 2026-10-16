@@ -58,6 +58,10 @@ fi
 
 # --- 1. systemd unit -------------------------------------------------------
 log "pasang unit systemd..."
+# Folder log bersama WAJIB ada sebelum Reverb dijalankan. systemd menolak start
+# dengan status 209/STDOUT bila berkas StandardOutput tidak bisa dibuka, dan
+# deploy hanya membuat shared/storage/app, bukan shared/storage/logs.
+run install -d -m 2775 -o www-data -g www-data "$APP/shared/storage/logs"
 run install -m 0644 -o root -g root "$SRC/deploy/systemd/laravel-reverb.service"   /etc/systemd/system/laravel-reverb.service
 run install -m 0644 -o root -g root "$SRC/deploy/systemd/ragil-queue.service"     /etc/systemd/system/ragil-queue.service
 run install -m 0644 -o root -g root "$SRC/deploy/systemd/ragil-queue-fast.service" /etc/systemd/system/ragil-queue-fast.service
@@ -100,19 +104,38 @@ fi
 log "muat ulang layanan..."
 run systemctl restart laravel-reverb
 run systemctl restart ragil-queue
+# ragil-queue-fast di-start eksplisit. Hanya "enable" tidak menjalankannya,
+# sehingga antrean broadcast bisa tidak punya pekerja sama sekali.
+run systemctl enable --now ragil-queue-fast
 run systemctl reload php8.3-fpm
 run systemctl reload nginx
 
 # --- 5. Verifikasi --------------------------------------------------------
 log "verifikasi..."
 if [ "$DRY" = 0 ]; then
-  sleep 3
+  # Reverb butuh beberapa detik untuk bind port 8080. Tanpa jeda ini, statusnya
+  # masih "activating" dan terlihat seperti gagal padahal belum siap.
+  sleep 6
+  GAGAL=0
   for svc in laravel-reverb ragil-queue ragil-queue-fast php8.3-fpm nginx; do
-    printf '  %-20s %s\n' "$svc" "$(systemctl is-active "$svc")"
+    st="$(systemctl is-active "$svc")"
+    printf '  %-20s %s\n' "$svc" "$st"
+    [ "$st" = "active" ] || GAGAL=1
   done
   printf '  %-20s %s\n' "kolam php" "$(grep -E '^pm.max_children' "$POOL")"
   printf '  %-20s %s\n' "limit_req" "$(grep -c limit_req "$NGX_SITE") blok di vhost"
-  printf '  %-20s %s\n' "situs" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://ragilaluminium.com/ || echo 000)"
+  printf '  %-20s %s\n' "reverb port" "$(ss -ltn 2>/dev/null | grep -c ':8080')"
+  printf '  %-20s %s\n' "worker aktif" "$(pgrep -fc 'queue:work' 2>/dev/null)"
+  CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://ragilaluminium.com/ || echo 000)"
+  printf '  %-20s %s\n' "situs" "$CODE"
+  [ "$CODE" = "200" ] || GAGAL=1
+
+  if [ "$GAGAL" = 1 ]; then
+    log "VERIFIKASI GAGAL. Balik dengan:"
+    log "  cp $BAK/* ke lokasi asal, systemctl daemon-reload, muat ulang layanan"
+    exit 1
+  fi
+  log "verifikasi OK"
 fi
 
 log "=== apply-live-events-202 selesai ==="

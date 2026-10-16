@@ -174,7 +174,13 @@ run $SUDO mkdir -p "$NEW_RELEASE/storage/framework/cache/data" \
 # mengikuti shared dan folder yang tidak ada di sana ikut hilang.
 run $SUDO mkdir -p "$SHARED/storage/app/public" \
                     "$SHARED/storage/app/private" \
-                    "$SHARED/storage/app/imports"
+                    "$SHARED/storage/app/imports" \n                    "$SHARED/storage/logs"
+# Folder log bersama wajib ada: layanan systemd laravel-reverb menulis log
+# ke $SHARED/storage/logs. systemd menolak start (status 209/STDOUT) bila
+# berkas tujuannya tidak bisa dibuka, sehingga tanpa folder ini WebSocket
+# admin mati setelah deploy.
+run $SUDO chown www-data:www-data "$SHARED/storage/logs"
+run $SUDO chmod 2775 "$SHARED/storage/logs"
 run $SUDO rm -rf "$NEW_RELEASE/storage/app"
 run $SUDO ln -sfn "$SHARED/storage/app" "$NEW_RELEASE/storage/app"
 run $SUDO ln -sfn "$SHARED/storage/app/public" "$NEW_RELEASE/public/storage"
