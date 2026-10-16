@@ -6527,3 +6527,17 @@ Dampak spec: tidak berubah.
 Bukti: 9 tes / 24 assertions lulus (ketiga berkas XLSX). Rilis 20261016174203-97ff77ac aktif di VPS 202; /, /products, /up HTTP 200.
 Untuk agent berikutnya: TEMUAN untuk owner. Verifier V1-V8 TIDAK mewajibkan kolom Model Produk, sehingga baris XLSX dengan kolom Model kosong diterima dan diam-diam menjadi SLIDING. Ini perilaku bawaan importer sejak lama, BUKAN efek taksonomi dinamis. Kategori satu-satunya kolom taksonomi yang wajib (ditolak bila tidak dikenal). Kalau owner ingin kolom Model wajib, itu perubahan kontrak terpisah yang butuh keputusan.
 Agent: zcode-taxonomy-flow
+
+---
+
+## 2026-10-16 18:15 UTC | zcode-taxonomy-flow | Standard | 2b99e58b | selesai
+Lingkup: perbaikan cacat yang ditemukan owner. Kolom Model Produk yang kosong pada XLSX dulu LOLOS pemeriksaan berkas lalu diam-diam menjadi SLIDING, sehingga produk tercatat salah model tanpa peringatan.
+Berkas:
+- app/Support/CatalogImportVerifierV2.php: dua aturan baru. V9 Kategori Produk wajib diisi di baris pertama grup. V10 Model Produk wajib diisi di baris pertama grup.
+- app/Imports/CatalogProductsImportV2.php: fallback SLIDING dihapus, diganti RuntimeException berpesan jelas sebagai lapisan kedua.
+- app/Exports/ProductImportTemplateExport.php: panduan template menandai kolom WAJIB (Kategori, Model) dan OPSIONAL (Sub Model) secara eksplisit.
+- tests/Feature/ImportBlankModelColumnTest.php: ditulis ulang, kini menguji PENOLAKAN (5 tes) bukan lagi mengunci perilaku lama yang salah.
+Dampak spec: tidak berubah (aturan pemeriksaan berkas diperketat; tidak ada route, kolom, enum, atau bentuk JSON baru).
+Bukti: suite penuh 1 skipped 1475 passed (14267 assertions); tsc 0 error; eslint 0 warning; build Vite sukses. Verifikasi live 202: verifier menolak baris dengan Model kosong dan mengembalikan pesan Model Produk wajib diisi pada baris pertama grup NO. ID 1. Rilis 20261016180648-2b99e58b aktif; /, /up, /products HTTP 200.
+Untuk agent berikutnya: jangan kembalikan fallback SLIDING. Kalau ada berkas impor lama milik owner dengan kolom Model kosong, berkas itu sekarang DITOLAK di pemeriksaan awal dan itu memang tujuannya; minta owner mengisi kolom Model.
+Agent: zcode-taxonomy-flow
