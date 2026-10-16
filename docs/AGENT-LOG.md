@@ -6522,7 +6522,7 @@ Agent: zcode-taxonomy-flow
 Lingkup: mengunci dampak perubahan taksonomi dinamis terhadap keempat alur XLSX lewat pengujian.
 Berkas:
 - tests/Feature/XlsxFlowsWithoutTaxonomyTest.php (BARU): keempat alur XLSX tetap HTTP 200 saat model dan sub model kosong (template import produk baru, template update harga/stok, template update media, export katalog).
-- tests/Feature/ImportBlankModelColumnTest.php (BARU): mengunci perilaku kolom Model yang dibiarkan kosong. Nilainya diam-diam menjadi SLIDING oleh CatalogProductsImportV2 (baris  lalu fallback ). Kolom Sub Model kosong tetap null.
+- tests/Feature/ImportBlankModelColumnTest.php (BARU): mengunci perilaku kolom Model yang dibiarkan kosong. Nilainya diam-diam menjadi SLIDING oleh CatalogProductsImportV2 (baris yang membaca kolom model_produk lalu memakai fallback SLIDING). Kolom Sub Model kosong tetap null.
 Dampak spec: tidak berubah.
 Bukti: 9 tes / 24 assertions lulus (ketiga berkas XLSX). Rilis 20261016174203-97ff77ac aktif di VPS 202; /, /products, /up HTTP 200.
 Untuk agent berikutnya: TEMUAN untuk owner. Verifier V1-V8 TIDAK mewajibkan kolom Model Produk, sehingga baris XLSX dengan kolom Model kosong diterima dan diam-diam menjadi SLIDING. Ini perilaku bawaan importer sejak lama, BUKAN efek taksonomi dinamis. Kategori satu-satunya kolom taksonomi yang wajib (ditolak bila tidak dikenal). Kalau owner ingin kolom Model wajib, itu perubahan kontrak terpisah yang butuh keputusan.
