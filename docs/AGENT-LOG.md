@@ -6759,3 +6759,45 @@ Dampak spec: spec tidak berubah.
 Bukti: tsc 0 error, eslint 0 error (seluruh proyek), vitest 428 test lulus (52 berkas), build Vite sukses. Verifikasi live di peramban sungguhan pada 209: enam halaman admin (Log Aktivitas, Template WhatsApp, sunting template, Halaman CMS, Performa Toko, Media Library) semuanya kembali normal dengan nol error React 185 dan nol penanda sistem bocor; sebelum perbaikan seluruh halaman admin menampilkan layar gangguan.
 Catatan kolaborasi: produksi 202 beberapa kali berpindah rilis saat penyelidikan (agent lain men-deploy); commit penanda sistem efcf603c sudah ikut terpasang di sana. Perbaikan crash ini BELUM ter-deploy ke 202.
 Agent: zcode
+
+---
+
+## 2026-10-16 21:45 UTC | zcode-live-events | Trivial | 31394d1d | selesai
+
+Lingkup: PERBAIKAN BUG PRODUKSI yang saya sendiri timbulkan di Tahap 3.
+
+Gejala yang dilaporkan owner: panel admin menampilkan halaman "500 Terjadi gangguan
+sementara". Penting dibedakan: itu BUKAN 500 dari server. nginx mencatat NOL kode 500
+pada jendela itu. Teks itu berasal dari error boundary React
+(resources/js/components/shared/error-boundary.tsx), jadi galatnya di sisi peramban.
+
+Akar masalah: useSyncExternalStore membandingkan hasil getSnapshot dengan Object.is.
+Fungsi snapshot yang saya tulis SELALU mengembalikan objek baru DAN memanggil
+Date.now(), sehingga React melihat store berubah pada setiap pemeriksaan, render
+berulang tanpa henti (React error 185), lalu error boundary menangkapnya. Hook itu
+dipakai di layout admin, jadi SELURUH panel admin runtuh.
+
+Perbaikan:
+- Snapshot di-cache; objek dibuat ulang hanya saat isinya benar-benar berubah.
+  Waktu masuk kunci cache sebagai ember kasar berdurasi STALE_MS.
+- Fungsi langganan dipindah keluar komponen supaya identitasnya stabil; sebelumnya
+  dibuat ulang tiap render sehingga React berhenti dan menyambung ulang terus.
+- Nilai balik hook dibungkus useMemo.
+- Pembaca snapshot diekspor sebagai readAdminLiveSnapshot agar bisa diuji.
+
+Penjaga regresi: tests/frontend/admin-live-snapshot.test.ts dan
+admin-live-render.test.ts menuntut pemanggilan berulang mengembalikan objek yang SAMA.
+Penjaga ini sudah dibuktikan BUKAN penjaga palsu: saat cache sengaja dimatikan, 2 tes
+langsung gagal, lalu dipulihkan dan lulus lagi.
+
+Verifikasi: 22 tes frontend lulus; tsc repo-wide 0 error; eslint 0 warning; build sukses.
+Live 202: semua layanan active; / /products /login 200, /admin 302; bundel live memuat
+snapshot ter-cache.
+
+Catatan untuk agent berikutnya: kalau memakai useSyncExternalStore, getSnapshot WAJIB
+mengembalikan objek yang sama bila isinya tidak berubah. Jangan memanggil Date.now()
+langsung ke dalam identitas snapshot. Dan kalau panel admin menampilkan halaman
+"500 Terjadi gangguan sementara" padahal nginx nol 5xx, periksa error boundary React,
+bukan log server.
+
+Agent: zcode-live-events
