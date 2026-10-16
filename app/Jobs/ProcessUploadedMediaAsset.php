@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\ByteSize;
+
 use App\Models\CmsBanner;
 use App\Models\CmsGalleryItem;
 use App\Models\MediaAsset;
@@ -75,9 +77,9 @@ class ProcessUploadedMediaAsset implements ShouldBeUnique, ShouldQueue
                 ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
                 : (int) config('media.max_bytes', 10 * 1024 * 1024);
             if ($size > $maxBytes) {
-                $asset->update(['status' => 'failed', 'error_reason' => "Ukuran file {$size}B melebihi batas {$maxBytes}B"]);
-                MediaProcessingLog::transition($asset, 'failed', "Ukuran file {$size}B melebihi batas {$maxBytes}B.");
-                MediaFailureNotifier::notify($asset, "Ukuran file {$size}B melebihi batas {$maxBytes}B.");
+                $asset->update(['status' => 'failed', 'error_reason' => 'Ukuran berkas '.ByteSize::human($size).' melebihi batas '.ByteSize::human($maxBytes).'.']);
+                MediaProcessingLog::transition($asset, 'failed', "Ukuran berkas ".ByteSize::human($size)." melebihi batas ".ByteSize::human($maxBytes).".");
+                MediaFailureNotifier::notify($asset, "Ukuran berkas ".ByteSize::human($size)." melebihi batas ".ByteSize::human($maxBytes).".");
 
                 return;
             }

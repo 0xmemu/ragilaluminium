@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\ByteSize;
 use App\Jobs\ProcessUploadedMediaAsset;
 use App\Support\MediaNamer;
 use App\Models\MediaAsset;
@@ -48,7 +49,7 @@ class MediaUploadController extends Controller
             ? (int) config('media.max_video_bytes', 50 * 1024 * 1024)
             : (int) config('media.max_bytes', 10 * 1024 * 1024);
         if ($validated['size_bytes'] > $maxBytes) {
-            return response()->json(['message' => "Ukuran file melebihi batas {$maxBytes} byte"], 422);
+            return response()->json(['message' => 'Ukuran berkas melebihi batas '.ByteSize::human($maxBytes).'.'], 422);
         }
 
         $extension = $this->extensionForMime($mime);
