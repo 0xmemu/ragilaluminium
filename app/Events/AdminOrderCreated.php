@@ -52,4 +52,13 @@ class AdminOrderCreated implements ShouldBroadcast
     {
         return 'order.created';
     }
+
+    /**
+     * Antrean khusus broadcast. Dipisah dari antrean default supaya notifikasi
+     * live admin tidak mengantre di belakang impor katalog yang panjang.
+     */
+    public function broadcastQueue(): string
+    {
+        return 'broadcast';
+    }
 }

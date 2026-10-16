@@ -68,4 +68,13 @@ class AdminOrderUpdated implements ShouldBroadcast
     {
         return 'order.updated';
     }
+
+    /**
+     * Antrean khusus broadcast. Dipisah dari antrean default supaya notifikasi
+     * live admin tidak mengantre di belakang impor katalog yang panjang.
+     */
+    public function broadcastQueue(): string
+    {
+        return 'broadcast';
+    }
 }

@@ -111,4 +111,34 @@ class AdminLiveEventContractTest extends TestCase
         $this->assertNull($eventId);
         Event::assertNotDispatched(AdminOrderUpdated::class);
     }
+
+    public function test_broadcast_events_use_dedicated_queue(): void
+    {
+        // Antrean broadcast dipisah dari antrean default supaya notifikasi live
+        // admin tidak mengantre di belakang impor katalog yang bisa berjalan
+        // sampai 30 menit. Ketiga event ini wajib memakai antrean "broadcast".
+        $events = [
+            \App\Events\AdminOrderCreated::class,
+            \App\Events\AdminOrderUpdated::class,
+            \App\Events\AdminWhatsAppReceived::class,
+        ];
+
+        foreach ($events as $class) {
+            $this->assertTrue(
+                is_subclass_of($class, \Illuminate\Contracts\Broadcasting\ShouldBroadcast::class),
+                $class.' harus tetap mengimplementasikan ShouldBroadcast'
+            );
+            $this->assertTrue(
+                method_exists($class, 'broadcastQueue'),
+                $class.' harus punya method broadcastQueue()'
+            );
+            $this->assertSame(
+                'broadcast',
+                (new \ReflectionMethod($class, 'broadcastQueue'))->invoke(
+                    (new \ReflectionClass($class))->newInstanceWithoutConstructor()
+                ),
+                $class.' harus memakai antrean broadcast'
+            );
+        }
+    }
 }

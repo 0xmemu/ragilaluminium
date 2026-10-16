@@ -50,4 +50,13 @@ class AdminWhatsAppReceived implements ShouldBroadcast
     {
         return 'whatsapp.received';
     }
+
+    /**
+     * Antrean khusus broadcast. Dipisah dari antrean default supaya notifikasi
+     * live admin tidak mengantre di belakang impor katalog yang panjang.
+     */
+    public function broadcastQueue(): string
+    {
+        return 'broadcast';
+    }
 }
