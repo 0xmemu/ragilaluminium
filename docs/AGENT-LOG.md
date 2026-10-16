@@ -6801,3 +6801,16 @@ langsung ke dalam identitas snapshot. Dan kalau panel admin menampilkan halaman
 bukan log server.
 
 Agent: zcode-live-events
+
+---
+
+## 2026-10-16 22:35 UTC | zcode | Standard | (belum) | selesai
+Lingkup: menutup sisa kebocoran penanda sistem yang lolos dari kriteria awal, yaitu nama variabel lingkungan HURUF_BESAR_BESAR, bukan snake_case dan bukan bertitik.
+Akar masalah: kriteria penyisiran pertama hanya mencakup pola snake_case dan bertitik, sehingga pola nama variabel lingkungan tidak ikut terperiksa. Penyisiran ulang dengan pola huruf besar ber-underscore menemukan dua titik yang benar-benar tampil ke admin.
+Perubahan:
+- app/Services/ShippingService.php: pesan yang menyuruh melengkapi kredensial di berkas .env beserta lima nama variabelnya diganti kalimat Indonesia tanpa nama berkas rahasia dan tanpa nama variabel. Pesan ini tampil ke admin lewat flash error saat mencatat resi.
+- app/Services/SystemHealthService.php: ringkasan "Integrasi dimatikan (JNT_ENABLED=false)" diganti "Integrasi pengiriman sedang dimatikan". Ringkasan ini tampil di halaman Pengaturan Sistem.
+- tests/frontend/penanda-sistem-tidak-bocor.test.ts: daftar penanda ditambah nama variabel lingkungan, dan ditambah uji khusus bahwa pesan integrasi yang tampil di panel admin tidak menyebut nama variabel. Ditambah uji kebalikannya: AppServiceProvider SENGAJA dikecualikan karena pesan di sana hanya muncul saat konfigurasi produksi salah dan pembacanya operator server, jadi nama variabelnya justru harus tetap ada.
+Dampak spec: spec tidak berubah.
+Bukti: tsc 0 error, eslint 0 error seluruh proyek, vitest 433 test lulus pada 53 berkas, PHPUnit 11 test SystemHealth lulus. Penjaga dibuktikan bisa gagal: nama variabel disuntikkan kembali ke SystemHealthService, uji integrasi GAGAL sesuai harapan, lalu berkas dipulihkan.
+Agent: zcode

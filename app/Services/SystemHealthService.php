@@ -793,7 +793,7 @@ final class SystemHealthService
                     group: 'integration',
                     provider: 'J&T API · '.$environment,
                     status: self::STATUS_WARNING,
-                    summary: 'Integrasi dimatikan (JNT_ENABLED=false)',
+                    summary: 'Integrasi pengiriman sedang dimatikan',
                     action: ['label' => 'Konfigurasi'],
                 );
             }

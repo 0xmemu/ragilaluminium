@@ -41,7 +41,21 @@ const PENANDA_SISTEM = [
   "metric_basis",
   "derivatives_failed",
   "internal_key",
+  "JNT_ENABLED",
+  "JNT_API_ACCOUNT",
+  "JNT_PRIVATE_KEY",
 ] as const
+
+/**
+ * Berkas yang SENGAJA dikecualikan: penjaga konfigurasi saat aplikasi boot.
+ *
+ * Pesan di AppServiceProvider hanya muncul bila konfigurasi produksi salah
+ * (mis. APP_DEBUG menyala di produksi), dan pembacanya operator server yang
+ * memang mengatur berkas .env. Menghapus nama variabelnya justru membuat
+ * operator tidak tahu apa yang harus diperbaiki, jadi berkas ini dikecualikan
+ * dengan sadar, bukan karena terlewat.
+ */
+const DIKECUALIKAN = ["app/Providers/AppServiceProvider.php"] as const
 
 /**
  * Ambil seluruh literal teks dari sebuah berkas, lalu kembalikan yang memuat
@@ -122,6 +136,30 @@ describe("penanda sistem tidak bocor ke layar", () => {
     ]) {
       expect(isi, jenis + " wajib punya label manusia").toContain(jenis)
     }
+  })
+
+  it("pesan integrasi yang tampil di panel admin tidak menyebut nama variabel", () => {
+    // Pesan ini sampai ke layar admin lewat flash error dan ringkasan
+    // Pengaturan Sistem, jadi tidak boleh memuat nama variabel lingkungan.
+    const berkas = [
+      "app/Services/ShippingService.php",
+      "app/Services/SystemHealthService.php",
+    ]
+    for (const relatif of berkas) {
+      const isi = baca(relatif)
+      for (const nama of ["JNT_ENABLED", "JNT_API_ACCOUNT", "JNT_PRIVATE_KEY", "JNT_CUSTOMER_CODE"]) {
+        expect(isi, relatif + " menyebut " + nama).not.toContain(nama)
+      }
+      expect(isi).not.toContain("di .env")
+    }
+  })
+
+  it("penjaga konfigurasi boot tetap boleh menyebut nama variabel", () => {
+    // Kebalikan dari uji di atas: berkas ini memang untuk operator server,
+    // jadi nama variabelnya dipertahankan dan tidak boleh ikut dibersihkan.
+    const isi = baca("app/Providers/AppServiceProvider.php")
+    expect(isi).toContain("APP_DEBUG")
+    expect(DIKECUALIKAN).toContain("app/Providers/AppServiceProvider.php")
   })
 
   it("pesan galat tidak menyebut nama kolom basis data", () => {

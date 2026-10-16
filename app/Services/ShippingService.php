@@ -324,7 +324,7 @@ class ShippingService
         }
 
         if (! $this->jnt->isEnabled()) {
-            throw new \RuntimeException('Integrasi J&T belum aktif. Lengkapi kredensial di .env (JNT_ENABLED, JNT_API_ACCOUNT, JNT_PRIVATE_KEY, JNT_CUSTOMER_CODE, JNT_CUSTOMER_PASSWORD).');
+            throw new \RuntimeException('Integrasi J&T belum aktif. Kredensial pengiriman belum dilengkapi, hubungi pengelola teknis untuk mengaktifkannya.');
         }
 
         $bizContent = $this->buildCreateOrderPayload($order, $weightKg);
