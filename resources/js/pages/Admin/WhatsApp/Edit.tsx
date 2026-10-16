@@ -218,8 +218,8 @@ export default function WhatsAppEdit({
             </pre>
             <p className="mt-2 text-xs text-muted-foreground">
               {replySignature
-                ? "Footer ini berlaku untuk semua template dan bisa diubah lewat env WHATSAPP_REPLY_SIGNATURE."
-                : "Footer otomatis sedang tidak diisi, jadi tidak ada tambahan di bawah naskah. Isi env WHATSAPP_REPLY_SIGNATURE bila ingin menambahkannya lagi."}
+                ? "Footer ini berlaku untuk semua template. Perubahannya dilakukan lewat pengaturan sistem, hubungi pengelola teknis bila perlu diubah."
+                : "Footer otomatis sedang tidak diisi, jadi tidak ada tambahan di bawah naskah. Hubungi pengelola teknis bila ingin menambahkannya lagi."}
             </p>
           </section>
 

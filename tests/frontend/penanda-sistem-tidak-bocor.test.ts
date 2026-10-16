@@ -115,6 +115,7 @@ describe("penanda sistem tidak bocor ke layar", () => {
       // sistem di dalam hint juga terbaca. Dilarang sama seperti teks utama.
       expect(isi).not.toMatch(/Kunci internal/)
       expect(isi).not.toMatch(/Rujukan teknis/)
+      expect(isi).not.toMatch(/env [A-Z_]{4,}/)
       expect(isi).not.toMatch(/jangan ganti jadi nama seperti/)
       expect(isi).not.toMatch(/>Payment #/)
     },
