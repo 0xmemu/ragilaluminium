@@ -7922,3 +7922,29 @@ pending 0 / failed 0.
 Catatan: owner ternyata sudah import ulang saat audit berjalan (job #15,
 1.812 baris, 0 gagal, 151 produk, 604 gambar opsi semua di slot 1, semua
 aset opsi ready). Jadi 453 attachment itu milik import BARU, bukan sisa.
+
+## 2026-10-17 20:15 UTC | zcode-submodel-filter | Trivial | 4896f068 | selesai
+Lingkup: laporan owner, "setelah submodel terhapus, sistem langsung mengaktifkan
+filter model produk. padahal kan secara default tidak perlu".
+
+Akar masalah: `SubModelController::destroy()` mengakhiri dengan
+`redirect()->route('admin.sub-models.index', ['product_model' => $productModel])`.
+Parameter itu SELALU ikut, sehingga halaman daftar kembali dengan filter model
+menyala padahal admin tidak memakainya.
+
+Perubahan: halaman kembali ke keadaan SEBELUM penghapusan memakai referer.
+Kalau admin sedang memfilter, filter itu dipertahankan. Kalau tidak, kembali
+tanpa filter. Kalau penghapusan dipicu dari luar halaman daftar, jatuh ke
+daftar bersih.
+
+Berkas: `app/Http/Controllers/Admin/SubModelController.php`,
+`tests/Feature/SubModelDeleteKeepsFilterStateTest.php` (baru).
+
+Dampak spec: tidak berubah (tidak ada route/kolom/enum/JSON baru).
+
+Bukti: 4 test OK, dan dibuktikan GAGAL (2 dari 4) saat redirect lama
+dikembalikan sementara. Regresi taksonomi 19 test / 74 asersi OK. Deploy
+`20261017201231-2a610594` (branch feat/ui-consistency-209, sesuai asal rilis
+aktif sebelumnya), migrasi 0 pending, kesehatan OK, home 200.
+
+Agent: zcode-submodel-filter
