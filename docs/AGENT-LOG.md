@@ -7310,3 +7310,36 @@ kesehatan OK. Uji live dengan transaksi rollback: kategori baru lewat controller
 mendapat sort_order 4 (max 3 + 1), kategori yang disunting tanpa mengirim
 sort_order tetap di nilai 1, dan jumlah kategori kembali 2 setelah rollback.
 Urutan navigasi katalog terbaca JENDELA,BOVEN sesuai sort_order 1 dan 3.
+
+## 2026-10-17 07:40 UTC | zcode-import-failed-rows | Trivial | - | temuan
+Lingkup: pemeriksaan 14 baris impor gagal pada job #10 (berkas
+"Test Upload Sliding Ornamen Website.xlsx", 17 Okt 13:49 WIB, 1.812 baris).
+Pesan tiap baris: "Unable to check existence for: media-assets/<sidik jari>/pdp.webp".
+Akar masalah: kredensial Cloudflare R2 di `/var/www/ragilaluminium/shared/.env`
+ditolak bucket `ra-media-prod` dengan kode `SignatureDoesNotMatch`. Diuji dua
+klien berbeda (aws-sdk-php dan boto3), keduanya gagal. Nilai `.env` identik
+dengan config cache, panjang key 32 dan secret 64, tanpa kutip.
+Pemicu per baris: ke-14 baris itu mengisi kolom Gambar Hasil Pemasangan 1 dengan
+dua aset yang berstatus `archived` di tabel `media_assets` (id 1314 dan 1383).
+Karena status bukan `ready`, resolver melewati jalan pintas cek database dan
+memanggil `Storage::exists()` ke R2. Panggilan itu melempar 403, bukan
+mengembalikan false, sehingga seluruh baris dianggap gagal.
+Dampak data: 14 produk (id 41-46 dan 151-158) tidak punya foto hasil pemasangan,
+sedangkan foto katalog (13 per produk) dan varian (12 per produk) lengkap.
+Tidak ada produk setengah jadi: `linked_product_id` ke-14 baris null.
+Berkas aslinya TIDAK hilang: kedua objek masih dilayani CDN dengan status 200.
+Jendela kerusakan kredensial: antara 16 Okt 15:20 WIB (pemeriksaan arsip media
+masih bisa membaca bucket) dan 16 Okt 17:20 WIB (alarm mulai melaporkan
+SignatureDoesNotMatch). Cron backup harian 17 Okt 03:17 juga gagal unggah (403).
+Untuk agent berikutnya: jangan mengulang impor sebelum kredensial diganti; hasil
+impor ulang akan menempel ke aset `archived`, jadi status aset itu perlu
+dikembalikan ke `ready` lebih dulu. Temuan terpisah: 3 baris `media_assets`
+gagal 17 Okt 12:05 karena host `media.333labs.tech` tidak ada di
+`MEDIA_ALLOWED_HOSTS` (residu uji, bukan bagian job #10).
+Bukti: `Storage::disk("media")->exists()` melempar `UnableToCheckFileExistence`
+dengan sebab `S3Exception` 403; `listObjectsV2`, `getObject`, dan `putObject`
+memakai kredensial yang sama gagal `SignatureDoesNotMatch`; query
+`import_job_rows` job 10 menunjukkan 14 baris `failed`; query `products` dan
+`product_media` menunjukkan tepat 14 produk tanpa baris `is_installation=1`.
+
+Agent: zcode-import-failed-rows
