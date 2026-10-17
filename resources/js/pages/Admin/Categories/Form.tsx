@@ -5,10 +5,8 @@ import { Button } from "@/components/admin/ui/button"
 import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
-import { StatusBadge } from "@/components/admin/ui/status-badge"
 import AdminLayout from "@/layouts/admin-layout"
 import { Icon } from "@/components/shared/icon"
-import { storeExampleUrl } from "@/lib/routes"
 import { jagaGerbang } from "@/lib/submit-gate"
 
 interface CategoryData {
@@ -136,11 +134,7 @@ export default function CategoryForm({
                   />
                   {form.errors.name ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Nama resmi yang tampil di menu navigasi toko.
-                    </p>
-                  )}
+                  ) : null}
                 </td>
               </tr>
 
@@ -166,9 +160,6 @@ export default function CategoryForm({
                         {form.data.name
                           ? form.data.name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")
                           : "(Dihasilkan otomatis oleh sistem dari nama kategori)"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Dihasilkan otomatis oleh sistem saat disimpan (tidak perlu diisi manual).
                       </p>
                     </div>
                   )}
@@ -203,35 +194,7 @@ export default function CategoryForm({
                   </div>
                   {form.errors.slug ? (
                     <p className="mt-1 text-xs text-destructive">{form.errors.slug}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Alamat link publik toko: {storeExampleUrl("/products/")}{form.data.slug || "{slug}"}. Otomatis dibuat jika dikosongkan.
-                    </p>
-                  )}
-                </td>
-              </tr>
-
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  Urutan Tampil
-                </th>
-                <td className="px-4 py-3">
-                  <Input
-                    id="cat-order"
-                    type="number"
-                    min={1}
-                    value={form.data.sort_order}
-                    onChange={(e) => form.setData("sort_order", e.target.value)}
-                    placeholder="1"
-                    className="w-28 tabular-nums"
-                  />
-                  {form.errors.sort_order ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.sort_order}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Angka 1 tampil paling depan di menu katalog. Baris baru otomatis ditaruh paling belakang.
-                    </p>
-                  )}
+                  ) : null}
                 </td>
               </tr>
 
@@ -240,23 +203,17 @@ export default function CategoryForm({
                   Status Kategori
                 </th>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <CheckboxField
-                      id="cat-is-active"
-                      checked={form.data.is_active}
-                      onChange={(checked) => form.setData("is_active", checked)}
-                      label={
-                        <span className="font-semibold text-foreground text-xs">
-                          Kategori Aktif
-                        </span>
-                      }
-                      standalone
-                    />
-                    <StatusBadge status={form.data.is_active ? "active" : "inactive"} />
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik.
-                  </p>
+                  <CheckboxField
+                    id="cat-is-active"
+                    checked={form.data.is_active}
+                    onChange={(checked) => form.setData("is_active", checked)}
+                    label={
+                      <span className="font-semibold text-foreground text-xs">
+                        Kategori Aktif
+                      </span>
+                    }
+                    standalone
+                  />
                 </td>
               </tr>
             </tbody>
