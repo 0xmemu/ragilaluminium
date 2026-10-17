@@ -75,7 +75,7 @@ class ShopeeCatalogExport implements OnEachRow, WithChunkReading
                 : $fileStock;
 
             // Nama produk WAJIB mengikuti kolom nama dari xlsx Shopee (kolom 1)
-            // persis apa adanya. Pada baris varian nama bisa kosong — jangan
+            // persis apa adanya. Pada baris varian nama bisa kosong, jangan
             // menimpa nama produk yang sudah ada dengan fallback.
             $existing = Product::where('parent_sku', $parentSku)->first();
             $rawName = trim((string) ($data[1] ?? ''));

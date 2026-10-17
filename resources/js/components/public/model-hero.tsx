@@ -20,7 +20,7 @@ export interface ModelHeroThumb {
 }
 
 /**
- * Hero halaman model — REUSABLE di ModelDetail & Installations.
+ * Hero halaman model, REUSABLE di ModelDetail & Installations.
  *
  * Desktop: thumb kiri (24rem) + kanan (judul, deskripsi, statistik).
  * Mobile: thumb full-width dengan overlay judul & subjudul + statistik di bawah.
@@ -39,7 +39,7 @@ export function ModelHero({
   description?: string | null
   /** Slogan pendek (overlay mobile). */
   slogan?: string | null
-  /** Keunggulan model — danau global, sama di semua halaman. */
+  /** Keunggulan model, danau global, sama di semua halaman. */
   highlights?: Array<{ label: string }>
   thumbs: ModelHeroThumb[]
   stats: ModelHeroStat[]

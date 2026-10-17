@@ -3,7 +3,7 @@ name: ragil-ui-functional-integration
 description: >-
   Memastikan setiap perubahan tampilan/UI/fitur Ragil Aluminium langsung
   terintegrasi dengan backend (route, controller, service, schema) dan fungsional
-  end-to-end — bukan mockup. Wajib dibaca saat edit UI admin/public, Figma→code,
+  end-to-end, bukan mockup. Wajib dibaca saat edit UI admin/public, Figma→code,
   menambah tombol/form/panel, atau menyambungkan alur order/payment/shipping/WA.
 ---
 
@@ -13,7 +13,7 @@ description: >-
 
 **Jika ada perubahan tampilan atau fitur, outputnya harus sudah terintegrasi dengan sistem dan fungsional.**
 
-Ini selalu diterapkan. Analisis fungsi/fitur setelah mengubah UI, lalu sambungkan ke backend agar langsung jalan — bukan cuma mockup.
+Ini selalu diterapkan. Analisis fungsi/fitur setelah mengubah UI, lalu sambungkan ke backend agar langsung jalan, bukan cuma mockup.
 
 ## Kapan memakai skill ini
 
@@ -83,7 +83,7 @@ Selesai jika admin/customer bisa menyelesaikan intent layar itu pada data nyata 
 | Lacak pesanan di detail order | `shipping_records` + `ShippingService::createShipment` / `refreshStatus` + route per order |
 | Proses pesanan Transfer | Konfirmasi payment → `payment_status=paid` + `processing` |
 | Proses pesanan COD | Majukan order tanpa lunas; lunas saat delivered/completed |
-| Chat WA | URL dari nomor ternormalisasi / template service — bukan nomor hardcode |
+| Chat WA | URL dari nomor ternormalisasi / template service, bukan nomor hardcode |
 
 ## Anti-pola
 

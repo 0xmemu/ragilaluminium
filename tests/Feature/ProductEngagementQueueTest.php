@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * P1 Task 5 — Product engagement throttle 30/min + queue async.
+ * P1 Task 5, Product engagement throttle 30/min + queue async.
  */
 class ProductEngagementQueueTest extends TestCase
 {

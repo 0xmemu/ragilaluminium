@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils"
 import type { ReactNode } from "react"
 
 /**
- * Header halaman seragam untuk konten (TANPA tombol kembali — tombol kembali mobile
+ * Header halaman seragam untuk konten (TANPA tombol kembali, tombol kembali mobile
  * ditangani PageTopBar, agar tidak ada back ganda). Tombol kembali HANYA di PageTopBar.
  * `container` (default true): beri padding container-page sendiri.
  * Set `container={false}` bila sudah berada di dalam `.container-page` induk.

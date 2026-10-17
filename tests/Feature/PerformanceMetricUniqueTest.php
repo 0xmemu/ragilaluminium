@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Data integrity 1.1 — unique (metric_date, metric_name, context_hash).
+ * Data integrity 1.1, unique (metric_date, metric_name, context_hash).
  */
 class PerformanceMetricUniqueTest extends TestCase
 {

@@ -48,7 +48,7 @@ class UsersAdminTest extends TestCase
                 'username' => 'admin.baru',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'role' => 'viewer', // ignored — Stage 2 equal-admin
+                'role' => 'viewer', // ignored, Stage 2 equal-admin
                 'status' => 'active',
             ])
             ->assertRedirect(route('admin.users.index'));

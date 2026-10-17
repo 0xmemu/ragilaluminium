@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 | Gambar diunduh dari source_url, diturunkan ke WebP thumb/card/pdp, lalu
 | disimpan ke disk `media` (local atau R2/S3). Default: jangan simpan JPG/PNG
-| original (MEDIA_KEEP_ORIGINAL=false) — stored_path = WebP pdp. Frontend
+| original (MEDIA_KEEP_ORIGINAL=false), stored_path = WebP pdp. Frontend
 | memakai URL turunan; source_url hanya arsip unduh ulang.
 */
 
@@ -58,6 +58,6 @@ return [
     // operasional, bukan buku besar audit, jadi tidak perlu tumbuh tanpa batas.
     'upload_intent_retention_days' => (int) env('MEDIA_UPLOAD_INTENT_RETENTION_DAYS', 14),
 
-    // Retensi log riwayat pemrosesan media (hari) — otomatis dipangkas oleh media:prune-logs
+    // Retensi log riwayat pemrosesan media (hari), otomatis dipangkas oleh media:prune-logs
     'log_retention_days' => (int) env('MEDIA_LOG_RETENTION_DAYS', 30),
 ];

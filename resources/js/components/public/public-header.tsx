@@ -229,7 +229,7 @@ export function PublicHeader() {
 
   React.useEffect(() => {
     // Animasi badge saat produk "mendarat" di keranjang (lihat FlyingCart).
-    // Timer disimpan di ref — bump beruntun membatalkan timer lama, unmount membersihkannya.
+    // Timer disimpan di ref, bump beruntun membatalkan timer lama, unmount membersihkannya.
     const handleCartBump = () => {
       if (bumpTimerRef.current !== null) window.clearTimeout(bumpTimerRef.current)
       setCartBump(true)
@@ -277,7 +277,7 @@ export function PublicHeader() {
       setPreviewLoaded(true)
     } catch (_error) {
       if (controller.signal.aborted) return
-      // §4 escape: gagal memuat ≠ keranjang kosong — tampilkan error + coba lagi.
+      // §4 escape: gagal memuat ≠ keranjang kosong, tampilkan error + coba lagi.
       setPreviewError(true)
     } finally {
       if (!controller.signal.aborted) setPreviewLoading(false)
@@ -344,7 +344,7 @@ export function PublicHeader() {
               modelsOpen ? "!w-[min(88vw,48rem)]" : "!w-[min(82vw,22rem)]",
             )}
           >
-            {/* 1. Brand header — fixed */}
+            {/* 1. Brand header, fixed */}
             <header className="shrink-0 border-b border-border/60 px-6 pb-3 pr-14 pt-3 sm:px-10 sm:pr-16">
               <BrandWordmark
                 onClick={closeMenu}
@@ -356,7 +356,7 @@ export function PublicHeader() {
               </SheetDescription>
             </header>
 
-            {/* 2–3. Navigasi produk + informasi — scrollable */}
+            {/* 2–3. Navigasi produk + informasi, scrollable */}
             <div
               className={cn(
                 "min-h-0 flex-1 overflow-hidden",
@@ -511,7 +511,7 @@ export function PublicHeader() {
               </div>
             </div>
 
-            {/* 4. Footer legal — fixed, elemen sekunder */}
+            {/* 4. Footer legal, fixed, elemen sekunder */}
             {(hamburgerFooter.length > 0 || hamburgerCopyright) && (
               <footer className="shrink-0 border-t border-border/30 bg-surface px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-10 md:px-12">
                 {hamburgerFooter.length > 0 ? (

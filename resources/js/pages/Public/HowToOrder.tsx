@@ -68,7 +68,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
       {/* Bagian 1: 4 Langkah Pemesanan (Mobile-optimized Horizontal Cards) */}
       <section className="py-4 sm:py-6 bg-surface">
         <div className="container-page !px-2.5 md:!px-8 lg:!px-12">
-          {/* Timeline alur pemesanan — titik ikon + garis penghubung kontinyu */}
+          {/* Timeline alur pemesanan, titik ikon + garis penghubung kontinyu */}
           <ol className="relative mx-auto max-w-2xl">
             {guide.steps.map((step, index) => (
               <li
@@ -174,7 +174,7 @@ export default function HowToOrder({ guide }: { guide: GuideProps }) {
         </section>
       )}
 
-      {/* Bagian 4: Call to Action (CTA) — pakai komponen dasar ClosingCTASection */}
+      {/* Bagian 4: Call to Action (CTA), pakai komponen dasar ClosingCTASection */}
       <ClosingCTASection
         pageKey="cara-pemesanan"
         compact={false}

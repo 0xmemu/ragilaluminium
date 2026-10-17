@@ -8,7 +8,7 @@ use Tests\TestCase;
 /**
  * Pre-check skema kategori: tabel `categories` sudah mendarat (migration
  * create_categories_table + seed WINDOW/DOOR/BOUVEN), tetapi FK
- * products.category_id masih ditangguhkan — kolom legacy tetap ada tanpa
+ * products.category_id masih ditangguhkan, kolom legacy tetap ada tanpa
  * constraint, supaya migrasi produksi (kategorisasi) aman dilakukan bertahap.
  */
 class CategoryIdFkPrecheckTest extends TestCase
@@ -24,7 +24,7 @@ class CategoryIdFkPrecheckTest extends TestCase
 
     public function test_live_db_orphan_precheck_report_is_safe(): void
     {
-        // Informational: FK products.category_id belum ditambahkan — legacy
+        // Informational: FK products.category_id belum ditambahkan, legacy
         // Shopee/mapping IDs di category_id tetap valid tanpa parent row.
         $this->assertTrue(true);
     }

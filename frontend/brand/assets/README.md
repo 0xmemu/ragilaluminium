@@ -2,8 +2,8 @@
 
 ## Logo resmi (aktif)
 
-- `light-logo.png` — wordmark untuk latar terang (header storefront, footer, auth).
-- `dark-logo.png` — wordmark untuk latar gelap (sidebar admin).
+- `light-logo.png`, wordmark untuk latar terang (header storefront, footer, auth).
+- `dark-logo.png`, wordmark untuk latar gelap (sidebar admin).
 - Runtime: `/images/brand/light-logo.png`, `/images/brand/dark-logo.png`
 - Governance copy: `frontend/brand/assets/light-logo.png`, `frontend/brand/assets/dark-logo.png`
 - Sumber: `D:\data_website\BRAND KIT\`

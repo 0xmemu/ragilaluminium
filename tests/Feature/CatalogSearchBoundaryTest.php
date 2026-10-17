@@ -58,7 +58,7 @@ class CatalogSearchBoundaryTest extends TestCase
 
         $hits = $this->searchSkus('%');
 
-        // q=% TIDAK boleh mencocokkan seluruh katalog — hanya nama yang mengandung % literal.
+        // q=% TIDAK boleh mencocokkan seluruh katalog, hanya nama yang mengandung % literal.
         $this->assertNotContains('W1', $hits);
         $this->assertNotContains('W2', $hits);
         $this->assertContains('W3', $hits);
@@ -72,7 +72,7 @@ class CatalogSearchBoundaryTest extends TestCase
 
         $hits = $this->searchSkus('_');
 
-        // Sebelum fix: "_" cocok dengan SEMUA kode model (semua mengandung underscore) —
+        // Sebelum fix: "_" cocok dengan SEMUA kode model (semua mengandung underscore).
         // q=_ mengembalikan hampir semua produk. Sekarang hanya literal underscore.
         $this->assertContains('U1', $hits);
         $this->assertNotContains('U2', $hits);
@@ -106,7 +106,7 @@ class CatalogSearchBoundaryTest extends TestCase
 
     public function test_dimension_search_does_not_match_substring_sizes(): void
     {
-        // Regresi: pola lama "%W%x%H%" mencocokkan digit-substring — query "100x50"
+        // Regresi: pola lama "%W%x%H%" mencocokkan digit-substring, query "100x50"
         // ikut menampilkan "Tinggi 150 cm x Panjang 100 cm" karena "150"
         // mengandung "50". Ukuran lain (termasuk yang "mengandung" angka query)
         // TIDAK boleh tampil; hanya pasangan persis atau pasangan terbalik.
@@ -126,7 +126,7 @@ class CatalogSearchBoundaryTest extends TestCase
         $this->assertNotContains('S5', $hits);
         $this->assertNotContains('S7', $hits);
 
-        // Pola literal lama "%50x100%" cocok dengan suffix "(150x100)" —
+        // Pola literal lama "%50x100%" cocok dengan suffix "(150x100)".
         // digit-substring juga berlaku pada pola literal. Guard isSizeTerm
         // harus menonaktifkan literal untuk size term murni.
         $hitsRev = $this->searchSkus('50x100');
@@ -156,7 +156,7 @@ class CatalogSearchBoundaryTest extends TestCase
 
         $hits = $this->searchSkus(str_repeat('a', 500));
 
-        // Panjang dibatasi internal (120 char) — tidak ada exception, query tetap jalan.
+        // Panjang dibatasi internal (120 char), tidak ada exception, query tetap jalan.
         $this->assertIsArray($hits);
         $this->assertNotContains('L1', $hits);
     }

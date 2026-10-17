@@ -96,7 +96,7 @@ export default function InstallationDetail({
         />
       </section>
 
-      {/* Item pemasangan — card gaya checkout: gambar + nama + kategori/model + harga */}
+      {/* Item pemasangan, card gaya checkout: gambar + nama + kategori/model + harga */}
       <section className="container-page !px-2.5 md:!px-8 lg:!px-12 py-2">
         <h2 className="text-sm font-bold tracking-tight text-foreground">Item pemasangan</h2>
         <article className="mt-2 flex items-center gap-3 rounded-xl border border-border bg-surface p-3 sm:gap-4 sm:p-4">

@@ -85,7 +85,7 @@ describe("dispatch → subscribe round-trip", () => {
     const handler = vi.fn()
     const off = onCartUpdated(handler)
 
-    // Event mentah dengan detail rusak — harus ditolak type guard, bukan crash.
+    // Event mentah dengan detail rusak, harus ditolak type guard, bukan crash.
     window.dispatchEvent(
       new CustomEvent(CART_EVENTS.updated, { detail: { lineId: 123 } }),
     )

@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * P2-3.2 — Stock reservation subsystem (aktif via config; OFF default).
+ * P2-3.2, Stock reservation subsystem (aktif via config; OFF default).
  */
 class StockReservationTest extends TestCase
 {

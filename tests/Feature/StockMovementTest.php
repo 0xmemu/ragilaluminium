@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * P2-3.1 — Stock movement audit trail.
+ * P2-3.1, Stock movement audit trail.
  */
 class StockMovementTest extends TestCase
 {

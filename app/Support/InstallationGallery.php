@@ -478,7 +478,7 @@ class InstallationGallery
                 // Kasus B & C: media tanpa SKU (milik model, atau grup mandiri).
                 if ($item->product_id === null) {
                     if (! filled($item->model_product_id)) {
-                        // Kasus C: grup mandiri — selalu sah, masuk bucket Lainnya.
+                        // Kasus C: grup mandiri, selalu sah, masuk bucket Lainnya.
                         return true;
                     }
 

@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * P0 Task 1 — Webhook Signature Verification.
+ * P0 Task 1, Webhook Signature Verification.
  *
  * Middleware verify.jnt.signature (digest md5(bizContent+key), 401 bila invalid)
  * dan verify.baileys.key (HMAC/plain secret, 403 bila invalid).

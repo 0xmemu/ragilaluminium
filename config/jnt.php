@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| J&T Cargo Open Platform — Integration Contract (spesifikasi resmi)
+| J&T Cargo Open Platform, Integration Contract (spesifikasi resmi)
 |--------------------------------------------------------------------------
 |
 | Dokumen resmi: https://open.jtcargo.co.id/#/apiDoc
@@ -95,7 +95,7 @@ return [
     'defaults' => [
         // expressType/goodsType/paymentType disamakan dengan contoh resmi doc
         // agingCost/get (2026-08-21): FTAIR mengembalikan freight 0 untuk akun
-        // ini — FT (produk darat) yang valid.
+        // ini, FT (produk darat) yang valid.
         'express_type' => env('JNT_EXPRESS_TYPE', 'FT'),
         'order_type' => env('JNT_ORDER_TYPE', '2'),
         'service_type' => env('JNT_SERVICE_TYPE', '01'),
@@ -119,7 +119,7 @@ return [
         //
         // Karena itu TIDAK boleh ada config 'insurance_rate', 'insurance_fee',
         // 'offer_fee', atau sejenisnya. Bila J&T tidak mengirim biayanya,
-        // asuransi cukup tidak ditawarkan (biaya 0) — dilarang dihitung sendiri.
+        // asuransi cukup tidak ditawarkan (biaya 0), dilarang dihitung sendiri.
         'insurance_enabled' => (bool) env('JNT_INSURANCE_ENABLED', true),
     ],
 
@@ -143,7 +143,7 @@ return [
     | Internal: pending_pickup | in_process | in_transit | delivered | returned | cancelled
     */
     'status_map' => [
-        // Order-level status (getOrders / order status push) — docs open.jtcargo.co.id
+        // Order-level status (getOrders / order status push), docs open.jtcargo.co.id
         // 100 not dispatched | 101 outlets dispatched | 102 salesperson dispatched
         // 103 picked up | 104 cancelled | 105 pickupFail
         '100' => 'tracking_pending', // belum ada penjemputan (resi sudah terbit)

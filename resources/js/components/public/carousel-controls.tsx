@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
  * PalingBanyakDipesan, FlashSale sections.
  */
 
-/** Track carousel horizontal — kanonik (gap 12/16px, snap-x). */
+/** Track carousel horizontal, kanonik (gap 12/16px, snap-x). */
 export const carouselTrackClass =
   "carousel-track scrollbar-x flex min-w-0 snap-x snap-proximity gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-3.5 md:pb-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scroll-behavior:auto] data-[dragging=true]:snap-none data-[dragging=true]:cursor-grabbing"
 
@@ -84,7 +84,7 @@ export function useHorizontalCarousel(itemCount: number, options: CarouselHookOp
 export const carouselNavBtnClass =
   "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white shadow-sm transition hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 md:flex md:size-12"
 
-/** Tombol panah carousel — SATU gaya global (patokan homepage). */
+/** Tombol panah carousel, SATU gaya global (patokan homepage). */
 export function CarouselNavButton({
   trackId,
   side,

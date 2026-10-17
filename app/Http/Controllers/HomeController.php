@@ -26,7 +26,7 @@ class HomeController extends Controller
 
         try {
             // Home “Paling Banyak Dipesan”: kurasi admin (max 10), fallback penjualan website.
-            // Cache Redis 120s — data statis (tidak berubah per request user).
+            // Cache Redis 120s, data statis (tidak berubah per request user).
             $popularProductCards = Cache::remember('home.popular_cards', 120,
                 fn () => InertiaCatalog::popularProductCards(10));
 
@@ -158,7 +158,7 @@ class HomeController extends Controller
             'promoSlides' => $promoSlides,
             'marketplaceTestimonials' => $marketplaceTestimonials,
             'websiteTestimonials' => $websiteTestimonials,
-            // Legacy alias (cuplikan marketplace) — hindari blank jika FE lama masih baca `testimonials`.
+            // Legacy alias (cuplikan marketplace), hindari blank jika FE lama masih baca `testimonials`.
             'testimonials' => $marketplaceTestimonials,
             'installations' => $installations,
             'installationMeta' => $installationMeta,

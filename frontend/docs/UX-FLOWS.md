@@ -14,8 +14,8 @@ Urutan section:
 3. Paling banyak dipesan
 4. Cara pesan jendela Anda
 5. Hasil pemasangan
-6. Apa kata pelanggan kami — screenshot marketplace/WhatsApp (terpisah dari ulasan website)
-6b. Ulasan pelanggan di website — ulasan pembeli lewat website (terpisah; tampil di home jika ≥10)
+6. Apa kata pelanggan kami, screenshot marketplace/WhatsApp (terpisah dari ulasan website)
+6b. Ulasan pelanggan di website, ulasan pembeli lewat website (terpisah; tampil di home jika ≥10)
 7. Kami bantu dari awal sampai jadi
 8. Tingkatkan kualitas bangunan bersama kami
 

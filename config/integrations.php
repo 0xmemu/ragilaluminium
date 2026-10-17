@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Setiap integrasi aktif otomatis jika SEMUA credential yang diperlukan
-    | ada di .env. Tidak perlu manual on/off — credential-driven.
+    | ada di .env. Tidak perlu manual on/off, credential-driven.
     |
     | `ready` = callback yang mengembalikan bool.
     | `label` = nama tampilan untuk admin panel.

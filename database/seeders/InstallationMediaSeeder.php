@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Mengisi product_media is_installation=true untuk setiap produk (2 foto per
- * produk) dengan meminjam URL media produk yang sudah ada — sehingga gambar
+ * produk) dengan meminjam URL media produk yang sudah ada, sehingga gambar
  * hasil pemasangan cocok dengan model produknya.
  *
  * Idempotent: produk yang sudah punya installation media di-skip.

@@ -13,7 +13,7 @@ use App\Models\OperationalSettingVersion;
  *
  * Aturan persistensi:
  *  - Nomor hasil sambungan disimpan permanen (bukan cache) saat berubah.
- *  - Bila Baileys terputus, nomor yang tersimpan TIDAK dihapus — website tetap
+ *  - Bila Baileys terputus, nomor yang tersimpan TIDAK dihapus, website tetap
  *    memakai nomor terakhir yang diketahui sampai nomor baru tersambung.
  *  - Penyimpanan hanya menulis versi baru ketika nomornya benar-benar berubah
  *    supaya audit log tidak banjir versi identik.
@@ -141,7 +141,7 @@ final class WhatsAppSessionPhone
         return $value !== '' ? $value : null;
     }
 
-    /** Jumlah versi tersimpan — dipakai test/diagnostik. */
+    /** Jumlah versi tersimpan, dipakai test/diagnostik. */
     public static function versions(): int
     {
         if (! OperationalSettings::available()) {

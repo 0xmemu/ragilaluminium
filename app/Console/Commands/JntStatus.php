@@ -39,7 +39,7 @@ class JntStatus extends Command
         }
 
         $this->warn('Belum siap. Isi di .env: '.implode(', ', $report['missing']));
-        $this->comment('Daftar di https://open.jtcargo.co.id — jangan pakai Biteship (Express only).');
+        $this->comment('Daftar di https://open.jtcargo.co.id: jangan pakai Biteship (Express only).');
         $this->comment('Setelah kredensial sandbox: JNT_ENABLED=true lalu jnt:joint-debug.');
 
         return self::FAILURE;

@@ -321,7 +321,7 @@ class ActivityLogService
     }
 
     /**
-     * Deskripsi perubahan pengaturan operasional — tampilkan field yang berubah (before → after).
+     * Deskripsi perubahan pengaturan operasional, tampilkan field yang berubah (before → after).
      */
     protected function describeSettingVersion(EventLog $log, array $payload, string $actor): string
     {

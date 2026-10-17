@@ -345,7 +345,7 @@ class OrderExportContractTest extends TestCase
         $this->assertStringContainsString('36. Aturan Agregasi', $text);
         $this->assertStringContainsString('berat tagih paket', $text);
         $this->assertStringContainsString('P x L x T / 5000', $text);
-        $this->assertStringNotContainsString('—', $text);
+        $this->assertStringNotContainsString('\u{2014}', $text);
         $this->assertStringNotContainsString('–', $text);
     }
 

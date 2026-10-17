@@ -3,7 +3,7 @@
 namespace App\Services\Shipping;
 
 /**
- * Nilai balik terstruktur dari JntCargoClient — memisahkan sukses transport
+ * Nilai balik terstruktur dari JntCargoClient, memisahkan sukses transport
  * (HTTP) dari sukses bisnis (kode J&T), plus akses helper ke field penting.
  */
 class JntResponse
@@ -25,7 +25,7 @@ class JntResponse
 
     /**
      * Nomor resi / waybill. Pada addOrder, billCode dikembalikan sebagai
-     * List<String> — ambil elemen pertama. Fallback ke waybillNo.
+     * List<String>, ambil elemen pertama. Fallback ke waybillNo.
      */
     public function billCode(): ?string
     {

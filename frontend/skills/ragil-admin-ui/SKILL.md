@@ -14,7 +14,7 @@ description: Build and review Ragil Aluminium admin Inertia React operational pa
 5. `frontend/docs/UX-FLOWS.md`
 6. `config/admin-sitemap.php`
 7. Relevant admin controller and domain stage skill
-8. `frontend/skills/ragil-ui-functional-integration/SKILL.md` — UI wajib fungsional + terintegrasi
+8. `frontend/skills/ragil-ui-functional-integration/SKILL.md`, UI wajib fungsional + terintegrasi
 
 ## Rules
 
@@ -27,7 +27,7 @@ description: Build and review Ragil Aluminium admin Inertia React operational pa
 - Order detail links payment, shipping, and WhatsApp workflows.
 - Critical actions require confirmation and clear result feedback.
 - Flat permission behavior remains unchanged until backend roles are expanded.
-- **Setiap perubahan tampilan/fitur harus dianalisis lalu disambungkan ke controller/service/route agar langsung fungsional — bukan mockup.**
+- **Setiap perubahan tampilan/fitur harus dianalisis lalu disambungkan ke controller/service/route agar langsung fungsional, bukan mockup.**
 
 ## Density
 

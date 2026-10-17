@@ -15,7 +15,7 @@ use Tests\TestCase;
  *
  * Shape item ({id, parent_sku, name, image, views, clicks, total, href}),
  * urutan sort (total desc → views desc → clicks desc) dan batas limit
- * dikonsumsi langsung oleh Dashboard.tsx — perubahan apa pun harus disengaja.
+ * dikonsumsi langsung oleh Dashboard.tsx, perubahan apa pun harus disengaja.
  */
 class ProductEngagementContractTest extends TestCase
 {

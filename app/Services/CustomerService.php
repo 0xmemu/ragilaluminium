@@ -114,7 +114,7 @@ class CustomerService
     }
 
     /**
-     * Skor risiko 0–100 (lebih tinggi = lebih berisiko). Diturunkan dari riwayat order — bukan kolom DB.
+     * Skor risiko 0–100 (lebih tinggi = lebih berisiko). Diturunkan dari riwayat order, bukan kolom DB.
      *
      * @return array{score: int, label: string, tone: string}
      */

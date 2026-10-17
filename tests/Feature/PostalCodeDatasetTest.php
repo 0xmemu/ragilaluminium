@@ -59,7 +59,7 @@ class PostalCodeDatasetTest extends TestCase
 
             // Strategi validasi KECAMATAN: 40134 milik kecamatan COBLONG (walaupun
             // di data itu untuk desa SEKELOA), jadi valid walau kombinasi
-            // desa berbeda — beda ejaan/nama desa antar sumber tidak menolak.
+            // desa berbeda, beda ejaan/nama desa antar sumber tidak menolak.
             $kecamatan = app(PostalCodeRepository::class)->validate(
                 '40134',
                 '3273010001',
@@ -179,7 +179,7 @@ class PostalCodeDatasetTest extends TestCase
         ]);
 
         // Kotak pos 23774 + kecamatan Trumon Tengah (via dropdown dengan ID
-        // Kemendagri) harus diterima — kode pos benar milik kecamatan tersebut.
+        // Kemendagri) harus diterima, kode pos benar milik kecamatan tersebut.
         $this->from('/checkout')->post('/checkout/validate', [
             'name' => 'Budi',
             'phone' => '0812',

@@ -97,7 +97,7 @@ class CheckoutController extends Controller
         $details = $request->session()->get('checkout_details');
 
         // Metode pembayaran pilihan pengguna tetap dipertahankan saat validasi alamat
-        // (keputusan #24) — fallback ke COD bila tersedia, lalu transfer.
+        // (keputusan #24), fallback ke COD bila tersedia, lalu transfer.
         $sessionPayment = (string) $request->session()->get('checkout_payment_method', '');
         $defaultPayment = in_array($sessionPayment, ['cod', 'transfer'], true)
             ? $sessionPayment

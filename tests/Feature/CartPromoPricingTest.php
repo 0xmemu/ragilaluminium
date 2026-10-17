@@ -62,7 +62,7 @@ class CartPromoPricingTest extends \Tests\TestCase
                     'parent_sku' => 'WIN-PROMO-1',
                     'variant_sku' => 'WIN-PROMO-1-V1',
                     'name' => 'Jendela Promo',
-                    // Stale list price in session — live resolve must override.
+                    // Stale list price in session, live resolve must override.
                     'unit_price' => 1000000,
                     'quantity' => 2,
                 ],

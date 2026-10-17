@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Fase 3 — Dynamic taxonomy database: kategori berasal dari tabel `categories`
+ * Fase 3, Dynamic taxonomy database: kategori berasal dari tabel `categories`
  * (bukan daftar tetap WINDOW/DOOR/BOUVEN) dan kategori baru langsung dipetakan
  * ke produk / navigasi / pencarian; kategori tak dikenal tidak fallback ke Jendela.
  */

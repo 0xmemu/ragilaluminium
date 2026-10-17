@@ -273,12 +273,12 @@ class ModelProductService
 
             $key = $this->pairKey($row->product_category, $row->product_model);
             // Optimasi (2026-08-21): tanpa filter design, ambil count dari stats
-            // yang sudah dihitung satu kali (GROUP BY) — hindari 1 query COUNT per baris.
+            // yang sudah dihitung satu kali (GROUP BY), hindari 1 query COUNT per baris.
             $count = $design === null
                 ? (int) ($stats[$key]['active_count'] ?? 0)
                 : (int) (clone $productQuery)->count();
             // Kontrak owner 2026-09-10: Model Produk adalah wadah produk. Wadah
-            // tanpa isi (0 produk aktif) tidak masuk akal ditampilkan — skip.
+            // tanpa isi (0 produk aktif) tidak masuk akal ditampilkan, skip.
             if ($count === 0) {
                 continue;
             }
@@ -341,9 +341,9 @@ class ModelProductService
         }
 
         // Urutan kartu model:
-        // - 'admin'   : urutan manual admin (sort_order CMS) — baris sudah urut dari scopeActive().
+        // - 'admin'   : urutan manual admin (sort_order CMS), baris sudah urut dari scopeActive().
         // - 'popular' : total penjualan (validOrderItems) tertinggi di depan (default lama).
-        // - 'latest' / 'oldest' : urutan pembuatan kartu model (created_at) — halaman Semua Model Produk.
+        // - 'latest' / 'oldest' : urutan pembuatan kartu model (created_at), halaman Semua Model Produk.
         switch ($sort) {
             case 'admin':
                 break;
@@ -375,7 +375,7 @@ class ModelProductService
     }
 
     /**
-     * Menu kategori horizontal beranda — model produk aktif (urut CMS `sort_order`)
+     * Menu kategori horizontal beranda, model produk aktif (urut CMS `sort_order`)
      * beserta sub-model (desain) masing-masing. Routing selalu otomatis dari category/model.
      *
      * @return list<array{key:string,label:string,href:string,category:?string,model:?string,subs:list<array{label:string,href:string}>}>

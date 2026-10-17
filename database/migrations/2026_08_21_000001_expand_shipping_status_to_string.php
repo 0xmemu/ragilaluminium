@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * arrived_destination, out_for_delivery, delivery_attempted, delivered,
  * return_initiated, returned_to_sender, lost, damaged, exception, unknown)
  * + legacy (pending_pickup, in_process, returned, cancelled).
- * Docs database-schema-ragil-aluminium.md sudah menyatakan VARCHAR — migration
+ * Docs database-schema-ragil-aluminium.md sudah menyatakan VARCHAR, migration
  * ini menyelaraskan implementasi dengan docs.
  */
 return new class extends Migration

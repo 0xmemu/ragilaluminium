@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Models\CmsPage;
 
 /**
- * CmsSettings — seam generik untuk pengaturan toko yang disimpan di cms_pages.
+ * CmsSettings, seam generik untuk pengaturan toko yang disimpan di cms_pages.
  *
  * Banyak kelas \*Settings (AnnouncementSlide, CaraPemesanan, FlashSale, dst.) mengulang
  * boilerplate yang sama: membaca CmsPage by slug, membuat page bila belum ada, dan
@@ -20,7 +20,7 @@ use App\Models\CmsPage;
  *                              (mis. 'slide', 'faq', 'flash_sale'). DEFAULT: null -> seluruh content.
  *
  * Catatan penting (dari grilling, jangan disamakan buta):
- *   - Beberapa Settings punya varian page($create), reorder(), mergePreserving() — biarkan
+ *   - Beberapa Settings punya varian page($create), reorder(), mergePreserving(), biarkan
  *     modul besar tersebut OVVERRIDE perilaku ini; base hanya untuk kasus seragam.
  *   - Deletion test: boilerplate CMS dipindah ke satu seam (menjadi lebih dalam), bukan
  *     aturan bisnis unik. Aturan unik tetap di subkelas.

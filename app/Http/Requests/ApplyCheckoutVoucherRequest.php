@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Rules moved 1:1 from CheckoutController@applyVoucher — no behavior change.
+ * Rules moved 1:1 from CheckoutController@applyVoucher, no behavior change.
  */
 class ApplyCheckoutVoucherRequest extends FormRequest
 {

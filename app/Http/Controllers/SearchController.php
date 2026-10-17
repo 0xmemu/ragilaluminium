@@ -37,7 +37,7 @@ class SearchController extends Controller
 
         // Normalisasi deterministik (typo + sinonim). Query ASLI (`query`/`original`)
         // selalu dipertahankan untuk debrief/telemetri; `normalized` hanya dipakai
-        // untuk konteks disambiguasi — tidak pernah mengganti input diam-diam.
+        // untuk konteks disambiguasi, tidak pernah mengganti input diam-diam.
         $meta = CatalogSearch::normalizeQuery($q);
 
         // Dimensi: ukuran eksak (Tinggi × Panjang) atau range (orientasi tetap).

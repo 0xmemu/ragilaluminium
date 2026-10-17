@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Kampanye diskon (Promo Toko + Flash Sale) — SPESIFIKASI-FINAL §C.
+        // Kampanye diskon (Promo Toko + Flash Sale), SPESIFIKASI-FINAL §C.
         Schema::create('promotions', function (Blueprint $table) {
             $table->id();
             $table->string('type')->default('store'); // store | flash_sale

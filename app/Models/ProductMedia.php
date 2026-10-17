@@ -166,7 +166,7 @@ class ProductMedia extends Model
             return $url;
         }
 
-        // Same-origin media proxy and local disk — root-relative for any host/scheme.
+        // Same-origin media proxy and local disk, root-relative for any host/scheme.
         if (str_starts_with($path, '/media-cdn/') || str_starts_with($path, '/storage/')) {
             return $path;
         }

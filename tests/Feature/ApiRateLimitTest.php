@@ -7,10 +7,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * P0 Task 2 — API Rate Limit Consistency.
+ * P0 Task 2, API Rate Limit Consistency.
  *
  * /api/orders/{order_number}/status disamakan dgn lookup public: 10/menit
- * (sebelumnya 60/menit — rentan enumerasi). /api/health/ready tetap 60/menit.
+ * (sebelumnya 60/menit, rentan enumerasi). /api/health/ready tetap 60/menit.
  */
 class ApiRateLimitTest extends TestCase
 {

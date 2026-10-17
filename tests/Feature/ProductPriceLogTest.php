@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * P2-2.3 — Price history append-only.
+ * P2-2.3, Price history append-only.
  */
 class ProductPriceLogTest extends TestCase
 {

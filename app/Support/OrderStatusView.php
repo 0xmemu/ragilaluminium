@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Models\Order;
 
 /**
- * OrderStatusView — normalizer pembacaan status order/payment/COD yang AMAN
+ * OrderStatusView, normalizer pembacaan status order/payment/COD yang AMAN
  * terhadap skema payment saat ini (kolom enum orders.payment_status: pending|paid|refunded).
  *
  * TUJUAN/UTILITAS:

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 3 REVISI (2026-08-25) — COD Settlement Contract.
+ * Task 3 REVISI (2026-08-25), COD Settlement Contract.
  *
  * PRIMARY: COD lunas saat shipping DELIVERED via
  * ReturnService::markDeliveredAndSettleCod (dipanggil dari

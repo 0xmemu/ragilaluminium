@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Fase 12 — Promo, voucher, Flash Sale, COD.
+ * Fase 12, Promo, voucher, Flash Sale, COD.
  * Mengunci urutan kalkulasi finansial eksplisit + persyaratan turunan.
  */
 class PricePromoOrderContractTest extends TestCase
@@ -72,7 +72,7 @@ class PricePromoOrderContractTest extends TestCase
         );
     }
 
-    /** Rule 2 — Flash Sale diterapkan PER VARIASI (tiap variasi memakai bandrolnya sendiri). */
+    /** Rule 2, Flash Sale diterapkan PER VARIASI (tiap variasi memakai bandrolnya sendiri). */
     public function test_flash_sale_discount_applies_per_variant_price(): void
     {
         FlashSalePeriodSettings::update([
@@ -115,7 +115,7 @@ class PricePromoOrderContractTest extends TestCase
         $this->assertNotEquals(800000.0, (float) $order->items->first()->unit_price);
     }
 
-    /** Rule 1 — urutan eksplisit: promo produk -> voucher -> subsidi ongkir -> biaya COD. */
+    /** Rule 1, urutan eksplisit: promo produk -> voucher -> subsidi ongkir -> biaya COD. */
     public function test_calculation_order_promo_voucher_subsidy_cod_is_explicit_and_consistent(): void
     {
         CodSettings::update(['enabled' => true, 'fee_type' => 'percent', 'fee_value' => 10, 'max_order_amount' => null]);
@@ -169,7 +169,7 @@ class PricePromoOrderContractTest extends TestCase
         );
     }
 
-    /** Rule 3 — voucher tidak mengubah harga dasar histori. */
+    /** Rule 3, voucher tidak mengubah harga dasar histori. */
     public function test_voucher_keeps_historical_base_price_untouched(): void
     {
         $p = $this->product('P-HIST');
@@ -196,7 +196,7 @@ class PricePromoOrderContractTest extends TestCase
         $this->assertEquals('HIST10', $order->voucher_code);
     }
 
-    /** Rule 4 — perubahan finansial voucher dicatat (audit log). */
+    /** Rule 4, perubahan finansial voucher dicatat (audit log). */
     public function test_voucher_financial_changes_are_audited(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
@@ -221,7 +221,7 @@ class PricePromoOrderContractTest extends TestCase
         ]);
     }
 
-    /** Rule 5 — UI admin menampilkan alasan voucher tidak dapat digunakan. */
+    /** Rule 5, UI admin menampilkan alasan voucher tidak dapat digunakan. */
     public function test_admin_index_exposes_voucher_unusable_reason(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);

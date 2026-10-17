@@ -10,7 +10,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * Mengisi product_media untuk produk katalog yang sudah ada dengan gambar dari
- * file media Shopee (sim_20_media.xlsx). Tidak mengunduh gambar di sini — hanya
+ * file media Shopee (sim_20_media.xlsx). Tidak mengunduh gambar di sini, hanya
  * membuat record ProductMedia (status pending) lalu men-dispatch job
  * DownloadProductMedia per row. Job yang mengunduh, mengkonversi ke WebP
  * (thumb/card/pdp via MediaDerivativeService), dan mengunggah ke disk `media`.

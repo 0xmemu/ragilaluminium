@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
- * P2-2.1 — Cache layer Catalog + PDP + invalidasi observer.
+ * P2-2.1, Cache layer Catalog + PDP + invalidasi observer.
  */
 class ProductCacheTest extends TestCase
 {

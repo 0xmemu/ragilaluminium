@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 
 /**
  * Re-parse product_category / product_model / design_variant dari nama Shopee.
- * Tidak wipe DB — hanya update kolom taxonomy bila berbeda.
+ * Tidak wipe DB, hanya update kolom taxonomy bila berbeda.
  */
 class ReparseProductTaxonomy extends Command
 {

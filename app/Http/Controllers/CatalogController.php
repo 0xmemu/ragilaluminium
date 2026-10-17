@@ -130,13 +130,13 @@ class CatalogController extends Controller
         return redirect($target, 301);
     }
 
-    /** Halaman Promo — listing SKU dengan atribut promo eksplisit. */
+    /** Halaman Promo, listing SKU dengan atribut promo eksplisit. */
     public function promo(Request $request): JsonResponse|Response
     {
         return $this->category(null, $request, mode: 'promo');
     }
 
-    /** Halaman Flash Sale — hanya produk dengan atribut flash sale aktif. */
+    /** Halaman Flash Sale, hanya produk dengan atribut flash sale aktif. */
     public function flashSale(Request $request): JsonResponse|Response
     {
         return $this->category(null, $request, mode: 'flash');
@@ -714,7 +714,7 @@ protected function category(?string $category, Request $request, string $mode = 
         });
     }
 
-    /** Halaman Semua Model Produk — kartu model (`card-model-produk`), bukan SKU. */
+    /** Halaman Semua Model Produk, kartu model (`card-model-produk`), bukan SKU. */
     protected function modelsHub(Request $request): Response
     {
         $design = CatalogLabels::normalizeDesign($request->input('design'));

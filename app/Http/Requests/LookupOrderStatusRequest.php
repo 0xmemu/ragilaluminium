@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Rules moved 1:1 from OrderController@statusLookup — no behavior change.
+ * Rules moved 1:1 from OrderController@statusLookup, no behavior change.
  */
 class LookupOrderStatusRequest extends FormRequest
 {

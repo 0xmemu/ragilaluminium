@@ -9,7 +9,7 @@ use App\Support\PhoneNumber;
 use Illuminate\Validation\Validator;
 
 /**
- * Rules moved 1:1 from CheckoutController@validateDetails — no behavior change.
+ * Rules moved 1:1 from CheckoutController@validateDetails, no behavior change.
  */
 class StoreCheckoutDetailsRequest extends FormRequest
 {

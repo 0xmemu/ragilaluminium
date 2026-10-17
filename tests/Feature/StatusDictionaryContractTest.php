@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase A2 — Customer Order Status & Copy Contract.
+ * Phase A2, Customer Order Status & Copy Contract.
  *
  * Memastikan status dictionary customer-facing (ViewModel) memenuhi kontrak
  * docs/customer-order-status-contract.md, tanpa mengubah lifecycle bisnis.

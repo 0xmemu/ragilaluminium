@@ -345,7 +345,7 @@ export default function About({ page, stats }: { page: PageData; stats?: AboutSt
 
                 <p className="flex items-start gap-2.5 font-medium text-foreground">
                   <Icon name="clock" className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  {(brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB").replace(/[–—]/g, "-")}
+                  {(brand.hours ?? "Senin - Sabtu, 08.00 - 17.00 WIB").replace(/[–\u2014]/g, "-")}
                 </p>
               </div>
 

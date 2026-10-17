@@ -19,7 +19,7 @@ return [
     |
     | Admin-created products receive parent_sku = RA + 10 random chars (Fase 4, no dash).
     | Default prefix RA keeps manual codes distinct from Shopee imports (SP{n}).
-    | These codes are URL/backend keys only — never show on the storefront.
+    | These codes are URL/backend keys only, never show on the storefront.
     | manual_sku_floor is legacy (sequential era) and unused by the random allocator.
     |
     */

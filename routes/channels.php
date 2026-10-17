@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Broadcast;
 
 /*
 |--------------------------------------------------------------------------
-| Broadcast Channels (Foundation Track B — AKTIF 2026-08-25)
+| Broadcast Channels (Foundation Track B, AKTIF 2026-08-25)
 |--------------------------------------------------------------------------
 |
 | Channel authorization untuk admin live events (P2 Task 7 selesai):

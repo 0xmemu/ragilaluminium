@@ -209,14 +209,14 @@ return [
             'view' => null,
             'group' => 'transaction',
             'status' => 'planned',
-            'note' => 'Planned only — no public route',
+            'note' => 'Planned only, no public route',
         ],
         'Halaman Retur Selesai' => [
             'path' => null,
             'view' => null,
             'group' => 'transaction',
             'status' => 'planned',
-            'note' => 'Planned only — no public route',
+            'note' => 'Planned only, no public route',
         ],
         'Halaman Isi Hasil Pemasangan Kami' => [
             'path' => null,
@@ -261,7 +261,7 @@ return [
         ],
 
         /*
-        | Drawer mobile — dipisah per grup IA (produk vs informasi/bantuan).
+        | Drawer mobile, dipisah per grup IA (produk vs informasi/bantuan).
         | Model submenu berasal dari CatalogTaxonomy::modelCards() di Inertia share.
         | `hamburger` digabung di HandleInertiaRequests untuk kompatibilitas.
         */
@@ -386,11 +386,11 @@ return [
             ],
         ],
 
-        /* Category strip removed — main nav is desktop_main only */
+        /* Category strip removed, main nav is desktop_main only */
         'desktop_categories' => [],
 
         /*
-        | Model Produk mega-menu — taxonomy filters (unchanged)
+        | Model Produk mega-menu, taxonomy filters (unchanged)
         */
         'mega_menu' => [
             [
@@ -565,7 +565,7 @@ return [
     | Copy rules (wajib):
     | - Boleh: diskon, promo, periode promo, subsidi ongkir, benefit toko (COD/garansi/kirim), ajakan model.
     | - Fokus model (Jungkit / Swing / Sliding), bukan ukuran SKU.
-    | - Flash Sale di ticker HANYA dari periode kampanye live (FlashSalePeriodSettings) — maksimal 1 item.
+    | - Flash Sale di ticker HANYA dari periode kampanye live (FlashSalePeriodSettings), maksimal 1 item.
     |   Jangan taruh teks "Flash Sale" di items/CMS/banner; produk Flash Sale dipilih pelanggan di /flash-sale atau search.
     | - Dilarang: "obral", "stok terbatas", "kuota habis", atau implikasi stok menipis.
     |   Stok produk selalu tersedia; yang terbatas hanya masa promo/diskon.

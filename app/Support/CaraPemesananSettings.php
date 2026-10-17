@@ -7,10 +7,10 @@ use App\Models\CmsPage;
 /**
  * Public “Cara Pemesanan” page content on cms_pages.slug = cara-pemesanan.
  *
- * content.heading / content.subtitle — hero
- * content.body — HTML/plain notes (stage-9a CaraPemesananEditor)
- * content.steps[] — { icon, title, description, points[] }
- * content.info_cards[] — { icon, title, description }
+ * content.heading / content.subtitle, hero
+ * content.body, HTML/plain notes (stage-9a CaraPemesananEditor)
+ * content.steps[], { icon, title, description, points[] }
+ * content.info_cards[], { icon, title, description }
  */
 class CaraPemesananSettings
 {

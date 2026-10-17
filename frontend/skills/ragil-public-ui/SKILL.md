@@ -14,7 +14,7 @@ description: Build and review Ragil Aluminium public Inertia React storefront pa
 5. `frontend/docs/UX-FLOWS.md`
 6. `config/sitemap.php`
 7. Relevant public controller
-8. `frontend/skills/ragil-ui-functional-integration/SKILL.md` — UI wajib fungsional + terintegrasi
+8. `frontend/skills/ragil-ui-functional-integration/SKILL.md`, UI wajib fungsional + terintegrasi
 
 ## Rules
 
@@ -28,7 +28,7 @@ description: Build and review Ragil Aluminium public Inertia React storefront pa
 - Product variant selection must resolve an actual active variant.
 - Add, update, remove, validate, place order, and lookup use existing Inertia routes.
 - Every data area supports loading, empty, error, and reduced-motion states.
-- **Setiap perubahan tampilan/fitur harus dianalisis lalu disambungkan ke controller/service/route agar langsung fungsional — bukan mockup.**
+- **Setiap perubahan tampilan/fitur harus dianalisis lalu disambungkan ke controller/service/route agar langsung fungsional, bukan mockup.**
 
 ## Visual gate
 

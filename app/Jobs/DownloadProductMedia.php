@@ -47,7 +47,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Sudah ada file + turunan — skip.
+        // Sudah ada file + turunan, skip.
         if ($media->status === 'downloaded' && $media->stored_path && ! empty($media->derivatives)) {
             return;
         }
