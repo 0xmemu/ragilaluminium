@@ -1446,10 +1446,11 @@ class ProductController extends Controller
     /**
      * Pencarian daftar produk admin: hanya yang TERLIHAT di daftar produk.
      *
-     * Yang dicari: nama produk, nama pendek, SKU induk, dan taksonomi
-     * (kategori, model, sub model). Kolom dimensi varian (height_cm/width_cm/
-     * depth_cm) adalah data pengiriman yang tidak tampil di daftar, jadi tidak
-     * pernah ikut dicari. Ukuran tetap bisa dicari karena tertulis di nama
+     * Yang dicari: nama produk, SKU induk, dan taksonomi (kategori, model,
+     * sub model). Kolom yang tidak tampil di daftar tidak ikut dicari:
+     * dimensi varian (height_cm/width_cm/depth_cm) adalah data pengiriman,
+     * dan short_name hanya salinan otomatis nama yang tidak dirender di form
+     * maupun di daftar. Ukuran tetap bisa dicari karena tertulis di nama
      * produk, misalnya "(200x100)" atau "Tinggi 200 cm x Panjang 100 cm".
      *
      * Setiap kata wajib cocok di salah satu kolom, jadi "jendela ornamen"
@@ -1463,7 +1464,6 @@ class ProductController extends Controller
             foreach ($terms as $term) {
                 $inner->where(function (Builder $word) use ($term) {
                     LikeSearch::whereLike($word, 'name', $term);
-                    LikeSearch::orWhereLike($word, 'short_name', $term);
                     LikeSearch::orWhereLike($word, 'parent_sku', $term);
 
                     $this->applyTaxonomyMatch($word, $term);

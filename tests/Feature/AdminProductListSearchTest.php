@@ -67,11 +67,12 @@ class AdminProductListSearchTest extends TestCase
         string $design = 'ORNAMEN',
         ?float $height = null,
         ?float $width = null,
+        ?string $shortName = null,
     ): Product {
         $product = Product::create([
             'parent_sku' => $sku,
             'name' => $name,
-            'short_name' => $name,
+            'short_name' => $shortName ?? $name,
             'category_id' => 1,
             'product_category' => $category,
             'product_model' => $model,
@@ -171,6 +172,27 @@ class AdminProductListSearchTest extends TestCase
 
         // Orientasi terbalik juga tidak boleh menemukan lewat kolom tersembunyi.
         $this->assertSame([], $this->search('55x85'));
+    }
+
+    public function test_nama_pendek_yang_tidak_tampil_tidak_dicari(): void
+    {
+        $this->seedProducts();
+
+        // Data lama bisa menyimpan dimensi di short_name. Kolom itu tidak
+        // dirender di form maupun daftar, jadi tidak boleh jadi bahan cari.
+        $this->product(
+            'RALEGACY01',
+            'Tinggi 90 cm x Panjang 60 cm (90x60) Jendela Aluminium Sliding Ornamen',
+            'JENDELA',
+            'SLIDING',
+            'ORNAMEN',
+            95,
+            65,
+            '95x65',
+        );
+
+        $this->assertSame([], $this->search('95x65'));
+        $this->assertContains('RALEGACY01', $this->search('90x60'));
     }
 
     public function test_taksonomi_kategori_dicari(): void
