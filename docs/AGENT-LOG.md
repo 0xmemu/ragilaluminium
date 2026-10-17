@@ -7130,3 +7130,49 @@ kedua tidak menduplikasi, sub model kosong mengembalikan null, dan rollback
 mengembalikan `sub_models` ke 0.
 
 Agent: zcode-taxonomy-autofill
+
+## 2026-10-17 06:40 UTC | zcode-activate-model | Standard | 91aa65f7 | selesai
+Lingkup: tombol Aktifkan pada Kelola Model Produk tidak bereaksi walau terlihat
+normal. Akar masalah dua lapis.
+(1) Frontend: `resources/js/pages/Admin/ModelProducts/Index.tsx` memasang
+`disabled={row.active_count === 0}` pada elemen `<button>` DI DALAM
+`DropdownMenuItem` Radix. Item Radix tidak ikut `disabled`, jadi gaya redup
+(`data-[disabled]:opacity-50`) tidak pernah aktif dan tombol tampak normal
+tetapi mati.
+(2) Backend: `ModelProductService::syncFromCatalog()` menonaktifkan wadah
+berdasarkan ada tidaknya produk AKTIF. Importer selalu menulis produk baru
+berstatus arsip, jadi setiap wadah hasil impor langsung jadi draft dan tombol
+Aktifkan memang sengaja dimatikan. Ini yang membuat alurnya buntu.
+
+Perubahan:
+- Tombol Aktifkan selalu bisa ditekan (hanya dikunci saat request berjalan).
+- Auto-nonaktif kini hanya menyasar wadah YATIM, yaitu pasangan kategori +
+  model tanpa produk sama sekali. Wadah yang produknya masih ada tetapi
+  diarsipkan dibiarkan mengikuti pilihan admin.
+- Tampil atau tidaknya wadah di toko TIDAK berubah: `storefrontCards()` dan
+  `buildCategoryMenu()` tetap menyaring lewat jumlah produk AKTIF, jadi
+  kontrak 2026-09-10 ("wadah kosong tidak tampil") tetap terjaga.
+
+Kategori dan Sub Model TIDAK mengalami masalah ini, sudah diverifikasi:
+- Sub Model: `SubModelController::toggle()` membalik `is_active` dan tombolnya
+  tidak pernah dimatikan.
+- Kategori: tidak ada tombol aktif/nonaktif di daftar; status diubah lewat
+  checkbox "Kategori Aktif" di form edit, dan itu berfungsi dua arah.
+Catatan kecil yang dibiarkan: `CategoryUrl::productCategoryCodes()` tidak
+menyaring `is_active`, sehingga kategori nonaktif masih muncul di dropdown
+form produk. Bukan bagian keluhan ini, dan mengubahnya akan mempersempit
+pilihan admin, jadi menunggu keputusan owner.
+
+Dampak spec: tidak berubah untuk schema/route/JSON. Perubahan PERILAKU: wadah
+yang berisi produk arsip kini tetap `active` (tidak lagi auto-draft).
+
+Bukti: `ModelProductAdminTest` 9 test / 79 asersi OK, termasuk dua test baru
+(wadah berisi produk arsip tetap aktif dan bisa dinyalakan lagi; wadah yatim
+tetap dinonaktifkan). Test baru dibuktikan GAGAL saat perbaikan service
+dikembalikan sementara. Regresi taksonomi 80 test / 897 asersi OK. Suite penuh
+1513 test, hanya `StorePerformanceGoldenTest` gagal dan itu sudah gagal di
+origin/main tanpa perubahan ini. Di produksi 202 (transaksi lalu rollback):
+wadah hasil produk arsip = active, nonaktifkan lalu aktifkan kembali berhasil,
+perubahan produk berikutnya tidak mematikannya, wadah yatim tetap draft.
+
+Agent: zcode-activate-model
