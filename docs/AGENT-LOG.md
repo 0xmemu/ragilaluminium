@@ -7655,3 +7655,38 @@ JUNGKIT_DUA_DAUN merah pada DUA.
 Catatan proses: merge origin/main dikerjakan di git worktree terpisah
 (/tmp/wt-merge) karena working tree 209 berisi perubahan belum commit milik
 agent lain yang membuat merge langsung gagal.
+
+
+## 2026-10-17 09:50 - Gambar variasi menempel pada opsi, bukan kombinasi
+
+Agent: zcode-209-gambar-opsi. Commit be77e3b1 (merge 6573b819).
+
+Konteks: owner melaporkan memilih Kaca Riben bisa menampilkan warna yang salah.
+Akar: gambar variasi hanya bisa disimpan per KOMBINASI
+(product_media.product_variant_id). Berkas 4 warna x 3 kaca menulis 12 baris
+media; penyaring kembar di PDP menyusutkannya jadi 4 baris yang semuanya
+menunjuk kombinasi pertama, lalu frontend memakai media.find (elemen pertama)
+sebagai cadangan, sehingga gambar bergantung urutan baris Excel.
+
+Perubahan: tabel baru product_variation_option_media (satu gambar per NILAI
+opsi, unik per produk+slot+nilai), kolom products.image_axis_slot (satu sumbu
+bergambar per produk), importer menulis ke tabel opsi, verifier menolak berkas
+dengan gambar di dua sumbu / opsi dua URL / sumbu tidak lengkap, form admin
+memakai pemilih sumbu bergambar, storefront hanya mengganti gambar dari sumbu
+bergambar, chip sumbu bergambar menampilkan thumbnail. Perintah
+media:migrate-variant-images (dry-run default) memindahkan data lama; baris
+kombinasi lama diarsipkan, tidak dihapus.
+
+Bukti: CatalogImportV2Test 28/28 lulus (3 tes penjaga baru). Uji nyata di 209:
+impor 4 warna x 3 kaca menghasilkan 12 kombinasi, 4 gambar opsi, 0 media
+kombinasi. Migrasi: 134 produk dipindahkan (530 baris opsi, 554 baris media
+kombinasi diarsipkan), 3 produk DITAHAN karena datanya memuat gambar dari dua
+kode produk berbeda (RAP7FG346AJA, RALW4HWS92Y2, RA638YHZDAF8) dan menunggu
+keputusan owner. Live: / 200, PDP 200 dengan option_media dan image_axis_slot
+di payload. typecheck, lint, vitest 476/476, build sukses.
+
+Catatan proses: perubahan Admin/ProductController.php tersapu ke commit agent
+lain (f816b9e7) karena working tree dipakai bersama; isi diverifikasi utuh di
+HEAD sebelum push. Push pertama ditolak (agent lain push duluan), diselesaikan
+dengan merge, bukan rebase, karena working tree berisi perubahan belum commit
+milik agent lain.
