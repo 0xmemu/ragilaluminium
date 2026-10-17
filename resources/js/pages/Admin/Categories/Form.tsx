@@ -16,7 +16,6 @@ interface CategoryData {
   slug: string
   seo_title?: string | null
   seo_description?: string | null
-  sort_order: string
   is_active: boolean
   products_count?: number
   public_url?: string
@@ -28,8 +27,6 @@ interface Props {
   description: string
   backUrl: string
   category: CategoryData | null
-  /** Nomor urut usulan untuk kategori baru (selalu di bawah yang sudah ada). */
-  nextSortOrder?: number
   submitUrl: string
 }
 
@@ -41,7 +38,6 @@ export default function CategoryForm({
   title,
   description,
   category,
-  nextSortOrder = 1,
   submitUrl,
   backUrl,
 }: Props) {
@@ -49,7 +45,6 @@ export default function CategoryForm({
     code: category?.code ?? "",
     name: category?.name ?? "",
     slug: category?.slug ?? "",
-    sort_order: String(category?.sort_order ?? nextSortOrder),
     is_active: category?.is_active ?? true,
   })
 
@@ -68,10 +63,6 @@ export default function CategoryForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    form.transform((data) => ({
-      ...data,
-      sort_order: data.sort_order === "" ? null : Number(data.sort_order),
-    }))
     if (category) {
       form.put(submitUrl)
     } else {

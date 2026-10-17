@@ -32,7 +32,6 @@ interface Category {
   name: string
   slug: string
   seo_title?: string | null
-  sort_order: number
   is_active: boolean
   products_count: number
   models_count?: number
@@ -205,12 +204,11 @@ export default function CategoriesIndex({
                   <TableHead className="text-center">Kode</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Produk Terkait</TableHead>
-                  <TableHead className="text-center">Urutan</TableHead>
                   <TableHead className="w-[1%] whitespace-nowrap text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((c, index) => (
+                {categories.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/40">
                     <TableCell>
                       <div className="space-y-0.5">
@@ -238,12 +236,6 @@ export default function CategoriesIndex({
                       <span className="font-mono text-xs font-medium text-foreground">
                         {c.products_count} produk
                       </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {/* Posisi urut di daftar, bukan angka sort_order tersimpan.
-                          Angka tersimpan bisa berlubang setelah kategori dihapus
-                          (1, 3, 4) sehingga terbaca seolah daftar tidak sinkron. */}
-                      <span className="font-mono text-xs text-muted-foreground">{index + 1}</span>
                     </TableCell>
                     <TableCell className="w-[1%] whitespace-nowrap text-right">
                       <RowActions>

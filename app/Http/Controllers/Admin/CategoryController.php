@@ -45,7 +45,6 @@ class CategoryController extends Controller
                 'name' => $c->name,
                 'slug' => $c->slug,
                 'seo_title' => $c->seo_title,
-                'sort_order' => $c->sort_order,
                 'is_active' => (bool) $c->is_active,
                 'products_count' => (int) $c->products_count,
                 'models_count' => \App\Models\CmsModelProduct::where('product_category', $c->code)->count(),
@@ -87,7 +86,6 @@ class CategoryController extends Controller
             'description' => 'Buat kategori produk baru untuk katalog dan form produk.',
             'backUrl' => route('admin.categories.index'),
             'category' => null,
-            'nextSortOrder' => $this->nextSortOrder(),
             'submitUrl' => route('admin.categories.store'),
         ]);
     }
@@ -121,7 +119,6 @@ class CategoryController extends Controller
                 'slug' => $category->slug,
                 'seo_title' => $category->seo_title,
                 'seo_description' => $category->seo_description,
-                'sort_order' => $category->sort_order,
                 'is_active' => (bool) $category->is_active,
                 'products_count' => $category->products()->count(),
                 'public_url' => route('catalog.category', ['category' => $category->slug]),

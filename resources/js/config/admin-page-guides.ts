@@ -215,15 +215,14 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
   },
   "admin.categories.index": {
     title: "Kategori Produk",
-    summary: "Daftar kategori utama toko beserta kode, status, jumlah produk, dan urutan tampilnya.",
+    summary: "Daftar kategori utama toko beserta kode, status, dan jumlah produknya.",
     steps: [
       "Tambah kategori lewat tombol di kanan atas.",
       "Klik nama kategori untuk mengubah data, slug URL, dan statusnya.",
       "Gunakan filter status untuk melihat kategori aktif atau nonaktif saja.",
     ],
     notes: [
-      "Kolom Urutan menunjukkan posisi kategori di menu katalog, dihitung dari atas mulai 1.",
-      "Kategori baru otomatis ditaruh paling belakang sehingga urutan kategori lama tidak berubah.",
+      "Kategori baru otomatis masuk ke urutan paling belakang daftar.",
       "Kategori yang masih dipakai produk atau model tidak bisa dihapus.",
     ],
   },
@@ -238,7 +237,6 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     ],
     notes: [
       "Kode kategori dibuat otomatis dari nama dan tidak perlu diisi.",
-      "Kategori baru otomatis menempati urutan paling belakang di menu katalog.",
     ],
   },
   "admin.categories.edit": {
