@@ -7464,11 +7464,15 @@ memanggil number() tanpa aritmetika, jadi nilai diteruskan apa adanya;
 (3) nilai di database products identik 205/105/12; (4) berkas xlsx asli dibaca
 ulang dengan PhpSpreadsheet dan sel P/Q/R baris 1778 memang 205/105/12.
 Pola menyeluruh: dari 151 pasangan unik nama-berdimensi di job 10, SELURUH 151
-memiliki selisih tepat +5 cm pada tinggi dan +5 cm pada panjang. Jadi +5 adalah
-allowance packing yang diisi konsisten di berkas sumber, bukan perilaku kode.
-Selaras dengan petunjuk template (CatalogTemplateExport baris 294) yang memang
-meminta "dimensi packing" di kolom height_cm/width_cm/depth_cm, dan form admin
-memberi label bagian "Pengiriman (J&T Cargo)".
+memiliki selisih tepat +5 cm pada tinggi dan +5 cm pada panjang.
+KOREKSI (owner, 2026-10-17): selisih +5 itu BUKAN rumus dan BUKAN aturan packing
+otomatis. Sistem tidak menambah apa pun: config/shipping.php memakai
+pallet_allowance_per_side_cm = env(SHIPPING_PALLET_ALLOWANCE_CM, 0.0) dan env
+tersebut tidak diset di 202, jadi tambahan per sisi = 0. Angka 205/105 adalah
+nilai yang diketik apa adanya di kolom Tinggi/Panjang berkas Excel. Selisih +5
+yang seragam di seluruh 151 baris adalah isi berkas sumber, bukan hasil hitungan
+aplikasi. Kolom height_cm/width_cm/depth_cm adalah isian bebas yang diisi saat
+tambah atau impor produk.
 Tidak ada perubahan kode atau data. Pencarian yang sudah dirilis tetap
 menemukan produk ini lewat nama (200x100) maupun lewat dimensi (205x105).
 Keputusan yang menunggu owner: apakah kolom dimensi disimpan sebagai ukuran
