@@ -18,6 +18,7 @@ use App\Support\ShopeeStyleSku;
 use App\Support\OperationalSettings;
 use App\Services\ActivityLogService;
 use App\Services\ProductPublicationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -63,29 +64,7 @@ class ProductController extends Controller
             ])
             ->withSum('validOrderItems as sold_count', 'quantity')
             ->withSum('activeVariants as stock_total', 'stock')
-            ->when($q !== '' && $size === null, function ($query) use ($q) {
-                $query->where(function ($inner) use ($q) {
-                    LikeSearch::whereLike($inner, 'name', $q);
-                    LikeSearch::orWhereLike($inner, 'short_name', $q);
-                    LikeSearch::orWhereLike($inner, 'parent_sku', $q);
-                });
-            })
-            ->when($size !== null, function ($query) use ($size) {
-                [$a, $b, $depth] = $size;
-                $query->whereHas('activeVariants', function ($variantQuery) use ($a, $b, $depth) {
-                    $variantQuery->where(function ($pair) use ($a, $b, $depth) {
-                        $pair->where('height_cm', $a)->where('width_cm', $b);
-                        if ($depth !== null) {
-                            $pair->where('depth_cm', $depth);
-                        }
-                    })->orWhere(function ($pair) use ($a, $b, $depth) {
-                        $pair->where('height_cm', $b)->where('width_cm', $a);
-                        if ($depth !== null) {
-                            $pair->where('depth_cm', $depth);
-                        }
-                    });
-                });
-            })
+            ->when($q !== '', fn ($query) => $this->applyListSearch($query, $q, $size, 'activeVariants'))
             ->when(
                 $category !== '' && $category !== 'all',
                 fn ($query) => $query->where('product_category', CategoryUrl::codeToProductCode($category))
@@ -141,19 +120,7 @@ class ProductController extends Controller
             ->withMax('variants as max_price', 'price')
             ->withCount(['media as media_count' => fn ($b) => $b->where('show_in_catalog', true)])
             ->withCount(['media as installation_media_count' => fn ($b) => $b->where('is_installation', true)])
-            ->when($q !== '' && $size === null, function ($builder) use ($q) {
-                $builder->where(function ($inner) use ($q) {
-                    LikeSearch::whereLike($inner, 'name', $q);
-                    LikeSearch::orWhereLike($inner, 'short_name', $q);
-                    LikeSearch::orWhereLike($inner, 'parent_sku', $q);
-                });
-            })
-            ->when($size !== null, function ($builder) use ($size) {
-                $builder->whereHas('variants', function ($sub) use ($size) {
-                    $sub->where('width_cm', $size['width'])
-                        ->where('height_cm', $size['height']);
-                });
-            })
+            ->when($q !== '', fn ($builder) => $this->applyListSearch($builder, $q, $size, 'variants'))
             ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', CategoryUrl::codeToProductCode($category)))
             ->when(
                 $model !== '' && $model !== 'all',
@@ -1452,16 +1419,140 @@ class ProductController extends Controller
     }
 
     /**
-     * Parser pencarian ukuran admin: tinggi×panjang exact, misalnya 100x50, tidak pernah membalik orientasi.
+     * Pencarian daftar produk admin: teks SELALU dicari, ukuran hanya tambahan.
+     *
+     * Kotak cari berlabel "Cari nama produk atau SKU Induk", jadi nama produk
+     * dan SKU induk tidak boleh kalah oleh penafsiran angka. Ketikan yang
+     * mengandung ukuran dicari di dua tempat sekaligus: bentuk ukuran di teks
+     * produk ("Tinggi 80 cm x Panjang 50 cm", "(80x50)") dan pasangan dimensi
+     * varian. Ketikan yang bukan ukuran murni tetap murni pencarian teks.
+     */
+    private function applyListSearch(Builder $query, string $q, ?array $size, string $variantRelation): void
+    {
+        $terms = preg_split('/\s+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [$q];
+
+        $query->where(function (Builder $inner) use ($terms, $size, $variantRelation) {
+            // Teks: setiap kata wajib cocok di salah satu kolom teks, jadi
+            // "jendela jungkit" menemukan "Jendela Aluminium Jungkit".
+            foreach ($terms as $term) {
+                $inner->where(function (Builder $word) use ($term) {
+                    LikeSearch::whereLike($word, 'name', $term);
+                    LikeSearch::orWhereLike($word, 'short_name', $term);
+                    LikeSearch::orWhereLike($word, 'parent_sku', $term);
+                });
+            }
+
+            [$namePatterns, $keywordPatterns] = $this->sizeSearchPatterns($size);
+
+            if ($namePatterns === [] && $keywordPatterns === [] && $size === null) {
+                return;
+            }
+
+            // Ukuran sebagai TAMBAHAN: hasil teks di atas tetap dipakai walau
+            // penafsiran ukuran tidak menemukan apa pun.
+            $inner->orWhere(function (Builder $sizeGroup) use ($namePatterns, $keywordPatterns, $size, $variantRelation) {
+                foreach ($namePatterns as $pattern) {
+                    $sizeGroup->orWhereRaw('name LIKE ? ESCAPE ?', [$pattern, '\\']);
+                    $sizeGroup->orWhereRaw('short_name LIKE ? ESCAPE ?', [$pattern, '\\']);
+                }
+
+                foreach ($keywordPatterns as $pattern) {
+                    $sizeGroup->orWhereRaw('search_keywords LIKE ? ESCAPE ?', [$pattern, '\\']);
+                }
+
+                if ($size === null) {
+                    return;
+                }
+
+                [$a, $b, $depth] = $size;
+
+                $sizeGroup->orWhereHas($variantRelation, function (Builder $variantQuery) use ($a, $b, $depth) {
+                    $variantQuery->where(function (Builder $pair) use ($a, $b, $depth) {
+                        $pair->where('height_cm', $a)->where('width_cm', $b);
+                        if ($depth !== null) {
+                            $pair->where('depth_cm', $depth);
+                        }
+                    })->orWhere(function (Builder $pair) use ($a, $b, $depth) {
+                        $pair->where('height_cm', $b)->where('width_cm', $a);
+                        if ($depth !== null) {
+                            $pair->where('depth_cm', $depth);
+                        }
+                    });
+                });
+            });
+        });
+    }
+
+    /**
+     * Pola LIKE bentuk ukuran di teks produk. Angkanya diambil dari ketikan,
+     * bukan dari kolom dimensi, karena nama produk memakai ukuran jadi.
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function sizeSearchPatterns(?array $size): array
+    {
+        if ($size === null) {
+            return [[], []];
+        }
+
+        [$height, $width] = $size;
+        $pairs = $height === $width ? [[$height, $width]] : [[$height, $width], [$width, $height]];
+
+        $namePatterns = [];
+        $keywordPatterns = [];
+
+        foreach ($pairs as [$h, $w]) {
+            $h = $this->formatDimension($h);
+            $w = $this->formatDimension($w);
+
+            $namePatterns[] = '%Tinggi '.$h.'%x%Panjang '.$w.'%';
+            $namePatterns[] = '%('.$h.'x'.$w.')%';
+            $namePatterns[] = '%('.$h.' x '.$w.')%';
+            $namePatterns[] = '% '.$h.' x '.$w.' %';
+
+            $keywordPatterns[] = '%'.$h.'x'.$w.'%';
+        }
+
+        return [$namePatterns, $keywordPatterns];
+    }
+
+    private function formatDimension(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Parser ukuran: hanya ketikan yang SELURUHNYA berupa ukuran yang diakui,
+     * misalnya "100x50", "100 x 50", "100×50", "80cm x 50cm",
+     * "tinggi 100 panjang 50", atau "100x50x12". Orientasi = Tinggi × Panjang,
+     * sama dengan label form produk. Selain bentuk itu hasilnya null supaya
+     * pencarian teks tetap berjalan.
      *
      * @return array{0: float, 1: float, 2: float|null}|null
      */
     private function parseSizeQuery(string $q): ?array
     {
-        $normalized = mb_strtolower($q);
-        $normalized = preg_replace('/\s*(x|×|:)\s*/', 'x', $normalized);
-        $normalized = preg_replace('/(tinggi|panjang|lebar|dalam|t|p|l|x)\s*/i', ' ', $normalized);
-        preg_match_all('/\d+(?:[.,]\d+)?/', $normalized, $matches);
+        $normalized = trim(mb_strtolower($q));
+        $normalized = str_replace(['×', ':'], 'x', $normalized);
+
+        $hasDimensionWord = preg_match('/(tinggi|panjang|lebar|dalam)/u', $normalized) === 1;
+
+        $normalized = preg_replace('/\bcm\b/u', ' ', (string) $normalized);
+        $normalized = preg_replace('/\s+/', ' ', trim((string) $normalized));
+
+        if ($hasDimensionWord) {
+            $normalized = preg_replace('/(tinggi|panjang|lebar|dalam)/u', ' ', (string) $normalized);
+            $normalized = preg_replace('/\s+/', ' ', trim((string) $normalized));
+            $shape = '/^\d+(?:[.,]\d+)?(?:\s*x\s*|\s+)\d+(?:[.,]\d+)?(?:(?:\s*x\s*|\s+)\d+(?:[.,]\d+)?)?$/';
+        } else {
+            $shape = '/^\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?(?:\s*x\s*\d+(?:[.,]\d+)?)?$/';
+        }
+
+        if (preg_match($shape, (string) $normalized) !== 1) {
+            return null;
+        }
+
+        preg_match_all('/\d+(?:[.,]\d+)?/', (string) $normalized, $matches);
 
         $numbers = array_values(array_filter(
             array_map(fn ($raw) => (float) str_replace(',', '.', $raw), $matches[0] ?? []),
