@@ -78,6 +78,7 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
         $tmp = null;
 
         try {
+            // Hanya penjagaan SSRF (lihat DownloadMediaAsset).
             UrlGuard::assertSafePublicUrl($media->source_url, config('media.allowed_source_hosts', []));
 
             $tmp = tempnam(sys_get_temp_dir(), 'media_');

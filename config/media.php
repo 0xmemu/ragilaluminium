@@ -11,9 +11,29 @@
 */
 
 return [
-    // Host yang diizinkan sebagai sumber unduhan (anti-SSRF). Kosong = izinkan
-    // semua host publik (private/reserved IP tetap diblokir).
-    'allowed_source_hosts' => array_filter(explode(',', (string) env('MEDIA_ALLOWED_HOSTS', 'cf.shopee.co.id,down-id.img.susercontent.com,cvws.img.susercontent.com,deo.shopeemobile.com'))),
+    // Daftar host sumber yang DIIZINKAN secara eksplisit. Kosong (bawaan) =
+    // semua host publik diterima, dan satu-satunya syarat adalah berkasnya
+    // benar-benar bisa diunduh. Penjagaan SSRF (IP privat/loopback) tetap
+    // berjalan di UrlGuard, jadi mengosongkan daftar ini tidak membuka akses
+    // ke jaringan internal.
+    //
+    // Isi hanya bila owner ingin MEMBATASI sumber ke host tertentu; itu
+    // pengerasan tambahan, bukan syarat normal.
+    'allowed_source_hosts' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('MEDIA_ALLOWED_HOSTS', ''))
+    ))),
+
+    // Periksa file menguji apakah URL media eksternal benar-benar bisa
+    // diunduh. Bisa dimatikan di lingkungan test supaya tidak menembak jaringan.
+    'preview_probe' => filter_var(env('MEDIA_PREVIEW_PROBE', true), FILTER_VALIDATE_BOOL),
+    'preview_probe_timeout' => (int) env('MEDIA_PREVIEW_PROBE_TIMEOUT', 5),
+    // Test memakai host palsu sehingga pemeriksaan DNS dimatikan di sana.
+    'probe_dns_check' => filter_var(env('MEDIA_PROBE_DNS_CHECK', true), FILTER_VALIDATE_BOOL),
+
+    // Jumlah baris rincian yang dikirim ke layar. Pemeriksaan tetap menyentuh
+    // SEMUA baris; angka ini hanya batas tampilan tabel.
+    'preview_display_rows' => (int) env('MEDIA_PREVIEW_DISPLAY_ROWS', 500),
 
     'max_bytes' => (int) env('MEDIA_MAX_BYTES', 10 * 1024 * 1024), // 10 MB image
     'max_video_bytes' => (int) env('MEDIA_MAX_VIDEO_BYTES', 50 * 1024 * 1024), // 50 MB video
