@@ -7825,3 +7825,39 @@ diperbaiki. Tes itu dipertahankan sebagai penjaga.
 
 Bukti: typecheck bersih, eslint 0 warning, vitest 487/487 (11 tes di
 matrix-thumb.test.ts), build sukses, /admin 302, PDP 200.
+
+
+## 2026-10-17 18:45 - Deploy gambar per opsi ke produksi 202
+
+Agent: zcode-209-gambar-opsi.
+
+Konteks: owner meminta perbaikan gambar variasi diterapkan ke 202 setelah
+terbukti di 209. Rilis sebelumnya 20261017174444-b4eb89fe (b4eb89fe) juga
+dibangun dari origin/feat/ui-consistency-209, jadi tidak ada risiko kehilangan
+fitur seperti kejadian deploy dari main sebelumnya.
+
+Langkah:
+1. Gerbang: 209 bersih (HEAD = origin, ccb2e433), 202 tidak sedang deploy,
+   tidak ada proses deploy-202 berjalan, lock hanya sisa flock.
+2. Dry-run `media:migrate-variant-images` di 202: 151 produk siap, 0 konflik,
+   0 ditahan.
+3. `deploy-202.sh --brant/ui-consistency-209 --label=gambar-opsi`:
+   target ccb2e433, migrasi database jalan (langkah 6b), kesehatan OK,
+   pangkas 1 rilis lama 514MB.
+4. `media:migrate-variant-images --apply`: 604 baris gambar opsi ditulis,
+   1.812 baris media kombinasi diarsipkan (tidak dihapus).
+
+Bukti verifikasi 202:
+- Aset build: chunk ProductForm-D-d_3wJ3.js memuat "Gambar per opsi" dan
+  "primary-foreground"; pola lama "bg-foreground text-white" berjumlah 0.
+- Data: 151 produk bertanda sumbu bergambar slot 1, 604 gambar opsi,
+  0 gambar di slot 2, 0 media kombinasi aktif, 1.812 diarsipkan.
+- PDP live /product/RAYX8Y67W2UM: image_axis_slot 1, 4 option_media, semua
+  variation_slot 1 (Putih, Hitam, Cokelat, Serat Kayu).
+- Form edit admin: HTTP 200, image_axis_slot 1, sumbu Warna 4/4 opsi
+  bergambar, sumbu Kaca 0/3 (bersih).
+- Smoke: / 200, dua PDP 200, /admin/login 302. Migrasi pending 0.
+
+Catatan proses: verifikasi props Inertia tidak bisa lewat atribut data-page
+(repo ini memakai blok script), dan URL edit wajib /edit (tanpa itu kena
+halaman Show sehingga props kosong dan pemeriksaan lolos secara palsu).
