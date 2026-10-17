@@ -413,7 +413,7 @@ class InstallationProjectAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/InstallationGallery/Show')
-                ->where('group.label', 'Jendela Aluminium Kaca Mati')
+                ->where('group.label', 'Jendela Kaca Mati')
                 ->has('group.media', 1)
                 ->where('group.media.0.product_sku', 'RA-TEST-001')
             );

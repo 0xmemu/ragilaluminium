@@ -21,7 +21,8 @@ use Tests\TestCase;
  * Kesimpulan yang dijaga test ini:
  *  - Kategori Produk: WAJIB terdaftar. Nilai asing ditolak per baris.
  *  - Model Produk: nilai asing DITERIMA, wadah modelnya dibuat otomatis.
- *  - Sub Model: nilai asing DITERIMA apa adanya, tidak membuat baris sub model.
+ *  - Sub Model: nilai asing DITERIMA dan DIDAFTARKAN otomatis ke tabel daftar
+ *    (kontrak 17 Okt 2026), supaya halaman Kelola Sub Model langsung terisi.
  */
 class ImportUnregisteredTaxonomyTest extends TestCase
 {
@@ -134,7 +135,7 @@ class ImportUnregisteredTaxonomyTest extends TestCase
         ]);
     }
 
-    public function test_sub_model_asing_tidak_membuat_baris_sub_model(): void
+    public function test_sub_model_asing_didaftarkan_otomatis(): void
     {
         $this->siapkanMedia();
         CmsModelProduct::query()->delete();
@@ -148,10 +149,10 @@ class ImportUnregisteredTaxonomyTest extends TestCase
         ])]);
         Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
 
-        $this->assertSame(
-            0,
-            SubModel::count(),
-            'impor tidak membuat baris sub model; sub model baru didaftarkan lewat admin'
-        );
+        $this->assertDatabaseHas('sub_models', [
+            'product_model' => 'MODEL_BELUM_TERDAFTAR',
+            'code' => 'SUB_BELUM_TERDAFTAR',
+            'is_active' => true,
+        ]);
     }
 }

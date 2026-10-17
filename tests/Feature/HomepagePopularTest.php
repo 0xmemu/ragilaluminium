@@ -158,7 +158,7 @@ class HomepagePopularTest extends \Tests\TestCase
                 ->where('nav.public.desktop_main.0.label', 'Model Produk')
                 ->where('nav.public.desktop_main.4.label', 'Tentang Kami')
                 ->has('nav.public.model_menu', 3)
-                ->where('nav.public.model_menu.0.label', 'Jendela Aluminium Jungkit')
+                ->where('nav.public.model_menu.0.label', 'Jendela Jungkit')
                 // Kartu model di beranda kini bersumber dari baris katalog
                 // (wadah dibuat otomatis dari produk sejak 2026-09-28), jadi
                 // meta-nya berasal dari desain katalog, bukan peta warisan.
