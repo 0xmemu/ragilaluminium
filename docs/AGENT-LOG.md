@@ -7131,3 +7131,37 @@ wadah hasil produk arsip = active, nonaktifkan lalu aktifkan kembali berhasil,
 perubahan produk berikutnya tidak mematikannya, wadah yatim tetap draft.
 
 Agent: zcode-activate-model
+
+## 2026-10-17 06:50 UTC | zcode-variant-name-lock | Trivial | b45cfb91 | selesai
+Lingkup: kolom Nama Varian di form Tambah/Edit Produk terkunci setelah SATU
+huruf diketik, sehingga kolom tampak menyimpan sendiri dan huruf berikutnya
+tidak pernah masuk.
+
+Akar masalah: `resources/js/pages/Admin/ProductForm.tsx` menentukan status
+terkunci dari ISI kolom, bukan dari tindakan admin:
+`const isLocked = def.locked !== false && Boolean(def.name && def.name.trim() !== "")`.
+Ketukan pertama sudah membuat `def.name` tidak kosong, jadi baris langsung
+berganti ke tampilan baca saja. Placeholder yang berbunyi "lalu tekan Enter"
+tidak pernah tercapai.
+
+Perubahan: `const isLocked = def.locked === true`. Kunci hanya menyala lewat
+Enter atau tombol Selesai, dan tombol Edit membukanya. Prefill saat edit produk
+memang menyetel `locked: true`, jadi perilaku untuk produk yang sudah punya
+varian tidak berubah.
+
+Berkas: `resources/js/pages/Admin/ProductForm.tsx`,
+`tests/frontend/variant-name-lock.test.ts` (baru).
+
+Dampak spec: tidak berubah.
+
+Untuk agent berikutnya: jangan menyimpulkan keadaan UI dari isi data (nama
+terisi berarti selesai). Simpan keadaan eksplisit. Pola yang sama sudah pernah
+merugikan di form kategori (slug beku di huruf pertama, penjaga
+`taxonomy-form-guard.test.ts`).
+
+Bukti: `variant-name-lock.test.ts` 3 test OK, dan dibuktikan GAGAL (2 dari 3)
+saat pola lama dikembalikan sementara. Seluruh Vitest 57 berkas / 453 test OK.
+`npm run typecheck` bersih. Deploy 202 ke `20261017134559-b45cfb91`, kesehatan
+OK, dan bundel produksi memuat pola baru `locked===!0` (bukan pola lama).
+
+Agent: zcode-variant-name-lock
