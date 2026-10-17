@@ -23,13 +23,16 @@ export function SectionCard({
   action?: React.ReactNode
   children: React.ReactNode
   className?: string
-  /** Default "p-5". Gunakan "p-0" untuk list/table full-bleed. */
+  /**
+   * Default "p-5 sm:p-6" mengikuti ADR-022 poin 4 supaya tepi kiri/kanan isi
+   * lurus dengan judul di headernya. Gunakan "p-0" untuk list/table full-bleed.
+   */
   contentClassName?: string
   icon?: string
 }) {
   return (
     <Card className={cn("min-w-0", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2.5">
           {icon ? (
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -45,7 +48,7 @@ export function SectionCard({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className={cn("p-5", contentClassName)}>{children}</div>
+      <div className={cn("p-5 sm:p-6", contentClassName)}>{children}</div>
     </Card>
   )
 }

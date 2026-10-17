@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { SearchSelect } from "@/components/admin/ui/search-select"
@@ -122,97 +122,89 @@ export default function SubModelForm({
       <form id="sub-model-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        {/* Table-first: satu baris per field */}
-        <div className="rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Model produk <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  {/* Pemilih bercari (kontrak 2026-09-16): form tambah selalu
-                      kosong, admin mencari & memilih model sendiri. */}
-                  <SearchSelect
-                    id="sub-model-product-model"
-                    options={modelOptions}
-                    value={form.data.product_model}
-                    onValueChange={(value) => form.setData("product_model", value)}
-                    placeholder="Pilih model"
-                    searchPlaceholder="Cari model"
-                    emptyMessage="Model tidak ditemukan."
-                    error={form.errors.product_model}
-                    className="w-72"
-                  />
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama sub model <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.name}
-                    onChange={(event) => {
-                      const newName = event.target.value
-                      form.setData((prev) => ({
-                        ...prev,
-                        name: newName,
-                        ...(!editing && !codeManuallyEdited ? { code: toSubModelCode(newName) } : {}),
-                      }))
-                    }}
-                    placeholder="contoh: Jalusi"
-                    className="h-8 w-72 text-xs"
-                  />
-                  {form.errors.name ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kode (dipakai di URL &amp; data produk) {editing ? null : <span className="text-muted-foreground font-normal text-[11px]">(opsional)</span>}
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.code}
-                    onChange={(event) => {
-                      const val = event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "")
-                      setCodeManuallyEdited(val.trim() !== "")
-                      form.setData("code", val)
-                    }}
-                    placeholder={editing ? "" : "Otomatis dibuat dari nama jika dikosongkan"}
-                    className="h-8 w-72 text-xs font-mono"
-                    disabled={editing}
-                  />
-                  {form.errors.code ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.code}</p>
-                  ) : null}
-                  {editing ? (
-                    <p className="mt-1 text-xs text-muted-foreground">Kode tidak bisa diubah setelah dibuat.</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">Dibuat otomatis dari nama jika dikosongkan.</p>
-                  )}
-                </td>
-              </tr>
-              {editing ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status</th>
-                  <td className="px-4 py-2.5">
-                    <Select
-                      value={form.data.is_active ? "active" : "inactive"}
-                      onChange={(event) => form.setData("is_active", event.target.value === "active")}
-                      className="h-8 w-40 text-xs"
-                    >
-                      <option value="active">Aktif</option>
-                      <option value="inactive">Nonaktif</option>
-                    </Select>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <SectionCard
+          title="Identitas sub model"
+          description="Model induk, nama tampilan, dan kode yang dipakai di URL serta data produk."
+        >
+          <FieldGrid>
+            <Field
+              id="sub-model-product-model"
+              label="Model produk"
+              required
+              error={form.errors.product_model}
+              hint="Sub model selalu menempel pada satu model induk."
+            >
+              {/* Pemilih bercari (kontrak 2026-09-16): form tambah selalu
+                  kosong, admin mencari & memilih model sendiri. */}
+              <SearchSelect
+                id="sub-model-product-model"
+                options={modelOptions}
+                value={form.data.product_model}
+                onValueChange={(value) => form.setData("product_model", value)}
+                placeholder="Pilih model"
+                searchPlaceholder="Cari model"
+                emptyMessage="Model tidak ditemukan."
+                error={form.errors.product_model}
+              />
+            </Field>
+
+            <Field
+              id="sub-model-name"
+              label="Nama sub model"
+              required
+              error={form.errors.name}
+              hint="Nama yang tampil ke pembeli, misalnya Jalusi."
+            >
+              <Input
+                value={form.data.name}
+                onChange={(event) => {
+                  const newName = event.target.value
+                  form.setData((prev) => ({
+                    ...prev,
+                    name: newName,
+                    ...(!editing && !codeManuallyEdited ? { code: toSubModelCode(newName) } : {}),
+                  }))
+                }}
+                placeholder="Contoh: Jalusi"
+              />
+            </Field>
+
+            <Field
+              id="sub-model-code"
+              label={editing ? "Kode" : "Kode (opsional)"}
+              error={form.errors.code}
+              hint={
+                editing
+                  ? "Kode tidak bisa diubah setelah dibuat."
+                  : "Dibuat otomatis dari nama jika dikosongkan."
+              }
+            >
+              <Input
+                value={form.data.code}
+                onChange={(event) => {
+                  const val = event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "")
+                  setCodeManuallyEdited(val.trim() !== "")
+                  form.setData("code", val)
+                }}
+                placeholder={editing ? "" : "Otomatis dari nama"}
+                className="font-mono"
+                disabled={editing}
+              />
+            </Field>
+
+            {editing ? (
+              <Field id="sub-model-status" label="Status">
+                <Select
+                  value={form.data.is_active ? "active" : "inactive"}
+                  onChange={(event) => form.setData("is_active", event.target.value === "active")}
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Nonaktif</option>
+                </Select>
+              </Field>
+            ) : null}
+          </FieldGrid>
+        </SectionCard>
 
         {editing ? (
           <>

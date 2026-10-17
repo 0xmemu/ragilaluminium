@@ -2,8 +2,9 @@ import { Head, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
@@ -131,83 +132,55 @@ export default function CmsDocumentEdit({
       >
         <FormErrorSummary errors={form.errors} />
 
-        {/* 1. Meta Dokumen (Table-First) */}
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <div className="border-b border-border bg-muted/40 px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">Pengaturan Dokumen</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Judul halaman, tajuk pembuka, dan status penayangan dokumen di publik.
-            </p>
-          </div>
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  Judul CMS <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-3">
-                  <Input
-                    disabled={terkunci}
-                    value={form.data.title}
-                    onChange={(event) => form.setData("title", event.target.value)}
-                    className="max-w-md"
-                  />
-                  {form.errors.title ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Judul dokumen yang tampil pada tab peramban dan navigasi.
-                    </p>
-                  )}
-                </td>
-              </tr>
+        <SectionCard
+          title="Pengaturan Dokumen"
+          description="Judul halaman, tajuk pembuka, dan status penayangan dokumen di publik."
+        >
+          <FieldGrid>
+            <Field
+              id="doc-title"
+              label="Judul CMS"
+              required
+              error={form.errors.title}
+              hint="Judul dokumen yang tampil pada tab peramban dan navigasi."
+            >
+              <Input
+                disabled={terkunci}
+                value={form.data.title}
+                onChange={(event) => form.setData("title", event.target.value)}
+              />
+            </Field>
 
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  Judul Hero <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-3">
-                  <Input
-                    disabled={terkunci}
-                    value={form.data.heading}
-                    onChange={(event) => form.setData("heading", event.target.value)}
-                    className="max-w-xl"
-                  />
-                  {form.errors.heading ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.heading}</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Tajuk besar yang tampil di bagian atas halaman publik.
-                    </p>
-                  )}
-                </td>
-              </tr>
+            <Field
+              id="doc-heading"
+              label="Judul Hero"
+              required
+              error={form.errors.heading}
+              hint="Tajuk besar yang tampil di bagian atas halaman publik."
+            >
+              <Input
+                disabled={terkunci}
+                value={form.data.heading}
+                onChange={(event) => form.setData("heading", event.target.value)}
+              />
+            </Field>
 
-              <tr>
-                <th className="w-64 px-4 py-3 text-left align-top text-xs font-semibold text-foreground">
-                  Status Publikasi
-                </th>
-                <td className="px-4 py-3">
-                  <CheckboxField
-                    id="doc-published"
-                    disabled={terkunci}
-                    checked={form.data.published}
-                    onChange={(checked) => form.setData("published", checked)}
-                    label={
-                      <span className="font-semibold text-foreground text-xs">
-                        Terbitkan dokumen di website
-                      </span>
-                    }
-                    standalone
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Slug publik: <span className="font-mono font-medium text-foreground">/{document.slug}</span>
-                  </p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <Field
+              id="doc-published"
+              label="Status Publikasi"
+              hint={`Slug publik: /${document.slug}`}
+            >
+              <CheckboxField
+                id="doc-published"
+                disabled={terkunci}
+                checked={form.data.published}
+                onChange={(checked) => form.setData("published", checked)}
+                label="Terbitkan dokumen di website"
+                standalone
+              />
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
         {/* 2. Isi Dokumen & Pratinjau Bersih */}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:items-start">

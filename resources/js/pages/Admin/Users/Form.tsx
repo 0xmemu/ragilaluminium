@@ -3,9 +3,10 @@ import * as React from "react"
 
 import { Icon } from "@/components/shared/icon"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { ConfirmAction } from "@/components/admin/ui/confirm-action"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
@@ -94,156 +95,134 @@ export default function UserForm({
       >
         <FormErrorSummary errors={form.errors} />
 
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              {editing && user ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Status akun</th>
-                  <td className="px-4 py-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={user.status} />
-                      <span className="text-xs font-semibold text-muted-foreground">Admin (hak setara)</span>
-                      {isSelf ? (
-                        <span className="text-xs font-semibold text-primary">Ini akun yang sedang Anda pakai</span>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.name}
-                    onChange={(event) => form.setData("name", event.target.value)}
-                    autoComplete="name"
-                    className="h-8 text-xs"
-                  />
-                  {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Username <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.username}
-                    onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
-                    autoComplete="username"
-                    placeholder="contoh: admin.ragil"
-                    className="h-8 text-xs"
-                  />
-                  {form.errors.username ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.username}</p>
+        <SectionCard
+          title="Akun admin"
+          description="Identitas login dan status akun pengelola panel."
+        >
+          <FieldGrid>
+            {editing && user ? (
+              <Field id="user-account-status" label="Status akun" className="sm:col-span-2">
+                <div className="flex min-h-9 flex-wrap items-center gap-2">
+                  <StatusBadge status={user.status} />
+                  <span className="text-xs font-semibold text-muted-foreground">Admin (hak setara)</span>
+                  {isSelf ? (
+                    <span className="text-xs font-semibold text-primary">Ini akun yang sedang Anda pakai</span>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Unik untuk setiap akun. Gunakan huruf, angka, titik, garis bawah, atau tanda hubung.
-                  </p>
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  {editing ? "Password baru" : "Password awal"}
-                  {!editing ? <span className="text-destructive"> *</span> : null}
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="text"
-                      value={form.data.password}
-                      onChange={(event) => form.setData("password", event.target.value)}
-                      autoComplete="new-password"
-                      placeholder={editing ? "Kosongkan jika tidak diubah" : "Tulis manual atau Generate"}
-                      className="h-8 flex-1 text-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-8 shrink-0 text-xs"
-                      onClick={() => {
-                        const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
-                        const array = new Uint32Array(14)
-                        crypto.getRandomValues(array)
-                        const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
-                        form.setData("password", generated)
-                        form.setData("password_confirmation", generated)
-                      }}
-                    >
-                      <Icon name="sparkles" className="h-3.5 w-3.5" aria-hidden="true" />
-                      Generate
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-8 w-8 shrink-0 p-0"
-                      aria-label="Salin password"
-                      title="Salin password"
-                      onClick={async () => {
-                        if (!form.data.password) return
-                        try {
-                          await navigator.clipboard.writeText(form.data.password)
-                          setCopied(true)
-                          window.setTimeout(() => setCopied(false), 1500)
-                        } catch {
-                          // clipboard ditolak browser: biarkan manual
-                        }
-                      }}
-                    >
-                      <Icon name={copied ? "check" : "copy"} className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
-                  </div>
-                  {form.errors.password ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.password}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  {editing ? "Ulangi password baru" : "Ulangi password awal"}
-                  {!editing ? <span className="text-destructive"> *</span> : null}
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    type="password"
-                    value={form.data.password_confirmation}
-                    onChange={(event) => form.setData("password_confirmation", event.target.value)}
-                    autoComplete="new-password"
-                    className="h-8 text-xs"
-                  />
-                  {form.errors.password_confirmation ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.password_confirmation}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Status <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Select
-                    value={form.data.status}
-                    onChange={(event) => form.setData("status", event.target.value)}
-                    disabled={isSelf}
-                    className="h-8 w-44 text-xs"
-                  >
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Nonaktif</option>
-                  </Select>
-                  {form.errors.status ? <p className="mt-1 text-xs text-destructive">{form.errors.status}</p> : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Nonaktif = tidak bisa login. Semua admin aktif punya akses panel yang sama.
-                  </p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                </div>
+              </Field>
+            ) : null}
 
-        
+            <Field id="user-name" label="Nama" required error={form.errors.name}>
+              <Input
+                value={form.data.name}
+                onChange={(event) => form.setData("name", event.target.value)}
+                autoComplete="name"
+              />
+            </Field>
+
+            <Field
+              id="user-username"
+              label="Username"
+              required
+              error={form.errors.username}
+              hint="Unik untuk setiap akun. Gunakan huruf, angka, titik, garis bawah, atau tanda hubung."
+            >
+              <Input
+                value={form.data.username}
+                onChange={(event) => form.setData("username", event.target.value.toLowerCase())}
+                autoComplete="username"
+                placeholder="contoh: admin.ragil"
+              />
+            </Field>
+
+            <Field
+              id="user-password"
+              label={editing ? "Password baru" : "Password awal"}
+              required={!editing}
+              error={form.errors.password}
+              hint={editing ? "Kosongkan bila tidak diubah." : undefined}
+            >
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="text"
+                  value={form.data.password}
+                  onChange={(event) => form.setData("password", event.target.value)}
+                  autoComplete="new-password"
+                  placeholder={editing ? "Kosongkan jika tidak diubah" : "Tulis manual atau Generate"}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="shrink-0"
+                  onClick={() => {
+                    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+                    const array = new Uint32Array(14)
+                    crypto.getRandomValues(array)
+                    const generated = Array.from(array, (n) => charset[n % charset.length]).join("")
+                    form.setData("password", generated)
+                    form.setData("password_confirmation", generated)
+                  }}
+                >
+                  <Icon name="sparkles" className="size-3.5" aria-hidden="true" />
+                  Generate
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label="Salin password"
+                  title="Salin password"
+                  onClick={async () => {
+                    if (!form.data.password) return
+                    try {
+                      await navigator.clipboard.writeText(form.data.password)
+                      setCopied(true)
+                      window.setTimeout(() => setCopied(false), 1500)
+                    } catch {
+                      // clipboard ditolak browser: biarkan manual
+                    }
+                  }}
+                >
+                  <Icon name={copied ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
+                </Button>
+              </div>
+            </Field>
+
+            <Field
+              id="user-password-confirmation"
+              label={editing ? "Ulangi password baru" : "Ulangi password awal"}
+              required={!editing}
+              error={form.errors.password_confirmation}
+            >
+              <Input
+                type="password"
+                value={form.data.password_confirmation}
+                onChange={(event) => form.setData("password_confirmation", event.target.value)}
+                autoComplete="new-password"
+              />
+            </Field>
+
+            <Field
+              id="user-status"
+              label="Status"
+              required
+              error={form.errors.status}
+              hint="Nonaktif berarti tidak bisa login. Semua admin aktif punya akses panel yang sama."
+            >
+              <Select
+                value={form.data.status}
+                onChange={(event) => form.setData("status", event.target.value)}
+                disabled={isSelf}
+              >
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+              </Select>
+            </Field>
+          </FieldGrid>
+        </SectionCard>
+
       </form>
 
       {editing && user && !isSelf ? (

@@ -1,9 +1,9 @@
 import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { HintTip } from "@/components/admin/ui/hint-tip"
-import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
@@ -129,76 +129,64 @@ export default function CodSettingsEdit({
       <form id="cod-settings-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        {/* Table-first: satu baris per pengaturan */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Status layanan COD
-                </th>
-                <td className="px-4 py-2.5">
-                  <CheckboxField
-                    id="cod-enabled"
-                    checked={form.data.enabled}
-                    onChange={(checked) => form.setData("enabled", checked)}
-                    label="Layanan COD aktif"
-                    standalone
-                    disabled={terkunci}
-                  />
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  <HintTip
-                    label="Biaya penanganan (handling fee)"
-                    hint="Nilai biaya (%). Rumus: biaya COD = persen x (subtotal produk setelah voucher + TOTAL ongkos kirim yang dibayar pembeli, SUDAH TERMASUK asuransi). Subtotal produk memakai harga setelah diskon (flash sale atau diskon biasa) dan voucher. Contoh: harga produk Rp 100.000, diskon Rp 10.000, total ongkos kirim Rp 21.000 (termasuk asuransi). Biaya COD = 4% x (Rp 90.000 + Rp 21.000) = Rp 4.440."
-                  />
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="fee_value"
-                    type="number"
-                    aria-label="Nilai biaya penanganan COD dalam persen"
-                    min={0}
-                    step="0.01"
-                    value={form.data.fee_value}
-                    onChange={(event) => form.setData("fee_value", event.target.value)}
-                    className="h-8 w-44 text-xs"
-                    disabled={terkunci}
-                    required
-                  />
-                  {form.errors.fee_value ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.fee_value}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Limit transaksi
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    id="max_order_amount"
-                    type="number"
-                    aria-label="Limit nilai transaksi COD"
-                    min={0}
-                    step="1"
-                    value={form.data.max_order_amount}
-                    onChange={(event) => form.setData("max_order_amount", event.target.value)}
-                    className="h-8 w-44 text-xs"
-                    disabled={terkunci}
-                    placeholder="Contoh: 5000000"
-                  />
-                  {form.errors.max_order_amount ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.max_order_amount}</p>
-                  ) : null}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SectionCard
+          title="Setelan COD"
+          description="Status layanan, biaya penanganan, dan batas nilai transaksi COD."
+        >
+          <FieldGrid>
+            <Field
+              id="cod-enabled"
+              label="Status layanan COD"
+              hint="Bila dimatikan, metode COD tidak muncul saat checkout."
+            >
+              <CheckboxField
+                id="cod-enabled"
+                checked={form.data.enabled}
+                onChange={(checked) => form.setData("enabled", checked)}
+                label="Layanan COD aktif"
+                standalone
+                disabled={terkunci}
+              />
+            </Field>
 
+            <Field
+              id="fee_value"
+              label="Biaya penanganan (%)"
+              required
+              error={form.errors.fee_value}
+              hint="Biaya COD = persen x (subtotal produk setelah voucher + total ongkir yang dibayar pembeli, termasuk asuransi)."
+            >
+              <Input
+                type="number"
+                aria-label="Nilai biaya penanganan COD dalam persen"
+                min={0}
+                step="0.01"
+                value={form.data.fee_value}
+                onChange={(event) => form.setData("fee_value", event.target.value)}
+                disabled={terkunci}
+                required
+              />
+            </Field>
+
+            <Field
+              id="max_order_amount"
+              label="Limit transaksi"
+              error={form.errors.max_order_amount}
+              hint="Nilai transaksi COD tertinggi yang masih dilayani."
+            >
+              <Input
+                type="number"
+                aria-label="Limit nilai transaksi COD"
+                min={0}
+                step="1"
+                value={form.data.max_order_amount}
+                onChange={(event) => form.setData("max_order_amount", event.target.value)}
+                disabled={terkunci}
+                placeholder="Contoh: 5000000"
+              />
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
       </form>
     </AdminLayout>

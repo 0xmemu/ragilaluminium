@@ -5,7 +5,7 @@ import { MediaGallerySection, type MediaGalleryItem } from "@/components/admin/m
 import type { PickedMedia } from "@/components/admin/media-picker"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -226,128 +226,114 @@ export default function ModelProductForm({
       <form id="model-product-form" className="w-full space-y-5" onSubmit={jagaGerbang(gerbang, form, submit)}>
         <FormErrorSummary errors={form.errors} />
 
-        <div className="rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Nama Model Produk <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.name}
-                    onChange={(event) => {
-                      const name = event.target.value
-                      form.setData((prev) => ({
-                        ...prev,
-                        name,
-                        ...(!editing && !codeTouched.current
-                          ? { product_model: buildModelCode(name, selectedCategoryLabel) }
-                          : {}),
-                      }))
-                    }}
-                    placeholder="Contoh: Jendela Jungkit Satu Daun"
-                    className="h-8 text-xs"
-                  />
-                  {form.errors.name ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
-                  ) : (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Pakai nama yang tampil di toko, lengkap dan mudah dibaca pembeli.
-                      Contoh: Jendela Jungkit Satu Daun.
-                    </p>
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kode Model Produk
-                </th>
-                <td className="px-4 py-2.5">
-                  <Input
-                    value={form.data.product_model ?? ""}
-                    onChange={(event) => {
-                      codeTouched.current = true
-                      form.setData(
-                        "product_model",
-                        event.target.value.toUpperCase().replace(/[-\s]+/g, "_"),
-                      )
-                    }}
-                    placeholder="Terisi otomatis dari nama"
-                    className="h-8 w-80 font-mono text-xs"
-                    disabled={editing}
-                  />
-                  {form.errors.product_model ? <p className="mt-1 text-xs text-destructive">{form.errors.product_model}</p> : null}
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {editing
-                      ? "Kode model terkunci setelah dibuat agar tidak memutus tautan produk katalog."
-                      : "Terisi otomatis dari nama tanpa kata kategori, dan tetap bisa Anda ubah. Pilih sesingkat mungkin, satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM."}
-                  </p>
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kategori katalog <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Select
-                    value={form.data.product_category}
-                    onChange={(event) => {
-                      const productCategory = event.target.value
-                      const label =
-                        categories.find((option) => option.value === productCategory)?.label ?? ""
-                      form.setData((prev) => ({
-                        ...prev,
-                        product_category: productCategory,
-                        ...(!editing && !codeTouched.current
-                          ? { product_model: buildModelCode(prev.name, label) }
-                          : {}),
-                      }))
-                    }}
-                    className="h-8 w-72 text-xs"
-                  >
-                    <option value="">Pilih kategori</option>
-                    {categories.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </Select>
-                  {form.errors.product_category ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.product_category}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Status <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <Select value={form.data.status} onChange={(event) => form.setData("status", event.target.value)} className="h-8 w-48 text-xs">
-                    {statuses.map((status) => (
-                      <option key={status} value={status}>{status === "draft" ? "Nonaktif" : "Aktif"}</option>
-                    ))}
-                  </Select>
-                  {form.errors.status ? <p className="mt-1 text-xs text-destructive">{form.errors.status}</p> : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Deskripsi model</th>
-                <td className="px-4 py-2.5">
-                  <Textarea
-                    rows={3}
-                    value={form.data.description}
-                    onChange={(event) => form.setData("description", event.target.value)}
-                    className="text-xs"
-                    placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar."
-                  />
-                  {form.errors.description ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
-                  ) : null}
-                </td>
-              </tr>
+        <SectionCard
+          title="Identitas model"
+          description="Nama tampilan, kode internal, kategori katalog, dan deskripsi model."
+        >
+          <FieldGrid>
+            <Field
+              id="model-name"
+              label="Nama Model Produk"
+              required
+              error={form.errors.name}
+              hint="Pakai nama yang tampil di toko, lengkap dan mudah dibaca pembeli. Contoh: Jendela Jungkit Satu Daun."
+              className="sm:col-span-2"
+            >
+              <Input
+                value={form.data.name}
+                onChange={(event) => {
+                  const name = event.target.value
+                  form.setData((prev) => ({
+                    ...prev,
+                    name,
+                    ...(!editing && !codeTouched.current
+                      ? { product_model: buildModelCode(name, selectedCategoryLabel) }
+                      : {}),
+                  }))
+                }}
+                placeholder="Contoh: Jendela Jungkit Satu Daun"
+              />
+            </Field>
 
-            </tbody>
-          </table>
-        </div>
+            <Field
+              id="model-code"
+              label="Kode Model Produk"
+              error={form.errors.product_model}
+              hint={
+                editing
+                  ? "Kode model terkunci setelah dibuat agar tidak memutus tautan produk katalog."
+                  : "Terisi otomatis dari nama tanpa kata kategori, dan tetap bisa Anda ubah. Pilih sesingkat mungkin, satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM."
+              }
+            >
+              <Input
+                value={form.data.product_model ?? ""}
+                onChange={(event) => {
+                  codeTouched.current = true
+                  form.setData(
+                    "product_model",
+                    event.target.value.toUpperCase().replace(/[-\s]+/g, "_"),
+                  )
+                }}
+                placeholder="Terisi otomatis dari nama"
+                className="font-mono"
+                disabled={editing}
+              />
+            </Field>
+
+            <Field
+              id="model-category"
+              label="Kategori katalog"
+              required
+              error={form.errors.product_category}
+            >
+              <Select
+                value={form.data.product_category}
+                onChange={(event) => {
+                  const productCategory = event.target.value
+                  const label =
+                    categories.find((option) => option.value === productCategory)?.label ?? ""
+                  form.setData((prev) => ({
+                    ...prev,
+                    product_category: productCategory,
+                    ...(!editing && !codeTouched.current
+                      ? { product_model: buildModelCode(prev.name, label) }
+                      : {}),
+                  }))
+                }}
+              >
+                <option value="">Pilih kategori</option>
+                {categories.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field id="model-status" label="Status" required error={form.errors.status}>
+              <Select
+                value={form.data.status}
+                onChange={(event) => form.setData("status", event.target.value)}
+              >
+                {statuses.map((status) => (
+                  <option key={status} value={status}>{status === "draft" ? "Nonaktif" : "Aktif"}</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              id="model-description"
+              label="Deskripsi model"
+              error={form.errors.description}
+              className="sm:col-span-2"
+            >
+              <Textarea
+                rows={3}
+                value={form.data.description}
+                onChange={(event) => form.setData("description", event.target.value)}
+                placeholder="Contoh: Jendela sliding cocok untuk ruangan dengan bukaan lebar."
+              />
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
         <SectionCard
           title="Kata kunci pill"

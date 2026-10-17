@@ -4,7 +4,7 @@ import * as React from "react"
 import { MediaPicker, type PickedMedia } from "@/components/admin/media-picker"
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SearchSelect } from "@/components/admin/ui/search-select"
 import { Textarea } from "@/components/admin/ui/textarea"
@@ -167,167 +167,161 @@ export default function InstallationGalleryForm({
       <form id="installation-project-form" className="w-full space-y-5" onSubmit={jagaGerbang(gerbang, form, submit)}>
         <FormErrorSummary errors={form.errors} />
 
-        {/* Table-first: satu baris per field */}
-        <div className="rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Penempatan <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant={!isStandalone ? "primary" : "secondary"}
-                      size="sm"
-                      className={cn("h-8 text-xs", isStandalone && "opacity-60")}
-                      onClick={() => {
-                        if (isStandalone) {
-                          const first = modelOptions[0]
-                          form.setData({
-                            ...form.data,
-                            model_product_id: first ? first.value : "",
-                            product_id: "",
-                          })
-                        }
-                      }}
-                      disabled={modelOptions.length === 0}
-                    >
-                      <Icon name="layers" className="size-3.5" aria-hidden="true" />
-                      Gunakan model produk
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={isStandalone ? "primary" : "secondary"}
-                      size="sm"
-                      className={cn("h-8 text-xs", !isStandalone && "opacity-60")}
-                      onClick={() => {
+        <SectionCard
+          title="Penempatan media"
+          description="Tentukan grup pemasangan dan keterangan media yang ditampilkan."
+        >
+          <FieldGrid>
+            <Field
+              id="model_product_id"
+              label="Penempatan"
+              required
+              error={form.errors.model_product_id}
+              hint={
+                isStandalone
+                  ? "Grup independen di halaman /hasil-pemasangan, selevel dengan model produk."
+                  : "Media tampil di halaman model yang dipilih."
+              }
+              className="sm:col-span-2"
+            >
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={!isStandalone ? "primary" : "secondary"}
+                    size="sm"
+                    className={cn(isStandalone && "opacity-60")}
+                    onClick={() => {
+                      if (isStandalone) {
+                        const first = modelOptions[0]
                         form.setData({
                           ...form.data,
-                          model_product_id: STANDALONE_OPTION.value,
+                          model_product_id: first ? first.value : "",
                           product_id: "",
                         })
-                      }}
-                    >
-                      <Icon name="cube" className="size-3.5" aria-hidden="true" />
-                      Buat grup baru
-                    </Button>
-                  </div>
+                      }
+                    }}
+                    disabled={modelOptions.length === 0}
+                  >
+                    <Icon name="layers" className="size-3.5" aria-hidden="true" />
+                    Gunakan model produk
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isStandalone ? "primary" : "secondary"}
+                    size="sm"
+                    className={cn(!isStandalone && "opacity-60")}
+                    onClick={() => {
+                      form.setData({
+                        ...form.data,
+                        model_product_id: STANDALONE_OPTION.value,
+                        product_id: "",
+                      })
+                    }}
+                  >
+                    <Icon name="cube" className="size-3.5" aria-hidden="true" />
+                    Buat grup baru
+                  </Button>
+                </div>
 
-                  {!isStandalone ? (
-                    <div className="mt-2">
-                      <SearchSelect
-                        id="model_product_id"
-                        options={modelOptions}
-                        value={form.data.model_product_id}
-                        onValueChange={(value) => {
-                          form.setData({ ...form.data, model_product_id: value, product_id: "" })
-                        }}
-                        placeholder="Pilih model"
-                        searchPlaceholder="Cari model"
-                        emptyMessage="Model tidak ditemukan."
-                        error={form.errors.model_product_id}
-                        className="w-72"
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-2 rounded-md border border-border bg-surface-muted px-3 py-2">
-                      <p className="text-[13px] font-medium text-foreground">Portofolio mandiri</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Grup independen di halaman /hasil-pemasangan, selevel dengan model produk.
-                      </p>
-                    </div>
-                  )}
-                </td>
-              </tr>
-              {!isStandalone ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Tautan produk katalog
-                  </th>
-                  <td className="px-4 py-2.5">
-                    {selectedModel ? (
-                      <>
-                        <SearchSelect
-                          id="product_id"
-                          options={productOptions}
-                          value={form.data.product_id}
-                          onValueChange={(value) => form.setData("product_id", value)}
-                          placeholder={UMUM_OPTION.label}
-                          searchPlaceholder="Cari SKU atau nama produk"
-                          emptyMessage="Produk tidak ditemukan."
-                          error={form.errors.product_id}
-                          className="w-80"
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {isProductLinked
-                            ? "Media tampil di halaman model ini dan di halaman produk tersebut."
-                            : "Biarkan Umum untuk media milik model saja, atau pilih SKU agar media juga tampil di halaman produknya."}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Pilih model produk dahulu.</p>
-                    )}
-                  </td>
-                </tr>
-              ) : null}
-              {isStandalone ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Judul grup <span className="text-destructive">*</span>
-                    <p className="mt-1 text-[11px] font-normal leading-4 text-muted-foreground">
-                      Tampil sebagai nama grup di /hasil-pemasangan.
+                {!isStandalone ? (
+                  <SearchSelect
+                    id="model_product_id"
+                    options={modelOptions}
+                    value={form.data.model_product_id}
+                    onValueChange={(value) => {
+                      form.setData({ ...form.data, model_product_id: value, product_id: "" })
+                    }}
+                    placeholder="Pilih model"
+                    searchPlaceholder="Cari model"
+                    emptyMessage="Model tidak ditemukan."
+                    error={form.errors.model_product_id}
+                  />
+                ) : (
+                  <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
+                    <p className="text-[13px] font-medium text-foreground">Portofolio mandiri</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Grup independen di halaman /hasil-pemasangan, selevel dengan model produk.
                     </p>
-                  </th>
-                  <td className="px-4 py-2.5">
-                    <Input
-                      value={form.data.title}
-                      onChange={(event) => form.setData("title", event.target.value)}
-                      placeholder="contoh: Partisi Kantor Kudus, Kanopi Cafe Semarang"
-                      className="h-8 w-72 text-xs"
-                    />
-                    {form.errors.title ? (
-                      <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>
-                    ) : null}
-                  </td>
-                </tr>
-              ) : null}
-              {!isProductLinked ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                    Keterangan media
-                  </th>
-                  <td className="px-4 py-2.5">
-                    <Textarea
-                      rows={2}
-                      value={form.data.description}
-                      onChange={(event) => form.setData("description", event.target.value)}
-                      placeholder="Keterangan foto pemasangan (opsional)."
-                      className="text-xs"
-                    />
-                    {form.errors.description ? (
-                      <p className="mt-1 text-xs text-destructive">{form.errors.description}</p>
-                    ) : null}
-                  </td>
-                </tr>
-              ) : null}
-              {isProductLinked ? (
-                <tr>
-                  <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">Produk terkait</th>
-                  <td className="px-4 py-2.5">
-                    <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
-                      <p className="text-[13px] font-medium text-foreground">{selectedProduct?.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                )}
+              </div>
+            </Field>
+
+            {!isStandalone ? (
+              <Field
+                id="product_id"
+                label="Tautan produk katalog"
+                error={form.errors.product_id}
+                hint={
+                  isProductLinked
+                    ? "Media tampil di halaman model ini dan di halaman produk tersebut."
+                    : "Biarkan Umum untuk media milik model saja, atau pilih SKU agar media juga tampil di halaman produknya."
+                }
+              >
+                {selectedModel ? (
+                  <SearchSelect
+                    id="product_id"
+                    options={productOptions}
+                    value={form.data.product_id}
+                    onValueChange={(value) => form.setData("product_id", value)}
+                    placeholder={UMUM_OPTION.label}
+                    searchPlaceholder="Cari SKU atau nama produk"
+                    emptyMessage="Produk tidak ditemukan."
+                    error={form.errors.product_id}
+                  />
+                ) : (
+                  <p className="flex h-9 items-center text-xs text-muted-foreground">
+                    Pilih model produk dahulu.
+                  </p>
+                )}
+              </Field>
+            ) : null}
+
+            {isStandalone ? (
+              <Field
+                id="installation-title"
+                label="Judul grup"
+                required
+                error={form.errors.title}
+                hint="Tampil sebagai nama grup di /hasil-pemasangan."
+              >
+                <Input
+                  value={form.data.title}
+                  onChange={(event) => form.setData("title", event.target.value)}
+                  placeholder="contoh: Partisi Kantor Kudus, Kanopi Cafe Semarang"
+                />
+              </Field>
+            ) : null}
+
+            {!isProductLinked ? (
+              <Field
+                id="installation-description"
+                label="Keterangan media"
+                error={form.errors.description}
+                className="sm:col-span-2"
+              >
+                <Textarea
+                  rows={2}
+                  value={form.data.description}
+                  onChange={(event) => form.setData("description", event.target.value)}
+                  placeholder="Keterangan foto pemasangan (opsional)."
+                />
+              </Field>
+            ) : null}
+
+            {isProductLinked ? (
+              <Field id="installation-product" label="Produk terkait" className="sm:col-span-2">
+                <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
+                  <p className="text-[13px] font-medium text-foreground">{selectedProduct?.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Media tersimpan ke produk ini dan otomatis tampil di halaman model serta halaman produk di storefront.
+                  </p>
+                </div>
+              </Field>
+            ) : null}
+          </FieldGrid>
+        </SectionCard>
 
         {/* Media hasil pemasangan */}
         <SectionCard

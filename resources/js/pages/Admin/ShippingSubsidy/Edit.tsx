@@ -1,8 +1,9 @@
 import { Head, useForm } from "@inertiajs/react"
 import * as React from "react"
 
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, FormErrorSummary } from "@/components/admin/ui/field"
+import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { StatusBadge } from "@/components/admin/ui/status-badge"
 import { Icon } from "@/components/shared/icon"
@@ -121,75 +122,68 @@ export default function ShippingSubsidyEdit({
       <form id="subsidy-form" onSubmit={jagaGerbang(gerbang, form, submit)} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        {/* Table-first: satu baris per pengaturan */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Status subsidi ongkir
-                </th>
-                <td className="px-4 py-2.5">
-                  <CheckboxField
-                    id="subsidy-enabled"
-                    checked={form.data.enabled}
-                    onChange={(checked) => form.setData("enabled", checked)}
-                    label="Subsidi ongkir aktif"
-                    standalone
-                    disabled={terkunci}
-                  />
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Persentase subsidi
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      id="subsidy_value"
-                      type="number"
-                      aria-label="Persentase subsidi ongkir"
-                      min={0}
-                      max={100}
-                      step="0.01"
-                      value={subsidyValue}
-                      onChange={(event) => {
-                        setSubsidyValue(event.target.value)
-                        setSubsidyTypeError("")
-                      }}
-                      className={`h-8 w-28 text-xs ${subsidyTypeError ? "border-destructive" : ""}`}
-                      disabled={terkunci}
-                      required
-                    />
-                    <span className="text-xs font-semibold text-muted-foreground">%</span>
-                  </div>
-                  {subsidyTypeError ? (
-                    <p className="mt-1 text-xs text-destructive">{subsidyTypeError}</p>
-                  ) : null}
-                  {form.errors.subsidy_value ? (
-                    <p className="mt-1 text-xs text-destructive">{form.errors.subsidy_value}</p>
-                  ) : null}
-                </td>
-              </tr>
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Kurir terhubung
-                </th>
-                <td className="px-4 py-2.5">
-                  <CheckboxField
-                    id="subsidy-jnt-enabled"
-                    checked={form.data.jnt_enabled}
-                    onChange={(checked) => form.setData("jnt_enabled", checked)}
-                    standalone
-                    disabled={terkunci}
-                    label="J&T Cargo"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SectionCard
+          title="Setelan subsidi ongkir"
+          description="Status subsidi, persentase potongan, dan kurir yang ikut disubsidi."
+        >
+          <FieldGrid>
+            <Field
+              id="subsidy-enabled"
+              label="Status subsidi ongkir"
+              hint="Bila dimatikan, potongan ongkir tidak diberikan saat checkout."
+            >
+              <CheckboxField
+                id="subsidy-enabled"
+                checked={form.data.enabled}
+                onChange={(checked) => form.setData("enabled", checked)}
+                label="Subsidi ongkir aktif"
+                standalone
+                disabled={terkunci}
+              />
+            </Field>
+
+            <Field
+              id="subsidy_value"
+              label="Persentase subsidi"
+              required
+              error={subsidyTypeError || form.errors.subsidy_value}
+              hint="Bagian ongkir yang ditanggung toko, dalam persen."
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  aria-label="Persentase subsidi ongkir"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={subsidyValue}
+                  onChange={(event) => {
+                    setSubsidyValue(event.target.value)
+                    setSubsidyTypeError("")
+                  }}
+                  disabled={terkunci}
+                  required
+                />
+                <span className="text-xs font-semibold text-muted-foreground">%</span>
+              </div>
+            </Field>
+
+            <Field
+              id="subsidy-jnt-enabled"
+              label="Kurir terhubung"
+              hint="Pilih kurir yang ongkirnya ikut disubsidi."
+            >
+              <CheckboxField
+                id="subsidy-jnt-enabled"
+                checked={form.data.jnt_enabled}
+                onChange={(checked) => form.setData("jnt_enabled", checked)}
+                standalone
+                disabled={terkunci}
+                label="J&T Cargo"
+              />
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
       </form>
     </AdminLayout>

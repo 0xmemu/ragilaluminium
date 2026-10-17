@@ -2,16 +2,17 @@ import { Head, Link, useForm } from "@inertiajs/react"
 import { useState } from "react"
 
 import { Alert } from "@/components/admin/ui/alert"
+import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
-import { FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Select } from "@/components/admin/ui/select"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
 import type { SelectOption } from "@/types"
 
-type MediaClass = "internal" | "external" | "invalid"
+type MediaClass = "internal" | "external" | "unreachable" | "invalid"
 
 type PreviewMedia = {
   kolom?: string
@@ -33,6 +34,11 @@ type PreviewPayload = {
   rows?: PreviewRow[]
   total: number
   total_products?: number
+  /** Baris yang dirinci di tabel; pemeriksaan mencakup seluruh baris. */
+  shown_rows?: number
+  media_errors?: string[]
+  media_errors_total?: number
+  media_totals?: Record<MediaClass, number>
   verify_errors: string[]
   verify_warnings?: string[];
   skipped_rows?: number
@@ -44,12 +50,14 @@ type PreviewPayload = {
 const MEDIA_LABEL: Record<MediaClass, string> = {
   internal: "Internal siap",
   external: "Eksternal (akan diunduh)",
+  unreachable: "Tidak bisa diunduh",
   invalid: "Tidak valid",
 }
 
 const MEDIA_CLASS_STYLES: Record<MediaClass, string> = {
   internal: "text-success",
   external: "text-info",
+  unreachable: "text-destructive",
   invalid: "text-destructive",
 }
 
@@ -173,16 +181,21 @@ export default function ImportCreate({
     form.post(submitUrl, { forceFormData: true })
   }
 
-  const totals = preview?.rows
-    ? preview.rows.reduce(
-        (acc, row) => ({
-          internal: acc.internal + (row.media_stats?.internal ?? 0),
-          external: acc.external + (row.media_stats?.external ?? 0),
-          invalid: acc.invalid + (row.media_stats?.invalid ?? 0),
-        }),
-        { internal: 0, external: 0, invalid: 0 },
-      )
+  // Angka ringkasan WAJIB dari server: server memeriksa seluruh baris,
+  // sedangkan tabel di layar hanya menampilkan sebagian.
+  const totals = preview
+    ? (preview.media_totals ?? {
+        internal: 0,
+        external: 0,
+        unreachable: 0,
+        invalid: 0,
+      })
     : null
+
+  const mediaErrorList = preview?.media_errors ?? []
+  const mediaErrorTotal = preview?.media_errors_total ?? mediaErrorList.length
+  // Pemeriksaan menjadi gerbang nyata: ada masalah berarti Mulai Import mati.
+  const blockingIssues = (preview?.verify_errors.length ?? 0) + mediaErrorTotal
 
   return (
     <AdminLayout
@@ -224,7 +237,16 @@ export default function ImportCreate({
               "Periksa file"
             )}
           </Button>
-          <Button type="submit" form="import-form" disabled={!form.data.file || !checked || form.processing}>
+          <Button
+            type="submit"
+            form="import-form"
+            disabled={!form.data.file || !checked || form.processing || blockingIssues > 0}
+            title={
+              blockingIssues > 0
+                ? "Perbaiki masalah hasil Periksa file dulu; impor akan gagal atau menyisakan foto kosong."
+                : undefined
+            }
+          >
             {form.processing ? "Mengunggah..." : "Mulai Import"}
           </Button>
         </div>
@@ -235,93 +257,90 @@ export default function ImportCreate({
       <form id="import-form" onSubmit={submit} className="w-full space-y-5">
         <FormErrorSummary errors={form.errors} />
 
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Tipe import <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
+        <SectionCard
+          title="Berkas impor"
+          description="Pilih jenis impor, saring template bila perlu, lalu unggah berkas katalog."
+        >
+          <FieldGrid>
+            <Field
+              id="import-type"
+              label="Tipe import"
+              required
+              error={form.errors.type}
+              hint="Menentukan format kolom yang dibaca dari berkas."
+            >
+              <Select
+                value={form.data.type}
+                onChange={(event) => { form.setData("type", event.target.value); invalidatePreview() }}
+              >
+                {types.map((type) => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
+              </Select>
+            </Field>
+
+            {form.data.type === "stock_price_update" || form.data.type === "media_update" ? (
+              <Field
+                id="import-download-filter"
+                label="Filter unduhan template"
+                hint="Menyaring isi template update. Unduh tanpa filter berarti seluruh katalog."
+              >
+                <div className="flex flex-wrap items-center gap-2">
                   <Select
-                    value={form.data.type}
-                    onChange={(event) => { form.setData("type", event.target.value); invalidatePreview() }}
-                    className="h-8 text-xs"
+                    value={downloadKategori}
+                    onChange={(event) => setDownloadKategori(event.target.value)}
+                    aria-label="Filter kategori unduhan"
                   >
-                    {types.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
+                    <option value="">Semua kategori</option>
+                    {downloadFilters.kategori.map((v) => (
+                      <option key={v} value={v}>{v}</option>
                     ))}
                   </Select>
-                  {form.errors.type ? <p className="mt-1 text-xs text-destructive">{form.errors.type}</p> : null}
-                </td>
-              </tr>
-              {form.data.type === "stock_price_update" || form.data.type === "media_update" ? (
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  Filter unduhan template
-                </th>
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                      value={downloadKategori}
-                      onChange={(event) => setDownloadKategori(event.target.value)}
-                      className="h-8 w-40 text-xs"
-                      aria-label="Filter kategori unduhan"
-                    >
-                      <option value="">Semua kategori</option>
-                      {downloadFilters.kategori.map((v) => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </Select>
-                    <Select
-                      value={downloadModel}
-                      onChange={(event) => setDownloadModel(event.target.value)}
-                      className="h-8 w-44 text-xs"
-                      aria-label="Filter model unduhan"
-                    >
-                      <option value="">Semua model</option>
-                      {downloadFilters.model.map((v) => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </Select>
-                    <Select
-                      value={downloadSubModel}
-                      onChange={(event) => setDownloadSubModel(event.target.value)}
-                      className="h-8 w-36 text-xs"
-                      aria-label="Filter sub model unduhan"
-                    >
-                      <option value="">Semua sub model</option>
-                      {downloadFilters.sub_model.map((v) => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Filter ini menyaring isi template update. Unduh tanpa filter berarti seluruh katalog.
-                  </p>
-                </td>
-              </tr>
-              ) : null}
-              <tr>
-                <th className="w-64 px-4 py-2.5 text-left align-top text-xs font-semibold">
-                  File katalog <span className="text-destructive">*</span>
-                </th>
-                <td className="px-4 py-2.5">
-                  <FileDropzone
-                    id="import-file"
-                    accept=".xls,.xlsx,.xlsm,.csv"
-                    file={form.data.file}
-                    onFileChange={setFile}
-                    error={form.errors.file}
-                    title="Pilih file katalog"
-                    hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB atau 50.000 baris per berkas. Batas praktis sekitar 30.000 baris (proses sekitar 30 menit), lebih dari itu pecah menjadi beberapa berkas."
-                    maxMb={50}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <Select
+                    value={downloadModel}
+                    onChange={(event) => setDownloadModel(event.target.value)}
+                    aria-label="Filter model unduhan"
+                  >
+                    <option value="">Semua model</option>
+                    {downloadFilters.model.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </Select>
+                  <Select
+                    value={downloadSubModel}
+                    onChange={(event) => setDownloadSubModel(event.target.value)}
+                    aria-label="Filter sub model unduhan"
+                  >
+                    <option value="">Semua sub model</option>
+                    {downloadFilters.sub_model.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </Select>
+                </div>
+              </Field>
+            ) : null}
+
+            <Field
+              id="import-file"
+              label="File katalog"
+              required
+              error={form.errors.file}
+              hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB atau 50.000 baris per berkas. Batas praktis sekitar 30.000 baris (proses sekitar 30 menit), lebih dari itu pecah menjadi beberapa berkas."
+              className="sm:col-span-2"
+            >
+              <FileDropzone
+                id="import-file"
+                accept=".xls,.xlsx,.xlsm,.csv"
+                file={form.data.file}
+                onFileChange={setFile}
+                error={form.errors.file}
+                title="Pilih file katalog"
+                hint="XLS, XLSX, XLSM, atau CSV. Maksimal 50 MB atau 50.000 baris per berkas."
+                maxMb={50}
+              />
+            </Field>
+          </FieldGrid>
+        </SectionCard>
 
         {form.data.file ? (
           <div className="space-y-3">
@@ -341,6 +360,26 @@ export default function ImportCreate({
                 </ul>
               </div>
             ) : null}
+            {preview && mediaErrorTotal > 0 ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                <p className="text-sm font-semibold text-destructive">
+                  Media bermasalah: {mediaErrorTotal} gambar tidak bisa dipakai. Impor dikunci sampai berkas diperbaiki.
+                </p>
+                <ul className="mt-2 max-h-60 space-y-1 overflow-y-auto text-xs text-foreground">
+                  {mediaErrorList.map((err, i) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span className="text-destructive">•</span>
+                      <span className="break-all">{err}</span>
+                    </li>
+                  ))}
+                </ul>
+                {mediaErrorTotal > mediaErrorList.length ? (
+                  <p className="mt-1 text-xs italic text-muted-foreground">
+                    dan {mediaErrorTotal - mediaErrorList.length} masalah media lainnya.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {preview && (preview.verify_warnings ?? []).length > 0 ? (
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-sm font-semibold text-foreground">Catatan pemeriksaan:</p>
@@ -354,7 +393,7 @@ export default function ImportCreate({
                 </ul>
               </div>
             ) : null}
-            {preview && preview.verify_errors.length === 0 ? (
+            {preview && preview.verify_errors.length === 0 && mediaErrorTotal === 0 ? (
               <div className="rounded-lg border border-success/30 bg-success/5 p-3">
                 <p className="text-sm font-semibold text-success">Semua baris lolos pemeriksaan. Mulai Import sudah aktif.</p>
                 {preview.changes && preview.changes.length > 0 ? (
@@ -379,11 +418,23 @@ export default function ImportCreate({
             {preview && totals && preview.rows ? (
               <div className="overflow-hidden rounded-lg border border-border">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-xs">
-                  <span className="font-semibold">{preview.total_products ? `${preview.total_products} produk (${preview.total} baris varian) terbaca` : `${preview.total} baris terbaca`}</span>
+                  <span className="font-semibold">
+                    {preview.total_products
+                      ? `${preview.total_products} produk (${preview.total} baris varian) diperiksa`
+                      : `${preview.total} baris diperiksa`}
+                  </span>
                   <span className="text-success">{totals.internal} gambar internal siap</span>
                   <span className="text-info">{totals.external} gambar eksternal (diunduh saat import)</span>
+                  {(totals.unreachable ?? 0) > 0 ? (
+                    <span className="text-destructive">{totals.unreachable} gambar tidak bisa diunduh</span>
+                  ) : null}
                   {totals.invalid > 0 ? (
                     <span className="text-destructive">{totals.invalid} URL tidak valid</span>
+                  ) : null}
+                  {preview.shown_rows != null && preview.shown_rows < preview.total ? (
+                    <span className="text-muted-foreground">
+                      tabel menampilkan {preview.shown_rows} baris pertama
+                    </span>
                   ) : null}
                 </div>
                 <div className="overflow-x-auto">
