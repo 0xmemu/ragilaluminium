@@ -134,7 +134,10 @@ class ModelProductMediaTest extends TestCase
         ])->assertRedirect(route('admin.model-products.index'));
 
         $model = CmsModelProduct::query()->firstOrFail();
-        $this->assertSame('BOVEN_JUNGKIT_EMPAT_DAUN', $model->product_model);
+        // Kode otomatis membuang kata kategori karena kode selalu berpasangan
+        // dengan kategori (kontrak 2026-10-17): mengulangnya hanya memanjangkan
+        // kode tanpa manfaat.
+        $this->assertSame('JUNGKIT_EMPAT_DAUN', $model->product_model);
         $this->assertSame('Boven Jungkit Empat Daun', $model->name);
     }
     public function test_edit_form_exposes_media_and_gallery_props(): void
