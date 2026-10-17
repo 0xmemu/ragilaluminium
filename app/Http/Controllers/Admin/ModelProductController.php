@@ -86,7 +86,6 @@ class ModelProductController extends Controller
             'storefrontUrl' => null,
             'productsUrl' => null,
             'maxGallery' => CmsModelProduct::MAX_GALLERY,
-            'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
             'submitUrl' => route('admin.model-products.store'),
             'indexUrl' => route('admin.model-products.index'),
@@ -168,7 +167,6 @@ class ModelProductController extends Controller
             'storefrontUrl' => $this->storefrontUrl($modelProduct),
             'productsUrl' => $this->productsUrl($modelProduct),
             'maxGallery' => CmsModelProduct::MAX_GALLERY,
-            'statuses' => CmsModelProduct::STATUSES,
             'categories' => $this->categoryOptions(),
             'submitUrl' => route('admin.model-products.update', $modelProduct),
             'indexUrl' => route('admin.model-products.index'),
@@ -291,12 +289,22 @@ class ModelProductController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'keywords' => ['nullable', 'array', 'max:6'],
             'keywords.*' => ['nullable', 'string', 'max:64'],
-            'status' => ['required', Rule::in(CmsModelProduct::STATUSES)],
+            // Status tidak lagi diisi dari form (kontrak 2026-10-17): model
+            // baru langsung aktif, penonaktifan lewat aksi di daftar. Nilai
+            // tetap diterima bila dikirim langsung, untuk kompatibilitas.
+            'status' => ['nullable', Rule::in(CmsModelProduct::STATUSES)],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'media_show_product_photos' => ['nullable', 'boolean'],
         ], [], ['name' => 'Nama tampilan', 'product_category' => 'Kategori produk']);
 
         $validated['product_category'] = $validated['product_category'] ?: null;
+
+        // Model baru langsung aktif; saat edit nilai lama dipertahankan karena
+        // status diubah lewat aksi Aktifkan/Nonaktifkan di daftar model.
+        $validated['status'] = $validated['status']
+            ?? $existing?->status
+            ?? 'active';
+
         // Kontrak 2026-09-11 (commit bcae2a6): halaman tambah model produk
         // berarti MENAMBAH, bukan memilih kode model katalog yang sudah ada.
         // Kode dibuat otomatis dari nama saat create; saat edit kode lama

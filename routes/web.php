@@ -207,6 +207,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('kelola/kategori', [CategoryController::class, 'store'])->name('categories.store');
     Route::get('kelola/kategori/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('kelola/kategori/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::post('kelola/kategori/{category}/activate', [CategoryController::class, 'activate'])->name('categories.activate');
+    Route::post('kelola/kategori/{category}/deactivate', [CategoryController::class, 'deactivate'])->name('categories.deactivate');
     Route::delete('kelola/kategori/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::post('kelola/produk/{product}/archive', [AdminProductController::class, 'archive'])->name('products.archive');
     Route::post('kelola/produk/{product}/unarchive', [AdminProductController::class, 'unarchive'])->name('products.unarchive');

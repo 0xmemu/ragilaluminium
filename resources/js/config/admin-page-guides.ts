@@ -173,12 +173,14 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Tambah model produk lewat tombol di kanan atas.",
       "Isi Nama Model Produk dengan nama lengkap yang dilihat pembeli, lalu pilih kategori katalognya.",
-      "Periksa Kode Model Produk: terisi otomatis dari nama tanpa kata kategori, dan tetap bisa diubah.",
+      "Isi Kode Model Produk sendiri. Kode wajib memakai kata yang ada di nama model, dan angka boleh menggantikan kata bilangan (Satu menjadi 1).",
       "Lengkapi media dan kata kunci pill agar kartu model tampil rapi di toko.",
     ],
     notes: [
       "Nama model wajib memakai nama yang tampil di toko supaya pembeli langsung mengenalinya. Contoh: Jendela Jungkit Satu Daun, bukan Jungkit.",
       "Kode model sebaiknya satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM. Kata kategori tidak perlu diulang karena kode sudah berpasangan dengan kategori.",
+      "Kode yang tidak berasal dari nama model ditandai merah dan menahan simpan, supaya salah ketik tidak lolos. Contoh: nama Jendela Jungkit Satu Daun lalu kode JUNGGKIT.",
+      "Model baru langsung aktif. Untuk menonaktifkan, pakai aksi Nonaktifkan di daftar model produk.",
       "Kode model terkunci setelah disimpan agar tautan produk katalog tidak patah.",
       "Model tanpa produk aktif tidak tampil di storefront.",
     ],
@@ -188,15 +190,16 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     summary: "Membuat wadah model baru beserta nama tampilan dan kodenya.",
     steps: [
       "Tulis Nama Model Produk selengkap nama yang tampil di toko, misalnya Jendela Jungkit Satu Daun.",
-      "Pilih Kategori katalog. Kode model menyesuaikan dan membuang kata kategori.",
-      "Biarkan Kode Model Produk apa adanya bila sudah sesuai, atau ubah sendiri bila perlu lebih singkat.",
-      "Pilih Status, lalu lengkapi media dan kata kunci pill.",
+      "Pilih Kategori katalog.",
+      "Isi Kode Model Produk. Bagian kode yang tidak ada di nama model akan ditandai merah.",
+      "Lengkapi media dan kata kunci pill.",
       "Tekan Simpan model.",
     ],
     notes: [
-      "Kode model dibuat otomatis dari nama dan bisa diubah sebelum disimpan. Setelah tersimpan, kode terkunci.",
-      "Contoh pemetaan: Jendela Jungkit Satu Daun di kategori Jendela menjadi JUNGKIT_SATU_DAUN.",
-      "Kata kategori tidak ikut masuk ke kode karena kode selalu berpasangan dengan kategori.",
+      "Kode model diisi admin, bukan dibuat otomatis. Setelah tersimpan, kode terkunci agar tautan produk tidak patah.",
+      "Contoh yang benar: nama Jendela Jungkit Satu Daun, kode JUNGKIT_SATU_DAUN atau JUNGKIT_1_DAUN.",
+      "Kata kategori tidak perlu diulang di kode karena kode selalu berpasangan dengan kategori.",
+      "Model baru langsung aktif. Menonaktifkan dilakukan dari daftar model produk.",
     ],
   },
   "admin.model-products.edit": {
@@ -220,6 +223,7 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Tambah kategori lewat tombol di kanan atas.",
       "Klik nama kategori untuk mengubah data, slug URL, dan statusnya.",
       "Gunakan filter status untuk melihat kategori aktif atau nonaktif saja.",
+      "Aktifkan atau Nonaktifkan kategori lewat menu aksi di baris kategori.",
     ],
     notes: [
       "Kategori baru otomatis masuk ke urutan paling belakang daftar.",
@@ -232,11 +236,11 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Tulis Nama Kategori dengan nama yang tampil di menu navigasi toko.",
       "Biarkan Slug URL terisi otomatis dari nama, atau ubah sendiri bila perlu.",
-      "Tentukan Status Kategori: aktif berarti tampil di navigasi dan katalog publik.",
-      "Tekan Tambah.",
+      "Tekan Tambah. Kategori baru langsung aktif.",
     ],
     notes: [
       "Kode kategori dibuat otomatis dari nama dan tidak perlu diisi.",
+      "Kategori baru langsung aktif. Untuk menyembunyikannya, pakai aksi Nonaktifkan di daftar kategori.",
     ],
   },
   "admin.categories.edit": {
@@ -245,11 +249,12 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
     steps: [
       "Ubah Nama Kategori bila perlu. Slug URL ikut menyesuaikan selama belum Anda ubah sendiri.",
       "Periksa Slug URL: ini alamat halaman kategori di toko.",
-      "Atur Status Kategori lalu tekan Simpan.",
+      "Tekan Simpan. Status tidak diubah dari form ini.",
     ],
     notes: [
       "Kode kategori terkunci bila sudah dipakai produk, karena menjadi awalan SKU produk di dalamnya.",
       "Mengubah slug mengubah alamat halaman kategori di toko.",
+      "Status kategori diubah lewat aksi Aktifkan atau Nonaktifkan di daftar kategori, bukan dari form ini.",
     ],
   },
   "admin.media.library": {

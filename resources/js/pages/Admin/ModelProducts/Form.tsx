@@ -62,22 +62,60 @@ const PILL_PRESETS: string[] = [
 ]
 
 /**
- * Kode model dari nama tampilan. Kata kategori dibuang lebih dulu karena kode
- * selalu berpasangan dengan kategori, jadi "Jendela Jungkit Satu Daun" di
- * kategori Jendela menjadi JUNGKIT_SATU_DAUN, bukan JENDELA_JUNGKIT_SATU_DAUN.
+ * Angka yang boleh menggantikan kata bilangan di kode. Admin kadang menulis
+ * "JUNGKIT_1_DAUN" alih-alih "JUNGKIT_SATU_DAUN"; keduanya benar.
  */
-function buildModelCode(name: string, categoryLabel: string): string {
-  const categoryWords = new Set(
-    categoryLabel.toLowerCase().split(/\s+/).filter(Boolean),
+const ANGKA_KE_KATA: Record<string, string> = {
+  "1": "satu",
+  "2": "dua",
+  "3": "tiga",
+  "4": "empat",
+  "5": "lima",
+  "6": "enam",
+  "7": "tujuh",
+  "8": "delapan",
+  "9": "sembilan",
+  "10": "sepuluh",
+}
+
+/**
+ * Pendeteksi salah ketik kode model. Admin mengisi kode sendiri, jadi kode
+ * harus tetap terbaca dari nama model: setiap bagian kode wajib berasal dari
+ * kata di nama. Contoh yang ditolak: nama "Jendela Jungkit Satu Daun" lalu
+ * kode JUNGGKIT (huruf G berlebih), karena JUNGGKIT tidak ada di nama.
+ *
+ * Yang tetap diterima:
+ * - kata kategori ikut ditulis (JENDELA_JUNGKIT), karena memang ada di nama;
+ * - angka menggantikan kata bilangan (JUNGKIT_1_DAUN untuk "Satu");
+ * - urutan kata berbeda, karena kode tidak dituntut sama urutannya.
+ *
+ * @returns bagian kode yang tidak dikenal, atau null bila semuanya cocok.
+ */
+function cariBagianKodeAsing(kode: string, nama: string): string | null {
+  const namaKata = new Set(
+    nama
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean),
   )
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  const kept = words.filter((word) => !categoryWords.has(word.toLowerCase()))
-  const base = kept.length > 0 ? kept : words
-  return base
-    .join("_")
+  if (namaKata.size === 0) return null
+
+  const bagian = kode
     .toUpperCase()
-    .replace(/[^A-Z0-9_]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .split("_")
+    .map((row) => row.trim())
+    .filter(Boolean)
+
+  for (const potong of bagian) {
+    const kecil = potong.toLowerCase()
+    if (namaKata.has(kecil)) continue
+    // Angka boleh menggantikan kata bilangan di nama.
+    const kataBilangan = ANGKA_KE_KATA[kecil]
+    if (kataBilangan && namaKata.has(kataBilangan)) continue
+    return potong
+  }
+
+  return null
 }
 
 function wordCount(value: string): number {
@@ -92,7 +130,6 @@ export default function ModelProductForm({
   stats,
   storefrontUrl,
   productsUrl,
-  statuses,
   categories,
   defaultHighlights = [],
   submitUrl,
@@ -106,7 +143,6 @@ export default function ModelProductForm({
   stats?: ModelStats | null
   storefrontUrl?: string | null
   productsUrl?: string | null
-  statuses: string[]
   categories: Array<{ value: string; label: string }>
   /** Pill bawaan sistem saat kata kunci admin kosong (fallback storefront). */
   defaultHighlights?: string[]
@@ -125,15 +161,14 @@ export default function ModelProductForm({
     media_show_product_photos: modelProduct?.media_show_product_photos ?? true,
     description: modelProduct?.description ?? "",
     keywords: modelProduct?.keywords ?? [],
-    status: modelProduct?.status ?? "draft",
+    // Model baru langsung aktif. Menonaktifkan dilakukan dari daftar model.
+    status: modelProduct?.status ?? "active",
   })
 
-  // Kode mengikuti nama selama admin belum menyentuh kolomnya. Di halaman edit
-  // kode terkunci karena sudah dipakai produk katalog.
-  const codeTouched = React.useRef(editing)
-
-  const selectedCategoryLabel =
-    categories.find((option) => option.value === form.data.product_category)?.label ?? ""
+  // Kode diisi admin sendiri, bukan diturunkan otomatis. Yang menjaga tetap
+  // adalah pendeteksi di bawah: bagian kode yang tidak ada di nama ditandai
+  // merah dan menahan simpan.
+  const kodeAsing = cariBagianKodeAsing(form.data.product_model ?? "", form.data.name)
 
   // Satu daftar berurutan (pola seksi Foto Produk): pilihan pertama jadi
   // gambar utama, pilihan berikutnya mengisi galeri. Server menyimpan urutan
@@ -191,13 +226,20 @@ export default function ModelProductForm({
     fields: {
       name: "Nama Model Produk",
       product_category: "Kategori katalog",
-      status: "Status",
     },
     requireChange: editing,
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
+    // Kode diisi admin, jadi salah ketik tidak boleh lolos diam-diam.
+    if (!editing && kodeAsing) {
+      form.setError(
+        "product_model",
+        `Bagian "${kodeAsing}" tidak ada di nama model. Periksa salah ketik, atau pakai kata yang ada di nama.`,
+      )
+      return
+    }
     if (editing) form.put(submitUrl)
     else form.post(submitUrl)
   }
@@ -241,16 +283,7 @@ export default function ModelProductForm({
             >
               <Input
                 value={form.data.name}
-                onChange={(event) => {
-                  const name = event.target.value
-                  form.setData((prev) => ({
-                    ...prev,
-                    name,
-                    ...(!editing && !codeTouched.current
-                      ? { product_model: buildModelCode(name, selectedCategoryLabel) }
-                      : {}),
-                  }))
-                }}
+                onChange={(event) => form.setData("name", event.target.value)}
                 placeholder="Contoh: Jendela Jungkit Satu Daun"
               />
             </Field>
@@ -258,23 +291,28 @@ export default function ModelProductForm({
             <Field
               id="model-code"
               label="Kode Model Produk"
-              error={form.errors.product_model}
+              error={
+                form.errors.product_model
+                  ? form.errors.product_model
+                  : kodeAsing
+                    ? `Bagian "${kodeAsing}" tidak ada di nama model. Periksa salah ketik, atau pakai kata yang ada di nama.`
+                    : undefined
+              }
               hint={
                 editing
                   ? "Kode model terkunci setelah dibuat agar tidak memutus tautan produk katalog."
-                  : "Terisi otomatis dari nama tanpa kata kategori, dan tetap bisa Anda ubah. Pilih sesingkat mungkin, satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM."
+                  : "Isi sendiri. Wajib memakai kata yang ada di nama model, dan angka boleh menggantikan kata bilangan (Satu menjadi 1). Pilih sesingkat mungkin: JUNGKIT."
               }
             >
               <Input
                 value={form.data.product_model ?? ""}
-                onChange={(event) => {
-                  codeTouched.current = true
+                onChange={(event) =>
                   form.setData(
                     "product_model",
                     event.target.value.toUpperCase().replace(/[-\s]+/g, "_"),
                   )
-                }}
-                placeholder="Terisi otomatis dari nama"
+                }
+                placeholder="Contoh: JUNGKIT_SATU_DAUN"
                 className="font-mono"
                 disabled={editing}
               />
@@ -288,33 +326,11 @@ export default function ModelProductForm({
             >
               <Select
                 value={form.data.product_category}
-                onChange={(event) => {
-                  const productCategory = event.target.value
-                  const label =
-                    categories.find((option) => option.value === productCategory)?.label ?? ""
-                  form.setData((prev) => ({
-                    ...prev,
-                    product_category: productCategory,
-                    ...(!editing && !codeTouched.current
-                      ? { product_model: buildModelCode(prev.name, label) }
-                      : {}),
-                  }))
-                }}
+                onChange={(event) => form.setData("product_category", event.target.value)}
               >
                 <option value="">Pilih kategori</option>
                 {categories.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field id="model-status" label="Status" required error={form.errors.status}>
-              <Select
-                value={form.data.status}
-                onChange={(event) => form.setData("status", event.target.value)}
-              >
-                {statuses.map((status) => (
-                  <option key={status} value={status}>{status === "draft" ? "Nonaktif" : "Aktif"}</option>
                 ))}
               </Select>
             </Field>

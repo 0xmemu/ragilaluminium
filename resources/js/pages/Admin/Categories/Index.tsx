@@ -36,6 +36,8 @@ interface Category {
   products_count: number
   models_count?: number
   editUrl: string
+  activateUrl: string
+  deactivateUrl: string
 }
 
 interface FilterOption {
@@ -243,6 +245,45 @@ export default function CategoriesIndex({
                           <Link href={c.editUrl}>Edit</Link>
                         </Button>
                         <RowActionsMenu>
+                          {c.is_active ? (
+                            <ConfirmAction
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="w-full px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                                  disabled={busy === c.id}
+                                >
+                                  Nonaktifkan
+                                </button>
+                              }
+                              title="Nonaktifkan kategori?"
+                              description="Kategori disembunyikan dari navigasi toko dan katalog publik. Produknya tidak dihapus dan bisa ditampilkan lagi kapan saja."
+                              confirmLabel="Nonaktifkan"
+                              processing={busy === c.id}
+                              onConfirm={() => {
+                                setBusy(c.id)
+                                router.post(c.deactivateUrl, {}, {
+                                  preserveScroll: true,
+                                  onFinish: () => setBusy(null),
+                                })
+                              }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="w-full px-2 py-1.5 text-left text-xs text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busy === c.id}
+                              onClick={() => {
+                                setBusy(c.id)
+                                router.post(c.activateUrl, {}, {
+                                  preserveScroll: true,
+                                  onFinish: () => setBusy(null),
+                                })
+                              }}
+                            >
+                              Aktifkan
+                            </button>
+                          )}
                           <ConfirmAction
                             trigger={
                               <button

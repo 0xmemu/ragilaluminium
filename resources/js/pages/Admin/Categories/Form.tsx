@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { SectionCard } from "@/components/admin/section-card"
 import { Button } from "@/components/admin/ui/button"
-import { CheckboxField, Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
+import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import AdminLayout from "@/layouts/admin-layout"
@@ -46,6 +46,7 @@ export default function CategoryForm({
     code: category?.code ?? "",
     name: category?.name ?? "",
     slug: category?.slug ?? "",
+    // Kategori baru langsung aktif. Menonaktifkan dilakukan dari daftar kategori.
     is_active: category?.is_active ?? true,
   })
 
@@ -175,19 +176,6 @@ export default function CategoryForm({
               </div>
             </Field>
 
-            <Field
-              id="cat-is-active"
-              label="Status Kategori"
-              hint="Bila dinonaktifkan, kategori disembunyikan dari navigasi toko dan katalog publik."
-            >
-              <CheckboxField
-                id="cat-is-active"
-                checked={form.data.is_active}
-                onChange={(checked) => form.setData("is_active", checked)}
-                label="Aktif"
-                standalone
-              />
-            </Field>
           </FieldGrid>
         </SectionCard>
 

@@ -70,6 +70,67 @@ class CategoryProductRelationTest extends TestCase
         $this->assertSame(1, $category->products()->count());
     }
 
+
+    public function test_kategori_baru_langsung_aktif(): void
+    {
+        $admin = \App\Models\User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.categories.store'), [
+                'name' => 'Kategori Baru Uji',
+            ])
+            ->assertRedirect(route('admin.categories.index'));
+
+        $kategori = \App\Models\Category::where('name', 'Kategori Baru Uji')->firstOrFail();
+        $this->assertTrue((bool) $kategori->is_active, 'kategori baru wajib langsung aktif');
+    }
+
+    public function test_kategori_bisa_dinonaktifkan_dan_diaktifkan_dari_daftar(): void
+    {
+        $admin = \App\Models\User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $kategori = \App\Models\Category::create([
+            'code' => 'UJI_STATUS',
+            'name' => 'Kategori Status Uji',
+            'slug' => 'kategori-status-uji',
+            'sort_order' => 90,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.categories.deactivate', $kategori))
+            ->assertRedirect();
+        $this->assertFalse((bool) $kategori->fresh()->is_active);
+
+        $this->actingAs($admin)
+            ->post(route('admin.categories.activate', $kategori))
+            ->assertRedirect();
+        $this->assertTrue((bool) $kategori->fresh()->is_active);
+    }
+
+    public function test_sunting_kategori_tidak_mengubah_status(): void
+    {
+        $admin = \App\Models\User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $kategori = \App\Models\Category::create([
+            'code' => 'UJI_SUNTING',
+            'name' => 'Kategori Sunting Uji',
+            'slug' => 'kategori-sunting-uji',
+            'sort_order' => 91,
+            'is_active' => false,
+        ]);
+
+        // Form tidak lagi mengirim is_active; status lama harus bertahan.
+        $this->actingAs($admin)
+            ->put(route('admin.categories.update', $kategori), [
+                'name' => 'Kategori Sunting Uji Diubah',
+            ])
+            ->assertRedirect(route('admin.categories.index'));
+
+        $this->assertFalse(
+            (bool) $kategori->fresh()->is_active,
+            'menyunting kategori tidak boleh mengaktifkannya diam-diam'
+        );
+    }
+
     public function test_destroy_blocks_category_that_still_has_products(): void
     {
         $category = $this->createCategory('Kusen Terpakai');

@@ -52,29 +52,43 @@ describe("form kategori: slug mengikuti nama sampai admin menyentuhnya", () => {
   })
 })
 
-describe("form model produk: kode otomatis tanpa kata kategori", () => {
+describe("form model produk: kode diisi admin dengan pendeteksi salah ketik", () => {
   const sumber = baca("resources/js/pages/Admin/ModelProducts/Form.tsx")
 
-  it("membuang kata kategori dari kode yang dibentuk", () => {
-    expect(sumber).toContain("buildModelCode")
-    expect(sumber).toContain("categoryWords")
+  it("memakai pendeteksi bagian kode asing, bukan pengisi otomatis", () => {
+    expect(sumber).toContain("cariBagianKodeAsing")
+    // Auto-fill dari nama sudah dihapus atas keputusan owner 2026-10-17.
+    expect(sumber).not.toContain("buildModelCode")
   })
 
-  it("kode ikut berubah saat nama atau kategori berubah, selama belum disentuh", () => {
-    expect(sumber).toContain("codeTouched")
-    expect(sumber).toMatch(/!codeTouched\.current/)
+  it("menolak simpan bila ada bagian kode yang tidak ada di nama", () => {
+    expect(sumber).toMatch(/if \(!editing && kodeAsing\)/)
   })
 
-  it("kode tetap bisa diubah admin di halaman tambah", () => {
-    expect(sumber).toMatch(/codeTouched\.current\s*=\s*true/)
-  })
-
-  it("keterangan menganjurkan kode satu kata", () => {
-    expect(sumber).toContain("JUNGKIT")
+  it("angka boleh menggantikan kata bilangan", () => {
+    expect(sumber).toContain("ANGKA_KE_KATA")
+    expect(sumber).toContain('"1": "satu"')
   })
 
   it("nama model diminta memakai nama yang tampil di toko", () => {
     expect(sumber).toContain("nama yang tampil di toko")
+  })
+
+  it("tidak lagi menampilkan pilihan status di form", () => {
+    expect(sumber).not.toContain('id="model-status"')
+    expect(sumber).toContain('status: modelProduct?.status ?? "active"')
+  })
+})
+
+describe("form kategori tidak lagi punya pilihan status", () => {
+  const sumber = baca("resources/js/pages/Admin/Categories/Form.tsx")
+
+  it("tidak menampilkan kotak centang Aktif di form", () => {
+    expect(sumber).not.toContain('id="cat-is-active"')
+  })
+
+  it("kategori baru tetap dikirim aktif", () => {
+    expect(sumber).toContain("is_active: category?.is_active ?? true")
   })
 })
 

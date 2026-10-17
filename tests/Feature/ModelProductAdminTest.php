@@ -381,6 +381,55 @@ class ModelProductAdminTest extends TestCase
         ]);
     }
 
+
+    /**
+     * Model baru tidak lagi punya pilihan status di form (kontrak 2026-10-17):
+     * form tidak mengirim status, dan server wajib membuatnya aktif.
+     */
+    public function test_model_baru_tanpa_status_langsung_aktif(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.store'), [
+                'name' => 'Jendela Jungkit Tanpa Status',
+                'product_category' => 'JENDELA',
+            ])
+            ->assertRedirect(route('admin.model-products.index'));
+
+        $model = CmsModelProduct::query()->latest('id')->firstOrFail();
+        $this->assertSame('active', $model->status, 'model baru wajib langsung aktif');
+    }
+
+    /**
+     * Menyunting model tidak boleh mengubah status, karena status diatur lewat
+     * aksi Aktifkan/Nonaktifkan di daftar model.
+     */
+    public function test_sunting_model_tidak_mengubah_status(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $model = CmsModelProduct::create([
+            'name' => 'Jendela Model Nonaktif',
+            'product_category' => 'JENDELA',
+            'product_model' => 'NONAKTIF_UJI',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.model-products.update', $model), [
+                'name' => 'Jendela Model Nonaktif Diubah',
+                'product_category' => 'JENDELA',
+            ])
+            ->assertRedirect(route('admin.model-products.index'));
+
+        $this->assertSame(
+            'draft',
+            $model->fresh()->status,
+            'menyunting model tidak boleh mengaktifkannya diam-diam'
+        );
+    }
+
     /**
      * Pasangan yang sudah punya wadah (otomatis dari produk) tidak boleh
      * ditambah lagi: baris kembar membuat kartu model tampil dua kali di toko.

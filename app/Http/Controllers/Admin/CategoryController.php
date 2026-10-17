@@ -49,6 +49,8 @@ class CategoryController extends Controller
                 'products_count' => (int) $c->products_count,
                 'models_count' => \App\Models\CmsModelProduct::where('product_category', $c->code)->count(),
                 'editUrl' => route('admin.categories.edit', $c),
+                'activateUrl' => route('admin.categories.activate', $c),
+                'deactivateUrl' => route('admin.categories.deactivate', $c),
             ])->all();
 
         return Inertia::render('Admin/Categories/Index', [
@@ -144,6 +146,22 @@ class CategoryController extends Controller
         $this->flushTaxonomyCaches();
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori '.$category->name.' diperbarui.');
+    }
+
+    public function activate(Category $category): RedirectResponse
+    {
+        $category->update(['is_active' => true]);
+        $this->flushTaxonomyCaches();
+
+        return back()->with('success', 'Kategori '.$category->name.' diaktifkan.');
+    }
+
+    public function deactivate(Category $category): RedirectResponse
+    {
+        $category->update(['is_active' => false]);
+        $this->flushTaxonomyCaches();
+
+        return back()->with('success', 'Kategori '.$category->name.' dinonaktifkan.');
     }
 
     public function destroy(Category $category): RedirectResponse
@@ -246,7 +264,11 @@ protected function validateCategory(Request $request, ?Category $category = null
         $data['seo_description'] = filled($data['seo_description'] ?? null)
             ? trim((string) $data['seo_description'])
             : ($category?->seo_description ?? 'Koleksi produk '.$data['name'].' berkualitas tinggi dan bergaransi resmi dari Ragil Aluminium.');
-        $data['is_active'] = $request->boolean('is_active', true);
+        // Kategori baru selalu aktif. Penonaktifan dilakukan dari aksi di
+        // daftar kategori, bukan dari form tambah/edit (kontrak 2026-10-17).
+        $data['is_active'] = $category
+            ? (bool) $category->is_active
+            : true;
 
         return $data;
     }
