@@ -7,6 +7,7 @@ import { Field } from "@/components/admin/ui/field"
 import { Pagination } from "@/components/admin/ui/pagination"
 import { Select } from "@/components/admin/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/admin/ui/table"
+import { formatCurrency } from "@/lib/format"
 import type { Pagination as PaginationData } from "@/types"
 import { routeUrl } from "@/lib/routes"
 import { cn } from "@/lib/utils"
@@ -38,10 +39,6 @@ interface ProductPickerProps {
   searchFieldClassName?: string
   /** Isian filter tambahan dari pemanggil, dirender di dalam baris filter. */
   filterExtras?: React.ReactNode
-}
-
-function formatCurrency(value: number): string {
-  return "Rp " + value.toLocaleString("id-ID")
 }
 
 /**

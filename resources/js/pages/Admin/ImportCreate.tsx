@@ -386,6 +386,7 @@ export default function ImportCreate({
                     <span className="text-destructive">{totals.invalid} URL tidak valid</span>
                   ) : null}
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border text-left text-muted-foreground">
@@ -425,6 +426,7 @@ export default function ImportCreate({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             ) : null}
           </div>

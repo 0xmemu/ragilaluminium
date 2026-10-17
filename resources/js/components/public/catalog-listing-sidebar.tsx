@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/components/shared/icon"
+import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Link } from "@inertiajs/react"
 import { routeUrl } from "@/lib/routes"
@@ -159,9 +160,13 @@ export interface CatalogListingFilters {
 }
 
 function formatPriceChip(min: string, max: string): string {
-  if (min && max) return `Rp${min} – Rp${max}`
-  if (min) return `Min Rp${min}`
-  if (max) return `Max Rp${max}`
+  const angkaMin = Number(min)
+  const angkaMax = Number(max)
+  const minSah = min !== "" && Number.isFinite(angkaMin)
+  const maxSah = max !== "" && Number.isFinite(angkaMax)
+  if (minSah && maxSah) return `${formatCurrency(angkaMin)} – ${formatCurrency(angkaMax)}`
+  if (minSah) return `Min ${formatCurrency(angkaMin)}`
+  if (maxSah) return `Max ${formatCurrency(angkaMax)}`
   return "Rentang Harga"
 }
 

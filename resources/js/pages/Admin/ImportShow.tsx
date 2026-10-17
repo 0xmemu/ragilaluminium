@@ -213,6 +213,7 @@ export default function ImportShow({
                   Data di baris ini valid dan sudah masuk, tapi belum cukup untuk tampil di toko. Lengkapi dari form edit, lalu tekan Aktifkan produk.
                 </p>
                 <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                  <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/40 text-left text-muted-foreground">
@@ -246,6 +247,7 @@ export default function ImportShow({
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -259,6 +261,7 @@ export default function ImportShow({
                     Klik nama produk untuk membuka halamannya di toko
                   </span>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border text-left text-muted-foreground">
@@ -311,6 +314,7 @@ export default function ImportShow({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
