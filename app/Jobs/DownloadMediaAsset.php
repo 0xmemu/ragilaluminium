@@ -52,6 +52,9 @@ class DownloadMediaAsset implements ShouldBeUnique, ShouldQueue
         $tmp = null;
 
         try {
+            // Hanya penjagaan SSRF. Daftar host opsional tetap dihormati bila
+            // admin mengisinya, tetapi bawaan kosong: media dari host mana pun
+            // diterima selama bisa diunduh.
             UrlGuard::assertSafePublicUrl($asset->source_url, config('media.allowed_source_hosts', []));
             $tmp = tempnam(sys_get_temp_dir(), 'asset_');
             $response = Http::timeout((int) config('media.download_timeout', 60))

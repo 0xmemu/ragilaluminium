@@ -638,13 +638,65 @@ class ImportJobController extends Controller
                 || trim((string) ($row["opsi_variasi_1"] ?? "")) !== "";
         }));
 
-        $rows = array_slice($terisi, 0, 1000);
+        // SEMUA baris diperiksa. Dulu hanya 1.000 baris pertama yang
+        // diklasifikasi padahal berkas nyata bisa 1.812 baris, sehingga
+        // sebagian besar berkas tidak pernah dilihat saat Periksa file.
+        $rows = $terisi;
 
         $resolver = app(\App\Services\MediaAssetResolver::class);
         $cache = [];
         $diffs = [];
         $lastName = '';
         $warnMap = [];
+        $mediaTotals = ['internal' => 0, 'external' => 0, 'unreachable' => 0, 'invalid' => 0];
+        $mediaErrors = [];
+        $displayCap = max(1, (int) config('media.preview_display_rows', 500));
+        $rowNo = 1;
+
+        // Klasifikasi URL sekali per URL unik. Pada berkas nyata 1.812 baris
+        // hanya ada 77 URL unik, jadi langkah ini murah.
+        $allUrls = [];
+        foreach ($rows as $row) {
+            foreach ([
+                'gambar_per_varian', 'gambar_1_utama', 'gambar_2', 'gambar_3',
+                'media_bersama_1', 'media_bersama_2',
+                'gambar_hasil_pemasangan_1', 'gambar_hasil_pemasangan_2',
+            ] as $key) {
+                $url = trim((string) ($row[$key] ?? ''));
+                if ($url !== '') {
+                    $allUrls[$url] = true;
+                }
+            }
+        }
+
+        foreach (array_keys($allUrls) as $url) {
+            $objectKey = null;
+            try {
+                $objectKey = $resolver->internalObjectKeyPublic($url);
+            } catch (\Throwable) {
+                $objectKey = null;
+            }
+
+            if ($objectKey !== null) {
+                $cache[$url] = 'internal';
+                continue;
+            }
+
+            $valid = filter_var($url, FILTER_VALIDATE_URL) && (bool) parse_url($url, PHP_URL_HOST);
+            $cache[$url] = $valid ? 'external' : 'invalid';
+        }
+
+        // Uji unduh hanya untuk URL eksternal. Yang gagal diunduh adalah
+        // masalah pemblokir: impor akan menyisakan foto kosong untuk baris itu.
+        $externalUrls = array_keys(array_filter($cache, fn ($cls) => $cls === 'external'));
+        if ($externalUrls !== [] && config('media.preview_probe', true)) {
+            $probe = \App\Support\MediaUrlProbe::probeMany($externalUrls);
+            foreach ($externalUrls as $url) {
+                if (($probe[$url] ?? false) === false) {
+                    $cache[$url] = 'unreachable';
+                }
+            }
+        }
 
         foreach ($rows as $row) {
             $name = trim((string) ($row['nama_produk'] ?? ''));
@@ -655,7 +707,7 @@ class ImportJobController extends Controller
                 $lastName = $name;
             }
 
-            $stats = ['internal' => 0, 'external' => 0, 'invalid' => 0];
+            $stats = ['internal' => 0, 'external' => 0, 'unreachable' => 0, 'invalid' => 0];
             $media = [];
             foreach ([
                 'gambar_per_varian' => 'Gambar per Varian',
@@ -671,22 +723,17 @@ class ImportJobController extends Controller
                 if ($url === '') {
                     continue;
                 }
-                if (! isset($cache[$url])) {
-                    $objectKey = null;
-                    try {
-                        $objectKey = $resolver->internalObjectKeyPublic($url);
-                    } catch (\Throwable) {
-                        $objectKey = null;
-                    }
-                    if ($objectKey !== null) {
-                        $cache[$url] = 'internal';
-                    } else {
-                        $valid = filter_var($url, FILTER_VALIDATE_URL) && (bool) parse_url($url, PHP_URL_HOST);
-                        $cache[$url] = $valid ? 'external' : 'invalid';
-                    }
+                $class = $cache[$url] ?? 'invalid';
+                $stats[$class]++;
+                $mediaTotals[$class]++;
+
+                if ($class === 'unreachable') {
+                    $mediaErrors[] = 'Baris '.$rowNo.': '.$label.' tidak bisa diunduh ('.$url.').';
+                } elseif ($class === 'invalid') {
+                    $mediaErrors[] = 'Baris '.$rowNo.': '.$label.' bukan URL yang sah ('.$url.').';
                 }
-                $stats[$cache[$url]]++;
-                $media[] = ['kolom' => $label, 'url' => $url, 'class' => $cache[$url]];
+
+                $media[] = ['kolom' => $label, 'url' => $url, 'class' => $class];
             }
 
             $opsi1 = trim((string) ($row['opsi_variasi_1'] ?? ''));
@@ -695,26 +742,35 @@ class ImportJobController extends Controller
                 $warnMap[$name][$opsi1][$varUrl] = true;
             }
 
-            $diffs[] = [
-                'row' => count($diffs) + 2,
-                'name' => $name,
-                'parent_sku' => '',
-                'price' => $row['harga'] ?? null,
-                'stock' => $row['stok'] ?? null,
-                'media' => $media,
-                'media_stats' => $stats,
-            ];
+            // Rincian hanya dikirim sebanyak batas tampilan; pemeriksaan dan
+            // angka ringkasan tetap mencakup seluruh baris.
+            if (count($diffs) < $displayCap) {
+                $diffs[] = [
+                    'row' => $rowNo,
+                    'name' => $name,
+                    'parent_sku' => '',
+                    'price' => $row['harga'] ?? null,
+                    'stock' => $row['stok'] ?? null,
+                    'media' => $media,
+                    'media_stats' => $stats,
+                ];
+            }
+
+            $rowNo++;
         }
 
-        // Catatan non-blocking (audit P3): satu opsi varian dengan beberapa URL
-        // berbeda kini dipasang pada variannya masing-masing, bukan "baris
-        // pertama menang".
+        // Gambar per opsi kini menempel pada NILAI OPSI, bukan pada baris
+        // kombinasi. Satu opsi dengan beberapa URL berbeda adalah kesalahan
+        // (ditolak verifier V12), jadi di sini cukup catatan ringan bila
+        // jumlah URL unik lebih sedikit dari jumlah baris: artinya admin
+        // mengulang URL yang sama, dan itu memang perilaku yang dianjurkan.
         $warnings = [];
         foreach ($warnMap as $nama => $opsi) {
             foreach ($opsi as $opsi1 => $urls) {
                 if (count($urls) > 1) {
-                    $warnings[] = 'Opsi "'.$opsi1.'" pada produk "'.$nama.'" punya '.count($urls)
-                        .' URL berbeda di kolom Gambar per Varian; masing-masing dipasang pada varian barisnya.';
+                    $warnings[] = 'Opsi "'.$opsi1.'" pada produk "'.$nama.'" memakai '
+                        .count($urls).' URL berbeda di kolom Gambar per Varian. '
+                        .'Satu opsi hanya boleh punya satu gambar; samakan URL-nya.';
                 }
             }
         }
@@ -735,7 +791,13 @@ class ImportJobController extends Controller
             'template' => 'v2',
             'verify_errors' => array_slice($errors, 0, 20),
             'verify_warnings' => array_slice($warnings, 0, 20),
+            // Masalah media bersifat memblokir: baris yang fotonya tidak bisa
+            // diunduh akan menyisakan produk tanpa foto.
+            'media_errors' => array_slice($mediaErrors, 0, 50),
+            'media_errors_total' => count($mediaErrors),
+            'media_totals' => $mediaTotals,
             'rows' => $diffs,
+            'shown_rows' => count($diffs),
             'total' => count($terisi),
             'total_products' => $totalProducts,
         ]);

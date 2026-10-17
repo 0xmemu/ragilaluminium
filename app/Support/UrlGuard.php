@@ -8,7 +8,12 @@ namespace App\Support;
  */
 class UrlGuard
 {
-    public static function assertSafePublicUrl(string $url, array $allowedHosts = []): void
+    /**
+     * @param  bool  $checkDns  Setel false HANYA di test yang memakai host
+     *                          palsu, karena pemeriksaan DNS butuh jaringan
+     *                          sungguhan. Produksi selalu true.
+     */
+    public static function assertSafePublicUrl(string $url, array $allowedHosts = [], bool $checkDns = true): void
     {
         $parts = parse_url($url);
 
@@ -24,6 +29,10 @@ class UrlGuard
 
         if (! empty($allowedHosts) && ! self::hostAllowed($host, $allowedHosts)) {
             throw new \RuntimeException("Host {$host} tidak ada di daftar izin.");
+        }
+
+        if (! $checkDns) {
+            return;
         }
 
         $ips = self::resolveIps($host);
