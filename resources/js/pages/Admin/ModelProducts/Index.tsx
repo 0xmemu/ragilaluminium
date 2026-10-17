@@ -287,11 +287,11 @@ export default function ModelProductsIndex({
               <button
                 type="button"
                 className="w-full text-left"
-                // Wadah tanpa produk aktif akan dinonaktifkan lagi oleh
-                // penyelarasan otomatis, jadi tombolnya dimatikan supaya admin
-                // tidak menyalakan sesuatu yang langsung padam sendiri.
-                disabled={busyId === row.id || row.active_count === 0}
-                title={row.active_count === 0 ? "Model tanpa produk aktif dinonaktifkan otomatis. Tambahkan atau pulihkan produknya dulu." : undefined}
+                // Aktivasi SELALU boleh (revisi 17 Okt 2026). Admin perlu bisa
+                // menyiapkan model sebelum produknya dipublikasikan, dan wadah
+                // tanpa produk aktif tetap tidak tampil di toko karena
+                // storefront menyaringnya sendiri.
+                disabled={busyId === row.id}
                 onClick={() => {
                   setBusyId(row.id)
                   router.post(row.activate_url, {}, {

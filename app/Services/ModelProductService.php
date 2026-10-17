@@ -152,12 +152,20 @@ class ModelProductService
             $existing[] = $key;
         }
 
-        // Auto-arsip wadah kosong (kontrak owner 2026-09-10): "wadah" berarti
-        // produk yang BISA dibeli, jadi ukurannya produk aktif. Pasangan CMS
-        // tanpa satu pun produk aktif (mis. semua produknya sudah diarsipkan)
-        // dimatikan otomatis; admin bisa mengaktifkan kembali manual.
-        $activePairs = Product::query()
-            ->where('status', 'active')
+        // Auto-nonaktif wadah YATIM saja (revisi 17 Okt 2026).
+        //
+        // Sebelumnya wadah dimatikan begitu tidak ada produk AKTIF, termasuk
+        // wadah yang produknya masih ada tetapi sedang diarsipkan. Akibatnya
+        // katalog hasil impor (importer menulis produk berstatus arsip) membuat
+        // semua wadah langsung nonaktif, dan admin tidak bisa menyalakannya
+        // kembali karena tombolnya dimatikan. Sekarang ukurannya "punya produk
+        // atau tidak": wadah yang masih berisi produk, apa pun statusnya,
+        // dibiarkan mengikuti pilihan admin.
+        //
+        // Wadah tanpa produk aktif tetap TIDAK tampil di toko: storefront
+        // menyaringnya sendiri lewat hitungan produk aktif (kontrak owner
+        // 2026-09-10 tetap terjaga tanpa mematikan barisnya).
+        $occupiedPairs = Product::query()
             ->whereNotNull('product_category')
             ->whereNotNull('product_model')
             ->select('product_category', 'product_model')
@@ -174,9 +182,9 @@ class ModelProductService
             ->whereNotNull('product_category')
             ->whereNotNull('product_model')
             ->get()
-            ->each(function (CmsModelProduct $row) use ($activePairs, &$archived, &$firstArchivedId) {
+            ->each(function (CmsModelProduct $row) use ($occupiedPairs, &$archived, &$firstArchivedId) {
                 $key = $this->pairKey($row->product_category, $row->product_model);
-                if ($key === '' || in_array($key, $activePairs, true)) {
+                if ($key === '' || in_array($key, $occupiedPairs, true)) {
                     return;
                 }
                 $row->update(['status' => 'draft']);
