@@ -318,8 +318,18 @@ class SubModelController extends Controller
             request()->user()?->id,
         );
 
+        // Kembali ke daftar PERSIS seperti sebelum penghapusan, termasuk filter
+        // yang sedang dipakai admin. Sebelumnya redirect selalu menyertakan
+        // product_model, sehingga menghapus satu sub model diam-diam
+        // MENGAKTIFKAN filter model yang tadinya tidak dipakai.
+        //
+        // Referer dipakai supaya filter yang memang sedang aktif ikut
+        // dipertahankan; kalau admin tidak memfilter, kembali tanpa filter.
+        $previous = (string) url()->previous();
+        $daftar = route('admin.sub-models.index');
+
         return redirect()
-            ->route('admin.sub-models.index', ['product_model' => $productModel])
+            ->to(str_contains($previous, '/kelola/sub-model') ? $previous : $daftar)
             ->with('success', 'Sub model "'.$name.'" berhasil dihapus.');
     }
 
