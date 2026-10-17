@@ -117,18 +117,29 @@ final class MediaAssetResolver
             return null;
         }
 
-        // Cek DB dulu: jika sudah tercatat sebagai MediaAsset ready, valid & hemat S3 API call.
-        if (MediaAsset::where('object_key', $path)->where('status', 'ready')->exists()) {
+        // Cek DB dulu: bila object_key sudah tercatat, berkas memang milik
+        // arsip media sendiri, jadi tidak perlu memanggil S3 sama sekali.
+        // Status tidak disaring: aset berstatus archived tetap berkas nyata di
+        // bucket (mis. foto hasil pemasangan yang pernah diganti). Sebelum
+        // 17 Okt 2026 penyaringan status 'ready' membuat pemeriksaan jatuh ke
+        // S3, dan satu kegagalan S3 menghanguskan baris impor.
+        if (MediaAsset::where('object_key', $path)->exists()) {
             return $path;
         }
 
-        // Pastikan file benar-benar ada di disk sebelum dianggap internal;
-        // URL internal yang menunjuk file yang tidak ada = tidak valid.
-        if (! \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($path)) {
+        // Belum tercatat di DB: pastikan berkasnya benar-benar ada. Kegagalan
+        // pemeriksaan (kredensial salah, jaringan, layanan penyimpanan down)
+        // TIDAK boleh melempar: kembalikan null supaya berkas diproses lewat
+        // jalur unduh biasa, bukan menggagalkan pekerjaan yang memanggilnya.
+        try {
+            $exists = \Illuminate\Support\Facades\Storage::disk(config('media.disk', 'media'))->exists($path);
+        } catch (\Throwable $e) {
+            report($e);
+
             return null;
         }
 
-        return $path;
+        return $exists ? $path : null;
     }
 
     public function fromUploadedImage(UploadedFile $file, ?int $userId = null): MediaAsset
