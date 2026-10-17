@@ -7761,3 +7761,45 @@ kolom harga dan stok tidak bergeser.
 
 Bukti: typecheck bersih, eslint 0 warning, vitest 480/480 (4 tes penjaga
 baru di matrix-thumb.test.ts), build sukses, /admin 302 dan PDP 200.
+
+## 2026-10-17 10:50 UTC | zcode-import-retest | Standard | b4eb89fe | selesai
+Lingkup: uji ulang impor #10 atas permintaan owner, setelah perbaikan media.
+
+HASIL UJI (berkas asli `catalog/import_5_20261017.xlsx`, 1.812 baris):
+- Periksa file: 1.812 baris diperiksa dalam 10,5 detik, 151 produk terdeteksi,
+  `media_totals {internal: 7248, external: 0, unreachable: 0, invalid: 0}`,
+  `media_errors_total 0`. Dulu 8 dari 14 baris gagal tidak pernah diperiksa.
+- Impor ulang 14 baris yang dulu gagal (di dalam transaksi lalu DIBATALKAN,
+  nama diberi akhiran UJI ULANG supaya lolos aturan produk-sudah-ada):
+  14/14 produk tercipta, 0 gagal, masing-masing 1 gambar opsi + 1 hasil
+  pemasangan, status active. Data produksi tidak berubah (151 produk,
+  2265 media, 1812 varian sebelum dan sesudah; 0 sisa produk uji).
+
+DUA CACAT YANG DITEMUKAN SAAT UJI INI:
+
+1. MIGRASI BELUM DIJALANKAN DI PRODUKSI. Tabel
+   `product_variation_option_media` dan kolom `products.image_axis_slot`
+   belum ada, sehingga gambar per opsi diam-diam tidak tersimpan (baris
+   "sukses" tetapi foto varian 0). Migrasi sudah dijalankan.
+   AKARNYA: `deploy-202.sh` TIDAK PERNAH menjalankan `artisan migrate`.
+   Sekarang langkah "6b. Migrasi database" ditambahkan SEBELUM symlink
+   dialihkan, berjalan sebagai www-data, dan membatalkan deploy bila gagal.
+
+2. DEPLOY DARI main MENGHAPUS FITUR YANG SEDANG LIVE. Produksi sebelumnya
+   menjalankan `origin/feat/ui-consistency-209` (rilis
+   `20261017165629-model-code-guard2`), yang berisi 3 commit belum masuk main:
+   `be77e3b1` gambar variasi per opsi, `55d4e270` thumbnail opsi di matriks
+   harga, `60ff08ce` kode model manual. Deploy saya dari main (a776d0e1)
+   menggantinya dan fitur itu hilang dari produksi. Produksi SUDAH DIPULIHKAN
+   dengan `--brant/ui-consistency-209` ke `b4eb89fe`.
+
+Untuk agent berikutnya: SEBELUM deploy, periksa rilis aktif (`readlink -f
+current`) dan bandingkan dengan `origin/main`. Kalau rilis aktif dibangun dari
+branch, deploy dari main akan menghapus pekerjaan branch itu. Deploy dengan
+`--brant/<branch>` yang sama, atau merge dulu ke main.
+
+Bukti: deploy `20261017174444-b4eb89fe` aktif, kesehatan OK, home 200;
+`ProductVariationOptionMedia` ada dan dipakai importer (1 rujukan);
+migrasi 0 pending; uji 14 baris 14/14 sukses.
+
+Agent: zcode-import-retest
