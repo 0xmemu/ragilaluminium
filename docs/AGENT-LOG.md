@@ -7478,3 +7478,34 @@ menemukan produk ini lewat nama (200x100) maupun lewat dimensi (205x105).
 Keputusan yang menunggu owner: apakah kolom dimensi disimpan sebagai ukuran
 jadi (200x100) atau tetap ukuran packing (205x105). Mengubahnya menyentuh data
 katalog dan tarif ongkir J&T, jadi tidak dilakukan tanpa perintah eksplisit.
+
+## 2026-10-17 09:05 UTC | zcode-form-primitives | Deep | 5d31a18d | selesai
+Lingkup: kontrak owner "semua form/tombol dll reusable, pakai standar yang
+digunakan ui lainnya". Sebelumnya 8 form admin masih merakit baris isian sendiri
+dengan tabel (th w-64 px-4 py-2.5 / py-3), sehingga label dan kontrol tidak ikut
+aturan content-start milik Field dan kepadatannya berbeda dari form lain.
+Yang diseragamkan: Admin/Categories/Form.tsx, Admin/ModelProducts/Form.tsx,
+Admin/SubModelForm.tsx, Admin/CodSettings/Edit.tsx,
+Admin/ShippingSubsidy/Edit.tsx, Admin/Users/Form.tsx,
+Admin/CmsDocument/Edit.tsx, Admin/ImportCreate.tsx,
+Admin/InstallationGallery/Form.tsx. Semuanya kini memakai Field, FieldGrid,
+CheckboxField, dan SectionCard. Kontrol memakai h-9 bawaan Input/Select (bukan
+h-8) sesuai ADR-022 poin 5; hint dan error lewat prop Field sehingga
+aria-describedby dan aria-invalid konsisten.
+SectionCard (components/admin/section-card.tsx) diselaraskan ke ADR-022 poin 4:
+header px-5 sm:px-6 dan isi p-5 sm:p-6, supaya tepi isi lurus dengan judul
+section. Perubahan ini berlaku ke 13 halaman yang memakai SectionCard.
+Dampak spec: tidak berubah. Tidak ada route, field, enum, JSON, atau kolom baru.
+Untuk agent berikutnya: form admin baru WAJIB memakai Field/FieldGrid/
+CheckboxField/FieldAction/SectionCard, jangan merakit th w-64 sendiri. Jangan
+menurunkan kontrol ke h-8. Tabel tetap boleh untuk DAFTAR (thead + baris data),
+bukan untuk baris isian. Satu h-8 sisa di InstallationGallery/Form.tsx baris 482
+sengaja dibiarkan karena itu baris repeater galeri media yang dipasangkan
+dengan tombol hapus size-8, bukan baris isian.
+Bukti: npm run typecheck bersih; eslint 10 berkas bersih; vitest 463/463 lulus
+(taxonomy-form-guard 16/16 termasuk sapuan seluruh 66 berkas .tsx di
+pages/Admin); php artisan test untuk kategori, model produk, sub model, akun
+admin, dokumen CMS, COD, subsidi ongkir 63/63 lulus; npm run build sukses.
+Deploy 202 5d31a18d kesehatan OK, /up 200. Sapuan guard membuktikan hanya
+CaraPemesanan/Edit.tsx yang masih memakai pola th w-64, dan itu tabel daftar
+langkah yang dikecualikan secara eksplisit.
