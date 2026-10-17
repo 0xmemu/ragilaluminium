@@ -7165,3 +7165,43 @@ saat pola lama dikembalikan sementara. Seluruh Vitest 57 berkas / 453 test OK.
 OK, dan bundel produksi memuat pola baru `locked===!0` (bukan pola lama).
 
 Agent: zcode-variant-name-lock
+
+## 2026-10-17 07:10 UTC | zcode-import-status | Trivial | 23c6d88b | selesai
+Lingkup: daftar impor menampilkan status "Menunggu pembayaran" untuk berkas
+yang baru diunggah. Penyebabnya `StatusBadge` memakai peta status pesanan
+(`STATUS_MAP`), dan kunci `pending` di sana berarti "Menunggu pembayaran".
+Ditambahkan `importStatusMeta()` di `resources/js/lib/status.ts` dengan peta
+sendiri (pending, running, completed, failed) mengikuti pola `mediaStatusMeta`.
+`StatusBadge` kini menerima prop `icon` supaya tahap antre dan proses bisa
+dibedakan. Halaman detail impor memakai sumber label yang sama.
+Berkas: `resources/js/lib/status.ts`,
+`resources/js/components/admin/ui/status-badge.tsx`,
+`resources/js/pages/Admin/Imports/Index.tsx`,
+`resources/js/pages/Admin/ImportShow.tsx`, `tests/frontend/status.test.ts`.
+Dampak spec: tidak berubah.
+Bukti: 3 test baru di status.test.ts, Vitest 57 berkas / 456 test OK,
+typecheck bersih, deploy 202 `20261017140633-23c6d88b`, kesehatan OK.
+
+## 2026-10-17 07:12 UTC | zcode-import-status | Trivial | - | temuan
+TEMUAN PRODUKSI (belum diperbaiki, butuh kredensial dari owner): kredensial
+Cloudflare R2 di `shared/.env` DITOLAK bucket `ra-media-prod`.
+Bukti: `Storage::disk('media')->exists(...)` melempar
+`UnableToCheckFileExistence` dengan sebab `S3Exception` 403; panggilan langsung
+`listObjectsV2` dan `putObject` memakai kredensial yang sama gagal dengan kode
+`SignatureDoesNotMatch` ("Check your secret access key and signing method").
+Nilai di `.env` sama dengan config (hash sha256 cocok), tanpa kutip, tanpa CR,
+panjang key 32 dan secret 64 (format benar). Berkas media tetap bisa diakses
+publik lewat CDN `media.ragilaluminium.com` (200), jadi toko tidak terlihat
+rusak; yang mati hanya operasi API S3.
+Dampak nyata: impor #10 (1.812 baris) selesai dengan 14 baris GAGAL, semuanya
+beralasan "Unable to check existence for: media-assets/<hash>/pdp.webp".
+Semua baris gagal itu `linked_product_id` null, jadi tidak ada produk setengah
+jadi. Unggah media baru dari panel admin juga akan gagal selama kredensial ini
+belum diperbaiki.
+Tindakan yang dibutuhkan: buat API token baru dari akun Cloudflare pemilik
+bucket `ra-media-prod` (Object Read & Write), lalu ganti
+`CLOUDFLARE_R2_ACCESS_KEY_ID` dan `CLOUDFLARE_R2_SECRET_ACCESS_KEY` di
+`/var/www/ragilaluminium/shared/.env`, jalankan `php artisan config:cache`,
+lalu impor ulang berkas yang 14 barisnya gagal.
+
+Agent: zcode-import-status
