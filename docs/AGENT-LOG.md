@@ -7690,3 +7690,56 @@ lain (f816b9e7) karena working tree dipakai bersama; isi diverifikasi utuh di
 HEAD sebelum push. Push pertama ditolak (agent lain push duluan), diselesaikan
 dengan merge, bukan rebase, karena working tree berisi perubahan belum commit
 milik agent lain.
+
+## 2026-10-17 09:55 UTC | zcode-preview-thorough | Standard | 0af908fa | selesai
+Lingkup: dua keluhan owner setelah impor #10 kehilangan 14 baris.
+
+1. PERIKSA FILE TIDAK MENYELURUH. `previewCatalogV2()` hanya mengklasifikasi
+   1.000 baris pertama (`array_slice($terisi, 0, 1000)`) padahal berkas nyata
+   1.812 baris, sementara layar menulis "1.812 baris terbaca". Delapan dari
+   empat belas baris yang gagal berada di baris 1322-1406 dan tidak pernah
+   diperiksa. Sekarang SEMUA baris diperiksa. Batas 500 baris hanya berlaku
+   untuk tabel rincian di layar (`media.preview_display_rows`), dan respons
+   memuat `shown_rows` supaya UI bisa menyebut berapa yang ditampilkan.
+
+2. MEDIA EKSTERNAL TIDAK DIUJI. Dulu URL eksternal hanya dilabeli
+   "Eksternal (akan diunduh)" tanpa diuji, jadi URL mati tampak aman. Sekarang
+   `MediaUrlProbe` menguji setiap URL eksternal (HEAD, lalu GET 1 byte bila
+   HEAD ditolak), paralel 20 sekaligus. Kelas baru `unreachable` menjadi
+   PEMBLOKIR: tombol Mulai Import mati sampai berkas diperbaiki.
+
+3. DAFTAR HOST DIHAPUS. `config/media.php` tidak lagi membawa daftar host
+   bawaan; `MEDIA_ALLOWED_HOSTS` kosong di produksi. Media dari host mana pun
+   diterima selama bisa diunduh. Penjagaan SSRF (IP privat/loopback) tetap
+   berjalan di UrlGuard, jadi ini bukan pelonggaran keamanan jaringan.
+
+4. IDENTITAS PERAMBAN. Uji langsung di produksi menemukan Wikimedia membalas
+   403 untuk permintaan tanpa User-Agent, padahal curl membalas 200. Probe dan
+   kedua job unduh kini mengirim User-Agent + Accept yang sama, supaya hasil
+   Periksa file mencerminkan nasib sebenarnya saat impor.
+
+Berkas: `app/Support/MediaUrlProbe.php` (baru),
+`app/Http/Controllers/Admin/ImportJobController.php`, `config/media.php`,
+`app/Support/UrlGuard.php` (tambah parameter $checkDns untuk test),
+`app/Jobs/DownloadMediaAsset.php`, `app/Jobs/DownloadProductMedia.php`,
+`tests/Feature/ImportPreviewThoroughTest.php` (baru).
+
+Dampak spec: TIDAK ada route/kolom/enum baru. Bentuk respons preview bertambah
+kunci: `media_errors`, `media_errors_total`, `media_totals`, `shown_rows`.
+Frontend `ImportCreate.tsx` sudah membaca kunci itu (perubahan UI ter-commit
+lebih dulu di 5d31a18d).
+
+Untuk agent berikutnya: `MEDIA_ALLOWED_HOSTS` di produksi sudah dikosongkan.
+Jangan mengisinya kembali tanpa alasan; itu mempersempit sumber media. Kalau
+ada laporan "media dari host X gagal", periksa hasil probe dulu, jangan
+langsung menambah host ke daftar.
+
+Bukti: `ImportPreviewThoroughTest` 7 test / 27 asersi OK, dibuktikan GAGAL saat
+batas 1.000 baris dikembalikan sementara ("1000 is identical to 1200").
+Regresi media+impor 49 test / 217 asersi OK. Di produksi (rilis
+`20261017164924-0af908fa`): probe langsung menunjukkan host luar hidup BISA,
+URL mati GAGAL, host palsu GAGAL; dan panggilan nyata ke endpoint Periksa file
+menghasilkan `media_totals {external:1, unreachable:1}`, `media_errors_total 1`
+dengan pesan "Baris 2: Gambar 1 (utama) tidak bisa diunduh (...)".
+
+Agent: zcode-preview-thorough
