@@ -7343,3 +7343,29 @@ memakai kredensial yang sama gagal `SignatureDoesNotMatch`; query
 `product_media` menunjukkan tepat 14 produk tanpa baris `is_installation=1`.
 
 Agent: zcode-import-failed-rows
+
+## 2026-10-17 07:52 UTC | zcode-product-search-size | Standard | 52935f8f | selesai
+Lingkup: memperbaiki pencarian daftar produk admin (/admin/kelola/produk) yang
+tidak bisa menemukan nama produk saat ketikan mengandung angka.
+Akar masalah: ProductController memanggil parseSizeQuery lebih dulu; begitu
+ketikan punya dua angka atau lebih, blok pencarian teks (name, short_name,
+parent_sku) dilewati seluruhnya dan hanya pasangan dimensi varian yang dicari.
+Efeknya SKU induk berangka (mis. RA4CL3SFNE dibaca ukuran 4x3) dan kata kunci
+berangka (mis. "boven 2 pintu") selalu kosong.
+Perubahan: applyListSearch() dipakai bersama oleh index() dan export(). Teks
+dicari per kata dan SELALU berjalan; ukuran jadi tambahan lewat grup OR
+terpisah, mencocokkan bentuk ukuran di nama ("Tinggi 80 cm x Panjang 50 cm",
+"(80x50)") serta pasangan dimensi varian. parseSizeQuery() sekarang hanya
+mengaktifkan mode ukuran bila seluruh ketikan memang bentuk ukuran.
+Catatan data: ukuran packing sudah tidak berlaku; kolom height_cm/width_cm
+mengikuti dimensi yang diisi saat tambah atau impor produk. Karena itu
+pencarian ukuran tidak menebak selisih apa pun, ia mencocokkan angka yang
+diketik ke nama produk dan ke kolom dimensi apa adanya.
+Verifikasi: tests/Feature/AdminProductListSearchTest.php (8 test, 90 assertion)
+lulus; pada kode lama 5 dari 8 gagal, termasuk crash ekspor "Undefined array
+key width". Regresi terkait lulus: AdminProductListSortTest,
+AdminExportSyncAuditTest, AdminProductWizardTest, HomepagePopularTest,
+FrontendPageContractTest, Fase13EqualRightsTest, AdminProductStockInputTest,
+AdminMediaBackButtonTest (47 test). Cek data produksi: "80x50" 1 hasil,
+"85x55" 1 hasil, SKU induk 1 hasil, "tidakadasamasekali" 0 hasil.
+Belum di-deploy ke 202.
