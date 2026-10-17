@@ -7369,3 +7369,58 @@ FrontendPageContractTest, Fase13EqualRightsTest, AdminProductStockInputTest,
 AdminMediaBackButtonTest (47 test). Cek data produksi: "80x50" 1 hasil,
 "85x55" 1 hasil, SKU induk 1 hasil, "tidakadasamasekali" 0 hasil.
 Belum di-deploy ke 202.
+
+## 2026-10-17 08:15 UTC | zcode-media-resilience | Standard | d743dcde | selesai
+Lingkup: kredensial Cloudflare R2 produksi diganti dan kerusakan akibat
+kegagalan impor #10 diperbaiki.
+
+1. KREDENSIAL. Owner memberi token baru di `D:\website_5.0\prod\.env`.
+   Access key ID tetap (`cf93cb8f...`), SECRET berubah. Diuji lebih dulu dengan
+   klien S3 langsung di 202 (LIST, PUT, HEAD, DELETE semua OK) sebelum
+   menyentuh berkas. Lalu `CLOUDFLARE_R2_SECRET_ACCESS_KEY` di
+   `/var/www/ragilaluminium/shared/.env` diganti (cadangan
+   `.env.bak-r2-202610171435`), `config:cache` dijalankan, worker antrean
+   di-restart. Kepemilikan berkas tetap `deploy:www-data` 640.
+
+2. KERUSAKAN IMPOR #10. 14 baris gagal ternyata TIDAK kehilangan produk:
+   produknya tercipta lewat baris lain dalam grup yang sama, masing-masing
+   lengkap 12 varian. Yang hilang per produk adalah 2 baris media:
+   foto hasil pemasangan (pos 101) dan foto varian untuk kombinasi
+   Putih/Kaca Bening (pos 201). Total 28 baris media ditulis ulang lewat
+   `ProductMediaStubUpserter` memakai URL asli dari `import_job_rows.raw_data`.
+   Hasil: 14 produk kini 15 media (12 varian + 1 pasang + media bersama),
+   setara produk sehat.
+
+3. STATUS ASET. Dua aset yang dipakai (1314, 1383) berstatus `archived`
+   sehingga baris media turunannya `pending`. Berkasnya ADA di bucket, jadi
+   status dikembalikan ke `ready` dan baris media diselaraskan ke
+   `downloaded` (14 baris). URL turunan (card/thumb) membalas 200.
+
+4. PENGUATAN KODE (`app/Services/MediaAssetResolver.php`). Akar kegagalan
+   sebenarnya: `Storage::exists()` MELEMPAR saat kredensial ditolak, dan
+   pengecualian itu membatalkan baris impor. Dua perubahan:
+   - Object key yang sudah tercatat di arsip media dianggap internal TANPA
+     memanggil penyimpanan, dan status tidak disaring (aset archived tetap
+     berkas nyata di bucket).
+   - Kegagalan pemeriksaan ditangkap, dilaporkan, lalu dianggap bukan aset
+     internal, sehingga pemanggil memakai jalur unduh biasa.
+   Berkas: `app/Services/MediaAssetResolver.php`,
+   `tests/Feature/MediaAssetResolverResilienceTest.php` (baru).
+
+Dampak spec: tidak berubah. Tidak ada route, kolom, enum, atau bentuk JSON baru.
+
+Untuk agent berikutnya: kegagalan penyimpanan TIDAK boleh menjadi penentu
+nasib baris impor. Kalau media tidak bisa diperiksa, biarkan lewat jalur unduh.
+Jangan pula menyaring `status = ready` saat mencocokkan object_key, karena aset
+arsip tetap ada di bucket.
+
+Bukti: test baru 3 test OK, dan dibuktikan GAGAL saat penyaringan `ready`
+dikembalikan sementara. Regresi media + impor 36 test / 272 asersi OK. Suite
+penuh 1526 test, 2 gagal: `StorePerformanceGoldenTest` (sudah gagal di
+origin/main) dan `AdminSortOrderBaseOneTest` (juga sudah gagal di origin/main,
+dibuktikan lewat worktree bersih, berasal dari pekerjaan urutan kategori).
+Deploy 202 `20261017150805-d743dcde`, kesehatan OK. Di produksi: resolver
+mengenali aset arsip dan aset ready, menolak URL asing; halaman produk
+RAYX8Y67W2UM memuat `installationMedia` dengan URL yang membalas 200.
+
+Agent: zcode-media-resilience
