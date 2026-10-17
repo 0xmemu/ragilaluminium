@@ -7612,3 +7612,46 @@ berisi 95x65 harus 0 hasil, nama 90x60 tetap ketemu). 11 test 170 assertion
 lulus; pada kode sebelumnya test itu gagal. Regresi 20 test lulus. Deploy 202
 b81b803f, kesehatan OK, uji controller nyata: 200x100 1, 205x105 0, 85x55 0,
 SKU induk 1, kategori/model/sub model 151, tanpa hasil 0.
+
+## 2026-10-17 09:50 UTC | zcode-model-code-guard | Deep | d39893bf | selesai
+Lingkup: dua keputusan owner 17 Oktober 2026.
+(1) Kode model produk DIISI ADMIN SENDIRI, tidak lagi diturunkan otomatis dari
+nama. Supaya salah ketik tidak lolos, ada pendeteksi cariBagianKodeAsing() di
+Admin/ModelProducts/Form.tsx: setiap bagian kode (dipisah garis bawah) wajib
+berasal dari kata di nama model. Nama "Jendela Jungkit Satu Daun" dengan kode
+JUNGGKIT ditandai merah dan menahan simpan lewat guard di submit(). Yang tetap
+diterima: angka menggantikan kata bilangan lewat peta ANGKA_KE_KATA
+(JUNGKIT_1_DAUN untuk Satu), kata kategori ikut ditulis (JENDELA_JUNGKIT),
+urutan kata berbeda, dan nama yang seluruhnya kata kategori. Pembentuk otomatis
+buildModelCode() dihapus dari frontend; generateModelCode() di controller tetap
+ada hanya sebagai jaring pengaman bila kolom kode dikosongkan lewat permintaan
+langsung.
+(2) Pilihan status DIHAPUS dari form kategori dan model produk. Kategori dan
+model baru langsung aktif. Penonaktifan pindah ke menu aksi di halaman daftar.
+Kategori mendapat dua route baru admin.categories.activate dan
+admin.categories.deactivate (CategoryController::activate/deactivate); model
+sudah punya. Controller kategori memaksa is_active true untuk kategori baru dan
+mempertahankan nilai lama saat disunting, jadi menyunting tidak bisa mengubah
+status diam-diam. Validasi status model dilonggarkan jadi nullable dengan
+default active, dan prop statuses dihapus dari payload Inertia.
+Dampak spec: SPEC_CHANGED_AND_DOCS_UPDATED. Dua route admin baru
+(admin.categories.activate, admin.categories.deactivate) sudah ditambahkan ke
+docs/api-and-routes-ragil-aluminium.md; seluruh route kategori yang sebelumnya
+belum terdokumentasi ikut dilengkapi. Payload form kategori dan model tidak
+lagi memuat status (model) dan is_active tidak lagi dikirim form kategori.
+Untuk agent berikutnya: jangan mengembalikan auto-fill kode model atau pilihan
+status di form. Kalau mengubah daftar kata angka (ANGKA_KE_KATA), ubah juga
+test penjaganya. Guard sengaja toleran: kode JUNGKIT untuk nama panjang tetap
+lolos karena JUNGKIT ada di nama.
+Bukti: npm run typecheck bersih; eslint 4 berkas bersih; vitest 476/476 lulus
+(taxonomy-form-guard 18/18); php artisan test CategoryProductRelationTest 12/12,
+ModelProductAdminTest 13/13, ModelProductMediaTest 9/9, SubModelAdminTest,
+AdminRouteParameterNamingTest lulus (51 test, 474 asersi); npm run build sukses.
+Deploy 202 d39893bf kesehatan OK. Uji live dengan transaksi rollback: kategori
+baru is_active true, deactivate jadi false, activate kembali true, jumlah
+kategori kembali 2. Uji detektor di node: JUNGGKIT merah, JUNGKIT,
+JUNGKIT_SATU_DAUN, JUNGKIT_1_DAUN, JENDELA_JUNGKIT_SATU_DAUN, SATU_DAUN lolos,
+JUNGKIT_DUA_DAUN merah pada DUA.
+Catatan proses: merge origin/main dikerjakan di git worktree terpisah
+(/tmp/wt-merge) karena working tree 209 berisi perubahan belum commit milik
+agent lain yang membuat merge langsung gagal.
