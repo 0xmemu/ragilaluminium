@@ -12,6 +12,7 @@ import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { formatDateTime, formatNumber } from "@/lib/format"
 import { navigateFilter } from "@/lib/filter-url"
+import { importStatusMeta } from "@/lib/status"
 import { cn } from "@/lib/utils"
 
 export interface ImportItem {
@@ -296,7 +297,10 @@ export default function ImportsIndex({
                     {/* Kolom 3: Status (Rata Tengah) */}
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="inline-flex items-center justify-center">
-                        <StatusBadge status={item.status} />
+                        {(() => {
+                          const meta = importStatusMeta(item.status)
+                          return <StatusBadge status={item.status} tone={meta.tone} label={meta.label} icon={meta.icon} />
+                        })()}
                       </div>
                     </td>
 

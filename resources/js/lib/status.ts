@@ -165,6 +165,34 @@ export function mediaStatusMeta(status: unknown): StatusMeta {
   }
 }
 
+/**
+ * Status pekerjaan impor katalog (import_jobs.status). Dipisahkan dari
+ * STATUS_MAP karena kunci "pending" di sana berarti "Menunggu pembayaran"
+ * milik pesanan. Tanpa peta sendiri, daftar impor menampilkan
+ * "Menunggu pembayaran" untuk berkas yang baru diunggah dan belum diproses.
+ *
+ * Nilai sah mengikuti enum tabel: pending, running, completed, failed.
+ */
+export interface ImportStatusMeta extends StatusMeta {
+  icon: string
+}
+
+const IMPORT_STATUS_MAP: Record<string, ImportStatusMeta> = {
+  pending: { label: "Menunggu diproses", tone: "neutral", icon: "clock" },
+  running: { label: "Sedang diproses", tone: "info", icon: "spinner" },
+  completed: { label: "Selesai", tone: "success", icon: "check" },
+  failed: { label: "Gagal", tone: "danger", icon: "x" },
+}
+
+export function importStatusMeta(status: unknown): ImportStatusMeta {
+  const key = String(status ?? "").toLowerCase()
+  return IMPORT_STATUS_MAP[key] ?? {
+    label: key ? "Status lain" : "Belum tersedia",
+    tone: "neutral",
+    icon: "clock",
+  }
+}
+
 /** Jenis aset media (media_assets.kind). */
 const MEDIA_KIND_LABELS: Record<string, string> = {
   image: "Gambar",
