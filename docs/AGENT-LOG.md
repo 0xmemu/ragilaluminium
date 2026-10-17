@@ -7803,3 +7803,25 @@ Bukti: deploy `20261017174444-b4eb89fe` aktif, kesehatan OK, home 200;
 migrasi 0 pending; uji 14 baris 14/14 sukses.
 
 Agent: zcode-import-retest
+
+
+## 2026-10-17 10:50 - Nama opsi ikut sel gambar di matriks harga
+
+Agent: zcode-209-gambar-opsi. Commit f9c56264.
+
+Konteks: setelah analisa layout screenshot Shopee, selisih yang tersisa adalah
+nama warna masih diulang di setiap baris kombinasi. Shopee menggabungkan nama
+dan gambar warna dalam satu sel yang membentang satu kelompok.
+
+Perubahan: nama opsi pindah ke sel gambar (rowSpan), kolom Kombinasi hanya
+berisi sumbu lain dan hilang bila produk hanya punya satu sumbu. Urutan tampil
+dikelompokkan per sumbu bergambar; tanpa itu sumbu di slot 2 (produk pintu
+dengan Warna & Kaca) membuat setiap baris jadi kelompok sendiri. Kunci state
+harga/stok tetap indeks kombinasi asli.
+
+Temuan saat uji: tes simulasi pengelompokan GAGAL pada percobaan pertama
+(12 kelompok, bukan 3) dan membuktikan cacat urutan itu nyata sebelum
+diperbaiki. Tes itu dipertahankan sebagai penjaga.
+
+Bukti: typecheck bersih, eslint 0 warning, vitest 487/487 (11 tes di
+matrix-thumb.test.ts), build sukses, /admin 302, PDP 200.
