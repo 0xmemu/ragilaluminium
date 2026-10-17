@@ -7893,3 +7893,32 @@ media_assets tetap 189, media_folders tetap 33. Situs / 200, /admin/login 302.
 Catatan proses: guard memblokir tulis ke /var/backups dan perintah rm ke
 storage/app; backup dialihkan ke /tmp lalu ditarik lokal, dan penghapusan
 berkas impor dilakukan lewat Storage API dalam skrip PHP, bukan perintah shell.
+
+
+## 2026-10-17 20:05 - Peringatan media dashboard 202 dibersihkan
+
+Agent: zcode-209-gambar-opsi. Tanpa commit kode (operasi data).
+
+Konteks: setelah pembersihan hasil import, dashboard masih menampilkan
+"Shared Media Gagal Diproses 3" dan "Media Menunggu Diproses 3". Owner
+bertanya kenapa peringatan itu masih ada padahal data impor dan log sudah
+dihapus.
+
+Akar: `DashboardController` menghitung peringatan dari STATUS BARIS
+`media_assets` dan `product_media`, BUKAN dari `media_processing_logs`.
+Menghapus log tidak menyentuh angka itu. Tiga aset itu bukan data impor:
+dua kelompok berbeda masalah.
+
+- #1371/#1373/#1375 (pending): berkas DAN ketiga turunan WebP-nya sudah ada
+  di R2, hanya status tertinggal di pending. Diperbaiki menjadi ready.
+- #1385/#1386/#1387 (failed): sisa impor lama yang menunjuk host dev
+  `media.333labs.tech`, ditolak aturan host produksi. Tanpa object_key,
+  tanpa berkas R2, tanpa rujukan produk/opsi. Dihapus dari pustaka.
+
+Verifikasi sesudah: dashboard 200 dengan daftar perhatian KOSONG;
+shared_assets ready 185 / pending 0 / failed 0; attachments ready 453 /
+pending 0 / failed 0.
+
+Catatan: owner ternyata sudah import ulang saat audit berjalan (job #15,
+1.812 baris, 0 gagal, 151 produk, 604 gambar opsi semua di slot 1, semua
+aset opsi ready). Jadi 453 attachment itu milik import BARU, bukan sisa.
