@@ -7084,7 +7084,6 @@ Bukti: npm run typecheck bersih; npx eslint --max-warnings=0 pada berkas itu ber
 npx vitest run tests/frontend/admin-edit-guard.test.ts 4/4 lulus; deploy 202
 7ef3477c kesehatan OK, dan grep pada public/build/assets/*.js tidak menemukan
 string "Urutan Tampil" lagi.
-
 ## 2026-10-17 06:05 UTC | zcode-taxonomy-autofill | Standard | 05470315 | selesai
 Lingkup: tiga permintaan owner setelah menemukan dropdown Model kosong.
 (1) Sub Model kini TERISI OTOMATIS dari kolom XLSX. Importer memanggil
