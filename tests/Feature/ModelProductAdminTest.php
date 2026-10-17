@@ -93,14 +93,16 @@ class ModelProductAdminTest extends TestCase
             'sort_order' => 10,
         ]);
 
-        // Auto-arsip (kontrak owner: wadah = produk yang bisa dibeli) kini
-        // berjalan OTOMATIS di setiap perubahan produk, bukan lagi menunggu
-        // perintah admin. Wadah kosong buatan admin di atas sudah dimatikan
-        // saat produk SWING disimpan pada langkah sebelumnya.
+        // Auto-nonaktif kini hanya menyasar wadah YATIM, yaitu wadah yang
+        // tidak punya produk sama sekali (revisi 17 Okt 2026). Wadah yang
+        // produknya masih ada tetapi sedang diarsipkan dibiarkan mengikuti
+        // pilihan admin, karena itulah keadaan normal katalog hasil impor.
         $result = app(\App\Services\ModelProductService::class)->syncFromCatalog($admin->id);
         $this->assertSame(0, $result['created']);
-        // Yang tersisa hanya wadah SWING buatan admin (aktif, tanpa produk aktif).
-        $this->assertSame(1, $result['archived']);
+        // Tidak ada lagi wadah yang perlu dimatikan pada langkah ini: KACA_MATI
+        // sudah dimatikan saat produk SWING disimpan, sedangkan SLIDING dan
+        // SWING masih berisi produk.
+        $this->assertSame(0, $result['archived']);
         $this->assertDatabaseHas('cms_model_products', [
             'product_category' => 'JENDELA',
             'product_model' => 'KACA_MATI',
@@ -337,6 +339,95 @@ class ModelProductAdminTest extends TestCase
      * ditambah lagi: baris kembar membuat kartu model tampil dua kali di toko.
      * Admin diarahkan melengkapi baris yang sudah ada.
      */
+    /**
+     * Kasus nyata 17 Okt 2026: setelah impor, semua produk berstatus arsip.
+     * Wadah tidak boleh dimatikan otomatis, dan tombol Aktifkan harus bekerja
+     * untuk wadah yang sudah pernah dinonaktifkan.
+     */
+    public function test_wadah_berisi_produk_arsip_tetap_aktif_dan_bisa_dinyalakan_lagi(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        Product::create([
+            'parent_sku' => 'WIN-IMP-1',
+            'name' => 'Jendela Jungkit Hasil Impor',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'ORNAMEN',
+            // Importer selalu menulis produk baru sebagai arsip.
+            'status' => 'archived',
+        ]);
+
+        $wadah = CmsModelProduct::query()
+            ->where('product_category', 'JENDELA')
+            ->where('product_model', 'JUNGKIT')
+            ->firstOrFail();
+
+        $this->assertSame(
+            'active',
+            $wadah->status,
+            'wadah yang masih berisi produk tidak boleh dimatikan otomatis'
+        );
+
+        // Admin menyembunyikan, lalu menyalakannya kembali.
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.deactivate', $wadah))
+            ->assertRedirect();
+        $this->assertSame('draft', $wadah->fresh()->status);
+
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.activate', $wadah))
+            ->assertRedirect();
+        $this->assertSame(
+            'active',
+            $wadah->fresh()->status,
+            'tombol Aktifkan harus benar-benar mengaktifkan wadah'
+        );
+
+        // Perubahan produk berikutnya tidak mematikannya lagi.
+        Product::create([
+            'parent_sku' => 'WIN-IMP-2',
+            'name' => 'Jendela Jungkit Hasil Impor 2',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+            'design_variant' => 'POLOS',
+            'status' => 'archived',
+        ]);
+
+        $this->assertSame('active', $wadah->fresh()->status);
+    }
+
+    public function test_wadah_tanpa_produk_sama_sekali_tetap_dinonaktifkan_otomatis(): void
+    {
+        // Wadah buatan admin untuk pasangan yang belum punya produk.
+        CmsModelProduct::create([
+            'name' => 'Jendela Kaca Mati',
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        // Perubahan produk pada model lain memicu penyelarasan.
+        Product::create([
+            'parent_sku' => 'WIN-SLD-1',
+            'name' => 'Jendela Sliding',
+            'category_id' => 1,
+            'product_category' => 'JENDELA',
+            'product_model' => 'SLIDING',
+            'design_variant' => 'POLOS',
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'KACA_MATI',
+            'status' => 'draft',
+        ]);
+    }
+
     public function test_tambah_model_pasangan_sudah_punya_wadah_diarahkan_ke_edit(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
