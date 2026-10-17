@@ -424,7 +424,7 @@ export default function ProductsIndex({
           value: q,
           onChange: setQ,
           onSubmit: () => visit({ q }),
-          placeholder: "Cari nama produk atau parent SKU…",
+          placeholder: "Cari nama produk atau SKU Induk…",
         }}
         sort={
           <Select

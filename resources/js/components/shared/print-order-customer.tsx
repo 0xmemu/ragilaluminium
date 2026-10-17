@@ -304,7 +304,7 @@ export function PrintOrderArea({ data }: { data: OrderPrintData }) {
               <th style={{ ...th, background: "#1A1E1C", width: 200 }}>PRODUK</th>
               <th style={{ ...th, background: "#1A1E1C", width: 140 }}>VARIAN</th>
               <th style={{ ...th, background: "#1A1E1C", width: 110 }}>VOLUME/BERAT</th>
-              <th style={{ ...th, background: "#1A1E1C", width: 36, textAlign: "center" }}>QTY</th>
+              <th style={{ ...th, background: "#1A1E1C", width: 36, textAlign: "center" }}>Jumlah</th>
               <th style={{ ...th, background: "#1A1E1C", width: 90, textAlign: "right" }}>HARGA</th>
               <th
                 style={{

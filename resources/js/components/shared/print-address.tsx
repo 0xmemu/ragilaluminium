@@ -1,4 +1,4 @@
-import { formatPhoneLocal } from "@/lib/format"
+import { formatCurrency, formatPhoneLocal } from "@/lib/format"
 import { createPortal } from "react-dom"
 import * as React from "react"
 
@@ -140,7 +140,7 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
             <thead>
               <tr>
                 <th align="left" style={{ padding: "4px 8px 4px 0", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Produk</th>
-                <th align="center" style={{ padding: "4px 8px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Qty</th>
+                <th align="center" style={{ padding: "4px 8px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Jumlah</th>
                 <th align="right" style={{ padding: "4px 0 4px 8px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>Harga</th>
               </tr>
             </thead>
@@ -163,7 +163,7 @@ export function PrintAddressArea({ data }: { data: AddressData }) {
                   </td>
                   <td align="right" style={{ padding: "6px 0 6px 8px", borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>
                     {typeof item.unit_price === "number"
-                      ? "Rp " + item.unit_price.toLocaleString("id-ID")
+                      ? formatCurrency(item.unit_price)
                       : "-"}
                   </td>
                 </tr>

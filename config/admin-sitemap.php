@@ -117,7 +117,7 @@ return [
         'pelanggan_komunikasi' => [
             'title' => 'Pelanggan & Komunikasi',
             'items' => [
-                ['label' => 'Customer', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
+                ['label' => 'Pelanggan', 'route' => 'admin.customers.index', 'capability' => 'customers.view', 'icon' => 'users', 'active' => ['admin.customers.*']],
                 ['label' => 'Ulasan', 'route' => 'admin.testimonials.index', 'capability' => 'testimonials.view', 'icon' => 'star', 'active' => ['admin.testimonials.*', 'admin.gallery-items.*', 'admin.apa-kata-pelanggan.*']],
                 [
                     'label' => 'WhatsApp',

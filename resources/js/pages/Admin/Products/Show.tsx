@@ -630,7 +630,7 @@ export default function ProductShow({
   return (
     <AdminLayout
       title={product.name}
-      description={"Parent SKU · " + product.parent_sku}
+      description={"SKU Induk · " + product.parent_sku}
       actions={actions}
       backUrl={routeUrl("admin.products.index")}
     >
@@ -669,7 +669,7 @@ export default function ProductShow({
                 </h2>
                 <div className="mt-2 flex items-center gap-1.5">
                   <span className="font-mono text-sm font-medium text-muted-foreground">
-                    Parent SKU · {product.parent_sku}
+                    SKU Induk · {product.parent_sku}
                   </span>
                   <button
                     type="button"
@@ -681,8 +681,8 @@ export default function ProductShow({
                       }
                     }}
                     className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Salin Parent SKU"
-                    title={copiedSku ? "Tersalin!" : "Salin Parent SKU"}
+                    aria-label="Salin SKU Induk"
+                    title={copiedSku ? "Tersalin!" : "Salin SKU Induk"}
                   >
                     <Icon name={copiedSku ? "check" : "copy"} className="size-3.5" aria-hidden="true" />
                   </button>

@@ -22,7 +22,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   tidak_aktif: { label: "Tidak aktif", tone: "neutral-soft" },
   baru: { label: "Baru", tone: "info-soft" },
   archived: { label: "Diarsipkan", tone: "neutral-soft" },
-  draft: { label: "Draft", tone: "neutral-soft" },
+  draft: { label: "Draf", tone: "neutral-soft" },
   awaiting_confirmation: { label: "Menunggu Konfirmasi", tone: "warning" },
   confirmed: { label: "Menunggu Konfirmasi", tone: "warning" },
   running: { label: "Sedang diproses", tone: "info-soft" },

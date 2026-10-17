@@ -619,7 +619,7 @@ export default function ProductForm({
               <tbody className="divide-y divide-border text-sm">
                 <tr>
                   <th className="w-56 bg-muted/15 px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground align-middle">
-                    Parent SKU
+                    SKU Induk
                   </th>
                   <td className="px-4 py-2.5">
                     <Input
