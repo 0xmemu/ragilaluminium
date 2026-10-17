@@ -101,6 +101,27 @@ function buildCombinations(defs: VariantDef[]): Array<{ options: string[]; label
   return combos
 }
 
+/**
+ * Peta "nilai opsi -> thumbnail" untuk sumbu bergambar, dipakai matriks harga
+ * dan stok supaya admin melihat warna yang sedang diisi tanpa membaca label.
+ * Mengikuti tampilan Shopee: gambar hanya untuk sumbu bergambar.
+ */
+function buildAxisThumbMap(
+  defs: VariantDef[],
+  slot: number | null,
+): { axisName: string; thumbs: Map<string, string> } {
+  const thumbs = new Map<string, string>()
+  if (!slot || slot < 1 || slot > defs.length) return { axisName: "", thumbs }
+
+  const def = defs[slot - 1]
+  for (const option of def.options) {
+    const value = option.value.trim().toLowerCase()
+    if (value && option.thumb_url) thumbs.set(value, option.thumb_url)
+  }
+
+  return { axisName: def.name, thumbs }
+}
+
 function StatusCheck({ ready, label }: { ready: boolean; label: string }) {
   return (
     <div className="flex items-center justify-between py-1">
@@ -332,6 +353,12 @@ export default function ProductForm({
   })
 
   const combos = buildCombinations(variantDefs)
+
+  // Thumbnail opsi pada sumbu bergambar untuk matriks harga & stok.
+  const axisThumbs = React.useMemo(
+    () => buildAxisThumbMap(variantDefs, imageAxisSlot),
+    [variantDefs, imageAxisSlot],
+  )
 
   // Pratinjau langsung: gambar opsi varian ikut tampil di Foto Produk dengan
   // label varian, tanpa menunggu simpan. Edit mode tidak memakainya karena
@@ -1160,6 +1187,9 @@ export default function ProductForm({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/20 text-left text-xs font-semibold text-foreground">
+                        {axisThumbs.thumbs.size ? (
+                          <th className="w-16 px-3 py-2.5">{axisThumbs.axisName || "Gambar"}</th>
+                        ) : null}
                         <th className="px-4 py-2.5">Kombinasi</th>
                         <th className="px-4 py-2.5 w-48">Harga (Rp)</th>
                         <th className="px-4 py-2.5 w-72">Stok</th>
@@ -1169,8 +1199,46 @@ export default function ProductForm({
                       {combos.map((combo, comboIndex) => {
                         const key = String(comboIndex)
                         const value = combinations[key] ?? { price: "", stock: "" }
+
+                        // Nilai opsi pada sumbu bergambar untuk baris ini, lalu
+                        // gabungkan sel selama nilainya sama berturut-turut
+                        // (pola Shopee: satu gambar membentang satu kelompok).
+                        const axisValue = imageAxisSlot
+                          ? (combo.options[imageAxisSlot - 1] ?? "")
+                          : ""
+                        const thumb = axisThumbs.thumbs.get(axisValue.trim().toLowerCase())
+                        const prevAxisValue = comboIndex > 0 && imageAxisSlot
+                          ? (combos[comboIndex - 1].options[imageAxisSlot - 1] ?? "")
+                          : null
+                        const isGroupStart = thumb !== undefined && prevAxisValue !== axisValue
+
+                        let groupSpan = 0
+                        if (isGroupStart) {
+                          groupSpan = 1
+                          for (let i = comboIndex + 1; i < combos.length; i++) {
+                            if ((combos[i].options[(imageAxisSlot ?? 1) - 1] ?? "") !== axisValue) break
+                            groupSpan++
+                          }
+                        }
+
                         return (
                           <tr key={key} className="hover:bg-muted/30 transition-colors">
+                            {axisThumbs.thumbs.size ? (
+                              isGroupStart ? (
+                                <td rowSpan={groupSpan} className="border-r border-border/60 px-3 py-2 align-top">
+                                  <img
+                                    src={thumb}
+                                    alt=""
+                                    className="size-11 rounded border border-border object-cover"
+                                    loading="lazy"
+                                  />
+                                </td>
+                              ) : thumb === undefined ? (
+                                // Opsi ini belum punya gambar: sel kosong tetap
+                                // dirender supaya jumlah kolom tidak bergeser.
+                                <td className="border-r border-border/60 px-3 py-2" />
+                              ) : null
+                            ) : null}
                             <td className="px-4 py-2 font-medium text-foreground">{combo.label}</td>
                             <td className="px-4 py-2">
                               <Input
