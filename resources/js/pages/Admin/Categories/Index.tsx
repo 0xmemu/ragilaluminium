@@ -210,7 +210,7 @@ export default function CategoriesIndex({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((c) => (
+                {categories.map((c, index) => (
                   <TableRow key={c.id} className="hover:bg-muted/40">
                     <TableCell>
                       <div className="space-y-0.5">
@@ -240,7 +240,10 @@ export default function CategoriesIndex({
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className="font-mono text-xs text-muted-foreground">{c.sort_order}</span>
+                      {/* Posisi urut di daftar, bukan angka sort_order tersimpan.
+                          Angka tersimpan bisa berlubang setelah kategori dihapus
+                          (1, 3, 4) sehingga terbaca seolah daftar tidak sinkron. */}
+                      <span className="font-mono text-xs text-muted-foreground">{index + 1}</span>
                     </TableCell>
                     <TableCell className="w-[1%] whitespace-nowrap text-right">
                       <RowActions>

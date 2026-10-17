@@ -61,6 +61,25 @@ const PILL_PRESETS: string[] = [
   "Garansi Penuh",
 ]
 
+/**
+ * Kode model dari nama tampilan. Kata kategori dibuang lebih dulu karena kode
+ * selalu berpasangan dengan kategori, jadi "Jendela Jungkit Satu Daun" di
+ * kategori Jendela menjadi JUNGKIT_SATU_DAUN, bukan JENDELA_JUNGKIT_SATU_DAUN.
+ */
+function buildModelCode(name: string, categoryLabel: string): string {
+  const categoryWords = new Set(
+    categoryLabel.toLowerCase().split(/\s+/).filter(Boolean),
+  )
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  const kept = words.filter((word) => !categoryWords.has(word.toLowerCase()))
+  const base = kept.length > 0 ? kept : words
+  return base
+    .join("_")
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+}
+
 function wordCount(value: string): number {
   return value.trim().length === 0 ? 0 : value.trim().split(/\s+/).length
 }
@@ -108,6 +127,13 @@ export default function ModelProductForm({
     keywords: modelProduct?.keywords ?? [],
     status: modelProduct?.status ?? "draft",
   })
+
+  // Kode mengikuti nama selama admin belum menyentuh kolomnya. Di halaman edit
+  // kode terkunci karena sudah dipakai produk katalog.
+  const codeTouched = React.useRef(editing)
+
+  const selectedCategoryLabel =
+    categories.find((option) => option.value === form.data.product_category)?.label ?? ""
 
   // Satu daftar berurutan (pola seksi Foto Produk): pilihan pertama jadi
   // gambar utama, pilihan berikutnya mengisi galeri. Server menyimpan urutan
@@ -208,8 +234,29 @@ export default function ModelProductForm({
                   Nama Model Produk <span className="text-destructive">*</span>
                 </th>
                 <td className="px-4 py-2.5">
-                  <Input value={form.data.name} onChange={(event) => form.setData("name", event.target.value)} className="h-8 text-xs" />
-                  {form.errors.name ? <p className="mt-1 text-xs text-destructive">{form.errors.name}</p> : null}
+                  <Input
+                    value={form.data.name}
+                    onChange={(event) => {
+                      const name = event.target.value
+                      form.setData((prev) => ({
+                        ...prev,
+                        name,
+                        ...(!editing && !codeTouched.current
+                          ? { product_model: buildModelCode(name, selectedCategoryLabel) }
+                          : {}),
+                      }))
+                    }}
+                    placeholder="Contoh: Jendela Jungkit Satu Daun"
+                    className="h-8 text-xs"
+                  />
+                  {form.errors.name ? (
+                    <p className="mt-1 text-xs text-destructive">{form.errors.name}</p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Pakai nama yang tampil di toko, lengkap dan mudah dibaca pembeli.
+                      Contoh: Jendela Jungkit Satu Daun.
+                    </p>
+                  )}
                 </td>
               </tr>
               <tr>
@@ -219,8 +266,14 @@ export default function ModelProductForm({
                 <td className="px-4 py-2.5">
                   <Input
                     value={form.data.product_model ?? ""}
-                    onChange={(event) => form.setData("product_model", event.target.value.toUpperCase().replace(/[-\s]+/g, "_"))}
-                    placeholder="Otomatis dibuat dari nama jika kosong (misal: PINTU_LIPAT)"
+                    onChange={(event) => {
+                      codeTouched.current = true
+                      form.setData(
+                        "product_model",
+                        event.target.value.toUpperCase().replace(/[-\s]+/g, "_"),
+                      )
+                    }}
+                    placeholder="Terisi otomatis dari nama"
                     className="h-8 w-80 font-mono text-xs"
                     disabled={editing}
                   />
@@ -228,7 +281,7 @@ export default function ModelProductForm({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {editing
                       ? "Kode model terkunci setelah dibuat agar tidak memutus tautan produk katalog."
-                      : "Gunakan huruf besar dan garis bawah (contoh: PINTU_LIPAT, CASEMENT). Kosongkan untuk otomatis."}
+                      : "Terisi otomatis dari nama tanpa kata kategori, dan tetap bisa Anda ubah. Pilih sesingkat mungkin, satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM."}
                   </p>
                 </td>
               </tr>
@@ -239,7 +292,18 @@ export default function ModelProductForm({
                 <td className="px-4 py-2.5">
                   <Select
                     value={form.data.product_category}
-                    onChange={(event) => form.setData("product_category", event.target.value)}
+                    onChange={(event) => {
+                      const productCategory = event.target.value
+                      const label =
+                        categories.find((option) => option.value === productCategory)?.label ?? ""
+                      form.setData((prev) => ({
+                        ...prev,
+                        product_category: productCategory,
+                        ...(!editing && !codeTouched.current
+                          ? { product_model: buildModelCode(prev.name, label) }
+                          : {}),
+                      }))
+                    }}
                     className="h-8 w-72 text-xs"
                   >
                     <option value="">Pilih kategori</option>

@@ -327,11 +327,58 @@ class ModelProductAdminTest extends TestCase
             ])
             ->assertRedirect(route('admin.model-products.index'));
 
+        // Kode otomatis membuang kata kategori karena kode selalu berpasangan
+        // dengan kategori; mengulangnya membuat kode panjang tanpa manfaat.
         $this->assertDatabaseHas('cms_model_products', [
             'product_category' => 'BOVEN',
-            'product_model' => 'BOVEN_JUNGKIT_EMPAT_DAUN',
+            'product_model' => 'JUNGKIT_EMPAT_DAUN',
         ]);
         $this->assertSame(1, CmsModelProduct::query()->count());
+    }
+
+    /**
+     * Kode yang diisi admin dipakai apa adanya, termasuk bila admin sengaja
+     * memilih satu kata singkat seperti JUNGKIT.
+     */
+    public function test_kode_model_yang_diisi_admin_dipakai_apa_adanya(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.store'), [
+                'name' => 'Jendela Jungkit Satu Daun',
+                'product_model' => 'JUNGKIT',
+                'product_category' => 'JENDELA',
+                'status' => 'active',
+            ])
+            ->assertRedirect(route('admin.model-products.index'));
+
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'JUNGKIT',
+        ]);
+    }
+
+    /**
+     * Nama yang seluruhnya terdiri dari kata kategori tidak boleh menghasilkan
+     * kode kosong; kata nama dipakai ulang sebagai jaring pengaman.
+     */
+    public function test_kode_model_tidak_pernah_kosong_bila_nama_hanya_kata_kategori(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.model-products.store'), [
+                'name' => 'Jendela',
+                'product_category' => 'JENDELA',
+                'status' => 'active',
+            ])
+            ->assertRedirect(route('admin.model-products.index'));
+
+        $this->assertDatabaseHas('cms_model_products', [
+            'product_category' => 'JENDELA',
+            'product_model' => 'JENDELA',
+        ]);
     }
 
     /**

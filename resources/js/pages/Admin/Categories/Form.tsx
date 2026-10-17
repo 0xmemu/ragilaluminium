@@ -33,6 +33,10 @@ interface Props {
   submitUrl: string
 }
 
+function toSlug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+}
+
 export default function CategoryForm({
   title,
   description,
@@ -48,6 +52,11 @@ export default function CategoryForm({
     sort_order: String(category?.sort_order ?? nextSortOrder),
     is_active: category?.is_active ?? true,
   })
+
+  // Slug mengikuti nama selama admin belum menyentuh kolomnya. Penanda ini
+  // mencegah slug membeku di huruf pertama: dulu kolom dianggap sudah terisi
+  // setelah ketukan pertama, sehingga "Gerbang" berakhir menjadi "g".
+  const slugTouched = React.useRef(Boolean(category))
 
   // Gerbang isi (kontrak "logika tombol"): kolom wajibnya mengikuti aturan
   // `required` CategoryController. Pada halaman edit, tombol juga menunggu
@@ -123,12 +132,10 @@ export default function CategoryForm({
                       form.setData((prev) => ({
                         ...prev,
                         name,
-                        ...(!category && !prev.slug
-                          ? { slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") }
-                          : {}),
+                        ...(!slugTouched.current ? { slug: toSlug(name) } : {}),
                       }))
                     }}
-                    placeholder="contoh: Jendela Aluminium"
+                    placeholder="Contoh: Jendela"
                     required
                     className="max-w-md"
                   />
@@ -181,13 +188,12 @@ export default function CategoryForm({
                     <input
                       id="cat-slug"
                       value={form.data.slug}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        slugTouched.current = true
                         form.setData("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))
-                      }
+                      }}
                       placeholder={
-                        form.data.name
-                          ? form.data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-                          : "otomatis-dari-nama"
+                        form.data.name ? toSlug(form.data.name) : "otomatis-dari-nama"
                       }
                       className="w-full bg-transparent py-1.5 pl-1 font-mono text-xs text-foreground outline-none"
                     />

@@ -167,6 +167,93 @@ export const adminPageGuides: Record<string, AdminPageGuide> = {
       "Produk yang belum aktif tidak terlihat oleh pembeli.",
     ],
   },
+  "admin.model-products.index": {
+    title: "Model Produk",
+    summary: "Wadah model produk yang tampil sebagai kartu di halaman kategori toko.",
+    steps: [
+      "Tambah model produk lewat tombol di kanan atas.",
+      "Isi Nama Model Produk dengan nama lengkap yang dilihat pembeli, lalu pilih kategori katalognya.",
+      "Periksa Kode Model Produk: terisi otomatis dari nama tanpa kata kategori, dan tetap bisa diubah.",
+      "Lengkapi media dan kata kunci pill agar kartu model tampil rapi di toko.",
+    ],
+    notes: [
+      "Nama model wajib memakai nama yang tampil di toko supaya pembeli langsung mengenalinya. Contoh: Jendela Jungkit Satu Daun, bukan Jungkit.",
+      "Kode model sebaiknya satu kata bila cukup: JUNGKIT, bukan JUNGKIT_ALUMINIUM. Kata kategori tidak perlu diulang karena kode sudah berpasangan dengan kategori.",
+      "Kode model terkunci setelah disimpan agar tautan produk katalog tidak patah.",
+      "Model tanpa produk aktif tidak tampil di storefront.",
+    ],
+  },
+  "admin.model-products.create": {
+    title: "Tambah Model Produk",
+    summary: "Membuat wadah model baru beserta nama tampilan dan kodenya.",
+    steps: [
+      "Tulis Nama Model Produk selengkap nama yang tampil di toko, misalnya Jendela Jungkit Satu Daun.",
+      "Pilih Kategori katalog. Kode model menyesuaikan dan membuang kata kategori.",
+      "Biarkan Kode Model Produk apa adanya bila sudah sesuai, atau ubah sendiri bila perlu lebih singkat.",
+      "Pilih Status, lalu lengkapi media dan kata kunci pill.",
+      "Tekan Simpan model.",
+    ],
+    notes: [
+      "Kode model dibuat otomatis dari nama dan bisa diubah sebelum disimpan. Setelah tersimpan, kode terkunci.",
+      "Contoh pemetaan: Jendela Jungkit Satu Daun di kategori Jendela menjadi JUNGKIT_SATU_DAUN.",
+      "Kata kategori tidak ikut masuk ke kode karena kode selalu berpasangan dengan kategori.",
+    ],
+  },
+  "admin.model-products.edit": {
+    title: "Edit Model Produk",
+    summary: "Mengubah nama tampilan, media, dan kata kunci pill sebuah model produk.",
+    steps: [
+      "Ubah Nama Model Produk bila nama di toko perlu diperbaiki.",
+      "Atur media model: gambar utama lalu galeri, urutannya menentukan tampilan hero.",
+      "Isi kata kunci pill atau biarkan kosong untuk memakai pill bawaan sistem.",
+      "Tekan Simpan model.",
+    ],
+    notes: [
+      "Kode model terkunci setelah dibuat agar produk yang sudah memakainya tidak kehilangan tautan.",
+      "Nama model sebaiknya tetap memakai nama yang tampil di toko supaya konsisten dengan judul halaman.",
+    ],
+  },
+  "admin.categories.index": {
+    title: "Kategori Produk",
+    summary: "Daftar kategori utama toko beserta kode, status, jumlah produk, dan urutan tampilnya.",
+    steps: [
+      "Tambah kategori lewat tombol di kanan atas.",
+      "Klik nama kategori untuk mengubah data, slug URL, dan statusnya.",
+      "Gunakan filter status untuk melihat kategori aktif atau nonaktif saja.",
+    ],
+    notes: [
+      "Kolom Urutan menunjukkan posisi kategori di menu katalog, dihitung dari atas mulai 1.",
+      "Kategori baru otomatis ditaruh paling belakang sehingga urutan kategori lama tidak berubah.",
+      "Kategori yang masih dipakai produk atau model tidak bisa dihapus.",
+    ],
+  },
+  "admin.categories.create": {
+    title: "Tambah Kategori",
+    summary: "Membuat kategori baru untuk katalog toko dan form produk.",
+    steps: [
+      "Tulis Nama Kategori dengan nama yang tampil di menu navigasi toko.",
+      "Biarkan Slug URL terisi otomatis dari nama, atau ubah sendiri bila perlu.",
+      "Tentukan Status Kategori: aktif berarti tampil di navigasi dan katalog publik.",
+      "Tekan Tambah.",
+    ],
+    notes: [
+      "Kode kategori dibuat otomatis dari nama dan tidak perlu diisi.",
+      "Kategori baru otomatis menempati urutan paling belakang di menu katalog.",
+    ],
+  },
+  "admin.categories.edit": {
+    title: "Edit Kategori",
+    summary: "Mengubah nama, slug URL, dan status sebuah kategori.",
+    steps: [
+      "Ubah Nama Kategori bila perlu. Slug URL ikut menyesuaikan selama belum Anda ubah sendiri.",
+      "Periksa Slug URL: ini alamat halaman kategori di toko.",
+      "Atur Status Kategori lalu tekan Simpan.",
+    ],
+    notes: [
+      "Kode kategori terkunci bila sudah dipakai produk, karena menjadi awalan SKU produk di dalamnya.",
+      "Mengubah slug mengubah alamat halaman kategori di toko.",
+    ],
+  },
   "admin.media.library": {
     title: "Media Library",
     summary: "Kumpulan aset media bersama untuk produk, banner, dan dokumentasi.",

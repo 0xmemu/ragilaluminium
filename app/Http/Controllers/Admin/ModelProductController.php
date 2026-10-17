@@ -304,7 +304,7 @@ class ModelProductController extends Controller
         $customCode = trim((string) $request->input('product_model', ''));
         $generatedCode = filled($customCode)
             ? strtoupper(preg_replace('/[^A-Z0-9_]+/', '_', strtoupper($customCode)))
-            : mb_strtoupper(Str::slug((string) $validated['name'], '_'));
+            : $this->generateModelCode((string) $validated['name'], (string) $validated['product_category']);
         $validated['product_model'] = $existing?->product_model ?: $generatedCode;
         $validated['media_asset_id'] = $validated['media_asset_id'] ?? null;
         $validated['media_show_product_photos'] = $request->boolean('media_show_product_photos', true);
@@ -445,6 +445,40 @@ class ModelProductController extends Controller
             'kind' => $kind,
             'videoUrl' => $kind === 'video' ? $asset->localUrlFor('video') : null,
         ];
+    }
+
+    /**
+     * Kode model dari nama tampilan, mengikuti pratinjau di form: kata kategori
+     * dibuang lebih dulu karena kode selalu berpasangan dengan kategori, jadi
+     * "Jendela Jungkit Satu Daun" di kategori Jendela menjadi JUNGKIT_SATU_DAUN.
+     */
+    protected function generateModelCode(string $name, string $productCategory): string
+    {
+        $categoryName = (string) (\App\Models\Category::query()
+            ->where('code', $productCategory)
+            ->value('name') ?? '');
+
+        $categoryWords = array_filter(
+            preg_split('/\s+/', mb_strtolower(trim($categoryName))) ?: [],
+            fn (string $word) => $word !== '',
+        );
+
+        $words = array_values(array_filter(
+            preg_split('/\s+/', trim($name)) ?: [],
+            fn (string $word) => $word !== '',
+        ));
+
+        $kept = array_values(array_filter(
+            $words,
+            fn (string $word) => ! in_array(mb_strtolower($word), $categoryWords, true),
+        ));
+
+        $base = $kept !== [] ? $kept : $words;
+
+        return trim(
+            (string) preg_replace('/[^A-Z0-9_]+/', '_', mb_strtoupper(implode('_', $base))),
+            '_',
+        );
     }
 
     /** @return list<array{value:string,label:string}> */
