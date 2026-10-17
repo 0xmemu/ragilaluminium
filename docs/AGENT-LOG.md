@@ -7039,3 +7039,30 @@ TaxonomySetupOrderTest + CatalogDynamicCategoryTest + ProductCacheTest = 17 test
 `draft`, `sub_models` 0 baris, `CatalogLabels::modelOptions()` = `[]`.
 
 Agent: zcode-product-model-dropdown
+
+
+## 2026-10-17 05:40 UTC | zcode-ui-consistency | Standard | 614a8d27 | selesai
+Lingkup: perbaikan konsistensi UI atas audit 17 Oktober, dikerjakan di 209 saja
+(branch feat/ui-consistency-209, 202 tidak disentuh).
+- ADR-023 mode terkunci diterapkan pada Admin/CaraPemesanan/Edit.tsx,
+  Admin/CmsDocument/Edit.tsx, dan Admin/CmsPageForm.tsx. Ketiganya dulu
+  tercatat "selesai" di ADR tetapi membuka form langsung aktif.
+- TentangKami/Edit.tsx: tombol submit ganda di dasar form dihapus, tombol
+  Simpan header memakai SubmitGateButton dengan requireChange.
+- Istilah: Customer menjadi Pelanggan (admin-sitemap), Parent SKU menjadi
+  SKU Induk, Qty/QTY cetak menjadi Jumlah, status draft menjadi Draf.
+- formatCurrency bersama dipakai di ProductPicker, print-address, dan chip
+  rentang harga katalog (dulu merakit Rp sendiri).
+- Tabel pratinjau/hasil import diberi kontainer overflow-x-auto.
+- 68 em dash dibuang dari kode dan dokumen. StockCellParser regex sengaja
+  dibiarkan karena karakter kelas regex.
+Dampak spec: tidak berubah (tidak ada route, field, enum, atau JSON baru).
+Untuk agent berikutnya: tiga halaman ADR-023 kini masuk WAJIB_TERKUNCI di
+tests/frontend/admin-edit-guard.test.ts. Jangan mengganti regex
+StockCellParser dengan tanda hubung, sudah terbukti mematahkan 5 test impor.
+Bukti: npm run typecheck bersih; npm run lint bersih; npx vitest run 442/442
+lulus; php artisan test untuk CaraPemesanan, CMS, frontend page contract,
+random stock import, dan order export semuanya lulus; build 209 memuat
+string baru (SKU Induk, Pelanggan, Draf); verifikasi Playwright membuktikan
+mode terkunci, Batal memulihkan nilai tanpa request PUT, dan alur create CMS
+tetap bebas.
