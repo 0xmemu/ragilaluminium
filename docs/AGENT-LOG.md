@@ -7209,3 +7209,38 @@ saat pola lama dikembalikan sementara. Seluruh Vitest 57 berkas / 453 test OK.
 OK, dan bundel produksi memuat pola baru `locked===!0` (bukan pola lama).
 
 Agent: zcode-variant-name-lock
+
+## 2026-10-17 06:15 UTC | zcode-taxonomy-form-fix | Standard | 7415e82f | selesai
+Lingkup: tiga cacat form taksonomi dari laporan owner, plus panduannya.
+(1) Slug kategori membeku di huruf pertama. Form hanya mengisi slug selama slug
+kosong, jadi ketukan pertama "G" menulis "g" lalu kolom dianggap terisi dan
+kategori "Gerbang" berakhir di /products/g. Kini penanda slugTouched (ref) hanya
+menyala bila admin sendiri menyunting kolom slug, sehingga slug mengikuti nama
+selama belum disentuh. (2) Kode model mengulang kata kategori. Kode selalu
+berpasangan dengan kategori, jadi kata kategori dibuang: "Jendela Jungkit Satu
+Daun" di kategori Jendela menjadi JUNGKIT_SATU_DAUN. Pembentuk yang sama ada di
+dua tempat dan wajib selaras: buildModelCode() di Form.tsx untuk pratinjau, dan
+generateModelCode() di ModelProductController untuk nilai yang disimpan saat
+kolom dikosongkan. Kode tetap editable di halaman tambah (penanda codeTouched)
+dan terkunci di halaman edit. (3) Kolom Urutan di daftar kategori menampilkan
+posisi 1..N (index + 1), bukan sort_order tersimpan yang bisa berlubang setelah
+kategori dihapus (1, 3, 4) sehingga terbaca seolah tidak sinkron.
+Ditambah: placeholder kategori jadi "Contoh: Jendela" tanpa "Aluminium", hint
+nama model wajib memakai nama yang tampil di toko, keterangan kode menganjurkan
+satu kata (JUNGKIT, bukan JUNGKIT_ALUMINIUM), dan panduan halaman untuk
+kategori serta model produk di admin-page-guides.ts.
+Dampak spec: tidak berubah. sort_order tetap divalidasi dan disimpan; hanya
+tampilannya di daftar yang berubah. Tidak ada route, field, enum, atau JSON baru.
+Untuk agent berikutnya: jangan mengembalikan pola !prev.slug pada slug kategori
+atau menghapus pembuangan kata kategori pada kode model. Penjaganya
+tests/frontend/taxonomy-form-guard.test.ts dan ModelProductAdminTest. Jangan
+mengembalikan isian Urutan Tampil ke form kategori (kontrak 2026-10-17).
+Bukti: npm run typecheck bersih; eslint 4 berkas bersih; vitest 453/453 lulus;
+ModelProductAdminTest 11/11, ModelProductMediaTest 9/9, CategoryAutoCodeTest
+4/4, TaxonomySetupOrderTest 5/5. Deploy 202 7415e82f kesehatan OK. Uji live
+dengan transaksi rollback: slug tersimpan "gerbang-uji" (bukan "g"), posisi
+daftar 3, kode dari "Jendela Jungkit Satu Daun" + JENDELA = JUNGKIT_SATU_DAUN,
+dan jumlah kategori kembali 2 setelah rollback.
+Catatan: StorePerformanceGoldenTest gagal karena commit efcf603c (agent lain)
+mengubah teks metric_basis.anchor; bukan dari perubahan ini, dan sudah gagal
+sebelum commit ini dibuat.
