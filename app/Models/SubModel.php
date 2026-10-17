@@ -37,8 +37,12 @@ class SubModel extends Model
         $flush = function (self $model): void {
             \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.all');
             \Illuminate\Support\Facades\Cache::forget('catalog.sub_model_codes.'.($model->product_model ?? ''));
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v4.all');
             \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.all');
             if ($model->product_model) {
+                \Illuminate\Support\Facades\Cache::forget(
+                    'catalog.model_codes.v4.'.strtoupper((string) $model->product_model)
+                );
                 \Illuminate\Support\Facades\Cache::forget(
                     'catalog.model_codes.v3.'.strtoupper((string) $model->product_model)
                 );

@@ -7006,3 +7006,36 @@ Bukti: `POST /admin/imports` 12:01:27 = 500, sesudah perbaikan 12:05:34 = 302;
 www-data pada `storage/app/imports` = OK; `bash -n` skrip deploy = SYNTAX_OK.
 
 Agent: zcode-import-fix
+
+## 2026-10-17 05:28 UTC | zcode-product-model-dropdown | Standard | (belum) | selesai
+Lingkup: halaman Edit Produk menampilkan Model "Pilih..." setelah import. Daftar
+kode model (`CatalogLabels::modelCodes()`) sebelumnya hanya dibaca dari wadah
+`cms_model_products` berstatus aktif dan `sub_models` aktif. Import menulis
+produk baru dengan status `archived`, lalu `ModelProductSync::syncFromCatalog()`
+otomatis menonaktifkan wadah yang tidak punya produk aktif, sehingga model yang
+baru saja diimpor hilang dari dropdown dan validasi simpan menolaknya
+(`Rule::in(modelCodes())`). Perbaikan: daftar model ikut memuat `product_model`
+yang benar-benar dipakai produk, cache dinaikkan ke `catalog.model_codes.v4.*`,
+dan cache v4 dibuang oleh `ProductObserver` (create/update/delete) serta hook
+`CmsModelProduct`/`SubModel`. Berkas: `app/Support/CatalogLabels.php`,
+`app/Observers/ProductObserver.php`, `app/Models/CmsModelProduct.php`,
+`app/Models/SubModel.php`, `tests/Feature/ProductModelDropdownTest.php`.
+
+Dampak spec: tidak berubah. Tidak ada route, kolom, enum, atau bentuk JSON baru.
+
+Untuk agent berikutnya: wadah model yang nonaktif TIDAK otomatis diaktifkan
+kembali oleh import (itu keputusan admin tampil/tidak di toko). Yang diperbaiki
+hanya agar produk yang sudah memakai model tersebut tidak kehilangan pilihan di
+form. Kalau nanti ada kode baru yang menulis `product_model` langsung lewat
+query builder (bukan Eloquent), cache v4 tidak otomatis dibuang; pakai model
+Eloquent atau panggil `Cache::forget('catalog.model_codes.v4.all')` sendiri.
+
+Bukti: `phpunit --filter=ProductModelDropdownTest` 2 test / 8 asersi OK; test
+terbukti GAGAL saat perbaikan dikembalikan sementara ("model yang dipakai produk
+harus ada di daftar"), lalu OK setelah dipulihkan. Regresi gabungan
+ProductModelDropdownTest + DynamicTaxonomyFlowTest + ImportWithoutTaxonomyTest +
+TaxonomySetupOrderTest + CatalogDynamicCategoryTest + ProductCacheTest = 17 test,
+76 asersi OK. Data 202 saat diperiksa: `cms_model_products` 2 baris keduanya
+`draft`, `sub_models` 0 baris, `CatalogLabels::modelOptions()` = `[]`.
+
+Agent: zcode-product-model-dropdown

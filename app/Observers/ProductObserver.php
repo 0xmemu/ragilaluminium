@@ -22,6 +22,7 @@ class ProductObserver
     public function created(Product $product): void
     {
         $this->segarkanTurunan($product);
+        $this->segarkanDaftarModel($product);
 
         // Pasangan kategori + model baru selalu perlu wadah.
         ModelProductSync::sync();
@@ -36,6 +37,7 @@ class ProductObserver
         // true pada instance yang sama, sehingga update biasa akan salah
         // dianggap penambahan.
         if ($product->wasChanged(['product_category', 'product_model', 'status'])) {
+            $this->segarkanDaftarModel($product);
             ModelProductSync::sync();
         }
     }
@@ -43,10 +45,30 @@ class ProductObserver
     public function deleted(Product $product): void
     {
         ProductCache::flushProducts();
+        $this->segarkanDaftarModel($product);
 
         // Produk yang dihapus bisa jadi satu-satunya produk aktif sebuah model,
         // jadi wadahnya perlu dinonaktifkan.
         ModelProductSync::sync();
+    }
+
+    /**
+     * Daftar kode model (`CatalogLabels::modelCodes()`) ikut memuat model yang
+     * dipakai produk, jadi cache-nya dibuang setiap kategori atau model sebuah
+     * produk berubah.
+     */
+    private function segarkanDaftarModel(Product $product): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v4.all');
+
+        $categories = array_unique(array_filter([
+            strtoupper((string) $product->product_category),
+            strtoupper((string) $product->getOriginal('product_category')),
+        ]));
+
+        foreach ($categories as $category) {
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v4.'.$category);
+        }
     }
 
     private function segarkanTurunan(Product $product): void

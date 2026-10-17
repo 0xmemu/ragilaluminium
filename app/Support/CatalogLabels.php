@@ -244,7 +244,7 @@ class CatalogLabels
     {
         $categoryKey = $category !== null && $category !== '' ? strtoupper(trim($category)) : 'all';
 
-        return \Illuminate\Support\Facades\Cache::remember('catalog.model_codes.v3.'.$categoryKey, 3600, function () use ($category): array {
+        return \Illuminate\Support\Facades\Cache::remember('catalog.model_codes.v4.'.$categoryKey, 3600, function () use ($category): array {
             $cmsQuery = \App\Models\CmsModelProduct::query()->where('status', 'active');
             if ($category !== null && $category !== '') {
                 $cmsQuery->where('product_category', strtoupper(trim($category)));
@@ -264,10 +264,27 @@ class CatalogLabels
                 ->values()
                 ->all();
 
-            $merged = array_values(array_unique(array_merge($fromCms, $fromSub)));
+            // Model yang sudah dipakai produk tetap sah walau wadahnya
+            // (cms_model_products) berstatus nonaktif. Tanpa ini, produk hasil
+            // import dengan model JUNGKIT membuat dropdown Model di form admin
+            // kosong dan validasi simpan menolak nilai yang sudah tersimpan.
+            $productQuery = \App\Models\Product::query()
+                ->whereNotNull('product_model')
+                ->where('product_model', '<>', '');
+            if ($category !== null && $category !== '') {
+                $productQuery->where('product_category', strtoupper(trim($category)));
+            }
+            $fromProducts = $productQuery->distinct()
+                ->pluck('product_model')
+                ->filter()
+                ->map(fn ($m) => strtoupper((string) $m))
+                ->values()
+                ->all();
+
+            $merged = array_values(array_unique(array_merge($fromCms, $fromSub, $fromProducts)));
 
             if ($category !== null && $category !== '' && ! empty($fromCms)) {
-                return array_values(array_unique($fromCms));
+                return array_values(array_unique(array_merge($fromCms, $fromProducts)));
             }
 
             return $merged;

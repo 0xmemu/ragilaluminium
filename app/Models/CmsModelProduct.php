@@ -30,10 +30,12 @@ class CmsModelProduct extends Model
     protected static function booted(): void
     {
         $flush = function (self $model) {
+            \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v4.all');
             \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.all');
             \Illuminate\Support\Facades\Cache::forget('catalog.model_codes');
             \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v2');
             if ($model->product_category) {
+                \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v4.'.strtoupper((string) $model->product_category));
                 \Illuminate\Support\Facades\Cache::forget('catalog.model_codes.v3.'.strtoupper((string) $model->product_category));
             }
             if ($model->product_model) {
