@@ -7284,3 +7284,29 @@ bucket `ra-media-prod` (Object Read & Write), lalu ganti
 lalu impor ulang berkas yang 14 barisnya gagal.
 
 Agent: zcode-import-status
+
+## 2026-10-17 07:30 UTC | zcode-category-order-removal | Trivial | 346f495b | selesai
+Lingkup: menghapus tampilan urutan kategori dari panel admin atas keputusan owner.
+Alasan owner: angka urutan tidak pernah tampil di storefront, jadi tidak perlu
+ditampilkan maupun diatur manual. Yang dihapus: kolom Urutan di daftar kategori
+(Admin/Categories/Index.tsx), isian Urutan Tampil yang tersisa di form
+(Admin/Categories/Form.tsx), prop nextSortOrder dan field sort_order pada payload
+index/create/edit CategoryController, serta dua baris panduan yang menyebut kolom
+Urutan.
+Yang TETAP berjalan: kategori baru otomatis dapat nextSortOrder() (max + 1),
+kategori lama tidak berubah posisinya, dan saat disunting nilai lamanya
+dipertahankan lewat fallback di update(). Kolom categories.sort_order tetap ada
+dan tetap dipakai CategoryUrl::productCategoryCodes() untuk mengurutkan navigasi
+katalog. Yang hilang hanya kontrol dan tampilannya di panel admin.
+Dampak spec: payload Inertia halaman kategori tidak lagi memuat sort_order dan
+nextSortOrder. Tidak ada route, enum, atau kolom database baru.
+Untuk agent berikutnya: JANGAN mengembalikan kolom Urutan atau isian Urutan
+Tampil ke halaman kategori tanpa keputusan owner baru. Kalau suatu saat urutan
+perlu diatur manual, buat alur sendiri dan tanyakan dulu ke owner.
+Bukti: npm run typecheck bersih; eslint 3 berkas bersih; CategoryAutoCodeTest +
+CategoryProductRelationTest + CatalogDynamicCategoryTest 15/15 lulus; vitest
+taxonomy-form-guard + admin-edit-guard 12/12 lulus. Deploy 202 346f495b
+kesehatan OK. Uji live dengan transaksi rollback: kategori baru lewat controller
+mendapat sort_order 4 (max 3 + 1), kategori yang disunting tanpa mengirim
+sort_order tetap di nilai 1, dan jumlah kategori kembali 2 setelah rollback.
+Urutan navigasi katalog terbaca JENDELA,BOVEN sesuai sort_order 1 dan 3.
