@@ -7743,3 +7743,21 @@ menghasilkan `media_totals {external:1, unreachable:1}`, `media_errors_total 1`
 dengan pesan "Baris 2: Gambar 1 (utama) tidak bisa diunduh (...)".
 
 Agent: zcode-preview-thorough
+
+
+## 2026-10-17 10:30 - Matriks harga & stok menampilkan thumbnail opsi
+
+Agent: zcode-209-gambar-opsi. Commit 55d4e270.
+
+Konteks: setelah verifikasi terhadap screenshot Shopee, ditemukan satu
+perbedaan tampilan yang belum ditutup. Shopee menampilkan thumbnail warna di
+dalam matriks harga dan stok, membentang satu kelompok kombinasi. Matriks kita
+hanya punya kolom Kombinasi/Harga/Stok, sehingga admin yang mengisi 12 harga
+tidak melihat warna yang sedang diisi tanpa membaca label.
+
+Perubahan: kolom thumbnail di matriks, hanya untuk sumbu bergambar, memakai
+rowSpan per kelompok nilai opsi. Opsi tanpa gambar merender sel kosong supaya
+kolom harga dan stok tidak bergeser.
+
+Bukti: typecheck bersih, eslint 0 warning, vitest 480/480 (4 tes penjaga
+baru di matrix-thumb.test.ts), build sukses, /admin 302 dan PDP 200.
