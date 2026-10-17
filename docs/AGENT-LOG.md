@@ -7592,3 +7592,23 @@ tanpa hasil -> 0. Deploy 202 f816b9e7, kesehatan OK.
 Catatan: storefront (CatalogSearch) TIDAK diubah dan tetap mencocokkan dimensi
 varian, karena di toko pembeli memang memilih ukuran. Kalau owner ingin
 perilaku toko ikut disamakan, itu keputusan terpisah.
+
+## 2026-10-17 09:40 UTC | zcode-search-drop-shortname | Trivial | b81b803f | selesai
+Lingkup: pertanyaan owner "nama pendek itu apa", lalu short_name dikeluarkan
+dari pencarian daftar produk.
+Arti short_name: kolom salinan otomatis nama produk dalam Title Case
+(CatalogLabels::titleCaseIndonesia). Tidak ada input untuk mengisinya di form
+admin (tidak dirender), dan tidak ditampilkan di daftar produk. Di toko, kolom
+ini dipakai sebagai cadangan judul kartu (productName(name, short_name)) dan
+komentar lama di testimonial-detail-dialog menyebut short_name pernah berisi
+dimensi saja.
+Data produksi 202: dari 151 produk, 151 memiliki short_name yang sama persis
+dengan name (setelah Title Case), 0 berisi dimensi saja, 0 kosong. Jadi kolom
+itu memang cermin nama, bukan sumber informasi baru.
+Perubahan: LikeSearch pada short_name dihapus dari applyListSearch(). Pencarian
+sekarang name, parent_sku, dan taksonomi (kategori, model, sub model).
+Verifikasi: test baru "nama pendek yang tidak tampil tidak dicari" (short_name
+berisi 95x65 harus 0 hasil, nama 90x60 tetap ketemu). 11 test 170 assertion
+lulus; pada kode sebelumnya test itu gagal. Regresi 20 test lulus. Deploy 202
+b81b803f, kesehatan OK, uji controller nyata: 200x100 1, 205x105 0, 85x55 0,
+SKU induk 1, kategori/model/sub model 151, tanpa hasil 0.
