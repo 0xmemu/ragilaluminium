@@ -7084,3 +7084,49 @@ Bukti: npm run typecheck bersih; npx eslint --max-warnings=0 pada berkas itu ber
 npx vitest run tests/frontend/admin-edit-guard.test.ts 4/4 lulus; deploy 202
 7ef3477c kesehatan OK, dan grep pada public/build/assets/*.js tidak menemukan
 string "Urutan Tampil" lagi.
+
+## 2026-10-17 06:05 UTC | zcode-taxonomy-autofill | Standard | 05470315 | selesai
+Lingkup: tiga permintaan owner setelah menemukan dropdown Model kosong.
+(1) Sub Model kini TERISI OTOMATIS dari kolom XLSX. Importer memanggil
+`ProductTaxonomyRegistrar::registerSubModel()` (berkas baru
+`app/Support/ProductTaxonomyRegistrar.php`) sekali per pasangan model + sub
+model per impor, idempoten, dan memakai label yang sama dengan dropdown admin
+(ORNAMEN menjadi Ornamen). Kolom kosong tetap kosong: model produk yang memang
+tidak punya sub model tidak membuat baris apa pun.
+(2) Nama wadah model produk tidak lagi menyisipkan "Aluminium".
+`CatalogLabels::modelCardTitle()` kini menyusun dari kategori + model saja
+("Jendela" + "JUNGKIT" menjadi "Jendela Jungkit"), karena katalog ke depan
+tidak selalu aluminium sedangkan kategori dan model selalu ada di data.
+Migrasi `2026_10_17_060000_drop_aluminium_from_cms_model_product_names`
+mengganti nama lama yang PERSIS mengikuti pola otomatis; nama yang disunting
+admin dibiarkan.
+(3) `CatalogLabels::model()` membuang awalan kategori dan sisipan "Aluminium"
+dari nama wadah, hanya bila sisa kalimatnya persis nama model. Nama yang diubah
+admin tidak disentuh.
+
+Berkas: `app/Support/CatalogLabels.php`, `app/Imports/CatalogProductsImportV2.php`,
+`app/Support/ProductTaxonomyRegistrar.php` (baru),
+`database/migrations/2026_10_17_060000_...php` (baru),
+`tests/Feature/ProductTaxonomyAutoFillTest.php` (baru), serta dua test lama yang
+mengunci perilaku lama diperbarui (`ImportUnregisteredTaxonomyTest`,
+`HomepagePopularTest`, `InstallationProjectAdminTest`).
+
+Dampak spec: tidak berubah untuk schema/route/JSON. Perubahan DATA: nama baris
+`cms_model_products` hasil otomatis kehilangan kata "Aluminium", dan impor kini
+menambah baris di `sub_models`.
+
+Untuk agent berikutnya: jangan menambah kembali kata material (Aluminium, Besi,
+Kaca) ke nama wadah model. Kalau butuh material, itu atribut produk, bukan
+identitas taksonomi. `sub_models` kini bisa bertambah karena impor, jadi jangan
+menganggap tabel itu murni input admin.
+
+Bukti: `ProductTaxonomyAutoFillTest` 5 test / 14 asersi OK; regresi taksonomi
+gabungan 51 test / 611 asersi OK; suite penuh 1511 test, 14325 asersi, hanya 1
+gagal yaitu `StorePerformanceGoldenTest` yang SUDAH gagal di origin/main tanpa
+perubahan saya (dibuktikan lewat worktree bersih). Di produksi 202: migrasi
+`Ran`, `modelCardTitle('JENDELA','JUNGKIT')` = "Jendela Jungkit",
+`registerSubModel` membuat baris "JUNGKIT | ORNAMEN | Ornamen | aktif", panggilan
+kedua tidak menduplikasi, sub model kosong mengembalikan null, dan rollback
+mengembalikan `sub_models` ke 0.
+
+Agent: zcode-taxonomy-autofill
