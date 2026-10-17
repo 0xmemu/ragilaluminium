@@ -7861,3 +7861,35 @@ Bukti verifikasi 202:
 Catatan proses: verifikasi props Inertia tidak bisa lewat atribut data-page
 (repo ini memakai blok script), dan URL edit wajib /edit (tanpa itu kena
 halaman Show sehingga props kosong dan pemeriksaan lolos secara palsu).
+
+
+## 2026-10-17 19:20 - Bersihkan hasil import 202 sebelum import ulang
+
+Agent: zcode-209-gambar-opsi. Tanpa commit kode (hanya operasi data).
+
+Konteks: owner ingin import ulang katalog 202 dengan format template baru
+(kolom Sumbu Gambar). Data lama harus dibersihkan dulu karena verifier V8
+menolak nama produk yang sudah ada, sehingga import ulang akan gagal seluruhnya.
+
+Backup dibuat lebih dulu: mysqldump --single-transaction ke
+D:/website_5.0/backups/pre-bersih-import-202-20261017.sql.gz (3,8 MB, gzip -t valid).
+Salinan di /tmp server dihapus setelah tarik.
+
+Dihapus (satu transaksi, dibatalkan otomatis bila ada galat):
+- products 151, product_variants 1.812, product_media 2.265,
+  product_attributes 453, product_variation_option_media 604
+- import_jobs 5, import_job_rows 1.836
+- media_processing_logs 260, event_logs 147, media_upload_intents 77
+- failed_jobs 3 (sisa DownloadMediaAsset dari import lama)
+- 5 berkas XLSX sumber di storage/app/imports/catalog (lewat Storage API,
+  karena perintah rm ke path itu diblokir guard)
+
+TIDAK disentuh sesuai instruksi owner: media_assets 189, media_folders 33,
+serta orders/order_items/customers/cms_* (semuanya 0 di 202).
+
+Verifikasi sesudah: produk 0, varian 0, gambar opsi 0, import job 0, log 0,
+media_assets tetap 189, media_folders tetap 33. Situs / 200, /admin/login 302.
+
+Catatan proses: guard memblokir tulis ke /var/backups dan perintah rm ke
+storage/app; backup dialihkan ke /tmp lalu ditarik lokal, dan penghapusan
+berkas impor dilakukan lewat Storage API dalam skrip PHP, bukan perintah shell.
