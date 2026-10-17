@@ -6,15 +6,19 @@
 # LOKAL yang segar, sehingga kegagalan unggah off-site ke R2 tidak pernah
 # terlihat sampai salinan off-site benar-benar dibutuhkan.
 #
-# RANCANGAN: alarm diambil dari HASIL (kesegaran salinan off-site, umur dump,
-# umur keberhasilan drill, riwayat pengiriman alarm), bukan dari penanda
-# internal. Alasannya ditemukan saat audit 2026-10-14: penanda ALERT-* di 202
-# tidak pernah bisa bersih. Skrip di 202 memakai ": > berkas" untuk menyatakan
-# sehat, sedangkan penandaan gagal memakai "touch"; keduanya meninggalkan berkas
-# 0 byte, sehingga keberadaan berkas tidak membedakan gagal dari sehat. Di 209
-# kontraknya benar: skrip di sana MENGHAPUS penanda saat sukses, jadi
-# keberadaan berkas berarti gagal. Karena itu penanda di sini hanya dicatat
-# sebagai catatan, tidak dijadikan alarm.
+# RANCANGAN: dua lapis pemeriksaan.
+#
+# Lapis pertama, penanda ALERT-*: kontraknya diperbaiki 2026-10-17 mengikuti
+# pola 209, yaitu berkas penanda ADA berarti gagal dan skrip penulis
+# MENGHAPUSNYA saat sukses. Sebelum itu penanda memakai ": > berkas" untuk
+# sehat dan "touch" untuk gagal, sehingga keduanya 0 byte dan tidak bisa
+# dibedakan; karena itu penanda lama hanya dicatat. Dengan kontrak baru,
+# kegagalan unggah R2 terlihat pada jam kegagalannya, bukan setelah umur dump
+# melewati 26 jam (kejadian 17 Okt: unggah mati 03:17, alarm baru 15:20).
+#
+# Lapis kedua, HASIL: kesegaran salinan off-site, umur dump, umur drill, dan
+# riwayat pengiriman alarm. Lapis ini tetap diperlukan karena penanda bisa
+# hilang bersama berkasnya, dan karena ia mengukur akibat, bukan niat skrip.
 #
 # PRINSIP: kegagalan PEMERIKSAAN tidak boleh dilaporkan sebagai sehat. Setiap
 # pemeriksaan yang tidak bisa diselesaikan menghasilkan alarm tersendiri.
@@ -105,20 +109,37 @@ fi
 
 catat "=== mulai pemeriksaan ==="
 
-# 1) Penanda kegagalan: CATATAN saja, bukan alarm. Kontraknya ambigu di 202
-#    (lihat catatan rancangan di atas).
+# 1) Penanda kegagalan dari skrip backup. Berkas ADA berarti gagal; skrip
+#    penulis menghapusnya saat sukses. Setiap penanda dimiliki tepat satu
+#    skrip, supaya keberhasilan satu tahap tidak menghapus kegagalan tahap lain.
+periksa_penanda() {
+  local KODE="$1" BERKAS="$2" PESAN="$3"
+  if [ -e "$ALERT_DIR/$BERKAS" ]; then
+    kritis "$KODE" "$PESAN"
+  else
+    pulih "$KODE" "penanda $BERKAS sudah bersih."
+  fi
+}
+
+periksa_penanda "DUMP-LOCAL" "ALERT-dump-local" \
+  "Pembuatan atau verifikasi dump harian GAGAL; belum ada dump baru yang bisa dipulihkan."
+periksa_penanda "R2-DUMP-UPLOAD" "ALERT-r2-dump" \
+  "Unggah dump harian ke R2 GAGAL; salinan off-site tertinggal."
+periksa_penanda "R2-BINLOG-UPLOAD" "ALERT-r2-binlog" \
+  "Unggah arsip binlog ke R2 GAGAL; pemulihan titik-waktu tertinggal."
+periksa_penanda "STALE-LOCAL" "ALERT-local-stale" \
+  "Dump atau arsip binlog lokal basi; skrip backup mungkin tidak berjalan."
+
+# Penanda yang tidak dikenal hanya dicatat, supaya penanda baru tidak diabaikan
+# diam diam tanpa memicu alarm dengan pesan yang tidak jelas.
 shopt -s nullglob
-MARKERS=("$ALERT_DIR"/ALERT-*)
+for m in "$ALERT_DIR"/ALERT-*; do
+  case "$(basename "$m")" in
+    ALERT-dump-local|ALERT-r2-dump|ALERT-r2-binlog|ALERT-local-stale) ;;
+    *) catat "catatan: penanda tidak dikenal: $(basename "$m")" ;;
+  esac
+done
 shopt -u nullglob
-if [ ${#MARKERS[@]} -gt 0 ]; then
-  DAFTAR=""
-  for m in "${MARKERS[@]}"; do
-    DAFTAR="$DAFTAR $(basename "$m")"
-  done
-  catat "catatan: penanda ada:${DAFTAR} (tidak dijadikan alarm; kontrak 202 belum bisa membersihkan)"
-else
-  catat "catatan: tidak ada penanda ALERT-*."
-fi
 
 # 2) Kesegaran salinan off-site di R2. Ini yang sebelumnya tidak diperiksa:
 #    dump lokal bisa segar sementara unggahannya ke R2 gagal. Dijalankan dengan
@@ -141,6 +162,11 @@ if OUT=$(timeout "$R2_TIMEOUT" python3 "$FRESHNESS" 2>>"$LOG"); then
     else
       pulih "OFFSITE-BINLOG" "binlog off-site segar kembali (umur ${BINLOG_AGE}s)."
     fi
+
+    # Pemeriksaan yang berhasil lagi wajib membersihkan state OFFSITE-CHECK.
+    # Tanpa ini state kritis menempel selamanya, sehingga kegagalan berikutnya
+    # hanya dicatat "masih kritis" tanpa alarm baru.
+    pulih "OFFSITE-CHECK" "pemeriksaan kesegaran R2 berhasil kembali."
   fi
 else
   RC=$?

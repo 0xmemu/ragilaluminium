@@ -7,8 +7,12 @@ di bawah `/root`. Disimpan di sini supaya tidak hanya hidup di server.
 
 | Berkas | Tujuan |
 |---|---|
-| `backup-alert.sh` | Monitor kegagalan backup: kesegaran off-site R2, umur dump lokal, keberhasilan drill, jalur alarm |
+| `backup-alert.sh` | Monitor kegagalan backup: penanda `ALERT-*`, kesegaran off-site R2, umur dump lokal, keberhasilan drill, jalur alarm |
 | `r2_freshness.py` | Membaca umur objek terbaru di bucket backup R2 (dipakai `backup-alert.sh`) |
+| `daily-db-backup.sh` | Dump harian, verifikasi gzip, rotasi 7 slot, unggah R2 |
+| `hourly-binlog-backup.sh` | Arsip binlog tiap jam untuk pemulihan titik-waktu |
+| `stale-check.sh` | Pemeriksa kebasian dump dan arsip binlog lokal |
+| `weekly-restore-drill.sh` | Drill restore mingguan ke DB uji `ragil_restore_test` |
 | `logrotate-ragil-backups` | Rotasi log `/root/backups/*.log` (mingguan, simpan 8, terkompresi) |
 
 ## Pemasangan di 202
@@ -29,12 +33,38 @@ Dijalankan sebagai root: perlu membaca `/root/backups` dan kredensial R2 dari
 
 ## Prinsip rancangan
 
-**Alarm diambil dari HASIL, bukan penanda internal.** Penanda `ALERT-*` di 202
-tidak pernah bisa bersih: skrip di sana memakai penulisan kosong untuk menyatakan
-sehat, sedangkan penandaan gagal memakai `touch`, sehingga keduanya meninggalkan
-berkas 0 byte dan keberadaan berkas tidak membedakan gagal dari sehat. Di 209
-kontraknya benar (skrip di sana menghapus penanda saat sukses). Penanda di 202
-karena itu hanya dicatat, tidak dijadikan alarm.
+**Dua lapis: penanda dan hasil.** Sejak 17 Okt 2026 penanda `ALERT-*` di 202
+memakai kontrak yang sama dengan 209: **berkas ADA berarti gagal, dan skrip
+penulis MENGHAPUSNYA saat sukses.** Sebelumnya penanda memakai penulisan kosong
+untuk sehat dan `touch` untuk gagal, sehingga keduanya 0 byte dan tidak bisa
+dibedakan; karena itu penanda lama hanya dicatat dan tidak pernah jadi alarm.
+
+Kontrak baru ini perlu karena pemeriksaan berbasis HASIL terlambat: pada 17 Okt
+unggah R2 mati pukul 03:17, tetapi alarm baru berbunyi 15:20 setelah umur dump
+melewati batas 26 jam. Dengan penanda, kegagalan terlihat pada jam kejadiannya.
+
+Lapis hasil tetap dipertahankan karena penanda bisa hilang bersama berkasnya, dan
+karena hasil mengukur akibat, bukan niat skrip.
+
+**Satu penanda, satu pemilik.** Sebelum 17 Okt dua penanda dipakai bersama oleh
+beberapa skrip, sehingga keberhasilan satu tahap bisa menghapus kegagalan tahap
+lain. Misalnya unggah dump yang berhasil menghapus penanda yang baru dipasang
+oleh unggah binlog yang gagal. Sekarang setiap penanda hanya ditulis dan dihapus
+oleh satu skrip:
+
+| Penanda | Pemilik | Arti |
+|---|---|---|
+| `ALERT-dump-local` | `daily-db-backup.sh` | Dump atau verifikasi gzip gagal |
+| `ALERT-r2-dump` | `daily-db-backup.sh` | Unggah dump harian ke R2 gagal |
+| `ALERT-r2-binlog` | `hourly-binlog-backup.sh` | Unggah arsip binlog ke R2 gagal |
+| `ALERT-local-stale` | `stale-check.sh` | Dump atau arsip binlog lokal basi |
+
+`weekly-restore-drill.sh` tidak lagi menulis penanda, karena `backup-alert.sh`
+sudah membaca hasil drill langsung dari `restore-drill.log` (kode `DRILL-RUN`).
+
+**Penanda yang tidak dikenal dicatat, tidak dibisukan.** Penanda baru yang belum
+terdaftar di `backup-alert.sh` muncul di log sebagai catatan, supaya tidak
+diabaikan diam diam tanpa memicu alarm dengan pesan yang tidak jelas.
 
 **Kegagalan pemeriksaan tidak pernah dilaporkan sebagai sehat.** Setiap
 pemeriksaan yang tidak bisa diselesaikan menghasilkan alarm tersendiri, dengan
@@ -50,6 +80,10 @@ kode berbeda dari "basi":
 | `DRILL-RUN` | Eksekusi drill terakhir tidak berakhir berhasil |
 | `ALARM-CONFIG` | Konfigurasi alarm tidak lengkap |
 | `ALARM-KIRIM` | Pengiriman alarm terakhir gagal sebagian |
+| `DUMP-LOCAL` | Penanda `ALERT-dump-local` ada |
+| `R2-DUMP-UPLOAD` | Penanda `ALERT-r2-dump` ada |
+| `R2-BINLOG-UPLOAD` | Penanda `ALERT-r2-binlog` ada |
+| `STALE-LOCAL` | Penanda `ALERT-local-stale` ada |
 
 Umur drill merujuk **keberhasilan terakhir** (`last-drill` hanya ditulis saat
 drill lulus), bukan sekadar waktu ubah log.
