@@ -879,7 +879,12 @@ export default function ProductForm({
 
             <div className="divide-y divide-border">
               {variantDefs.map((def, defIndex) => {
-                const isLocked = def.locked !== false && Boolean(def.name && def.name.trim() !== "")
+                // Terkunci HANYA bila admin menekan Enter atau tombol Selesai.
+                // Jangan disimpulkan dari isi kolom: sebelumnya begitu satu
+                // huruf diketik, `def.name` tidak kosong lagi dan baris langsung
+                // berganti ke tampilan baca saja, sehingga huruf berikutnya
+                // tidak pernah masuk dan kolom tampak tersimpan sendiri.
+                const isLocked = def.locked === true
 
                 return (
                   <div key={defIndex} className="space-y-3 p-4 sm:p-5">
