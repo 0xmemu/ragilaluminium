@@ -166,13 +166,45 @@ class CatalogLabels
             'catalog.model.label.'.strtolower($key),
             3600,
             function () use ($key): ?string {
-                $name = \App\Models\CmsModelProduct::query()
+                $row = \App\Models\CmsModelProduct::query()
                     ->where('product_model', $key)
-                    ->value('name');
+                    ->first(['name', 'product_category']);
 
-                if ($name && str_contains($name, ' Aluminium ')) {
-                    $parts = explode(' Aluminium ', $name, 2);
-                    return trim($parts[1]);
+                $name = trim((string) ($row?->name ?? ''));
+                if ($name === '') {
+                    return null;
+                }
+
+                // Nama wadah hasil otomatis berbentuk "<Kategori> <Model>",
+                // mis. "Jendela Jungkit". Label model hanya bagian modelnya,
+                // jadi awalan kategori dibuang. Bentuk lama
+                // ("Jendela Aluminium Jungkit") tetap dikenali.
+                // Nama yang diubah admin sendiri tidak disentuh: hanya awalan
+                // yang sisa kalimatnya PERSIS sama dengan nama model yang
+                // dibuang, dan teks sisa itu dipakai apa adanya supaya huruf
+                // besar kecil yang sudah benar tidak ikut berubah.
+                $expected = self::MODEL[$key] ?? self::titleCaseIndonesia($key);
+                $categoryLabel = $row?->product_category
+                    ? self::category((string) $row->product_category)
+                    : '';
+
+                $prefixes = ['Aluminium '];
+                if ($categoryLabel !== '' && $categoryLabel !== 'Semua Produk') {
+                    $prefixes[] = $categoryLabel.' Aluminium ';
+                    $prefixes[] = $categoryLabel.' ';
+                }
+
+                foreach ($prefixes as $prefix) {
+                    if (mb_strlen($name) <= mb_strlen($prefix)) {
+                        continue;
+                    }
+                    if (mb_strtolower(mb_substr($name, 0, mb_strlen($prefix))) !== mb_strtolower($prefix)) {
+                        continue;
+                    }
+                    $rest = trim(mb_substr($name, mb_strlen($prefix)));
+                    if (mb_strtolower($rest) === mb_strtolower($expected)) {
+                        return $rest;
+                    }
                 }
 
                 return $name;
@@ -227,16 +259,31 @@ class CatalogLabels
         return implode(' ', $parts);
     }
 
+    /**
+     * Nama wadah model produk, disusun dari kolom yang benar-benar dipilih
+     * admin: kategori + model. Contoh "Jendela" + "JUNGKIT" menjadi
+     * "Jendela Jungkit".
+     *
+     * Sengaja TIDAK menyisipkan kata "Aluminium": katalog ke depan tidak selalu
+     * aluminium, sedangkan kategori dan model selalu ada di data. Label model
+     * yang sudah memuat nama kategori tidak diulang ("Pintu" + "PINTU_LIPAT"
+     * tetap "Pintu Lipat").
+     */
     public static function modelCardTitle(?string $category, ?string $model): string
     {
         $cat = self::category($category);
         $modelLabel = self::model($model);
 
-        if ($cat === 'Semua Produk') {
-            return 'Aluminium '.$modelLabel;
+        if ($cat === '' || $cat === 'Semua Produk') {
+            return $modelLabel;
         }
 
-        return $cat.' Aluminium '.$modelLabel;
+        if (mb_strtolower($modelLabel) === mb_strtolower($cat)
+            || str_starts_with(mb_strtolower($modelLabel), mb_strtolower($cat).' ')) {
+            return $modelLabel;
+        }
+
+        return trim($cat.' '.$modelLabel);
     }
 
     /** @return list<string> */

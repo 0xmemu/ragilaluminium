@@ -47,6 +47,9 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
     /** parent_sku per grup NO. ID. */
     protected array $groupParentSkus = [];
 
+    /** Pasangan "model|sub model" yang sudah didaftarkan pada impor ini. */
+    protected array $subModelTerdaftar = [];
+
     /** Penghitung media varian per produk: [productId] => jumlah ditulis. */
     protected array $variantMediaCount = [];
 
@@ -292,7 +295,7 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             $this->groupParentSkus[$groupKey] = ShopeeStyleSku::nextParentSku();
         }
 
-        return Product::updateOrCreate(
+        $product = Product::updateOrCreate(
             ["parent_sku" => $this->groupParentSkus[$groupKey]],
             [
                 "name" => $name,
@@ -312,6 +315,35 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
                 "status" => "archived",
             ]
         );
+
+        // Sub Model yang dipakai produk didaftarkan otomatis supaya halaman
+        // Kelola Sub Model langsung terisi setelah impor. Kode kosong tidak
+        // membuat baris apa pun (model tanpa sub model memang sah).
+        $this->daftarkanSubModel($product);
+
+        return $product;
+    }
+
+    /**
+     * Daftarkan sub model produk ke tabel daftar, sekali per pasangan pada
+     * satu impor supaya seribu baris tidak menulis seribu kali.
+     */
+    protected function daftarkanSubModel(Product $product): void
+    {
+        $model = (string) $product->product_model;
+        $code = (string) ($product->design_variant ?? '');
+
+        if ($model === '' || $code === '') {
+            return;
+        }
+
+        $key = $model.'|'.$code;
+        if (isset($this->subModelTerdaftar[$key])) {
+            return;
+        }
+        $this->subModelTerdaftar[$key] = true;
+
+        \App\Support\ProductTaxonomyRegistrar::registerSubModel($model, $code);
     }
 
     /**
