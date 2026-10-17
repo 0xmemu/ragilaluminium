@@ -298,6 +298,15 @@ export default function ProductForm({
       })),
     }))
   })
+  // Sumbu yang gambar opsi-nya dipakai (1..5). Hanya SATU sumbu per produk,
+  // mengikuti aturan Shopee: gambar menempel pada nilai opsi, bukan kombinasi,
+  // sehingga sumbu lain tidak boleh punya gambar sendiri.
+  const [imageAxisSlot, setImageAxisSlot] = React.useState<number | null>(() => {
+    const stored = (product as unknown as { image_axis_slot?: number | null } | null)?.image_axis_slot
+    if (stored) return Number(stored)
+    const idx = variantDefs.findIndex((d) => d.options.some((o) => o.media_asset_id || o.thumb_url))
+    return idx >= 0 ? idx + 1 : null
+  })
   const [combinations, setCombinations] = React.useState<Record<string, { price: string; stock: string }>>(() => {
     if (!editing || !incomingVariants?.length) return {}
     const combosAwal = buildCombinations(variantDefs)
@@ -486,6 +495,7 @@ export default function ProductForm({
       status,
       media_asset_ids: pickedMedia.map((m) => m.assetId),
       installation_media_asset_ids: pendingInst.map((m) => m.assetId),
+      image_axis_slot: imageAxisSlot,
       variant_defs: variantDefs.map((def) => ({
         name: def.name,
         options: def.options.map((option) => ({
@@ -885,6 +895,7 @@ export default function ProductForm({
                 // berganti ke tampilan baca saja, sehingga huruf berikutnya
                 // tidak pernah masuk dan kolom tampak tersimpan sendiri.
                 const isLocked = def.locked === true
+                const isImageAxis = imageAxisSlot === defIndex + 1
 
                 return (
                   <div key={defIndex} className="space-y-3 p-4 sm:p-5">
@@ -989,6 +1000,27 @@ export default function ProductForm({
                           </div>
                         )}
                       </div>
+
+                      {/* Pemilih sumbu bergambar: satu sumbu saja per produk. */}
+                      <div className="flex items-center gap-2">
+                        {isImageAxis ? (
+                          <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-foreground bg-foreground px-2 text-[11px] font-semibold text-white">
+                            <Icon name="image" className="size-3" aria-hidden="true" />
+                            Gambar per opsi
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="xs"
+                            onClick={() => setImageAxisSlot(defIndex + 1)}
+                            title="Pakai gambar untuk opsi di sumbu ini"
+                          >
+                            <Icon name="image" className="size-3" aria-hidden="true" />
+                            Gambar per opsi
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Penempatan Opsi Varian yang jelas dan teratur */}
@@ -1002,7 +1034,9 @@ export default function ProductForm({
                             key={optionIndex}
                             className="flex items-center gap-2"
                           >
-                            {/* Gambar opsi 65px x 65px dengan tombol silang X di pojok kanan atas */}
+                            {/* Gambar opsi 65px x 65px dengan tombol silang X di pojok kanan atas.
+                                Hanya dirender pada sumbu bergambar; sumbu lain cukup teks. */}
+                            {isImageAxis ? (
                             <div className="relative size-[65px] shrink-0">
                               <button
                                 type="button"
@@ -1045,6 +1079,7 @@ export default function ProductForm({
                                 </button>
                               ) : null}
                             </div>
+                            ) : null}
 
                             {/* Input nilai opsi: ukuran tetap 132x32 px, tidak mengikuti panjang isi */}
                             <Input

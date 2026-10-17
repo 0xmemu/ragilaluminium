@@ -9,6 +9,7 @@ import {
   resolveVariant,
   variantAxes,
   variantPairs,
+  variantSlotAxisName,
   type VariantSelections,
 } from "@/lib/variants"
 import type {
@@ -27,6 +28,20 @@ export interface UseProductPurchaseOptions {
   media: ProductMedia[]
   reviews: Testimonial[]
   promo?: ProductPromoMetadata | null
+  /** Gambar per nilai opsi variasi (sumber tunggal gambar saat opsi dipilih). */
+  optionMedia?: ProductOptionMedia[]
+  /** Nomor slot sumbu yang boleh bergambar (1..5). Null = produk lama. */
+  imageAxisSlot?: number | null
+}
+
+/** Satu gambar milik satu NILAI opsi, bukan kombinasi. */
+export interface ProductOptionMedia {
+  id: number
+  variation_slot: number
+  variation_name: string
+  option_value: string
+  url?: string | null
+  thumb?: string | null
 }
 
 /**
@@ -41,6 +56,8 @@ export function useProductPurchase({
   media = [],
   reviews = [],
   promo = null,
+  optionMedia = [],
+  imageAxisSlot = null,
 }: UseProductPurchaseOptions) {
   const title = productName(product.name, product.short_name)
   const axes = React.useMemo(
@@ -87,89 +104,64 @@ export function useProductPurchase({
     [axes.length, selections, variants],
   )
 
-  const variantMedia = React.useMemo(() => {
-    // Kumpulkan seluruh variant id yang cocok dengan pilihan saat ini (parsial pun oke).
-    const filledSelections = Object.entries(selections).filter(
-      ([, v]) => v !== undefined && v !== "",
-    )
+  // Nama sumbu yang boleh bergambar (mis. "Warna"). Gambar ditentukan HANYA
+  // oleh opsi pada sumbu ini, sehingga memilih sumbu lain (mis. Kaca) tidak
+  // pernah menimpa gambar.
+  const imageAxisName = React.useMemo(
+    () => variantSlotAxisName(variants, imageAxisSlot),
+    [variants, imageAxisSlot],
+  )
 
-    if (filledSelections.length === 0) return media
+  // Gambar opsi ikut masuk galeri supaya pembeli bisa melihat semua warna
+  // tanpa mengklik. Urutan stabil: foto katalog dulu, lalu gambar opsi.
+  const optionMediaItems = React.useMemo<ProductMedia[]>(
+    () =>
+      optionMedia
+        .filter((item) => Boolean(item.url))
+        .map((item) => ({
+          // id negatif: tidak mungkin bentrok dengan id media katalog, dan
+          // tetap bertipe angka sehingga penanda aktif galeri bekerja apa adanya.
+          id: -Math.abs(item.id),
+          url: item.url ?? null,
+          thumb: item.thumb ?? item.url ?? null,
+          is_main_image: false,
+          is_video: false,
+          product_variant_id: null,
+        })),
+    [optionMedia],
+  )
 
-    const matchingVariantIds = new Set<number>()
-    variants.forEach((v) => {
-      const pairs = new Map(variantPairs(v))
-      const match = filledSelections.every(([axisName, axisOption]) => {
-        const pairOption = pairs.get(axisName)
-        // Cocokkan juga dimensi
-        if (axisName === "Ukuran") {
-          return v.dimension_compact === axisOption || v.dimension_label === axisOption
-        }
-        return pairOption === axisOption
-      })
-      if (match) matchingVariantIds.add(v.id)
-    })
+  const variantMedia = React.useMemo(
+    () => (optionMediaItems.length ? [...media, ...optionMediaItems] : media),
+    [media, optionMediaItems],
+  )
 
-    if (matchingVariantIds.size === 0) return media
-
-    // Desain owner (09-05): galeri TETAP urut stabil (foto level produk +
-    // foto opsi di posisi aslinya), TIDAK diubah-ubah saat varian diganti.
-    // Varian hanya menentukan foto mana yang DITONJOLKAN (lihat
-    // highlightedMediaId di bawah), bukan urutan strip.
-    return media
-  }, [media, selections, variants])
-
-  // Desain owner (09-05, final): "berpindah tergantung klik". Foto berganti
-  // SAAT opsi varian diklik, jika opsi itu punya foto khusus - agnostik axis
-  // (Warna, Kaca, atau axis baru). Target fotonya adalah foto milik varian
-  // yang paling mewakili pilihan saat ini:
-  // 1. Kombinasi pilihan sudah lengkap dan varian itu ada fotonya -> foto
-  //    varian tersebut (Serat Kayu + klik Kaca Bening -> foto Serat Kayu,
-  //    BUKAN foto Putih yang kebetulan juga Bening).
-  // 2. Belum lengkap -> foto varian pertama yang memuat opsi yang baru
-  //    diklik (klik Warna saat Kaca belum dipilih, atau klik Kaca saat Warna
-  //    belum dipilih).
-  // 3. Osi yang diklik tidak punya foto khusus sama sekali -> null, galeri
-  //    tetap di posisi sekarang (tidak melompat).
-  const [lastPickedOption, setLastPickedOption] = React.useState<{
-    axis: string
-    option: string
-  } | null>(null)
-
+  // Gambar yang DITONJOLKAN: gambar opsi pada sumbu bergambar yang sedang
+  // dipilih. Belum memilih = null, galeri tetap di gambar utama.
   const highlightedMediaId = React.useMemo(() => {
-    if (!lastPickedOption) return null
-    const mediaOf = (variantId: number) =>
-      media.find((item) => Number(item.product_variant_id) === variantId)
-    // 1. Kombinasi lengkap: foto varian hasil kombinasi pilihan saat ini.
-    //    Kecuali opsi yang BARU diklik punya foto sendiri (kontrak "tergantung
-    //    klik": klik Kaca Bening saat Serat Kayu aktif tetap menonjolkan foto
-    //    Serat Kayu jika kombinasi Serat+Bening tidak punya foto spesifik -
-    //    tapi jika kombinasi lengkap punya foto miliknya, kombinasi menang).
+    if (!imageAxisName) return null
+    const selected = selections[imageAxisName]
+    if (!selected) return null
+
+    const match = optionMedia.find(
+      (item) =>
+        Number(item.variation_slot) === Number(imageAxisSlot) &&
+        item.option_value.trim().toLowerCase() === selected.trim().toLowerCase(),
+    )
+    return match ? -Math.abs(match.id) : null
+  }, [imageAxisName, imageAxisSlot, optionMedia, selections])
+
+  // Produk lama (belum punya gambar opsi): pertahankan perilaku sebelumnya
+  // supaya gambar varian lama tetap berganti sampai datanya dimigrasikan.
+  const legacyHighlightedMediaId = React.useMemo(() => {
+    if (optionMedia.length > 0) return null
     const exact = resolveVariant(variants, selections)
-    if (exact) {
-      const m = mediaOf(exact.id)
-      if (m) return m.id
-      // Kombinasi lengkap tapi tanpa foto: turun ke foto opsi yang diklik.
-      const hit = media.find((item) => {
-        const vid = Number(item.product_variant_id)
-        if (!vid) return false
-        const owner = variants.find((v) => v.id === vid)
-        if (!owner) return false
-        const pairs = new Map(variantPairs(owner))
-        return pairs.get(lastPickedOption.axis) === lastPickedOption.option
-      })
-      return hit ? hit.id : null
-    }
-    // 2. Parsial: foto varian pertama yang memuat opsi yang baru diklik.
-    const hit = media.find((item) => {
-      const vid = Number(item.product_variant_id)
-      if (!vid) return false
-      const owner = variants.find((v) => v.id === vid)
-      if (!owner) return false
-      const pairs = new Map(variantPairs(owner))
-      return pairs.get(lastPickedOption.axis) === lastPickedOption.option
-    })
+    if (!exact) return null
+    const hit = media.find((item) => Number(item.product_variant_id) === exact.id)
     return hit ? hit.id : null
-  }, [lastPickedOption, selections, media, variants])
+  }, [media, optionMedia.length, selections, variants])
+
+  const activeMediaId = highlightedMediaId ?? legacyHighlightedMediaId
 
   const form = useForm({
     parent_sku: product.parent_sku,
@@ -189,7 +181,6 @@ export function useProductPurchase({
 
   function chooseAxis(axisName: string, option: string) {
     setVariantError(false)
-    setLastPickedOption({ axis: axisName, option })
     const nextSelections = { ...selections, [axisName]: option }
     const nextVariant = resolveVariant(variants, nextSelections)
 
@@ -307,12 +298,24 @@ export function useProductPurchase({
     promo,
     variants,
     axes,
+    /** Nama sumbu yang boleh bergambar; null bila produk tanpa gambar opsi. */
+    imageAxisName,
+    /** Peta nilai opsi -> thumbnail, hanya untuk sumbu bergambar. */
+    optionThumbs: React.useMemo(() => {
+      const map = new Map<string, string>()
+      for (const item of optionMedia) {
+        if (Number(item.variation_slot) !== Number(imageAxisSlot)) continue
+        const thumb = item.thumb ?? item.url
+        if (thumb) map.set(item.option_value.trim().toLowerCase(), thumb)
+      }
+      return map
+    }, [optionMedia, imageAxisSlot]),
     selections,
     variantError,
     variantSectionRef,
     selectedVariant,
     variantMedia,
-    highlightedMediaId,
+    highlightedMediaId: activeMediaId,
     form,
     submitIntent,
     chooseAxis,

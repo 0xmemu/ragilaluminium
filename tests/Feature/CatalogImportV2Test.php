@@ -452,30 +452,102 @@ class CatalogImportV2Test extends TestCase
         );
     }
 
-    public function test_gambar_per_varian_semua_baris_diproses(): void
+    /**
+     * Inti perbaikan 17 Okt 2026: gambar menempel pada NILAI OPSI, bukan pada
+     * baris kombinasi. Berkas 4 warna x 3 kaca = 12 baris hanya menghasilkan
+     * 4 gambar opsi, sehingga memilih Kaca tidak pernah menimpa gambar Warna.
+     */
+    public function test_gambar_per_varian_menjadi_gambar_per_opsi(): void
     {
-        $rows = [
-            $this->baris([]),
-            $this->baris(["opsi_variasi_2" => "Kaca Riben", "gambar_per_varian" => $this->urlMedia("media-assets/varian-hitam/pdp.webp")]),
-        ];
+        $warna = ["Putih", "Hitam", "Cokelat", "Serat Kayu"];
+        $kaca = ["Kaca Bening", "Kaca Riben", "Kaca Es"];
+
+        $paths = [];
+        foreach ($warna as $w) {
+            $paths[] = "media-assets/opsi-".strtolower(str_replace(" ", "-", $w))."/pdp.webp";
+        }
+        $this->tambahMedia($paths);
+
+        $rows = [];
+        foreach ($warna as $w) {
+            $url = $this->urlMedia("media-assets/opsi-".strtolower(str_replace(" ", "-", $w))."/pdp.webp");
+
+            foreach ($kaca as $k) {
+                $rows[] = $this->baris([
+                    "opsi_variasi_1" => $w,
+                    "opsi_variasi_2" => $k,
+                    "gambar_per_varian" => $url,
+                ]);
+            }
+        }
 
         $job = $this->job();
         $path = $this->berkas($rows);
         Excel::import(new CatalogProductsImportV2($job->id, $path), $path);
 
         $product = Product::firstOrFail();
-        $varianMedia = \App\Models\ProductMedia::where("product_id", $product->id)
-            ->whereNotNull("product_variant_id")->orderBy("position")->get();
 
-        $this->assertSame(2, $varianMedia->count(), "kedua baris wajib diproses, tidak ada baris pertama menang");
-        $this->assertSame([50, 51], $varianMedia->pluck("position")->all());
+        $this->assertSame(12, ProductVariant::where("product_id", $product->id)->count(), "12 kombinasi tetap dibuat");
+
+        $optionMedia = \App\Models\ProductVariationOptionMedia::where("product_id", $product->id)->get();
+        $this->assertSame(4, $optionMedia->count(), "12 baris kombinasi hanya boleh menghasilkan 4 gambar opsi");
         $this->assertSame(
-            [$this->urlMedia("media-assets/varian-putih/pdp.webp"), $this->urlMedia("media-assets/varian-hitam/pdp.webp")],
-            $varianMedia->pluck("source_url")->all()
+            ["Putih", "Hitam", "Cokelat", "Serat Kayu"],
+            $optionMedia->sortBy("sort_order")->pluck("option_value")->values()->all()
+        );
+        $this->assertSame(1, (int) $product->fresh()->image_axis_slot, "sumbu bergambar = Warna (slot 1)");
+
+        // Tidak boleh ada lagi gambar yang menempel pada kombinasi.
+        $this->assertSame(
+            0,
+            \App\Models\ProductMedia::where("product_id", $product->id)->whereNotNull("product_variant_id")->count(),
+            "gambar opsi tidak boleh ditulis sebagai media kombinasi"
         );
     }
 
-    public function test_preview_memberi_catatan_opsi_multi_url(): void
+    public function test_verifier_menolak_satu_opsi_dengan_dua_gambar_berbeda(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([
+            $this->baris(["opsi_variasi_2" => "Kaca Bening"]),
+            $this->baris([
+                "opsi_variasi_2" => "Kaca Riben",
+                "gambar_per_varian" => $this->urlMedia("media-assets/lain/pdp.webp"),
+            ]),
+        ]);
+
+        $pesan = implode(" | ", $errors);
+        $this->assertStringContainsString("lebih dari satu gambar berbeda", $pesan);
+        $this->assertStringContainsString("Putih", $pesan);
+    }
+
+    public function test_verifier_menolak_sumbu_bergambar_sebagian(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([
+            $this->baris(["opsi_variasi_1" => "Putih"]),
+            $this->baris(["opsi_variasi_1" => "Hitam", "gambar_per_varian" => ""]),
+        ]);
+
+        $pesan = implode(" | ", $errors);
+        $this->assertStringContainsString("belum", $pesan);
+        $this->assertStringContainsString("Hitam", $pesan);
+    }
+
+    public function test_verifier_menolak_gambar_pada_dua_sumbu(): void
+    {
+        $errors = CatalogImportVerifierV2::verify([
+            $this->baris(["sumbu_gambar" => 1]),
+            $this->baris([
+                "opsi_variasi_2" => "Kaca Riben",
+                "sumbu_gambar" => 2,
+                "gambar_per_varian" => $this->urlMedia("media-assets/kaca/pdp.webp"),
+            ]),
+        ]);
+
+        $pesan = implode(" | ", $errors);
+        $this->assertStringContainsString("lebih dari satu sumbu", $pesan);
+    }
+
+    public function test_preview_menolak_opsi_multi_url(): void
     {
         $path = $this->berkas([
             $this->baris([]),
@@ -489,9 +561,12 @@ class CatalogImportV2Test extends TestCase
         $res->assertOk();
 
         $data = json_decode($res->getContent(), true);
-        $this->assertSame(0, count($data["verify_errors"]), "catatan tidak boleh menjadi error pemblokir");
-        $this->assertNotEmpty($data["verify_warnings"] ?? [], "opsi multi URL wajib diberi catatan");
-        $this->assertStringContainsString("Putih", implode(" | ", $data["verify_warnings"]));
+        // Kontrak 17 Okt 2026: satu opsi dengan dua gambar berbeda kini
+        // MEMBLOKIR berkas, bukan sekadar catatan, karena gambar akan
+        // bergantung urutan baris dan tampil salah di halaman toko.
+        $this->assertGreaterThan(0, count($data["verify_errors"]), "opsi multi URL wajib menolak berkas");
+        $this->assertStringContainsString("lebih dari satu gambar berbeda", implode(" | ", $data["verify_errors"]));
+        $this->assertStringContainsString("Putih", implode(" | ", $data["verify_errors"]));
     }
 
     public function test_baris_tanpa_variasi_membuat_varian_default(): void

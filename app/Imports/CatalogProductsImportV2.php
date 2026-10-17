@@ -53,6 +53,12 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
     /** Penghitung media varian per produk: [productId] => jumlah ditulis. */
     protected array $variantMediaCount = [];
 
+    /** Gambar opsi yang sudah ditulis: ["productId|slot|opsi" => true]. */
+    protected array $optionMediaWritten = [];
+
+    /** Urutan opsi per produk+sumbu: ["productId|slot" => [opsi => urutan]]. */
+    protected array $optionMediaOrder = [];
+
     /** Media produk umum yang sudah ditulis: [productId][pos] => true. */
     protected array $writtenProductMedia = [];
 
@@ -528,25 +534,73 @@ class CatalogProductsImportV2 implements OnEachRow, WithChunkReading, WithHeadin
             );
         }
 
-        // Gambar per varian: menempel pada varian baris ini. Setiap baris
-        // diproses apa adanya (keputusan owner 19 Sep 2026): URL berbeda untuk
-        // opsi yang sama tetap dipasang pada variannya masing-masing, tidak
-        // lagi "baris pertama menang". Upserter idempoten per varian + aset,
-        // jadi tidak ada baris media kembar.
-        $variantUrl = trim((string) ($data["gambar_per_varian"] ?? ""));
-        if ($variantUrl === "" || $variant === null) {
+        // Gambar per OPSI variasi (model Shopee), bukan per kombinasi.
+        // Kolom "Gambar per Varian" menempel pada nilai opsi sumbu yang
+        // ditunjuk kolom "Sumbu Gambar" (kosong = sumbu 1, perilaku template
+        // lama). Memilih sumbu lain di halaman toko karena itu tidak pernah
+        // menimpa gambar sumbu bergambar.
+        $this->syncOptionMedia($product, $data);
+    }
+
+    /**
+     * Tulis gambar per nilai opsi. URL yang sama diulang di banyak baris
+     * kombinasi cukup ditulis sekali, persis perilaku template Shopee.
+     */
+    protected function syncOptionMedia(Product $product, array $data): void
+    {
+        $url = trim((string) ($data["gambar_per_varian"] ?? ""));
+        if ($url === "") {
             return;
         }
 
-        $upserter->upsert(
-            productId: $product->id,
-            variantId: $variant->id,
-            url: $variantUrl,
-            position: 50 + min(29, $this->variantMediaCount[$product->id] ?? 0),
-            isMain: false,
-            showInCatalog: true,
+        $slot = (int) ($data["sumbu_gambar"] ?? 0);
+        if ($slot < 1 || $slot > 5) {
+            $slot = 1;
+        }
+
+        $optionValue = trim((string) ($data["opsi_variasi_".$slot] ?? ""));
+        if ($optionValue === "") {
+            return;
+        }
+
+        $variationName = trim((string) ($data["nama_variasi_".$slot] ?? ""));
+
+        $key = $product->id."|".$slot."|".mb_strtolower($optionValue);
+        if (isset($this->optionMediaWritten[$key])) {
+            return;
+        }
+        $this->optionMediaWritten[$key] = true;
+
+        $orderKey = $product->id."|".$slot;
+        if (! isset($this->optionMediaOrder[$orderKey][$optionValue])) {
+            $this->optionMediaOrder[$orderKey][$optionValue] = count($this->optionMediaOrder[$orderKey] ?? []);
+        }
+
+        $asset = app(\App\Services\MediaAssetResolver::class)
+            ->fromSourceUrl($url, jobId: $this->jobId);
+
+        \App\Models\ProductVariationOptionMedia::updateOrCreate(
+            [
+                "product_id" => $product->id,
+                "variation_slot" => $slot,
+                "option_value" => $optionValue,
+            ],
+            [
+                "variation_name" => $variationName,
+                "media_asset_id" => $asset->id,
+                "source_url" => $url,
+                "sort_order" => $this->optionMediaOrder[$orderKey][$optionValue],
+                "created_by_import_job_id" => $this->jobId,
+            ]
         );
-        $this->variantMediaCount[$product->id] = ($this->variantMediaCount[$product->id] ?? 0) + 1;
+
+        if ($asset->status === "pending") {
+            \App\Jobs\DownloadMediaAsset::dispatch($asset->id);
+        }
+
+        if ((int) $product->image_axis_slot !== $slot) {
+            $product->forceFill(["image_axis_slot" => $slot])->save();
+        }
     }
 
     protected function number(mixed $value): ?float

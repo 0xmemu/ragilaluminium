@@ -26,6 +26,8 @@ class Product extends Model
         'product_category',
         'product_model',
         'design_variant',
+        // Sumbu variasi yang boleh bergambar (1..5). Null = belum ditentukan.
+        'image_axis_slot',
         // ADR-021: dimensi/berat milik produk.
         'weight_kg',
         'width_cm',
@@ -44,6 +46,7 @@ class Product extends Model
     ];
 
     protected $casts = [
+        'image_axis_slot' => 'integer',
         'homepage_popular' => 'boolean',
         'homepage_popular_sort' => 'integer',
         'homepage_popular_since' => 'datetime',
@@ -69,6 +72,18 @@ class Product extends Model
     public function media(): HasMany
     {
         return $this->hasMany(ProductMedia::class)->with('mediaAsset');
+    }
+
+    /**
+     * Gambar per nilai opsi variasi (satu gambar per opsi), terpisah dari
+     * media kombinasi. Urut mengikuti slot sumbu lalu urutan opsi.
+     */
+    public function optionMedia(): HasMany
+    {
+        return $this->hasMany(ProductVariationOptionMedia::class)
+            ->orderBy('variation_slot')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function installationMedia(): HasMany

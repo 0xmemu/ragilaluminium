@@ -20,6 +20,12 @@ namespace App\Support;
  *  V10 Model Produk wajib diisi di baris pertama grup. Sebelum 16 Okt 2026
  *      kolom ini boleh kosong dan diam-diam menjadi SLIDING, sehingga produk
  *      tercatat salah model tanpa peringatan apa pun.
+ *  V11 Gambar opsi hanya boleh menempel pada SATU sumbu per produk. Gambar
+ *      yang muncul di dua sumbu membuat gambar saling menimpa di halaman toko.
+ *  V12 Satu nilai opsi hanya boleh punya SATU gambar. Dua URL berbeda untuk
+ *      opsi yang sama membuat gambar bergantung urutan baris berkas.
+ *  V13 Sumbu bergambar wajib lengkap (semua atau tidak sama sekali). Sebagian
+ *      opsi bergambar dan sebagian kosong memaksa halaman toko menebak.
  *
  * Perbedaan mendasar dari verifier lama: satu baris = satu varian, sehingga
  * kombinasi terbentuk dari kolom Opsi Variasi 1 dan 2, bukan kolom khusus.
@@ -74,6 +80,11 @@ final class CatalogImportVerifierV2
             $combos = [];
             $hasMainImage = false;
 
+            // Gambar opsi per sumbu: [slot => [opsi => [url, baris]]].
+            $optionImages = [];
+            // Sumbu yang opsinya muncul di grup ini: [slot => [opsi => true]].
+            $axisOptions = [];
+
             foreach ($rowIndexes as $i) {
                 $row = $rows[$i];
                 $rowNo = $i + 2;
@@ -109,6 +120,28 @@ final class CatalogImportVerifierV2
 
                 if (trim((string) ($row['gambar_1_utama'] ?? '')) !== '') {
                     $hasMainImage = true;
+                }
+
+                // Kumpulkan opsi per sumbu dan gambar opsinya (V11 sampai V13).
+                for ($slot = 1; $slot <= 5; $slot++) {
+                    $option = trim((string) ($row['opsi_variasi_'.$slot] ?? ''));
+                    if ($option === '') {
+                        continue;
+                    }
+                    $axisOptions[$slot][$option] = true;
+
+                    $imgUrl = trim((string) ($row['gambar_per_varian'] ?? ''));
+                    if ($imgUrl === '') {
+                        continue;
+                    }
+                    $imageSlot = (int) ($row['sumbu_gambar'] ?? 0);
+                    if ($imageSlot < 1 || $imageSlot > 5) {
+                        $imageSlot = 1;
+                    }
+                    if ($imageSlot !== $slot) {
+                        continue;
+                    }
+                    $optionImages[$slot][$option][] = [$imgUrl, $rowNo];
                 }
             }
 
@@ -156,6 +189,50 @@ final class CatalogImportVerifierV2
             if (trim((string) ($first['model_produk'] ?? '')) === '') {
                 $errors[] = 'Baris '.$firstRowNo.': Model Produk wajib diisi pada baris pertama grup NO. ID "'.$label.'". '
                     .'Dulu kolom kosong otomatis menjadi SLIDING; sekarang harus diisi supaya model produk tidak salah catat.';
+            }
+
+            // V11: gambar hanya boleh menempel pada satu sumbu per produk.
+            if (count($optionImages) > 1) {
+                $slots = array_keys($optionImages);
+                $slotLabels = [];
+                foreach ($slots as $slot) {
+                    $slotName = trim((string) ($first['nama_variasi_'.$slot] ?? ''));
+                    $slotLabels[] = ($slotName !== '' ? $slotName : 'Variasi '.$slot).' (sumbu '.$slot.')';
+                }
+                $errors[] = 'NO. ID "'.$label.'" mengisi gambar pada lebih dari satu sumbu: '
+                    .implode(' dan ', $slotLabels).'. Pilih satu sumbu bergambar saja; sumbu lain cukup berupa teks.';
+            }
+
+            foreach ($optionImages as $slot => $options) {
+                $slotName = trim((string) ($first['nama_variasi_'.$slot] ?? ''));
+                $slotLabel = $slotName !== '' ? $slotName : 'Variasi '.$slot;
+
+                // V12: satu opsi hanya boleh punya satu gambar.
+                foreach ($options as $option => $entries) {
+                    $urls = [];
+                    foreach ($entries as [$u, $r]) {
+                        $urls[$u] = $urls[$u] ?? $r;
+                    }
+                    if (count($urls) > 1) {
+                        $rowNos = implode(', ', array_values($urls));
+                        $errors[] = 'Baris '.$rowNos.': opsi "'.$option.'" pada sumbu '.$slotLabel
+                            .' punya lebih dari satu gambar berbeda. Satu opsi hanya boleh punya satu gambar; '
+                            .'samakan URL di semua baris kombinasi opsi tersebut.';
+                    }
+                }
+
+                // V13: sumbu bergambar wajib lengkap.
+                $missing = [];
+                foreach (array_keys($axisOptions[$slot] ?? []) as $option) {
+                    if (! isset($options[$option])) {
+                        $missing[] = $option;
+                    }
+                }
+                if ($missing !== []) {
+                    $errors[] = 'NO. ID "'.$label.'": sumbu '.$slotLabel.' sudah punya gambar untuk sebagian opsi, '
+                        .'tetapi opsi berikut belum: '.implode(', ', $missing)
+                        .'. Isi gambar untuk semua opsi di sumbu itu, atau kosongkan semuanya.';
+                }
             }
 
             // V8: identitas tidak boleh sudah ada aktif dan tidak boleh dobel

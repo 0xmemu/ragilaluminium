@@ -38,6 +38,7 @@ class ProductController extends Controller
                         ->orderBy('position')
                         ->orderBy('id'),
                     'installationMedia' => fn ($q) => $q->visible()->installation()->with('mediaAsset')->orderBy('position'),
+                    'optionMedia.mediaAsset',
                 ])
                 ->firstOrFail(),
         );
@@ -222,6 +223,22 @@ class ProductController extends Controller
                     ]))) ?: $v->variant_sku,
                 ];
             })->values()->all(),
+            // Gambar per OPSI variasi: sumber tunggal gambar yang berganti saat
+            // pembeli memilih opsi. Tidak terhubung ke kombinasi, sehingga
+            // memilih sumbu lain (mis. Kaca) tidak pernah menimpa gambar warna.
+            'image_axis_slot' => $product->image_axis_slot !== null ? (int) $product->image_axis_slot : null,
+            'option_media' => $product->optionMedia
+                ->map(fn ($m) => [
+                    'id' => $m->id,
+                    'variation_slot' => (int) $m->variation_slot,
+                    'variation_name' => $m->variation_name,
+                    'option_value' => $m->option_value,
+                    'url' => $m->mediaAsset?->urlFor('pdp') ?? $m->mediaAsset?->urlFor('card'),
+                    'thumb' => $m->mediaAsset?->urlFor('thumb') ?? $m->mediaAsset?->urlFor('card'),
+                ])
+                ->filter(fn ($m) => $m['url'] !== null)
+                ->values()
+                ->all(),
             'media' => $product->media
                 ->unique(fn ($m) => $m->media_asset_id ?: $m->stored_url ?: $m->id)
                 ->values()

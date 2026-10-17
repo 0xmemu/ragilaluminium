@@ -105,7 +105,7 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
     {
         ExportSafety::assertQueryWithinLimit($this->query);
 
-        return $this->query->with(['variants', 'attributes', 'media.mediaAsset']);
+        return $this->query->with(['variants', 'attributes', 'media.mediaAsset', 'optionMedia.mediaAsset']);
     }
 
     /** @return list<string> */
@@ -155,6 +155,16 @@ class ProductExportFullUpdateSheet extends RagilStyledExport implements FromQuer
             if ($isVariant) { $optionImages[] = $url; continue; }
             if (count($main) < 9) { $main[] = $url; continue; }
             $shared[] = $url;
+        }
+
+        // Gambar per OPSI (tabel baru) ikut dikirim sebagai gambar varian pada
+        // ekspor, supaya admin yang mengunduh berkas tetap melihat semua foto
+        // opsi walau produknya sudah dimigrasikan ke model gambar per opsi.
+        foreach ($product->optionMedia as $optionRow) {
+            $url = (string) ($optionRow->mediaAsset?->urlFor('pdp') ?? $optionRow->source_url ?? '');
+            if ($url !== '') {
+                $optionImages[] = $url;
+            }
         }
 
         $variants = $product->variants->sortBy('id')->values();

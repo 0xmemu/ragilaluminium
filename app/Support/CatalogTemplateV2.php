@@ -78,7 +78,11 @@ final class CatalogTemplateV2
         $add('Nama Variasi 1', 'nama_variasi_1', self::GROUP_VARIASI);
         $add('Opsi Variasi 1', 'opsi_variasi_1', self::GROUP_VARIASI);
 
-        // Grup 4: gambar milik varian (posisinya dekat variasi, warnanya media).
+        // Grup 4: gambar milik OPSI variasi (posisinya dekat variasi, warnanya media).
+        // "Sumbu Gambar" menentukan sumbu mana yang gambar opsi-nya diisi
+        // (kosong = Variasi 1, perilaku template lama). Hanya satu sumbu per
+        // produk yang boleh bergambar, mengikuti aturan Shopee.
+        $add('Sumbu Gambar', 'sumbu_gambar', self::GROUP_VARIASI);
         $add('Gambar per Varian', 'gambar_per_varian', self::GROUP_MEDIA);
 
         $add('Nama Variasi 2', 'nama_variasi_2', self::GROUP_VARIASI);

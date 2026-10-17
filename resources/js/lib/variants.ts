@@ -117,6 +117,26 @@ export function variantPairs(variant: ProductVariant): Array<[string, string]> {
   return pairs
 }
 
+/**
+ * Nama sumbu (seperti yang dipakai variantAxes) untuk nomor slot tertentu.
+ * Dipakai supaya "sumbu bergambar" yang disimpan sebagai nomor slot bisa
+ * dicocokkan dengan pilihan pembeli tanpa mengubah pemetaan nama sumbu.
+ */
+export function variantSlotAxisName(
+  variants: ProductVariant[],
+  slot: number | null | undefined,
+): string | null {
+  if (!slot || slot < 1 || slot > 5) return null
+  for (const variant of variants) {
+    const record = variant as unknown as Record<string, unknown>
+    const name = record[`variation_${slot}_name`] as string | null | undefined
+    const option = record[`variation_${slot}_option`] as string | null | undefined
+    const axis = axisNameForPair(name, option)
+    if (axis) return axis
+  }
+  return null
+}
+
 export function variantAxes(variants: ProductVariant[]): VariantAxis[] {
   const axes = new Map<string, Set<string>>()
 

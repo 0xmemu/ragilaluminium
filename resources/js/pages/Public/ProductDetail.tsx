@@ -33,6 +33,17 @@ interface ProductDetailProps {
   /** URL listing berfilter (kategori + model + sub model) untuk "Lihat Semua". */
   relatedUrl?: string | null
   promo?: ProductPromoMetadata | null
+  /** Gambar per nilai opsi variasi (satu gambar per opsi, bukan per kombinasi). */
+  option_media?: Array<{
+    id: number
+    variation_slot: number
+    variation_name: string
+    option_value: string
+    url?: string | null
+    thumb?: string | null
+  }>
+  /** Nomor slot sumbu yang boleh bergambar. Null = produk lama tanpa gambar opsi. */
+  image_axis_slot?: number | null
 }
 
 /**
@@ -49,8 +60,19 @@ export default function ProductDetail({
   relatedProducts = [],
   relatedUrl = null,
   promo = null,
+  option_media = [],
+  image_axis_slot = null,
 }: ProductDetailProps) {
-  const purchase = useProductPurchase({ product, attributes, variants, media, reviews, promo })
+  const purchase = useProductPurchase({
+    product,
+    attributes,
+    variants,
+    media,
+    reviews,
+    promo,
+    optionMedia: option_media,
+    imageAxisSlot: image_axis_slot,
+  })
   const { title, variantMedia, highlightedMediaId, productSchema, averageRating, ratingLabel, ratedReviews } = purchase
 
   const shareUrl = React.useMemo(() => {

@@ -147,10 +147,10 @@ class ProductImportDataSheet implements FromArray, WithTitle, WithEvents
     {
         return [
             'A' => 10, 'B' => 40, 'C' => 44, 'D' => 30, 'E' => 18,
-            'F' => 18, 'G' => 14, 'H' => 14, 'I' => 14, 'J' => 42,
-            'K' => 14, 'L' => 14, 'M' => 14, 'N' => 10, 'O' => 11,
-            'P' => 11, 'Q' => 11, 'R' => 11, 'S' => 42, 'T' => 42,
-            'U' => 42, 'V' => 42, 'W' => 42, 'X' => 42,
+            'F' => 18, 'G' => 14, 'H' => 14, 'I' => 14, 'J' => 14,
+            'K' => 42, 'L' => 14, 'M' => 14, 'N' => 14, 'O' => 10,
+            'P' => 11, 'Q' => 11, 'R' => 11, 'S' => 11, 'T' => 42,
+            'U' => 42, 'V' => 42, 'W' => 42, 'X' => 42, 'Y' => 42,
         ];
     }
 }
@@ -378,7 +378,8 @@ class ProductImportGuideSheet implements FromArray, WithTitle, WithEvents
             ['Sub Model', 'OPSIONAL. Pilih dari daftar, atau ketik kode baru. Kosong berarti produk tanpa sub model.', 'POLOS'],
             ['Nama Variasi 1', 'Nama sumbu variasi pertama.', 'Warna'],
             ['Opsi Variasi 1', 'Nilai opsi untuk baris ini.', 'Putih'],
-            ['Gambar per Varian', 'URL foto yang menempel pada varian baris ini. Satu opsi cukup diisi sekali.', 'https://media.333labs.tech/...'],
+            ['Sumbu Gambar', 'Nomor sumbu yang gambar opsi-nya diisi di kolom Gambar per Varian. Kosong berarti 1. Hanya SATU sumbu per produk yang boleh bergambar, misalnya 1 untuk Warna.', '1'],
+            ['Gambar per Varian', 'URL foto untuk NILAI OPSI pada sumbu yang ditunjuk kolom Sumbu Gambar. Satu gambar untuk satu opsi, dan semua opsi di sumbu itu wajib punya gambar. URL yang sama diulang di setiap baris kombinasi.', 'https://media.333labs.tech/...'],
             ['Nama Variasi 2', 'Nama sumbu variasi kedua. Boleh dikosongkan bila produk hanya punya satu variasi.', 'Kaca'],
             ['Opsi Variasi 2', 'Nilai opsi untuk baris ini.', 'Kaca Bening'],
             ['Harga', 'Harga jual varian ini. Angka polos atau format ribuan Indonesia (1.250.000) tanpa Rp.', '1250000'],

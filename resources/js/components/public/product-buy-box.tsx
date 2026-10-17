@@ -55,6 +55,8 @@ export function ProductBuyBox({
     discountPercent,
     benefits,
     promo,
+    imageAxisName,
+    optionThumbs,
   } = purchase
 
   // Alasan belanja dibaca dari CTA_CONTENT, blok "pdp-benefits". Daftar bawaannya
@@ -182,24 +184,43 @@ export function ProductBuyBox({
                       ? "Kaca"
                       : axis.name}
                 </legend>
-                {axis.options.map((option) => (
-                  <button
-                    type="button"
-                    key={option}
-                    onClick={() => chooseAxis(axis.name, option)}
-                    className={cn(
-                      "h-7 min-h-7 shrink-0 rounded-[8px] border px-2.5 text-xs font-medium transition inline-flex items-center justify-center",
-                      variantError && !selections[axis.name]
-                        ? "border-destructive animate-pulse"
-                        : selections[axis.name] === option
-                          ? "border-foreground bg-foreground text-white font-semibold"
-                          : "border-border bg-surface text-foreground hover:border-foreground/40",
-                    )}
-                    aria-pressed={selections[axis.name] === option}
-                  >
-                    <span className="block max-w-full truncate">{option}</span>
-                  </button>
-                ))}
+                {axis.options.map((option) => {
+                  // Chip bergambar hanya untuk sumbu yang memang punya gambar
+                  // opsi. Sumbu lain tetap teks, sesuai aturan satu sumbu
+                  // bergambar (gambar opsi tidak boleh saling menimpa).
+                  const thumb = axis.name === imageAxisName
+                    ? optionThumbs.get(option.trim().toLowerCase())
+                    : undefined
+                  const selected = selections[axis.name] === option
+
+                  return (
+                    <button
+                      type="button"
+                      key={option}
+                      onClick={() => chooseAxis(axis.name, option)}
+                      className={cn(
+                        "shrink-0 rounded-[8px] border text-xs font-medium transition inline-flex items-center justify-center",
+                        thumb ? "h-11 min-h-11 gap-1.5 pl-1 pr-2.5" : "h-7 min-h-7 px-2.5",
+                        variantError && !selections[axis.name]
+                          ? "border-destructive animate-pulse"
+                          : selected
+                            ? "border-foreground bg-foreground text-white font-semibold"
+                            : "border-border bg-surface text-foreground hover:border-foreground/40",
+                      )}
+                      aria-pressed={selected}
+                    >
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="size-7 shrink-0 rounded-[5px] object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <span className="block max-w-full truncate">{option}</span>
+                    </button>
+                  )
+                })}
               </div>
             </fieldset>
           ))}
