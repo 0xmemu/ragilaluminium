@@ -45,6 +45,13 @@ class ProductController extends Controller
 
     private const DEFAULT_SORT = 'updated_desc';
 
+    /**
+     * Cache indeks taksonomi untuk pencarian dalam satu request.
+     *
+     * @var list<array{column: string, code: string, haystack: string}>|null
+     */
+    private ?array $taxonomyIndex = null;
+
     public function index(Request $request): Response
     {
         $view = 'list';
@@ -52,9 +59,7 @@ class ProductController extends Controller
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
-        $size = $q !== '' ? $this->parseSizeQuery($q) : null;
         $sort = $this->resolveListSort($request->input('sort'));
-
 
         $products = Product::query()
             ->with(['mainImage', 'activeVariants'])
@@ -64,7 +69,7 @@ class ProductController extends Controller
             ])
             ->withSum('validOrderItems as sold_count', 'quantity')
             ->withSum('activeVariants as stock_total', 'stock')
-            ->when($q !== '', fn ($query) => $this->applyListSearch($query, $q, $size, 'activeVariants'))
+            ->when($q !== '', fn ($query) => $this->applyListSearch($query, $q))
             ->when(
                 $category !== '' && $category !== 'all',
                 fn ($query) => $query->where('product_category', CategoryUrl::codeToProductCode($category))
@@ -109,7 +114,6 @@ class ProductController extends Controller
         $model = (string) $request->input('product_model', 'all');
         $status = (string) $request->input('status', 'all');
         $q = trim((string) $request->input('q', ''));
-        $size = $q !== '' ? $this->parseSizeQuery($q) : null;
         $sort = $this->resolveListSort($request->input('sort'));
 
         $query = Product::query()
@@ -120,7 +124,7 @@ class ProductController extends Controller
             ->withMax('variants as max_price', 'price')
             ->withCount(['media as media_count' => fn ($b) => $b->where('show_in_catalog', true)])
             ->withCount(['media as installation_media_count' => fn ($b) => $b->where('is_installation', true)])
-            ->when($q !== '', fn ($builder) => $this->applyListSearch($builder, $q, $size, 'variants'))
+            ->when($q !== '', fn ($builder) => $this->applyListSearch($builder, $q))
             ->when($category !== '' && $category !== 'all', fn ($builder) => $builder->where('product_category', CategoryUrl::codeToProductCode($category)))
             ->when(
                 $model !== '' && $model !== 'all',
@@ -179,6 +183,8 @@ class ProductController extends Controller
             'width_cm' => ['nullable', 'numeric', 'min:0'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],
             'depth_cm' => ['nullable', 'numeric', 'min:0'],
+            // Sumbu variasi yang gambar opsi-nya dipakai (1..5). Null = tanpa gambar opsi.
+            'image_axis_slot' => ['nullable', 'integer', 'min:1', 'max:5'],
             // ADR-021: definisi varian (nama bebas + daftar opsi).
             'variant_defs' => ['nullable', 'array', 'max:5'],
             'variant_defs.*.name' => ['required_with:variant_defs', 'string', 'max:100'],
@@ -585,7 +591,8 @@ class ProductController extends Controller
     {
         $product->load(['variants' => fn ($q) => $q->withCount([
             'media as media_count' => fn ($mq) => $mq->where('visibility', '!=', 'archived'),
-        ]), 'attributes', 'media.mediaAsset', 'media.productVariant', 'media.product:id,parent_sku']);
+        ]), 'attributes', 'media.mediaAsset', 'media.productVariant', 'media.product:id,parent_sku',
+            'optionMedia.mediaAsset']);
 
         $requestedTab = (string) $request->query('tab', 'identitas');
         $activeTab = in_array($requestedTab, ['identitas', 'varian', 'media'], true)
@@ -604,17 +611,11 @@ class ProductController extends Controller
                 }
             }
         }
-        // Gambar per opsi: media product-level posisi 10..49 ditaut berurutan
-        // ke opsi (urutan sama dengan importer: per slot varian, opsi urut).
-        // Media varian-level (form manual lama) tetap diutamakan.
-        $perOptionMedia = $product->media
-            ->filter(fn ($m) => $m->product_variant_id === null
-                && ! $m->is_main_image
-                && ! $m->is_installation
-                && $m->position >= 50 && $m->position < 80)
-            ->sortBy('position')
-            ->values();
-        $optMediaIdx = 0;
+        // Gambar per opsi dibaca dari tabel opsi (satu gambar per NILAI opsi),
+        // bukan lagi dari media kombinasi. Kunci pencarian: slot + nilai opsi.
+        $optionMedia = $product->optionMedia->keyBy(
+            fn ($m) => $m->variation_slot.'|'.mb_strtolower($m->option_value)
+        );
 
         for ($s = 1; $s <= $slotCount; $s++) {
             $name = '';
@@ -631,17 +632,12 @@ class ProductController extends Controller
                     continue;
                 }
                 $seen[$key] = true;
-                $media = $product->media->first(fn ($m) => $m->product_variant_id === $v->id);
-                if (! $media && $optMediaIdx < $perOptionMedia->count()) {
-                    $media = $perOptionMedia[$optMediaIdx];
-                }
-                if ($media) {
-                    $optMediaIdx++;
-                }
+                $optionMediaRow = $optionMedia->get($s.'|'.mb_strtolower($option));
+                $asset = $optionMediaRow?->mediaAsset;
                 $options[] = [
                     'value' => $option,
-                    'media_asset_id' => ($media && $media->mediaAsset) ? $media->mediaAsset->id : null,
-                    'thumb_url' => ($media && $media->mediaAsset) ? $media->mediaAsset->urlFor('thumb') : null,
+                    'media_asset_id' => $asset?->id,
+                    'thumb_url' => $asset?->urlFor('thumb'),
                 ];
             }
             if ($options !== []) {
@@ -660,6 +656,7 @@ class ProductController extends Controller
                 'product_category' => $product->product_category,
                 'product_model' => $product->product_model,
                 'design_variant' => $product->design_variant,
+                'image_axis_slot' => $product->image_axis_slot,
                 'status' => $product->status,
                 'homepage_popular' => $product->homepage_popular,
                 'homepage_popular_sort' => $product->homepage_popular_sort,
@@ -999,46 +996,74 @@ class ProductController extends Controller
                     ->where('variation_'.$slotNo.'_option', '!=', '')
                     ->update(['variation_'.$slotNo.'_name' => $slotName]);
 
-                // Simpan foto per opsi varian ke varian perwakilan (posisi 50+)
+                // Gambar per OPSI: satu baris untuk setiap nilai opsi pada sumbu
+                // bergambar. Tidak menempel ke kombinasi, sehingga memilih sumbu
+                // lain di halaman toko tidak pernah menimpa gambar ini.
+                $optionOrder = 0;
+                $savedSlots = [];
+
+                // Hanya sumbu yang dipilih admin yang boleh bergambar. Sumbu
+                // lain dibersihkan supaya gambar tidak saling menimpa di
+                // halaman toko (aturan Shopee: satu sumbu bergambar).
+                $requestedImageSlot = (int) ($request->input('image_axis_slot') ?? 0);
+                if ($requestedImageSlot >= 1 && $requestedImageSlot <= 5 && $requestedImageSlot !== $slotNo) {
+                    \App\Models\ProductVariationOptionMedia::query()
+                        ->where('product_id', $product->id)
+                        ->where('variation_slot', $slotNo)
+                        ->delete();
+                    continue;
+                }
+
                 foreach ($def['options'] ?? [] as $opt) {
                     $optVal = trim((string) ($opt['value'] ?? ''));
-                    $assetId = ! empty($opt['media_asset_id']) ? (int) $opt['media_asset_id'] : null;
-                    if ($optVal === '' || ! $assetId) {
+                    if ($optVal === '') {
                         continue;
                     }
+                    $assetId = ! empty($opt['media_asset_id']) ? (int) $opt['media_asset_id'] : null;
+
+                    if (! $assetId) {
+                        // Opsi tanpa gambar: hapus baris lama supaya tidak ada
+                        // sisa gambar yang tampil padahal sudah dikosongkan.
+                        \App\Models\ProductVariationOptionMedia::query()
+                            ->where('product_id', $product->id)
+                            ->where('variation_slot', $slotNo)
+                            ->where('option_value', $optVal)
+                            ->delete();
+                        continue;
+                    }
+
                     $asset = \App\Models\MediaAsset::find($assetId);
                     if (! $asset || $asset->status !== 'ready') {
                         continue;
                     }
-                    $repVariant = $product->variants()
-                        ->where('variation_'.$slotNo.'_option', $optVal)
-                        ->orderBy('id')
-                        ->first();
-                    if ($repVariant) {
-                        // Baris yang SUDAH ada tidak boleh dipaksa kembali ke
-                        // posisi band (50, 60, 70...): itu menimpa urutan foto
-                        // yang baru saja diatur admin di form, sehingga urutan
-                        // tampak "tidak tersimpan". Posisi band hanya dipakai
-                        // saat baris varian ini baru dibuat.
-                        $existingVariantRow = \App\Models\ProductMedia::query()
-                            ->where('product_id', $product->id)
-                            ->where('media_asset_id', $asset->id)
-                            ->where('product_variant_id', $repVariant->id)
-                            ->exists();
 
-                        $variantAttrs = [
-                            'product_variant_id' => $repVariant->id,
-                            'is_main_image' => false,
-                            'show_in_catalog' => true,
-                            'is_installation' => false,
-                            'visibility' => 'visible',
-                        ];
-                        if (! $existingVariantRow) {
-                            $variantAttrs['position'] = 50 + ($slotNo - 1) * 10;
-                        }
+                    \App\Models\ProductVariationOptionMedia::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'variation_slot' => $slotNo,
+                            'option_value' => $optVal,
+                        ],
+                        [
+                            'variation_name' => $slotName,
+                            'media_asset_id' => $asset->id,
+                            'source_url' => $asset->urlFor('pdp') ?? $asset->urlFor('card'),
+                            'sort_order' => $optionOrder,
+                        ]
+                    );
+                    $optionOrder++;
+                    $savedSlots[$slotNo] = true;
+                }
 
-                        $resolverForOption->attach($product, $asset, $variantAttrs, (int) $request->user()->id);
-                    }
+                // Sumbu bergambar ditentukan dari sumbu yang benar-benar punya
+                // gambar. Satu sumbu saja: sumbu terakhir yang lengkap menang,
+                // dan gambar sumbu lain dibersihkan supaya tidak bentrok.
+                if ($savedSlots !== []) {
+                    $imageSlot = (int) array_key_last($savedSlots);
+                    \App\Models\ProductVariationOptionMedia::query()
+                        ->where('product_id', $product->id)
+                        ->where('variation_slot', '!=', $imageSlot)
+                        ->delete();
+                    $product->forceFill(['image_axis_slot' => $imageSlot])->save();
                 }
             }
         }
@@ -1419,151 +1444,98 @@ class ProductController extends Controller
     }
 
     /**
-     * Pencarian daftar produk admin: teks SELALU dicari, ukuran hanya tambahan.
+     * Pencarian daftar produk admin: hanya yang TERLIHAT di daftar produk.
      *
-     * Kotak cari berlabel "Cari nama produk atau SKU Induk", jadi nama produk
-     * dan SKU induk tidak boleh kalah oleh penafsiran angka. Ketikan yang
-     * mengandung ukuran dicari di dua tempat sekaligus: bentuk ukuran di teks
-     * produk ("Tinggi 80 cm x Panjang 50 cm", "(80x50)") dan pasangan dimensi
-     * varian. Ketikan yang bukan ukuran murni tetap murni pencarian teks.
+     * Yang dicari: nama produk, nama pendek, SKU induk, dan taksonomi
+     * (kategori, model, sub model). Kolom dimensi varian (height_cm/width_cm/
+     * depth_cm) adalah data pengiriman yang tidak tampil di daftar, jadi tidak
+     * pernah ikut dicari. Ukuran tetap bisa dicari karena tertulis di nama
+     * produk, misalnya "(200x100)" atau "Tinggi 200 cm x Panjang 100 cm".
+     *
+     * Setiap kata wajib cocok di salah satu kolom, jadi "jendela ornamen"
+     * menemukan "Jendela Aluminium Sliding Ornamen".
      */
-    private function applyListSearch(Builder $query, string $q, ?array $size, string $variantRelation): void
+    private function applyListSearch(Builder $query, string $q): void
     {
         $terms = preg_split('/\s+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [$q];
 
-        $query->where(function (Builder $inner) use ($terms, $size, $variantRelation) {
-            // Teks: setiap kata wajib cocok di salah satu kolom teks, jadi
-            // "jendela jungkit" menemukan "Jendela Aluminium Jungkit".
+        $query->where(function (Builder $inner) use ($terms) {
             foreach ($terms as $term) {
                 $inner->where(function (Builder $word) use ($term) {
                     LikeSearch::whereLike($word, 'name', $term);
                     LikeSearch::orWhereLike($word, 'short_name', $term);
                     LikeSearch::orWhereLike($word, 'parent_sku', $term);
+
+                    $this->applyTaxonomyMatch($word, $term);
                 });
             }
-
-            [$namePatterns, $keywordPatterns] = $this->sizeSearchPatterns($size);
-
-            if ($namePatterns === [] && $keywordPatterns === [] && $size === null) {
-                return;
-            }
-
-            // Ukuran sebagai TAMBAHAN: hasil teks di atas tetap dipakai walau
-            // penafsiran ukuran tidak menemukan apa pun.
-            $inner->orWhere(function (Builder $sizeGroup) use ($namePatterns, $keywordPatterns, $size, $variantRelation) {
-                foreach ($namePatterns as $pattern) {
-                    $sizeGroup->orWhereRaw('name LIKE ? ESCAPE ?', [$pattern, '\\']);
-                    $sizeGroup->orWhereRaw('short_name LIKE ? ESCAPE ?', [$pattern, '\\']);
-                }
-
-                foreach ($keywordPatterns as $pattern) {
-                    $sizeGroup->orWhereRaw('search_keywords LIKE ? ESCAPE ?', [$pattern, '\\']);
-                }
-
-                if ($size === null) {
-                    return;
-                }
-
-                [$a, $b, $depth] = $size;
-
-                $sizeGroup->orWhereHas($variantRelation, function (Builder $variantQuery) use ($a, $b, $depth) {
-                    $variantQuery->where(function (Builder $pair) use ($a, $b, $depth) {
-                        $pair->where('height_cm', $a)->where('width_cm', $b);
-                        if ($depth !== null) {
-                            $pair->where('depth_cm', $depth);
-                        }
-                    })->orWhere(function (Builder $pair) use ($a, $b, $depth) {
-                        $pair->where('height_cm', $b)->where('width_cm', $a);
-                        if ($depth !== null) {
-                            $pair->where('depth_cm', $depth);
-                        }
-                    });
-                });
-            });
         });
     }
 
     /**
-     * Pola LIKE bentuk ukuran di teks produk. Angkanya diambil dari ketikan,
-     * bukan dari kolom dimensi, karena nama produk memakai ukuran jadi.
-     *
-     * @return array{0: list<string>, 1: list<string>}
+     * Cocokkan satu kata ke taksonomi memakai KODE yang tersimpan di produk.
+     * Kode dan label sama-sama dicocokkan supaya "jendela", "JENDELA", maupun
+     * nama kategori hasil suntingan admin sama-sama menemukan produknya.
      */
-    private function sizeSearchPatterns(?array $size): array
+    private function applyTaxonomyMatch(Builder $query, string $term): void
     {
-        if ($size === null) {
-            return [[], []];
+        $needle = mb_strtolower($term);
+        if ($needle === '') {
+            return;
         }
 
-        [$height, $width] = $size;
-        $pairs = $height === $width ? [[$height, $width]] : [[$height, $width], [$width, $height]];
+        $matches = [];
 
-        $namePatterns = [];
-        $keywordPatterns = [];
-
-        foreach ($pairs as [$h, $w]) {
-            $h = $this->formatDimension($h);
-            $w = $this->formatDimension($w);
-
-            $namePatterns[] = '%Tinggi '.$h.'%x%Panjang '.$w.'%';
-            $namePatterns[] = '%('.$h.'x'.$w.')%';
-            $namePatterns[] = '%('.$h.' x '.$w.')%';
-            $namePatterns[] = '% '.$h.' x '.$w.' %';
-
-            $keywordPatterns[] = '%'.$h.'x'.$w.'%';
+        foreach ($this->taxonomyIndex() as $row) {
+            if (str_contains($row['haystack'], $needle)) {
+                $matches[$row['column']][] = $row['code'];
+            }
         }
 
-        return [$namePatterns, $keywordPatterns];
-    }
-
-    private function formatDimension(float $value): string
-    {
-        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+        foreach ($matches as $column => $codes) {
+            $query->orWhereIn($column, array_values(array_unique($codes)));
+        }
     }
 
     /**
-     * Parser ukuran: hanya ketikan yang SELURUHNYA berupa ukuran yang diakui,
-     * misalnya "100x50", "100 x 50", "100×50", "80cm x 50cm",
-     * "tinggi 100 panjang 50", atau "100x50x12". Orientasi = Tinggi × Panjang,
-     * sama dengan label form produk. Selain bentuk itu hasilnya null supaya
-     * pencarian teks tetap berjalan.
+     * Indeks taksonomi untuk pencarian, dibangun sekali per request.
+     * Satu baris = satu nilai taksonomi yang mungkin diketik pengguna.
      *
-     * @return array{0: float, 1: float, 2: float|null}|null
+     * @return list<array{column: string, code: string, haystack: string}>
      */
-    private function parseSizeQuery(string $q): ?array
+    private function taxonomyIndex(): array
     {
-        $normalized = trim(mb_strtolower($q));
-        $normalized = str_replace(['×', ':'], 'x', $normalized);
-
-        $hasDimensionWord = preg_match('/(tinggi|panjang|lebar|dalam)/u', $normalized) === 1;
-
-        $normalized = preg_replace('/\bcm\b/u', ' ', (string) $normalized);
-        $normalized = preg_replace('/\s+/', ' ', trim((string) $normalized));
-
-        if ($hasDimensionWord) {
-            $normalized = preg_replace('/(tinggi|panjang|lebar|dalam)/u', ' ', (string) $normalized);
-            $normalized = preg_replace('/\s+/', ' ', trim((string) $normalized));
-            $shape = '/^\d+(?:[.,]\d+)?(?:\s*x\s*|\s+)\d+(?:[.,]\d+)?(?:(?:\s*x\s*|\s+)\d+(?:[.,]\d+)?)?$/';
-        } else {
-            $shape = '/^\d+(?:[.,]\d+)?\s*x\s*\d+(?:[.,]\d+)?(?:\s*x\s*\d+(?:[.,]\d+)?)?$/';
+        if ($this->taxonomyIndex !== null) {
+            return $this->taxonomyIndex;
         }
 
-        if (preg_match($shape, (string) $normalized) !== 1) {
-            return null;
+        $rows = [];
+
+        foreach (CategoryUrl::productCategoryCodes() as $productCode) {
+            $rows[] = [
+                'column' => 'product_category',
+                'code' => $productCode,
+                'haystack' => mb_strtolower($productCode.' '.CatalogLabels::category($productCode)),
+            ];
         }
 
-        preg_match_all('/\d+(?:[.,]\d+)?/', (string) $normalized, $matches);
-
-        $numbers = array_values(array_filter(
-            array_map(fn ($raw) => (float) str_replace(',', '.', $raw), $matches[0] ?? []),
-            fn ($number) => $number > 0,
-        ));
-
-        if (count($numbers) < 2) {
-            return null;
+        foreach (CatalogLabels::modelOptions() as $option) {
+            $rows[] = [
+                'column' => 'product_model',
+                'code' => (string) $option['value'],
+                'haystack' => mb_strtolower((string) $option['value'].' '.(string) $option['label']),
+            ];
         }
 
-        return [$numbers[0], $numbers[1], $numbers[2] ?? null];
+        foreach (\App\Models\SubModel::query()->get(['code', 'name']) as $subModel) {
+            $rows[] = [
+                'column' => 'design_variant',
+                'code' => (string) $subModel->code,
+                'haystack' => mb_strtolower((string) $subModel->code.' '.(string) $subModel->name),
+            ];
+        }
+
+        return $this->taxonomyIndex = $rows;
     }
 
     private function formOptions(): array
