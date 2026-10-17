@@ -7561,3 +7561,34 @@ Untuk agent berikutnya: daftar pembaca kredensial R2 ada TIGA, yaitu
 `ragil-backup.env`). Setiap rotasi wajib mengganti keduanya dan diuji dengan
 PUT, bukan hanya LIST; LIST bisa berhasil dengan secret yang tidak boleh
 menulis.
+
+## 2026-10-17 09:20 UTC | zcode-search-visible-only | Standard | f816b9e7 | selesai
+Lingkup: pencarian daftar produk admin kini HANYA menyentuh yang terlihat.
+Arahan owner: dimensi packing di kolom varian bukan dimensi produk dan tidak
+tampil di daftar, jadi tidak boleh jadi bahan pencarian. Dimensi produk sudah
+tercantum di nama produk dan tidak terikat kolom mana pun.
+Perubahan: applyListSearch() hanya mencocokkan name, short_name, parent_sku,
+dan taksonomi (product_category, product_model, design_variant) lewat kode
+sekaligus labelnya. parseSizeQuery(), sizeSearchPatterns(), dan pencocokan
+height_cm/width_cm/depth_cm DIHAPUS dari jalur pencarian, bukan sekadar
+dikurangi bobotnya.
+Dasar riset: panduan Algolia soal searchable attributes (pilih atribut yang
+memang dicari pengguna; kecualikan data display-only dan metrik internal;
+relevansi turun bila semua atribut dijadikan bahan cari). Panduan Nielsen
+Norman soal search yang terlihat dan cakupannya. Kesimpulan yang dipakai:
+kotak cari hanya mencari hal yang tampil atau dikenali pengguna.
+Dampak nyata di produksi: "205x105" dan "85x55" (angka packing) sekarang 0
+hasil; "200x100", "80x50", SKU induk, serta kata kategori/model/sub model
+tetap menemukan produknya.
+Verifikasi: tests/Feature/AdminProductListSearchTest.php ditulis ulang, 10 test
+154 assertion lulus. Dibuktikan bisa gagal: pada kode sebelumnya 3 test gagal
+(packing ikut dicari, taksonomi model dan sub model tidak dicari).
+Regresi terkait lulus: AdminProductListSortTest, AdminProductWizardTest,
+XlsxFlowsWithoutTaxonomyTest, AdminExportSyncAuditTest,
+CatalogSearchBoundaryTest (40 test). Uji kode controller nyata di 202:
+200x100 -> 1 (RAQ9RB73C8S6), 205x105 -> 0, 105x205 -> 0, 85x55 -> 0,
+80x50 -> 1, SKU induk -> 1, kategori/model/sub model -> 151,
+tanpa hasil -> 0. Deploy 202 f816b9e7, kesehatan OK.
+Catatan: storefront (CatalogSearch) TIDAK diubah dan tetap mencocokkan dimensi
+varian, karena di toko pembeli memang memilih ukuran. Kalau owner ingin
+perilaku toko ikut disamakan, itu keputusan terpisah.
