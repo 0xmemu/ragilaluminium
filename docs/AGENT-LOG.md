@@ -7424,3 +7424,29 @@ mengenali aset arsip dan aset ready, menolak URL asing; halaman produk
 RAYX8Y67W2UM memuat `installationMedia` dengan URL yang membalas 200.
 
 Agent: zcode-media-resilience
+
+## 2026-10-17 08:40 UTC | zcode-product-search-deploy | Standard | d726c850 | selesai
+Lingkup: merilis perbaikan pencarian daftar produk ke produksi 202 dan menjawab
+pertanyaan owner "kenapa 205x105 juga".
+Jawaban: angka 205x105 adalah dimensi tersimpan (kolom height_cm dan width_cm)
+milik DUA produk berbeda, yaitu RAQ9RB73C8S6 (nama 200x100, simpan 205x105) dan
+RAWK9K2FT2AA (nama 100x200, simpan 105x205). Pencarian dimensi membalik
+orientasi, jadi ketikan 205x105 cocok ke keduanya. Itu warisan perilaku lama
+dan disengaja di storefront (CatalogSearch §6), jadi tidak diubah.
+Yang berubah: mencari angka yang TERTULIS di nama produk sekarang berhasil.
+"200x100" menemukan RAQ9RB73C8S6; "RAQ9RB73C8S6" menemukan produknya.
+Langkah: merge origin/main ke feat/ui-consistency-209 (konflik hanya di
+docs/AGENT-LOG.md, diselesaikan dengan mempertahankan kedua sisi; 421 entri
+branch dan 415 entri main terbukti utuh, nol hilang), uji penuh di worktree
+bersih, lalu fast-forward origin/main ke d726c850 dan deploy 202.
+Verifikasi: php artisan test di worktree bersih 1519 lulus, 1 skip, 2 gagal
+(AdminSortOrderBaseOneTest dan StorePerformanceGoldenTest). Kedua kegagalan itu
+SUDAH ada di origin/main sebelum perubahan ini, dibuktikan dengan menjalankan
+test yang sama pada worktree origin/main: 2 gagal, 9 lulus. Bukan regresi.
+Setelah deploy: rilis aktif 20261017153323-pencarian-produk, kode
+applyListSearch ada di rilis, php -l bersih, beranda dan /products 200,
+/admin 302 (belum login). Uji kode controller nyata di 202: "200x100" 2 hasil
+(kedua orientasi), "RAQ9RB73C8S6" 1, "jendela sliding" 151, "100x200" 2,
+"205x105" 2, "tidakadasamasekali" 0.
+Catatan: tidak ada produk Boven atau Jungkit di katalog produksi saat ini, jadi
+"boven 2 pintu" menghasilkan 0 secara wajar.
