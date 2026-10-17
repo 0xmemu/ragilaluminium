@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { hasIcon } from "@/components/shared/icon"
 import {
+  importStatusMeta,
   mediaKindLabel,
   mediaStatusMeta,
   ORDER_STEPS,
@@ -81,5 +82,31 @@ describe("status vocabulary", () => {
     expect(orderStepIndex("shipped")).toBe(2)
     expect(orderStepIndex("cancelled")).toBe(-1)
     expect(orderStepIndex("unknown")).toBe(-1)
+  })
+})
+
+describe("status pekerjaan impor", () => {
+  it("pending berarti menunggu diproses, bukan menunggu pembayaran", () => {
+    // Cacat nyata 17 Okt 2026: daftar impor memakai peta status pesanan,
+    // sehingga berkas yang baru diunggah tampil "Menunggu pembayaran".
+    expect(importStatusMeta("pending")).toEqual({
+      label: "Menunggu diproses",
+      tone: "neutral",
+      icon: "clock",
+    })
+    expect(statusMeta("pending").label).toBe("Menunggu pembayaran")
+  })
+
+  it("memetakan keempat status enum import_jobs", () => {
+    expect(importStatusMeta("running")).toEqual({ label: "Sedang diproses", tone: "info", icon: "spinner" })
+    expect(importStatusMeta("completed")).toEqual({ label: "Selesai", tone: "success", icon: "check" })
+    expect(importStatusMeta("failed")).toEqual({ label: "Gagal", tone: "danger", icon: "x" })
+  })
+
+  it("tidak membocorkan penanda sistem untuk status impor yang tak dikenal", () => {
+    const meta = importStatusMeta("menunggu_bayar")
+    expect(meta.label).toBe("Status lain")
+    expect(meta.label).not.toContain("_")
+    expect(importStatusMeta(null).label).toBe("Belum tersedia")
   })
 })

@@ -7,6 +7,7 @@ import { Button } from "@/components/admin/ui/button"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
 import { routeUrl } from "@/lib/routes"
+import { importStatusMeta } from "@/lib/status"
 import { router } from "@inertiajs/react"
 
 type ImportJobView = {
@@ -43,13 +44,6 @@ type ImportJobView = {
     rows: number[]
     reasons: string[]
   }>
-}
-
-const STATUS_LABEL: Record<ImportJobView["status"], string> = {
-  pending: "Menunggu",
-  running: "Sedang diproses",
-  completed: "Selesai",
-  failed: "Gagal",
 }
 
 const STATUS_STYLE: Record<ImportJobView["status"], string> = {
@@ -127,7 +121,7 @@ export default function ImportShow({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[job.status]}`}>
-                {STATUS_LABEL[job.status]}
+                {importStatusMeta(job.status).label}
               </span>
               <span className="text-xs text-muted-foreground">{job.type}</span>
             </div>

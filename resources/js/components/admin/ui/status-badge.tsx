@@ -58,6 +58,8 @@ const toneIcon: Record<string, string> = {
 interface StatusBadgeProps extends VariantProps<typeof badgeVariants> {
   status?: unknown
   label?: string
+  /** Ikon eksplisit; menang atas ikon status dan ikon nada. */
+  icon?: string
   className?: string
 }
 
@@ -74,7 +76,7 @@ const DIRECT_TONES = new Set([
   "neutral-soft",
 ])
 
-export function StatusBadge({ status, label, tone, className }: StatusBadgeProps) {
+export function StatusBadge({ status, label, tone, icon, className }: StatusBadgeProps) {
   const rawStatus = String(status ?? "")
   const meta = statusMeta(status)
   // Sebagian pemanggil mengirim nada (bukan kunci status) lewat .
@@ -84,7 +86,7 @@ export function StatusBadge({ status, label, tone, className }: StatusBadgeProps
   const resolvedTone = tone ?? (statusIsTone ? (rawStatus as typeof meta.tone) : meta.tone)
   // Ikon spesifik status menang; bila pemanggil mengirim nada langsung
   // (bukan kunci status), statusIcon tidak cocok dan jatuh ke ikon nada.
-  const iconName = (!statusIsTone && statusIcon(status)) || toneIcon[resolvedTone ?? "neutral"] || toneIcon.neutral
+  const iconName = icon || (!statusIsTone && statusIcon(status)) || toneIcon[resolvedTone ?? "neutral"] || toneIcon.neutral
 
   return (
     <span className={cn(badgeVariants({ tone: resolvedTone }), className)}>
