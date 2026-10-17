@@ -7509,3 +7509,55 @@ admin, dokumen CMS, COD, subsidi ongkir 63/63 lulus; npm run build sukses.
 Deploy 202 5d31a18d kesehatan OK, /up 200. Sapuan guard membuktikan hanya
 CaraPemesanan/Edit.tsx yang masih memakai pola th w-64, dan itu tabel daftar
 langkah yang dikecualikan secara eksplisit.
+
+## 2026-10-17 09:00 UTC | zcode-backup-202-alarm | Deep | c0ec2c2b | selesai
+
+Konteks: owner melaporkan "ada alert bot tg" pukul 15:20 WIB. Alarm yang masuk
+adalah OFFSITE-DUMP (dump terbaru di R2 berumur 129776s, batas 93600s) dan
+OFFSITE-BINLOG (83390s, batas 10800s). Toko dan seluruh layanan normal; yang
+mati hanya salinan cadangan di luar server.
+
+Akar masalah: rotasi secret R2 pada 17 Okt pagi hanya menyentuh
+`/var/www/ragilaluminium/shared/.env`, sedangkan pengunggah backup
+(`/root/ragil-backup/r2_put.py`) membaca berkas kedua,
+`/root/.config/ragilaluminium/cloudflare.env`, yang masih memakai secret lama.
+Access key sama, secret berbeda, jadi bucket membalas 403 (bukan 401). Dump
+harian 03:17 sukses dibuat lokal tetapi unggahannya gagal; arsip binlog
+000685-000708 gagal; arsip media 04:15 tidak bertambah 231 objek. Pemeriksa
+kesegaran dan pemeriksa selisih arsip media membaca `.env` aplikasi, jadi
+keduanya tampak sehat sementara penulis backup masih mati. Itu sebabnya alarm
+baru berbunyi 12 jam kemudian, setelah umur dump melewati batas.
+
+Perubahan di 202 (operasional, bukan kode aplikasi):
+1. `cloudflare.env`: secret disamakan dengan `.env` (cadangan
+   `cloudflare.env.bak-r2-20261017`).
+2. Unggah ulang dump 17 Okt dan binlog 000685-000709: semua 200, 0 gagal.
+3. `media-archive.py` dijalankan: 231 objek disalin, 0 gagal, selisih 0.
+4. `backup-alert.sh`: OFFSITE-CHECK kini dibersihkan saat pemeriksaan R2
+   berhasil (sebelumnya state menempel sejak 16 Okt sehingga kegagalan
+   berikutnya tidak memicu alarm baru). Penanda ALERT-* kini dibaca sebagai
+   alarm, bukan sekadar catatan.
+5. Kontrak penanda diperbaiki mengikuti pola 209: berkas ADA berarti gagal,
+   skrip penulis MENGHAPUSNYA saat sukses. Satu penanda satu pemilik
+   (ALERT-dump-local, ALERT-r2-dump, ALERT-r2-binlog, ALERT-local-stale),
+   supaya unggah dump yang berhasil tidak menghapus kegagalan unggah binlog.
+6. `weekly-restore-drill.sh` berhenti menulis penanda; hasil drill sudah dibaca
+   langsung dari restore-drill.log (kode DRILL-RUN).
+
+Versi terkontrol: kelima skrip di atas plus README kini ada di
+`scripts/prod/backup/` (sebelumnya hanya `backup-alert.sh` yang terkontrol,
+empat skrip lain hanya hidup di /root 202).
+
+Verifikasi: alarm dijalankan ulang, log mencatat PULIH untuk OFFSITE-DUMP,
+OFFSITE-BINLOG, OFFSITE-CHECK, dan MEDIA-ARCHIVE; berkas state kosong; umur
+off-site kembali 1002s/480s. Uji penanda: membuat ALERT-r2-binlog memicu
+KRITIS R2-BINLOG-UPLOAD, menghapusnya memicu PULIH, penanda tak dikenal hanya
+dicatat. `stale-check.sh` dan `hourly-binlog-backup.sh` dijalankan nyata dan
+keduanya menghapus penandanya (rc=0, binlog 000710 terunggah 200).
+
+Dampak spec: tidak berubah. Tidak ada route, field, enum, atau JSON aplikasi.
+Untuk agent berikutnya: daftar pembaca kredensial R2 ada TIGA, yaitu
+`shared/.env` dan `cloudflare.env` (dipakai `r2_put.py`, `config-backup.sh`,
+`ragil-backup.env`). Setiap rotasi wajib mengganti keduanya dan diuji dengan
+PUT, bukan hanya LIST; LIST bisa berhasil dengan secret yang tidak boleh
+menulis.
