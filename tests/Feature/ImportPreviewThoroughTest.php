@@ -199,6 +199,26 @@ class ImportPreviewThoroughTest extends TestCase
         $this->assertSame(1, $data['media_errors_total']);
     }
 
+    public function test_permintaan_media_membawa_identitas_peramban(): void
+    {
+        // Banyak CDN membalas 403 untuk permintaan tanpa User-Agent, termasuk
+        // berkas yang sebenarnya bisa diunduh. Probe dan job unduh wajib
+        // memakai header yang sama supaya hasil periksa mencerminkan nasib
+        // sebenarnya.
+        Http::fake(['*' => Http::response('', 200)]);
+
+        $rows = [$this->baris(1, 'Produk Host Baru', 'https://gudang-foto-baru.example/foto.webp')];
+        $data = $this->periksa($this->berkas($rows));
+
+        $this->assertSame(0, $data['media_errors_total']);
+
+        Http::assertSent(function ($request) {
+            return $request->hasHeader('User-Agent')
+                && str_contains((string) $request->header('User-Agent')[0], 'Mozilla')
+                && $request->hasHeader('Accept');
+        });
+    }
+
     public function test_impor_tetap_berjalan_untuk_media_internal(): void
     {
         Storage::disk('media')->put('media-assets/uji/pdp.webp', 'isi');

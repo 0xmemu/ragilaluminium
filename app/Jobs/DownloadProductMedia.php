@@ -84,6 +84,10 @@ class DownloadProductMedia implements ShouldBeUnique, ShouldQueue
             $tmp = tempnam(sys_get_temp_dir(), 'media_');
             $response = Http::timeout((int) config('media.download_timeout', 60))
                 ->withoutRedirecting()
+                ->withHeaders([
+                    'User-Agent' => (string) config('media.user_agent'),
+                    'Accept' => (string) config('media.accept_header'),
+                ])
                 ->withOptions(['sink' => $tmp])
                 ->get($media->source_url);
 

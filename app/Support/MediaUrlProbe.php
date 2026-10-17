@@ -72,6 +72,7 @@ final class MediaUrlProbe
                         $requests[] = $pool->as((string) $index)
                             ->timeout($timeout)
                             ->withoutRedirecting()
+                            ->withHeaders(self::browserHeaders())
                             ->head($url);
                     }
 
@@ -105,13 +106,27 @@ final class MediaUrlProbe
         try {
             $response = Http::timeout($timeout)
                 ->withoutRedirecting()
-                ->withHeaders(['Range' => 'bytes=0-0'])
+                ->withHeaders(self::browserHeaders() + ['Range' => 'bytes=0-0'])
                 ->get($url);
 
             return $response->successful() || $response->status() === 206;
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * Header yang dipakai saat memeriksa. WAJIB sama dengan yang dipakai job
+     * unduh, supaya hasil pemeriksaan mencerminkan nasib sebenarnya.
+     *
+     * @return array<string, string>
+     */
+    private static function browserHeaders(): array
+    {
+        return [
+            'User-Agent' => (string) config('media.user_agent'),
+            'Accept' => (string) config('media.accept_header'),
+        ];
     }
 
     /** Kosongkan cache. Dipakai test supaya hasil satu kasus tidak bocor ke kasus lain. */

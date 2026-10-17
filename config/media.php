@@ -24,6 +24,15 @@ return [
         explode(',', (string) env('MEDIA_ALLOWED_HOSTS', ''))
     ))),
 
+    // Identitas peramban saat mengunduh dan memeriksa media. Banyak CDN
+    // menolak permintaan tanpa User-Agent (mis. Wikimedia membalas 403),
+    // sehingga foto dari host lain gagal padahal berkasnya ada.
+    'user_agent' => (string) env(
+        'MEDIA_USER_AGENT',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+    ),
+    'accept_header' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+
     // Periksa file menguji apakah URL media eksternal benar-benar bisa
     // diunduh. Bisa dimatikan di lingkungan test supaya tidak menembak jaringan.
     'preview_probe' => filter_var(env('MEDIA_PREVIEW_PROBE', true), FILTER_VALIDATE_BOOL),
