@@ -37,6 +37,11 @@ const WAJIB_TERKUNCI = [
   "resources/js/pages/Admin/Profile/Edit.tsx",
   "resources/js/pages/Admin/WhatsApp/Edit.tsx",
   "resources/js/pages/Admin/Beranda/HowToOrderForm.tsx",
+  // Ditambahkan 17 Oktober 2026: ketiga halaman ini dulu tercatat "selesai" di
+  // ADR-023 tetapi kenyataannya membuka form langsung aktif. Sekarang dikunci.
+  "resources/js/pages/Admin/CaraPemesanan/Edit.tsx",
+  "resources/js/pages/Admin/CmsDocument/Edit.tsx",
+  "resources/js/pages/Admin/CmsPageForm.tsx",
 ]
 
 /**

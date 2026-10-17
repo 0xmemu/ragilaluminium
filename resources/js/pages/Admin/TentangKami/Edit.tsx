@@ -9,6 +9,7 @@ import { Field, FieldGrid, FormErrorSummary } from "@/components/admin/ui/field"
 import { Input } from "@/components/admin/ui/input"
 import { Select } from "@/components/admin/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableScroll } from "@/components/admin/ui/table"
+import { SubmitGateButton } from "@/components/admin/ui/submit-gate-button"
 import { Textarea } from "@/components/admin/ui/textarea"
 import { Icon } from "@/components/shared/icon"
 import AdminLayout from "@/layouts/admin-layout"
@@ -303,9 +304,16 @@ export default function TentangKamiEdit({
                   </a>
                 </Button>
               ) : null}
-              <Button type="submit" form="about-profile-form" size="sm" disabled={form.processing}>
-                {form.processing ? "Menyimpan..." : "Simpan"}
-              </Button>
+              <SubmitGateButton
+                form={form}
+                fields={[]}
+                requireChange
+                formId="about-profile-form"
+                size="sm"
+                processing={form.processing}
+              >
+                Simpan
+              </SubmitGateButton>
             </>
           )}
         </div>
@@ -1493,24 +1501,6 @@ export default function TentangKamiEdit({
             </div>
           ) : null}
 
-          {/* Tombol Simpan & Batal Bawah */}
-          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setMode("view")
-                setEditingWhyIndex(null)
-                setEditingProcessIndex(null)
-                setEditingStepIndex(null)
-              }}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={form.processing}>
-              {form.processing ? "Menyimpan..." : "Simpan perubahan"}
-            </Button>
-          </div>
         </form>
       )}
 

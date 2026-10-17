@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from "@inertiajs/react"
+import { Head, useForm } from "@inertiajs/react"
 import DOMPurify from "dompurify"
 import * as React from "react"
 
@@ -44,9 +44,17 @@ export default function CmsDocumentEdit({
   })
 
 
+  // Kontrak halaman pengaturan (ADR-023): dibuka terkunci. Isian baru bisa
+  // diubah setelah admin menekan Edit, supaya dokumen legal tidak tersunting
+  // tanpa sengaja saat hanya dibaca.
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
 
   function batal() {
+    // Jangan router.reload(): Inertia repo ini mempertahankan state sehingga
+    // mode edit bertahan walau sudah dibatalkan.
     form.resetAndClearErrors()
+    setMode("view")
   }
 
   const preview = React.useMemo(
@@ -80,24 +88,26 @@ export default function CmsDocumentEdit({
             </a>
           </Button>
 
-          {form.isDirty ? (
-            <Button type="button" variant="secondary" size="sm" onClick={batal}>
-              Batal
+          {mode === "view" ? (
+            <Button type="button" size="sm" onClick={() => setMode("edit")}>
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
             </Button>
           ) : (
-            <Button asChild variant="secondary" size="sm">
-              <Link href={hubUrl}>Kembali</Link>
-            </Button>
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+              <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="cms-document-form"
+                size="sm"
+              >
+                {saveLabel}
+              </SubmitGateButton>
+            </>
           )}
-
-          <SubmitGateButton
-            form={form}
-            {...gerbang}
-            formId="cms-document-form"
-            size="sm"
-          >
-            {saveLabel}
-          </SubmitGateButton>
         </div>
       }
     >
@@ -114,6 +124,7 @@ export default function CmsDocumentEdit({
             onSuccess: () => {
               // Simpan berhasil = kondisi baru jadi acuan Batal berikutnya.
               form.setDefaults()
+              setMode("view")
             },
           })
         }}
@@ -136,6 +147,7 @@ export default function CmsDocumentEdit({
                 </th>
                 <td className="px-4 py-3">
                   <Input
+                    disabled={terkunci}
                     value={form.data.title}
                     onChange={(event) => form.setData("title", event.target.value)}
                     className="max-w-md"
@@ -156,6 +168,7 @@ export default function CmsDocumentEdit({
                 </th>
                 <td className="px-4 py-3">
                   <Input
+                    disabled={terkunci}
                     value={form.data.heading}
                     onChange={(event) => form.setData("heading", event.target.value)}
                     className="max-w-xl"
@@ -177,6 +190,7 @@ export default function CmsDocumentEdit({
                 <td className="px-4 py-3">
                   <CheckboxField
                     id="doc-published"
+                    disabled={terkunci}
                     checked={form.data.published}
                     onChange={(checked) => form.setData("published", checked)}
                     label={
@@ -206,6 +220,7 @@ export default function CmsDocumentEdit({
             >
               <Textarea
                 rows={24}
+                disabled={terkunci}
                 value={form.data.body}
                 onChange={(event) => form.setData("body", event.target.value)}
                 className="min-h-[30rem] font-mono text-xs leading-relaxed"

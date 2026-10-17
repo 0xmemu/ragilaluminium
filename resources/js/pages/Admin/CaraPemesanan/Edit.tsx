@@ -66,6 +66,18 @@ export default function CaraPemesananEdit({
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null)
   const [editingCardIndex, setEditingCardIndex] = React.useState<number | null>(null)
 
+  // Kontrak halaman pengaturan: dibuka dalam keadaan terkunci (ADR-023).
+  const [mode, setMode] = React.useState<"view" | "edit">("view")
+  const terkunci = mode === "view"
+
+  function batal() {
+    form.resetAndClearErrors()
+    setEditingStepIndex(null)
+    setEditingCardIndex(null)
+    setShowMeta(false)
+    setMode("view")
+  }
+
   const form = useForm({
     title: page.title,
     published: page.published,
@@ -150,26 +162,43 @@ export default function CaraPemesananEdit({
       description={description}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="secondary">
+          <Button asChild variant="secondary" size="sm">
             <a href={previewUrl} target="_blank" rel="noreferrer">
               Lihat di toko
             </a>
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowMeta((prev) => !prev)}
-          >
-            {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
-          </Button>
-          <SubmitGateButton
-            form={form}
-            {...gerbang}
-            formId="cara-pemesanan-form"
-            size="sm"
-          >
-            Simpan perubahan
-          </SubmitGateButton>
+          {mode === "view" ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setMode("edit")}
+            >
+              <Icon name="pencil" className="size-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowMeta((prev) => !prev)}
+              >
+                {showMeta ? "Tutup pengaturan" : "Pengaturan halaman"}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={batal}>
+                Batal
+              </Button>
+              <SubmitGateButton
+                form={form}
+                {...gerbang}
+                formId="cara-pemesanan-form"
+                size="sm"
+              >
+                Simpan perubahan
+              </SubmitGateButton>
+            </>
+          )}
         </div>
       }
     >
@@ -187,6 +216,7 @@ export default function CaraPemesananEdit({
               form.setDefaults()
               setEditingStepIndex(null)
               setEditingCardIndex(null)
+              setMode("view")
             },
           })
         }}
@@ -216,20 +246,21 @@ export default function CaraPemesananEdit({
             <div className="mt-4">
               <FieldGrid>
                 <Field id="cmspage-title" label="Judul CMS" required error={form.errors.title}>
-                  <Input value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
+                  <Input disabled={terkunci} value={form.data.title} onChange={(event) => form.setData("title", event.target.value)} />
                 </Field>
                 <CheckboxField
                   id="cmspage-published"
                   checked={form.data.published}
                   onChange={(checked) => form.setData("published", checked)}
-                  label="Terbitkan halaman"
+                  label="Terbitkan halaman" disabled={terkunci}
                 />
                 <Field id="cmspage-heading" label="Judul hero" required error={form.errors.heading} className="sm:col-span-2">
-                  <Input value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
+                  <Input disabled={terkunci} value={form.data.heading} onChange={(event) => form.setData("heading", event.target.value)} />
                 </Field>
                 <Field id="cmspage-subtitle" label="Subjudul hero" error={form.errors.subtitle} className="sm:col-span-2">
                   <Textarea
                     rows={2}
+                    disabled={terkunci}
                     value={form.data.subtitle}
                     onChange={(event) => form.setData("subtitle", event.target.value)}
                   />
@@ -254,7 +285,7 @@ export default function CaraPemesananEdit({
               type="button"
               variant="secondary"
               size="xs"
-              disabled={form.data.steps.length >= 8}
+              disabled={terkunci || form.data.steps.length >= 8}
               onClick={addStep}
             >
               <Icon name="plus" className="size-3.5 mr-1" aria-hidden="true" />
@@ -382,6 +413,7 @@ export default function CaraPemesananEdit({
                             type="button"
                             variant="secondary"
                             size="xs"
+                            disabled={terkunci}
                             onClick={() => setEditingStepIndex(index)}
                           >
                             Edit
@@ -391,7 +423,7 @@ export default function CaraPemesananEdit({
                             variant="secondary"
                             size="xs"
                             className="text-destructive hover:text-destructive"
-                            disabled={form.data.steps.length <= 1}
+                            disabled={terkunci || form.data.steps.length <= 1}
                             onClick={() => removeStep(index)}
                           >
                             Hapus
@@ -421,7 +453,7 @@ export default function CaraPemesananEdit({
               type="button"
               variant="secondary"
               size="xs"
-              disabled={form.data.info_cards.length >= 6}
+              disabled={terkunci || form.data.info_cards.length >= 6}
               onClick={addCard}
             >
               <Icon name="plus" className="size-3.5 mr-1" aria-hidden="true" />
@@ -522,6 +554,7 @@ export default function CaraPemesananEdit({
                             type="button"
                             variant="secondary"
                             size="xs"
+                            disabled={terkunci}
                             onClick={() => setEditingCardIndex(index)}
                           >
                             Edit
@@ -531,6 +564,7 @@ export default function CaraPemesananEdit({
                             variant="secondary"
                             size="xs"
                             className="text-destructive hover:text-destructive"
+                            disabled={terkunci}
                             onClick={() => removeCard(index)}
                           >
                             Hapus
@@ -565,6 +599,7 @@ export default function CaraPemesananEdit({
             >
               <Textarea
                 rows={5}
+                disabled={terkunci}
                 value={form.data.body}
                 onChange={(event) => form.setData("body", event.target.value)}
                 placeholder="Contoh: Kami melayani ukuran custom. Sertakan model dan ukuran (Tinggi × Panjang, cm) saat chat admin..."
