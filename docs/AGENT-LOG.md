@@ -6977,3 +6977,32 @@ sistem 0 kemunculan; notifikasi pesanan dan WhatsApp tetap ada.
 Dampak spec: tidak berubah.
 
 Agent: zcode-live-events
+
+## 2026-10-17 05:20 UTC | zcode-import-fix | Trivial | 32b9bf09 | selesai
+Lingkup: tombol Impor di panel admin berakhir di halaman "gangguan sementara".
+Akar masalah: folder bersama `/var/www/ragilaluminium/shared/storage/app` dibuat
+oleh `mkdir -p` sebagai root di `scripts/prod/deploy-202.sh`, sedangkan php-fpm
+dan worker antrean berjalan sebagai `www-data`. Akibatnya
+`Storage::disk('imports')->makeDirectory('catalog')` gagal dengan
+`UnableToCreateDirectory`, unggahan impor 500, dan React error boundary tampil
+sebagai "gangguan sementara". Diperbaiki di dua tempat:
+1. Produksi 202: `chown -R www-data:www-data` dan `chmod -R g+ws` pada
+   `shared/storage/app` (berlaku sekarang).
+2. Skrip deploy: menambahkan dua perintah yang sama setelah `mkdir -p`, supaya
+   rilis berikutnya tidak mengulang bug. Sekalian memperbaiki argumen mkdir
+   `"$SHARED/storage/logs"` yang ditulis dengan `\n` literal sehingga folder
+   log bersama tidak pernah ikut dibuat.
+
+Dampak spec: tidak berubah.
+Untuk agent berikutnya: kalau impor/media gagal "Unable to create a directory",
+periksa pemilik `shared/storage/app`, jangan hanya `storage/` rilis. `storage/app`
+adalah symlink ke folder bersama, jadi `chown` pada rilis tidak menyelesaikannya.
+Catatan terpisah: gambar impor dari `media.333labs.tech` ditolak
+`UrlGuard` karena `MEDIA_ALLOWED_HOSTS` produksi hanya mengizinkan host Shopee.
+Itu perilaku yang disengaja, bukan bug; berkas XLSX yang dipakai untuk impor
+harus memakai URL dari `media.ragilaluminium.com`.
+Bukti: `POST /admin/imports` 12:01:27 = 500, sesudah perbaikan 12:05:34 = 302;
+`import_jobs` id 6 completed, 6/6 baris sukses, 0 gagal; `test -w` sebagai
+www-data pada `storage/app/imports` = OK; `bash -n` skrip deploy = SYNTAX_OK.
+
+Agent: zcode-import-fix
