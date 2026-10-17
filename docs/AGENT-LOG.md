@@ -7450,3 +7450,27 @@ applyListSearch ada di rilis, php -l bersih, beranda dan /products 200,
 "205x105" 2, "tidakadasamasekali" 0.
 Catatan: tidak ada produk Boven atau Jungkit di katalog produksi saat ini, jadi
 "boven 2 pintu" menghasilkan 0 secara wajar.
+
+## 2026-10-17 08:55 UTC | zcode-dimension-source | Trivial | - | temuan
+Lingkup: pertanyaan owner kenapa produk bernama 200x100 tersimpan dimensi 205x105.
+Jawaban: angka 205 dan 105 BUKAN ditambahkan sistem. Angka itu sudah tertulis di
+berkas Excel sumber (Test Upload Sliding Ornamen Website.xlsx, job impor #10,
+baris Excel 1778): kolom "Tinggi (cm)" = 205, "Panjang (cm)" = 105,
+"Lebar (cm)" = 12, "Berat (Kg)" = 44, sedangkan kolom "Nama Produk" memuat
+"Tinggi 200 cm x Panjang 100 cm (200x100)".
+Bukti rantai: (1) import_job_rows.raw_data untuk job 10 memuat tinggi_cm 205 dan
+panjang_cm 105 apa adanya; (2) CatalogProductsImport.php baris 348/427 hanya
+memanggil number() tanpa aritmetika, jadi nilai diteruskan apa adanya;
+(3) nilai di database products identik 205/105/12; (4) berkas xlsx asli dibaca
+ulang dengan PhpSpreadsheet dan sel P/Q/R baris 1778 memang 205/105/12.
+Pola menyeluruh: dari 151 pasangan unik nama-berdimensi di job 10, SELURUH 151
+memiliki selisih tepat +5 cm pada tinggi dan +5 cm pada panjang. Jadi +5 adalah
+allowance packing yang diisi konsisten di berkas sumber, bukan perilaku kode.
+Selaras dengan petunjuk template (CatalogTemplateExport baris 294) yang memang
+meminta "dimensi packing" di kolom height_cm/width_cm/depth_cm, dan form admin
+memberi label bagian "Pengiriman (J&T Cargo)".
+Tidak ada perubahan kode atau data. Pencarian yang sudah dirilis tetap
+menemukan produk ini lewat nama (200x100) maupun lewat dimensi (205x105).
+Keputusan yang menunggu owner: apakah kolom dimensi disimpan sebagai ukuran
+jadi (200x100) atau tetap ukuran packing (205x105). Mengubahnya menyentuh data
+katalog dan tarif ongkir J&T, jadi tidak dilakukan tanpa perintah eksplisit.
