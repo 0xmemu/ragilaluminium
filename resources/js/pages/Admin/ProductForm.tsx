@@ -360,6 +360,40 @@ export default function ProductForm({
     [variantDefs, imageAxisSlot],
   )
 
+  // Kolom gambar muncul bila sumbu bergambar punya minimal satu thumbnail.
+  // Nama opsi sumbu itu ikut pindah ke sel gambar, sehingga kolom Kombinasi
+  // hanya berisi sumbu lain (pola Shopee: "Putih" tidak diulang tiap baris).
+  const hasAxisColumn = axisThumbs.thumbs.size > 0
+  const showCombinationColumn = !hasAxisColumn || variantDefs.length > 1
+
+  /**
+   * Urutan tampil matriks: kelompokkan per nilai opsi pada sumbu bergambar.
+   *
+   * `combos` dari buildCombinations selalu bersarang menurut urutan definisi
+   * (slot 1 paling luar). Kalau sumbu bergambar ada di slot 2, nilai slot 2
+   * berganti setiap baris sehingga penggabungan sel gagal dan nama opsi
+   * berulang. Urutan tampil diurutkan ulang per sumbu bergambar, sementara
+   * `index` asli dipertahankan sebagai kunci state harga/stok.
+   */
+  const displayCombos = React.useMemo(() => {
+    const indexed = combos.map((combo, index) => ({ combo, index }))
+    if (!imageAxisSlot) return indexed
+
+    const axisIndex = imageAxisSlot - 1
+    const def = variantDefs[axisIndex]
+    if (!def) return indexed
+
+    const order = new Map(
+      def.options.map((option, i) => [option.value.trim().toLowerCase(), i]),
+    )
+
+    return [...indexed].sort((a, b) => {
+      const av = (a.combo.options[axisIndex] ?? "").trim().toLowerCase()
+      const bv = (b.combo.options[axisIndex] ?? "").trim().toLowerCase()
+      return (order.get(av) ?? 0) - (order.get(bv) ?? 0)
+    })
+  }, [combos, imageAxisSlot, variantDefs])
+
   // Pratinjau langsung: gambar opsi varian ikut tampil di Foto Produk dengan
   // label varian, tanpa menunggu simpan. Edit mode tidak memakainya karena
   // media varian tersimpan sudah muncul lewat pickedMedia (variantLabel).
@@ -1187,59 +1221,79 @@ export default function ProductForm({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/20 text-left text-xs font-semibold text-foreground">
-                        {axisThumbs.thumbs.size ? (
-                          <th className="w-16 px-3 py-2.5">{axisThumbs.axisName || "Gambar"}</th>
+                        {hasAxisColumn ? (
+                          <th className="w-32 px-3 py-2.5">{axisThumbs.axisName || "Gambar"}</th>
                         ) : null}
-                        <th className="px-4 py-2.5">Kombinasi</th>
+                        {showCombinationColumn ? <th className="px-4 py-2.5">Kombinasi</th> : null}
                         <th className="px-4 py-2.5 w-48">Harga (Rp)</th>
                         <th className="px-4 py-2.5 w-72">Stok</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {combos.map((combo, comboIndex) => {
+                      {displayCombos.map(({ combo, index: comboIndex }, rowIndex) => {
                         const key = String(comboIndex)
                         const value = combinations[key] ?? { price: "", stock: "" }
 
-                        // Nilai opsi pada sumbu bergambar untuk baris ini, lalu
-                        // gabungkan sel selama nilainya sama berturut-turut
-                        // (pola Shopee: satu gambar membentang satu kelompok).
-                        const axisValue = imageAxisSlot
-                          ? (combo.options[imageAxisSlot - 1] ?? "")
-                          : ""
+                        // Nilai opsi pada sumbu bergambar untuk baris ini. Sel
+                        // digabung selama nilainya sama berturut-turut, sehingga
+                        // nama warna dan gambarnya ditulis sekali per kelompok
+                        // (pola Shopee), bukan diulang di setiap kombinasi.
+                        const axisIndex = (imageAxisSlot ?? 1) - 1
+                        const axisValue = imageAxisSlot ? (combo.options[axisIndex] ?? "") : ""
                         const thumb = axisThumbs.thumbs.get(axisValue.trim().toLowerCase())
-                        const prevAxisValue = comboIndex > 0 && imageAxisSlot
-                          ? (combos[comboIndex - 1].options[imageAxisSlot - 1] ?? "")
+                        const prevAxisValue = rowIndex > 0 && imageAxisSlot
+                          ? (displayCombos[rowIndex - 1].combo.options[axisIndex] ?? "")
                           : null
-                        const isGroupStart = thumb !== undefined && prevAxisValue !== axisValue
+                        const isGroupStart = hasAxisColumn && prevAxisValue !== axisValue
 
                         let groupSpan = 0
                         if (isGroupStart) {
                           groupSpan = 1
-                          for (let i = comboIndex + 1; i < combos.length; i++) {
-                            if ((combos[i].options[(imageAxisSlot ?? 1) - 1] ?? "") !== axisValue) break
+                          for (let i = rowIndex + 1; i < displayCombos.length; i++) {
+                            if ((displayCombos[i].combo.options[axisIndex] ?? "") !== axisValue) break
                             groupSpan++
                           }
                         }
 
+                        // Kolom Kombinasi hanya memuat sumbu selain sumbu
+                        // bergambar. Bila tidak ada sumbu lain, kolomnya hilang.
+                        const secondaryLabel = imageAxisSlot
+                          ? combo.options.filter((_, i) => i !== axisIndex).join(" / ")
+                          : combo.label
+
                         return (
                           <tr key={key} className="hover:bg-muted/30 transition-colors">
-                            {axisThumbs.thumbs.size ? (
+                            {hasAxisColumn ? (
                               isGroupStart ? (
-                                <td rowSpan={groupSpan} className="border-r border-border/60 px-3 py-2 align-top">
-                                  <img
-                                    src={thumb}
-                                    alt=""
-                                    className="size-11 rounded border border-border object-cover"
-                                    loading="lazy"
-                                  />
+                                <td
+                                  rowSpan={groupSpan}
+                                  className="border-r border-border/60 px-3 py-2 align-top"
+                                >
+                                  <div className="flex flex-col items-start gap-1.5">
+                                    <span className="text-xs font-semibold text-foreground">
+                                      {axisValue}
+                                    </span>
+                                    {thumb ? (
+                                      <img
+                                        src={thumb}
+                                        alt=""
+                                        className="size-11 rounded border border-border object-cover"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <span className="flex size-11 items-center justify-center rounded border border-dashed border-border text-muted-foreground/50">
+                                        <Icon name="image" className="size-4" aria-hidden="true" />
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
-                              ) : thumb === undefined ? (
-                                // Opsi ini belum punya gambar: sel kosong tetap
-                                // dirender supaya jumlah kolom tidak bergeser.
-                                <td className="border-r border-border/60 px-3 py-2" />
                               ) : null
                             ) : null}
-                            <td className="px-4 py-2 font-medium text-foreground">{combo.label}</td>
+                            {showCombinationColumn ? (
+                              <td className="px-4 py-2 font-medium text-foreground">
+                                {secondaryLabel || "-"}
+                              </td>
+                            ) : null}
                             <td className="px-4 py-2">
                               <Input
                                 type="number"
