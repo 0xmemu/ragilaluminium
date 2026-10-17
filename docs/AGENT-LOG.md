@@ -7066,3 +7066,21 @@ random stock import, dan order export semuanya lulus; build 209 memuat
 string baru (SKU Induk, Pelanggan, Draf); verifikasi Playwright membuktikan
 mode terkunci, Batal memulihkan nilai tanpa request PUT, dan alur create CMS
 tetap bebas.
+
+## 2026-10-17 05:38 UTC | zcode-category-form-cleanup | Trivial | 7ef3477c | selesai
+Lingkup: merampingkan form kategori admin (resources/js/pages/Admin/Categories/Form.tsx).
+Yang dibuang: teks bantuan di bawah Nama Kategori, Kode Kategori, Slug URL, dan Status
+Kategori; baris isian Urutan Tampil beserta penjelasannya; lencana Aktif yang mengulang
+isi kotak centang. Import StatusBadge dan storeExampleUrl ikut dibuang karena jadi
+yatim. Urutan tampil tidak hilang dari sistem: baris baru tetap otomatis ditaruh paling
+belakang lewat nextSortOrder() di controller, dan kolom Urutan tetap ada di halaman
+daftar kategori.
+Dampak spec: tidak berubah. Field sort_order tetap divalidasi dan tersimpan; hanya
+kontrol isiannya yang tidak lagi ditampilkan ke admin.
+Untuk agent berikutnya: jangan mengembalikan isian Urutan Tampil ke form kategori.
+Urutan sekarang sepenuhnya otomatis; bila suatu saat perlu diubah manual, buat kontrol
+di halaman daftar, bukan di form tambah/edit.
+Bukti: npm run typecheck bersih; npx eslint --max-warnings=0 pada berkas itu bersih;
+npx vitest run tests/frontend/admin-edit-guard.test.ts 4/4 lulus; deploy 202
+7ef3477c kesehatan OK, dan grep pada public/build/assets/*.js tidak menemukan
+string "Urutan Tampil" lagi.
