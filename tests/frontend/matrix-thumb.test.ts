@@ -61,6 +61,27 @@ describe("matriks harga dan stok", () => {
     expect(sumber).toContain('name="image"')
   })
 
+
+  it("tombol sumbu bergambar memakai token tema, bukan putih di atas putih", () => {
+    const sumber = baca(FORM)
+
+    // Tema gelap admin: --foreground adalah PUTIH 96%. Kombinasi
+    // bg-foreground + text-white menghasilkan teks putih di atas latar putih,
+    // sehingga label tombol hilang sama sekali.
+    expect(sumber).not.toContain("bg-foreground text-white")
+
+    // Penggantinya token pasangan primary/primary-foreground, yang di tema
+    // gelap berarti latar putih dengan teks gelap.
+    expect(sumber).toContain("bg-primary text-primary-foreground")
+    expect(sumber).toContain("aria-pressed={isImageAxis}")
+  })
+
+  it("sumbu bergambar bisa dimatikan lagi", () => {
+    const sumber = baca(FORM)
+
+    expect(sumber).toContain("setImageAxisSlot(isImageAxis ? null : defIndex + 1)")
+  })
+
   it("harga dan stok tetap per kombinasi", () => {
     const sumber = baca(FORM)
 

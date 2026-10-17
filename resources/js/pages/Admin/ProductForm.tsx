@@ -1062,32 +1062,37 @@ export default function ProductForm({
                         )}
                       </div>
 
-                      {/* Pemilih sumbu bergambar: satu sumbu saja per produk. */}
-                      <div className="flex items-center gap-2">
-                        {isImageAxis ? (
-                          <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-foreground bg-foreground px-2 text-[11px] font-semibold text-white">
-                            <Icon name="image" className="size-3" aria-hidden="true" />
-                            Gambar per opsi
-                          </span>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="xs"
-                            onClick={() => setImageAxisSlot(defIndex + 1)}
-                            title="Pakai gambar untuk opsi di sumbu ini"
-                          >
-                            <Icon name="image" className="size-3" aria-hidden="true" />
-                            Gambar per opsi
-                          </Button>
+                      {/* Pemilih sumbu bergambar: satu sumbu saja per produk.
+                          Memakai token tema, bukan bg-foreground + text-white:
+                          di tema gelap admin foreground adalah PUTIH, sehingga
+                          teks putih di atas latar putih tidak terbaca. */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImageAxisSlot(isImageAxis ? null : defIndex + 1)
+                        }
+                        aria-pressed={isImageAxis}
+                        title={
+                          isImageAxis
+                            ? "Matikan gambar per opsi untuk sumbu ini"
+                            : "Pakai gambar untuk opsi di sumbu ini"
+                        }
+                        className={cn(
+                          "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold transition",
+                          isImageAxis
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-surface text-muted-foreground hover:border-foreground/40 hover:text-foreground",
                         )}
-                      </div>
+                      >
+                        <Icon name="image" className="size-3" aria-hidden="true" />
+                        Gambar per opsi
+                      </button>
                     </div>
 
                     {/* Penempatan Opsi Varian yang jelas dan teratur */}
                     <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                       <p className="mb-2 text-[11px] font-medium text-muted-foreground">
-                        Pilihan opsi {def.name ? `untuk ${def.name}` : ""}:
+                        {def.name ? `Pilihan opsi untuk ${def.name}:` : "Pilihan opsi:"}
                       </p>
                       <div className="flex flex-wrap items-center gap-2.5">
                         {def.options.map((option, optionIndex) => (
